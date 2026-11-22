@@ -335,9 +335,47 @@ def make_router(require_key, current_tenant) -> APIRouter:
         if not row or row.get("tenant") != tenant or not row.get("transfer_to"):
             raise HTTPException(404, "no transfer")
         with S.session() as s:
-            num = S._row(s, tenant).number
-        return _reply(prov, prov.say(R.CONNECTING[R.lang3(row.get("lang") or R.default_lang())], row.get("lang") or R.default_lang(),
-                                     dial=row["transfer_to"], caller_id=num))
+            st = S._row(s, tenant)
+            num, warm = st.number, st.warm_transfer is not False
+        lang = row.get("lang") or R.default_lang()
+        if warm and getattr(prov, "warm_ok", False):     # G3: the person hears who is calling and why, presses 1
+            base = _public_url(request).split("?")[0].rsplit("/transfer/", 1)[0]
+            t = S.ticket(call_id, 15)
+            return _reply(prov, prov.warm_dial(R.CONNECTING[R.lang3(lang)], lang, row["transfer_to"], num,
+                                               f"{base}/whisper/{call_id}?t={t}", f"{base}/dialdone/{call_id}?t={t}"))
+        return _reply(prov, prov.say(R.CONNECTING[R.lang3(lang)], lang, dial=row["transfer_to"], caller_id=num))
+
+    @r.api_route("/api/callcentre/hook/{name}/{token}/whisper/{call_id}", methods=["GET", "POST"])
+    async def hook_whisper(name: str, token: str, call_id: str, request: Request):
+        """G3: what the PERSON hears when they pick up the transfer, before the caller joins."""
+        tenant, prov, _ = await _checked(request, name, token)
+        if not S.ticket_ok(call_id, request.query_params.get("t", "")):
+            raise HTTPException(403, "bad ticket")
+        row = await asyncio.to_thread(S.call_row, call_id)
+        if not row or row.get("tenant") != tenant:
+            raise HTTPException(404, "no call")
+        text, lang = await asyncio.to_thread(S.whisper_text, call_id)
+        base = _public_url(request).split("?")[0].rsplit("/whisper/", 1)[0]
+        return _reply(prov, prov.whisper(text, lang, f"{base}/whisper_ok/{call_id}?t={request.query_params.get('t', '')}"))
+
+    @r.api_route("/api/callcentre/hook/{name}/{token}/whisper_ok/{call_id}", methods=["GET", "POST"])
+    async def hook_whisper_ok(name: str, token: str, call_id: str, request: Request):
+        tenant, prov, params = await _checked(request, name, token)
+        if not S.ticket_ok(call_id, request.query_params.get("t", "")):
+            raise HTTPException(403, "bad ticket")
+        got = prov.whisper_accept(params)
+        return _reply(prov, got if got else prov.ack())
+
+    @r.api_route("/api/callcentre/hook/{name}/{token}/dialdone/{call_id}", methods=["GET", "POST"])
+    async def hook_dialdone(name: str, token: str, call_id: str, request: Request):
+        """G3: how the person's leg of the transfer ended. Nobody picked up = a call-back window said to the caller."""
+        tenant, prov, params = await _checked(request, name, token)
+        if not S.ticket_ok(call_id, request.query_params.get("t", "")):
+            raise HTTPException(403, "bad ticket")
+        d = await asyncio.to_thread(S.transfer_done, tenant, call_id, prov.dial_status(params))
+        if d.get("answered") or not d.get("say"):
+            return _reply(prov, ("<Response><Hangup /></Response>", "application/xml") if prov.xml else prov.ack())
+        return _reply(prov, prov.say(d["say"], d.get("lang") or "en-IN"))
 
     # Exotel flow helpers (Passthru = 200 / 302 branch; Connect applet dynamic URL; Voicebot dynamic stream URL)
     @r.get("/api/callcentre/hook/exotel/{token}/stream_url")

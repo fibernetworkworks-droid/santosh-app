@@ -585,6 +585,17 @@
     const cho = await api('GET', '/api/seva/channels').catch(() => ({channels: [], catalog: {kinds: [], not_built: {}}}));
     const wc = await api('GET', '/api/seva/webchat').catch(() => ({}));
     const em = (await api('GET', '/api/seva/email').catch(() => ({}))).email || null;
+    const ph = (await api('GET', '/api/seva/phone').catch(() => ({}))).phone || null;
+    const out = {answered: 'Answered', message: 'Message', callback: 'Call back', complaint: 'Complaint', transferred: 'To a person',
+      appointment: 'Booked', failed: 'Line problem', voicemail: 'Voicemail', no_answer: 'No answer'};
+    const phSec = ph ? sec('Phone calls', `<p class="mut" style="margin:0">Your phone line is answered by Hoola from the same knowledge. Every call lands on the customer's conversation and ticket here, and a caller who already wrote on WhatsApp or another app does not have to repeat themselves.</p>
+      <div class="row">${pill(ph.line_on ? 'ok' : 'warn', ph.line_on ? 'Line on' : 'Line off')}<div style="flex:1;min-width:0"><div class="t">${esc(ph.number || 'No number yet')}</div><div class="s">${esc(ph.provider_name || '')}${ph.people ? ` · ${ph.people} person${ph.people === 1 ? '' : 's'} to hand over to` : ' · nobody to hand over to yet'}</div></div><a class="btn soft sm" href="/console/telecaller">Phone line settings</a></div>
+      <form id="spPhone" style="display:flex;flex-direction:column;gap:10px">
+        <label class="row" style="cursor:pointer"><input type="checkbox" name="warm_transfer"${ph.warm_transfer ? ' checked' : ''} style="width:18px;height:18px"><span class="t">Warm transfer: the person hears who is calling and why, presses 1, then the caller joins${ph.warm_possible ? '' : ' (your phone company has no whisper in Hoola yet: a plain transfer, with the hand-over packet on this desk)'}</span></label>
+        <label class="f"><span>When a customer rings your WhatsApp number</span><select class="in" name="wa_calls"><option value="callback"${ph.wa_calls !== 'off' ? ' selected' : ''}>Decline, open a call-back ticket and tell them on WhatsApp</option><option value="off"${ph.wa_calls === 'off' ? ' selected' : ''}>Leave it to WhatsApp (Hoola does nothing)</option></select></label>
+        <div><button class="btn sm" type="submit">Save phone settings</button></div></form>
+      ${(ph.calls || []).length ? (ph.calls || []).map(c => `<div class="row" style="flex-wrap:wrap">${pill(['message', 'callback', 'failed', 'complaint'].includes(c.outcome) ? 'warn' : 'ok', out[c.outcome] || c.outcome || 'Call')}<div style="flex:1;min-width:200px"><div class="t">${esc(c.name || c.caller)} · ${esc(Math.floor(c.seconds / 60) + ':' + String(c.seconds % 60).padStart(2, '0'))}${c.transfer && c.transfer !== 'answered' ? ` · ${esc('transfer not answered')}` : ''}</div><div class="s">${esc(c.summary || '')}</div><div class="s">${esc(when(c.at))}</div></div>${c.ticket ? `<a class="btn soft sm" href="#/ticket/${enc(c.ticket)}">${esc(c.ticket)}</a>` : ''}${c.customer ? `<a class="btn soft sm" href="#/chat/${enc(c.customer)}">Conversation</a>` : ''}</div>`).join('') : '<p class="mut" style="margin:0">No calls yet.</p>'}
+      <details><summary class="mut" style="cursor:pointer;font-size:13px">Not built yet</summary>${(ph.not_built || []).map(x => `<div class="s">${esc(x)}</div>`).join('')}</details>`) : '';
     const emSec = sec('Support email', `<p class="mut" style="margin:0">Mail to your support address comes into this desk; Hoola answers from your knowledge in the same thread, from your address, with your signature. Automatic mails, mailing lists and your own address are never answered. For Gmail or Microsoft 365 use an app password.</p>
       ${em ? `<div class="row">${pill(em.status === 'ok' ? 'ok' : em.status === 'error' ? 'bad' : 'warn', em.status === 'ok' ? 'Working' : em.status === 'error' ? 'Problem' : 'Saved')}<div style="flex:1;min-width:0"><div class="t">${esc(em.address)}</div><div class="s">${esc(em.note || '')}</div>${em.last_poll ? `<div class="s">Last read ${esc(when(em.last_poll))}</div>` : ''}</div><button class="btn soft sm" type="button" data-mailcheck="1">Check</button><button class="btn soft sm" type="button" data-mailpoll="1">Read now</button></div>
         ${em.forward ? `<div class="s"><b>Or forward your support mail to:</b> <code>${esc(em.forward)}</code></div>` : ''}` : ''}
@@ -636,7 +647,7 @@
       <div class="grid2" style="gap:14px">${field('vip', 'VIP numbers (comma between)', `value="${esc((hr.vip || []).join(', '))}"`)}${field('words', 'Other words that always go to a person (comma between)', `value="${esc((hr.words || []).join(', '))}"`)}
       ${field('callback_h', 'Call-back window on a phone call (hours)', `type="number" min="0.5" max="48" step="0.5" value="${esc(hr.callback_h ?? 2)}"`)}</div>
       <label class="row" style="cursor:pointer"><input type="checkbox" name="page_urgent"${hr.page_urgent ? ' checked' : ''} style="width:18px;height:18px"><span class="t">Tell me at once about an urgent one, even when closed</span></label>
-      <p class="mut" style="margin:0;font-size:13px">On a phone call Hoola gives a call-back time; a live transfer to a person's phone is not built yet.</p>`)}
+      <p class="mut" style="margin:0;font-size:13px">On a phone call Hoola rings the first person on your hand-over list (warm transfer when it is on); if nobody picks up, the caller is told this call-back window.</p>`)}
       <div><button class="btn sm" type="submit">Save hand-over rules</button></div></form>`;
     const DN = {mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday'};
     const wchk = (name, label) => `<label class="row" style="cursor:pointer"><input type="checkbox" name="${name}"${wr[name] ? ' checked' : ''} style="width:18px;height:18px"><span class="t">${esc(label)}</span></label>`;
@@ -666,7 +677,7 @@
         <label class="sr" for="spTr-${esc(topic)}">How much Hoola may do: ${esc(name)}</label><select class="in" id="spTr-${esc(topic)}" style="width:auto">${cur || topic === '*' ? '' : '<option value="" selected>Same as the starting rule</option>'}${lv(cur ? cur.level : (topic === '*' ? tr.default : ''))}</select><button class="btn soft sm" type="button" data-trustsave="1">Save</button></div>`; }).join('');
     const trustSec = sec('How much Hoola may do', `<p class="mut" style="margin:0">Per topic: answer alone, draft for a person to send, or always hand over. A refund request, an angry or urgent message and "I want a person" always go to a person, whatever you set. Every reply is checked before it goes: its numbers must be in your knowledge, and it never promises a call-back or a refund that nobody made.</p>${trows}`);
     return `${head('Channels & settings', 'Where customers reach you, and the service rules Hoola follows.')}
-      ${setupSec}${emSec}${wcSec}${chSec}${trustSec}${hoSet}${watchSec}
+      ${setupSec}${phSec}${emSec}${wcSec}${chSec}${trustSec}${hoSet}${watchSec}
       ${sec('Where customers reach you', chs)}
       <form id="spSettings" style="display:flex;flex-direction:column;gap:18px">
       ${sec('Reply times', `<label class="f"><span>Start from the usual times for</span><select class="in" name="kind">${(st.presets || []).map(k => `<option value="${k}"${st.kind === k ? ' selected' : ''}>${esc({shop: 'A shop or service business', isp: 'An internet / cable provider', ecommerce: 'An online seller', clinic: 'A clinic'}[k] || k)}</option>`).join('')}</select></label>
@@ -790,6 +801,7 @@
       if (f.id === 'spFlowNew') { const key = S(v.name).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'flow';
         const r = await api('PUT', `/api/seva/flows/${enc(key)}`, {key, name: v.name, stages: [{key: 'new', name: 'New', owner: 'hoola', hours: 2}, {key: 'working', name: 'Being worked on', owner: 'team', hours: 48, customer_told: true}, {key: 'closed', name: 'Closed', owner: 'team', hours: 0}], arrows: {new: ['working'], working: ['closed'], closed: []}});
         toast(r.say || 'Added.'); return showPage(true); }
+      if (f.id === 'spPhone') { const r = await api('PUT', '/api/seva/phone', {warm_transfer: !!f.warm_transfer.checked, wa_calls: v.wa_calls}); toast(r.say || 'Saved.'); return showPage(true); }
       if (f.id === 'spMail') { const body = {address: v.address, name: v.name, imap_host: v.imap_host, smtp_host: v.smtp_host, smtp_port: v.smtp_port,
           user: v.user, signature: v.signature}; if (v.password) body.password = v.password;
         const r = await api('PUT', '/api/seva/email', body); toast(r.say || 'Saved.'); return showPage(true); }

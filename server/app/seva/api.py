@@ -314,6 +314,25 @@ def make_router(require_key, current_tenant) -> APIRouter:
         from . import supportmail as SM
         return {"read": await mrun(SM.poll, tenant, True)}
 
+    async def prun(fn, *a, **kw):
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/phone")
+    async def phone_get(tenant: str = Depends(current_tenant)):
+        """G3: her phone line in the support desk: warm transfer, WhatsApp calls, the latest calls with their tickets."""
+        from . import calls as SC
+        return {"phone": await prun(SC.phone_view, tenant)}
+
+    @r.put("/phone")
+    async def phone_put(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import calls as SC
+        b = _b(body)
+        warm = b.get("warm_transfer")
+        return {"phone": await prun(SC.save_phone, tenant, None if warm is None else bool(warm), b.get("wa_calls"))}
+
     @r.get("/chatfiles/{fid}")
     async def webchat_file(fid: str, tenant: str = Depends(current_tenant)):
         from fastapi.responses import Response as R_

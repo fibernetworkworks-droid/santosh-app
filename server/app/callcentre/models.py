@@ -37,6 +37,8 @@ class CcSettings(Base):
     currency: Mapped[str] = mapped_column(String(3), default="")
     registered_line: Mapped[bool] = mapped_column(Boolean, default=False)
     confirmed: Mapped[str] = mapped_column(Text, default="[]")
+    warm_transfer: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=True)   # G3 the person hears the summary first
+    wa_calls: Mapped[str | None] = mapped_column(String(10), nullable=True, default="callback")  # G3 WhatsApp voice calls: callback | off
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -82,6 +84,8 @@ class CcCall(Base):
     ai_usd: Mapped[float] = mapped_column(Float, default=0.0)
     phone_inr: Mapped[float] = mapped_column(Float, default=0.0)
     disclosed: Mapped[bool] = mapped_column(Boolean, default=False)
+    whisper: Mapped[str | None] = mapped_column(Text, nullable=True, default="")
+    transfer_status: Mapped[str | None] = mapped_column(String(12), nullable=True, default="")
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # v0.999.67 AI TELECALLER: a call Hoola MADE (direction out) belongs to one person on one call list
@@ -119,6 +123,7 @@ class CcCaller(Base):
     calls: Mapped[int] = mapped_column(Integer, default=0)
     last_intent: Mapped[str] = mapped_column(String(16), default="")
     last_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reply_wait_ms: Mapped[int | None] = mapped_column(Integer, nullable=True, default=0)     # G3 learned wait before replying
 
 
 # ---------------------------------------------------------------- v0.999.67 the Business Brain + AI calls out

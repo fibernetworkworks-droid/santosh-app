@@ -561,7 +561,8 @@ def _shape(kind: str, text: str) -> str:
 def _last_in(tenant: str, customer: str):
     with session() as s:
         m = s.scalars(select(SevaChatMsg).where(SevaChatMsg.tenant_id == tenant, SevaChatMsg.customer == customer,
-                                                SevaChatMsg.direction == "in").order_by(SevaChatMsg.at.desc())).first()
+                                                SevaChatMsg.direction == "in", SevaChatMsg.channel_id != "phone")
+                      .order_by(SevaChatMsg.at.desc())).first()
         return (m.channel_id, _aware(m.at), json.loads(m.meta or "{}")) if m else (None, None, {})
 
 
@@ -590,6 +591,15 @@ def send_to(tenant: str, customer: str, text: str, by: str = "hoola", decision: 
             r = s.scalars(select(SevaChannel).where(SevaChannel.tenant_id == tenant, SevaChannel.kind == "email",
                                                     SevaChannel.status != "off")).first()
             cid = r.id if r is not None else None
+    if cid is None and customer.startswith(("phone:", "wa:")):
+        try:          # G3: a caller - WhatsApp if they ever wrote there (inside Meta's window), else a call-back by her
+            from ..employee import inbox
+            if inbox.notice_by_phone(tenant, customer.split(":", 1)[1], text):
+                _store(tenant, "phone", customer, "", "out", by, text, "", "sent", decision)
+                return {"sent": "whatsapp", "text": text}
+        except Exception:   # noqa: BLE001
+            log.exception("support phone customer notice")
+        raise ChannelError("This customer only called: call them back (they have not written on WhatsApp or another app).")
     if cid is None:
         raise ChannelError("This customer has not written on any of your apps.")
     c, k = _ch(tenant, cid)
@@ -776,7 +786,8 @@ def conversations(tenant: str, limit: int = 60) -> list[dict]:
         for m in s.scalars(select(SevaChatMsg).where(SevaChatMsg.tenant_id == tenant).order_by(SevaChatMsg.at.desc()).limit(2000)).all():
             if m.customer in out:
                 continue
-            out[m.customer] = {"customer": m.customer, "kind": kinds.get(m.channel_id, ""), "app": KINDS.get(kinds.get(m.channel_id, ""), {}).get("name", ""),
+            kd = kinds.get(m.channel_id, "phone" if m.channel_id == "phone" else "")
+            out[m.customer] = {"customer": m.customer, "kind": kd, "app": "Phone" if kd == "phone" else KINDS.get(kd, {}).get("name", ""),
                                "name": m.name, "last": m.text[:160], "last_by": m.by, "at": _aware(m.at).isoformat()}
             if len(out) >= limit:
                 break

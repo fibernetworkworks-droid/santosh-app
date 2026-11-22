@@ -274,6 +274,12 @@ HOLD = {"hi-IN": "Kripya line par bane rahiye, aapki call jaldi uthayi jayegi.",
         "en-IN": "Please stay on the line, your call will be answered shortly."}
 CONNECTING = {"hi-IN": "Aapko hamari team se jod rahe hain, kripya ruke.", "mr-IN": "Tumhala aamchya team shi jodat aahot, krupaya thamba.",
               "en-IN": "Connecting you to our team, please hold."}
+CALLBACK_SAY = {   # G3: the person did not pick up the warm transfer
+    "hi-IN": "Maaf kijiye, abhi team ka koi phone nahi utha paya. Aapki baat likh li hai, team aapko {window} call karegi. Dhanyavaad.",
+    "mr-IN": "Maaf kara, aata team madhle koni phone ghenu shakle nahi. Tumchi goshta lihun ghetli aahe, team tumhala {window} call karel. Dhanyavaad.",
+    "en-IN": "Sorry, nobody from the team could pick up just now. Your request is noted and the team will call you back {window}. Thank you.",
+}
+CALLBACK_SOON = {"hi-IN": "jaldi", "mr-IN": "lavkar", "en-IN": "soon"}
 
 
 def default_lang() -> str:

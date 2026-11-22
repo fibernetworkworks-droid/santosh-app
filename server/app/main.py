@@ -1625,6 +1625,12 @@ async def receive_webhook(request: Request):
                 updates.extend(value.get("statuses") or [])
                 for m in value.get("messages") or []:
                     updates.append({"reply_from": m.get("from"), "text": (m.get("text") or {}).get("body")})
+            elif field == "calls":      # G3: a customer rang her WhatsApp number (WhatsApp Business Calling API)
+                try:
+                    from .seva import calls as _seva_calls
+                    _seva_calls.wa_calls(value)
+                except Exception:
+                    logging.getLogger("santosh.webhook").exception("whatsapp calls webhook")
             elif field == "message_template_status_update":
                 camp.apply_template_status(str(value.get("message_template_id")), value.get("event", ""), value.get("reason"))
     if updates:

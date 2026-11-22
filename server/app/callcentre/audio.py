@@ -106,3 +106,24 @@ class Chunker:
             return b""
         pad = (-len(b)) % multiple
         return b + b"\x00" * pad
+
+
+# ---------------------------------------------------------------- v0.999.101 key tones for a phone menu (G3)
+_DTMF = {"1": (697, 1209), "2": (697, 1336), "3": (697, 1477), "4": (770, 1209), "5": (770, 1336), "6": (770, 1477),
+         "7": (852, 1209), "8": (852, 1336), "9": (852, 1477), "*": (941, 1209), "0": (941, 1336), "#": (941, 1477)}
+
+
+def dtmf(keys: str, rate: int = 8000, tone_ms: int = 120, gap_ms: int = 100, level: float = 0.35) -> bytes:
+    """In-band key tones (the two frequencies of each key, ITU-T Q.23) as 16-bit PCM at the line's rate. The phone
+    companies' audio streams cannot send key events, so the tones ride the call audio like a phone keypad's."""
+    import numpy as np
+    out = []
+    for k in str(keys or ""):
+        if k not in _DTMF:
+            continue
+        lo, hi = _DTMF[k]
+        t = np.arange(int(rate * tone_ms / 1000)) / rate
+        w = (np.sin(2 * np.pi * lo * t) + np.sin(2 * np.pi * hi * t)) * (level / 2)
+        out.append((w * 32767).astype("<i2").tobytes())
+        out.append(b"\x00\x00" * int(rate * gap_ms / 1000))
+    return b"".join(out)
