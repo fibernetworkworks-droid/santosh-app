@@ -130,3 +130,7 @@ the task ends cleanly). This hit real users too, not only the exam: any PC step 
 
 ## P6 as built (v0.999.116)
 - `/console/pcjobs`: every job step by step (screens, click marks, thoughts, times), live screen + Stop for a running job, save as routine, run routines, edit her rules. Take control stays on the Hoola Computer page. Not built: a video of the job, step mode (one step at a time on her tap), the phone app screen for it.
+
+## P7 as built (v0.999.117)
+- `server/app/pc/portals.py`: cloud-refusing sites (starter list + what Hoola PC learns, 14 days) are refused at once on Hoola PC and pointed at her PC; national sign-ins of 27 countries / schemes are handed to her (Take control), never typed. CAPTCHA / OTP hand-offs unchanged. Not built: best-of-N for read-only Hoola PC jobs (it multiplies the cost of a job - waits for her budget word).
+
