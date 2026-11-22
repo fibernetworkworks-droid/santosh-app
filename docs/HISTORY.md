@@ -9442,3 +9442,14 @@ extension; removed. Tests `test_v0999_111_ext_engine.py` (6): equal copies, the 
 practice page (shadow, banner, hover menu, wizard dates, password refusal, drag, text), the real extension loaded in
 Chromium answering over its socket (elements, aim, a real debugger mouse click, tab), routing, the token-checked
 socket, the manifest. NOT VERIFIED on her Windows Chrome (needs the next desktop build's extension + her Turn on).
+
+## v0.999.112 SUPPORT REPORTS — Support reports (G13)
+
+Owner: "GO G13" on docs/SUPPORT_GLOBAL_PLAN.md section 11 (the last phase of the global Customer Support plan; built as 0.999.111 - their their HER CHROME, ENGINE 2 took 0.999.111, REBASE PROTOCOL, both kept).
+
+- NEW `server/app/seva/reports.py` (table seva_monthly; self-healing, registered in db.init_db): `_period` (tickets created in (since, until], each as a row: channel, country from the number, language (teams.lang_of_ticket), brand / product custom fields, queue, person, topic, status, first reply and solve hours on her clocks, CSAT, reopened, handed over, solved by Hoola or a person; questions answered alone; on-time shares from the SLA state; late open tickets by workflow stage), `_cost` (usage_days of features support + callcentre -> credits at $0.001), `_gaps` (unknown / clarify questions grouped by similarity), `build` (the period + the one before: 13 headline numbers with change and better / worse, the eight breakdowns, late by stage, satisfaction, gaps, cost, a one-line summary), `tickets_csv` (18 columns; a cell never starts as a formula), `pdf` (reportlab: headline vs before, breakdowns, late by stage, satisfaction, gaps, cost), `make_monthly` (on the 1st in her time zone, once per month, never an empty month; kept + her chat + a desk event), `monthly_all` on the worker, `monthlies`, `monthly_pdf`.
+- `seva/service.py`: support's model calls run in `usage.scope(feature='support')`; tick -> monthly_all. `usage.py`: /api/seva and /api/support routes are labelled support, /api/callcentre callcentre.
+- `seva/api.py`: /api/seva/reports/full, /reports/tickets.csv, /reports/report.pdf, /reports/monthly (GET; POST = last month now), /reports/monthly/{YYYY-MM}.pdf. Tool `support_desk_dekho what=reports`.
+- Desk Reports page: against the period before, requests by (eight tabs), late right now by stage, satisfaction with the spread, AI cost, downloads (every ticket CSV, this report PDF), monthly reports with their PDFs + make last month's now.
+- Tests: `test_v0999_112_support_reports.py` 7 (the report end to end, trends + credits per request counting only support's cost + the route labels, late by stage on a telecom workflow, CSV without formulas + the PDF's text, the monthly PDF once on the 1st in her time zone and never for an empty month, routes, a Chromium walk with both downloads and the monthly button at desktop + phone width).
+- NOT VERIFIED on her server. The credit figure covers only AI work labelled support or phone line.

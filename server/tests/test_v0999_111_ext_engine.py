@@ -1,4 +1,4 @@
-"""v0.999.111 ULTIMATE PC PLAN P1 (rest): page engine 2 on HER PC through the Hoola extension. The server engine
+"""v0.999.112 ULTIMATE PC PLAN P1 (rest): page engine 2 on HER PC through the Hoola extension. The server engine
 (pc/extlink.py) drives the very same pagekit.js the extension injects; here a stand-in extension runs it in a real
 Chromium over CDP (and a second test loads the REAL extension into Chromium and talks to its engine.js over a socket)."""
 from __future__ import annotations
@@ -270,7 +270,7 @@ def test_the_real_extension_answers_over_its_socket(tmp_path):
 
 
 def test_the_manifest_loads_in_chrome():
-    # v0.999.111 FOUND: "default_locale" without a _locales folder = Chrome refuses the whole extension
+    # v0.999.112 FOUND: "default_locale" without a _locales folder = Chrome refuses the whole extension
     m = json.loads((EXT / "manifest.json").read_text())
     assert "default_locale" not in m or (EXT / "_locales").is_dir()
     for f in ("background.js", "engine.js", "pagekit.js", "options.html", "popup.html", "offscreen.html"):
