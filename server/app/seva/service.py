@@ -1824,6 +1824,11 @@ def tick(at: datetime | None = None) -> dict:
     except Exception:
         log.exception("seva support mail")
     try:
+        from . import layer as LY                  # G12: her own helpdesk, read every few minutes
+        LY.run_all()
+    except Exception:
+        log.exception("seva helpdesk layer")
+    try:
         from . import quality as QL                # G11: retention per channel + numbers left unmasked
         QL.sweep_all()
     except Exception:

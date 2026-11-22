@@ -333,6 +333,47 @@ def make_router(require_key, current_tenant) -> APIRouter:
         warm = b.get("warm_transfer")
         return {"phone": await prun(SC.save_phone, tenant, None if warm is None else bool(warm), b.get("wa_calls"))}
 
+    # ---------------------------------------------------------------- G12 her own helpdesk (layer mode)
+    async def lrun(fn, *a, **kw):
+        from . import layer as LY
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except LY.LayerError as e:
+            raise HTTPException(400, str(e))
+        except (TypeError, ValueError) as e:
+            raise HTTPException(400, f"Invalid details: {e}")
+
+    @r.get("/helpdesk")
+    async def helpdesk_get(tenant: str = Depends(current_tenant)):
+        from . import layer as LY
+        return {"helpdesk": await lrun(LY.view, tenant)}
+
+    @r.put("/helpdesk")
+    async def helpdesk_put(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """Her helpdesk's key, typed in the app: sealed at once, never returned."""
+        from . import layer as LY
+        return {"helpdesk": await lrun(LY.connect, tenant, _b(body))}
+
+    @r.put("/helpdesk/settings")
+    async def helpdesk_settings(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import layer as LY
+        return {"helpdesk": await lrun(LY.save_settings, tenant, _b(body))}
+
+    @r.post("/helpdesk/check")
+    async def helpdesk_check(tenant: str = Depends(current_tenant)):
+        from . import layer as LY
+        return {"helpdesk": await lrun(LY.check, tenant)}
+
+    @r.post("/helpdesk/run")
+    async def helpdesk_run(tenant: str = Depends(current_tenant)):
+        from . import layer as LY
+        return await lrun(LY.run, tenant, True)
+
+    @r.delete("/helpdesk")
+    async def helpdesk_off(tenant: str = Depends(current_tenant)):
+        from . import layer as LY
+        return await lrun(LY.disconnect, tenant)
+
     # ---------------------------------------------------------------- G11 quality, simulations, the law, data rights, audit
     async def qrun(fn, *a, **kw):
         from . import quality as QL
@@ -845,6 +886,22 @@ def make_web_router() -> APIRouter:
                                                                                           "form-action 'self'; frame-ancestors 'none'",
                                                                "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer",
                                                                "Cache-Control": "no-store"})
+
+    @r.post("/api/support/layer/{token}")
+    async def layer_ping(token: str):
+        """G12: her helpdesk's webhook - only a nudge to read it now (the body is never trusted or stored)."""
+        from . import layer as LY
+        tenant = await asyncio.to_thread(LY.by_hook, token)
+        if not tenant:
+            raise HTTPException(404, "unknown")
+
+        def _go():
+            try:
+                LY.run(tenant)
+            except Exception:   # noqa: BLE001
+                pass
+        asyncio.get_running_loop().run_in_executor(None, _go)
+        return {"ok": True}
 
     @r.get("/support/approve/{token}", response_class=HTMLResponse)
     async def approve_page(token: str):

@@ -258,7 +258,7 @@ def _changes(tenant: str, answers: dict, prof: dict) -> list[dict]:
     add("Parts shown", ", ".join(PART_NAMES[k] for k in oon) or "The simple desk",
         ", ".join(PART_NAMES[k] for k in on) or "The simple desk")
     if prof["mode"] == "layer":
-        add("How Hoola works", "Its own inbox", f"On top of {HELPDESKS[prof['helpdesk']]}", "joining it comes in phase G12")
+        add("How Hoola works", "Its own inbox", f"On top of {HELPDESKS[prof['helpdesk']]}", "join it on Channels & settings > Your helpdesk")
     return out
 
 

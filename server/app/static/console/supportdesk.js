@@ -147,6 +147,7 @@
     $('#spPage').addEventListener('click', onClick);
     $('#spPage').addEventListener('submit', onSubmit);
     $('#spPage').addEventListener('change', e => {
+      if (e.target.id === 'spHdKind') { ST.hdKind = e.target.value; const box = $('#spHdFields'); if (box && ST.hdFields) box.innerHTML = ST.hdFields(e.target.value); return; }
       if (e.target.id !== 'spChKind') return;
       const k = (ST.chKinds || {})[e.target.value], box = $('#spChKeys');
       box.innerHTML = k ? `<p class="mut" style="margin:0;font-size:13px">${esc(k.how)}</p>${k.keys.map(x => field('k_' + x, (ST.keyNames || {})[x] || x, `type="${/secret|token|password/.test(x) && !/verify|^token$/.test(x) ? 'password' : 'text'}" autocomplete="off" required`)).join('')}` : '';
@@ -727,6 +728,24 @@
     const wc = await api('GET', '/api/seva/webchat').catch(() => ({}));
     const em = (await api('GET', '/api/seva/email').catch(() => ({}))).email || null;
     const ph = (await api('GET', '/api/seva/phone').catch(() => ({}))).phone || null;
+    const hd = (await api('GET', '/api/seva/helpdesk').catch(() => ({}))).helpdesk || {kinds: [], not_built: []};
+    ST.hd = hd;
+    const hk = (hd.kinds || []).find(k => k.kind === (ST.hdKind || hd.kind)) || (hd.kinds || [])[0] || {fields: []};
+    const hs = hd.settings || {};
+    ST.hdFields = kind => { const k = (hd.kinds || []).find(x => x.kind === kind) || {fields: []};
+      const fl = {base: 'Your helpdesk address (https://...)', account: 'Account id', user: k.kind === 'servicenow' ? 'User name' : 'Your email there', token: (hd.hints || {}).token && hd.kind === k.kind ? `Key (saved ${(hd.hints || {}).token}; type only to change it)` : 'API key / token'};
+      return `<div class="s">${esc(k.help || '')}</div><div class="grid2" style="gap:12px">${(k.fields || []).map(f => field(f, fl[f] || f, f === 'token' ? 'type="password" autocomplete="new-password"' : `value="${esc(hd.kind === k.kind ? (f === 'base' ? hd.base || '' : (hd.hints || {})[f] || '') : '')}"`)).join('')}</div>`; };
+    const hdSec = sec('Your helpdesk', `<p class="mut" style="margin:0">Keep using your own helpdesk: Hoola reads new tickets through its official API, sorts them, adds a suggested reply as an internal note with its source, summarises long threads, answers "where is my ticket" from it and reminds you of waiting customers. Tickets stay in your tool; Hoola never deletes anything there.</p>
+      ${hd.joined ? `<div class="row" style="flex-wrap:wrap">${pill(hd.status === 'ok' ? 'ok' : hd.status === 'error' ? 'bad' : 'warn', hd.status === 'ok' ? 'Working' : hd.status === 'error' ? 'Problem' : 'Joined')}<div style="flex:1;min-width:200px"><div class="t">${esc(hd.name)} · ${esc(hd.base)}</div><div class="s">${esc(hd.note || '')}${hd.last_run ? ' · last read ' + esc(when(hd.last_run)) : ''} · ${hd.seen || 0} tickets seen</div>${hd.webhook ? `<div class="s">Optional webhook (makes it read at once): <code style="word-break:break-all">${esc(hd.webhook)}</code></div>` : ''}</div>
+        <button class="btn soft sm" type="button" data-hdcheck="1">Check</button><button class="btn soft sm" type="button" data-hdrun="1">Read now</button><button class="btn soft sm" type="button" data-hdoff="1">Leave</button></div>` : ''}
+      <form id="spHd" style="display:flex;flex-direction:column;gap:10px"><label class="f"><span>Helpdesk</span><select class="in" name="kind" id="spHdKind">${(hd.kinds || []).map(k => `<option value="${esc(k.kind)}"${k.kind === hk.kind ? ' selected' : ''}>${esc(k.name)}</option>`).join('')}</select></label>
+        <div id="spHdFields">${ST.hdFields(hk.kind)}</div>
+        <div><button class="btn sm" type="submit">${hd.joined ? 'Save the helpdesk' : 'Join my helpdesk'}</button></div></form>
+      ${hd.joined ? `<form id="spHdSet" style="display:flex;flex-direction:column;gap:6px">${[['tags', 'Write the topic, language and queue as tags'], ['priority', 'Raise the priority of urgent ones'], ['notes', 'Suggested replies as internal notes'], ['public_replies', 'Answer customers directly when the topic is set to "Hoola answers alone"'], ['summaries', 'Summarise long threads'], ['close_on_confirm', 'Mark solved when the customer says it is fixed']].map(([k, n]) => `<label class="row" style="cursor:pointer"><input type="checkbox" name="${k}"${hs[k] ? ' checked' : ''} style="width:18px;height:18px"><span class="t">${esc(n)}</span></label>`).join('')}
+        <div class="grid2" style="gap:12px">${field('remind_h', 'Remind me when a customer waits more than (hours)', `type="number" min="1" value="${esc(hs.remind_h || 8)}"`)}${field('summary_after', 'Summarise after this many messages', `type="number" min="3" value="${esc(hs.summary_after || 6)}"`)}</div>
+        <div><button class="btn soft sm" type="submit">Save what Hoola may do there</button></div></form>
+        ${(hd.log || []).length ? `<details><summary class="mut" style="cursor:pointer;font-size:13px">What Hoola did there</summary>${hd.log.map(x => `<div class="s">${esc(when(x.at))} · ${x.ok ? '' : '⚠ '}${esc(x.detail)}</div>`).join('')}</details>` : ''}` : ''}
+      <details><summary class="mut" style="cursor:pointer;font-size:13px">Helpdesks not joined yet</summary>${(hd.not_built || []).map(x => `<div class="s">${esc(x)}</div>`).join('')}</details>`);
     const out = {answered: 'Answered', message: 'Message', callback: 'Call back', complaint: 'Complaint', transferred: 'To a person',
       appointment: 'Booked', failed: 'Line problem', voicemail: 'Voicemail', no_answer: 'No answer'};
     const phSec = ph ? sec('Phone calls', `<p class="mut" style="margin:0">Your phone line is answered by Hoola from the same knowledge. Every call lands on the customer's conversation and ticket here, and a caller who already wrote on WhatsApp or another app does not have to repeat themselves.</p>
@@ -818,7 +837,7 @@
         <label class="sr" for="spTr-${esc(topic)}">How much Hoola may do: ${esc(name)}</label><select class="in" id="spTr-${esc(topic)}" style="width:auto">${cur || topic === '*' ? '' : '<option value="" selected>Same as the starting rule</option>'}${lv(cur ? cur.level : (topic === '*' ? tr.default : ''))}</select><button class="btn soft sm" type="button" data-trustsave="1">Save</button></div>`; }).join('');
     const trustSec = sec('How much Hoola may do', `<p class="mut" style="margin:0">Per topic: answer alone, draft for a person to send, or always hand over. A refund request, an angry or urgent message and "I want a person" always go to a person, whatever you set. Every reply is checked before it goes: its numbers must be in your knowledge, and it never promises a call-back or a refund that nobody made.</p>${trows}`);
     return `${head('Channels & settings', 'Where customers reach you, and the service rules Hoola follows.')}
-      ${setupSec}${phSec}${emSec}${wcSec}${chSec}${trustSec}${hoSet}${watchSec}
+      ${setupSec}${hdSec}${phSec}${emSec}${wcSec}${chSec}${trustSec}${hoSet}${watchSec}
       ${sec('Where customers reach you', chs)}
       <form id="spSettings" style="display:flex;flex-direction:column;gap:18px">
       ${sec('Reply times', `<label class="f"><span>Start from the usual times for</span><select class="in" name="kind">${(st.presets || []).map(k => `<option value="${k}"${st.kind === k ? ' selected' : ''}>${esc({shop: 'A shop or service business', isp: 'An internet / cable provider', ecommerce: 'An online seller', clinic: 'A clinic'}[k] || k)}</option>`).join('')}</select></label>
@@ -878,6 +897,9 @@
         if (!r.ok) throw new Error('The file could not be made.'); const u = URL.createObjectURL(await r.blob()); const a = document.createElement('a'); a.href = u; a.download = 'support-audit.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(u), 4000); return; }
       if (b.dataset.translate) { const r = await api('POST', '/api/seva/translate', {text: b.dataset.translate, to: 'en'}); const out = b.parentElement.querySelector('[data-tr]');
         if (out) out.textContent = r.translated ? `In English: ${r.text}` : 'Already in English, or it could not be translated.'; return; }
+      if (b.dataset.hdcheck) { const r = (await api('POST', '/api/seva/helpdesk/check', {})).helpdesk; toast(r.note || 'Checked.', r.status === 'error'); return showPage(true); }
+      if (b.dataset.hdrun) { const r = await api('POST', '/api/seva/helpdesk/run', {}); toast(r.error ? r.error : `${r.read || 0} ticket(s) read, ${(r.done || []).length} acted on.`, !!r.error); return showPage(true); }
+      if (b.dataset.hdoff) { if (!confirm('Leave your helpdesk? Its key is forgotten; nothing in it changes.')) return; const r = await api('DELETE', '/api/seva/helpdesk'); toast(r.say); return showPage(true); }
       if (b.dataset.delperson) { if (!confirm('Take this person off the team?')) return; const r = await api('DELETE', `/api/seva/team/people/${enc(b.dataset.delperson)}`); toast(r.say); return showPage(true); }
       if (b.dataset.delqueue) { const r = await api('DELETE', `/api/seva/team/queues/${enc(b.dataset.delqueue)}`); toast(r.say); return showPage(true); }
       if (b.dataset.delroute !== undefined) { const rs = (ST.team.routes || []).filter((_, i) => i !== Number(b.dataset.delroute)); const r = await api('PUT', '/api/seva/team/routes', {routes: rs}); toast(r.say); return showPage(true); }
@@ -987,6 +1009,10 @@
       if (f.id === 'spView') { const fl = {}; for (const k of ['queue', 'status', 'priority', 'assignee', 'label']) if (v[k]) fl[k] = v[k]; const r = await api('PUT', '/api/seva/team/views', {name: v.name, filters: fl}); toast(r.say); return showPage(true); }
       if (f.classList.contains('spMacAct')) { const r = await api('PUT', `/api/seva/macros/${enc(f.dataset.id)}/actions`, {label: v.label, status: v.status, stage: v.stage, assign: v.assign}); toast(r.say); return showPage(true); }
       if (f.id === 'spCustom') { await api('PUT', `/api/seva/tickets/${enc(ST.arg)}/custom`, v); toast('Fields saved.'); return showPage(true); }
+      if (f.id === 'spHd') { const r = (await api('PUT', '/api/seva/helpdesk', v)).helpdesk; toast(r.status === 'ok' ? `Joined: ${r.note}` : (r.note || 'Saved.'), r.status === 'error'); return showPage(true); }
+      if (f.id === 'spHdSet') { const body = {remind_h: Number(v.remind_h || 8), summary_after: Number(v.summary_after || 6)};
+        for (const k of ['tags', 'priority', 'notes', 'public_replies', 'summaries', 'close_on_confirm']) body[k] = !!f[k].checked;
+        await api('PUT', '/api/seva/helpdesk/settings', body); toast('Saved.'); return showPage(true); }
       if (f.id === 'spPhone') { const r = await api('PUT', '/api/seva/phone', {warm_transfer: !!f.warm_transfer.checked, wa_calls: v.wa_calls}); toast(r.say || 'Saved.'); return showPage(true); }
       if (f.id === 'spMail') { const body = {address: v.address, name: v.name, imap_host: v.imap_host, smtp_host: v.smtp_host, smtp_port: v.smtp_port,
           user: v.user, signature: v.signature}; if (v.password) body.password = v.password;

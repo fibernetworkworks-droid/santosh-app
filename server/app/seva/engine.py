@@ -335,6 +335,15 @@ def reply(tenant: str, text: str, channel: str = "whatsapp", customer: str = "",
         return done("request", reply="", say="Send it to the owner (biz_seva_request). Only the owner decides; promise nothing.")
     if u["intent"] == "status" and customer:
         st = S.customer_status(tenant, customer)
+        if not st.get("tickets") and by != "layer":
+            try:        # G12: her tickets live in her own helpdesk - its own status, only this customer's
+                from . import layer as LY
+                mine = LY.status_for(tenant, customer)
+            except Exception:   # noqa: BLE001
+                mine = []
+            if mine:
+                why.append("the customer asked about their own ticket in her helpdesk")
+                return done("status", reply=" ".join(t["line"] for t in mine), tickets=mine, source="Her helpdesk")
         if st.get("tickets"):
             why.append("the customer asked about their own ticket")
             open_ = [t for t in st["tickets"] if t["status"] not in ("resolved", "closed", "merged")] or st["tickets"][:1]
