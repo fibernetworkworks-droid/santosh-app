@@ -36,7 +36,7 @@ def test_hire_chat_block_and_wiring(md):
     from app.agent.tools import FAMILY_OF
     assert FAMILY_OF["paisa_sahayak"] in md.FAMILIES
     for f in ("callconv.py", "convs.py"):
-        assert '"vocal", "money")' in (root / "server/app" / f).read_text()
+        assert '"vocal", "money"' in (root / "server/app" / f).read_text()
     from app.main import APP_VERSION, app
     r = TestClient(app).get("/console/money")
     assert r.status_code == 200 and "Content-Security-Policy" in r.headers and "moneydesk.js" in r.text

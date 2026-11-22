@@ -1616,6 +1616,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_mnc.block, tenant_id)
     except Exception:
         log.exception("money desk block failed")
+    try:   # v0.999.158 BOOKS DESK: a turn in the Books & Accounts chat (or a call started from it) knows the desk
+        from .. import bookschat as _bkc
+        if _bkc.is_books(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_bkc.block, tenant_id)
+    except Exception:
+        log.exception("books desk block failed")
     _mark("hint")
     return state
 
@@ -2362,6 +2368,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "money safety chat"
     except Exception:
         log.exception("money chat admission failed")
+    try:   # v0.999.158 BOOKS DESK: the books tool in view in the Books & Accounts chat
+        from .. import bookschat as _bkc
+        if adm is not None and _bkc.is_books(conversation_id):
+            adm.admit_families(_bkc.FAMILIES)
+            for f in _bkc.FAMILIES:
+                adm.why[f] = "books chat"
+    except Exception:
+        log.exception("books chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,
