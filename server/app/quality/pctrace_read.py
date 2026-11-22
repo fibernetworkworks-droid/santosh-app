@@ -45,6 +45,7 @@ def find_job(row: dict, card: dict, metas: list[tuple[Path, dict]], asks: dict[s
         for d, meta in metas:
             if d.name == row["job"]:
                 return d
+        return None          # a card with job ids never borrows another run's record (it showed an older run's job once)
     run, ask = str(card.get("practice_run") or ""), asks.get(str(row.get("id")), "")
     tail = ask.split("{P}", 1)[1][:40] if "{P}" in ask else ask[:40]
     best = None
@@ -94,6 +95,11 @@ def server_lines(meta: dict, log_lines: list[str], limit: int = 40) -> list[str]
     return out[-limit:]
 
 
+def credit_out(rows: list[dict]) -> int:
+    """Jobs that stopped because the AI account ran out of credit (not Hoola's doing - the card says so first)."""
+    return sum(1 for r in rows if "credit is low" in str(r.get("why") or r.get("reason") or "").lower())
+
+
 def report(card_path: Path, trace_root: Path, show_all: bool = False, max_steps: int = 40) -> list[str]:
     card = json.loads(card_path.read_text())
     rows = card.get("rows") or []
@@ -101,6 +107,9 @@ def report(card_path: Path, trace_root: Path, show_all: bool = False, max_steps:
     log_lines = _log_tail()
     lines = [f"== card {card_path.name}: {card.get('exam', '')} on {card.get('pc', '')}, practice run "
              f"{card.get('practice_run') or '-'}, {sum(1 for r in rows if r.get('ok'))}/{len(rows)} passed"]
+    if credit_out(rows):
+        lines.append(f"!! {credit_out(rows)} job(s) stopped because the OpenRouter credit ran out - add credit at "
+                     "openrouter.ai, then run the exam again; those jobs say nothing about Hoola")
     for r in rows:
         if r.get("ok") and not show_all:
             continue
