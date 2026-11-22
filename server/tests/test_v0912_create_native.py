@@ -48,5 +48,5 @@ def test_design_rules_and_ci():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.102"
-    assert "version: 0.999.102+1097" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.103"
+    assert "version: 0.999.103+1098" in (ROOT / "pubspec.yaml").read_text()

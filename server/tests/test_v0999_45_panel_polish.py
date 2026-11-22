@@ -16,7 +16,7 @@ CSS = (ST / "webstudio.css").read_text()
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.102")
+    assert APP_VERSION.startswith("0.999.103")
 
 
 def test_address_bar_names_the_site_and_the_draft():

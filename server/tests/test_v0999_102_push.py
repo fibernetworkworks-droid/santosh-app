@@ -1,4 +1,4 @@
-"""v0.999.102 D8 wave 9: browser notifications on a React website - the same as her HTML website. On My account a signed-in
+"""v0.999.103 D8 wave 9: browser notifications on a React website - the same as her HTML website. On My account a signed-in
 visitor taps "Notify me", the browser asks its own question, and her website's member app on Hoola keeps this browser's
 address; her order moving, a team reply or her queue turn then reaches it. The worker that shows them is Hoola's locked
 file, served from her website's own address. Signing out stops this browser's notifications. Under Hoola's address

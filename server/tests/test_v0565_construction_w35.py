@@ -345,6 +345,6 @@ def test_version_pins():
     from pathlib import Path
     REPO = Path(__file__).resolve().parents[2]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.102"
-    assert 'APP_VERSION = "0.999.102"' in (REPO / "server" / "app" / "main.py").read_text()
-    assert "version: 0.999.102+1097" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.103"
+    assert 'APP_VERSION = "0.999.103"' in (REPO / "server" / "app" / "main.py").read_text()
+    assert "version: 0.999.103+1098" in (REPO / "pubspec.yaml").read_text()
