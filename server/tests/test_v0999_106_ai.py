@@ -1,4 +1,4 @@
-"""v0.999.103 D8 wave 10: her own AI assistant inside her React website. She builds and publishes an AI App in Hoola AI
+"""v0.999.106 D8 wave 10: her own AI assistant inside her React website. She builds and publishes an AI App in Hoola AI
 Apps (its answers, notice, limits and monthly cost ceiling); when its website channel is on, the writer puts it on her
 React website's home page. On her own address the visitor reads the notice and taps I agree (nothing is asked before
 that), then asks; Hoola's server answers with the same rules as the app's own chat page. Only an app of the site's own

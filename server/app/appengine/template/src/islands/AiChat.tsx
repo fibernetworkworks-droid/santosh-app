@@ -1,4 +1,4 @@
-"use client"; // v0.999.103 D8 wave 10: her AI assistant on a React website - an island
+"use client"; // v0.999.106 D8 wave 10: her AI assistant on a React website - an island
 // Hoola App Engine - Hoola's own kit file. Her own Hoola AI App (built and published in AI Apps) answers her visitors
 // here: the same answers, notice, limits and monthly cost ceiling as its chat page, all checked on Hoola's server. The
 // visitor agrees to the notice first (their tap); nothing is asked of them before that. Under Hoola's address (the

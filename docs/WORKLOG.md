@@ -3516,3 +3516,9 @@ G3 of the global Customer Support plan: phone calls in the support desk - calls 
 
 Task ID: v0.999.105 SUPPORT TEAMS
 G10 of the global Customer Support plan: people + shifts, queues, routing, rule engine, roles, money approval chains, macros with actions, custom fields, saved views; 10 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+---
+Task ID: v0.999.106 HER AI ASSISTANT
+Ask: GO D8 WAVE 10
+Built: src/islands/AiChat.tsx (notice + I agree, chat, suggested questions, form fields), aiApp / aiAgree / aiSealed in src/lib/member.ts (locked), site/rxhost.ai_allowed (only her own app on her address), site/prototype.her_ai_app, writer places it on the home page, appengine/parity.py ai = partial
+Not verified: a real model answer on her server; a picture maker for visitors not built; studio_react_sites still OFF

@@ -151,7 +151,7 @@ AI_PATH = re.compile(r"^/api/aiapp-pub/([A-Za-z0-9_-]{1,24})(/(session|chat|hist
 
 
 def ai_allowed(tenant: str, path: str) -> bool:
-    """v0.999.103 D8 wave 10: her OWN Hoola AI App answers on her React website's address - only an app of the site's
+    """v0.999.106 D8 wave 10: her OWN Hoola AI App answers on her React website's address - only an app of the site's
     own tenant (another person's app code is refused here, so her address never spends someone else's credits or
     shows their assistant). The app's own rules (live, the embed channel, the notice, limits, the monthly cost
     ceiling) are all checked again by the AI Apps public API itself."""

@@ -459,9 +459,9 @@ def test_spec_rides_the_ext_payload():
 
 def test_versions():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.105"
+    assert APP_VERSION == "0.999.106"
     pubspec = (ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.999.105+1100" in pubspec
+    assert "version: 0.999.106+1101" in pubspec
     import santosh_desktop
     assert santosh_desktop.__version__ == "1.10.0"           # desktop unchanged by W5 (server + extension files only)
     meta = json.loads((PLUGIN / "plugin.json").read_text(encoding="utf-8-sig"))

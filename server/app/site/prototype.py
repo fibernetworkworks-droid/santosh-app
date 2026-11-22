@@ -687,7 +687,7 @@ def site_link(r) -> dict[str, Any]:
                 log.info("queue not read for the React website", exc_info=True)
     except Exception:                                # noqa: BLE001 - no lists: the app screens keep their sample rows
         log.info("lists not read for the React website", exc_info=True)
-    try:                                             # v0.999.103 D8 wave 10: her own live Hoola AI App, embed on
+    try:                                             # v0.999.106 D8 wave 10: her own live Hoola AI App, embed on
         ai = her_ai_app(str(r.tenant_id or ""))
         if ai:
             out["ai"] = ai
@@ -697,7 +697,7 @@ def site_link(r) -> dict[str, Any]:
 
 
 def her_ai_app(tenant: str) -> dict[str, Any]:
-    """v0.999.103 D8 wave 10: her newest LIVE Hoola AI App whose website channel (embed) is on - its public face only
+    """v0.999.106 D8 wave 10: her newest LIVE Hoola AI App whose website channel (embed) is on - its public face only
     (the same fields its own chat page shows), {} when she has none. Nothing is made for her: an assistant appears on
     her website only after she built and published it in AI Apps and left its website channel on."""
     if not tenant:

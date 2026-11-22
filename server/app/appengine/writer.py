@@ -471,7 +471,7 @@ class Ctx:
         self.app_home = href_of(app) if self.lists and app else ""
         qx = ax.get("queue") if isinstance(ax.get("queue"), dict) else {}
         self.queue = {"label": _t(qx.get("label"), 40) or "Queue"} if qx and self.lists else {}   # v0.999.82 wave 8
-        # v0.999.103 D8 wave 10: her own live Hoola AI App (built + published in AI Apps, website channel on) answers on
+        # v0.999.106 D8 wave 10: her own live Hoola AI App (built + published in AI Apps, website channel on) answers on
         # the home page; only its public face rides into the code (never a key)
         ix = sx.get("ai") if isinstance(sx.get("ai"), dict) else {}
         code = str(ix.get("code") or "")
@@ -1427,7 +1427,7 @@ def page_file(page: dict[str, Any], ctx: Ctx, custom: dict[str, str],
             {"site": ctx.site_id, "label": ctx.queue["label"], "signin": ctx.signin or None}) + " />"))
         rows.append({"type": "queue_board", "block": "member_queue", "sec": f"{page['slug']}:queue", "island": "QueueBoard",
                      "variant": "", "tone": "", "alts": [], "tones": [], "texts": []})
-    if ctx.ai and page["slug"] == "home":           # v0.999.103 wave 10: her AI assistant, before the last section
+    if ctx.ai and page["slug"] == "home":           # v0.999.106 wave 10: her AI assistant, before the last section
         imports["AiChat"] = 'import AiChat from "@/islands/AiChat";'
         at = max(len(body) - 1, 1) if len(body) > 1 else len(body)
         body.insert(at, _wrap("home:ai", "      <AiChat " + _jsx_props(

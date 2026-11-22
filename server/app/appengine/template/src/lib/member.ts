@@ -267,7 +267,7 @@ export async function pushOff(site: string): Promise<PushState> {
   return pushState();
 }
 
-// ---------------------------------------------------------------- v0.999.103 D8 wave 10: her AI assistant
+// ---------------------------------------------------------------- v0.999.106 D8 wave 10: her AI assistant
 // Her own Hoola AI App (the one that answers her customers, built in AI Apps) answers on her website's own address:
 // /api/aiapp-pub/<code>/... with its own notice, limits and monthly cost ceiling, checked on Hoola's server. The visitor
 // agrees to the notice first; the chat's visitor token is kept here like the sign-in token (never by a page). Under
