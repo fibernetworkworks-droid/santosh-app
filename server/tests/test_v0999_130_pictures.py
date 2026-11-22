@@ -1,4 +1,4 @@
-"""v0.999.PICS D7 PICTURES (docs/WEB_DESIGN_ENGINE_PLAN.md phase D7, the part left open: "pictures not yet"): on a
+"""v0.999.130 D7 PICTURES (docs/WEB_DESIGN_ENGINE_PLAN.md phase D7, the part left open: "pictures not yet"): on a
 website written in React she clicks a picture and puts one of HER website's photos there (one she has, or a new upload),
 takes the photo away (the design's own picture shows), or writes what it shows - by code only, Rs 0. Her picture is
 kept as data with her words and survives every later write. Only her own photos ever go into a page."""
@@ -196,4 +196,4 @@ def test_the_studio_has_the_picture_panel_and_routes():
     assert "/api/sites/{ref}/rx/picture\"" in main and "/api/sites/{ref}/rx/picture/upload" in main
     assert ".rxphotos" in (ROOT / "server/app/static/console/webstudio.css").read_text()
     plan = (ROOT / "docs/WEB_DESIGN_ENGINE_PLAN.md").read_text()
-    assert "pictures not yet" not in plan and "pictures BUILT v0.999.PICS" in plan
+    assert "pictures not yet" not in plan and "pictures BUILT v0.999.130" in plan

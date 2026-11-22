@@ -8,7 +8,7 @@ model, and that is the chat's own turn).
   words()      she clicked words in the preview and typed new ones: found by their text inside THAT section (exact, else
                the one place that contains them), kept as her edit (appengine/edits.py), the pages written again by code
   section()    another layout / background, leave a section out or bring it back - only what that section allows
-  picture()    (v0.999.PICS) she clicked a picture: one of her website's photos there, none, or its description
+  picture()    (v0.999.130) she clicked a picture: one of her website's photos there, none, or its description
   undo()       the last change of hers, put back (30 kept)
   design() / set_design()   the design panel: brand colour, light / dark, corners, spacing, motion, the two fonts - one
                change rewrites the design tokens (DESIGN.md) and every page follows; every colour pair checked first
@@ -270,7 +270,7 @@ def section(tenant: str, site_id: str, sec: str, variant: str = "", tone: str = 
 
 def picture(tenant: str, site_id: str, sec: str, path: list[Any], photo: str | None = None,
             alt: str | None = None) -> dict[str, Any]:
-    """v0.999.PICS: she clicked a picture of her React website: put one of HER website's photos there (`photo` = its
+    """v0.999.130: she clicked a picture of her React website: put one of HER website's photos there (`photo` = its
     name), or none (`photo` = "" - the design's own stand-in shows), and / or describe it (`alt`, what a blind visitor
     hears and Google reads). Only a place that already shows a picture; only her own photos (uploaded in the Studio or
     sent in the chat); code only, Rs 0."""

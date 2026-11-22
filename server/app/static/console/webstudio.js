@@ -1051,7 +1051,7 @@
       ${picsHere ? `<div class="inl"><span class="mut sm">${picsHere} picture${picsHere === 1 ? '' : 's'} in this section</span><span class="sp"></span><button class="b sm" type="button" data-act="rx-pics">Change a picture</button></div>` : ''}
       <div class="inl"><button class="b sm ghost bad" type="button" data-act="rx-drop">Leave this section out</button></div>${tr}`;
   }
-  /* v0.999.PICS D7 pictures: she clicked a picture of her React website -> one of her website's photos, none, or what it shows */
+  /* v0.999.130 D7 pictures: she clicked a picture of her React website -> one of her website's photos, none, or what it shows */
   const rxBase = s2 => { const f = rxFrame(); try { return new URL(S(s2), f ? f.src : location.href).href; } catch { return ''; } };
   const picName = src => S(src).split('/').pop().replace(/\.webp$/, '');
   function rxSlot(p) {                                  // which place of the section she clicked: by its photo, else its words, else its order
@@ -3281,7 +3281,7 @@
       THREAD.editing = ''; THREAD.sig = '';
       return ask(x);
     }
-    if (kind === 'rx-pic-alt') {                          // v0.999.PICS what the picture shows
+    if (kind === 'rx-pic-alt') {                          // v0.999.130 what the picture shows
       const bd = rxPicBody({alt: S(f.querySelector('[name=alt]')?.value).trim()}); if (bd) return rxDo('picture', bd); return;
     }
     if (kind === 'rx-pic-up') {                           // her new photo for this place: kept with her photos, then put here

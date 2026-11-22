@@ -859,7 +859,7 @@ body:has(#wsYW .ptb) .ws-toast{bottom:84px}
 .rxpanel .rxh{display:flex;align-items:center;gap:8px}
 .rxpanel .fld{display:flex;flex-direction:column;gap:4px;font-size:13px}
 .rxpanel textarea.in{resize:vertical;min-height:56px}
-/* v0.999.PICS D7 pictures: her website's photos to choose from */
+/* v0.999.130 D7 pictures: her website's photos to choose from */
 .rxpanel .rxpic{display:flex;flex-direction:column;gap:10px}
 .rxpanel .rxphotos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .rxpanel .rxph{display:flex;flex-direction:column;gap:3px;padding:3px;border:1px solid var(--line);border-radius:8px;background:var(--bg);cursor:pointer;font:inherit;color:inherit;min-width:0}

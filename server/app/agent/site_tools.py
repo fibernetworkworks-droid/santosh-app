@@ -279,7 +279,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             if action == "rx_undo":
                 return RX.undo(t, site)
             sec = str(a.get("sec") or "")
-            if a.get("picture"):                     # v0.999.PICS: her own photo there, none, or what it shows
+            if a.get("picture"):                     # v0.999.130: her own photo there, none, or what it shows
                 path = [int(k) if k.isdigit() else k for k in str(a["picture"]).split(".") if k]
                 return RX.picture(t, site, sec, path, a.get("photo_name") if "photo_name" in a else None,
                                   a.get("alt") if "alt" in a else None)

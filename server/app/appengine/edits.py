@@ -5,7 +5,7 @@ Two files in the app's `.hoola/` folder:
   design.json   the design choices the D5/D6 loop ended with (layout / background / left out per section) + the custom
                 sections already written (so the site can be written again with NO model call)
   edits.json    HER changes, which always win: words she changed (section + the path of the words in that section's
-                props + the new words), her section choices (layout / background / leave out) and (v0.999.PICS) her
+                props + the new words), her section choices (layout / background / leave out) and (v0.999.130) her
                 pictures (section + the path of the picture + one of HER website's photos, or none, + its description);
                 the last 30 kept for Undo
 
@@ -86,7 +86,7 @@ def put_section(tenant: str, ref: str, sec: str, choice: dict[str, Any]) -> dict
 
 def put_picture(tenant: str, ref: str, sec: str, path: list[Any], src: str | None, alt: str | None,
                 was: str = "") -> dict[str, Any]:
-    """v0.999.PICS: her picture at that place of the section - `src` one of her website's photos (./photos/<name>.webp)
+    """v0.999.130: her picture at that place of the section - `src` one of her website's photos (./photos/<name>.webp)
     or "" for none (the design's own stand-in), None = keep the picture; `alt` its description, None = keep it."""
     e = edits(tenant, ref)
     e.setdefault("undo", []).append({**_snap(e), "at": time.time(), "what": f"picture in {sec}"})

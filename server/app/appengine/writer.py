@@ -1352,7 +1352,7 @@ def set_path(props: Any, path: list[Any], value: str) -> bool:
     return False
 
 
-# v0.999.PICS D7 pictures: where a section shows a picture, and the one rule for what may go there - nothing but one of
+# v0.999.130 D7 pictures: where a section shows a picture, and the one rule for what may go there - nothing but one of
 # HER website's photos (copied into the app as ./photos/<name>.webp by site.prototype.sync_photos) or none at all (the
 # design's own stand-in). Never an outside link, never a path the model wrote.
 PIC_KEYS = ("photo", "image", "cover", "place", "poster")
@@ -1471,7 +1471,7 @@ def page_file(page: dict[str, Any], ctx: Ctx, custom: dict[str, str],
             if isinstance(v, DataRef):
                 imports[v.name] = f'import {v.name} from "{v.path}";'
         for e in (edits or {}).get(sec) or []:      # v0.999.76 D7: her own words, where she changed them
-            if e.get("kind") == "picture":           # v0.999.PICS: her own picture there (or none)
+            if e.get("kind") == "picture":           # v0.999.130: her own picture there (or none)
                 set_picture(props, list(e.get("path") or []), e.get("src") if isinstance(e.get("src"), str) else None,
                             e.get("alt") if isinstance(e.get("alt"), str) else None)
             else:

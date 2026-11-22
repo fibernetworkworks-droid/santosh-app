@@ -51,7 +51,7 @@
   }
   // v0.999.76 D7: on a React WEBSITE the Studio edits by section: the section's box (data-sec) + the words clicked
   const secOf = el => { const w = el && el.closest ? el.closest('[data-sec]') : null; return w && w.firstElementChild ? w : null; };
-  // v0.999.PICS: a picture of the section (her photo, or the design's stand-in) - what she clicked to change it
+  // v0.999.130: a picture of the section (her photo, or the design's stand-in) - what she clicked to change it
   const picOf = (el, w) => { const p = el && el.closest ? el.closest('img,[role="img"]') : null; return p && w && w.contains(p) ? p : null; };
   const wordsAt = el => { let x = el; while (x && x !== document.body && !(x.innerText || '').trim()) x = x.parentElement; return x; };
   addEventListener('mousemove', e => {
