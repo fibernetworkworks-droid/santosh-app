@@ -210,11 +210,11 @@
         const rs = (s.routes || []).map((rt, j) => line(rt.label || ('Route ' + (j + 1)), fltWords(rt.filter), rt.steps));
         if (s.fallback && s.fallback.length) rs.push(line('Anything else', 'When no route above matched', s.fallback));
         parts.push(`<div class="router">${firstLane && i === 0 ? '<span class="start">Start</span>' : ''}<button type="button" class="rhub" data-step="${esc(s.id)}" aria-label="Router: ${(s.routes || []).length} routes, show its settings" title="Router">${svg(IC.route)}</button><div class="routes">${rs.join('')}</div></div>`);
-      } else if (s.type === 'condition') {   // v0.999.122: both ways of an if / else are drawn (they were hidden)
+      } else if (s.type === 'condition') {   // v0.999.128: both ways of an if / else are drawn (they were hidden)
         STEPS[s.id] = s;
         const test = s.filter ? fltWords(s.filter) : `${S(s.left)} ${OPW[s.op] || s.op || ''} ${S(s.right)}`;
         parts.push(`<div class="router">${nodeHtml(s, firstLane && i === 0)}<div class="routes">${line('If yes', test, s.then)}${line('If no', 'Otherwise', s.else)}</div></div>`);
-      } else if (s.type === 'loop') {        // v0.999.122: the steps a loop repeats are drawn inside it
+      } else if (s.type === 'loop') {        // v0.999.128: the steps a loop repeats are drawn inside it
         parts.push(`<div class="loopbox">${nodeHtml(s, firstLane && i === 0)}<div class="lbody"><span class="mut sm">For each item</span>${lane(s.body)}</div></div>`);
       } else parts.push(nodeHtml(s, firstLane && i === 0));
     });

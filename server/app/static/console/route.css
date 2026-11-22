@@ -137,7 +137,7 @@ pre{margin:0;font:12.5px/1.5 'JetBrains Mono',ui-monospace,monospace;background:
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--pill);color:var(--onpill);border-radius:12px;padding:10px 16px;font-size:14px;box-shadow:var(--sh);z-index:50;max-width:90vw}
 .toast.bad{background:var(--bad);color:#fff}
 
-/* v0.999.122 ROUTE CHECK: the faults a browser walk of every page found, fixed */
+/* v0.999.128 ROUTE CHECK: the faults a browser walk of every page found, fixed */
 .nw{white-space:nowrap}
 .chips.left{justify-content:flex-start}
 a.chip{display:inline-flex;align-items:center;text-decoration:none;color:inherit}

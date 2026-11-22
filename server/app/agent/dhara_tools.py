@@ -290,7 +290,7 @@ def list_runs(tenant_id: str, wf_id: str = "", limit: int = 10, status: str = ""
         where, args = [], []
         if wf_id:
             where.append("workflow_id = ?"); args.append(wf_id)
-        if status:            # v0.999.122: filtered in SQL, so an older run of that state is never cut by the limit
+        if status:            # v0.999.128: filtered in SQL, so an older run of that state is never cut by the limit
             where.append("status = ?"); args.append(status)
         rows = con.execute("SELECT * FROM runs" + (" WHERE " + " AND ".join(where) if where else "") +
                            " ORDER BY created_at DESC LIMIT ?", (*args, int(limit))).fetchall()
@@ -813,7 +813,7 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
             code = str(resolve(step.get("code") or "", ctx))
             res = await asyncio.to_thread(PL.run, tenant_id, code, None, None, conv, 60)
             ctx["steps"][sid] = {"output": res}
-            if isinstance(res, dict) and res.get("ok") is False:   # v0.999.122: a failed program is a failed step
+            if isinstance(res, dict) and res.get("ok") is False:   # v0.999.128: a failed program is a failed step
                 why = "the code took too long" if res.get("timed_out") else (res.get("error") or "the code did not run")
                 return False, res, str(why)[:300]
             return True, res, ""
@@ -909,7 +909,7 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
             body = await _http_step(tenant_id, step, ctx)
             ctx["steps"][sid] = {"output": body}
             code = int((body or {}).get("status") or 0) if isinstance(body, dict) else 0
-            if code >= 400:      # v0.999.122: a refused / broken answer is a failed step (it was counted as done)
+            if code >= 400:      # v0.999.128: a refused / broken answer is a failed step (it was counted as done)
                 return False, body, f"the site answered {code}"
             return True, body, ""
         return False, None, f"unknown step type '{typ}'"

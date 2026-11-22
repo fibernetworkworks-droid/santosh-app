@@ -3558,3 +3558,10 @@ Not verified: a real picture engine call, real visitors posting, a live translat
 
 Task ID: v0.999.127 MONEY SAFETY WORLDWIDE F1
 F1 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/safety.py, fin/review.py, fin/card_f1.py, 7 new country packs + GB/US/IN money-safety sections, paisa_sahayak actions, /api/fin/safety + pack review routes. tests/test_fin_f1.py 8 + test_fin_f0.py 10 pass; card 60/60 + 10/10. Pre-existing reds not mine: test_english_guard::test_no_new_hinglish_in_server_text, test_v0728_sab_english::test_every_tool_label_has_english, test_v0799_desk_room::test_css_is_crisp_and_on_one_scale.
+
+---
+Task ID: v0.999.128 ROUTE CHECK
+Every Hoola Route page walked in Chromium at 1440 / 390 px, light + dark; backend read against the DHARA engine. Fixed: failed code
+steps and 4xx/5xx web requests counted as done, Runs filter after the limit, success shown for refused run actions, wrong approval
+question, stale failures in Needs you, never-run routes 'Working'; added webhook address + delete route; phone cards / top bar /
+vertical flow, if-else + loop drawn, plain step rows, in-page Change it, header On / Off, search. 6 tests incl. a browser walk.
