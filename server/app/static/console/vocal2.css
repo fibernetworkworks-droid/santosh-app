@@ -712,3 +712,128 @@
   #hvRoot .hv-vp{width:100%;max-height:90%;border-radius:22px 22px 0 0}
   #hvRoot .hv-setc .hv-sptake .hv-wave i:nth-child(n+19){display:none}
 }
+
+/* ---------- v0.999.142 DIALOGUE, PREMIUM (design canvas claude.ai/artifact/A3gj67mEkASbVMm2k9PcX4): the cast as cards, the talk as a
+   conversation (a coloured speaker chip per line, the words in Literata, a pause or a cut-in marked between lines, the chosen line's
+   tools under it), the Make bar in view, How it sounds + the takes with a lane per voice beside it; the document flow in two steps;
+   the cast picker one speaker at a time ---------- */
+#hvRoot :is(.hv-dav,.hv-dwho,.hv-lane,.hv-dwn,.hv-dpair i).t0{--tn:var(--hv-t0)} #hvRoot :is(.hv-dav,.hv-dwho,.hv-lane,.hv-dwn,.hv-dpair i).t1{--tn:var(--hv-t2)}
+#hvRoot :is(.hv-dav,.hv-dwho,.hv-lane,.hv-dwn,.hv-dpair i).t2{--tn:var(--hv-t1)} #hvRoot :is(.hv-dav,.hv-dwho,.hv-lane,.hv-dwn,.hv-dpair i).t3{--tn:var(--hv-t3)}
+#hvRoot .hv-dav{width:38px;height:38px;flex:none;border-radius:50%;display:grid;place-items:center;font-weight:600;
+  background:color-mix(in srgb,var(--tn,var(--pri)) 16%,var(--bg));color:color-mix(in srgb,var(--tn,var(--pri)) 72%,var(--ink))}
+#hvRoot .hv-dav.s{width:30px;height:30px;font-size:13px;border:2px solid var(--hv-surface)}
+#hvRoot .hv-dav.xs{width:22px;height:22px;font-size:11px}
+#hvRoot .hv-dlh{font-size:16px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#hvRoot .hv-dcast{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+#hvRoot .hv-dcc{display:flex;align-items:center;gap:10px;padding:8px 8px 8px 9px;border-radius:16px;min-width:0;max-width:100%}
+#hvRoot .hv-dcc .hv-ct{min-width:0}
+#hvRoot .hv-dcc .hv-castn{width:auto;max-width:150px;font-size:14px;height:22px;border-radius:6px}
+#hvRoot .hv-dcc .hv-castn:focus{background:var(--hv-sunk);outline:0}
+#hvRoot .hv-dcc small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#hvRoot .hv-dadd{border-style:dashed;height:40px;border-radius:20px}
+#hvRoot .hv-dscript .hv-sptools{position:sticky;top:0;z-index:1;background:var(--hv-surface);border-radius:18px 18px 0 0}
+#hvRoot .hv-dls{list-style:none;margin:0;padding:8px 10px 4px;display:flex;flex-direction:column;gap:2px}
+#hvRoot .hv-dl{display:flex;flex-direction:column;border-radius:12px}
+#hvRoot .hv-dlrow{display:grid;grid-template-columns:128px minmax(0,1fr) auto;gap:12px;align-items:start;padding:8px 10px;border-radius:12px;transition:background-color .15s,box-shadow .15s}
+#hvRoot .hv-dl:not(.on) .hv-dlrow:hover{background:var(--hv-side)}
+#hvRoot .hv-dl.on .hv-dlrow{background:color-mix(in srgb,var(--pri-soft) 55%,var(--hv-surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pri) 30%,transparent)}
+#hvRoot .hv-dwho{height:28px;padding:0 10px 0 4px;border-radius:14px;display:inline-flex;align-items:center;gap:7px;justify-self:start;max-width:128px;min-width:0;
+  font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  background:color-mix(in srgb,var(--tn,var(--pri)) 15%,var(--bg));color:color-mix(in srgb,var(--tn,var(--pri)) 72%,var(--ink))}
+#hvRoot button.hv-dwho{width:auto}
+#hvRoot .hv-dwi{width:20px;height:20px;flex:none;border-radius:50%;background:var(--hv-surface);display:grid;place-items:center;font-size:11px}
+#hvRoot .hv-dlt{width:100%;border:0;outline:0;resize:none;overflow:hidden;background:transparent;padding:2px 0;font-family:var(--fr,'Literata',Georgia,serif);font-size:17px;line-height:1.6;color:var(--ink)}
+#hvRoot .hv-dlt::placeholder{color:var(--dim,var(--mut))}
+#hvRoot .hv-dlr{display:flex;align-items:center;gap:8px;padding-top:4px}
+#hvRoot .hv-dlr .hv-len{min-width:30px;text-align:right;font-size:12px}
+#hvRoot .hv-dltools{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 10px 10px 150px}
+#hvRoot .hv-dltools .hv-chip{height:30px;font-size:12px;font-weight:500;background:var(--hv-sunk);border-color:transparent}
+#hvRoot .hv-dltools .hv-chip[aria-pressed="true"]{background:var(--pri-soft);color:var(--pri-ink,var(--pri))}
+#hvRoot .hv-chip.dark,#hvRoot .hv-dltools .hv-chip.dark{background:var(--ink);color:var(--bg);font-weight:600}
+#hvRoot .hv-dlmark{display:flex;align-items:center;gap:8px;padding:2px 10px 4px 150px;font-size:12px;color:var(--mut)}
+#hvRoot .hv-dlmark span{height:24px;padding:0 10px;border-radius:12px;border:1px solid var(--hv-box);background:var(--hv-surface);display:inline-flex;align-items:center}
+#hvRoot .hv-dlmark::after{content:"";flex:1;height:1px;background:var(--line)}
+#hvRoot .hv-dladd{display:flex;align-items:center;gap:10px;margin:4px 20px 12px;height:44px;padding:0 12px;border:1px dashed var(--hv-box);border-radius:12px;color:var(--mut);text-align:left}
+#hvRoot .hv-dladd:hover{background:var(--hv-side);color:var(--ink)}
+#hvRoot .hv-dldoc{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:18px;text-align:left;background:color-mix(in srgb,var(--pri-soft) 35%,var(--hv-surface))}
+#hvRoot .hv-dldoc .hv-ct{flex:1}
+#hvRoot .hv-dldoc .hv-tile{width:40px;height:40px;border-radius:12px}
+#hvRoot .hv-dpair{display:flex;flex:none;padding-top:2px}
+#hvRoot .hv-dpair i{width:22px;height:22px;border-radius:50%;border:2px solid var(--hv-surface);background:color-mix(in srgb,var(--tn,var(--pri)) 22%,var(--bg))}
+#hvRoot .hv-dpair i+i{margin-left:-8px}
+#hvRoot .hv-dstack{display:flex;flex:none}
+#hvRoot .hv-dstack .hv-dav+.hv-dav{margin-left:-8px}
+/* beside it: how it sounds + the takes */
+#hvRoot .hv-spk>.hv-dlside{flex:0 0 400px}
+#hvRoot .hv-dlside .hv-stageb{gap:12px;padding:0 0 16px}
+#hvRoot .hv-dlhow{display:flex;flex-direction:column;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line);background:var(--hv-side)}
+#hvRoot .hv-dlhow>p{margin:0;color:var(--ink);opacity:.85}
+#hvRoot .hv-dmode{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+#hvRoot .hv-dlth{border:0;min-height:0;padding:4px 16px 0}
+#hvRoot .hv-dlside .hv-stageb>.hv-card{margin:0 16px}
+#hvRoot .hv-dtake{padding:0;overflow:hidden}
+#hvRoot .hv-dtake .hv-seth{padding:12px 14px 6px}
+#hvRoot .hv-dtake>.hv-chips{padding:0 14px 10px}
+#hvRoot .hv-dtake>p.hv-mut,#hvRoot .hv-dtake>.hv-mut.hv-sm{padding:0 14px 10px;margin:0}
+#hvRoot .hv-dtake>.hv-wave{height:30px;margin:4px 14px 8px}
+#hvRoot .hv-lanes{position:relative;display:flex;flex-direction:column;gap:6px;padding:4px 14px 8px}
+#hvRoot .hv-lane{display:flex;align-items:center;gap:8px}
+#hvRoot .hv-lbars{flex:1;height:26px;display:flex;align-items:center;gap:2px;min-width:0}
+#hvRoot .hv-lbars i{flex:1 1 0;min-width:2px;border-radius:2px;background:var(--line)}
+#hvRoot .hv-lbars i.on{background:color-mix(in srgb,var(--tn,var(--pri)) 65%,var(--bg))}
+#hvRoot .hv-head{position:absolute;top:2px;bottom:6px;left:44px;width:2px;border-radius:1px;background:var(--ink);pointer-events:none;opacity:0;transition:left .25s linear}
+#hvRoot .hv-head.on{opacity:1}
+#hvRoot .hv-dlnow{display:flex;align-items:baseline;gap:8px;margin:0 14px 10px;padding:8px 10px;border-radius:10px;background:var(--hv-side);font-size:13px;min-width:0}
+#hvRoot .hv-dwn{font-weight:600;color:color-mix(in srgb,var(--tn,var(--pri)) 72%,var(--ink));flex:none}
+#hvRoot .hv-dtx{font-family:var(--fr,'Literata',Georgia,serif);min-width:0;flex:1}
+#hvRoot .hv-dlnow .hv-num{flex:none;font-size:12px}
+#hvRoot .hv-ghost2{flex-direction:column;gap:6px}
+#hvRoot .hv-keep{flex:none}
+/* a script from a document */
+#hvRoot .hv-dldoc2{container-type:inline-size}
+#hvRoot .hv-dlsrc{flex:0 0 440px;min-width:0;border-right:1px solid var(--line);background:var(--hv-side);overflow-y:auto}
+#hvRoot .hv-dlsrc .hv-form{display:flex;flex-direction:column;gap:16px;flex:1}
+#hvRoot .hv-dldraft{flex:1 1 0;min-width:0;overflow-y:auto;gap:12px}
+#hvRoot .hv-sph.s{font-size:22px;margin:0 0 4px}
+#hvRoot .hv-ddraft{padding:6px;border:1px solid var(--line);border-radius:18px;background:var(--hv-surface)}
+#hvRoot .hv-ddraft .hv-dlrow{grid-template-columns:118px minmax(0,1fr) auto}
+#hvRoot .hv-dtx{margin:0;font-size:16px;line-height:1.6}
+#hvRoot .hv-ddraft .hv-dlr{flex-wrap:wrap;justify-content:flex-end;max-width:220px}
+#hvRoot .hv-dpart{list-style:none;padding:12px 10px 2px;font-size:12px;font-weight:600;color:var(--mut)}
+#hvRoot .hv-chip.hv-static{cursor:default}
+#hvRoot .hv-chip.pri{background:var(--pri-soft);color:var(--pri-ink,var(--pri));border-color:transparent}
+/* the cast picker */
+#hvRoot .hv-cpslots{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+#hvRoot .hv-cps{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--hv-box);border-radius:16px;background:var(--hv-surface);text-align:left;min-width:0}
+#hvRoot .hv-cps.on{border-color:color-mix(in srgb,var(--pri) 45%,transparent);background:var(--pri-soft)}
+#hvRoot .hv-cps .hv-ct{min-width:0}
+#hvRoot .hv-badge.ok{background:color-mix(in srgb,var(--ok) 16%,var(--bg));color:color-mix(in srgb,var(--ok) 70%,var(--ink))}
+#hvRoot .hv-vpf>.hv-mut{align-self:center}
+@container (max-width:980px){
+  #hvRoot .hv-spk>.hv-dlside{flex:none;width:100%}
+}
+@container (max-width:860px){
+  #hvRoot .hv-dldoc2{flex-direction:column;height:auto;overflow-y:auto}
+  #hvRoot .hv-dlsrc{flex:none;width:100%;border-right:0;border-bottom:1px solid var(--line);overflow:visible}
+  #hvRoot .hv-dldraft{overflow:visible}
+}
+@media (max-width:720px){
+  #hvRoot .hv-dlrow,#hvRoot .hv-ddraft .hv-dlrow{grid-template-columns:minmax(0,1fr) auto}
+  #hvRoot .hv-dlrow>.hv-dwho{grid-column:1/-1}
+  #hvRoot .hv-dltools,#hvRoot .hv-dlmark{padding-left:10px}
+  #hvRoot .hv-dcc{flex:1 1 100%}
+  #hvRoot .hv-dlsrc{flex:none}
+}
+#hvRoot .hv-dlw{position:relative;min-width:0}
+#hvRoot .hv-dlhi{position:relative;pointer-events:none;margin:0;padding:2px 0;font-family:var(--fr,'Literata',Georgia,serif);font-size:17px;line-height:1.6;
+  white-space:pre-wrap;overflow-wrap:break-word;color:var(--ink);overflow:hidden}
+#hvRoot .hv-dlw .hv-dlt{position:absolute;inset:0;height:100%!important;overflow:hidden;color:transparent;caret-color:var(--ink);white-space:pre-wrap;overflow-wrap:break-word}
+#hvRoot .hv-dlw .hv-dlt::selection{background:color-mix(in srgb,var(--pri) 26%,transparent);color:transparent}
+#hvRoot .hv-dlth .hv-cnt.on{background:var(--pri);color:var(--bg)}
+#hvRoot .hv-dcc{flex:1 1 250px}
+@media (max-width:720px){ #hvRoot .hv-dcc{flex:1 1 100%} }
+@media (max-width:720px){
+  #hvRoot .hv-dle .hv-sptab{flex-wrap:wrap;row-gap:10px}
+  #hvRoot .hv-dlh{flex-basis:100%;white-space:normal}
+  #hvRoot .hv-dle .hv-sptab .hv-grow{display:none}
+}

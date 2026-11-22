@@ -2132,6 +2132,14 @@ class Api {
   /// {lines:[{speaker,text}], cast:{speaker: voice id}, lang, style, mode: natural|lines, chat}.
   Future<Map<String, dynamic>> vocalDialogue(Map<String, dynamic> body) =>
       _vocal('POST', '/dialogue', body: body, timeout: const Duration(seconds: 300));
+  /// v0.999.142: one line of a Line-by-line talk made again ({n, text, speaker}) -> the new take; the others are kept.
+  Future<Map<String, dynamic>> vocalDialogueLine(String id, Map<String, dynamic> body) =>
+      _vocal('POST', '/dialogue/${Uri.encodeComponent(id)}/line', body: body, timeout: const Duration(seconds: 180));
+  /// Each voice of a Line-by-line talk on its own track (a zip of WAVs, all the same length).
+  Future<List<int>?> vocalDialogueVoices(String id) => _vocalBytes(_u('/api/vocal/dialogue/${Uri.encodeComponent(id)}/voices'));
+  /// Subtitles of a talk from its line times (SRT or VTT).
+  Future<List<int>?> vocalDialogueSubtitles(String id, {String fmt = 'srt'}) =>
+      _vocalBytes(_u('/api/vocal/dialogue/${Uri.encodeComponent(id)}/subtitles', {'fmt': fmt}));
   Future<Map<String, dynamic>> vocalDubStart(Map<String, dynamic> body) => _vocal('POST', '/dub', body: body);
   Future<Map<String, dynamic>> vocalDub(String did) => _vocal('GET', '/dub/${Uri.encodeComponent(did)}');
   /// {lines:[{n,start,end,speaker,src,dst,too_long}], editable, why}.

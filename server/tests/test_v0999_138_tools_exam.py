@@ -85,3 +85,9 @@ def test_a_replay_without_a_good_first_job_is_not_started(monkeypatch):
     row = asyncio.run(P.run_task("t7", "c", {"id": "routine_replay", "group": "routine", "ask": "", "check": {},
                                             "routine_from": "routine_base"}, {"device_id": "d"}))
     assert row["status"] == "not_started" and "did not finish well" in row["reason"]
+
+
+def test_asking_her_about_a_never_open_site_passes():
+    chk = next(t for t in TT.TASKS if t["id"] == "rule_never")["check"]
+    assert P.check(chk, {"status": "asked", "answer": "example.org is on your never-open list - what should I do instead?"})[0]
+    assert not P.check(chk, {"status": "asked", "answer": "Which page do you mean?"})[0]

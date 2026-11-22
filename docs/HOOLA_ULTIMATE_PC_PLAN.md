@@ -159,3 +159,9 @@ the task ends cleanly). This hit real users too, not only the exam: any PC step 
 ## Tools exam (v0.999.138)
 - `quality/pccard_tools.py`: 9 jobs on Hoola PC for P3 (Excel / PDF / Word as data), P5 (a routine replayed with no AI), P2 (a never-open rule, the data-leaving guard) and P4 (a canvas only the screen shows); vps-ops pc_card_tools.
 
+
+- v0.999.140: a routine replay no longer stops at a tick box it just ticked (her tools exam 8/9 -> the replay's one miss).
+
+
+- v0.999.141: second tools exam 8/9 (replay fixed, runs with no AI); asking her about a never-open site now passes.
+

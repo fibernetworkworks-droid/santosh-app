@@ -9952,3 +9952,72 @@ Owner: "GO F6" on docs/FINANCE_GLOBAL_PLAN.md (phase F6).
 - `fin/card_f6.py` - 40 APR cases in 10 countries vs a Newton solver + anchors, 2 memos traced, 14 collections contacts; 6 mutations each fail it.
 - Tests: `tests/test_fin_f6.py` 6; tool / Hub / desk count pins moved (641 / 162 / 105).
 - NOT VERIFIED: country APR methods and rounding from memory; contact laws per country not in the packs; not on her server.
+
+
+## v0.999.140 REPLAY TICKS
+Replay ticks (P5 fix). `pc/routines.py` play(): the 'NOTHING visible changed' rule now applies only to clicks whose target role is not checkbox / radio / switch / menuitemcheckbox / menuitemradio / option / tab. Test test_a_ticked_box_does_not_stop_a_replay in test_v0999_115_routines.py (the practice contact form in real Chromium). Also seen in her log: the independent action checker is refused (Anthropic 401 invalid x-api-key), so every change it should judge asks her instead. NOT VERIFIED on her server.
+
+
+## v0.999.141 TOOLS EXAM FAIR
+Tools exam fair. `quality/pccard_tools.py` rule_never accepts status asked; `quality/pccard.py` puts the question she was asked (row asked_q) into the answer the checks read. Test in test_v0999_138_tools_exam.py. Her second run: 8/9, routine_replay PASS (5 s, 5 steps, no AI), rule_never asked her.
+
+## v0.999.142 DIALOGUE, PREMIUM (22 Nov 2026)
+
+Owner, on a screenshot of the console Dialogue page: "NOW LETS WORK ON DIALOG SECTION -- MAKE IT MORE PREMIUM AND ADVANCE --
+FIRST SHOW DESIGN HERE". Design canvas claude.ai/artifact/A3gj67mEkASbVMm2k9PcX4 (five boards: a talk at work, first open,
+write it from a document, cast the voices, phone) -> "GO BUILD".
+
+Console (`static/console/vocal.js` `dlView` and its helpers, styles in the `v0.999.142 DIALOGUE, PREMIUM` block of `vocal2.css`):
+- **The cast** as cards: initial in the speaker's colour, the name (editable), "Voice: X · n lines", the voice's free sample,
+  Change (the cast picker), remove; "+ Speaker" up to six.
+- **The talk** as a conversation (`dlLine`): each line a row with its speaker chip (tap = who says it), its words in Literata
+  over a layer that marks its tones and dictionary words (the Speech page's writing area, per line), its length, and once a
+  Line-by-line take exists its state (Made / Changed). Enter in a line splits it and the next line goes to the other speaker;
+  Backspace on an empty line removes it; Ctrl + Enter makes the talk. The chosen line (focus) carries its tools - Tone,
+  Said by, Pause after (none / half a second / 1 / 2 / 3 s), Cut in, Move up / down, Delete - moved in place without drawing
+  the page again (`dlSel`); between lines a marker says "Pause · 1 second" or "<speaker> cuts in · they overlap a little".
+  The toolbar above: Add a tone, Pause after, Cuts in, Swap the speakers (two speakers), the line count, speakers and time.
+- **First open:** "Two voices. One real conversation.", the Write it from a document card and six starts (`DLG_STARTS`),
+  a start fills the lines and selects its first [YOUR ...] blank.
+- **The Make bar** stays in view: the speakers, mode · style · extras, the price, "Make the talk" (pause + cut ride the body).
+- **Beside it:** How it sounds (Natural talk / Line by line with what each does, how they talk, small reactions, soft music)
+  and the takes. The newest take shows a lane per voice (bars lit where that voice speaks, from the line times), a playhead
+  and the line being said as it plays (`dlTick` on the player's timeupdate), Keep, Download, Each voice on its own track
+  (Line-by-line takes), Subtitles (SRT / VTT), Dub it; a natural take says what it cannot split. Older takes under it, Compare.
+- **Make only this line** (Line by line): a line whose words or speaker changed since the newest take shows the button with
+  its own price; only that line is spoken (POST /dialogue/{id}/line) and a new take joins the others' kept recordings.
+- **Write it from a document** (`dlDocView`): step 1 = a file / web page / notes, kind of talk (podcast chat, interview,
+  explainer, debate), length, who talks, what they must say; step 2 = the draft by parts, each line with its page, a line
+  whose figure (in digits) is not in the document flagged, a note when the must-say is missing; Write it again / Use this script.
+- **Cast the voices** (`cpOpen`): one speaker at a time, voices that sound unlike the other speakers first (another gender,
+  else another feel) marked "Easy to tell apart", "Already <speaker>" (choosing it swaps the two), Hear them one after the
+  other (free samples), Escape / Done; a sheet from the bottom on a phone.
+
+Server (`vocal/talk.py`, hooks in `vocal/service.dialogue` / `podcast` / `source_text`):
+- every talk keeps `segments` [{speaker, text, start, end, pause, cut, reaction?}]: measured when made Line by line
+  (`join_timed`: the gap after a line + its pause; a line that cuts in starts 0.35 s (at most 40 % of the line before)
+  before the last one ends, the two mixed in range), shared out by length in a natural take (`timing_est`).
+- a pause / cut-in in a natural take is written in (an ellipsis, a dash on the line cut off, [interrupting]), because the
+  engine makes that one recording itself.
+- Line by line keeps each line's recording (`data/vocal/<tenant>/parts/<id>/`, removed with the talk); POST
+  /api/vocal/dialogue/{id}/line {n, text?, speaker?} speaks only that line (credits for that line), joins it with the kept
+  ones (music again if it had it) and keeps a new take (`remade`, `from_take`); a speaker not in the talk is refused.
+- GET /dialogue/{id}/voices = a zip with each voice on its own track, all the full length; a natural take is refused with
+  why. GET /dialogue/{id}/subtitles?fmt=srt|vtt from the line times ("Kabir: ..."; tones left out; a natural take's VTT
+  carries a NOTE that its times are an estimate).
+- POST /podcast takes kind (podcast / interview / explainer / debate) and must; a PDF is read with [page N] markers
+  (`source_text(pages=True)`, only for this route); the draft's lines keep `part` and a `from` page only when that page
+  exists; a line with a figure in digits the source does not have gets `unchecked`; `must_said` checks the script.
+
+Phone (`lib/ui/vocal/vocal_make.dart`): each line a bubble in its speaker's colour with Pause after (cycles), Cuts in,
+Made / Changed and Make only this line; "Make the talk"; takes' menu gains Each voice on its own track and Subtitles; the
+document sheet gains Kind of talk and "Anything to be sure they say", and lines show their page and unchecked figures.
+api.dart: vocalDialogueLine / vocalDialogueVoices / vocalDialogueSubtitles.
+
+Tests: NEW `server/tests/test_v0999_142_vocal_dialogue.py` (join with pause + cut-in, line times kept, one line made again,
+voices zip + subtitles, a natural take, reactions + removal, a document's pages and figures, the files carry the design,
+a real-Chromium walk of the whole page, the page at phone width); phone `test/vocal_phone_test.dart` +2; `test_v0787`
+opens More settings before the language (the v0.999.133 change).
+
+NOT VERIFIED: on her server, in her browser, or on her phone; no real engine made a talk with these pauses or cut-ins, so
+how a natural take treats the written-in hints is not heard yet.

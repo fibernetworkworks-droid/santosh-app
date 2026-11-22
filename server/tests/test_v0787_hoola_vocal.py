@@ -51,8 +51,8 @@ def run(c):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.139"
-    assert "0.999.139+1134" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.142"
+    assert "0.999.142+1137" in (ROOT / "pubspec.yaml").read_text()
 
 
 def test_speech_is_kept_with_her_rules_applied_by_code(vocal):
@@ -208,6 +208,8 @@ def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
     pg.wait_for_selector("#hvText")
     pg.locator("#hvText").fill("Namaste Akola.")
     assert "14 characters" in pg.locator("#hvCount").text_content()
+    if pg.locator("#hvRoot [data-a='spmore'][aria-expanded='false']").count():      # v0.999.133: the language sits under More settings
+        pg.locator("#hvRoot [data-a='spmore']").click()
     pg.locator("#hvRoot [data-a='picklang']").click()
     pg.locator(".hmenu .msearch input").fill("japanese")
     pg.locator(".hmenu .mi:visible", has_text="Japanese").click()
