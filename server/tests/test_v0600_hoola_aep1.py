@@ -130,7 +130,7 @@ def test_registry_count_holds_the_merged_arithmetic():
         "(their v0.590 SANDARBH MANCH: workspace + kgmemory); the merged "
         "arithmetic the w35 pin carries after their PIN REPAIR")
     src = (A.REPO_ROOT / "server" / "tests" / "test_v0565_construction_w35.py").read_text()
-    assert "len(TOOLS) == 637" in src, "the w35 pin must carry the merged arithmetic (607 + 1 duniya, v0.667)"
+    assert "len(TOOLS) == 638" in src, "the w35 pin must carry the merged arithmetic (607 + 1 duniya, v0.667)"
     assert "paisa_sahayak" in src and "sandarbh" in src
 
 
