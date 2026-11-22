@@ -35,3 +35,17 @@ def test_a_call_that_trickles_for_ever_is_cut_at_the_limit(monkeypatch):
 def test_version():
     from app.main import APP_VERSION
     assert APP_VERSION == "0.999.109"
+
+
+def test_trace_reader_names_a_credit_stop_and_never_borrows_an_old_run(tmp_path):
+    import json
+    from app.quality import pctrace_read as R
+    q = tmp_path / "quality"
+    q.mkdir()
+    old = tmp_path / "trace" / "t1" / "pcop_old"
+    old.mkdir(parents=True)
+    (old / "meta.json").write_text(json.dumps({"job": "pcop_old", "task": "Open irs.gov and go to the 'Where's My Refund' page."}))
+    (q / "pccard-1.json").write_text(json.dumps({"exam": "portal", "rows": [
+        {"id": "us_irs_refund", "ok": False, "job": "pcop_new", "why": "Stopped at step 0: OpenRouter credit is low: add credit"}]}))
+    out = "\n".join(R.report(q / "pccard-1.json", tmp_path / "trace"))
+    assert "OpenRouter credit ran out" in out and "pcop_old" not in out and "no step record found" in out
