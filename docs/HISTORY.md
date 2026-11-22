@@ -10319,3 +10319,50 @@ F12 of docs/FINANCE_GLOBAL_PLAN.md, the plan's last phase.
 - `fin/card_f12.py` 7/7; 17 of 17 planted bugs caught. Tests `server/tests/test_fin_f12.py` (4).
 - The proof here: all 12 cards pass; no real user of any size; 10 packs clean, 403 rules all verify, none checked.
 - NOT VERIFIED: the proof has not run on her server; no real user yet; no pack rule checked by a person.
+
+## v0.999.154 VOICE LIBRARY, PREMIUM (22 Nov 2026; built as 0.999.151, their 0.999.151-0.999.153 kept)
+
+Owner, on a screenshot of the console Voice library (520 identical cards, a letter each, "Hoola" on every card, a black Use
+520 times, a thin side panel): "now make this section very perfect, premium and advance". Design canvas
+claude.ai/artifact/8vRY6ZKbv59uMTgkckVvcK (six boards: find a voice, compare voices, shared library, your voices, the
+picker from Speech / Dialogue / Dubbing, phone) -> "GO BUILD".
+
+Console (`static/console/vocal.js` `V.voices`, `voiceDetail`, `cmpView` and the helpers after `libVoice`; styles in the
+`v0.999.151 VOICE LIBRARY, PREMIUM` block of `vocal2.css`):
+- **Describe the voice you want:** a wide search box; each word is read as a gender (man, woman...), an age (older,
+  young...), a language (by name or code; a voice that cannot speak it drops), a word of the voice, or a kind of voice;
+  the best matches come first and each says why it matched. Ideas to try under the box.
+- **Tabs:** Hoola voices / Shared library / Your voices / Favourites, with counts; the filters as before.
+- **Kinds of voices:** Narration & stories, Ads & promos, Conversation, Characters, Calm & soothing - each a coloured card
+  with its count; a tap filters (read from each voice's tone / use words).
+- **The list:** quiet rows - a play button (shows Pause while it plays), a voice print (seven bars drawn from the id, in
+  one of six colours; no letter), the name, Premium only where it is, Yours on her own voices, why it matched, its words
+  and accent, the languages it speaks (in her language first), what it is best for, a star, Use on the row you are on.
+  Order: Hoola order / A to Z.
+- **Every sample speaks <language>:** one setting in the top bar; every sample is heard in that language (a voice that
+  cannot speak it uses its own). Make a voice in the top bar.
+- **The chosen voice:** a big voice print, the name in the serif, a sentence about it, the sample with its line in that
+  language (free), Hear it say your words with Ad / Story / Support call / News (paid; the price before the tap), Speaks,
+  Best for, Engine, In your work (Used in N sounds · last in "...", from her sounds), a star; Use in Speech + a menu (in
+  Dialogue as the next speaker, in the Vocal chat, as her default voice), Compare, Make one like it (opens Your voice ->
+  Describe with this voice's description filled in).
+- **Compare:** add up to 4 voices (a tray at the bottom of the library); the page plays each one's free sample, or her own
+  words in each (paid, priced first), one after another; Listen without names hides the names until she chooses; Like it;
+  Choose, then Use in Speech.
+- **The picker** (Speech, Dialogue): All / Recent (voices of her last sounds) / Favourites / For <her language> / Your
+  voices, a voice print and a star on each row, Open the whole library.
+
+Server: `vocal/service.voice_fav` (a voice Hoola knows, newest first, 200 at most) + PUT /api/vocal/voices/fav; the
+overview carries `favs` and `sample_lines` (the sample sentence of each language).
+
+Phone (`lib/ui/vocal/vocal_voices.dart`): tabs Hoola / Favourites / Shared / Yours; Describe the voice you want with the same
+reading of words and "Matches: ..." under a name; kinds of voices as chips with counts; a star on each voice; the voice
+sheet says In your work and has Add to favourites. api.dart: vocalVoiceFav.
+
+Tests: NEW `server/tests/test_v0999_151_vocal_library.py` (favourites kept, newest first, an unknown voice refused; the
+overview carries favs and sample lines; the files carry the design; a real-Chromium walk light / dark / phone width:
+voice prints, kinds, describe -> best matches + why, a voice's sound use, a star -> Favourites tab, compare two -> the tray ->
+the page, Listen without names, choose, the picker's Recent / Favourites); phone `test/vocal_phone_test.dart` one new test.
+
+NOT VERIFIED: on her server, in her browser or on her phone; with her real 520 voices (the kinds read their tone words, so
+a voice with no tone word sits in no kind).
