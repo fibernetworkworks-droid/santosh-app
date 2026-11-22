@@ -9397,3 +9397,14 @@ Owner: "GO G11" on docs/SUPPORT_GLOBAL_PLAN.md section 9 (built as 0.999.106; th
 - Desk: NEW Quality & law tab (answers to check, how right Hoola is + settings, pretend customers + replay, the law where her customers live, a customer's data + how long to keep, who did what + CSV, not built); a Translate button beside each customer message in a conversation.
 - Tests: `test_v0999_108_support_quality.py` 10 (sample + marks + accuracy + the topic dropping to draft, the card leaves nothing behind, replay before / after a knowledge and a trust change, law rows, disclosure once and in Spanish, export / erase with deadlines and the number gone, retention + masking, audit + CSV formula guard, routes + translate, a Chromium walk incl. the download at desktop + phone width).
 - NOT BUILT: single sign-on (the desk has one sign-in), a lawyer's check of the law rows. NOT VERIFIED on her server.
+
+
+## v0.999.109 PC STEP DEADLINE
+The first pc_trace read with the server's own log lines (v0.999.107) explained the portal exam's 6-minute silences
+(sam.gov this run, irs.gov in run 1): "pc step 2 screen 0.2s" at 02:28:19, then no 'pc brain' line and no slow-step
+retry until the card stopped the job at 02:33:59 - the AI call for step 3 never ended. `pc/brain._post` used
+httpx.AsyncClient(timeout=pc_brain_timeout_s), which limits each READ; OpenRouter answers a non-streamed request that
+is still waiting on its provider with keep-alive blank bytes, so no read ever waited 35 s. Now the whole call runs under
+asyncio.wait_for(limit + min(5 s, limit)); a timeout raises httpx.ReadTimeout into the existing v0.879 path (said to her
+via on_slow, tried once more, then BrainSlow ends the task partial with a plain line). Test:
+`test_v0999_109_brain_deadline.py`. NOT VERIFIED live yet (the next portal run).

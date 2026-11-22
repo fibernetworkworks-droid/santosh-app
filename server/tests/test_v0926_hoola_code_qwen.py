@@ -154,8 +154,8 @@ def test_price_and_version():
     from app import usage
     assert usage.price_of("qwen/qwen3.8-27b")[0]["out"] == 1.875
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.108"' in main and "HOOLA CODE" in main
-    assert "version: 0.999.108+1103" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.109"' in main and "HOOLA CODE" in main
+    assert "version: 0.999.109+1104" in (ROOT / "pubspec.yaml").read_text()
 
 
 def test_v0927_times_carry_their_zone_and_the_round_start():

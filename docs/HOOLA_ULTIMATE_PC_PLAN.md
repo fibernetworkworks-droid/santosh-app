@@ -102,3 +102,9 @@ this time, 3 min). Cloud blocks said plainly: bizfile.gov.sg, epfindia.gov.in (H
 World Bank: a Cloudflare "verify you are human" box - Hoola asked her to click it (right; counted apart from v0.999.107).
 Open: sam.gov went silent 6 minutes after page_elements (irs.gov did the same in run 1) - the server log lines pc_trace
 prints now will say where. On Hoola PC the real ceiling of this set is 12-13 / 15; the rest needs her PC (P7).
+
+## The 6-minute silences, found (v0.999.109)
+pc_trace's server log lines for sam.gov: the step's screenshot at 02:28:19, then nothing until the card gave up at
+02:33:59. The AI call for the next step never ended: httpx's timeout is per read, and OpenRouter keeps a slow request
+alive with blank bytes, so the 35 s limit never fired. A hard total limit per step now (said to her, retried once, then
+the task ends cleanly). This hit real users too, not only the exam: any PC step on a slow provider could hang.
