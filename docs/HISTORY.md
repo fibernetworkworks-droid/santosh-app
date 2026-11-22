@@ -10379,3 +10379,30 @@ answers nothing keeps its previous list and is asked again in 10 minutes; `overv
 first read runs with nothing kept; the console (`voicesWait` in vocal.js) asks again every 4 s, up to 15 times, swaps in the
 bigger list and redraws the library / picker, with "loading the full library..." beside the count.
 Test: `test_v0999_151_vocal_library.py::test_a_restart_keeps_the_whole_library`. NOT VERIFIED on her server.
+
+
+## v0.999.156 MONEY SAFETY DESK
+
+Owner (22 Nov 2026): "Money Safety Assistant --- now lets make a seperate panel as same as in bussiness section has. show
+design here first perfectly" -> design canvas claude.ai/artifact/BWjghhnCL3daja6RgrkMeE (Today, Check before paying, one
+case, My cases, Is my money safe, Phone) -> "go". Built as 0.999.154; their 0.999.154 (VOICE LIBRARY, PREMIUM) and
+0.999.155 (WHOLE VOICE LIBRARY) took those numbers, all kept.
+
+- `server/app/moneychat.py`: the Money Safety chat (Conversation kind `money`, kept out of her chat lists in `callconv.not_call`
+  and `convs`), `is_money` (+ a call started from it), greeting from the real desk, `block` (rules: use paisa_sahayak, a letter
+  is hers to send, a date said at its level, never a PIN / OTP / password / card number, nothing moves money) and the family
+  `finguard` admitted in `agent/santosh.py`. Her country in the employee's settings (`country`, else her finance workspace's
+  first country). Cases read from `fin_case` (employee safety) with their letter and what the engine said (kept on the draft's
+  meta by `fin/desks/safety.save_case`: time_limits / clocks / evidence / route / also). Her taps move only the state:
+  drafted / sent / tracking / closed. Routes: GET /api/money/chat, POST /api/money/chat/new, GET /api/money/chat/{id}/ok,
+  GET /api/money/desk, PUT /api/money/country, GET /api/money/cases/{id}, POST /api/money/cases/{id}/state.
+- `static/console/moneydesk.html/.js/.css` (page /console/money) on the business desks' kit (seodesk.css + chatkit): the chat
+  beside Today / Check before paying / My cases (+ #/new/<part>, #/case/<id>) / Is my money safe / Settings; the pages call
+  /api/fin/safety/*. Dates: Confirmed (a person checked the rule) / Reminder (from the official page) / Not confirmed - check this.
+- Doors: console `employees.js` (paisa_sahayak -> moneydesk), `v2.js` (moneydesk -> /console/money), phone
+  `lib/ui/shell/hoola_employees.dart`.
+- Tests `test_v0999_156_money_desk.py` (5): wiring, kept out of chat lists, country / cases / her taps (account masked to its
+  last 4, another tenant refused), routes, a real-browser walk (every page in light / dark / phone width, choose the country,
+  check a message, draft a refund claim, mark it sent, the deposit check).
+- NOT VERIFIED: on her server; no real model turn in the Money Safety chat; the phone screen itself is unchanged (its Open
+  desk opens this page).

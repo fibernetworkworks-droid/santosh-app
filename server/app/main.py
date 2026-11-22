@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.155"   # v0.999.155 WHOLE VOICE LIBRARY (owner, on her library screenshot after v0.999.154: "previously there was huge voice library now showing few only"): the big catalog (Google extended voices + ElevenLabs, ~490) is read in the background after a restart, so right after every deploy the page got only the 30 built-in voices and kept them until a reload; and a read that answered nothing was not tried again for a day. Now the last good catalog is kept on disk (data/vocal/_catalog.json) and served at once after a restart, a source that answers nothing keeps its last list and is asked again in 10 minutes, the overview says voices_loading while the first read runs, and the page asks again every 4 s until the whole library is there ("loading the full library..."). NOT VERIFIED on her server. Previous: v0.999.154 VOICE LIBRARY, PREMIUM (built as 0.999.151; their 0.999.151-0.999.153 took those numbers, all kept; owner, on her Voice library screenshot: "make this section very perfect, premium and advance" -> design canvas claude.ai/artifact/8vRY6ZKbv59uMTgkckVvcK -> "GO BUILD"): the console Voice library rebuilt - Describe the voice you want (each word read as a gender, an age, a language or a feel, the best matches first with why they matched, ideas to try), kinds of voices (Narration & stories, Ads & promos, Conversation, Characters, Calm & soothing), a quiet list with a voice print per voice (no letter, no Hoola tag on every card, Premium only where it is), Every sample speaks <her language>, the chosen voice heard in her language with its sample line, her words with ready samples (Ad, Story, Support call, News; price first), where she used it, a star; Use in Speech with a menu (Dialogue, the Vocal chat, her default), Compare (up to 4 voices, the same words one after another, Listen without names), Make one like it; Favourites (server: PUT /voices/fav, overview favs + sample_lines); the voice picker gets Recent / Favourites / For her language / Your voices and Open the whole library. Phone: Favourites tab, describe a voice, kinds of voices, a star, In your work. NOT VERIFIED on her server, browser or phone. ... older stories live in git history.
+APP_VERSION = "0.999.156"   # v0.999.156 MONEY SAFETY DESK (owner: "Money Safety Assistant --- now lets make a seperate panel as same as in bussiness section has. show design here first perfectly" -> the design claude.ai/artifact/BWjghhnCL3daja6RgrkMeE -> "go"): the Money Safety Assistant gets its own section /console/money like the business desks - NEW `moneychat.py` (Money Safety chat = Conversation kind money, out of her chat lists; a turn in it or a call started from it gets the desk block and the money-safety tool in view; /api/money/chat*, /desk, /country, /cases/{id}, /cases/{id}/state) + `static/console/moneydesk.html/.js/.css` on the desk kit: Today (what needs her, check before you pay, something went wrong, open cases), Check before paying (signs found, links read never opened, if you already paid, who to go to), My cases + a new case (refund claim, card dispute, complaint, credit report, identity theft) + one case (the letter with its blanks marked, Copy / Download / change it in the chat, time limits at their level, evidence, route, her taps I've sent it / waiting / close), Is my money safe (bank by bank against the deposit limit), Settings (her country, trust, pause / let go); every date shows Confirmed / Reminder / Not confirmed - check this; a case now keeps the engine's time limits, evidence and route on its draft (`fin/desks/safety.save_case`); Open desk on the console + phone goes there; 5 tests incl. a real-browser walk. Nothing here sends a letter or moves money. NOT VERIFIED on her server or with a real model turn in the chat. Previous: v0.999.155 WHOLE VOICE LIBRARY (owner, on her library screenshot after v0.999.154: "previously there was huge voice library now showing few only"): the big catalog (Google extended voices + ElevenLabs, ~490) is read in the background after a restart, so right after every deploy the page got only the 30 built-in voices and kept them until a reload; and a read that answered nothing was not tried again for a day. Now the last good catalog is kept on disk (data/vocal/_catalog.json) and served at once after a restart, a source that answers nothing keeps its last list and is asked again in 10 minutes, the overview says voices_loading while the first read runs, and the page asks again every 4 s until the whole library is there ("loading the full library..."). NOT VERIFIED on her server.; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2008,6 +2008,16 @@ def route_page():
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
 
 
+@app.get("/console/money")
+@app.get("/console/money/")
+def money_desk_page():
+    """v0.999.156 MONEY SAFETY DESK: the Money Safety Assistant's own section - its chat beside the desk's screens
+    (Today, Check before paying, My cases + one case, Is my money safe, Settings). Same sign-in + strict CSP."""
+    return FileResponse(STATIC / "console" / "moneydesk.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/support")
 @app.get("/console/support/")
 def support_desk_page():
@@ -2532,6 +2542,8 @@ from . import telecallerchat as _telechat_mod                     # noqa: E402  
 _telechat_mod.mount(app, current_tenant, require_key, STATIC, APP_VERSION)   # /console/telecaller, /api/telecaller/*
 from . import supportchat as _supchat_mod                       # noqa: E402  v0.999.81 CUSTOMER SUPPORT DESK
 _supchat_mod.mount(app, current_tenant, require_key, STATIC, APP_VERSION)   # /api/support/*
+from . import moneychat as _moneychat_mod                        # noqa: E402  v0.999.156 MONEY SAFETY DESK
+_moneychat_mod.mount(app, current_tenant, require_key)          # /api/money/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through
