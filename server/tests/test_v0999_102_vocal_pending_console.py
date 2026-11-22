@@ -12,7 +12,7 @@ from tests.test_v121_site import site_env  # noqa: F401
 
 def test_the_file_offers_every_pending_piece():
     assert "[[1, '1'], [2, '2'], [4, '4']]" in JS and "[[1, '1'], [2, '2'], [3, '3']]" not in JS
-    for k in ("/take/", "/tts/stream", "/apps/keys", "/apps/hooks", "keep_days", "reactions: !!dd2.reactions", "ownredo", "Play while it is made"):
+    for k in ("/take/", "/tts/stream", "/apps/keys", "/apps/hooks", "keep_days", "reactions: !!dd2.reactions", "dubremake", "Play while it is made"):
         assert k in JS, k
 
 
@@ -70,7 +70,7 @@ def extra(pg, st):
         if path == "/dub/db_own/lines/0" and req.method == "PUT":
             st["saved"].append(body)
             return j({"n": 0, "dst": body["text"], "edited": True})
-        if path == "/dub/db_own/lines/0/redo":
+        if path in ("/dub/db_own/lines/0/redo", "/dub/db_own/remake"):
             st["redo"].append(body)
             return j({"status": "working", "lang": "es", "lines": 1, "charged_seconds": 2, "credits": 1})
         return route.fallback()
@@ -122,15 +122,17 @@ def test_the_pending_pieces_in_a_real_browser(arena_server):  # noqa: F811
     # own-voice dub: change a line, then Make the changes (asked first)
     page_to(pg, "dub")
     pg.locator("#hvView [data-a='dubopen'][data-id='db_own']").click()
+    pg.wait_for_selector("#hvView [data-a='dubsel'][data-n='0']")
+    pg.locator("#hvView [data-a='dubsel'][data-n='0']").click()
     pg.wait_for_selector("#hvView textarea[data-dubline='0']")
     assert pg.locator("#hvView [data-a='dubredo']").count() == 0                    # no per-line Redo on own voices
-    assert pg.locator("#hvView [data-a='ownredo']").is_disabled()
+    assert pg.locator("#hvView [data-a='dubremake']").is_disabled()
     ta = pg.locator("#hvView textarea[data-dubline='0']")
     ta.fill("Buenas")
     ta.dispatch_event("change")
-    pg.wait_for_function("() => !document.querySelector('#hvView [data-a=ownredo]')?.disabled")
+    pg.wait_for_function("() => !document.querySelector('#hvView [data-a=dubremake]')?.disabled")
     assert st["saved"][-1] == {"lang": "es", "text": "Buenas"}      # the test fires change itself, the blur may fire it again
-    pg.locator("#hvView [data-a='ownredo']").click()
+    pg.locator("#hvView [data-a='dubremake']").click()
     pg.wait_for_function("() => document.querySelector('#hvView').textContent.includes('Making the changed lines')")
     assert st["redo"] == [{"lang": "es"}] and "ElevenLabs charges" in dialogs[-1]
 

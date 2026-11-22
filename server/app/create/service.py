@@ -308,13 +308,16 @@ def _json(text: str) -> dict[str, Any]:
     return json.loads(t[t.find("{"):t.rfind("}") + 1])
 
 
-def _listen(audio: bytes, langs: list[str]) -> dict[str, Any]:
+def _listen(audio: bytes, langs: list[str], keep: list[str] | None = None) -> dict[str, Any]:
     from google.genai import Client, types
     s = _s()
     model = s.video_gemini_model or s.reels_gemini_model or s.youtube_gemini_model
     tr = ", ".join(f'"{lang}": "..."' for lang in langs)
+    rule = LISTEN % tr
+    if keep:                                           # v0.999.148: her words that are never translated
+        rule += "\nNever translate these words; write them exactly as given wherever they are said: " + "; ".join(keep[:30])
     resp = Client(api_key=s.gemini_api_key).models.generate_content(
-        model=model, contents=[types.Part.from_bytes(data=audio, mime_type="audio/mp3"), LISTEN % tr],
+        model=model, contents=[types.Part.from_bytes(data=audio, mime_type="audio/mp3"), rule],
         config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.2))
     try:
         out = _json(resp.text or "")

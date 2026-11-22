@@ -192,7 +192,7 @@ def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
     for page, said in PAGES:
         page_to(pg, page)
         if page == "dub":
-            pg.wait_for_function("() => document.querySelector('#hvView').textContent.includes('product-tour.mp4')")
+            pg.wait_for_function("() => document.querySelector('#hvView').textContent.includes('product-tour')")
         assert said in pg.locator("#hvView").text_content(), page
         assert pg.locator("#hvRoot h1").count() == 1, page
         assert pg.evaluate("document.querySelector('#hvView').scrollWidth <= document.querySelector('#hvView').clientWidth + 1"), page

@@ -6,6 +6,7 @@ import json
 import pathlib
 import shutil
 import subprocess
+import time
 import wave
 
 import pytest
@@ -225,20 +226,20 @@ def matched(vg, monkeypatch, tmp_path):
     vid = tmp_path / "tour.mp4"
     make_video(vid, 4)
     seen = {}
-
-    async def dub(video, name, langs, keep_sound=True, voices_for=None, progress=None):
-        seen["voices_for"] = voices_for
-        keep = CS.KEEP_CLIPS.get()
-        lines = [{"start": 0.2, "end": 1.6, "speaker": "S1", "text": "Hello and welcome.", "tr": {"Spanish": "Hola y bienvenidos."}},
-                 {"start": 2.0, "end": 2.4, "speaker": "S2", "text": "Thanks.",
-                  "tr": {"Spanish": "Muchísimas gracias a todos por venir hoy a esta presentación tan larga."}}]
-        for i, _ in enumerate(lines):
-            pathlib.Path(keep, f"Spanish_{i:03d}.wav").write_bytes(tone(0.8 if i == 0 else 3.0))
-        return {"source_language": "English", "speakers": [{"id": "S1"}, {"id": "S2"}], "voices": {"S1": "Kore", "S2": "Puck"},
-                "lines": lines, "outputs": [{"language": "Spanish", "bytes": vid.read_bytes(), "seconds": 4.0}]}
-    monkeypatch.setattr(CS, "dub", dub)
+    from app.vocal import dubbing as DB                  # v0.999.148: the matched dub runs in steps (heard -> spoken -> mixed)
+    lines = [{"start": 0.2, "end": 1.6, "speaker": "S1", "text": "Hello and welcome.", "tr": {"Spanish": "Hola y bienvenidos."}},
+             {"start": 2.0, "end": 2.4, "speaker": "S2", "text": "Thanks.",
+              "tr": {"Spanish": "Muchísimas gracias a todos por venir hoy a esta presentación tan larga."}}]
+    monkeypatch.setattr(DB, "listen", lambda src, names, keep: {"source_language": "English", "speakers": [{"id": "S1"}, {"id": "S2"}],
+                                                                 "lines": lines})
+    monkeypatch.setattr(DB, "speak", lambda text, voice, lang, pace=1.0: tone(0.8 if text.startswith("Hola") else 3.0))
+    monkeypatch.setattr(DB, "translate", lambda ls, lang, keep: seen.setdefault("translated", []).append(lang) or [f"{lang} {i}" for i in range(len(ls))])
     r = V.dub_start("t1", str(vid), ["es"], voices={"S1": "hv_Kore", "S2": "hv_Puck"})
-    V._DUB_THREADS.get(r["id"]) and V._DUB_THREADS[r["id"]].join(20)
+    for _ in range(400):
+        if V.dub_get("t1", r["id"])["status"] != "working":
+            break
+        time.sleep(0.05)
+    seen["voices_for"] = {k: v for k, v in V.dub_get("t1", r["id"])["voices"].items() if k in ("S1", "S2")}
     return r["id"], seen
 
 
@@ -493,15 +494,18 @@ def test_her_defaults_are_saved_and_come_back_in_the_overview(vg, client):
 
 
 @needs_ff
-def test_more_languages_make_a_new_dub_of_the_same_video_with_the_same_voices(matched, client, monkeypatch):
+def test_more_languages_join_the_same_dub_with_the_same_voices(matched, client, monkeypatch):
     did, seen = matched
     seen.clear()
     r = client.post(f"/api/vocal/dub/{did}/langs", json={"langs": ["hi", "es"]})
     assert r.status_code == 200, r.text
     new = r.json()
-    assert new["id"] != did and [x["code"] for x in new["langs"]] == ["hi"]
-    V._DUB_THREADS.get(new["id"]) and V._DUB_THREADS[new["id"]].join(20)
-    assert seen.get("voices_for") is not None
+    assert new["id"] == did and [x["code"] for x in new["langs"]] == ["es", "hi"]       # v0.999.148: the same dub
+    for _ in range(400):
+        if V.dub_get("t1", did)["status"] != "working":
+            break
+        time.sleep(0.05)
+    assert seen.get("translated") == ["Hindi"] and V.dub_get("t1", did)["langs"][1]["status"] == "ready"
     assert client.post(f"/api/vocal/dub/{did}/langs", json={"langs": ["es"]}).status_code == 422
     assert client.post("/api/vocal/dub/vd_nope/langs", json={"langs": ["hi"]}).status_code in (404, 422)
 

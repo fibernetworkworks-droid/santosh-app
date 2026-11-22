@@ -58,7 +58,7 @@ OVG = {
     "status": {"engines": {}, "connected": {"clone": True, "design": True}},
 }
 PAGES = [("chat", "nothing is spent until you send"), ("speech", "Add a tone"), ("voices", "Amani"), ("mine", "Read this out loud"),
-         ("dialogue", "How it sounds"), ("studio", "The Lighthouse Keeper"), ("dub", "product-tour.mp4"), ("changer", "ElevenLabs is not connected"),
+         ("dialogue", "How it sounds"), ("studio", "The Lighthouse Keeper"), ("dub", "product-tour"), ("changer", "ElevenLabs is not connected"),
          ("cleanup", "Take the voice out of music"), ("sfx", "Quick game sounds"), ("dict", "Uh-ko-laa"), ("sounds", "<b>Karibu</b> Mkate"),
          ("settings", "What things cost")]
 
@@ -168,7 +168,7 @@ def test_every_page_in_a_real_browser(arena_server):  # noqa: F811
         for name, said in PAGES:
             page_to(pg, name)
             if name == "dub":
-                pg.wait_for_function("() => document.querySelector('#hvView').textContent.includes('product-tour.mp4')")
+                pg.wait_for_function("() => document.querySelector('#hvView').textContent.includes('product-tour')")
             text = pg.locator("#hvView").text_content()
             assert said in text, (width, name)
             assert pg.locator("#hvRoot h1").count() == 1, (width, name)
@@ -222,8 +222,13 @@ def test_every_page_in_a_real_browser(arena_server):  # noqa: F811
     assert "ElevenLabs is not connected" in pg.locator("#hvRoot .hv-vdetail").text_content() and "API_KEY" not in pg.locator("#hvView").text_content()
     # Dubbing: their own voices is premium, disabled with the reason
     page_to(pg, "dub")
+    with pg.expect_file_chooser() as fc:                                           # a new dub starts from her video
+        pg.locator("#hvView [data-a='pickfile'][data-k='dub']").click()
+    fc.value.set_files({"name": "launch.mp4", "mimeType": "video/mp4", "buffer": b"\x00\x00\x00\x18ftypmp42"})
     own = pg.locator("#hvRoot [data-m='UI.dubNew.mode'][data-val='own']")
+    own.wait_for()
     assert own.is_disabled() and own.get_attribute("aria-describedby")
+    pg.locator("#hvRoot [data-a='dubcancel']").click()
     pg.locator("#hvRoot [data-a='dubopen']").click()
     pg.wait_for_function("() => document.querySelector('#hvView').textContent.includes('この画面で注文を確認できます。')")
     assert pg.locator("#hvRoot h1").count() == 1

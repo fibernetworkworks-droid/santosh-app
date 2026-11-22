@@ -70,7 +70,7 @@ def overview(broke=False):
 
 
 PAGES = [("chat", "nothing is spent until you send"), ("speech", "Add a tone"), ("dialogue", "How it sounds"), ("studio", "The Lighthouse Keeper"),
-         ("dub", "product-tour.mp4"), ("voices", "Meera"), ("mine", "Read this out loud"), ("changer", "Record here"), ("cleanup", "Take the voice out of music"),
+         ("dub", "product-tour"), ("voices", "Meera"), ("mine", "Read this out loud"), ("changer", "Record here"), ("cleanup", "Take the voice out of music"),
          ("sfx", "Quick game sounds"), ("sounds", "Shop podcast, episode 3"), ("dict", "Mi-thaas"), ("settings", "What things cost")]
 
 CHECKS = """() => {
@@ -231,7 +231,7 @@ def test_every_page_in_a_real_browser(arena_server):  # noqa: F811
         for name, said in PAGES:
             page_to(pg, name, narrow)
             if name == "dub":
-                pg.wait_for_function("() => document.querySelector('#hvView').textContent.includes('product-tour.mp4')")
+                pg.wait_for_function("() => document.querySelector('#hvView').textContent.includes('product-tour')")
             if name == "voices":
                 pg.wait_for_function("() => document.querySelector('#hvView').textContent.includes('Meera')")
             c = pg.evaluate(CHECKS)
@@ -373,8 +373,15 @@ def test_speech_changer_credits_and_create_voice(arena_server):  # noqa: F811
     # the dubbing editor: lines from /lines, a too-long line warned, subtitles in the download list
     page_to(pg, "dub")
     pg.locator("#hvRoot [data-a='dubopen']").click()
+    pg.wait_for_selector("#hvRoot [data-a='dubsel'][data-n='2']")
+    assert "1 too long" in pg.locator("#hvView").text_content()
+    pg.locator("#hvRoot [data-a='dubsel'][data-n='2']").click()                      # a line opens to change it
     pg.wait_for_selector("#hvRoot textarea[data-dubline='2']")
-    assert "Longer than the 2.1 s" in pg.locator("#hvView").text_content() and "Subtitles, VTT" in pg.locator("#hvView").text_content()
+    assert "Their line lasts 2.1 s" in pg.locator("#hvView").text_content()
+    pg.locator("#hvRoot [data-a='sdopen'][data-k='ddl']").click()                    # the downloads, subtitles among them
+    pg.wait_for_selector("#hvSd .hv-vp")
+    assert "Subtitles only" in pg.locator("#hvSd").text_content()
+    pg.keyboard.press("Escape")
     assert pg.locator("#hvRoot .hv-crumb").text_content().replace("\xa0", " ").startswith("Vocal · Dubbing ·")
     if shots:
         pg.screenshot(path=f"{shots}/vocal-dub-editor.png")
@@ -382,7 +389,7 @@ def test_speech_changer_credits_and_create_voice(arena_server):  # noqa: F811
     assert "Spanish" not in pg.locator(".hmenu").text_content()                     # a language already in it is not offered
     pg.locator(".hmenu .msearch input").fill("hindi")
     pg.locator(".hmenu .mi:visible", has_text="Hindi").first.click()
-    pg.wait_for_function("() => document.querySelector('#hvView').textContent.includes('The lines appear when this language is made.')")
+    pg.wait_for_function("() => document.querySelector('#hvView').textContent.includes('Your dub is on the way')")
     assert st["addlang"] == [{"langs": ["hi"]}]
 
     # Settings: the defaults are saved on the server (PUT /settings)

@@ -1005,3 +1005,125 @@
   #hvRoot .hv-page .hv-chtitle{font-size:24px}
   #hvRoot .hv-pgt{font-size:17px}
 }
+
+/* ===================================================================== v0.999.148 DUBBING, PREMIUM ===
+   The Dubbing pages as the design board: a shelf of dubs with a frame of each video, a new dub page, the dub being made
+   step by step, the dub at work (the video in the chosen language, the lanes, the lines with how much of the speaker's
+   time each takes) and the Voices / Download / Words to keep dialogs. Tokens only. */
+#hvRoot .hv-warn{color:var(--warn)} #hvRoot .hv-bad{color:var(--bad,var(--warn))}
+#hvRoot .hv-dot.work{background:var(--pri)} #hvRoot .hv-dot.bad{background:var(--bad,var(--warn))}
+#hvRoot .hv-dubgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(240px,100%),1fr));gap:22px}
+#hvRoot .hv-dubc{display:flex;flex-direction:column;gap:8px;text-align:left;min-width:0;border-radius:14px}
+#hvRoot .hv-dubc>b{font-weight:600;overflow-wrap:anywhere}
+#hvRoot .hv-dubc:hover .hv-poster{transform:translateY(-2px)}
+#hvRoot .hv-poster{position:relative;display:block;aspect-ratio:16/9;width:100%;border-radius:12px;overflow:hidden;flex:none;transition:transform .2s;
+  background:radial-gradient(circle at 30% 40%,color-mix(in srgb,var(--tn,var(--pri)) 55%,var(--ink)),color-mix(in srgb,var(--tn,var(--pri)) 18%,var(--ink)) 70%)}
+#hvRoot .hv-poster.t0{--tn:var(--hv-t0)} #hvRoot .hv-poster.t1{--tn:var(--hv-t3)} #hvRoot .hv-poster.t2{--tn:var(--hv-t1)} #hvRoot .hv-poster.t3{--tn:var(--hv-t2)}
+#hvRoot .hv-poster img,#hvRoot .hv-poster video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .2s}
+#hvRoot .hv-poster.img img,#hvRoot .hv-poster video{opacity:1}
+#hvRoot .hv-poster.s{width:168px} #hvRoot .hv-poster.m{width:120px}
+#hvRoot .hv-plen{position:absolute;right:8px;bottom:8px;height:22px;padding:0 7px;border-radius:6px;background:rgb(0 0 0 / .62);color:var(--hv-surface);font-size:11px;display:inline-flex;align-items:center}
+#hvRoot .hv-ltags{display:flex;flex-wrap:wrap;gap:6px}
+#hvRoot .hv-ltag{height:24px;padding:0 9px;border-radius:99px;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;background:var(--hv-sunk);color:var(--ink)}
+#hvRoot .hv-ltag.made{background:color-mix(in srgb,var(--ok) 14%,transparent)} #hvRoot .hv-ltag.changed{background:var(--warn-soft,var(--hv-sunk))}
+#hvRoot .hv-ltag.bad{background:color-mix(in srgb,var(--bad,var(--warn)) 12%,transparent)}
+/* a new dub */
+#hvRoot .hv-dubnew>.hv-panel{gap:22px}
+#hvRoot .hv-dubsrc{display:flex;gap:16px;align-items:center;padding:12px}
+#hvRoot .hv-dubsrc .hv-vt{gap:3px}
+#hvRoot .hv-dubsrc .hv-vt>*{white-space:normal}
+#hvRoot .hv-ways.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#hvRoot .hv-ways.two .hv-way{padding:16px;gap:6px}
+#hvRoot .hv-wayh{display:flex;align-items:center;gap:10px}
+#hvRoot .hv-wayh b{font-size:15px}
+#hvRoot .hv-words2{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px;border:1px solid var(--hv-box);border-radius:12px;background:var(--hv-surface);min-height:46px;box-sizing:border-box}
+#hvRoot .hv-wtag{height:30px;padding:0 4px 0 10px;border-radius:8px;background:var(--hv-sunk);font-size:13px;display:inline-flex;align-items:center;gap:2px}
+#hvRoot .hv-ib.xs{width:24px;height:24px;border-radius:6px}
+#hvRoot .hv-win{flex:1;min-width:140px;border:0;outline:0;background:none;font:inherit;color:var(--ink);height:30px;padding:0 4px}
+#hvRoot .hv-tot2{border:1px solid var(--line);border-radius:16px;background:var(--hv-surface);overflow:hidden}
+#hvRoot .hv-tot2>div{display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid var(--line)}
+#hvRoot .hv-tot2>div:first-child{border-top:0} #hvRoot .hv-tot2>div>span:first-child{flex:1}
+#hvRoot .hv-tot2>p{padding:12px 14px}
+/* being made */
+#hvRoot .hv-dubmk>.hv-panel{gap:18px}
+#hvRoot .hv-dubask{display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:16px;background:var(--pri-soft);flex-wrap:wrap}
+#hvRoot .hv-dubask .hv-vt{min-width:200px} #hvRoot .hv-dubask .hv-vt>*{white-space:normal}
+#hvRoot .hv-sdi.s{width:36px;height:36px;margin:0;background:var(--pri);color:var(--hv-surface)}
+#hvRoot .hv-mklist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+#hvRoot .hv-mklist>li{padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+#hvRoot .hv-mkst{font-weight:500;color:var(--pri-ink)} #hvRoot .hv-mkst.changed{color:var(--warn)} #hvRoot .hv-mkst.bad{color:var(--bad,var(--warn))} #hvRoot .hv-mkst.made{color:var(--ok)}
+#hvRoot .hv-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+#hvRoot .hv-stp{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:500;color:var(--mut)}
+#hvRoot .hv-stpb{height:6px;border-radius:3px;background:var(--hv-box)}
+#hvRoot .hv-stp.done{color:var(--ink)} #hvRoot .hv-stp.done .hv-stpb{background:var(--pri)}
+#hvRoot .hv-stp.now{color:var(--pri-ink)} #hvRoot .hv-stp.now .hv-stpb{background:color-mix(in srgb,var(--pri) 45%,var(--hv-box));animation:hv-stp 1.4s ease-in-out infinite}
+#hvRoot .hv-stp.you{color:var(--warn)} #hvRoot .hv-stp.you .hv-stpb{background:var(--warn)}
+#hvRoot .hv-stp.bad .hv-stpb{background:var(--bad,var(--warn))} #hvRoot .hv-stp.skip{opacity:.55}
+@keyframes hv-stp{50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){ #hvRoot .hv-stp.now .hv-stpb{animation:none} }
+#hvRoot .hv-namer{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:var(--hv-surface);border:1px solid var(--line)}
+#hvRoot .hv-heard{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:10px}
+#hvRoot .hv-heard li{display:grid;grid-template-columns:40px minmax(0,1fr);gap:8px}
+#hvRoot .hv-heard .hv-vt>*{white-space:normal} #hvRoot .hv-heard .serif{font-family:var(--fr);font-size:15px;line-height:1.45}
+/* a dub at work */
+#hvRoot .hv-dubstage{gap:14px;background:var(--hv-sunk)}
+#hvRoot .hv-chip.dash{border-style:dashed;color:var(--mut)}
+#hvRoot .hv-ltab.on{background:var(--hv-pill);color:var(--hv-onpill);border-color:transparent}
+#hvRoot .hv-dubv{position:relative;border-radius:16px;overflow:hidden;background:var(--ink);aspect-ratio:16/9;width:100%}
+#hvRoot .hv-dubv video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--ink)}
+#hvRoot .hv-dubsub{position:absolute;left:50%;bottom:58px;transform:translateX(-50%);max-width:82%;padding:6px 12px;border-radius:10px;background:rgb(0 0 0 / .62);color:var(--hv-surface);font-size:17px;line-height:1.4;text-align:center;pointer-events:none}
+#hvRoot .hv-dubsub:empty,#hvRoot .hv-dubsub[hidden]{display:none}
+#hvRoot .hv-dubin{position:absolute;left:12px;top:12px;height:26px;padding:0 10px;border-radius:99px;background:rgb(255 255 255 / .92);color:var(--ink);font-size:12px;font-weight:600;display:inline-flex;align-items:center;pointer-events:none}
+#hvRoot .hv-dubplay{display:flex;flex-direction:column;gap:10px;padding:12px 14px}
+#hvRoot .hv-dubplay .hv-rh{flex-wrap:wrap;row-gap:8px}
+#hvRoot .hv-dlanes{--lw:92px;position:relative;display:flex;flex-direction:column;gap:5px}
+#hvRoot .hv-dlane{display:grid;grid-template-columns:var(--lw) minmax(0,1fr);align-items:center}
+#hvRoot .hv-dlane>span:first-child{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px;color:var(--tn,var(--mut))}
+#hvRoot .hv-dlane>.t0{--tn:var(--hv-t0)} #hvRoot .hv-dlane>.t1{--tn:var(--hv-t2)} #hvRoot .hv-dlane>.t2{--tn:var(--hv-t1)} #hvRoot .hv-dlane>.t3{--tn:var(--hv-t3)}
+#hvRoot .hv-dtrack{position:relative;height:20px;border-radius:5px;background:var(--hv-sunk)}
+#hvRoot .hv-dtrack i{position:absolute;top:3px;bottom:3px;border-radius:4px;background:color-mix(in srgb,var(--tn,var(--mut)) 30%,var(--hv-surface))}
+#hvRoot .hv-dtrack.o i{background:var(--hv-box)}
+#hvRoot .hv-dtrack i.t0{--tn:var(--hv-t0)} #hvRoot .hv-dtrack i.t1{--tn:var(--hv-t2)} #hvRoot .hv-dtrack i.t2{--tn:var(--hv-t1)} #hvRoot .hv-dtrack i.t3{--tn:var(--hv-t3)}
+#hvRoot .hv-dtrack i.long{box-shadow:inset 0 0 0 2px var(--warn)} #hvRoot .hv-dtrack i.sel{box-shadow:inset 0 0 0 2px var(--pri)}
+#hvRoot .hv-dhead{position:absolute;top:0;bottom:0;left:var(--lw);width:2px;border-radius:1px;background:var(--ink);pointer-events:none}
+#hvRoot .hv-dublines .hv-stageb,#hvRoot .hv-dublines{display:flex;flex-direction:column;min-height:0}
+#hvRoot .hv-stage.hv-dublines{flex:0 1 520px;min-width:340px;background:var(--bg)}
+#hvRoot .hv-dlh{padding:14px 18px;border-bottom:1px solid var(--line);flex:none}
+#hvRoot .hv-dublines>.hv-note{margin:12px 18px 0}
+#hvRoot .hv-dlist{list-style:none;margin:0;padding:10px 12px;display:flex;flex-direction:column;gap:4px;flex:1;min-height:0;overflow-y:auto}
+#hvRoot .hv-dlb{width:100%;text-align:left;display:grid;grid-template-columns:42px minmax(0,1fr);gap:10px;padding:10px;border-radius:12px}
+#hvRoot .hv-dlb:hover{background:var(--hv-sunk)}
+#hvRoot .hv-dline.on>.hv-dlb{background:var(--pri-soft)}
+#hvRoot .hv-dlb .hv-vt{gap:4px} #hvRoot .hv-dlb .hv-vt>*{white-space:normal}
+#hvRoot .hv-dsrc{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap!important}
+#hvRoot .hv-dsrc b{font-size:12px;color:var(--tn,var(--pri-ink))}
+#hvRoot .hv-dsrc b.t0{--tn:var(--hv-t0)} #hvRoot .hv-dsrc b.t1{--tn:color-mix(in srgb,var(--hv-t2) 80%,var(--ink))} #hvRoot .hv-dsrc b.t2{--tn:color-mix(in srgb,var(--hv-t1) 80%,var(--ink))} #hvRoot .hv-dsrc b.t3{--tn:var(--hv-t3)}
+#hvRoot .hv-ddst{font-family:var(--fr);font-size:16px;line-height:1.5;color:var(--ink)}
+#hvRoot .hv-dfit{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#hvRoot .hv-fitb{width:110px;height:5px;border-radius:3px;background:var(--hv-box);overflow:hidden;display:inline-block}
+#hvRoot .hv-fitb>span{display:block;height:100%;background:var(--ok)} #hvRoot .hv-fitb>span.long{background:var(--warn)}
+#hvRoot .hv-dedit{display:flex;flex-direction:column;gap:8px;margin:2px 0 10px 52px}
+#hvRoot .hv-dedit textarea{font-size:16px;line-height:1.5;resize:none;min-height:56px}
+#hvRoot .hv-acts.wrap{flex-wrap:wrap}
+#hvRoot .hv-dubfoot{flex:none;display:flex;align-items:center;gap:12px;padding:12px 18px;border-top:1px solid var(--line);box-shadow:0 -10px 30px rgb(0 0 0 / .05)}
+#hvRoot .hv-dubfoot .hv-vt>*{white-space:normal}
+#hvRoot .hv-dublines>.hv-why{padding:0 18px 12px;text-align:right}
+#hvRoot .hv-ckchip{height:40px;padding:0 14px 0 10px}
+#hvRoot .hv-ckchip.on{border-color:color-mix(in srgb,var(--pri) 45%,transparent);background:var(--pri-soft)}
+#hvRoot .hv-ckb{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--hv-box);display:grid;place-items:center;color:var(--hv-surface);background:var(--hv-surface)}
+#hvRoot .hv-ckchip.on .hv-ckb{background:var(--pri);border-color:var(--pri)}
+#hvRoot .hv-bkt.w{width:auto;max-width:180px}
+@media (max-width:1100px){ #hvRoot .hv-ways.two{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:900px){
+  #hvRoot .hv-stage.hv-dublines{flex:none;width:100%}
+  #hvRoot .hv-dlist{overflow:visible}
+  #hvRoot .hv-dubstage{background:var(--bg)}
+}
+@media (max-width:720px){
+  #hvRoot .hv-dubsrc{flex-wrap:wrap} #hvRoot .hv-poster.s{width:100%}
+  #hvRoot .hv-steps{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px} #hvRoot .hv-stp{font-size:11px}
+  #hvRoot .hv-dlanes{--lw:64px}
+  #hvRoot .hv-dedit{margin-left:0}
+  #hvRoot .hv-dubsub{font-size:14px;bottom:52px}
+  #hvRoot .hv-dubfoot{flex-wrap:wrap} #hvRoot .hv-dubfoot .hv-cta{width:100%}
+}
