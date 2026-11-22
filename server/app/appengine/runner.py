@@ -70,17 +70,19 @@ def available() -> dict[str, Any]:
         return {"ok": ok, "runner": "local", "why": "" if ok else "local runner: HOOLA_APPENGINE_NODE_MODULES + node are needed"}
     from ..devlab import box
     if not box.docker():
-        return {"ok": False, "runner": "box", "why": "docker is not on this server"}
+        return {"ok": False, "runner": "box", "fix": "docker", "why": "docker is not on this server"}
     rc, out, _ = box._run([box.docker(), "version", "--format", "{{.Server.Version}}"], 25)
     if rc != 0:
-        return {"ok": False, "runner": "box", "why": "the docker daemon is not answering"}
+        return {"ok": False, "runner": "box", "fix": "docker", "why": "the docker daemon is not answering"}
+    # ONE ENGINE: "fix": "image" = code can repair it (boxcare rebuilds the image by itself before the build)
     if not box.has_image(IMG.IMAGE):
-        return {"ok": False, "runner": "box", "why": "the App Engine image is not built yet: run `python -m app.appengine setup` "
-                                                     "(vps-ops > appengine_setup)"}
+        return {"ok": False, "runner": "box", "fix": "image",
+                "why": "the App Engine image is not built yet: run `python -m app.appengine setup` (vps-ops > appengine_setup)"}
     r = IMG.rev()
     if r != IMG.IMAGE_REV:
-        return {"ok": False, "runner": "box", "why": f"the App Engine image is older (rev {r or '?'}, needs {IMG.IMAGE_REV}): "
-                                                     "run `python -m app.appengine setup --rebuild`"}
+        return {"ok": False, "runner": "box", "fix": "image",
+                "why": f"the App Engine image is older (rev {r or '?'}, needs {IMG.IMAGE_REV}): "
+                       "run `python -m app.appengine setup --rebuild`"}
     return {"ok": True, "runner": "box", "image": IMG.IMAGE, "rev": r, "why": ""}
 
 
@@ -170,6 +172,12 @@ def build(src: Path, wait: float = 20.0, source: bool = True) -> dict[str, Any]:
     and line + hidden source maps, v0.825 L9); False = the clean build that goes live. Never raises for a failed build; raises RuntimeError only when
     the box is not there."""
     av = available()
+    if not av["ok"] and mode() == "box":
+        # ONE ENGINE: the box is checked before every build and an image that is missing / old is rebuilt here first
+        # (one rebuild at a time; the owner is told) - like Lovable / Emergent, building never waits for a person
+        from . import boxcare
+        if boxcare.on():
+            av = boxcare.ensure("a build")
     if not av["ok"]:
         raise RuntimeError(av["why"])
     g = gate()

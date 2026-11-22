@@ -14,3 +14,7 @@
 .pc-duel input{font:inherit;font-size:13px;padding:6px 10px;border-radius:8px;border:1px solid var(--line,#ccc);background:transparent;color:inherit;min-width:0}
 .pc-duel input[type=url]{flex:1 1 220px}
 @media (max-width:760px){.pc-pair{grid-template-columns:1fr}}
+
+/* ONE ENGINE: the builder box's health */
+.pc-box{margin:10px 0 2px;padding:8px 12px;border-radius:8px;font-size:13px;line-height:1.45;background:var(--sunk,#f4f4f2);color:var(--ink,#1a1a1a)}
+.pc-box[data-box="bad"]{background:#fdecea;color:#8a1c12}

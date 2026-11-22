@@ -37,7 +37,8 @@ window.HoolaVocal = function (ctx) {
       lines: [{speaker: 'Host', text: '', pause: 0, cut: false}, {speaker: 'Guest', text: '', pause: 0, cut: false}],
       cast: [{name: 'Host', voice: ''}, {name: 'Guest', voice: ''}], lang: '', style: '', title: '',
       pod: {src: 'file', url: '', text: '', file: null, minutes: 5, kind: 'podcast', must: '', draft: null}},
-    proj: null, chN: 0, cast: null, edited: {}, imp: {open: false, src: 'file', url: '', text: '', title: '', file: null},
+    proj: null, chN: 0, cast: null, edited: {}, imp: {open: false, src: 'file', url: '', text: '', title: '', author: '', file: null, pv: null, keep: {}},
+    sd: null, ab: {fmt: 'm4b', even: true}, para: null, editing: false,
     dubs: null, dub: null, dubTab: '', dubLines: null, dubNew: {file: null, langs: [], mode: 'matched', keep: true, secs: 0, speakers: 0},
     chg: {file: null, voice: '', denoise: true, secs: 0, out: null},
     cl: {file: null, denoise: true, echo: true, level: true, silence: false, people: false, music: false, secs: 0, out: null, before: ''},
@@ -309,13 +310,14 @@ window.HoolaVocal = function (ctx) {
   const widthNow = () => UI.cmode === 'chat' || folded() ? 'chat' : UI.cw < 550 ? 'narrow' : UI.cw > 760 ? 'wide' : 'balanced';
   function topTools() {
     const t = $('#hvTopR'); if (!t) return;
+    if (PAGE === 'studio' || PAGE === 'reading') return readTools();
     t.innerHTML = PAGE !== 'chat' ? '' : `<button type="button" class="hv-sndbtn" data-a="go" data-p="sounds" aria-label="Your sounds${D?.history?.length ? ', ' + plural(D.history.length, 'sound') : ''}">${ic('sounds', 17)}${D?.history?.length ? `<span class="hv-cnt on">${num(D.history.length)}</span>` : ''}</button><div class="hv-widths" role="group" aria-label="Chat width">${WIDTHS.map(([k, l]) =>
         `<button type="button" data-a="cwidth" data-val="${k}" aria-pressed="${widthNow() === k}">${l}</button>`).join('')}</div>
       <button type="button" class="hv-ib" data-a="chats" aria-label="Earlier chats" title="Earlier chats">${ic('clock', 18)}</button>
       <button type="button" class="hv-ib" data-a="newchat" aria-label="New chat" title="New chat">${ic('plus', 18)}</button>`;
   }
   function go(page, arg) {
-    window.HoolaMenu?.close(); if (SP.vp) vpClose(); if (UI.dlg.cp) { $('#hvCp')?.remove(); UI.dlg.cp = null; }
+    window.HoolaMenu?.close(); if (SP.vp) vpClose(); if (UI.dlg.cp) { $('#hvCp')?.remove(); UI.dlg.cp = null; } if (UI.sd) { $('#hvSd')?.remove(); UI.sd = null; }
     PAGE = V[page] ? page : 'chat'; if (EMBED && PAGE !== 'speech') PAGE = 'speech';
     ARG = arg || ''; UI.nav = false; C.setOpen = false; side(); crumb(); draw();
     const v = $('#hvView'); if (v) { v.scrollTop = 0; v.classList.remove('hv-enter'); void v.offsetWidth; v.classList.add('hv-enter'); clearTimeout(go.t); go.t = setTimeout(() => v.classList.remove('hv-enter'), 700); }
@@ -669,8 +671,15 @@ window.HoolaVocal = function (ctx) {
     cleanup() { price('cl', {job: UI.cl.people || UI.cl.music ? 'isolate' : 'cleanup', seconds: UI.cl.secs || 60}); },
     sfx() { price('fx', {job: 'sfx', seconds: UI.fx.seconds || 5, takes: UI.fx.takes}); },
     dub() { if (!ARG) price('dub', {job: UI.dubNew.mode === 'own' ? 'dub_own' : 'dub_matched', seconds: UI.dubNew.secs || 60, langs: UI.dubNew.langs.length || 1}); else dubMedia(); },
-    reading() { const p = UI.proj, ch = p?.chapters?.[UI.chN]; if (ch) price('readch', {job: 'chapter', chars: (ch.text || '').length, lang: p.lang || 'en'});
-      if (p) price('readall', {job: 'chapter', chars: p.chapters.filter((c, i) => !c.audio || UI.edited[i]).reduce((n, c) => n + (c.text || '').length, 0), lang: p.lang || 'en'}); },
+    reading() { const p = UI.proj, ch = p?.chapters?.[UI.chN]; readTools(); fillCovers();
+      const todo = c => paraList(c).filter(x => x.state !== 'made').reduce((n, x) => n + x.text.length, 0);
+      if (ch) price('readch', {job: 'chapter', chars: todo(ch) || (ch.text || '').length, lang: p.lang || 'en'}, r => r.credits != null ? (ch.audio ? 'Only the changed paragraphs are read' : 'Each paragraph in the voice of who says it') : '');
+      if (p) price('readall', {job: 'chapter', chars: p.chapters.reduce((n, c, i) => n + (chState(p, i) === 'made' ? 0 : todo(c) || (c.text || '').length), 0), lang: p.lang || 'en'}); },
+    studio() { readTools(); fillCovers();
+      $$('[data-drop="imp"]').forEach(el => { el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('over'); });
+        el.addEventListener('dragleave', () => el.classList.remove('over'));
+        el.addEventListener('drop', e => { e.preventDefault(); el.classList.remove('over'); const f = e.dataTransfer?.files?.[0]; if (!f) return;
+          UI.imp.open = true; UI.imp.src = 'file'; UI.imp.pv = null; pageFile('imp', f); }); }); },
   };
   const grow = t => { t.style.height = 'auto'; t.style.height = Math.min(180, t.scrollHeight) + 'px'; };
   function dictHits(text) { if (!S.rules) return 0; const lo = String(text || '').toLowerCase();
@@ -1196,53 +1205,80 @@ window.HoolaVocal = function (ctx) {
 
     studio() {
       const im = UI.imp;
-      const imp = im.open ? `<form class="hv-card hv-form tight" data-f="import"><div class="hv-rh"><b>Import a book</b><button type="button" class="hv-ib s" data-a="impclose" aria-label="Close">${ic('x', 14)}</button></div>
-          <span class="hv-mut hv-sm">EPUB, PDF, TXT, DOCX, a web page or pasted text. It is split into chapters for you.</span>
-          ${seg('UI.imp.src', [['file', 'A file'], ['url', 'A web address'], ['text', 'Pasted text']], im.src, null, 'From')}
-          ${im.src === 'file' ? `<div class="hv-filerow"><button type="button" class="hv-btn" data-a="pickfile" data-k="imp" data-accept=".epub,.pdf,.txt,.doc,.docx,.md">${ic('upload', 14)}Choose a file</button><span class="hv-mut hv-sm">${im.file ? esc(im.file.name) + (im.file.up ? ' · uploading…' : im.file.file_id ? ' · ready' : '') : ''}</span></div>`
-            : im.src === 'url' ? `<label class="hv-sr" for="hvImU">Web address</label><input id="hvImU" class="hv-in" type="url" data-m="UI.imp.url" value="${esc(im.url)}" placeholder="https://">`
-            : `<label class="hv-sr" for="hvImT">The text</label><textarea id="hvImT" class="hv-in" rows="6" data-m="UI.imp.text">${esc(im.text)}</textarea>`}
-          <label class="hv-lab" for="hvImTi">Title (optional)</label><input id="hvImTi" class="hv-in" maxlength="80" data-m="UI.imp.title" value="${esc(im.title)}">
-          <div class="hv-ctarow"><button class="hv-btn dark">Import</button></div></form>` : '';
-      return `<div class="hv-doc"><div class="hv-doch"><div><b class="hv-t">Long readings</b><p class="hv-mut">Stories, lessons and audiobooks in chapters, with a voice per character.</p></div><span class="hv-grow"></span>
-          <button type="button" class="hv-btn" data-a="impopen">${ic('upload', 14)}Import a book</button><button type="button" class="hv-btn dark" data-a="newproj">${ic('plus', 14)}New reading</button></div>${imp}
-        ${D.projects.length ? `<div class="hv-pgrid">${D.projects.map(p => { const ch = p.chapters || [], done = ch.filter(c => c.audio).length;
-            return `<button type="button" class="hv-card hv-proj" data-a="proj" data-id="${esc(p.id)}"><span class="hv-ava l" aria-hidden="true">${initial(p.title)}</span><span class="hv-vt"><b>${esc(p.title || 'A reading')}</b>
-              <span class="hv-mut hv-sm hv-num">${esc([plural(ch.length, 'chapter'), langLabel(p.lang), ago(p.updated || p.made)].filter(Boolean).join(' · '))}</span></span><span class="hv-st${done && done === ch.length ? ' ok' : ''}">${done} of ${ch.length} made</span></button>`; }).join('')}</div>`
-          : empty('No readings yet', 'Paste a story or a lesson, or import a book, and Hoola reads each chapter.', '<button type="button" class="hv-btn dark" data-a="newproj">New reading</button>')}</div>`;
+      if (im.open) return im.pv ? impView() : impStart();
+      const books = D.projects;
+      return `<div class="hv-doc hv-lib"><div class="hv-libhero"><div class="hv-libcopy"><h2 class="hv-libh">Turn any book into an audiobook.</h2>
+          <p>Stories, lessons and handbooks, read chapter by chapter, with a voice for each character. Change a sentence later and only that paragraph is read again.</p>
+          <div class="hv-libtags"><span>EPUB, PDF, Word, text or a web page</span><span>Chapters found for you</span><span>One audiobook file with chapters</span></div></div>
+          <button type="button" class="hv-sdrop" data-a="impopen" data-drop="imp" aria-label="Import a book: drop a file here, or choose a file, a web address or text">
+            <span class="hv-sdi">${ic('upload', 24)}</span><b>Drop a book here</b><span>or choose a file · paste a web address · paste the text</span></button></div>
+        <div class="hv-shelfh"><b>Your readings</b>${books.length ? `<span class="hv-num hv-mut hv-sm">${books.length}</span>` : ''}<span class="hv-grow"></span>${books.length > 1 ? '<span class="hv-mut hv-sm">Newest first</span>' : ''}</div>
+        ${books.length ? `<div class="hv-shelf">${books.map(p => { const b = bookStat(p);
+            return `<button type="button" class="hv-bookc" data-a="proj" data-id="${esc(p.id)}">${coverOf(p)}<span class="hv-vt"><b>${esc(p.title || 'A reading')}</b>
+              <span class="hv-mut hv-sm hv-num">${esc([plural(b.n, 'chapter'), langLabel(p.lang), plural(b.voices, 'voice')].join(' · '))}</span>
+              <span class="hv-prog" aria-hidden="true"><span style="width:${b.pct}%" class="${b.done ? 'ok' : ''}"></span></span>
+              <span class="hv-bst${b.done ? ' ok' : b.made ? ' go' : ''}">${b.done ? `Ready · ${hm(b.secs)}` : b.made ? `${b.made} of ${b.n} made · continue` : 'Not made yet'}</span></span></button>`; }).join('')}</div>`
+          : empty('No readings yet', 'Import a book, or start a new reading and paste a story or a lesson. Hoola reads it chapter by chapter.', '<button type="button" class="hv-btn dark" data-a="newproj">New reading</button>')}</div>`;
     },
 
     reading() {
       const p = UI.proj; if (!p) return V.studio();
       const n = Math.min(UI.chN, p.chapters.length - 1), ch = p.chapters[n] || {title: '', text: ''}, w = paid(speakWhy(p.lang || S.lang, 'auto'));
-      const left = p.chapters.filter((c, i) => !c.audio || UI.edited[i]).length, all = p.chapters.length && p.chapters.every((c, i) => c.audio && !UI.edited[i]);
-      const cast = UI.cast && UI.cast.n === n ? UI.cast : null;
-      const state = i => p.chapters[i].audio ? (UI.edited[i] ? 'changed' : 'made') : 'none';
-      const g = gate(w), ge = gate(p.id && all ? '' : 'Make every chapter first.'), gl = gate(w || (left ? '' : 'Every chapter is made.'));
-      return `<div class="hv-split hv-tool three"><nav class="hv-chaps" aria-label="Chapters"><div class="hv-rh"><span class="hv-ava" aria-hidden="true">${initial(p.title)}</span><span class="hv-vt"><b>${plural(p.chapters.length, 'chapter')}</b><span class="hv-mut hv-sm">${esc(langLabel(p.lang || 'en'))}</span></span></div>
-          <label class="hv-sr" for="hvPTitle">Title of the reading</label><input id="hvPTitle" class="hv-in" data-m="UI.proj.title" value="${esc(p.title || '')}" maxlength="80" placeholder="Title of the reading">
-          ${p.chapters.map((c, i) => `<button type="button" class="hv-chap" data-a="chsel" data-n="${i}"${i === n ? ' aria-current="true"' : ''}><span>${i + 1} · ${esc(c.title || 'Chapter')}</span><span class="hv-dot ${state(i)}" title="${state(i) === 'made' ? 'Made' : state(i) === 'changed' ? 'Changed since it was made' : 'Not made yet'}"></span></button>`).join('')}
-          <button type="button" class="hv-btn" data-a="chadd">${ic('plus', 14)}Add a chapter</button>
-          <span class="hv-grow"></span><div class="hv-acts"><button type="button" class="hv-btn" data-a="go" data-p="studio">${ic('back', 14)}All readings</button>${p.id ? `<button type="button" class="hv-btn danger" data-a="rmproj" data-id="${esc(p.id)}">Remove</button>` : ''}</div></nav>
-        <section class="hv-panel wide hv-chapter" aria-label="Chapter ${n + 1}"><label class="hv-sr" for="hvChT">Chapter ${n + 1} title</label>
-          <input id="hvChT" class="hv-chtitle" data-m="UI.proj.chapters.${n}.title" data-ch="${n}" value="${esc(ch.title || '')}" maxlength="80" placeholder="Chapter ${n + 1}">
+      const b = bookStat(p), paras = paraList(ch, n), todo = paras.filter(x => x.state !== 'made'), cast = castOf(p);
+      const left = p.chapters.filter((c, i) => chState(p, i) !== 'made').length;
+      const words = (ch.text || '').trim() ? ch.text.trim().split(/\s+/).length : 0;
+      const g = gate(w || (ch.audio && !todo.length ? 'Nothing has changed since this chapter was made.' : !(ch.text || '').trim() ? 'Write the words of this chapter first.' : ''));
+      const gl = gate(w || (left ? '' : 'Every chapter is made.'));
+      const st = i => chState(p, i), editing = UI.editing || !(ch.text || '').trim();
+      const sel = UI.para != null && UI.para < paras.length ? UI.para : null;
+      const leftSecs = p.chapters.reduce((s, c, i) => s + (st(i) === 'made' ? 0 : wordsOf(c.text) / 150 * 60), 0);
+      return `<div class="hv-split hv-tool three hv-reading"><nav class="hv-chaps" aria-label="Chapters"><div class="hv-bookh">${coverOf(p, 's')}<span class="hv-vt">
+            <label class="hv-sr" for="hvPTitle">Title of the reading</label><input id="hvPTitle" class="hv-bkt" data-m="UI.proj.title" data-dirty="1" value="${esc(p.title || '')}" maxlength="80" placeholder="Title of the reading">
+            <span class="hv-mut hv-sm">${esc([p.author ? `By ${p.author}` : '', langLabel(p.lang || 'en')].filter(Boolean).join(' · '))}</span>
+            <span class="hv-mut hv-sm hv-num">${b.made} of ${b.n} chapters made</span><span class="hv-prog" aria-hidden="true"><span style="width:${b.pct}%"></span></span></span></div>
+          <ol class="hv-chol">${p.chapters.map((c, i) => { const s = st(i);
+            return `<li><button type="button" class="hv-chap" data-a="chsel" data-n="${i}"${i === n ? ' aria-current="true"' : ''}><span class="hv-num hv-mut hv-chn">${i + 1}</span><span class="hv-cht">${esc(c.title || 'Chapter')}</span>
+              <span class="hv-chs ${s}"><span class="hv-dot ${s}" aria-hidden="true"></span><span class="hv-num">${s === 'made' ? secs(c.seconds) : s === 'changed' ? 'Changed' : 'Not made'}</span></span></button></li>`; }).join('')}</ol>
+          <button type="button" class="hv-btn s" data-a="chadd">${ic('plus', 14)}Add a chapter</button>
+          <span class="hv-grow"></span><div class="hv-acts"><button type="button" class="hv-btn s" data-a="go" data-p="studio">${ic('back', 14)}All readings</button>${p.id ? `<button type="button" class="hv-btn s danger" data-a="rmproj" data-id="${esc(p.id)}">Remove</button>` : ''}</div></nav>
+        <section class="hv-panel wide hv-chapter hv-bookpg" aria-label="Chapter ${n + 1}">
+          <div class="hv-pgtools"><button type="button" class="hv-btn s" data-a="cast" data-n="${n}"${(ch.text || '').trim() ? '' : ' disabled'}>${ic('dialog', 14)}Find the characters</button>
+            <button type="button" class="hv-btn s" data-a="edit" aria-pressed="${editing}"${(ch.text || '').trim() ? '' : ' disabled'}>${ic(editing ? 'check' : 'tone', 14)}${editing ? 'Done' : 'Change the words'}</button>
+            <span class="hv-grow"></span><span class="hv-mut hv-sm hv-num">${plural(words, 'word')} · about ${secs(words / 150 * 60)}</span></div>
           ${w ? warnNote(w + ' You can write and save; reading needs the engine.') : ''}
-          ${cast ? `<div class="hv-paras">${(cast.paragraphs || []).map(pa => `<div class="hv-para"><span class="hv-who t${Math.max(0, (cast.characters || []).findIndex(c => c.name === pa.who)) % 4}">${esc(pa.who || 'Narrator')}</span><p>${esc(pa.text)}</p></div>`).join('')}</div>` : ''}
-          <label class="hv-sr" for="hvChX">Chapter ${n + 1} words</label><textarea id="hvChX" class="hv-in hv-words serif" data-m="UI.proj.chapters.${n}.text" data-ch="${n}" maxlength="${D.limits?.chapter || 40000}" placeholder="The words of this chapter">${esc(ch.text || '')}</textarea>
-          <div class="hv-card hv-playrow">${ch.audio ? playBtn(ch.audio, `Play chapter ${n + 1}`, 12) : ''}<span class="hv-mut hv-sm hv-num hv-growf">Chapter ${n + 1}${ch.audio ? ` · ${secs(ch.seconds)} · made${UI.edited[n] ? ' · changed since' : ''}` : ' · not made yet'} · ${num((ch.text || '').length)} characters</span>
-            <button type="button" class="hv-btn dark" data-a="readch" data-n="${n}" data-qbtn="readch" data-label="${ch.audio ? 'Make the changes' : 'Make this chapter'}"${g.a}><span>${ch.audio ? 'Make the changes' : 'Make this chapter'}</span></button></div>${g.l}
-          <p class="hv-mut hv-sm">Change a word and only that paragraph is read again, in the same voice.</p></section>
-        <aside class="hv-stage hv-side2" aria-label="Voices and export"><div class="hv-stageb">
-          ${dd('Reading voice', 'pickpvoice', 'UI.proj.voice', vname(p.voice || S.voice))}${dd('Language', 'picklang', 'UI.proj.lang', langLabel(p.lang || 'en'))}
-          <b class="hv-t">Who reads whom</b>
-          ${cast && (cast.characters || []).length ? (cast.characters || []).map((c, i) => `<div class="hv-role"><span class="hv-dot t${i % 4}"></span><span class="hv-vt"><b>${esc(c.name)}</b><span class="hv-mut hv-sm">${esc(vname(c.voice))}</span></span>
-              <button type="button" class="hv-btn s" data-a="pickrole" data-n="${i}" aria-haspopup="menu" aria-label="Change the voice for ${esc(c.name)}">Change</button></div>`).join('')
-            : `<p class="hv-mut hv-sm">${cast ? 'No speakers found in this chapter.' : 'Hoola can find the characters in this chapter; quoted words go to their voice.'}</p>`}
-          <button type="button" class="hv-btn" data-a="cast" data-n="${n}">Find the characters</button>
-          <b class="hv-t">Export</b><div class="hv-acts">${[['m4b', 'One audiobook file'], ['mp3', 'MP3'], ['srt', 'Captions, SRT']].map(([f, l]) => `<button type="button" class="hv-btn" data-a="export" data-val="${f}"${ge.a}>${l}</button>`).join('')}</div>${ge.l}
-          <span class="hv-grow"></span><button type="button" class="hv-btn" data-a="saveproj">Save</button>
-          <button type="button" class="hv-cta" data-a="readall" data-qbtn="readall" data-label="Make all ${left} left"${gl.a}><span>Make all ${left} left</span></button>${gl.l}
-          <p class="hv-hint c">You can stop any time; nothing made is lost.</p></div></aside></div>`;
+          <div class="hv-pgscroll"><article class="hv-page"><span class="hv-eyebrow">Chapter ${n + 1}</span>
+            <label class="hv-sr" for="hvChT">Chapter ${n + 1} title</label><input id="hvChT" class="hv-chtitle" data-m="UI.proj.chapters.${n}.title" data-ch="${n}" data-dirty="1" value="${esc(ch.title || '')}" maxlength="80" placeholder="Chapter ${n + 1}">
+            ${editing ? `<label class="hv-sr" for="hvChX">Chapter ${n + 1} words</label><textarea id="hvChX" class="hv-in hv-words serif" data-m="UI.proj.chapters.${n}.text" data-ch="${n}" data-dirty="1" maxlength="${D.limits?.chapter || 40000}" placeholder="The words of this chapter. Leave an empty line between paragraphs.">${esc(ch.text || '')}</textarea>
+              <p class="hv-mut hv-sm">Change a word and only that paragraph is read again, in the same voice.</p>`
+            : paras.map((x, k) => `<div class="hv-pgw"><button type="button" class="hv-pg${sel === k ? ' on' : ''}" data-a="parasel" data-k="${k}" aria-pressed="${sel === k}" aria-label="Paragraph ${k + 1}, ${x.who === 'Narrator' ? 'the narrator' : esc(x.who)}, ${stName(x.state)}">
+                <span class="hv-pdot ${x.state}" aria-hidden="true" title="${stName(x.state)}"></span><span class="hv-pgt">${said(x, cast)}</span></button>
+                ${sel === k ? `<div class="hv-pgbar">${x.state === 'made' ? `<button type="button" class="hv-play o" data-a="paraplay" data-k="${k}" aria-label="Play paragraph ${k + 1}">${ic('play', 11)}</button>` : ''}
+                  <span class="hv-pgst ${x.state}">${x.state === 'made' ? 'Read as it is' : x.state === 'changed' ? 'Changed since it was read' : 'Not read yet'}</span>
+                  <button type="button" class="hv-btn s" data-a="parawho" data-k="${k}" aria-haspopup="menu">${ic('dialog', 13)}Who says it: ${esc(x.who === 'Narrator' ? 'the narrator' : x.who)}</button>
+                  <button type="button" class="hv-btn s" data-a="edit">Change the words</button></div>` : ''}</div>`).join('')}
+          </article></div>
+          <div class="hv-chplay">${ch.audio ? playBtn(ch.audio, `Play chapter ${n + 1}`, 12) : `<span class="hv-play o off" aria-hidden="true">${ic('play', 12)}</span>`}
+            <span class="hv-vt"><b>Chapter ${n + 1} · ${esc(ch.title || 'Chapter')}</b><span class="hv-mut hv-sm">${ch.audio ? `Narrator · ${esc(vname(cast.Narrator || p.voice || S.voice))}` : 'Not made yet'}</span></span>
+            <span class="hv-grow"></span><span class="hv-mut hv-sm hv-num">${ch.audio ? secs(ch.seconds) : ''}</span></div></section>
+        <aside class="hv-stage hv-side2 hv-bookside" aria-label="Making the reading"><div class="hv-stageb">
+          <article class="hv-card hv-thisch"><div class="hv-rh"><b>This chapter</b><span class="hv-grow"></span><span class="hv-pill ${ch.audio ? (todo.length ? 'warn' : 'ok') : ''}">${!ch.audio ? 'Not made yet' : todo.length ? plural(todo.length, 'paragraph') + ' changed' : 'Made'}</span></div>
+            <span class="hv-sm">${ch.audio ? `Made${ch.made ? ' ' + esc(ago(ch.made)) : ''} · <span class="hv-num">${secs(ch.seconds)}</span>. ` : ''}${ch.audio ? 'Only the changed paragraphs are read again, in the same voices.' : 'Each paragraph is read in the voice of who says it.'}</span>
+            <button type="button" class="hv-btn dark" data-a="readch" data-n="${n}" data-qbtn="readch" data-label="${ch.audio ? 'Make the changes' : 'Make this chapter'}"${g.a}><span>${ch.audio ? 'Make the changes' : 'Make this chapter'}</span></button>${g.l}</article>
+          <div class="hv-fld"><div class="hv-rh"><b>Who reads whom</b><span class="hv-grow"></span><button type="button" class="hv-link" data-a="sdopen" data-k="people" aria-haspopup="dialog">Change</button></div>
+            ${Object.entries(cast).slice(0, 5).map(([who, v], i) => `<div class="hv-role"><span class="hv-dav t${i % 4}${who === 'Narrator' ? ' n' : ''}" aria-hidden="true">${initial(who)}</span><span class="hv-vt"><b>${esc(who)}</b><span class="hv-mut hv-sm">${esc(vname(v))}</span></span>
+              <button type="button" class="hv-play o" data-a="hear" data-id="${esc(v)}" aria-label="Hear ${esc(who)}">${ic('play', 10)}</button></div>`).join('')}
+            ${Object.keys(cast).length < 2 ? '<p class="hv-mut hv-sm">Find the characters and the words in quotes go to the person who says them.</p>' : ''}</div>
+          <div class="hv-fld"><b>How it is read</b>
+            ${dd('Reading voice', 'pickpvoice', 'UI.proj.voice', vname(p.voice || S.voice))}${dd('Language', 'picklang', 'UI.proj.lang', langLabel(p.lang || 'en'))}
+            <div class="hv-rh"><label for="hvPace" class="hv-lab">Pace</label><span class="hv-grow"></span><span class="hv-mut hv-sm hv-num" data-show="UI.proj.pace">${paceWord(p.pace)}</span></div>
+            <input id="hvPace" type="range" class="hv-range" min="0.7" max="1.3" step="0.05" value="${+(p.pace || 1)}" data-m="UI.proj.pace" data-t="num" data-dirty="1" data-pace="1">
+            <div class="hv-fld"><span class="hv-lab" id="hvGapL">Quiet between chapters</span>${seg('UI.proj.gap', [[0.5, '0.5 s'], [1, '1 s'], [2, '2 s'], [3, '3 s'], [5, '5 s']], gapOf(p), null, 'Quiet between chapters')}</div></div>
+          <span class="hv-grow"></span>
+          <article class="hv-card hv-whole"><div class="hv-rh"><b>The whole book</b><span class="hv-grow"></span><span class="hv-mut hv-sm hv-num">${b.made} of ${b.n} made</span></div>
+            <div class="hv-strip" aria-hidden="true">${p.chapters.map((_, i) => `<span class="${st(i)}"></span>`).join('')}</div>
+            <span class="hv-sm">${left ? `About <span class="hv-num">${hm(leftSecs)}</span> of sound left to make. You can stop any time; nothing made is lost.` : 'Every chapter is made. Put the audiobook together; that is free.'}</span>
+            ${left ? `<button type="button" class="hv-cta" data-a="readall" data-qbtn="readall" data-label="Make all ${left} left"${gl.a}><span>Make all ${left} left</span></button>${gl.l}`
+              : `<button type="button" class="hv-cta" data-a="sdopen" data-k="book" aria-haspopup="dialog"><span>Make the audiobook</span></button>`}</article></div></aside></div>`;
     },
 
     dub() {
@@ -1519,6 +1555,168 @@ window.HoolaVocal = function (ctx) {
     if (k === 'dub') UI.dubNew.secs = s; if (k === 'cl') { UI.cl.secs = s; UI.cl.out = null; try { UI.cl.before = URL.createObjectURL(file); } catch { /* no preview */ } }
     try { slot.file_id = await up(file); } catch (e) { slot.err = scrub(e.message); toast(e.message, true); }
     slot.up = false; draw();
+    if (k === 'imp' && slot.file_id && PAGE === 'studio' && UI.imp.file === slot) impPreview();
+  }
+
+  // ------------------------------------------------------------------ the Studio: books, chapters, paragraphs ---
+  const hm = s => { s = Math.round(+s || 0); const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h} h ${String(m).padStart(2, '0')} min` : `${Math.max(1, m)} min`; };
+  const wordsOf = t => (String(t || '').trim() ? String(t).trim().split(/\s+/).length : 0);
+  const tint = t => [...String(t || 'x')].reduce((a, c) => a + c.charCodeAt(0), 0) % 4;
+  const paceWord = v => { v = +(v || 1); return `${v.toFixed(2)}x · ${v < 0.9 ? 'slow' : v < 0.98 ? 'calm' : v <= 1.02 ? 'as written' : v < 1.12 ? 'brisk' : 'fast'}`; };
+  const gapOf = p => { const g = +(p.gap || 0.9); return [0.5, 1, 2, 3, 5].reduce((a, x) => Math.abs(x - g) < Math.abs(a - g) ? x : a, 1); };
+  const stName = s => s === 'made' ? 'read' : s === 'changed' ? 'changed since it was read' : 'not read yet';
+  // a cover: her picture when the book has one, else one painted from the title (the picture fills in after drawing)
+  const coverOf = (p, cls = '', token = '') => `<span class="hv-cover ${cls} t${tint(p.title)}" aria-hidden="true">${p.cover || token ? `<img alt="" ${token ? `data-ctoken="${esc(token)}"` : `data-cover="${esc(p.id)}"`}>` : ''}
+    <span class="hv-cvt">${esc(p.title || 'A reading')}</span><span class="hv-cvr"></span><span class="hv-cva">${esc(p.author || '')}</span></span>`;
+  async function fillCovers() {
+    for (const im of $$('img[data-cover],img[data-ctoken]')) { if (im.src) continue;
+      try { im.src = await blobUrl(im.dataset.cover ? `${A}/project/cover?id=${q(im.dataset.cover)}` : `${A}/project/cover?token=${q(im.dataset.ctoken)}`);
+        im.onload = () => im.parentElement?.classList.add('img'); } catch { im.remove(); } }
+  }
+  // the paragraphs of a chapter as they read now: who says each, and whether it was read like this (made / changed / none)
+  function paraList(ch) {
+    const texts = String(ch.text || '').split(/\n\s*\n/).map(x => x.trim()).filter(Boolean);
+    const who = new Map((ch.paragraphs || []).map(x => [x.text, x.who]));
+    const segs = (ch.segments || []).map(s => `${s.who || 'Narrator'}\u0001${s.text}`);
+    return texts.map(t => { const w = who.get(t) || 'Narrator'; return {text: t, who: w, state: !ch.audio ? 'none' : segs.includes(`${w}\u0001${t}`) ? 'made' : 'changed'}; });
+  }
+  function chState(p, i) { const c = p.chapters[i]; if (!c?.audio) return 'none'; if (UI.edited[i]) return 'changed';
+    return (c.segments || []).length && paraList(c).some(x => x.state !== 'made') ? 'changed' : 'made'; }
+  function bookStat(p) { const ch = p.chapters || [], made = ch.filter(c => c.audio).length, sec = ch.reduce((s, c) => s + (+c.seconds || 0), 0);
+    const voices = new Set([p.voice, ...Object.values(p.cast || {})].filter(Boolean)).size || 1;
+    return {n: ch.length, made, done: !!ch.length && made === ch.length, pct: ch.length ? Math.round(made / ch.length * 100) : 0, secs: sec, voices}; }
+  // who reads whom: the narrator first, then the people found in the book
+  function castOf(p) { const c = {...(p.cast || {})}; const nar = c.Narrator || p.voice || S.voice; delete c.Narrator; return {Narrator: nar, ...c}; }
+  // a paragraph's words, the quoted words in the colour of who says them
+  function said(x, cast) {
+    const t = esc(x.text); if (x.who === 'Narrator') return t;
+    const i = Object.keys(cast).indexOf(x.who), k = i < 0 ? 1 : i % 4;
+    const out = t.replace(/(“[^”]*”|&quot;[^&]*?&quot;|"[^"]*")/g, m => `<span class="hv-q t${k}">${m}</span>`);
+    return out === t ? `<span class="hv-q t${k}">${t}</span>` : out;
+  }
+  const projDirty = () => { const p = UI.proj, s = p && D.projects.find(x => x.id === p.id); if (!p) return false; if (!s) return true;
+    const pick = o => JSON.stringify([o.title, o.voice, o.lang, +(o.pace || 1), +(o.gap || 0.9), (o.chapters || []).map(c => [c.title, c.text])]); return pick(p) !== pick(s); };
+  function readTools() {
+    const t = $('#hvTopR'); if (!t) return; const p = UI.proj;
+    if (PAGE === 'studio' && !UI.imp.open) { t.innerHTML = `<button type="button" class="hv-btn s" data-a="impopen" aria-label="Import a book">${ic('upload', 14)}<span class="hv-tlab">Import a book</span></button><button type="button" class="hv-btn s dark" data-a="newproj" aria-label="New reading">${ic('plus', 14)}<span class="hv-tlab">New reading</span></button>`; return; }
+    if (PAGE !== 'reading' || !p) { t.innerHTML = ''; return; }
+    const dirty = projDirty();
+    t.innerHTML = `<span class="hv-saved${dirty ? ' no' : ''}" role="status"><span class="hv-dot ${dirty ? 'changed' : 'made'}" aria-hidden="true"></span><span class="hv-tlab">${dirty ? 'Not saved yet' : 'Saved'}</span></span>
+      ${dirty ? '<button type="button" class="hv-btn s" data-a="saveproj">Save</button>' : ''}
+      <button type="button" class="hv-btn s" data-a="sdopen" data-k="people" aria-haspopup="dialog" aria-label="Who reads whom">${ic('dialog', 14)}<span class="hv-tlab">Who reads whom</span></button>
+      <button type="button" class="hv-btn s dark" data-a="sdopen" data-k="book" aria-haspopup="dialog" aria-label="Make the audiobook">${ic('book', 14)}<span class="hv-tlab">Make the audiobook</span></button>`;
+  }
+
+  // ------------------------------------------------------------------ import a book: the source, then a look before anything is made ---
+  function impStart() {
+    const im = UI.imp;
+    return `<div class="hv-doc hv-impa"><form class="hv-card hv-form" data-f="import"><div class="hv-rh"><b class="hv-t">Import a book</b><span class="hv-grow"></span><button type="button" class="hv-ib s" data-a="impclose" aria-label="Close">${ic('x', 14)}</button></div>
+        <span class="hv-mut hv-sm">EPUB, PDF, Word, text, a web page or pasted text. You see the chapters before anything is made.</span>
+        ${seg('UI.imp.src', [['file', 'A file'], ['url', 'A web address'], ['text', 'Pasted text']], im.src, null, 'From')}
+        ${im.src === 'file' ? `<button type="button" class="hv-sdrop s" data-a="pickfile" data-k="imp" data-drop="imp" data-accept=".epub,.pdf,.txt,.doc,.docx,.md">${ic('upload', 20)}<b>${im.file ? esc(im.file.name) : 'Drop a book here, or choose a file'}</b>
+            <span>${im.file ? (im.file.up ? 'Uploading…' : im.file.err ? esc(im.file.err) : im.file.file_id ? 'Reading the book…' : '') : 'EPUB, PDF, Word or text'}</span></button>`
+          : im.src === 'url' ? `<label class="hv-lab" for="hvImU">Web address</label><input id="hvImU" class="hv-in" type="url" data-m="UI.imp.url" value="${esc(im.url)}" placeholder="https://">`
+          : `<label class="hv-lab" for="hvImT">The text</label><textarea id="hvImT" class="hv-in serif" rows="8" data-m="UI.imp.text" placeholder="Paste the story. Chapter headings are found for you.">${esc(im.text)}</textarea>`}
+        ${im.src === 'file' ? '' : '<div class="hv-ctarow"><button class="hv-btn dark">Look at the chapters</button></div>'}
+        <p class="hv-mut hv-sm">Only books you wrote or have the right to read aloud. Nothing is spent until you make a chapter.</p></form></div>`;
+  }
+  function impTotals() { const pv = UI.imp.pv, on = pv.parts.filter(x => UI.imp.keep[x.n]);
+    return {on, words: on.reduce((s, x) => s + x.words, 0), secs: on.reduce((s, x) => s + x.seconds, 0), credits: on.reduce((s, x) => s + (+x.credits || 0), 0)}; }
+  function impView() {
+    const im = UI.imp, pv = im.pv, t = impTotals(), max = pv.max_chapters || 60;
+    const src = im.src === 'file' ? (im.file?.name || 'Your file') : im.src === 'url' ? im.url : 'Pasted text', kind = im.src === 'file' ? (String(im.file?.name || '').split('.').pop() || 'file').toUpperCase().slice(0, 4) : im.src === 'url' ? 'WEB' : 'TEXT';
+    const tooMany = t.on.length > max, g = gate(!t.on.length ? 'Tick at least one part to read.' : tooMany ? `A reading holds up to ${max} chapters. Untick ${t.on.length - max}.` : '');
+    return `<div class="hv-split hv-tool hv-imp"><section class="hv-panel wide" aria-label="Chapters found">
+        <div class="hv-card hv-impsrc"><span class="hv-kind">${esc(kind)}</span><span class="hv-vt"><b>${esc(src)}</b><span class="hv-ok hv-sm">Read · ${plural(pv.parts.length, 'part')} found · ${plural(pv.parts.reduce((s, x) => s + x.words, 0), 'word')}</span></span>
+          <span class="hv-grow"></span><button type="button" class="hv-btn s" data-a="impagain">Choose another</button></div>
+        <div class="hv-rh hv-imph"><span class="hv-vt"><b class="hv-h2">Check the chapters</b><span class="hv-mut hv-sm">Parts that are not the story (contents, copyright, thanks) are left out for you. Tick any you want read.</span></span>
+          <span class="hv-grow"></span><span class="hv-mut hv-sm hv-num" role="status"><b>${t.on.length}</b> of ${pv.parts.length} will be read</span></div>
+        <ol class="hv-parts">${pv.parts.map((x, i) => { const on = !!im.keep[x.n];
+          return `<li class="hv-part${on ? '' : ' off'}"><button type="button" role="checkbox" class="hv-tick" aria-checked="${on}" data-a="imptick" data-n="${x.n}" aria-label="${esc(x.title)}">${on ? ic('check', 12) : ''}</button>
+            <span class="hv-num hv-mut hv-sm">${i + 1}</span><span class="hv-vt"><b>${esc(x.title)}</b><span class="hv-ptxt serif">${esc(x.first)}</span></span>
+            <span class="hv-num hv-mut hv-sm">${num(x.words)} words</span>${!on && x.why ? `<span class="hv-badge">${esc(x.why)}</span>` : ''}</li>`; }).join('')}</ol></section>
+      <aside class="hv-stage hv-side2" aria-label="About the book"><div class="hv-stageb">
+        <div class="hv-impcov">${coverOf({title: im.title || pv.title, author: im.author}, 'm', pv.cover)}<span class="hv-vt"><span class="hv-mut hv-sm">${pv.cover ? 'The cover from the book' : 'A cover painted from the title'}</span>
+          <span class="hv-mut hv-sm">You can add your own picture once the reading is made.</span></span></div>
+        <label class="hv-lab" for="hvImTi">Title</label><input id="hvImTi" class="hv-in" maxlength="80" data-m="UI.imp.title" value="${esc(im.title)}">
+        <label class="hv-lab" for="hvImA">Author</label><input id="hvImA" class="hv-in" maxlength="80" data-m="UI.imp.author" value="${esc(im.author)}" placeholder="Who wrote it">
+        <div class="hv-fld"><span class="hv-lab">Language</span><span class="hv-in hv-ro">${esc(langLabel(pv.lang))} · found in the book</span></div>
+        <dl class="hv-tot"><div><dt>Chapters to read</dt><dd class="hv-num">${t.on.length}</dd></div><div><dt>Words</dt><dd class="hv-num">${num(t.words)}</dd></div>
+          <div><dt>Sound, about</dt><dd class="hv-num">${hm(t.secs)}</dd></div><div><dt>To make all of it, about</dt><dd class="hv-num">${cr(t.credits)}</dd></div></dl>
+        <span class="hv-grow"></span><button type="button" class="hv-cta" data-a="impmake"${g.a}><span>Create the reading</span></button>${g.l}
+        <p class="hv-hint c">Nothing is spent now. You choose the voices, then make one chapter or all of them.</p></div></aside></div>`;
+  }
+  async function impPreview(btn) {
+    const im = UI.imp, src = im.src === 'file' ? {file_id: im.file?.file_id} : im.src === 'url' ? {url: im.url} : {text: im.text};
+    if (!Object.values(src)[0]) { toast(im.src === 'file' ? 'Choose the file first.' : im.src === 'url' ? 'Type the web address first.' : 'Paste the text first.', true); return; }
+    const was = btn?.innerHTML; if (btn) { btn.disabled = true; btn.textContent = 'Reading the book…'; }
+    try { const pv = await api('POST', `${A}/project/import/preview`, {...src, title: im.title});
+      im.pv = pv; im.title = im.title || pv.title; im.author = pv.author || ''; im.keep = Object.fromEntries(pv.parts.map(x => [x.n, !x.skip])); draw(); readTools(); }
+    catch (e) { toast(e.message, true); if (im.file) im.file.err = scrub(e.message); if (btn?.isConnected) { btn.disabled = false; btn.innerHTML = was; } else draw(); }
+  }
+  function impReset() { UI.imp = {open: false, src: 'file', url: '', text: '', title: '', author: '', file: null, pv: null, keep: {}}; }
+
+  // ------------------------------------------------------------------ the two Studio dialogs: who reads whom, make the audiobook ---
+  async function sdOpen(k, back) {
+    const p = UI.proj; if (!p) return;
+    if (!p.id || projDirty()) { if (!await saveProj()) return; }
+    UI.sd = {k, back: back || document.activeElement, data: null, err: ''};
+    const host = document.createElement('div'); host.id = 'hvSd'; host.className = 'hv-vphost';
+    host.innerHTML = `<div class="hv-vpscrim" data-a="sdclose" aria-hidden="true"></div><div class="hv-vp hv-sd" role="dialog" aria-modal="true" aria-labelledby="hvSdH"></div>`;
+    ROOT.appendChild(host); sdPaint(); host.querySelector('[data-a="sdclose"]:not(.hv-vpscrim)')?.focus();
+    try { UI.sd.data = await api('GET', `${A}/project/${k === 'people' ? 'people' : 'check'}?id=${q(UI.proj.id)}`); }
+    catch (e) { if (UI.sd) UI.sd.err = scrub(e.message); }
+    sdPaint(); fillCovers();
+  }
+  function sdClose() { const back = UI.sd?.back, k = UI.sd?.k, inTop = !!back?.closest?.('#hvTopR'); UI.sd = null; $('#hvSd')?.remove(); draw(); readTools();
+    (back?.isConnected ? back : $(`${inTop ? '#hvTopR ' : ''}[data-a="sdopen"][data-k="${k}"]`))?.focus(); }
+  function sdPaint() {
+    const sd = UI.sd, box = $('#hvSd .hv-vp'); if (!sd || !box) return; const p = UI.proj;
+    const fk = document.activeElement?.closest?.('#hvSd [data-a]'), key = fk && `[data-a="${fk.dataset.a}"]${fk.dataset.k ? `[data-k="${CSS.escape(fk.dataset.k)}"]` : ''}${fk.dataset.val ? `[data-val="${CSS.escape(fk.dataset.val)}"]` : ''}`;
+    box.innerHTML = sd.k === 'people' ? sdPeople(p, sd) : sdBook(p, sd);
+    (key && box.querySelector(key) || box.querySelector('[data-a="sdclose"]'))?.focus();
+  }
+  function sdPeople(p, sd) {
+    const d = sd.data, head = `<div class="hv-vph"><span class="hv-vt"><h2 class="hv-t" id="hvSdH">Who reads whom</h2><span class="hv-mut hv-sm">${d ? `Hoola found these people in ${d.found === d.total ? `the ${plural(d.total, 'chapter')}` : `${d.found} of ${plural(d.total, 'chapter')}`}. Words in quotes go to the person who says them; everything else is the narrator.` : ''}</span></span>
+      <button type="button" class="hv-ib" data-a="sdclose" aria-label="Close">${ic('x', 16)}</button></div>`;
+    if (!d) return head + `<div class="hv-sdb"><p class="hv-mut">${sd.err ? esc(sd.err) : 'Looking at the book…'}</p></div>`;
+    const cast = castOf(p), order = d.people.map(x => x.name);
+    return head + `<div class="hv-sdb">
+      ${d.found < d.total ? `<div class="hv-note hv-sdnote"><span>${d.total - d.found} ${d.total - d.found === 1 ? 'chapter has' : 'chapters have'} not been looked at yet, so the people in ${d.total - d.found === 1 ? 'it are' : 'them are'} not here.</span>
+        <button type="button" class="hv-btn s dark" data-a="pplfind">Find the people in ${d.total - d.found === 1 ? 'it' : 'them'}</button></div>` : ''}
+      ${d.suggestions.map(s => `<div class="hv-note warn hv-sdnote"><span>${esc(s.why)}</span><button type="button" class="hv-btn s dark" data-a="pplmerge" data-k="${esc(s.a)}" data-val="${esc(s.b)}">Make them one</button>
+        <button type="button" class="hv-btn s" data-a="pplapart" data-k="${esc(s.a)}" data-val="${esc(s.b)}">Keep apart</button></div>`).join('')}
+      ${d.people.map((x, i) => { const v = x.name === 'Narrator' ? (cast.Narrator || p.voice) : x.voice;
+        return `<div class="hv-person"><span class="hv-dav l t${i % 4}${x.name === 'Narrator' ? ' n' : ''}${x.small ? ' off' : ''}" aria-hidden="true">${initial(x.name)}</span>
+          <span class="hv-vt"><span><b>${esc(x.name)}</b> <span class="hv-mut hv-sm">${x.name === 'Narrator' ? `Everything outside quotes · ${plural(x.chapters.length || d.total, 'chapter')}` : `${plural(x.lines, 'line')}${x.small ? ' · read by the narrator' : ''}`}</span></span>
+            <span class="hv-pq serif">${esc(x.quote || '')}</span></span>
+          <button type="button" class="hv-play o" data-a="hear" data-id="${esc(x.small ? cast.Narrator : v || '')}" aria-label="Hear ${esc(x.name)}"${v || x.small ? '' : ' disabled'}>${ic('play', 11)}</button>
+          ${x.small ? `<span class="hv-vpick off"><span class="hv-dav s n" aria-hidden="true">N</span><span>Narrator’s voice</span></span>`
+            : `<button type="button" class="hv-vpick" data-a="pplvoice" data-k="${esc(x.name)}" aria-haspopup="menu" aria-label="Voice for ${esc(x.name)}: ${esc(v ? vname(v) : 'not chosen')}"><span class="hv-dav s" aria-hidden="true">${initial(v ? vname(v) : '?')}</span><span>${esc(v ? vname(v) : 'Choose a voice')}</span>${ic('down', 12)}</button>`}</div>`; }).join('')}
+      ${order.length < 2 ? '<p class="hv-mut hv-sm">Only the narrator so far. Find the people in a chapter and the words in quotes go to their voices.</p>' : ''}
+      <button type="button" role="switch" class="hv-switchrow" data-a="pplsmall" aria-checked="${!!d.small}"><span class="hv-sw${d.small ? ' on' : ''}" aria-hidden="true"><span></span></span>
+        <span class="hv-vt"><b>The narrator reads small parts</b><span class="hv-mut hv-sm">People with fewer than ${d.small_lines || 3} lines keep the narrator’s voice</span></span></button></div>
+      <div class="hv-vpf"><span class="hv-mut hv-sm">Changes are read the next time a chapter is made; what is made stays until then.</span><span class="hv-grow"></span><button type="button" class="hv-cta s" data-a="sdclose">Done</button></div>`;
+  }
+  const KINDS = [['m4b', 'One audiobook file', 'M4B with chapters, the cover and the details. Plays in Apple Books and most audiobook apps.', 12000],
+    ['mp3zip', 'MP3, one file per chapter', 'A zip, numbered in order. Plays anywhere.', 24000], ['srt', 'The words with times', 'SRT captions for every chapter, for videos or a read-along page.', 0]];
+  function sdBook(p, sd) {
+    const d = sd.data, b = bookStat(p), cast = castOf(p), names = [...new Set(Object.values(cast).filter(Boolean).map(vname))];
+    const head = `<div class="hv-vph hv-abh">${coverOf(p, 'm')}<span class="hv-vt"><span class="hv-rh"><h2 class="hv-t" id="hvSdH">Make the audiobook</h2><span class="hv-grow"></span><button type="button" class="hv-ib" data-a="sdclose" aria-label="Close">${ic('x', 16)}</button></span>
+      <span>${esc([p.title || 'A reading', p.author].filter(Boolean).join(' · '))}</span>
+      <span class="hv-mut hv-sm"><span class="hv-num">${plural(b.n, 'chapter')}</span> · <span class="hv-num">${hm(b.secs)}</span> · narrated by AI voices (${esc(names.slice(0, 4).join(', '))})</span></span></div>`;
+    if (!d) return head + `<div class="hv-sdb"><p class="hv-mut">${sd.err ? esc(sd.err) : 'Checking the sound…'}</p></div>`;
+    const ab = UI.ab, mb = k => { const x = KINDS.find(z => z[0] === k); return x?.[3] ? `about ${Math.max(1, Math.round(b.secs * x[3] / 1e6))} MB` : 'about 1 MB'; };
+    const g = gate(d.ready ? '' : `${d.missing.length === 1 ? 'Chapter ' + (d.missing[0] + 1) + ' is' : d.missing.length + ' chapters are'} not made yet. Putting the book together is free.`);
+    return head + `<div class="hv-sdb"><div class="hv-fld"><b>As</b><div class="hv-ways col" role="radiogroup" aria-label="File">${KINDS.map(([k, n, note]) =>
+        `<button type="button" role="radio" class="hv-way" aria-checked="${ab.fmt === k}" data-a="abfmt" data-val="${k}"><span class="hv-rad" aria-hidden="true"></span><span class="hv-vt"><b>${n}</b><span>${note}</span></span><span class="hv-num hv-mut hv-sm">${mb(k)}</span></button>`).join('')}</div></div>
+      <div class="hv-fld"><div class="hv-rh"><b>Sound check</b><span class="hv-grow"></span><span class="hv-mut hv-sm">Measured on Hoola’s server, free</span></div>
+        <div class="hv-checks">${d.checks.map(c => `<div class="hv-ckrow"><span class="hv-ck ${c.ok === true ? 'ok' : c.ok === false ? 'warn' : ''}" aria-hidden="true">${ic(c.ok === true ? 'check' : 'warn', 12)}</span>
+          <span class="hv-vt"><b>${esc(c.name)}</b><span class="hv-mut hv-sm">${esc(c.note)}</span></span><span class="hv-num hv-sm">${esc(c.value)}</span><span class="hv-sr">${c.ok === true ? 'Passed' : c.ok === false ? 'Needs a look' : 'Not measured'}</span></div>`).join('')}</div>
+        ${ab.fmt !== 'srt' ? check('UI.ab.even', 'Even out the loudness of every chapter (right for listening apps)', ab.even) : ''}</div>
+      <p class="hv-note">Every file says it was made with AI voices, in its details and as a short spoken line at the start of the book. Only books you wrote or have the right to read aloud.</p></div>
+      <div class="hv-vpf">${d.ready ? '' : `<button type="button" class="hv-btn" data-a="abmake">Make ${d.missing.length === 1 ? 'chapter ' + (d.missing[0] + 1) : 'the ' + d.missing.length + ' chapters left'} first</button>`}<span class="hv-grow"></span>
+        <button type="button" class="hv-cta s" data-a="abgo"${g.a}><span>Download the audiobook</span></button></div>${g.l}`;
   }
 
   // ------------------------------------------------------------------ events ---
@@ -1542,7 +1740,7 @@ window.HoolaVocal = function (ctx) {
       case 'slim': if (UI.nav) { UI.nav = false; return side(); } UI.slim = !UI.slim; store.set('hv.slim', UI.slim); return side();
       case 'navon': UI.nav = true; side(); return $('#hvSide .hv-nv[aria-current]')?.focus();
       case 'navoff': UI.nav = false; return side();
-      case 'seg': { const v = isNaN(+d.val) || d.val === '' ? d.val : +d.val; setM(d.m, v);
+      case 'seg': { const v = isNaN(+d.val) || d.val === '' ? d.val : +d.val; setM(d.m, v); if (String(d.m).startsWith('UI.proj')) readTools();
         if (d.m === 'UI.vtab') { UI.vsel = ''; if (v === 'shared') { draw(); return libLoad(); } }
         if (PAGE === 'chat') return refreshSet();
         return draw(); }
@@ -1740,14 +1938,41 @@ window.HoolaVocal = function (ctx) {
       case 'dlgmake': { const dd2 = UI.dlg, cast = Object.fromEntries(dd2.cast.map(c => [c.name, c.voice]));
         return act(() => api('POST', `${A}/dialogue`, {lines: dd2.lines.filter(l => (l.text || '').trim()).map(l => ({speaker: l.speaker, text: l.text, pause: +l.pause || 0, cut: !!l.cut})), cast, lang: dd2.lang || 'auto', style: dd2.style, engine: 'auto', mode: dd2.mode, reactions: !!dd2.reactions, music: dd2.music ? 'soft' : ''}),
           r => { if (r?.id) dd2.out = [r, ...dd2.out.filter(x => x.id !== r.id)].slice(0, 8); side(); draw(); if (r?.id) play(r.id); toast(`The talk is ready · take ${r?.take || 'A'}.`); }, b, 'Making…'); }
-      case 'impopen': UI.imp.open = true; return draw();
-      case 'impclose': UI.imp.open = false; return draw();
-      case 'newproj': UI.cast = null; UI.chN = 0; UI.edited = {}; UI.proj = {id: '', title: '', voice: S.voice, lang: S.lang === 'auto' ? 'en' : S.lang, chapters: [{title: 'Chapter 1', text: ''}]}; return go('reading');
-      case 'proj': UI.cast = null; UI.chN = 0; UI.edited = {}; UI.proj = JSON.parse(JSON.stringify(D.projects.find(p => p.id === id) || null)); return go('reading');
-      case 'chsel': UI.chN = +d.n; return draw();
+      case 'impopen': if (PAGE !== 'studio') { UI.imp.open = true; return go('studio'); } UI.imp.open = true; draw(); return readTools();
+      case 'impclose': impReset(); draw(); return readTools();
+      case 'impagain': UI.imp.pv = null; UI.imp.file = null; UI.imp.keep = {}; return draw();
+      case 'imptick': UI.imp.keep[+d.n] = !UI.imp.keep[+d.n]; draw(); return $(`[data-a="imptick"][data-n="${+d.n}"]`)?.focus();
+      case 'impmake': { const im = UI.imp, src = im.src === 'file' ? {file_id: im.file?.file_id} : im.src === 'url' ? {url: im.url} : {text: im.text};
+        const keep = im.pv.parts.filter(x => im.keep[x.n]).map(x => x.n);
+        return act(() => api('POST', `${A}/project/import`, {...src, title: im.title, author: im.author, keep, cover: im.pv.cover || ''}),
+          r => { impReset(); UI.cast = null; UI.chN = 0; UI.edited = {}; UI.para = null; UI.editing = false; UI.proj = JSON.parse(JSON.stringify(r)); go('reading'); }, b, 'Creating…'); }
+      case 'newproj': UI.cast = null; UI.chN = 0; UI.edited = {}; UI.para = null; UI.editing = true; UI.proj = {id: '', title: '', voice: S.voice, lang: S.lang === 'auto' ? 'en' : S.lang, chapters: [{title: 'Chapter 1', text: ''}]}; return go('reading');
+      case 'proj': UI.cast = null; UI.chN = 0; UI.edited = {}; UI.para = null; UI.editing = false; UI.proj = JSON.parse(JSON.stringify(D.projects.find(p => p.id === id) || null)); return go('reading');
+      case 'chsel': UI.chN = +d.n; UI.para = null; UI.editing = false; draw(); return $('.hv-pgscroll')?.scrollTo?.(0, 0);
+      case 'edit': UI.editing = !UI.editing; UI.para = null; draw(); if (UI.editing) $('#hvChX')?.focus(); else $('[data-a="edit"]')?.focus(); return;
+      case 'parasel': UI.para = UI.para === +d.k ? null : +d.k; draw(); return $(`[data-a="parasel"][data-k="${+d.k}"]`)?.focus();
+      case 'paraplay': return blobUrl(`${A}/project/para?id=${q(UI.proj.id)}&n=${UI.chN}&k=${+d.k}`).then(u => play(`para:${UI.chN}:${+d.k}`, u, `Chapter ${UI.chN + 1} · paragraph ${+d.k + 1}`), e => toast(e.message, true));
+      case 'parawho': { const pr = paraList(UI.proj.chapters[UI.chN])[+d.k], names = Object.keys(castOf(UI.proj));
+        return choose(b, {title: 'Who says it', cur: pr.who, list: names.map(x => ({v: x, label: x === 'Narrator' ? 'The narrator' : x, sub: vname(castOf(UI.proj)[x])})),
+          onPick: who => saveProj().then(ok => ok && act(() => api('PUT', `${A}/project/para`, {id: UI.proj.id, n: UI.chN, k: +d.k, who}), r => { UI.proj = JSON.parse(JSON.stringify(r)); draw(); readTools(); }))}); }
+      case 'sdopen': return sdOpen(d.k, b);
+      case 'sdclose': return sdClose();
+      case 'pplfind': return act(() => api('POST', `${A}/project/people/find`, {id: UI.proj.id}), r => { UI.sd && (UI.sd.data = r); pplSync(); }, b, 'Finding the people…');
+      case 'pplmerge': return act(() => api('POST', `${A}/project/people/merge`, {id: UI.proj.id, keep: d.val, drop: d.k}), r => { UI.sd && (UI.sd.data = r); pplSync(); toast(`${d.k} and ${d.val} are one person now.`); }, b);
+      case 'pplapart': return act(() => api('POST', `${A}/project/people/apart`, {id: UI.proj.id, a: d.k, b: d.val}), r => { UI.sd && (UI.sd.data = r); pplSync(); }, b);
+      case 'pplsmall': return act(() => api('PUT', `${A}/project/people`, {id: UI.proj.id, small: !UI.sd?.data?.small}), r => { UI.sd && (UI.sd.data = r); pplSync(); }, b);
+      case 'pplvoice': { const who = d.k, cur = castOf(UI.proj)[who] || '';
+        return choose(b, {title: who === 'Narrator' ? 'The narrator’s voice' : `Voice for ${who}`, find: 'Search voices', cur, list: voiceList(v => v.ready),
+          onPick: v => act(() => api('PUT', `${A}/project/people`, {id: UI.proj.id, voices: {[who]: v}}), r => { UI.sd && (UI.sd.data = r); pplSync(); })}); }
+      case 'abfmt': UI.ab.fmt = d.val; return sdPaint();
+      case 'abmake': sdClose(); return readAll($('[data-a="readall"]'));
+      case 'abgo': { const fmt = UI.ab.fmt, title = UI.proj.title;
+        return act(() => api('POST', `${A}/project/export`, {id: UI.proj.id, format: fmt, even: fmt !== 'srt' && !!UI.ab.even, intro: fmt !== 'srt'}),
+          r => { sdClose(); side(); toast('The audiobook is ready. It is in Your sounds too.'); if (r?.id) download(r.id, '', title); }, b, 'Putting the book together…'); }
       case 'chadd': UI.proj.chapters.push({title: `Chapter ${UI.proj.chapters.length + 1}`, text: ''}); UI.chN = UI.proj.chapters.length - 1; return draw();
       case 'saveproj': return saveProj(b).then(ok => ok && toast('Saved.'));
-      case 'cast': return saveProj().then(ok => ok && act(() => api('POST', `${A}/project/cast`, {id: UI.proj.id, n: +d.n}), r => { UI.cast = {n: +d.n, ...r}; draw(); }, b, 'Reading…'));
+      case 'cast': return saveProj().then(ok => ok && act(() => api('POST', `${A}/project/cast`, {id: UI.proj.id, n: +d.n}), r => { UI.cast = null; UI.editing = false; UI.para = null;
+        UI.proj = JSON.parse(JSON.stringify(D.projects.find(p => p.id === UI.proj.id) || UI.proj)); draw(); readTools(); toast(plural((r?.characters || []).length, 'person') + ' found in this chapter.'); }, b, 'Finding the characters…'));
       case 'readch': return saveProj().then(ok => ok && readChapter(+d.n, b));
       case 'readall': return readAll(b);
       case 'export': return act(() => api('POST', `${A}/project/export`, {id: UI.proj.id, format: d.val}), r => { toast('Exported. It is in Your sounds.'); side(); draw(); if (r?.id) download(r.id, d.val === 'srt' || d.val === 'm4b' ? '' : d.val, UI.proj.title); }, b, 'Exporting…');
@@ -1784,6 +2009,7 @@ window.HoolaVocal = function (ctx) {
     if (!m.src) await dubMedia(); try { m.currentTime = +r.start || 0; await m.play(); const end = +r.end || 0;
       const stop = () => { if (m.currentTime >= end) { m.pause(); m.removeEventListener('timeupdate', stop); } }; if (end) m.addEventListener('timeupdate', stop); } catch { /* the player shows its own state */ }
   }
+  async function pplSync() { await load(); if (UI.proj) UI.proj = JSON.parse(JSON.stringify(D.projects.find(p => p.id === UI.proj.id) || UI.proj)); draw(); sdPaint(); }
   async function readChapter(n, b) {
     return act(() => api('POST', `${A}/project/chapter`, {id: UI.proj.id, n}), r => { delete UI.edited[n]; UI.proj = JSON.parse(JSON.stringify(D.projects.find(p => p.id === UI.proj.id) || UI.proj)); side(); draw(); if (r?.id) play(r.id); }, b, 'Making…');
   }
@@ -1799,7 +2025,8 @@ window.HoolaVocal = function (ctx) {
     const p = UI.proj;
     try { if (btn) btn.disabled = true;
       const cast = UI.cast ? Object.fromEntries((UI.cast.characters || []).map(c => [c.name, c.voice])) : undefined;
-      const out = await api('POST', `${A}/project`, {id: p.id, title: p.title, voice: p.voice || S.voice, lang: p.lang, chapters: p.chapters.map(c => ({title: c.title, text: c.text})), ...(cast ? {cast} : {})});
+      const out = await api('POST', `${A}/project`, {id: p.id, title: p.title, voice: p.voice || S.voice, lang: p.lang, chapters: p.chapters.map(c => ({title: c.title, text: c.text})), ...(cast ? {cast} : {}),
+        ...(p.pace != null ? {pace: +p.pace} : {}), ...(p.gap != null ? {gap: +p.gap} : {}), ...(p.author != null ? {author: p.author} : {})});
       await load(); const chapters = p.chapters; UI.proj = JSON.parse(JSON.stringify(out)); if (!UI.proj.chapters) UI.proj.chapters = chapters; crumb(); side(); draw(); return true; }
     catch (e) { toast(e.message, true); if (btn?.isConnected) btn.disabled = false; return false; }
   }
@@ -1810,6 +2037,8 @@ window.HoolaVocal = function (ctx) {
     if (t.dataset?.m) { setM(t.dataset.m, t.type === 'checkbox' ? t.checked : t.dataset.t === 'num' ? +t.value : t.value);
       $$(`[data-show="${t.dataset.m}"]`).forEach(x => { x.textContent = `${(+t.value).toFixed(2)}x`; }); }
     if (t.dataset?.ch != null && UI.proj?.chapters?.[+t.dataset.ch]?.audio) UI.edited[+t.dataset.ch] = true;
+    if (t.dataset?.pace) $$('[data-show="UI.proj.pace"]').forEach(x => { x.textContent = paceWord(t.value); });
+    if (t.dataset?.dirty) readTools();
     if (t.id === 'hvText') { const c = $('#hvCount'); if (c) c.textContent = countLine(); const tm = $('#hvTime'); if (tm) tm.textContent = timeLine();
       edSync(); if (S.text.trim()) { $('.hv-sphero')?.remove(); $('.hv-spstarts')?.remove(); } price('speech', ttsQuote(S.text), r => autoLine(r, short(S.lang))); }
     if (t.dataset?.line != null) { const i = +t.dataset.line, {tone} = toneOf(spLines()[i] || ''); lnSet(i, tone ? `[${tone}] ${t.value.replace(/\n/g, ' ')}` : t.value.replace(/\n/g, ' '));
@@ -1851,6 +2080,9 @@ window.HoolaVocal = function (ctx) {
         ls.splice(n + 1, 0, {speaker: UI.dlg.cast.find(c => c.name !== cur.speaker)?.name || cur.speaker, text: tail, pause: 0, cut: false}); UI.dlg.sel = n + 1; draw(); return dlFocus(n + 1); }
       if (ev.key === 'Backspace' && !ev.target.value && ls.length > 1 && n > 0) { ev.preventDefault(); ls.splice(n, 1); UI.dlg.sel = n - 1; draw(); return dlFocus(n - 1, true); } }
     if (ev.key === 'Escape' && UI.dlg.cp) { ev.preventDefault(); return cpClose(); }
+    if (ev.key === 'Escape' && UI.sd) { ev.preventDefault(); return sdClose(); }
+    if (ev.key === 'Tab' && UI.sd) { const f = [...($('#hvSd .hv-vp')?.querySelectorAll('button:not([disabled]),input,a[href]') || [])]; if (f.length) { const i = f.indexOf(document.activeElement);
+      if (ev.shiftKey && i <= 0) { ev.preventDefault(); f[f.length - 1].focus(); } else if (!ev.shiftKey && i === f.length - 1) { ev.preventDefault(); f[0].focus(); } } return; }
     if (ev.key === 'Tab' && UI.dlg.cp) { const box = $('#hvCp .hv-vp'), f = box ? [...box.querySelectorAll('button:not([disabled]),input')] : []; if (f.length) { const i = f.indexOf(document.activeElement);
       if (ev.shiftKey && i <= 0) { ev.preventDefault(); f[f.length - 1].focus(); } else if (!ev.shiftKey && i === f.length - 1) { ev.preventDefault(); f[0].focus(); } } }
     if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey) && ev.target.id === 'hvText') { ev.preventDefault(); const f = $('form[data-f="speech"]'); const btn = $('[data-qbtn="speech"]'); if (f && btn && !btn.disabled) f.requestSubmit(btn); return; }
@@ -1886,9 +2118,7 @@ window.HoolaVocal = function (ctx) {
         return act(() => api('POST', `${A}/podcast`, {...src, minutes: Math.max(1, Math.min(15, +p.minutes || 5)), hosts: UI.dlg.cast.slice(0, 2).map(c => ({name: c.name, voice: c.voice})), lang: UI.dlg.lang || 'auto', kind: p.kind || 'podcast', must: p.must || ''}),
           r => { p.draft = r; draw(); toast(r.unchecked ? 'The script is ready. Check the marked lines before you use it.' : 'The script is ready. Read it, then use it.'); }, btn, 'Writing…'); }
       case 'dialogue': return;
-      case 'import': { const im = UI.imp, src = im.src === 'file' ? {file_id: im.file?.file_id} : im.src === 'url' ? {url: im.url} : {text: im.text};
-        if (!Object.values(src)[0]) { toast('Add what to import first.', true); return; }
-        return act(() => api('POST', `${A}/project/import`, {...src, title: im.title}), p => { UI.imp = {open: false, src: 'file', url: '', text: '', title: '', file: null}; UI.cast = null; UI.chN = 0; UI.edited = {}; UI.proj = JSON.parse(JSON.stringify(p)); go('reading'); }, btn, 'Importing…'); }
+      case 'import': return impPreview(btn);
       case 'dub': { const n = UI.dubNew;
         return act(() => api('POST', `${A}/dub`, {file_id: n.file.file_id, langs: n.langs, mode: n.mode, keep_sound: !!n.keep, ...(n.mode === 'matched' && n.speakers ? {speakers: n.speakers} : {})}),
           r => { UI.dubNew = {file: null, langs: [], mode: n.mode, keep: n.keep, secs: 0, speakers: n.speakers}; UI.dub = null; UI.dubLines = null; go('dub', r.id); }, btn, 'Starting…'); }

@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import Boolean, DateTime, String, func, or_, select
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -183,6 +183,38 @@ def _agent_email(tenant: str) -> str:
         return ""
 
 
+DOWNLOADS = {   # v0.999.145 the redesign's Connect page: one download per system (build-desktop.yml releases)
+    "windows": DOWNLOAD,
+    "mac": "https://github.com/fibernetworkworks-droid/santosh-app/releases/download/desktop-mac-latest/Hoola-Desktop-mac.zip",
+    "linux": "https://github.com/fibernetworkworks-droid/santosh-app/releases/download/desktop-linux-latest/Hoola-Desktop-linux.tar.gz"}
+
+
+def _chrome_ready(tenant: str) -> bool:
+    try:   # v0.999.145 her Chrome extension is connected (Hoola can work in her own Chrome tabs)
+        from .pc import extlink
+        return bool(extlink.ready(tenant))
+    except Exception:   # noqa: BLE001
+        return False
+
+
+def choose(tenant: str, text: str) -> dict[str, Any]:
+    """v0.999.145 'Let Hoola choose': her PC for a site that refuses cloud computers (when her PC is on), Hoola PC
+    otherwise. -> {which, why}."""
+    try:
+        from .pc import portals
+        from .pc.lessons import sites_of
+        blocked = next((h for h in sites_of(text) if portals.blocked_for_cloud(h)), "")
+    except Exception:   # noqa: BLE001
+        blocked = ""
+    devs = _paired(tenant)
+    mine_ok = mine_on(tenant) and any(d.get("online") for d in devs)
+    if blocked and mine_ok:
+        return {"which": "mine", "why": f"{blocked} refuses cloud computers, so it runs on your PC"}
+    if blocked:
+        return {"which": "hoola", "why": f"{blocked} refuses cloud computers and your PC is not on - Hoola PC will try and tell you"}
+    return {"which": "hoola", "why": "Hoola PC works even when your PC is off"}
+
+
 def status(tenant: str) -> dict[str, Any]:
     from .pc.hub import hub
     try:
@@ -194,6 +226,7 @@ def status(tenant: str) -> dict[str, Any]:
         "hoola": {"online": bool(pcs), "count": len(pcs), "running": _running(tenant, "hoola"),
                   "last": _last(tenant, "hoola"), "email": _agent_email(tenant)},
         "mine": {"on": mine_on(tenant), "background": bg_on(tenant), "devices": devs, "online": any(d.get("online") for d in devs),
+                 "chrome": _chrome_ready(tenant), "downloads": DOWNLOADS,
                  "running": _running(tenant, "mine"), "last": _last(tenant, "mine"), "download": DOWNLOAD},
     }
 
@@ -322,6 +355,10 @@ class MineIn(BaseModel):
     on: bool
 
 
+class ChooseIn(BaseModel):
+    text: str = Field(default="", max_length=4000)
+
+
 def _which(which: str) -> str:
     if which not in WHICH:
         raise HTTPException(404, "Unknown computer (hoola | mine)")
@@ -344,6 +381,10 @@ def mount(app, current_tenant, require_key) -> None:
         if which == "mine" and not mine_on(tenant):
             raise HTTPException(409, "Turn on 'Use my PC' first")
         return new_chat(tenant, which)
+
+    @router.post("/api/computer/choose", dependencies=[Depends(require_key)])
+    def computer_choose(body: ChooseIn, tenant: str = Depends(current_tenant)):
+        return choose(tenant, body.text)
 
     @router.put("/api/computer/mine", dependencies=[Depends(require_key)])
     def computer_mine(body: MineIn, tenant: str = Depends(current_tenant)):

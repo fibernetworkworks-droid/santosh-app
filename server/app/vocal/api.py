@@ -8,11 +8,13 @@ from typing import Callable
 from fastapi import APIRouter, Body, Depends, HTTPException, Response
 from fastapi.responses import FileResponse, JSONResponse
 
+from . import book as BK
 from . import engines as EN
 from . import service as V
 
 MIME = {"wav": "audio/wav", "mp3": "audio/mpeg", "flac": "audio/flac", "m4b": "audio/mp4", "m4a": "audio/mp4",
-        "ogg": "audio/ogg", "mp4": "video/mp4", "srt": "application/x-subrip", "vtt": "text/vtt"}
+        "ogg": "audio/ogg", "mp4": "video/mp4", "srt": "application/x-subrip", "vtt": "text/vtt",
+        "zip": "application/zip"}
 
 
 def _attach(name: str) -> dict[str, str]:
@@ -332,13 +334,65 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
     @r.post("/project")
     def project(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         return run(V.project_save, tenant, pid=str(b.get("id") or ""), title=b.get("title"), voice=str(b.get("voice") or ""),
-                   lang=str(b.get("lang") or "en"), chapters=b.get("chapters"), cast=b.get("cast"))
+                   lang=str(b.get("lang") or "en"), chapters=b.get("chapters"), cast=b.get("cast"), author=b.get("author"),
+                   pace=b.get("pace"), gap=b.get("gap"))
+
+    @r.post("/project/import/preview")
+    def project_preview(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        on()
+        return run(BK.preview, tenant, file_path=maybe(tenant, b.get("file_id")), url=str(b.get("url") or ""),
+                   text=str(b.get("text") or ""), title=str(b.get("title") or ""))
 
     @r.post("/project/import")
     def project_import(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         on()
         return run(V.project_import, tenant, file_path=maybe(tenant, b.get("file_id")), url=str(b.get("url") or ""),
-                   text=str(b.get("text") or ""), title=str(b.get("title") or ""))
+                   text=str(b.get("text") or ""), title=str(b.get("title") or ""), keep=b.get("keep"),
+                   author=b.get("author"), cover=str(b.get("cover") or ""))
+
+    @r.get("/project/cover")
+    def project_cover(id: str = "", token: str = "", tenant: str = Depends(current_tenant)):
+        f = run(BK.cover_file, tenant, id, token)
+        return FileResponse(f, media_type="image/png" if f.suffix == ".png" else "image/jpeg",
+                            headers={"Cache-Control": "private, no-store"})
+
+    @r.post("/project/cover")
+    def project_cover_set(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        on()
+        return run(BK.set_cover, tenant, str(b.get("id") or ""), upload(tenant, b.get("file_id")))
+
+    @r.get("/project/people")
+    def project_people(id: str, tenant: str = Depends(current_tenant)):
+        return run(BK.people, tenant, id)
+
+    @r.post("/project/people/find")
+    async def project_people_find(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return await arun(BK.find_people, tenant, str(b.get("id") or ""))
+
+    @r.post("/project/people/merge")
+    def project_people_merge(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return run(BK.merge, tenant, str(b.get("id") or ""), b.get("keep"), b.get("drop"))
+
+    @r.post("/project/people/apart")
+    def project_people_apart(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return run(BK.apart, tenant, str(b.get("id") or ""), b.get("a"), b.get("b"))
+
+    @r.put("/project/people")
+    def project_people_set(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return run(BK.set_people, tenant, str(b.get("id") or ""), b.get("voices"), b.get("small"))
+
+    @r.get("/project/para")
+    def project_para(id: str, n: int = 0, k: int = 0, tenant: str = Depends(current_tenant)):
+        f = run(BK.para_file, tenant, id, n, k)
+        return FileResponse(f, media_type="audio/wav", headers={"Cache-Control": "private, no-store"})
+
+    @r.put("/project/para")
+    def project_para_who(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return run(BK.set_who, tenant, str(b.get("id") or ""), b.get("n"), b.get("k"), b.get("who"))
+
+    @r.get("/project/check")
+    def project_check(id: str, tenant: str = Depends(current_tenant)):
+        return run(BK.check, tenant, id)
 
     @r.post("/project/cast")
     async def project_cast(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
@@ -353,8 +407,9 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         return await arun(V.chapter_make, tenant, str(b.get("id") or ""), b.get("n"))
 
     @r.post("/project/export")
-    def export(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
-        return run(V.project_export, tenant, str(b.get("id") or ""), str(b.get("format") or "wav"))
+    async def export(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return await arun(V.project_export_full, tenant, str(b.get("id") or ""), str(b.get("format") or "wav"),
+                          bool(b.get("even", False)), bool(b.get("intro", False)))
 
     # ---------------------------------------------------------------- history, files
     @r.post("/join")

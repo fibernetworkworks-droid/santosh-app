@@ -165,3 +165,6 @@ the task ends cleanly). This hit real users too, not only the exam: any PC step 
 
 - v0.999.141: second tools exam 8/9 (replay fixed, runs with no AI); asking her about a never-open site now passes.
 
+
+- v0.999.146 Hoola Computer page redrawn (her canvas): both computers on one home with live pictures, give-a-job box with Let Hoola choose, step strip + Move to my PC, Connect for Windows / Mac / Linux; blank computer chats fixed.
+

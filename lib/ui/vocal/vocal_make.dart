@@ -752,6 +752,7 @@ class VocalStudioPage extends StatefulWidget {
 class _VocalStudioPageState extends State<VocalStudioPage> {
   String _open = '';
   String _busy = '';
+  bool _stopAll = false, _all = false;
   List<Map<String, dynamic>> _characters = [];
   VocalStore get store => widget.store;
 
@@ -893,6 +894,123 @@ class _VocalStudioPageState extends State<VocalStudioPage> {
     if (mounted) setState(() => _busy = '');
   }
 
+  Future<void> _readAll(Map<String, dynamic> p) async {
+    final todo = [for (var i = 0; i < crList(p['chapters']).length; i++) if (_state(crList(p['chapters'])[i]) != 'made') i];
+    setState(() {
+      _stopAll = false;
+      _all = true;
+    });
+    for (final n in todo) {
+      if (!mounted || _stopAll) break;
+      await _read(_project.isEmpty ? p : _project, n);
+    }
+    if (mounted) {
+      setState(() {
+        _stopAll = false;
+        _all = false;
+      });
+    }
+  }
+
+  /// A chapter's paragraphs that were not read as they are now (0 when the chapter was not made).
+  int _changed(Map<String, dynamic> ch) {
+    if (crS(ch['audio']).isEmpty) return 0;
+    final segs = crList(ch['segments']);
+    if (segs.isEmpty) return 0;
+    final who = {for (final x in crList(ch['paragraphs'])) crS(x['text']): crS(x['who'])};
+    final made = {for (final x in segs) '${crS(x['who']).isEmpty ? 'Narrator' : crS(x['who'])}\u0001${crS(x['text'])}'};
+    var n = 0;
+    for (final t in crS(ch['text']).split(RegExp(r'\n\s*\n')).map((x) => x.trim()).where((x) => x.isNotEmpty)) {
+      final w = (who[t] ?? '').isEmpty ? 'Narrator' : who[t]!;
+      if (!made.contains('$w\u0001$t')) n++;
+    }
+    return n;
+  }
+
+  String _state(Map<String, dynamic> ch) => crS(ch['audio']).isEmpty ? 'none' : _changed(ch) > 0 ? 'changed' : 'made';
+
+  /// A cover painted from the title (the book's own picture stays on the computer page).
+  Widget _cover(HoolaColors c, Map<String, dynamic> p, {double w = 40}) => ExcludeSemantics(
+        child: Container(
+          width: w,
+          height: w * 4 / 3,
+          padding: EdgeInsets.all(w / 9),
+          decoration: BoxDecoration(color: c.accent, borderRadius: BorderRadius.circular(w / 8),
+              boxShadow: [BoxShadow(color: c.ink.withOpacity(.14), blurRadius: 10, offset: const Offset(0, 4))]),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(crS(p['title']), maxLines: 4, overflow: TextOverflow.fade,
+                style: TextStyle(fontFamily: 'Literata', fontSize: w / 7, height: 1.2, color: c.onPill)),
+            const Spacer(),
+            if (w > 50 && crS(p['author']).isNotEmpty)
+              Text(crS(p['author']), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: w / 9, color: c.onPill)),
+          ]),
+        ),
+      );
+
+  Future<void> _people(Map<String, dynamic> p) async {
+    Map<String, dynamic> d = const {};
+    if (!VocalStore.debug) {
+      try {
+        d = await store.app.api!.vocalPeople(crS(p['id']));
+      } catch (e) {
+        if (mounted) vocalError(context, store, e);
+        return;
+      }
+    } else {
+      final cast = Map<String, dynamic>.from(p['cast'] is Map ? p['cast'] as Map : const {});
+      d = {'small': false, 'people': [{'name': 'Narrator', 'lines': 0, 'voice': crS(p['voice'])}, for (final e in cast.entries) if (e.key != 'Narrator') {'name': e.key, 'lines': 0, 'voice': crS(e.value)}]};
+    }
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, set) {
+        final c = HoolaColors.of(ctx);
+        Future<void> put(Map<String, dynamic> body) async {
+          if (VocalStore.debug) return;
+          try {
+            final r = await store.app.api!.vocalPeopleSet({'id': crS(p['id']), ...body});
+            set(() => d = r);
+            await store.load();
+          } catch (e) {
+            if (ctx.mounted) vocalError(ctx, store, e);
+          }
+        }
+        return CrHueScope(
+          hue: CrHue.voice,
+          child: SafeArea(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * .85),
+              child: ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(20, 0, 20, 16), children: [
+                Text('Who reads whom', style: HoolaType.heading(c)),
+                const SizedBox(height: 4),
+                Text('Words in quotes go to the person who says them; everything else is the narrator.', style: HoolaType.small(c)),
+                const SizedBox(height: 12),
+                VocalRows([
+                  for (final x in crList(d['people']))
+                    (
+                      crS(x['name']) + (x['lines'] is num && (x['lines'] as num) > 0 && crS(x['name']) != 'Narrator' ? ' · ${x['lines']} lines' : ''),
+                      x['small'] == true ? 'Narrator’s voice' : vocalVoiceName(store, crS(x['voice'])),
+                      x['small'] == true
+                          ? null
+                          : () async {
+                              final id = await vocalPickVoice(ctx, store, widget.player, lang: crS(p['lang']), picked: crS(x['voice']));
+                              if (id != null) await put({'voices': {crS(x['name']): id}});
+                            },
+                    ),
+                ]),
+                const SizedBox(height: 10),
+                CrSwitch(title: 'The narrator reads small parts', sub: 'People with fewer than 3 lines keep the narrator’s voice.',
+                    value: d['small'] == true, onChanged: (v) => put({'small': v})),
+              ]),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
   Future<void> _cast(Map<String, dynamic> p) async {
     setState(() => _busy = 'cast');
     try {
@@ -908,19 +1026,22 @@ class _VocalStudioPageState extends State<VocalStudioPage> {
   }
 
   Future<void> _export(Map<String, dynamic> p) async {
-    const opts = {'One audiobook file, MP3': 'mp3', 'Audiobook with chapter marks, M4B': 'm4b', 'Studio quality, WAV': 'wav', 'Captions, SRT': 'srt'};
-    final v = await crPick(context, 'Export', opts.keys.toList(), '');
+    const opts = {'One audiobook file, with chapters (M4B)': 'm4b', 'MP3, one file per chapter (zip)': 'mp3zip', 'The words with times (SRT)': 'srt'};
+    final v = await crPick(context, 'Make the audiobook', opts.keys.toList(), '');
     if (v == null || !mounted) return;
-    final fmt = opts[v] ?? 'mp3';
+    final fmt = opts[v] ?? 'm4b';
     setState(() => _busy = 'export');
     try {
       if (!VocalStore.debug) {
-        final r = await store.app.api!.vocalProjectExport(crS(p['id']), fmt);
+        final r = await store.app.api!.vocalProjectExport(crS(p['id']), fmt, even: fmt != 'srt', intro: fmt != 'srt');
         await store.load();
         final id = crS(r['id']);
+        final ext = crS(r['ext']).isEmpty ? fmt : crS(r['ext']);
         if (id.isNotEmpty && mounted) {
-          final bytes = await store.app.api!.vocalAudio(id, format: fmt);
-          if (bytes != null && mounted) await crShareBytes(context, bytes, '${crS(p['title'])}.$fmt', vocalMime(fmt == 'm4b' ? 'm4a' : fmt));
+          final bytes = await store.app.api!.vocalAudio(id);
+          if (bytes != null && mounted) {
+            await crShareBytes(context, bytes, '${crS(p['title'])}.$ext', ext == 'zip' ? 'application/zip' : vocalMime(ext == 'm4b' ? 'm4a' : ext));
+          }
         }
       }
     } catch (e) {
@@ -968,16 +1089,14 @@ class _VocalStudioPageState extends State<VocalStudioPage> {
                 onTap: () => setState(() => _open = crS(p['id'])),
                 child: VocalBox(
                   child: Row(children: [
-                    Container(
-                      width: 40, height: 40,
-                      decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(10)),
-                      child: Center(child: CrIcon(CrGlyph.book, size: 18, color: c.accent)),
-                    ),
+                    _cover(c, p),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(crS(p['title']), maxLines: 1, overflow: TextOverflow.ellipsis, style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w600)),
                         Text(_summary(p), style: HoolaType.small(c).copyWith(fontSize: 12)),
+                        const SizedBox(height: 6),
+                        _strip(c, p, height: 4),
                       ]),
                     ),
                     CrIcon(CrGlyph.chevron, size: 14, color: c.ink3),
@@ -989,6 +1108,23 @@ class _VocalStudioPageState extends State<VocalStudioPage> {
     ]);
   }
 
+  /// One mark per chapter: made, changed since it was made, not made yet.
+  Widget _strip(HoolaColors c, Map<String, dynamic> p, {double height = 6}) {
+    final chs = crList(p['chapters']);
+    return ExcludeSemantics(
+      child: SizedBox(
+        height: height,
+        child: Row(children: [
+          for (var i = 0; i < chs.length; i++) ...[
+            if (i > 0) const SizedBox(width: 2),
+            Expanded(child: DecoratedBox(decoration: BoxDecoration(borderRadius: BorderRadius.circular(2),
+                color: switch (_state(chs[i])) { 'made' => c.accent, 'changed' => c.warn, _ => c.lineStrong }))),
+          ],
+        ]),
+      ),
+    );
+  }
+
   String _summary(Map<String, dynamic> p) {
     final chs = crList(p['chapters']);
     final made = chs.where((x) => crS(x['audio']).isNotEmpty).length;
@@ -997,17 +1133,33 @@ class _VocalStudioPageState extends State<VocalStudioPage> {
 
   Widget _one(HoolaColors c, Map<String, dynamic> p) {
     final chs = crList(p['chapters']);
-    final left = chs.where((x) => crS(x['audio']).isEmpty).length;
+    final left = chs.where((x) => _state(x) != 'made').length;
+    final made = chs.where((x) => crS(x['audio']).isNotEmpty).length;
+    final running = _busy.startsWith('ch') || _all;
     return Column(children: [
       Expanded(
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 6, 16, 24), children: [
           Row(children: [
             VocalChip(label: 'All readings', onTap: () => setState(() => _open = '')),
             const Spacer(),
+            VocalIconButton(label: 'Choose who reads whom', glyph: CrGlyph.people, onTap: () => _people(p)),
             VocalIconButton(label: 'Remove this reading', glyph: CrGlyph.trash, onTap: () => _remove(p)),
           ]),
-          Text(crS(p['title']), style: HoolaType.heading(c)),
-          Text(_summary(p), style: HoolaType.small(c).copyWith(fontSize: 12)),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            _cover(c, p, w: 70),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(crS(p['title']), style: HoolaType.heading(c)),
+                if (crS(p['author']).isNotEmpty) Text('By ${crS(p['author'])}', style: HoolaType.small(c).copyWith(fontSize: 13)),
+                Text(_summary(p), style: HoolaType.small(c).copyWith(fontSize: 12)),
+                const SizedBox(height: 4),
+                Text('$made of ${chs.length} chapter${chs.length == 1 ? '' : 's'} made', style: HoolaType.small(c).copyWith(fontSize: 13, color: c.ink2)),
+                const SizedBox(height: 6),
+                _strip(c, p),
+              ]),
+            ),
+          ]),
           const SizedBox(height: 12),
           VocalRows([('Who reads it', vocalVoiceName(store, crS(p['voice'])), () => _narrator(p))]),
           const SizedBox(height: 14),
@@ -1037,12 +1189,16 @@ class _VocalStudioPageState extends State<VocalStudioPage> {
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(crS(chs[i]['title']).isEmpty ? 'Chapter ${i + 1}' : crS(chs[i]['title']), maxLines: 1, overflow: TextOverflow.ellipsis,
                           style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w500)),
-                      Text(crS(chs[i]['audio']).isNotEmpty
-                          ? 'Made${chs[i]['seconds'] is num ? ' · ${vocalClock(chs[i]['seconds'] as num)}' : ''}'
-                          : 'Not made yet', style: HoolaType.small(c).copyWith(fontSize: 12, color: crS(chs[i]['audio']).isNotEmpty ? c.ok : c.ink3)),
+                      Text(switch (_state(chs[i])) {
+                            'made' => 'Made${chs[i]['seconds'] is num ? ' · ${vocalClock(chs[i]['seconds'] as num)}' : ''}',
+                            'changed' => '${_changed(chs[i])} paragraph${_changed(chs[i]) == 1 ? '' : 's'} changed${chs[i]['seconds'] is num ? ' · ${vocalClock(chs[i]['seconds'] as num)}' : ''}',
+                            _ => 'Not made yet',
+                          },
+                          style: HoolaType.small(c).copyWith(fontSize: 12, color: switch (_state(chs[i])) { 'made' => c.ok, 'changed' => c.warn, _ => c.ink3 })),
                     ]),
                   ),
-                  VocalChip(label: crS(chs[i]['audio']).isNotEmpty ? 'Make again' : 'Make', onTap: _busy.isNotEmpty ? null : () => _read(p, i)),
+                  VocalChip(label: _state(chs[i]) == 'changed' ? 'Make the changes' : crS(chs[i]['audio']).isNotEmpty ? 'Make again' : 'Make',
+                      onTap: _busy.isNotEmpty ? null : () => _read(p, i)),
                   if (_busy == 'ch$i') const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
                 ]),
               ),
@@ -1058,8 +1214,16 @@ class _VocalStudioPageState extends State<VocalStudioPage> {
         ]),
       ),
       VocalDock(
-        note: left > 0 ? '$left chapter${left == 1 ? '' : 's'} not made yet · you can stop any time, nothing made is lost' : 'Every chapter is made',
-        child: VocalPill(label: 'Export', busy: _busy == 'export', onTap: left > 0 || chs.isEmpty ? null : () => _export(p)),
+        note: running
+            ? 'Making the chapters one by one · what is made stays'
+            : left > 0
+                ? '$left chapter${left == 1 ? '' : 's'} not made yet · you can stop any time, nothing made is lost'
+                : 'Every chapter is made · putting the book together is free',
+        child: _all && !_stopAll
+            ? VocalPill(label: 'Stop after this chapter', quiet: true, onTap: () => setState(() => _stopAll = true))
+            : left > 0
+                ? VocalPill(label: 'Make all $left left', busy: running, onTap: chs.isEmpty || _busy.isNotEmpty ? null : () => _readAll(p))
+                : VocalPill(label: 'Make the audiobook', busy: _busy == 'export', onTap: chs.isEmpty ? null : () => _export(p)),
       ),
     ]);
   }

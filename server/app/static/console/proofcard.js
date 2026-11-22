@@ -63,6 +63,18 @@
       + duel + '</section>';
   }
 
+  // ONE ENGINE: the new engine's builder box - checked before every build and repaired by itself
+  function boxHtml(b) {
+    if (!b) return '';
+    const disk = b.disk_free_gb != null ? ' · ' + num(b.disk_free_gb) + ' GB free' : '';
+    const fixed = b.repairs ? ' · repaired by itself ' + num(b.repairs) + (b.repairs === 1 ? ' time' : ' times') : '';
+    const txt = b.repairing ? 'Website builder: being rebuilt now (about a minute)'
+      : b.ok ? 'Website builder: ready' + (b.rev ? ' (rev ' + esc(b.rev) + ')' : '') + disk + fixed
+      : 'Website builder: not ready - ' + esc(b.why || '') + (b.fixable ? ' (Hoola rebuilds it by itself before the next build)' : '');
+    return '<div class="pc-box" data-box="' + (b.ok && !b.disk_low ? 'ok' : 'bad') + '">' + txt
+      + (b.ok && b.disk_low ? ' - ' + esc(b.why || '') : '') + (b.repair_failed ? '<br>Last automatic repair failed: ' + esc(b.repair_failed) : '') + '</div>';
+  }
+
   function decideHtml(card, eng) {
     const rec = card.recommendation || {}, h = card.her || {}, c = card.critic || {};
     const duels = card.duels || {};
@@ -70,6 +82,7 @@
     const isNew = eng.engine === 'new';
     return '<section class="pc-decide" data-decide="' + (isNew ? 'new' : 'old') + '"><b>' + (eng.new_sites_on === 'new' ? 'New websites are built on the new engine' : 'New websites are built on the old engine') + '</b>'
       + (eng.server_switch ? '<span class="dc-mut">The server switch studio_react_sites is on, so new websites use the new engine whatever is decided here.</span>' : '')
+      + boxHtml(eng.box)
       + '<div class="pc-rec">Critic preferred the new one ' + num(c.new) + ' times, the old one ' + num(c.old) + ', the same ' + num(c.same)
       + '. You picked the new one ' + num(h.new) + ', the old one ' + num(h.old) + ', the same ' + num(h.same) + ' (' + num(h.picked) + ' compared).'
       + (dl ? '<br>Arena duels: ' + dl : '<br>No Arena duels yet.')
