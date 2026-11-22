@@ -847,7 +847,7 @@ def write_react(r, pages: list[dict[str, Any]], wfacts: dict[str, Any], ref: str
                 pin: str = "", start: str = "") -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any] | None]:
     """Pages (the prototype's shape) -> a React website in the App Engine box: the design genome (her colour pinned), her
     languages, photos and catalogue, the writer (+ the critic when on), the build. `ref` = the app to write into ("" = a
-    new one). Returns (link, build result, writer stats, critic review). v0.999.107 D9: shared by Build the real
+    new one). Returns (link, build result, writer stats, critic review). v0.999.119 D9: shared by Build the real
     website and Upgrade this site."""
     from ..appengine import critic as C
     from ..appengine import genome as GN

@@ -368,7 +368,7 @@ def view(r: Site, full: bool = True) -> dict[str, Any]:
                                             "custom", "blanks", "critic")}
         if rx.get("preview"):
             v["preview"] = rx["preview"]
-    if r.version or _j(r.facts, {}).get("react_upgrade") or _j(r.facts, {}).get("html_kept"):   # v0.999.107 D9
+    if r.version or _j(r.facts, {}).get("react_upgrade") or _j(r.facts, {}).get("html_kept"):   # v0.999.119 D9
         try:
             from . import upgrade as UP
             v["upgrade"] = UP.view(r)

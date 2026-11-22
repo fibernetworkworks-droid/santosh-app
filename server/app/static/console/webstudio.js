@@ -1637,7 +1637,7 @@
     fit();
   }
 
-  /* ---------- v0.999.107 D9: Upgrade this site - the new design beside her website, her tap to keep it ---------- */
+  /* ---------- v0.999.119 D9: Upgrade this site - the new design beside her website, her tap to keep it ---------- */
   const UPG = {compare: '', busy: false};
   function upgBar(v, isRx) {
     const u = M(v.upgrade);

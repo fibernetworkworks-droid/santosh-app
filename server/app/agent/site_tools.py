@@ -265,7 +265,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return WP.restore(t, site, int(a.get("version") or 0))
         except WP.WapasError as e:
             raise S.SiteError(str(e))
-    if action == "upgrade":                       # v0.999.107 D9: where "Upgrade this site" stands (read only)
+    if action == "upgrade":                       # v0.999.119 D9: where "Upgrade this site" stands (read only)
         from ..site import upgrade as UP
         r = UP.site_of(t, site)
         return {"upgrade": UP.view(r), "say": UP.summary(r) + " Starting it, keeping it, going back or throwing it away is "

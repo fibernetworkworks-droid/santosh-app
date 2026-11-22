@@ -3531,3 +3531,9 @@ G12 of the global Customer Support plan: layer mode on Chatwoot, Zendesk, Freshd
 
 Task ID: v0.999.113 SUPPORT REPORTS
 G13 of the global Customer Support plan (its last phase): reports with breakdowns, trends, CSV / PDF and a monthly PDF; 7 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+---
+Task ID: v0.999.119 UPGRADE THIS SITE
+Ask: GO D9
+Built: site/upgrade.py (her words read out of her pages, the new design beside the old, keep / go back / throw away), prototype.write_react shared, routes /api/sites/<site>/upgrade*, Studio Upgrade bar + side-by-side compare, website action=upgrade (read only)
+Not verified: her own site moved and approved (the D9 done-line); a real model; studio_react_sites still OFF

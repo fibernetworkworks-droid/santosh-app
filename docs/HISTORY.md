@@ -9477,3 +9477,47 @@ Portals per country (P7). `server/app/pc/portals.py`: CLOUD_BLOCKED starter list
 
 ## v0.999.118 HOOLA LEARNS
 Hoola learns (P8). `server/app/pc/lessons.py`: collect() reads pc/trace records of 7 days (failed / repeats >= 3 / >= 25 steps; sites from open_url arguments and window titles), build() makes ONE model call (cheap brain then Claude, `_ask_model` seam) for <= 8 {site, lesson}, check_lesson() refuses a site no record was on, > 220 chars, numbers of 6+ digits, password / PIN / OTP / CVV words, 'skip approval / without asking / never ask'; candidates in data/pc_lessons.json (PC_LESSONS_FILE env, conftest per test); block(task, url) = kept lessons (and candidates while TRIAL is on) for the job's hosts, at most 6, as data; judge(base, trial) in code (keep / drop / wait), settle() after a trial card, base_card() = newest finished non-trial card of that exam on that PC; weekly_tick() from worker.pc_cleanup; routes GET /api/pc/lessons, POST /api/pc/lessons/build, DELETE /api/pc/lessons/{id} (owner). pccard.run_card(trial=) + RunBody.trial; a cut / stopped trial run is never judged. operator: the lessons block after her rules in the PC worker's prompt. vps-ops: pc_card_trial (lines as pc_card, default browser@Hoola PC) and pc_lessons. Tests `test_v0999_118_lessons.py` (4). NOT VERIFIED on her server.
+
+## v0.999.119 UPGRADE THIS SITE (built as 0.999.107; their SUPPORT EMAIL, HOOLA VOCAL REDESIGN - H, HOOLA VOCAL REDESIGN, BROWSER PUSH - R, SUPPORT CALLS, PORTAL EXAM HONEST, SUPPORT TEAMS, HER AI ASSISTANT, PORTAL EXAM TWO, SUPPORT QUALITY, PC STEP DEADLINE, SUPPORT LAYER - H, HER CHROME,  ENGINE 2, PC SAFETY IN CODE, SUPPORT REPORTS, SUPPORT REPORTS - S, DATA WITHOUT CLICKING - H, LEARN ONCE,  REPLAY, WATCH AND CONTROL, PORTALS PER COUNTRY, HOOLA LEARNS took 0.999.107-0.999.118, all kept) (D9 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D9"): her HTML website moves to the new engine on her tap (site/upgrade.py). Hoola rewrites the SAME website (same forms, booking, shop, blog, members, photos and address) as a React website from the kit, BESIDE the old one: its pages and sections from its plan (or the prototype she approved), her words read back out of the pages she has now (her edits included, never rewritten by a model), her colour pinned in the new design; nothing of the old website changes meanwhile. The Studio compares her website and the new design side by side; Keep the new design is her tap on the fingerprint of what she saw (her address changes only when she puts it live with the launch card); Go back to the old design any time; Throw it away. Routes /api/sites/{ref}/upgrade (+ keep / back / DELETE); the chat only says where it stands (website action=upgrade); prototype.write_react shared with Build the real website. 8 tests incl. a box build and a Chromium walk of the Studio.
+
+What it is: D9 of the Web Design Engine plan, the move-over. An HTML website she already has can be rebuilt on the new engine (React from the kit) with her tap, compared with what she has, and kept only by her tap.
+
+- **Same website, new design** (`site/upgrade.py`). The upgrade rewrites the SAME website record. Its forms, booking, shop and orders, blog, members, photos, catalogue, languages and address all stay what they are, because the React website calls the same website backend (`prototype.site_link`).
+- **Pages and sections** come from the prototype she approved, else from the website's plan (`prototype.skeleton`).
+- **Her words** are read back out of the pages her website shows now (`words_of` over each section's built HTML): the heading, the first line, the cards / list items as "Title - detail", and the button. Her own edits are included. A blank she never filled is left out, and so are scripts and drawings. No model rewrites her words.
+- **Her colour** is pinned in the new design: the primary colour of the look her website has now.
+- **Built beside the old website.** While the new design is made, nothing of the old website changes. Her preview, her versions, her section files and her live address all stay. The new design is held under `facts.react_upgrade` (its own App Engine app), never `facts.react_app`, so the Studio, the launch card, the blog and the editor all still see the HTML website. Only one upgrade at a time; a second tap while one is being made or is waiting is refused.
+- **Compare.** The Studio shows "Your website now" and "The new design" side by side, page by page (the same page in both frames), with how many sections carry her own words and any blanks to fill.
+- **Keep the new design** is her tap on the fingerprint of the new design's built version she looked at. A stale fingerprint is refused (409). The website then uses the React design: `react_app` is set and `html_kept` records the HTML version. Her live address changes only when she puts the website live with the normal launch card (her tap again).
+- **Go back to the old design** works any time after keeping. The HTML website was never changed. The new design waits beside it again with the same fingerprint, so she can keep it later.
+- **Throw it away** (it asks first) removes the new design's App Engine app; the website is as it was. It is not possible while the new design is being made or after she kept it (go back first).
+- **The chat** only says where it stands (`website action=upgrade`, read only). Starting, keeping, going back and throwing away are her taps in the Studio (a test checks the tool never calls them).
+- **Shared build:** `prototype.write_react` (the genome, languages, photos, catalogue, writer, critic, build) is now shared by Build the real website and Upgrade this site; `react_job` is unchanged in what it does.
+- Switch `site_upgrade` (default on) plus `app_engine`. It does NOT need `studio_react_sites`: that switch still decides only what NEW websites are built on (D10).
+
+Routes:
+- `GET /api/sites/{ref}/upgrade`
+- `POST /api/sites/{ref}/upgrade` (start)
+- `POST /api/sites/{ref}/upgrade/keep {hash}`
+- `POST /api/sites/{ref}/upgrade/back`
+- `DELETE /api/sites/{ref}/upgrade`
+
+The site view carries `upgrade`.
+
+Tests (`server/tests/test_v0999_119_upgrade.py`, 8):
+- her words out of built sections
+- the pages carry her own words and her edits
+- refused until built; nothing to keep, go back from or throw away
+- the whole move built in the App Engine box:
+  - the old website unchanged while it is made
+  - one at a time
+  - a stale fingerprint refused, keep, go back, throw away (the app removed)
+- the Studio's bar / compare / actions
+- the chat reports and never starts it
+- a Chromium walk of the Studio on the real server: Upgrade this site -> Compare (two frames) -> Keep the new design -> Go back to the old design
+
+NOT VERIFIED:
+- her own website moved and approved (the D9 done-line - that is her look and her tap)
+- a real model writing custom sections
+- the critic in the loop on a real upgrade
+- `studio_react_sites` still OFF
