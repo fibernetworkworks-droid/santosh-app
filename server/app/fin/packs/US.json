@@ -7,7 +7,7 @@
   "en",
   "es"
  ],
- "version": 1,
+ "version": 2,
  "official_hosts": [
   "consumerfinance.gov",
   "ftc.gov",
@@ -81,41 +81,75 @@
   },
   "ombudsman": {
    "name": {
-    "value": "No single ombudsman: CFPB complaint portal; state regulators; FINRA arbitration for brokers",
+    "value": "Consumer Financial Protection Bureau complaint portal (there is no single ombudsman)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "firm_first": {
+    "value": {
+     "n": 15,
+     "unit": "days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "refer_within": {
+    "value": null,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "site": {
+    "value": "consumerfinance.gov",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }
   },
   "fraud_report": {
-   "consumer": {
-    "value": "ReportFraud.ftc.gov",
+   "police": {
+    "value": "Local police report; FBI IC3 for internet crime",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    },
-   "internet": {
-    "value": "FBI IC3 (ic3.gov)",
+   "bank_hotline": {
+    "value": "The number on the back of your card",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    },
-   "identity_theft": {
-    "value": "IdentityTheft.gov",
+   "portal": {
+    "value": "reportfraud.ftc.gov",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }
   },
   "scam_refund": {
    "regime": {
-    "value": "Regulation E for unauthorised electronic transfers (authorised push payment scams mostly not covered - verify); Regulation Z for card billing errors",
+    "value": "Regulation E (Electronic Fund Transfer Act) for unauthorised electronic transfers; scams you authorised yourself are mostly not covered",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    },
-   "reg_e_notice_days": {
-    "value": 60,
+   "covers": {
+    "value": "Unauthorised debit card, ACH and bank-app transfers",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    },
-   "reg_z_billing_error_days": {
-    "value": 60,
+   "report_within": {
+    "value": {
+     "n": 60,
+     "unit": "days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "firm_answer_within": {
+    "value": {
+     "n": 10,
+     "unit": "working_days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "max_claim": {
+    "value": null,
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }
@@ -126,8 +160,13 @@
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    },
-   "limit_usd": {
+   "limit": {
     "value": 250000,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "per": {
+    "value": "per depositor, per bank, per ownership category",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }
@@ -144,6 +183,14 @@
    },
    "free_report": {
     "value": "AnnualCreditReport.com",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "answer_within": {
+    "value": {
+     "n": 30,
+     "unit": "days"
+    },
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }
@@ -240,6 +287,33 @@
   "ai_rules": {
    "approach": {
     "value": "Sector rules (ECOA adverse-action notices, model risk SR 26-2, state AI laws) - verify",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "card_dispute": {
+   "law": {
+    "value": "Fair Credit Billing Act / Regulation Z billing error rules (credit cards)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "report_within": {
+    "value": {
+     "n": 60,
+     "unit": "days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "identity_theft": {
+   "report_to": {
+    "value": "IdentityTheft.gov (FTC)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "freeze": {
+    "value": "Free security freeze at each bureau by federal law",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }

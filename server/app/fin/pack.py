@@ -15,8 +15,10 @@ A country with no file gets the FLOOR pack: explanations, budgets, documents and
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
+from contextlib import contextmanager
 from datetime import date
 from functools import lru_cache
 from pathlib import Path
@@ -27,10 +29,29 @@ STATUSES = ("verify", "source_read", "checked")
 LEVEL = {"verify": 0, "source_read": 1, "checked": 2}
 TOP = ("cc", "name", "currency", "minor_unit", "languages", "version", "official_hosts", "sections")
 SECTIONS = ("rails", "regulators", "ombudsman", "fraud_report", "scam_refund", "deposit_insurance", "credit_bureaus",
-            "open_banking", "tax", "payroll", "consumer_credit", "free_advice", "data_law", "entity_types", "id_checks", "ai_rules")
+            "open_banking", "tax", "payroll", "consumer_credit", "free_advice", "data_law", "entity_types", "id_checks", "ai_rules",
+            "card_dispute", "identity_theft")
 # ISO 4217 minor units that are not 2 (from the ISO list; checked by the money tests)
 MINOR = {"JPY": 0, "KRW": 0, "VND": 0, "CLP": 0, "ISK": 0, "UGX": 0, "XAF": 0, "XOF": 0, "PYG": 0, "RWF": 0, "KMF": 0, "GNF": 0,
          "DJF": 0, "VUV": 0, "XPF": 0, "BIF": 0, "KWD": 3, "BHD": 3, "OMR": 3, "JOD": 3, "TND": 3, "IQD": 3, "LYD": 3}
+
+
+_AS_CHECKED = [False]   # the F1 card's "as if a person had checked it" mode - never set by a live path
+
+
+def review_dir() -> Path:
+    """Where Hoola's reads of official pages and a person's checks are kept (fin/review.py writes it). One file per country."""
+    return Path(os.environ.get("HOOLA_FIN_REVIEW_DIR") or (Path("data") / "fin" / "pack_review"))
+
+
+@contextmanager
+def as_checked():
+    """Card only: read every rule as if a qualified person had checked it, to test what Hoola WOULD say. Never used for her."""
+    _AS_CHECKED[0] = True
+    try:
+        yield
+    finally:
+        _AS_CHECKED[0] = False
 
 
 class PackError(ValueError):
@@ -115,11 +136,35 @@ def load(cc: str) -> dict[str, Any] | None:
     if not re.fullmatch(r"[A-Z]{2}", cc) or not f.exists():
         return None
     p = json.loads(f.read_text(encoding="utf-8"))
+    p = _with_review(p)
     errs = validate(p)
     if errs:
         raise PackError(f"{cc}: " + "; ".join(errs[:6]))
     if cc == "IN":
         p = _with_india_rules(p)
+    return p
+
+
+def _with_review(p: dict[str, Any]) -> dict[str, Any]:
+    """Lay the review file over the pack: each entry replaces one leaf's status / source / quote / dates (and value, when a person
+    corrected it). The merged pack is validated like any other, so a review can never point at an unofficial site."""
+    f = review_dir() / f"{p.get('cc', '')}.json"
+    if not f.exists():
+        return p
+    try:
+        rv = json.loads(f.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return p
+    for path, e in (rv.get("rules") or {}).items():
+        node = p["sections"]
+        keys = path.split(".")
+        for k in keys[:-1]:
+            node = node.setdefault(k, {})
+        leaf = dict(node.get(keys[-1]) or {"value": None, "status": "verify"})
+        for k in ("status", "source", "quote", "checked_on", "review_by", "checked_by", "value"):
+            if k in e:
+                leaf[k] = e[k]
+        node[keys[-1]] = leaf
     return p
 
 
@@ -149,6 +194,8 @@ def codes() -> list[str]:
 
 
 def _effective(v: dict[str, Any], today: date | None = None) -> str:
+    if _AS_CHECKED[0]:
+        return "checked"
     st = v.get("status", "verify")
     rb = _day(v.get("review_by"))
     if st != "verify" and rb and rb < (today or date.today()):

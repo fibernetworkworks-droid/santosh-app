@@ -3555,3 +3555,6 @@ Task ID: v0.999.126 EVERY ROW WORKS
 Ask: GO FIX THE 3 PARTIAL FEATURES
 Built: custom sections translated per language (langs.custom_texts / translate_custom, writer.custom_variants), her members' board (site/board.py + island MemberBoard + Studio routes), pictures for visitors from her AI App (aiapps/pictures.py + AiChat Make a picture + editor switch); parity 18 of 18
 Not verified: a real picture engine call, real visitors posting, a live translation, on her server
+
+Task ID: v0.999.127 MONEY SAFETY WORLDWIDE F1
+F1 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/safety.py, fin/review.py, fin/card_f1.py, 7 new country packs + GB/US/IN money-safety sections, paisa_sahayak actions, /api/fin/safety + pack review routes. tests/test_fin_f1.py 8 + test_fin_f0.py 10 pass; card 60/60 + 10/10. Pre-existing reds not mine: test_english_guard::test_no_new_hinglish_in_server_text, test_v0728_sab_english::test_every_tool_label_has_english, test_v0799_desk_room::test_css_is_crisp_and_on_one_scale.

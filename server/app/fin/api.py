@@ -55,6 +55,56 @@ def make_router(require_key, current_tenant):
         except P.PackError as e:
             _err(e)
 
+    def _owner(tenant: str) -> None:
+        from ..config import get_settings
+        if tenant != get_settings().tenant_id:
+            raise HTTPException(403, "Country rules are the same for every user, so only the Hoola owner can change them.")
+
+    @r.get("/api/fin/packs/{cc}/todo", dependencies=dep)
+    def _todo(cc: str) -> dict[str, Any]:
+        from . import review as RV
+        return {"cc": cc.upper(), "rules": RV.todo(cc)}
+
+    @r.post("/api/fin/packs/{cc}/read", dependencies=dep)
+    def _read(cc: str, body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        from . import review as RV
+        _owner(tenant)
+        b = body or {}
+        try:
+            return RV.read(cc, str(b.get("path") or ""), str(b.get("url") or ""), str(b.get("quote") or ""))
+        except (RV.ReviewError, P.PackError) as e:
+            _err(e)
+        except Exception as e:   # the page could not be fetched
+            raise HTTPException(502, f"Could not read the page: {type(e).__name__}")
+
+    @r.post("/api/fin/packs/{cc}/confirm", dependencies=dep)
+    def _confirm(cc: str, body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        from . import review as RV
+        _owner(tenant)
+        b = body or {}
+        try:
+            return RV.confirm(cc, str(b.get("path") or ""), str(b.get("checked_by") or ""), str(b.get("source") or ""),
+                              b.get("value"), str(b.get("quote") or ""))
+        except (RV.ReviewError, P.PackError) as e:
+            _err(e)
+
+    @r.get("/api/fin/safety/cases", dependencies=dep)
+    def _safety_cases(tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        from .desks import safety as SF
+        return {"cases": SF.cases(tenant)}
+
+    @r.post("/api/fin/safety/{part}", dependencies=dep)
+    def _safety(part: str, body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        from . import core
+        from .desks import safety as SF
+        a = dict(body or {})
+        try:
+            return core.run_tool(tenant, "owner", "paisa_sahayak", part, a, lambda: SF.run(tenant, part, a))
+        except L.Refused as e:
+            raise HTTPException(403, str(e))
+        except (SF.SafetyError, PR.ProfileError) as e:
+            _err(e)
+
     @r.get("/api/fin/laws", dependencies=dep)
     def _laws() -> dict[str, Any]:
         return {"tier_c": [L.tier_c(k) for k in L.TIER_C], "not_advice": L.NOT_ADVICE}

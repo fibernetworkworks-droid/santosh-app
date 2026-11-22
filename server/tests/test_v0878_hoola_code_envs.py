@@ -235,7 +235,7 @@ def test_long_sessions_keep_how_they_began(dev):  # noqa: F811
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.126")
+    assert APP_VERSION.startswith("0.999.127")
 
 
 # ---------------------------------------------------------------- the console page

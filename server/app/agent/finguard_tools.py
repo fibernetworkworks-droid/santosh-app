@@ -12,7 +12,9 @@ from typing import Any
 
 from .tools import Ctx, ToolError
 
-_ACTIONS = ["loan", "compare", "flat", "prepay", "debts", "charges", "spend", "scam", "url", "upi", "complaint", "facts"]
+_ACTIONS = ["loan", "compare", "flat", "prepay", "debts", "charges", "spend", "scam", "url", "upi", "complaint", "facts",
+            "check_pay", "refund_claim", "card_dispute", "credit_dispute", "id_theft", "deposit_check", "case_prep", "cases"]
+_GLOBAL = {"check_pay", "refund_claim", "card_dispute", "credit_dispute", "id_theft", "deposit_check", "case_prep", "cases"}
 _STATEMENT = {"charges", "spend"}
 
 FINGUARD_TOOLS = [
@@ -28,9 +30,20 @@ FINGUARD_TOOLS = [
         "-> monthly in / out by category, recurring payments. scam: text (a message or what the caller said), sender -> scam family, the words that "
         "triggered it, links analysed (never opened), what to do. url: url. upi: scenario collect_request|qr_to_receive|refund|wrong_transfer|"
         "screen_share|autopay_mandate|limit. complaint: issue_type unauthorised_txn|failed_txn|charges|harassment|kyc_block|other, bank, branch, name, "
-        "account (last 4 is enough), amount, txn_date, txn_ref, narrative, prior_complaint_no, prior_date, outcome -> a letter with [blanks], an "
-        "evidence checklist and the escalation ladder (she sends it). facts: the helplines / rules this uses, each marked verify. Helplines and scheme "
-        "rules are from memory (verify: true): re-check the primary site."),
+        "account (last 4 is enough), amount, txn_date, txn_ref, narrative, prior_complaint_no, prior_date, outcome, country, complained_on, final_answer_on -> a letter with [blanks], an "
+        "evidence checklist and the escalation ladder (she sends it); with a country (ISO code) it uses that country's firm and ombudsman route instead. "
+        "facts: the helplines / rules this uses, each marked verify. Helplines and scheme rules are from memory (verify: true): re-check the primary site. "
+        "EVERY COUNTRY (country = two-letter code, e.g. GB US IN AE SG AU CA IE DE SA; any other code gets the steps that hold everywhere): "
+        "check_pay: country, text (the message), sender, payee_new, pressure -> scam signs + who to call there if she already paid. "
+        "refund_claim: country, txn_date, noticed_on, amount, bank, account (last 4), txn_ref, kind scam|unauthorised, narrative, name -> the "
+        "refund letter under that country's scheme, time limits, evidence, route. card_dispute: country, txn_date or statement_date, amount, merchant, "
+        "reason not_received|not_as_described|charged_twice|cancelled|unauthorised, contacted_on, bank, account -> dispute letter + time limit. "
+        "credit_dispute: country, bureau, item, narrative, name, sent_on -> bureau dispute letter + answer time. id_theft: country, lost [phone, "
+        "id, card...] -> recovery steps. deposit_check: country, balances [{bank, amount}] -> protected vs above the limit. case_prep (a bank / "
+        "institution's staff): country, case_kind scam|dispute|complaint, opened_on, txn_date, evidence [..], workspace -> the case file, clocks, "
+        "missing evidence; the decision is left to a named person. cases: her saved letters and cases. Country rules carry a level: a time limit is "
+        "stated as a deadline only when a person confirmed it; otherwise Hoola shows the rule it has as not confirmed and says to check it. "
+        "Letters are drafts she sends; nothing is filed, decided or paid."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": _ACTIONS}, "amount": {"type": "number"}, "rate": {"type": "number"}, "months": {"type": "integer"},
          "fee_pct": {"type": "number"}, "fee_fixed": {"type": "number"}, "fee_gst_pct": {"type": "number"}, "insurance": {"type": "number"},
@@ -42,7 +55,14 @@ FINGUARD_TOOLS = [
          "budget": {"type": "object"}, "sender": {"type": "string"}, "url": {"type": "string"}, "scenario": {"type": "string"},
          "issue_type": {"type": "string"}, "bank": {"type": "string"}, "branch": {"type": "string"}, "name": {"type": "string"},
          "account": {"type": "string"}, "txn_date": {"type": "string"}, "txn_ref": {"type": "string"}, "narrative": {"type": "string"},
-         "prior_complaint_no": {"type": "string"}, "prior_date": {"type": "string"}, "outcome": {"type": "string"}},
+         "prior_complaint_no": {"type": "string"}, "prior_date": {"type": "string"}, "outcome": {"type": "string"},
+         "country": {"type": "string"}, "kind": {"type": "string"}, "noticed_on": {"type": "string"},
+         "statement_date": {"type": "string"}, "merchant": {"type": "string"}, "reason": {"type": "string"},
+         "contacted_on": {"type": "string"}, "complained_on": {"type": "string"}, "final_answer_on": {"type": "string"},
+         "bureau": {"type": "string"}, "item": {"type": "string"}, "sent_on": {"type": "string"},
+         "lost": {"type": "array", "items": {"type": "string"}}, "balances": {"type": "array", "items": {"type": "object"}},
+         "case_kind": {"type": "string"}, "opened_on": {"type": "string"}, "evidence": {"type": "array", "items": {"type": "string"}},
+         "workspace": {"type": "string"}, "payee_new": {"type": "boolean"}, "pressure": {"type": "boolean"}},
          "required": ["action"]}},
 ]
 FINGUARD_LABELS = {"paisa_sahayak": "Checking accounts with Paisa Sahayak"}
@@ -77,6 +97,9 @@ def _sync(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..finguard import loans as LN
     from ..finguard import scam as SC
     from ..finguard import statement as ST
+    if action in _GLOBAL or (action == "complaint" and a.get("country")):
+        from ..fin.desks import safety as SF
+        return SF.run(getattr(ctx, "tenant_id", "") or "default", "complaint_global" if action == "complaint" else action, a)
     if action == "loan":
         return LN.true_cost(a.get("amount"), a.get("rate"), a.get("months"), fee_pct=a.get("fee_pct", 0), fee_fixed=a.get("fee_fixed", 0),
                             fee_gst_pct=a.get("fee_gst_pct"), insurance=a.get("insurance", 0), other_upfront=a.get("other_upfront", 0),

@@ -1,0 +1,157 @@
+{
+ "cc": "AE",
+ "name": "United Arab Emirates",
+ "currency": "AED",
+ "minor_unit": 2,
+ "languages": [
+  "ar",
+  "en"
+ ],
+ "version": 1,
+ "official_hosts": [
+  "aecb.gov.ae",
+  "centralbank.ae",
+  "ecrime.ae",
+  "sanadak.gov.ae",
+  "u.ae"
+ ],
+ "about": "F1 money-safety pack. Every value is 'verify' until Hoola reads the official page (source_read) or a person checks it (checked).",
+ "sections": {
+  "regulators": {
+   "banking": {
+    "value": "Central Bank of the UAE",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "scam_refund": {
+   "regime": {
+    "value": "Central Bank of the UAE Consumer Protection Regulation and Standards",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "covers": {
+    "value": "Unauthorised transactions, unless you were grossly negligent",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "report_within": {
+    "value": null,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "firm_answer_within": {
+    "value": null,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "max_claim": {
+    "value": null,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "card_dispute": {
+   "law": {
+    "value": "Central Bank of the UAE consumer protection standards and the card network chargeback",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "report_within": {
+    "value": null,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "ombudsman": {
+   "name": {
+    "value": "Sanadak (UAE financial ombudsman unit)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "firm_first": {
+    "value": {
+     "n": 30,
+     "unit": "days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "refer_within": {
+    "value": null,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "site": {
+    "value": "sanadak.gov.ae",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "fraud_report": {
+   "police": {
+    "value": "Police eCrime platform (ecrime.ae) or Abu Dhabi Police Aman",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "bank_hotline": {
+    "value": "Your bank's fraud line",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "portal": {
+    "value": "ecrime.ae",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "deposit_insurance": {
+   "scheme": {
+    "value": "No deposit insurance scheme",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "limit": {
+    "value": null,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "per": {
+    "value": "",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "credit_bureaus": {
+   "list": {
+    "value": [
+     "Al Etihad Credit Bureau (AECB)"
+    ],
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "free_report": {
+    "value": "",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "answer_within": {
+    "value": null,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "identity_theft": {
+   "report_to": {
+    "value": "Your local police and your bank",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "freeze": {
+    "value": "",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  }
+ }
+}

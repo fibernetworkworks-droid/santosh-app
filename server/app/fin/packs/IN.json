@@ -7,7 +7,7 @@
   "en",
   "hi"
  ],
- "version": 1,
+ "version": 2,
  "official_hosts": [
   "rbi.org.in",
   "sebi.gov.in",
@@ -74,38 +74,95 @@
   },
   "ombudsman": {
    "name": {
-    "value": "RBI Integrated Ombudsman Scheme (cms.rbi.org.in)",
+    "value": "RBI Integrated Ombudsman Scheme",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    },
-   "bank_first_days": {
-    "value": 30,
+   "firm_first": {
+    "value": {
+     "n": 30,
+     "unit": "days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "refer_within": {
+    "value": {
+     "n": 12,
+     "unit": "months"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "site": {
+    "value": "cms.rbi.org.in",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }
   },
   "fraud_report": {
-   "cyber": {
-    "value": "National Cyber Crime Helpline 1930 / cybercrime.gov.in",
+   "police": {
+    "value": "National Cyber Crime Reporting Portal",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "bank_hotline": {
+    "value": "1930 (National Cyber Crime Helpline)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "portal": {
+    "value": "cybercrime.gov.in",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }
   },
   "scam_refund": {
    "regime": {
-    "value": "RBI limited-liability circular for unauthorised electronic transactions (customer reports within 3 working days = zero liability - verify)",
+    "value": "RBI limited-liability circular for unauthorised electronic banking transactions (July 2017)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "covers": {
+    "value": "Unauthorised electronic transactions you did not make or allow",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "report_within": {
+    "value": {
+     "n": 3,
+     "unit": "working_days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "firm_answer_within": {
+    "value": {
+     "n": 10,
+     "unit": "working_days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "max_claim": {
+    "value": null,
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }
   },
   "deposit_insurance": {
    "scheme": {
-    "value": "DICGC",
+    "value": "Deposit Insurance and Credit Guarantee Corporation (DICGC)",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    },
-   "limit_inr": {
+   "limit": {
     "value": 500000,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "per": {
+    "value": "per depositor, per bank",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }
@@ -113,11 +170,24 @@
   "credit_bureaus": {
    "list": {
     "value": [
-     "CIBIL (TransUnion)",
+     "TransUnion CIBIL",
      "Experian",
      "Equifax",
      "CRIF High Mark"
     ],
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "free_report": {
+    "value": "One free full report a year from each bureau",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "answer_within": {
+    "value": {
+     "n": 30,
+     "unit": "days"
+    },
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }
@@ -210,6 +280,33 @@
   "ai_rules": {
    "approach": {
     "value": "RBI FREE-AI framework (2025) for regulated entities - verify",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "card_dispute": {
+   "law": {
+    "value": "RBI limited-liability circular and the card network chargeback",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "report_within": {
+    "value": {
+     "n": 3,
+     "unit": "working_days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "identity_theft": {
+   "report_to": {
+    "value": "cybercrime.gov.in and your bank",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "freeze": {
+    "value": "No freeze law; ask each bureau to flag your file",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }

@@ -9735,3 +9735,19 @@ NOT VERIFIED:
 - real visitors posting on a live website
 - a live model translation of a custom section
 - all of the above on her server
+
+## v0.999.127 MONEY SAFETY WORLDWIDE F1 — Money Safety for every country
+
+Owner: "GO F1" on docs/FINANCE_GLOBAL_PLAN.md (phase F1, section 8).
+
+- `server/app/fin/desks/safety.py` - the parts: check_pay, refund_claim, card_dispute, complaint (complaint_global), credit_dispute, id_theft, deposit_check, case_prep (institution side, decision left blank for the named decider), cases. `rule()` / `shown()` / `deadline()` read the pack at the level D3 asks for: checked -> a deadline with its date; source_read -> a reminder date said not to be a legal deadline; verify -> no date, the rule labelled 'not confirmed - check this'. Working days skip weekends; public holidays are not known and the text says so. Letters saved as FinCase + FinDraft.
+- Packs: GB / US / IN money-safety sections rewritten to one shape (scam_refund regime / covers / report_within / firm_answer_within / max_claim, card_dispute, ombudsman name / firm_first / refer_within / site, fraud_report, deposit_insurance scheme / limit / per, credit_bureaus list / free_report / answer_within, identity_theft); NEW AE, SG, AU, CA, IE, DE, SA. Every value verify; unknown numbers left empty rather than guessed. GB FSCS limit set to 120,000 (verify).
+- `server/app/fin/pack.py` - sections card_dispute + identity_theft; the review overlay (`HOOLA_FIN_REVIEW_DIR`, default data/fin/pack_review/<CC>.json) laid over the pack and validated; `as_checked()` for the card only.
+- `server/app/fin/review.py` - read (official host, quote must be on the fetched page -> source_read, review in 180 days), confirm (named checker, official source, optional corrected value -> checked, review in 365 days), todo. Audit rows on tenant 'platform'.
+- `server/app/fin/api.py` - GET /api/fin/packs/{cc}/todo, POST /api/fin/packs/{cc}/read and /confirm (owner only), POST /api/fin/safety/{part}, GET /api/fin/safety/cases.
+- `server/app/fin/laws.py` - refused acts now include approve_refund, decline_refund, decide_claim, decide_case, close_case, reimburse, issue_refund, refund_now, freeze_account.
+- `server/app/agent/finguard_tools.py` - paisa_sahayak actions check_pay, refund_claim, card_dispute, credit_dispute, id_theft, deposit_check, case_prep, cases; complaint with a country -> the country route. No new tool (registry stays 635).
+- `server/app/fin/card_f1.py` - the F1 card: 60 cases + 10 refusals; it fails when the date maths is broken (32/60) or another country's name is used (24/60).
+- Tests `server/tests/test_fin_f1.py` (8) + F0's 10 pass.
+
+NOT DONE: phone screens (no Flutter in this sandbox); no pack value read or confirmed yet; public holidays; the other employees (F2+).
