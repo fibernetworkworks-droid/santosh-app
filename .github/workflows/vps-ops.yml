@@ -460,7 +460,9 @@ jobs:
                 # v0.999.118 P8 pc_card_trial = the same exam WITH Hoola's candidate lessons; the card keeps them only if
                 # the score did not drop against the last normal card of that exam on that PC. pc_lessons = draft lessons
                 # from the last 7 days of PC jobs now (one AI call) and list every lesson.
-                CARD_TRIAL=false; if [ "$JOB" = pc_card_trial ]; then JOB=pc_card; CARD_TRIAL=true; fi
+                CARD_TRIAL=false; if [ "$JOB" = pc_card_trial ]; then JOB=pc_card; CARD_TRIAL=true
+                  # the lessons are about real portals: a trial with nothing typed (the box arrives as 300) runs the portal exam
+                  case "$LINES_IN" in *@*) : ;; *) LINES_IN='portal@Hoola PC' ;; esac; fi
                 CARD_IN="$LINES_IN"; case "$CARD_IN" in ''|*[!A-Za-z0-9\ _.:,@-]*|[0-9]*) [ "$JOB" = pc_card ] && echo "lines left at '$CARD_IN': running the browser exam on Hoola PC" >&2; CARD_IN='browser@Hoola PC' ;; esac
                 echo "export CARD_JOB=$JOB CARD_IN='$CARD_IN' CARD_TRIAL=$CARD_TRIAL"
                 echo '$CORE/.venv/bin/python - <<"PY"'
