@@ -478,6 +478,7 @@ LABELS_EN = {
     'cash_treasury': 'Working out the cash forecast',
     'credit_lending': 'Working out the loan figures',
     'firm_practice': "Working on the firm's clients",
+    'payments_desk': 'Working on the payments',
     'pathyakram': 'Making a paper or plan',
     'pathyakram_dekho': 'Checking a paper or plan',
     'patrakar': 'Working on the news',
