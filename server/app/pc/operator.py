@@ -758,6 +758,15 @@ def _event(op: Op) -> None:
 
 async def _pc(op: Op, action: str, args: dict[str, Any] | None = None, timeout: float = 40, log: bool = True) -> dict[str, Any]:
     from .hub import hub
+    from . import extlink
+    if op.kind != HOOLA_PC_KIND and not getattr(op, "bg", False) and action in extlink.ACTIONS and extlink.ready(op.tenant):
+        # v0.999.111 ULTIMATE PC PLAN P1: on HER PC the page tools run in her Chrome through the Hoola extension - page
+        # engine 2 (components, frames, honest clicks, hover, drag, dates, the page diff); no extension = the old path
+        try:
+            return await extlink.handle(op.tenant, action, args or {})
+        except extlink.ExtError as e:
+            if "not connected" not in str(e):
+                raise
     if op.lane and op.lane != "new" and action != "lane_open":
         args = {**(args or {}), "lane": op.lane}    # v0.999.47 a side job: its own browser window on the shared PC
     if op.device_id:   # v0.836 every step goes to THIS task's own PC, never the 'last connected' one
@@ -2758,6 +2767,10 @@ BG_HELD = {"click", "type", "key", "scroll", "drag", "mouse_move", "open_url", "
 
 def _tools_for(op: "Op") -> list[dict]:
     base = HOOLA_TOOLS if op.kind == HOOLA_PC_KIND else TOOLS
+    if op.kind != HOOLA_PC_KIND:
+        from . import extlink
+        if extlink.ready(op.tenant) and not getattr(op, "bg", False):   # v0.999.111 her Chrome: pointing + dragging too
+            base = base + [t for t in HOOLA_TOOLS if t.get("name") in ("page_hover", "page_drag")]
     if getattr(op, "bg", False):          # v0.999.47 background mode: only actions that never take her mouse / keyboard
         return [t for t in base if t.get("name") not in BG_HELD]
     if not op.native:

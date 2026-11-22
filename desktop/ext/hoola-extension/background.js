@@ -6,6 +6,7 @@
 // No eval, no remote code: the worker only fetches its own paired server.
 
 const DEFAULT_SERVER = "https://hoola.ainewtika.com";
+importScripts("engine.js");   // v0.999.111 page engine 2 in her Chrome (off until she turns it on)
 const LANEPATH = "/api/pc/quickask";
 const MSGPATH = "/api/pc/quickask/messages";
 const LIVEPATH = "/api/kaan/live";   // W5: the SAME kaan live door the API and the MCP server serve

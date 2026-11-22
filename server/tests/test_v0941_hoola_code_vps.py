@@ -153,5 +153,5 @@ def test_the_phone_screen_is_drawn():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.110"' in main
-    assert "version: 0.999.110+1105" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.111"' in main
+    assert "version: 0.999.111+1106" in (ROOT / "pubspec.yaml").read_text()

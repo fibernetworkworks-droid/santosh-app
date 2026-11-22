@@ -9423,3 +9423,22 @@ Owner: "GO G12" on docs/SUPPORT_GLOBAL_PLAN.md section 10 (built as 0.999.109; t
 - Desk: Channels & settings > Your helpdesk (choose the tool - only its own fields redraw -, address / account / user / key, Check / Read now / Leave, the switches, the webhook, what Hoola did there, the ones not joined yet).
 - Tests: `test_v0999_110_support_layer.py` 8 (join + seal + private host + not-built refused, sorting + suggestion + person note + nothing new written without a new customer message + never a DELETE, the public answer only with switch + trust, summary + reminders once a day + close by rule, where is my ticket only for that customer, webhook nudge + leave, the request shapes of Zendesk / Freshdesk / ServiceNow / Jira, a Chromium walk at desktop + phone width with the key never in the page).
 - NOT BUILT: Zoho Desk, Salesforce Service Cloud, HubSpot, Intercom (each needs an OAuth app registered by Newtika). NOT VERIFIED against a live account of any helpdesk.
+
+
+## v0.999.111 HER CHROME, ENGINE 2 (ULTIMATE PC PLAN P1 rest)
+Her Windows PC read Chrome through UI Automation (desktop/santosh_desktop/browser.py): no shadow DOM, no frames, no real
+mouse, no hover / drag / date boxes. Page engine 2 now runs in her Chrome through the Hoola extension, the SAME code as
+Hoola PC: `pagekit.extension_js()` generates `desktop/ext/hoola-extension/pagekit.js` (window.__hoolaPK.elements / snap /
+text / point / click / type / select / drag, injected into the extension's isolated world); typing / choosing JS moved
+from agent.py into pagekit (TYPE_BODY, SELECT_BODY) so both share it. `engine.js` (imported by background.js) connects
+when paired AND `pageEngine` is on AND the host + debugger permissions are granted (Options > "Let Hoola work on my
+pages"; Turn off removes them); it answers `js`, `mouse` (chrome.debugger, detached after 30 s idle) and `tab`, pings every
+20 s, reconnects with backoff and on a 1-minute alarm. `server/app/pc/extlink.py`: `/api/pc/ext-ws` (first message
+= the paired spc_ token, refused otherwise), one link per tenant, request ids + futures, and `handle()` = the agent's
+decisions (refs checked, honest click / covered, hover, drag, dates by her time zone's day order, diff, PW_REFUSED).
+`operator._pc` routes page_* for her PC there when `extlink.ready()` (not background mode); `_tools_for` adds page_hover /
+page_drag then. FOUND: manifest `default_locale: en` with no `_locales` folder - Chrome refuses to load such an
+extension; removed. Tests `test_v0999_111_ext_engine.py` (6): equal copies, the server engine against a real Chromium
+practice page (shadow, banner, hover menu, wizard dates, password refusal, drag, text), the real extension loaded in
+Chromium answering over its socket (elements, aim, a real debugger mouse click, tab), routing, the token-checked
+socket, the manifest. NOT VERIFIED on her Windows Chrome (needs the next desktop build's extension + her Turn on).
