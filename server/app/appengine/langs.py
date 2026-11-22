@@ -50,10 +50,11 @@ def stored(tenant: str, ref: str, lang: str) -> dict[str, Any]:
     try:
         v = json.loads((_dir(tenant, ref) / f"{_code(lang)}.json").read_text("utf-8"))
         if isinstance(v, dict):
-            return {"sections": v.get("sections") or {}, "pages": v.get("pages") or {}, "ui": v.get("ui") or {}}
+            return {"sections": v.get("sections") or {}, "pages": v.get("pages") or {}, "ui": v.get("ui") or {},
+                    "custom": v.get("custom") or {}}
     except (OSError, ValueError):
         pass
-    return {"sections": {}, "pages": {}, "ui": {}}
+    return {"sections": {}, "pages": {}, "ui": {}, "custom": {}}
 
 
 def save(tenant: str, ref: str, lang: str, data: dict[str, Any]) -> None:
@@ -107,6 +108,147 @@ def fresh(stored_: dict[str, Any], rows: list[dict[str, Any]], pages: list[dict[
             stale += 1
     ui = {k: (stored_.get("ui") or {}).get(k) or v for k, v in UI.items()}
     return {"edits": edits, "pages": pg, "ui": ui, "stale": stale}
+
+
+# ---------------------------------------------------------------- v0.999.124: sections written specially (custom code)
+# A custom section is one TSX file the model wrote for her site. Its VISIBLE words are read out by code: text between
+# tags, the words of a few attributes a visitor reads (alt, title, placeholder, aria-label, label), and the prose
+# values in its data (strings with a space and a letter that are not class lists, paths or links). Only those are
+# translated; the code around them is never touched, so the language copy is the same section in other words.
+TEXT_ATTRS = ("alt", "title", "placeholder", "aria-label", "label")
+_JSX_TEXT = re.compile(r">([^<>{}]*[^\W\d_][^<>{}]*)<")
+_ATTR = re.compile(r"\b(" + "|".join(re.escape(a) for a in TEXT_ATTRS) + r')=("([^"\\\n]*)"|\'([^\'\\\n]*)\')')
+_STR = re.compile(r'"((?:[^"\\\n]|\\.)*)"|\'((?:[^\'\\\n]|\\.)*)\'')
+_CLASSY = re.compile(r"^[!-]?[a-z0-9]+(?:[-:/.\[\]%#_][a-z0-9\[\]%#./_-]*)*$")
+
+
+def _prose(v: str) -> bool:
+    """A string a visitor reads: words with a space, not a class list, a path, a link or an identifier."""
+    v = v.strip()
+    if len(v) < 3 or not re.search(r"[^\W\d_]", v) or " " not in v:
+        return False
+    if v.startswith(("@/", "./", "../", "/", "#", "http", "mailto:", "tel:")) or "://" in v:
+        return False
+    toks = v.split()
+    if all(_CLASSY.match(t) for t in toks) and any(re.search(r"[-:/\[]", t) for t in toks):
+        return False                                   # a Tailwind class list
+    return True
+
+
+def custom_texts(code: str) -> list[dict[str, Any]]:
+    """The visible words of one custom section file, in order: [{start, end, value, kind, quote}]. Import lines,
+    comments, className values and JSX expressions are never read."""
+    out: list[dict[str, Any]] = []
+    taken: list[tuple[int, int]] = []
+    skip = [(m.start(), m.end()) for m in re.finditer(r"^\s*import\b[^\n]*$|//[^\n]*|/\*.*?\*/", code, re.M | re.S)]
+    skip += [(m.start(), m.end()) for m in re.finditer(r"\b(?:className|class|key|href|src|id|type|role|variant|size|"
+                                                       r"tone|name|htmlFor|rel|target|lang|dir|style|data-[\w-]+)="
+                                                       r"(\"[^\"\n]*\"|'[^'\n]*')", code)]
+
+    def free(a: int, b: int) -> bool:
+        return not any(x < b and a < y for x, y in skip + taken)
+    for m in _JSX_TEXT.finditer(code):
+        raw = m.group(1)
+        v = " ".join(raw.split())
+        a = m.start(1) + (len(raw) - len(raw.lstrip()))
+        b = m.end(1) - (len(raw) - len(raw.rstrip()))
+        if v and re.search(r"[^\W\d_]{2}", v) and free(a, b) and "=>" not in raw and "&&" not in raw:
+            out.append({"start": a, "end": b, "value": v, "kind": "jsx", "quote": ""})
+            taken.append((a, b))
+    for m in _ATTR.finditer(code):
+        g, q = (3, '"') if m.group(3) is not None else (4, "'")
+        a, b = m.start(g), m.end(g)
+        if m.group(g).strip() and free(a, b):
+            out.append({"start": a, "end": b, "value": m.group(g), "kind": "attr", "quote": q})
+            taken.append((a, b))
+    for m in _STR.finditer(code):
+        g, q = (1, '"') if m.group(1) is not None else (2, "'")
+        a, b = m.start(g), m.end(g)
+        v = m.group(g)
+        if free(m.start(), m.end()) and _prose(v) and "\\" not in v:
+            out.append({"start": a, "end": b, "value": v, "kind": "str", "quote": q})
+            taken.append((a, b))
+    return sorted(out, key=lambda x: x["start"])
+
+
+def code_hash(code: str) -> str:
+    return hashlib.sha256((code or "").encode()).hexdigest()[:16]
+
+
+def _safe(v: str, kind: str, quote: str) -> str:
+    v = " ".join(str(v).split())
+    if kind == "jsx":
+        return re.sub(r"[{}<>]", "", v)
+    return v.replace("\\", "").replace(quote, "\u2019" if quote == "'" else "\u201d")
+
+
+def apply_custom(code: str, texts: list[str | None]) -> str:
+    """The same file with its visible words replaced (None = her words kept)."""
+    spans = custom_texts(code)
+    if len(spans) != len(texts):
+        return code
+    out, at = [], 0
+    for sp, t in zip(spans, texts):
+        out.append(code[at:sp["start"]])
+        out.append(_safe(t, sp["kind"], sp["quote"]) if t else code[sp["start"]:sp["end"]])
+        at = sp["end"]
+    out.append(code[at:])
+    return "".join(out)
+
+
+def custom_variant(stored_: dict[str, Any], comp: str, code: str) -> str | None:
+    """The language copy of one custom section, when its translation is fresh (its code has not changed since)."""
+    got = (stored_.get("custom") or {}).get(comp) or {}
+    if not got or got.get("hash") != code_hash(code) or not any(got.get("texts") or []):
+        return None
+    return apply_custom(code, got.get("texts") or [])
+
+
+def translate_custom(tenant: str, ref: str, comps: list[str], lang_name: str, data: dict[str, Any],
+                     ask: Callable[[str, str], Any]) -> dict[str, int]:
+    """Translate the visible words of her custom sections whose code changed (one call per section)."""
+    from . import service as AE
+    out = {"custom": 0, "kept_source": 0, "failed": 0, "calls": 0}
+    src = AE.src_dir(AE._load(tenant, ref)) / "src" / "components" / "sections"
+    cus = data.setdefault("custom", {})
+    for comp in comps:
+        try:
+            code = (src / f"{comp}.tsx").read_text("utf-8")
+        except OSError:
+            continue
+        h = code_hash(code)
+        if (cus.get(comp) or {}).get("hash") == h:
+            continue
+        spans = custom_texts(code)
+        if not spans:
+            cus[comp] = {"hash": h, "texts": []}
+            continue
+        words = [x["value"] for x in spans][:MAX_BATCH * 2]
+        got: list[str] = []
+        for i in range(0, len(words), MAX_BATCH):
+            out["calls"] += 1
+            try:
+                part = _ask_list(ask, lang_name, words[i:i + MAX_BATCH])
+            except Exception:                         # noqa: BLE001 - this section waits for the next time
+                log.info("custom section %s (%s) not translated", comp, lang_name, exc_info=True)
+                part = []
+            if not part:
+                got = []
+                break
+            got += part
+        if len(got) != len(spans):
+            out["failed"] += 1
+            continue
+        texts: list[str | None] = []
+        for sp, v in zip(spans, got):
+            if kept(sp["value"], v):
+                texts.append(" ".join(v.split())[:600])
+            else:
+                texts.append(None)
+                out["kept_source"] += 1
+        cus[comp] = {"hash": h, "texts": texts}
+        out["custom"] += 1
+    return out
 
 
 # ---------------------------------------------------------------- translating (a model call: her build / her tap)
@@ -188,5 +330,12 @@ def translate(tenant: str, ref: str, rows: list[dict[str, Any]], pages: list[dic
         else:
             out["failed"] += 1
     data["sections"] = secs
+    comps = sorted({str(r.get("component") or "") for r in rows if r.get("block") == "custom" and r.get("component")})
+    if comps:                                         # v0.999.124: her custom sections' visible words too
+        cu = translate_custom(tenant, ref, comps, lang_name, data, ask)
+        out["custom"] = cu["custom"]
+        out["kept_source"] += cu["kept_source"]
+        out["failed"] += cu["failed"]
+        out["calls"] += cu["calls"]
     save(tenant, ref, lang, data)
     return out

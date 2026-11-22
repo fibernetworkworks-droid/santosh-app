@@ -196,6 +196,10 @@ window.HoolaAiApps = function ({api, toast}) {
       language: h('select', {class: 'aia-in'}, ...LANGS.map(([k, t]) => h('option', {value: k, selected: (s.language || 'auto') === k}, t))),
       cap: h('input', {class: 'aia-in', type: 'number', min: '1', step: '1', value: String(lim.monthly_cap_inr ?? 500)}),
       notice: h('textarea', {class: 'aia-in', rows: 2, maxlength: 400, value: s.notice || ''}),
+      // v0.999.124 pictures for her visitors: her switch, off until she ticks it
+      picOn: h('input', {type: 'checkbox', checked: !!(s.pictures || {}).on}),
+      picPer: h('input', {class: 'aia-in', type: 'number', min: '1', max: '10', step: '1', value: String((s.pictures || {}).per_visitor_day ?? 3)}),
+      picAbout: h('input', {class: 'aia-in', maxlength: 200, value: (s.pictures || {}).about || '', placeholder: 'e.g. cake design ideas for a birthday'}),
     };
     const acts = ACTIONS.map(([k, t, always]) => h('label', {class: 'aia-check'},
       h('input', {type: 'checkbox', value: k, checked: always || (s.actions || []).includes(k), disabled: always}), h('span', {}, h('b', {text: k}), ' - ' + t)));
@@ -210,7 +214,8 @@ window.HoolaAiApps = function ({api, toast}) {
         facts: lines(f.facts.value), opening: f.opening.value, suggested: lines(f.suggested.value), refuse: lines(f.refuse.value),
         language: f.language.value, notice: f.notice.value,
         actions: acts.map(l => l.querySelector('input')).filter(i => i.checked).map(i => i.value),
-        limits: {...lim, monthly_cap_inr: Number(f.cap.value) || 0}};
+        limits: {...lim, monthly_cap_inr: Number(f.cap.value) || 0},
+        pictures: {on: f.picOn.checked, per_visitor_day: Number(f.picPer.value) || 3, about: f.picAbout.value}};
       busy(save, true);
       try { const r = await api('PUT', `${B}/${q(APP.id)}/draft`, {soul}); APP = {...APP, ...r, check: {errors: r.errors || [], warnings: r.warnings || []}};
         toast('Draft saved - customers still see the live version'); drawApp(); }
@@ -232,6 +237,9 @@ window.HoolaAiApps = function ({api, toast}) {
       field('Suggested questions (one per line)', f.suggested),
       field('Always pass to your team (topics, one per line)', f.refuse, 'e.g. discounts, credit, medical advice'),
       h('div', {class: 'aia-two'}, field('Monthly cost cap (Rs)', f.cap, 'Over the cap no model is called; visitors are passed to your team.'), field('Notice shown before the first message', f.notice)),
+      h('label', {class: 'aia-check', 'data-pictures': ''}, f.picOn, h('span', {}, h('b', {text: 'Let visitors make pictures'}),
+        ' - about Rs 3 a picture from the monthly cap; no real people, no documents; every picture marked AI-generated')),
+      h('div', {class: 'aia-two'}, field('Pictures a visitor may make a day', f.picPer), field('What pictures (optional)', f.picAbout)),
       h('div', {class: 'aia-row aia-between'}, del, save)));
   }
 

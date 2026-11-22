@@ -147,7 +147,7 @@ def allowed(site_id: str, path: str, tenant: str = "") -> bool:
     return bool(sid) and ai_allowed(tenant, path)
 
 
-AI_PATH = re.compile(r"^/api/aiapp-pub/([A-Za-z0-9_-]{1,24})(/(session|chat|history|feedback))?$")
+AI_PATH = re.compile(r"^/api/aiapp-pub/([A-Za-z0-9_-]{1,24})(/(session|chat|history|feedback|picture|picture/aip_[A-Za-z0-9]{6,40}))?$")
 
 
 def ai_allowed(tenant: str, path: str) -> bool:

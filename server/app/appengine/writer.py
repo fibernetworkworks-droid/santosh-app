@@ -1312,7 +1312,8 @@ def _ld(ctx: Ctx) -> dict[str, Any]:
 NOT_WORDS = {"href", "icon", "image", "photo", "src", "whatsapp", "phone", "email", "address", "hours", "place", "map",
              "video", "logo", "upi", "url", "to", "id", "key", "date", "day", "open", "close", "variant", "tone",
              # v0.999.77 D8: where her website's forms / shop answer, and the product a cart line points at
-             "endpoint", "slug", "api"}
+             "endpoint", "slug", "api",
+             "site", "signin"}                          # v0.999.124 the members' board's own website + sign-in page
 
 
 def texts_of(props: Any, path: tuple = ()) -> list[dict[str, Any]]:
@@ -1407,7 +1408,13 @@ def page_file(page: dict[str, Any], ctx: Ctx, custom: dict[str, str],
         if d.get("variant") and d["variant"] in alts_of(block, var, props):
             var = d["variant"]
         comp = _comp(block)
-        imports[comp] = f'import {comp} from "@/components/blocks/{block.replace("_", "-")}";'
+        board = block == "discussions" and bool(ctx.lists) and bool(ctx.site_id)   # v0.999.124 her members' board
+        if board:
+            comp = "MemberBoard"
+            imports[comp] = 'import MemberBoard from "@/islands/MemberBoard";'
+            props = {**props, "site": ctx.site_id, "signin": ctx.signin or None}
+        else:
+            imports[comp] = f'import {comp} from "@/components/blocks/{block.replace("_", "-")}";'
         tone = ""
         if block == "cta_band":
             tone = "primary"
@@ -1419,7 +1426,7 @@ def page_file(page: dict[str, Any], ctx: Ctx, custom: dict[str, str],
         body.append(_wrap(sec, f"      <{comp}{attrs} {_jsx_props(props)} />".rstrip()))
         rows.append({"type": s.get("type"), "block": block, "variant": var, "tone": tone, "sec": sec,
                      "alts": alts_of(block, var, props), "tones": [t for t in tones_of(block) if t != (tone or "plain")],
-                     "texts": texts_of(props)})
+                     "texts": texts_of(props)} | ({"island": "MemberBoard"} if board else {}))
     if ctx.queue and page["slug"] in ("home", ctx.app_home.removeprefix("./")):   # v0.999.82 wave 8: her live queue
         imports["QueueBoard"] = 'import QueueBoard from "@/islands/QueueBoard";'
         at = 1 if page["slug"] == "home" and body else 0
@@ -1804,11 +1811,48 @@ def kit_files(rows: list[dict[str, Any]], shop: bool, posts: bool = False, catal
         ["src/islands/CatalogFilter.tsx", "src/islands/AddToCart.tsx"] if catalog else []) + members
 
 
+# ---------------------------------------------------------------- v0.999.124 custom sections in her other languages
+def variant_comp(comp: str, lang: str) -> str:
+    return f"{comp}{lang_comp(lang)}"
+
+
+def custom_variants(tenant: str, ref: str, ctx: Ctx, custom: dict[str, str]) -> dict[str, dict[str, str]]:
+    """Each custom section's copy in each extra language whose translation is fresh, written BEFORE the pages that use
+    it (a copy the rules refuse is not used: that language keeps her words in that section)."""
+    from . import langs as LG
+    from . import service as AE
+    out: dict[str, dict[str, str]] = {}
+    if not ctx.langs or not custom:
+        return out
+    try:
+        src = AE.src_dir(AE._load(tenant, ref)) / "src" / "components" / "sections"
+    except Exception:                                 # noqa: BLE001
+        return out
+    for lang in ctx.langs:
+        st = ctx.tr.get(lang) or {}
+        for comp in sorted(set(custom.values())):
+            try:
+                code = (src / f"{comp}.tsx").read_text("utf-8")
+            except OSError:
+                continue
+            v = LG.custom_variant(st, comp, code)
+            if not v:
+                continue
+            name = variant_comp(comp, lang)
+            try:
+                AE.write(tenant, ref, f"src/components/sections/{name}.tsx", v)
+                out.setdefault(lang, {})[comp] = name
+            except Exception:                         # noqa: BLE001 - refused: her words stay in that section
+                log.info("custom section %s in %s not written", comp, lang, exc_info=True)
+    return out
+
+
 # ---------------------------------------------------------------- write a whole site into an App Engine app
 def plan_files(pages: list[dict[str, Any]], ctx: Ctx, custom: dict[str, str] | None = None,
                design: dict[str, dict[str, Any]] | None = None,
                extra: list[dict[str, Any]] | None = None,
-               edits: dict[str, list[dict[str, Any]]] | None = None) -> tuple[dict[str, str], list[dict]]:
+               edits: dict[str, list[dict[str, Any]]] | None = None,
+               variants: dict[str, dict[str, str]] | None = None) -> tuple[dict[str, str], list[dict]]:
     """`extra` = pages with a route but no menu link (D5: the hero directions the critic compares, then removed)."""
     custom = custom or {}
     files: dict[str, str] = {}
@@ -1837,10 +1881,11 @@ def plan_files(pages: list[dict[str, Any]], ctx: Ctx, custom: dict[str, str] | N
         merged = {k: list(v) for k, v in (edits or {}).items()}
         for sec, es in fr["edits"].items():
             merged[sec] = merged.get(sec, []) + es
+        lcustom = {k: ((variants or {}).get(lang) or {}).get(c, c) for k, c in custom.items()}   # v0.999.124
         for pg in lc.pages:
             if pg.get("for", "public") != "public":
                 continue
-            code, _ = page_file(pg, lc, custom, design, merged)
+            code, _ = page_file(pg, lc, lcustom, design, merged)
             comp = lang_comp(lang) + _slug_comp(pg["slug"])
             files[f"src/pages/{comp}.tsx"] = code
             routes.append({"slug": pg["slug"], "_comp": comp, "_route": lroute(route_of(pg["slug"]), lang)})
@@ -1936,7 +1981,8 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
                 stats["refused_left"] -= 1               # it is drawn as a block instead: no refused write is LEFT
                 stats["refusals"][-1]["fell_back"] = True
             stats["custom_fallback"] += 1
-    files, rows = plan_files(pages, ctx, custom, design, extra, edits)
+    variants = custom_variants(tenant, ref, ctx, custom)   # v0.999.124: her custom sections in her other languages
+    files, rows = plan_files(pages, ctx, custom, design, extra, edits, variants)
     try:                                              # v0.999.77 D8: today's kit files before the pages that use them
         stats["kit"] = sync_kit(tenant, ref, kit_files(rows, bool(ctx.shop), bool(ctx.posts), bool(ctx.catalog), bool(ctx.lists)))
     except Exception:                                 # noqa: BLE001

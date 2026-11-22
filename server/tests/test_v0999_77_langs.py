@@ -105,8 +105,8 @@ def test_one_language_writes_the_site_as_before():
 def test_the_checklist_says_languages_work_except_custom_sections():
     from app.appengine import parity as PY
     st = {r["key"]: r for r in PY.check()["rows"]}
-    assert st["languages"]["state"] == "partial", st["languages"]
-    assert st["languages"]["missing"] == ["sections written specially for her site (custom code) stay in the first language"]
+    assert st["languages"]["state"] == "works", st["languages"]   # custom sections translated too (was "partial")
+    assert st["languages"]["missing"] == []
 
 
 # ---------------------------------------------------------------- 2. a real two-language React website

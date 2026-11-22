@@ -39,7 +39,7 @@ from .models import AiApp
 CODE = re.compile(r"^[A-Za-z0-9_-]{1,24}$")
 IP_LIMIT = (30, 600)          # chats per IP per 10 minutes
 SESSION_LIMIT = (60, 3600)    # chats per session per hour
-PUBLIC_FIELDS = ("name", "kind", "opening", "suggested", "notice", "form", "show_sources", "feedback")
+PUBLIC_FIELDS = ("name", "kind", "opening", "suggested", "notice", "form", "show_sources", "feedback", "pictures")
 
 
 class _Window:
@@ -359,7 +359,41 @@ def make_router(require_key, current_tenant):  # noqa: ARG001 - the house signat
         a, _ch = await _app(code, request)
         sid = await _session(a, request)
         rows = await asyncio.to_thread(RT.history, a, sid)
-        return {"messages": [{"id": m["id"], "q": m["q"], "a": m["a"], "sources": m["sources"], "at": m["at"]} for m in rows]}
+        from . import pictures as PX
+
+        def one(m):
+            out = {"id": m["id"], "q": m["q"], "a": m["a"], "sources": m["sources"], "at": m["at"]}
+            pm = re.match(r"^\(picture (aip_[A-Za-z0-9]+)\)$", str(m["a"] or ""))
+            if pm:                                    # v0.999.124 a picture she let her visitors make
+                out["a"], out["picture"] = "", {"id": pm.group(1), "key": PX.sign(pm.group(1))}
+            return out
+        return {"messages": [one(m) for m in rows]}
+
+    @r.post("/api/aiapp-pub/{code}/picture")
+    async def picture(code: str, request: Request, body: dict = Body(default={})):
+        """v0.999.124: a picture for the visitor - only when she switched pictures on (caps + rules in code)."""
+        from . import pictures as PX
+        a, ch = await _app(code, request)
+        sid = await _session(a, request)
+        wait = IP_WINDOW.hit("p:" + client_ip(request)) or SESSION_WINDOW.hit(sid)
+        if wait:
+            return JSONResponse({"detail": "Too many requests. Please wait a little."}, status_code=429,
+                                headers={"Retry-After": str(wait)})
+        try:
+            return await asyncio.to_thread(PX.make, a, sid, ch, str((body or {}).get("text") or ""))
+        except PX.PictureError as e:
+            raise HTTPException(e.code, str(e))
+
+    @r.get("/api/aiapp-pub/{code}/picture/{pid}")
+    async def picture_file(code: str, pid: str, request: Request, k: str = ""):
+        from fastapi.responses import FileResponse
+        from . import pictures as PX
+        a, _ch = await _app(code, request)
+        f = PX.file_of(a, pid, k)
+        if f is None:
+            raise HTTPException(404, "Not found.")
+        return FileResponse(f, media_type="image/png", headers={"Cache-Control": "private, max-age=86400",
+                                                                "X-Content-Type-Options": "nosniff"})
 
     @r.post("/api/aiapp-pub/{code}/feedback")
     async def fb(code: str, request: Request, body: dict = Body(default={})):

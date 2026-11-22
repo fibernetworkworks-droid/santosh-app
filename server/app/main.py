@@ -12001,6 +12001,75 @@ async def site_app_push_unsub(site_id: str, request: Request):
     return await _site_pub(site_id, "push_unsub", request, await _json_body(request))
 
 
+@app.get("/api/site-app/{site_id}/board")
+async def site_app_board(site_id: str, request: Request, topic: str = ""):
+    """v0.999.124: her members' board - the shown posts (her switch on; members only if she chose that)."""
+    return await _site_pub(site_id, "board", request, topic=topic)
+
+
+@app.post("/api/site-app/{site_id}/board")
+async def site_app_board_post(site_id: str, request: Request):
+    """A signed-in member posts or replies (code masks numbers / emails, caps, her approval first by default)."""
+    return await _site_pub(site_id, "board_post", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/board/report")
+async def site_app_board_report(site_id: str, request: Request):
+    return await _site_pub(site_id, "board_report", request, await _json_body(request))
+
+
+@app.get("/api/site-app/{site_id}/board/staff")
+async def site_app_board_staff(site_id: str, request: Request):
+    return await _site_pub(site_id, "board_staff", request)
+
+
+@app.post("/api/site-app/{site_id}/board/mod")
+async def site_app_board_mod(site_id: str, request: Request):
+    return await _site_pub(site_id, "board_mod", request, await _json_body(request))
+
+
+def _site_board_project(tenant: str, ref: str):
+    from .site import applink as AL
+    from .site import service as S
+    from .site import webapp as W
+    with session() as s:
+        r = S._find(s, tenant, ref)
+        s.expunge(r)
+    p = AL.project(r)
+    if p is None:
+        raise W.AppError("This website has no members yet: its portal / sign-in comes first.", 409)
+    return p
+
+
+@app.get("/api/sites/{ref}/board", dependencies=[Depends(require_key)])
+async def sites_board(ref: str, tenant: str = Depends(current_tenant)):
+    """Her side: the board's settings and every post (waiting, shown, hidden, reported)."""
+    from .site import board as BD
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: BD.staff_view(_site_board_project(tenant, ref), W.Who(owner=True)))
+
+
+@app.put("/api/sites/{ref}/board", dependencies=[Depends(require_key)])
+async def sites_board_settings(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP: switch her members' board on / off and its rules (letting visitors post is a public change)."""
+    from .site import board as BD
+    from .site import webapp as W
+
+    def go():
+        p = _site_board_project(tenant, ref)
+        BD.save_cfg(p, body or {})
+        return BD.staff_view(p, W.Who(owner=True))
+    return await asyncio.to_thread(_be_owner_call, go)
+
+
+@app.post("/api/sites/{ref}/board/mod", dependencies=[Depends(require_key)])
+async def sites_board_mod(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP: approve / hide / delete a post, or stop a member posting."""
+    from .site import board as BD
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: BD.moderate(_site_board_project(tenant, ref), W.Who(owner=True), body or {}))
+
+
 @app.get("/api/site-app/{site_id}/queue")
 async def site_app_queue(site_id: str, request: Request, mine: int = 0, staff: int = 0):
     """Public: the board (numbers only). mine=1: my token. staff=1: today's list with names (staff only)."""

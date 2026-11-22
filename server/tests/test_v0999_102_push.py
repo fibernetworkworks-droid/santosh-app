@@ -56,7 +56,7 @@ def test_the_checklist_ticks_browser_push():
     from app.appengine import parity
     st = {x["key"]: x for x in parity.check()["rows"]}
     assert st["push"]["state"] == "works", st["push"]
-    assert st["ai"]["state"] == "partial"                                              # wave 10 built it (was "not yet")
+    assert st["ai"]["state"] == "works"                                                # pictures too (was "partial")
 
 
 # ---------------------------------------------------------------- 2. a real clinic website, live on its own address

@@ -138,6 +138,16 @@ def check(raw: Any) -> dict[str, Any]:
         mx = 900
     out["limits"] = {"monthly_cap_inr": round(cap, 2), "max_reply_chars": max(200, min(mx, 3000))}
     out["notice"] = _s(raw.get("notice"), CAPS["notice"]) or DEFAULT_NOTICE
+    pic = raw.get("pictures") if isinstance(raw.get("pictures"), dict) else {}   # v0.999.124 pictures for visitors
+    try:
+        per = int(pic.get("per_visitor_day", 3))
+    except (TypeError, ValueError):
+        per = 3
+        errors.append("pictures.per_visitor_day must be a number")
+    out["pictures"] = {"on": bool(pic.get("on")), "per_visitor_day": max(1, min(per, 10)),
+                       "about": _s(pic.get("about"), 200)}
+    if out["pictures"]["on"]:
+        warnings.append("pictures are on: each picture a visitor makes costs about Rs 3 of this app's monthly ceiling")
     if not out["about"] and not out["facts"] and not out["knowledge"]["seva"]:
         warnings.append("no about, no facts and no knowledge base - it can only hand visitors over")
     return {"soul": out, "errors": errors[:30], "warnings": warnings[:20]}
