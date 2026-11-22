@@ -279,8 +279,9 @@ def accounts(tenant: str, workspace_id: str) -> list[dict[str, Any]]:
     with session() as db:
         out = []
         for a in db.query(FinAccount).filter(FinAccount.tenant_id == tenant, FinAccount.workspace_id == workspace_id).all():
-            n, tot = db.query(func.count(FinTxn.id), func.coalesce(func.sum(FinTxn.amount_minor), 0)) \
+            n, tot, last = db.query(func.count(FinTxn.id), func.coalesce(func.sum(FinTxn.amount_minor), 0), func.max(FinTxn.day)) \
                 .filter(FinTxn.tenant_id == tenant, FinTxn.account_id == a.id).one()
             out.append({"id": a.id, "name": a.name, "kind": a.kind, "currency": a.currency, "number_masked": a.number_masked,
-                        "txns": int(n), "net_minor": int(tot), "net": str(C.from_minor(int(tot), a.currency))})
+                        "txns": int(n), "net_minor": int(tot), "net": str(C.from_minor(int(tot), a.currency)),
+                        "last_day": last or ""})
         return out

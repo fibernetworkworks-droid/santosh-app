@@ -227,12 +227,10 @@
 
 /* ---------- the Vocal chat ---------- */
 #hvRoot .hv-chat{flex:0 1 560px;min-width:320px;border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:var(--bg)}
-#hvRoot .hv-chathd{height:62px;flex:none;display:flex;align-items:center;gap:12px;padding:0 12px 0 16px;border-bottom:1px solid var(--line)}
 #hvRoot .hv-ct>b{font-weight:600}
 #hvRoot .hv-log{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:20px 20px 12px;display:flex;flex-direction:column;gap:18px;scrollbar-width:thin;position:relative}
 #hvRoot .hv-log>#hvThread{display:flex;flex-direction:column}
 #hvRoot .hv-log .hck{--hck-gap:18px}
-#hvRoot .hv-hello{font-family:var(--fr);font-size:16px;line-height:1.5;color:var(--ink)}
 #hvRoot .hv-me{align-self:flex-end;max-width:84%;background:var(--hv-sunk);border-radius:16px;padding:10px 14px;font-size:15px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
 #hvRoot .hv-ho{font-family:var(--fr);font-size:16px;line-height:1.5}
 #hvRoot .hv-log .hck-bub{background:var(--hv-sunk);border-radius:16px;font-size:15px;padding:10px 14px}
@@ -290,7 +288,6 @@
 #hvRoot .hv-sndm{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 #hvRoot .hv-sndp{display:flex;align-items:center;gap:10px;min-width:0}
 #hvRoot .hv-sndp .hv-wave{height:18px}
-#hvRoot .hv-ideas{margin-top:-6px}
 
 /* ---------- takes on a stage ---------- */
 #hvRoot .hv-takes{display:flex;flex-direction:column;gap:12px}
@@ -457,3 +454,118 @@
 #hvRoot .hv-brk{word-break:break-all}
 #hvRoot .hv-doors{margin:8px 0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-size:13px}
 #hvRoot .hv-doors code,#hvRoot .hv-sec code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px}
+
+/* v0.999.128 VOCAL CHAT, ROOMY (design canvas claude.ai/artifact/WjcWjLf8Qgm7Rw1DnnAMou): the chat as wide as she wants -
+   drag the line, Narrow / Balanced / Wide / Chat only (remembered), Your sounds folds into a rail; one welcome with the box
+   in the middle; takes with the voice's initial, Keep on every take, Compare; the voice she will hear in the chat bar. */
+#hvRoot .hv-topr{display:flex;align-items:center;gap:6px;flex:none}
+#hvRoot .hv-widths{display:flex;gap:2px;padding:3px;border-radius:10px;background:var(--hv-sunk);margin-right:6px}
+#hvRoot .hv-widths button{height:28px;padding:0 10px;border-radius:8px;font-size:13px;color:var(--mut);white-space:nowrap}
+#hvRoot .hv-widths button:hover{color:var(--ink)}
+#hvRoot .hv-widths button[aria-pressed="true"]{background:var(--hv-surface);color:var(--ink);font-weight:500;box-shadow:0 1px 2px rgb(0 0 0 / .08)}
+#hvRoot .hv-newchat{display:flex;align-items:center;justify-content:center;gap:8px;height:40px;margin:8px 0 6px;border-radius:12px;background:var(--hv-pill);color:var(--hv-onpill);font-weight:500;font-size:14px}
+#hvRoot .hv-newchat:hover{opacity:.92}
+#hvRoot.hv-slim .hv-newchat{width:44px;padding:0;align-self:center}
+#hvRoot.hv-slim .hv-newchat span{display:none}
+#hvRoot .hv-rc span{overflow:hidden;text-overflow:ellipsis;min-width:0}
+#hvRoot .hv-rc[aria-current="true"]{background:var(--hv-sunk)}
+
+#hvRoot .hv-chatpage .hv-chat{flex:0 0 var(--hv-cw,640px);max-width:calc(100% - 320px);min-width:380px;border-right:0}
+#hvRoot .hv-chatpage.hv-folded .hv-chat{flex:1 1 auto;max-width:none}
+#hvRoot .hv-chatpage .hv-stage{flex:1 1 0;min-width:320px;position:relative;border-left:1px solid var(--line)}
+#hvRoot .hv-dragging,#hvRoot .hv-dragging *{cursor:col-resize!important;user-select:none}
+#hvRoot .hv-splith{position:absolute;left:-7px;top:0;bottom:0;width:13px;z-index:3;cursor:col-resize;display:grid;place-items:center;touch-action:none;outline:0}
+#hvRoot .hv-splith::before{content:"";position:absolute;inset:0 6px;background:transparent}
+#hvRoot .hv-splith span{position:relative;width:4px;height:36px;border-radius:3px;background:var(--hv-box);transition:background-color .15s,height .15s}
+#hvRoot .hv-splith:is(:hover,:focus-visible,.on) span{background:var(--pri);height:52px}
+#hvRoot .hv-splith:focus-visible::before{background:var(--pri)}
+#hvRoot .hv-rail{flex:none;width:56px;border-left:1px solid var(--line);background:var(--hv-sunk);display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:16px;color:var(--ink)}
+#hvRoot .hv-rail:hover{background:var(--hv-side)}
+#hvRoot .hv-railt{writing-mode:vertical-rl;font-size:13px;color:var(--mut);margin-top:6px}
+#hvRoot .hv-cnt{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:10px;background:var(--hv-sunk);color:var(--mut);font-size:12px;font-weight:500}
+#hvRoot .hv-cnt.on{background:var(--pri);color:var(--bg)}
+#hvRoot .hv-stage .hv-cnt{background:var(--hv-surface)}
+
+#hvRoot .hv-chatpage .hv-log{padding:28px 28px 12px}
+#hvRoot .hv-chatpage :is(.hv-thin,.hv-comp>*){width:100%;max-width:780px;margin-inline:auto}
+#hvRoot .hv-chatpage .hv-comp{padding:0 28px max(16px,env(safe-area-inset-bottom,0px))}
+#hvRoot .hv-chatpage .hv-sheet{left:max(28px,calc(50% - 390px));right:max(28px,calc(50% - 390px))}
+#hvRoot .hv-chatpage .hv-box{border-radius:22px;padding:14px 12px 10px 16px;box-shadow:0 2px 10px rgb(0 0 0 / .05)}
+#hvRoot .hv-chatpage #hvAsk{font-size:16px}
+#hvRoot .hv-chatpage .hv-foot{text-align:center}
+#hvRoot .hv-log .hck-bub{font-size:16px;padding:10px 16px;border-radius:18px 18px 6px 18px}
+#hvRoot .hv-chatpage .hv-ho,#hvRoot .hv-chatpage .hck-txt{font-size:16.5px;line-height:1.6}
+
+#hvRoot .hv-fresh .hv-thin{display:none}
+#hvRoot .hv-hero{width:100%;max-width:780px;margin:auto;display:flex;flex-direction:column;align-items:center;gap:18px;padding:12px 0 24px}
+#hvRoot .hv-heromark{width:64px;height:64px;border-radius:20px;background:var(--pri-soft);display:grid;place-items:center}
+#hvRoot .hv-heromark :is(svg,img){width:36px;height:36px}
+#hvRoot .hv-heroh{font-family:var(--fr);font-size:34px;font-weight:400;line-height:1.2;letter-spacing:-.01em;text-align:center}
+#hvRoot .hv-herop{color:var(--mut);font-size:15px;text-align:center;max-width:560px;margin-top:-6px}
+#hvRoot .hv-hero .hv-comp{width:100%;padding:6px 0 0}
+#hvRoot .hv-hero .hv-comp>*{max-width:none}
+#hvRoot .hv-hero .hv-box{box-shadow:0 2px 4px rgb(0 0 0 / .03),0 12px 32px rgb(0 0 0 / .07)}
+#hvRoot .hv-hero #hvAsk{font-size:17px;min-height:76px}
+#hvRoot .hv-hero .hv-sheet{left:0;right:0;bottom:auto;top:calc(100% - 8px);max-height:min(520px,60vh)}
+#hvRoot .hv-starts{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#hvRoot .hv-start{display:flex;align-items:flex-start;gap:12px;text-align:left;border:1px solid var(--line);border-radius:16px;background:var(--hv-surface);padding:14px 16px;min-width:0;transition:border-color .15s,background-color .15s}
+#hvRoot .hv-start:hover{border-color:var(--hv-box);background:var(--hv-side)}
+#hvRoot .hv-stt{width:36px;height:36px;flex:none;border-radius:11px;display:grid;place-items:center;font-size:13px;font-weight:600}
+#hvRoot .hv-stt.t0{background:color-mix(in srgb,var(--hv-t0) 15%,var(--bg));color:var(--hv-t0)}
+#hvRoot .hv-stt.t1{background:color-mix(in srgb,var(--hv-t2) 18%,var(--bg));color:color-mix(in srgb,var(--hv-t2) 70%,var(--ink))}
+#hvRoot .hv-stt.t2{background:color-mix(in srgb,var(--hv-t1) 16%,var(--bg));color:color-mix(in srgb,var(--hv-t1) 75%,var(--ink))}
+#hvRoot .hv-stt.t3{background:color-mix(in srgb,var(--hv-t3) 15%,var(--bg));color:color-mix(in srgb,var(--hv-t3) 80%,var(--ink))}
+#hvRoot .hv-stw{display:flex;flex-direction:column;gap:2px;min-width:0}
+#hvRoot .hv-stw b{font-weight:500;font-size:14px}
+#hvRoot .hv-stw span{font-family:var(--fr);font-size:14px;color:var(--mut);line-height:1.45}
+
+#hvRoot .hv-av{width:26px;height:26px;flex:none;border-radius:50%;background:var(--pri-soft);color:var(--pri-ink,var(--pri));display:grid;place-items:center;font-size:12px;font-weight:600}
+#hvRoot .hv-av.l{width:40px;height:40px;font-size:15px}
+#hvRoot .hv-setpill{padding:0 12px 0 4px;border-color:var(--hv-box);font-weight:500;font-size:13px}
+#hvRoot .hv-setpill[aria-expanded="true"]{background:var(--pri-soft);border-color:transparent;color:var(--pri-ink,var(--ink))}
+#hvRoot .hv-setc{padding:0;gap:0;border-radius:18px;overflow:hidden;box-shadow:0 1px 2px rgb(0 0 0 / .04),0 8px 24px rgb(0 0 0 / .05)}
+#hvRoot .hv-setc .hv-seth{padding:14px 16px 8px}
+#hvRoot .hv-takesl{display:flex;flex-direction:column}
+#hvRoot .hv-setc .hv-take{padding:8px 16px;gap:12px}
+#hvRoot .hv-setc .hv-take.kept{background:var(--pri-soft)}
+#hvRoot .hv-setc .hv-tn{width:52px;flex:none;font-weight:600}
+#hvRoot .hv-setc .hv-take .hv-wave{height:30px}
+#hvRoot .hv-setc .hv-len{width:38px;text-align:right}
+#hvRoot .hv-keep{height:30px;flex:none;display:inline-flex;align-items:center;gap:4px;padding:0 12px;border-radius:15px;border:1px solid var(--hv-box);font-size:13px;font-weight:500;color:var(--ink)}
+#hvRoot .hv-keep:hover{background:var(--hv-sunk)}
+#hvRoot .hv-keep.on{border-color:transparent;background:color-mix(in srgb,var(--ok) 16%,var(--bg));color:color-mix(in srgb,var(--ok) 70%,var(--ink))}
+#hvRoot .hv-setc>.hv-chips{padding:12px 16px 4px}
+#hvRoot .hv-setc .hv-chip{background:var(--hv-sunk);border-color:transparent}
+#hvRoot .hv-setc .hv-chip.pri{background:var(--pri-soft);color:var(--pri-ink,var(--pri));font-weight:500}
+#hvRoot .hv-setc>.hv-sm{padding:8px 16px 14px}
+
+@media (max-width:900px){
+  #hvRoot .hv-chatpage .hv-chat{flex:none;width:100%;max-width:none;min-width:0}
+  #hvRoot .hv-chatpage .hv-stage{flex:none;width:100%;min-width:0;border-left:0}
+  #hvRoot .hv-splith,#hvRoot .hv-widths{display:none}
+  #hvRoot .hv-rail{width:100%;flex-direction:row;justify-content:center;padding:14px;border-left:0;border-top:1px solid var(--line)}
+  #hvRoot .hv-railt{writing-mode:horizontal-tb;margin:0}
+}
+@media (max-width:720px){
+  #hvRoot .hv-chatpage .hv-log{padding:16px 14px 10px}
+  #hvRoot .hv-chatpage .hv-comp{padding:0 10px max(10px,env(safe-area-inset-bottom,0px))}
+  #hvRoot .hv-chatpage .hv-sheet{left:10px;right:10px}
+  #hvRoot .hv-heroh{font-size:27px}
+  #hvRoot .hv-starts{grid-template-columns:minmax(0,1fr)}
+  #hvRoot .hv-setc .hv-take{padding:8px 12px}
+  #hvRoot .hv-setc .hv-take .hv-wave{flex:1 1 120px}
+  #hvRoot .hv-setc .hv-tn{width:auto}
+  #hvRoot :is(.hv-keep,.hv-chip){min-height:36px}
+}
+#hvRoot .hv-stageh.two{flex-direction:column;align-items:stretch;gap:8px;padding:10px 14px 10px 18px}
+#hvRoot .hv-str{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
+#hvRoot .hv-str .hv-search{width:200px;max-width:100%}
+#hvRoot .hv-sndbtn{display:none;height:36px;padding:0 8px;border-radius:10px;align-items:center;gap:6px;color:var(--ink)}
+@media (max-width:900px){ #hvRoot .hv-sndbtn{display:inline-flex} }
+@media (max-width:720px){
+  #hvRoot .hv-setc .hv-take{flex-wrap:nowrap;gap:8px}
+  #hvRoot .hv-setc .hv-take .hv-wave{flex:1 1 40px}
+  #hvRoot .hv-setc .hv-take .hv-wave i:nth-child(n+21){display:none}
+  #hvRoot .hv-setc .hv-len{display:none}
+  #hvRoot .hv-setc .hv-play.l{width:40px;height:40px}
+}

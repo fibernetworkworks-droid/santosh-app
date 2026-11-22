@@ -1,0 +1,231 @@
+{
+ "cc": "IE",
+ "name": "Ireland",
+ "currency": "EUR",
+ "minor_unit": 2,
+ "languages": [
+  "en",
+  "ga"
+ ],
+ "version": 2,
+ "official_hosts": [
+  "ccpc.ie",
+  "centralbank.ie",
+  "depositguarantee.ie",
+  "fspo.ie",
+  "garda.ie",
+  "gov.ie",
+  "irishstatutebook.ie"
+ ],
+ "about": "F1 money-safety pack. Every value is 'verify' until Hoola reads the official page (source_read) or a person checks it (checked).",
+ "sections": {
+  "regulators": {
+   "banking": {
+    "value": "Central Bank of Ireland",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "scam_refund": {
+   "regime": {
+    "value": "European Union Payment Services Regulations 2018 (PSD2): an unauthorised payment refunded by the end of the next business day",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "covers": {
+    "value": "Unauthorised payments from an Irish account",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "report_within": {
+    "value": {
+     "n": 13,
+     "unit": "months"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "firm_answer_within": {
+    "value": {
+     "n": 1,
+     "unit": "working_days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "max_claim": {
+    "value": null,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "card_dispute": {
+   "law": {
+    "value": "Payment Services Regulations 2018 and the card scheme chargeback",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "report_within": {
+    "value": {
+     "n": 13,
+     "unit": "months"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "ombudsman": {
+   "name": {
+    "value": "Financial Services and Pensions Ombudsman (FSPO)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "firm_first": {
+    "value": {
+     "n": 40,
+     "unit": "working_days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "refer_within": {
+    "value": {
+     "n": 6,
+     "unit": "years"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "site": {
+    "value": "fspo.ie",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "fraud_report": {
+   "police": {
+    "value": "An Garda Siochana",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "bank_hotline": {
+    "value": "Your bank's fraud line",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "portal": {
+    "value": "garda.ie",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "deposit_insurance": {
+   "scheme": {
+    "value": "Deposit Guarantee Scheme (Central Bank of Ireland)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "limit": {
+    "value": 100000,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "per": {
+    "value": "per person, per bank",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "credit_bureaus": {
+   "list": {
+    "value": [
+     "Central Credit Register (Central Bank of Ireland)"
+    ],
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "free_report": {
+    "value": "Free report from the Central Credit Register",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "answer_within": {
+    "value": {
+     "n": 30,
+     "unit": "days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "identity_theft": {
+   "report_to": {
+    "value": "An Garda Siochana and your bank",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "freeze": {
+    "value": "No freeze law; add a notice to your Central Credit Register file",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "unclaimed": {
+   "finder": {
+    "value": "Ask each bank; dormant balances stay reclaimable",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "benefits": {
+   "checker": {
+    "value": "Citizens Information and gov.ie",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "tax_credits": {
+    "value": "Tax credits on Revenue's myAccount",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "student": {
+    "value": "SUSI student grants",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "self_employed_tax": {
+    "value": "Preliminary tax (revenue.ie)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "pension": {
+   "state": {
+    "value": "State Pension (Contributory)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "bereavement": {
+   "tell_once": {
+    "value": "Citizens Information bereavement guide",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "estate": {
+   "will_registry": {
+    "value": "No national register; your solicitor keeps the will",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "housing": {
+   "deposit_protection": {
+    "value": "Residential Tenancies Board (RTB)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  }
+ }
+}

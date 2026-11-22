@@ -68,4 +68,4 @@ def test_a_tier_backup_that_finished_a_reply_keeps_the_chat(tz, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.126"
+    assert APP_VERSION == "0.999.129"

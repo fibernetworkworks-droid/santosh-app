@@ -9735,3 +9735,72 @@ NOT VERIFIED:
 - real visitors posting on a live website
 - a live model translation of a custom section
 - all of the above on her server
+
+## v0.999.127 MONEY SAFETY WORLDWIDE F1 — Money Safety for every country
+
+Owner: "GO F1" on docs/FINANCE_GLOBAL_PLAN.md (phase F1, section 8).
+
+- `server/app/fin/desks/safety.py` - the parts: check_pay, refund_claim, card_dispute, complaint (complaint_global), credit_dispute, id_theft, deposit_check, case_prep (institution side, decision left blank for the named decider), cases. `rule()` / `shown()` / `deadline()` read the pack at the level D3 asks for: checked -> a deadline with its date; source_read -> a reminder date said not to be a legal deadline; verify -> no date, the rule labelled 'not confirmed - check this'. Working days skip weekends; public holidays are not known and the text says so. Letters saved as FinCase + FinDraft.
+- Packs: GB / US / IN money-safety sections rewritten to one shape (scam_refund regime / covers / report_within / firm_answer_within / max_claim, card_dispute, ombudsman name / firm_first / refer_within / site, fraud_report, deposit_insurance scheme / limit / per, credit_bureaus list / free_report / answer_within, identity_theft); NEW AE, SG, AU, CA, IE, DE, SA. Every value verify; unknown numbers left empty rather than guessed. GB FSCS limit set to 120,000 (verify).
+- `server/app/fin/pack.py` - sections card_dispute + identity_theft; the review overlay (`HOOLA_FIN_REVIEW_DIR`, default data/fin/pack_review/<CC>.json) laid over the pack and validated; `as_checked()` for the card only.
+- `server/app/fin/review.py` - read (official host, quote must be on the fetched page -> source_read, review in 180 days), confirm (named checker, official source, optional corrected value -> checked, review in 365 days), todo. Audit rows on tenant 'platform'.
+- `server/app/fin/api.py` - GET /api/fin/packs/{cc}/todo, POST /api/fin/packs/{cc}/read and /confirm (owner only), POST /api/fin/safety/{part}, GET /api/fin/safety/cases.
+- `server/app/fin/laws.py` - refused acts now include approve_refund, decline_refund, decide_claim, decide_case, close_case, reimburse, issue_refund, refund_now, freeze_account.
+- `server/app/agent/finguard_tools.py` - paisa_sahayak actions check_pay, refund_claim, card_dispute, credit_dispute, id_theft, deposit_check, case_prep, cases; complaint with a country -> the country route. No new tool (registry stays 635).
+- `server/app/fin/card_f1.py` - the F1 card: 60 cases + 10 refusals; it fails when the date maths is broken (32/60) or another country's name is used (24/60).
+- Tests `server/tests/test_fin_f1.py` (8) + F0's 10 pass.
+
+NOT DONE: phone screens (no Flutter in this sandbox); no pack value read or confirmed yet; public holidays; the other employees (F2+).
+
+## v0.999.128 VOCAL CHAT, ROOMY (22 Nov 2026)
+
+Owner, on a screenshot of the console Vocal chat: "NOW MAKE IT MORE USER FRIENDLY AND PREMIUM WITH CHAT WIDTH FLEXIBLE --
+SHOW DESIGN FIRST". Design canvas claude.ai/artifact/WjcWjLf8Qgm7Rw1DnnAMou (four boards: the chat at work, first open,
+the chat bar + voice picker, phone) -> "GO BUILD".
+
+What changed (console `static/console/vocal.js` + `vocal2.css`, phone `lib/ui/vocal/vocal_home.dart` + `vocal_kit.dart`):
+- **Chat width is hers.** The line between the chat and Your sounds is a separator (`.hv-splith`, `data-drag="chatw"`):
+  drag it, arrow keys move it 40 px, Home / End, double-click = Balanced. The top bar has Narrow (460) / Balanced (640) /
+  Wide (880) / Chat only; Your sounds always keeps at least 320 px. Width and mode are kept in localStorage `hv.chatw` /
+  `hv.chatmode`. `layout()` applies a change in place (CSS var `--hv-cw`, the stage swapped for a rail) so the thread, her
+  typing and the player are never redrawn.
+- **Your sounds folds** into a 56 px rail with the count (`.hv-rail`); it is folded by itself while she has made nothing.
+  On a phone-width page the width controls hide and a Your sounds button with the count sits in the top bar.
+- **One welcome.** The page drew its own welcome AND the greeting the server stores in every new Vocal chat (with the
+  chat kit's copy button under it). Now nothing Hoola said before her first words is drawn (`threadList`), and a fresh chat
+  is a centred welcome: the Hoola mark, "What should Hoola say today?", the box in the middle (its settings sheet opens
+  below it and scrolls into view), four starter cards that fill the box (never send). Her first words swap it for the
+  thread.
+- The chat's title and its tools (earlier chats, new chat) moved from a second header into the top bar; the sidebar gains
+  New vocal chat and Recent chats (the 3 newest other chats, GET /api/vocal/chats).
+- **Takes:** the voice's initial, Keep on every take (same kept list as before), Compare = the takes played one after
+  another (`UI.queue` on the player's ended event), Dub it as a chip, the AI line kept. The chat bar shows the voice's
+  initial (`#hvAv`). The player now names a chat take ("Diwali offer · take A"); it said "Sound" before.
+- **Phone:** take rows get Keep (remembered with SharedPreferences `vocal.kept`), the card shows the voice's initial, and Dub
+  it is a chip under the takes as well as in the take's menu. The phone already had its own start screen and full-width
+  chat.
+- The blue strip with an "N" on the right edge of her screenshot is not drawn by Hoola: no console element sits there in a
+  real Chromium render; it is most likely a browser add-on.
+
+Tests: NEW `server/tests/test_v0999_128_vocal_roomy_console.py` (3, two real-Chromium walks: welcome once, starters, first
+words, Keep, Compare, presets, drag, arrow keys, double-click, Chat only without redrawing the thread, rail, remembered after
+a reload, folded while empty, phone width with no sideways scroll); old Vocal console tests moved to the new layout (welcome
+vs thread, sidebar groups, the sheet below the box on the welcome); phone `test/vocal_phone_test.dart` +1 (Keep) and the
+Dub it count. Vocal tests 60 passed; phone 27 passed, analyzer clean.
+
+NOT VERIFIED: on her server, in her browser, or on her phone.
+
+## v0.999.129 HOUSEHOLD MONEY F2 (built as 0.999.128; their VOCAL CHAT, ROOMY took 0.999.128 - REBASE PROTOCOL, both kept) — Household Money for any country
+
+Owner: "GO F2" on docs/FINANCE_GLOBAL_PLAN.md (phase F2).
+
+- `server/app/fin/desks/household.py` - CATEGORIES (worldwide merchant / utility / subscription words), `_key` (payee without card words, dates, refs), categorise, budget, recurring (PERIODS weekly / fortnightly / monthly / quarterly / yearly with tolerances; 3 sightings for short periods, 2 for quarterly / yearly only at the same amount; price rise > 3%), forecast (regular items where they fall + median other spending of the last 3 full months), goal, net_worth, retirement (4% rule shown as such), forgotten, benefits, LIFE checklists, bereavement, will_check, save_rules (workspace settings.category_rules), run().
+- `server/app/agent/household_tools.py` - tool `household_money` (owner / approved only; customers and staff refused), through fin.core (laws gate + audit row).
+- Registered in agent/tools.py, labels, admit family words, voice VOICE_VIA_KAAM, employee/hire.py (Household Money, Finance & Banking), deskroom lane For people.
+- `server/app/fin/spine.py` accounts carry last_day (for quiet accounts).
+- Packs: unclaimed / benefits / pension / bereavement / estate / housing sections for GB US IN AE SG AU CA IE DE SA (verify).
+- `server/app/fin/api.py` - POST /api/fin/household/{part}.
+- `server/app/fin/card_f2.py` - the card; it fails when categories or the forecast are broken, or a bill is missed.
+- Tests `server/tests/test_fin_f2.py` (7); 36 tool-count pins 635 -> 636.
+
+NOT DONE: phone screens; open banking (statement upload only, D4); real statements have not been run through it; public holidays and pay-day shifts are not modelled.

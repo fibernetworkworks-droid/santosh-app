@@ -40,7 +40,8 @@ window.HoolaVocal = function (ctx) {
     chg: {file: null, voice: '', denoise: true, secs: 0, out: null},
     cl: {file: null, denoise: true, echo: true, level: true, silence: false, people: false, music: false, secs: 0, out: null, before: ''},
     fx: {prompt: '', seconds: 0, loop: false, takes: 4, out: []}, seed: 1, snd: {tab: 'All', q: ''}, side: {tab: 'All', q: ''},
-    dict: {imp: false, text: '', lang: ''}, apps: null, newKey: null, newHook: null, appName: '', hookUrl: '', kept: store.get('hv.kept', []), nav: false, slim: !!store.get('hv.slim', false)};
+    dict: {imp: false, text: '', lang: ''}, apps: null, newKey: null, newHook: null, appName: '', hookUrl: '', kept: store.get('hv.kept', []), nav: false, slim: !!store.get('hv.slim', false),
+    cw: Math.max(380, +store.get('hv.chatw', 640) || 640), cmode: store.get('hv.chatmode', 'balanced'), peek: false, recent: null, queue: []};
 
   const NAV = [['Make', [['chat', 'Vocal chat', 'chat'], ['speech', 'Speech', 'speech'], ['dialogue', 'Dialogue', 'dialog'], ['studio', 'Studio', 'book'], ['dub', 'Dubbing', 'dub']]],
     ['Voices', [['voices', 'Voice library', 'lib'], ['mine', 'Your voice', 'me']]],
@@ -54,7 +55,6 @@ window.HoolaVocal = function (ctx) {
   const TABS = {All: () => true, Speech: h => h.kind === 'tts', Dialogue: h => h.kind === 'dialogue' || h.kind === 'podcast', Dubs: h => h.kind === 'dub'};
   const MAKE = {speech: 'Speech', dialogue: 'Dialogue', sound: 'Sound effect'};
   const TONES = ['warm', 'whispers', 'laughs', 'excited', 'pause', 'slowly'];
-  const IDEAS = ['A shop welcome in Spanish', 'A bedtime story in Arabic', 'A two-host podcast intro', 'Rain on a tin roof'];
   const ENG = {auto: 'Hoola Auto', gemini: 'Gemini voice', eleven: 'ElevenLabs', lab: 'Hoola GPU lab', server: 'Hoola server'};
   const QUAL = {excellent: 'Excellent', good: 'Good', fair: 'Fair', not_tested: 'Not tested yet', none: 'Not available'};
   const FORMATS = [{id: 'mp3', name: 'MP3', note: 'Small, for sharing'}, {id: 'wav', name: 'WAV', note: 'Studio quality'},
@@ -70,7 +70,7 @@ window.HoolaVocal = function (ctx) {
     plus: 'M12 5v14M5 12h14', x: 'M6 6l12 12M18 6L6 18', back: 'M15 18l-6-6 6-6', down: 'M6 9l6 6 6-6', up: 'M6 15l6-6 6 6',
     send: 'M12 19V5M6 11l6-6 6 6', wand: 'M4 20L15 9M14 4v3M19 9h-3M18 5l-2 2', clock: 'M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 8v4l3 2',
     sliders: 'M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4', side: 'M6 4h12a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3zM9 4v16',
-    menu: 'M4 7h16M4 12h16M4 17h16', search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5', upload: 'M12 16V4M7 9l5-5 5 5M5 20h14',
+    menu: 'M4 7h16M4 12h16M4 17h16', fold: 'M9 6l6 6-6 6M19 5v14', search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5', upload: 'M12 16V4M7 9l5-5 5 5M5 20h14',
     dl: 'M12 4v12M7 11l5 5 5-5M5 20h14', mic: 'M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M12 17v4',
     check: 'M5 12.5l4.5 4.5L19 7.5', warn: 'M12 7v6M12 17h.01', redo: 'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7', trash: 'M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13',
     copy: 'M9 9h10v10H9zM5 15V5h10', globe: 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM3.5 12h17M12 3.5c2.5 2.6 3.6 5.4 3.6 8.5s-1.1 5.9-3.6 8.5c-2.5-2.6-3.6-5.4-3.6-8.5s1.1-5.9 3.6-8.5z'};
@@ -187,8 +187,8 @@ window.HoolaVocal = function (ctx) {
   async function play(id, src, title) {
     const a = $('#hvAudio'); if (!a) return;
     if (NOW && NOW.id === id && id && !a.paused) { a.pause(); return; }
-    try { const u = src || await blobUrl(`${A}/audio?id=${q(id)}`); const h = D.history.find(x => x.id === id);
-      NOW = {id, title: title || h?.title || 'Sound'}; const bar = $('#hvBar'); if (bar) bar.hidden = false;
+    try { const u = src || await blobUrl(`${A}/audio?id=${q(id)}`); const h = D.history.find(x => x.id === id) || C.items.find(x => x.id === id) || S.out.find(x => x.id === id);
+      NOW = {id, title: title || (h?.title ? h.title + (h.take ? ` · take ${h.take}` : '') : 'Sound')}; const bar = $('#hvBar'); if (bar) bar.hidden = false;
       const n = $('#hvNow'); if (n) n.textContent = NOW.title; a.src = u; await a.play().catch(() => {}); syncPlay(); }
     catch (e) { toast(e.message || 'That sound could not be played.', true); }
   }
@@ -250,13 +250,18 @@ window.HoolaVocal = function (ctx) {
       ? `<link rel="stylesheet" href="${esc(cssHref())}"><div class="hv-main"><main class="hv-view" id="hvView"></main>${barHTML()}</div>`
       : `<aside class="hv-side" id="hvSide" aria-label="Hoola Vocal pages"></aside><div class="hv-scrim" data-a="navoff" aria-hidden="true"></div>
       <div class="hv-main"><header class="hv-top"><button type="button" class="hv-ib hv-menu" data-a="navon" aria-label="Open the menu">${ic('menu', 18)}</button>
-        <div class="hv-crumb" id="hvCrumb"></div></header><main class="hv-view" id="hvView"></main>${barHTML()}</div>`;
+        <div class="hv-crumb" id="hvCrumb"></div><span class="hv-grow"></span><div class="hv-topr" id="hvTopR"></div></header><main class="hv-view" id="hvView"></main>${barHTML()}</div>`;
     (EMBED || document.body).appendChild(ROOT);
     ROOT.addEventListener('click', onClick); ROOT.addEventListener('input', onInput);
     ROOT.addEventListener('change', onChange); ROOT.addEventListener('submit', onSubmit);
     ROOT.addEventListener('keydown', onKey);
     ROOT.addEventListener('pointerdown', e => { if (C.setOpen && PAGE === 'chat' && !e.target.closest('#hvSetp, [data-a="setopen"]')) { C.setOpen = false; refreshSet(); } });
     const a = $('#hvAudio'); ['play', 'pause', 'ended'].forEach(k => a.addEventListener(k, syncPlay));
+    a.addEventListener('ended', () => { const n = UI.queue.shift(); if (n) play(n); });          // Compare: the takes one after another
+    a.addEventListener('pause', () => { if (!a.ended) UI.queue = []; });
+    ROOT.addEventListener('pointerdown', dragStart); ROOT.addEventListener('pointermove', dragMove);
+    ROOT.addEventListener('pointerup', dragEnd); ROOT.addEventListener('pointercancel', dragEnd);
+    ROOT.addEventListener('dblclick', e => { if (e.target.closest('[data-drag="chatw"]')) setWidth('balanced'); });
   }
   const barHTML = () => `<div class="hv-bar" id="hvBar" hidden><span class="hv-tile s">${ic('speech', 14)}</span><b id="hvNow"></b><audio id="hvAudio" controls preload="none"></audio>
     <button type="button" class="hv-ib" data-a="closebar" aria-label="Close the player">${ic('x')}</button></div>`;
@@ -277,14 +282,28 @@ window.HoolaVocal = function (ctx) {
     $('#hvSide').innerHTML = `<div class="hv-brand"><span class="hv-mark" aria-hidden="true">${markSvg()}</span><b>Hoola</b><span class="hv-badge">Vocal</span><span class="hv-grow"></span>
         <button type="button" class="hv-ib" data-a="slim" aria-label="${UI.nav ? 'Close the menu' : UI.slim ? 'Open the sidebar' : 'Close the sidebar'}" title="${UI.slim ? 'Open the sidebar' : 'Close the sidebar'}">${ic('side', 18)}</button></div>
       <button type="button" class="hv-nv" data-a="back" title="Back to chat">${ic('back')}<span>Back to chat</span></button>
+      <button type="button" class="hv-newchat" data-a="newchat" title="New vocal chat">${ic('plus')}<span>New vocal chat</span></button>
       ${NAV.map(([g, rows]) => `<span class="hv-gh">${g}</span>${rows.map(row).join('')}`).join('')}
+      ${(UI.recent || []).filter(c => c.id !== C.conv).length ? `<span class="hv-gh">Recent chats</span>${UI.recent.filter(c => c.id !== C.conv).slice(0, 3).map(c => `<button type="button" class="hv-nv hv-rc" data-a="openchat" data-id="${esc(c.id)}" title="${esc(c.title || 'Vocal chat')}"${PAGE === 'chat' && c.id === C.conv ? ' aria-current="true"' : ''}>${ic('chat')}<span>${esc(c.title || 'Vocal chat')}</span></button>`).join('')}` : ''}
       <span class="hv-grow"></span>${creditCard()}`;
   }
   function crumb() {
     if (EMBED) return;
     const c = $('#hvCrumb'); if (!c) return;
-    const p = PAGE === 'reading' && UI.proj ? ['Studio', UI.proj.title || 'New reading'] : PAGE === 'dub' && ARG && UI.dub ? ['Dubbing', UI.dub.title || 'Dub'] : [TITLE[PAGE] || ''];
-    c.innerHTML = `<span>Vocal ·${p.length > 1 ? ' ' + esc(p[0]) + ' ·' : ''}</span><h1 class="hv-h">${esc(p[p.length - 1])}</h1>`;
+    const p = PAGE === 'reading' && UI.proj ? ['Studio', UI.proj.title || 'New reading'] : PAGE === 'dub' && ARG && UI.dub ? ['Dubbing', UI.dub.title || 'Dub']
+      : PAGE === 'chat' ? [C.title && C.title !== 'Vocal chat' ? C.title : 'Vocal chat'] : [TITLE[PAGE] || ''];
+    c.innerHTML = `<span>Vocal ·${p.length > 1 ? ' ' + esc(p[0]) + ' ·' : ''}</span><h1 class="hv-h" id="hvCTitle">${esc(p[p.length - 1])}</h1>`;
+    topTools();
+  }
+  // the chat page's tools in the top bar: how wide the chat is, earlier chats, a new chat
+  const WIDTHS = [['narrow', 'Narrow', 460], ['balanced', 'Balanced', 640], ['wide', 'Wide', 880], ['chat', 'Chat only', 0]];
+  const widthNow = () => UI.cmode === 'chat' || folded() ? 'chat' : UI.cw < 550 ? 'narrow' : UI.cw > 760 ? 'wide' : 'balanced';
+  function topTools() {
+    const t = $('#hvTopR'); if (!t) return;
+    t.innerHTML = PAGE !== 'chat' ? '' : `<button type="button" class="hv-sndbtn" data-a="go" data-p="sounds" aria-label="Your sounds${D?.history?.length ? ', ' + plural(D.history.length, 'sound') : ''}">${ic('sounds', 17)}${D?.history?.length ? `<span class="hv-cnt on">${num(D.history.length)}</span>` : ''}</button><div class="hv-widths" role="group" aria-label="Chat width">${WIDTHS.map(([k, l]) =>
+        `<button type="button" data-a="cwidth" data-val="${k}" aria-pressed="${widthNow() === k}">${l}</button>`).join('')}</div>
+      <button type="button" class="hv-ib" data-a="chats" aria-label="Earlier chats" title="Earlier chats">${ic('clock', 18)}</button>
+      <button type="button" class="hv-ib" data-a="newchat" aria-label="New chat" title="New chat">${ic('plus', 18)}</button>`;
   }
   function go(page, arg) {
     window.HoolaMenu?.close();
@@ -366,6 +385,7 @@ window.HoolaVocal = function (ctx) {
   // ------------------------------------------------------------------ the Vocal chat ---
   const summary = () => `${MAKE[S.make]} · ${short(S.lang)}${S.make === 'sound' ? '' : ' · ' + vname(S.voice)} · ${plural(S.takes, 'take')}`;
   const settingsNote = () => `[Vocal settings: make ${S.make}; language ${S.lang || 'auto'}; voice ${S.voice || 'auto'}; style ${S.style || 'auto'}; speed ${+(+S.speed).toFixed(2)}; takes ${S.takes}; engine ${S.engine}]`;
+  const pillAv = () => S.make === 'sound' ? ic('fx', 14) : initial(vname(S.voice));
   const engShort = () => ({auto: 'Auto', gemini: 'Gemini', eleven: 'ElevenLabs'}[S.engine] || 'Auto');
   const chatWhy = () => paid(S.make === 'sound' ? (ready('eleven') ? '' : whyNot('eleven')) : speakWhy(S.lang, S.engine));
   function setPanel() {
@@ -391,33 +411,71 @@ window.HoolaVocal = function (ctx) {
         <label class="hv-sr" for="hvAsk">Message to Hoola Vocal</label>
         <textarea id="hvAsk" rows="2" maxlength="4000" data-m="C.ask" placeholder="Say what to make, or ask for a change...">${esc(C.ask)}</textarea>
         <div class="hv-boxrow"><button type="button" class="hv-plus" data-a="plus" aria-label="Add a recording, a document or a video" title="Add a recording, a document or a video">${ic('plus')}</button>
-          <button type="button" class="hv-setpill" data-a="setopen" aria-haspopup="dialog" aria-expanded="${C.setOpen}" aria-controls="hvSetp">${ic('sliders')}<span id="hvSum">${esc(summary())}</span>${ic(C.setOpen ? 'down' : 'up', 12)}</button>
+          <button type="button" class="hv-setpill" data-a="setopen" aria-haspopup="dialog" aria-expanded="${C.setOpen}" aria-controls="hvSetp"><span class="hv-av" id="hvAv" aria-hidden="true">${pillAv()}</span><span id="hvSum">${esc(summary())}</span>${ic(C.setOpen ? 'down' : 'up', 12)}</button>
           <button type="button" class="hv-engchip" data-a="pickengine" data-k="S.engine" aria-haspopup="menu" aria-label="Engine: ${esc(engName(S.engine))}">${ic('speech', 14)}<span id="hvEng">${engShort()}</span></button>
           <span class="hv-grow"></span>
           <button type="button" class="hv-ib" data-a="improve" aria-label="Improve what I wrote" title="Improve what I wrote">${ic('wand', 17)}</button>
           <button class="hv-send${on || stop ? ' on' : ''}${stop ? ' stop' : ''}" data-qbtn="chat" aria-label="${stop ? 'Stop' : 'Send'}" title="${stop ? 'Stop' : 'Send'}"${g.a}>${ic(stop ? 'stopf' : 'send')}</button></div></form>
-      ${g.l}<p class="hv-foot" data-qline="chat">The price shows here before you send · nothing is spent before that</p></div>`;
+      ${g.l}<p class="hv-foot" data-qline="chat">The price shows here before you send · nothing is spent until you send</p></div>`;
   }
-  const chatLine = r => r.credits != null ? `<b class="hv-num">${cr(r.credits)}</b> · ${plural(S.takes, 'take')} · made when you send · nothing is spent before that` : esc(scrub(r.line || ''));
+  const chatLine = r => r.credits != null ? `About <b class="hv-num">${cr(r.credits)}</b> for ${plural(S.takes, 'take')} · nothing is spent until you send` : esc(scrub(r.line || ''));
   function stageSounds(f, key) {
-    const list = soundsList(f);
-    return `<div class="hv-stageh"><b>Your sounds</b><span class="hv-grow"></span>${tabsRow(key, f.tab, ['All', 'Speech', 'Dialogue', 'Dubs', 'Voices'])}
-        ${search(key === 'side' ? 'hvSq' : 'hvSnq', `UI.${key}.q`, 'Search', f.q)}</div>
-      <div class="hv-stageb"><div class="hv-sgrid" id="hvSndGrid">${list.slice(0, key === 'side' ? 30 : 300).join('') || `<p class="hv-mut">${f.q ? 'Nothing matches.' : 'Nothing yet. What you make appears here.'}</p>`}</div></div>`;
+    const list = soundsList(f), side = key === 'side';
+    const tabs = tabsRow(key, f.tab, ['All', 'Speech', 'Dialogue', 'Dubs', 'Voices']), find = search(side ? 'hvSq' : 'hvSnq', `UI.${key}.q`, 'Search', f.q);
+    return `<div class="hv-stageh${side ? ' two' : ''}">${side ? `<div class="hv-str"><b>Your sounds</b>${D.history.length ? `<span class="hv-cnt">${num(D.history.length)}</span>` : ''}<span class="hv-grow"></span>
+          <button type="button" class="hv-ib" data-a="cwidth" data-val="chat" aria-label="Fold Your sounds away" title="Fold Your sounds away">${ic('fold', 18)}</button></div>
+        <div class="hv-str">${tabs}<span class="hv-grow"></span>${find}</div>` : `<b>Your sounds</b><span class="hv-grow"></span>${tabs}${find}`}</div>
+      <div class="hv-stageb"><div class="hv-sgrid" id="hvSndGrid">${list.slice(0, side ? 30 : 300).join('') || `<p class="hv-mut">${f.q ? 'Nothing matches.' : 'Nothing yet. What you make appears here.'}</p>`}</div></div>`;
   }
+  // the chat is as wide as she wants: drag the line, pick a width, or fold Your sounds away (remembered on this computer)
+  const STARTERS = [['ES', 0, 'A shop welcome in Spanish', '“¡Bienvenidos! Pan recién horneado todos los días.”', 'A 10 second welcome for my bakery, in Spanish, warm and friendly'],
+    ['AR', 1, 'A bedtime story in Arabic', 'A calm voice, slow, with a soft ending.', 'A short bedtime story in Arabic, calm and slow, with a soft ending'],
+    ['2', 2, 'A two-host podcast intro', 'Two voices, small reactions, soft music under it.', 'A two-host podcast intro in English, two voices, with small reactions and soft music'],
+    ['FX', 3, 'A sound effect', 'Rain on a tin roof, ten seconds, loops cleanly.', 'Rain on a tin roof, ten seconds, that loops cleanly']];
+  const folded = () => UI.cmode === 'chat' || (!(D?.history || []).length && !UI.peek);
+  const fresh = () => !C.rows.some(r => r.role === 'user') && !C.pend && !C.items.length;
+  function hero() {
+    return `<div class="hv-hero"><span class="hv-heromark" aria-hidden="true">${markSvg()}</span>
+      <h2 class="hv-heroh">What should Hoola say today?</h2>
+      <p class="hv-herop">A welcome, an ad, a story, a podcast for two or a sound, in any of ${D.langs.length ? num(D.langs.length) : 'the world’s'} languages. You hear the takes before anything is kept.</p>
+      ${composer()}
+      <div class="hv-starts">${STARTERS.map(([t, n, h, l, ask]) => `<button type="button" class="hv-start" data-a="idea" data-val="${esc(ask)}">
+        <span class="hv-stt t${n}" aria-hidden="true">${t}</span><span class="hv-stw"><b>${esc(h)}</b><span>${esc(l)}</span></span></button>`).join('')}</div></div>`;
+  }
+  const railHTML = () => { const n = (D.history || []).length;
+    return `<button type="button" class="hv-rail" data-a="unfold" aria-label="Open Your sounds${n ? `, ${plural(n, 'sound')}` : ', nothing yet'}" title="Open Your sounds">${ic('sounds', 18)}${n ? `<span class="hv-cnt on">${num(n)}</span>` : ''}<span class="hv-railt">Your sounds</span></button>`; };
+  const splitHTML = () => `<div class="hv-splith" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Chat width: drag, or use the arrow keys. Double-click to reset."
+      aria-valuemin="380" aria-valuemax="1400" aria-valuenow="${UI.cw}" data-drag="chatw"><span></span></div>`;
+  const stageHTML = () => folded() ? railHTML() : `<section class="hv-stage" id="hvStage" aria-label="Your sounds">${splitHTML()}${stageSounds(UI.side, 'side')}</section>`;
   function chatView() {
-    const fresh = !C.rows.some(r => r.role === 'user') && !C.pend && !C.items.length;
-    return `<div class="hv-split hv-chatpage"><section class="hv-chat" aria-label="Vocal chat">
-        <div class="hv-chathd"><span class="hv-tile">${ic('speech')}</span><div class="hv-ct"><b id="hvCTitle">${esc(C.title || 'Vocal chat')}</b><small>Say anything, in any language, or ask for a change.</small></div>
-          <button type="button" class="hv-ib" data-a="chats" aria-label="Earlier chats" title="Earlier chats">${ic('clock', 18)}</button>
-          <button type="button" class="hv-ib" data-a="newchat" aria-label="New chat" title="New chat">${ic('plus', 18)}</button></div>
+    const f = fresh();
+    return `<div class="hv-split hv-chatpage${folded() ? ' hv-folded' : ''}" id="hvSplit" style="--hv-cw:${UI.cw}px"><section class="hv-chat${f ? ' hv-fresh' : ''}" aria-label="Vocal chat">
         <div class="hv-log" id="hvLog">${D.error ? warnNote('Hoola Vocal could not load: ' + D.error) : ''}
-          <p class="hv-hello">Tell me what to say and who should say it, in any of ${D.langs.length ? num(D.langs.length) : 'the world’s'} languages. Speech, a two-person talk, a long reading, a dub or a sound. I make the takes and you can change them after: slower, warmer, another voice.</p>
-          ${fresh ? `<div class="hv-chips hv-ideas">${IDEAS.map(i => `<button type="button" class="hv-chip" data-a="idea" data-val="${esc(i)}">${esc(i)}</button>`).join('')}</div>` : ''}
-          <div id="hvThread"></div><div id="hvFail"></div></div>
-        ${composer()}</section>
-      <section class="hv-stage" aria-label="Your sounds">${stageSounds(UI.side, 'side')}</section></div>`;
+          ${f ? hero() : ''}<div class="hv-thin"><div id="hvThread"></div><div id="hvFail"></div></div></div>
+        ${f ? '' : composer()}</section>${stageHTML()}</div>`;
   }
+  // width + fold applied in place: the thread, her typing and the player are never redrawn
+  function layout() {
+    const sp = $('#hvSplit'); if (!sp) return;
+    sp.style.setProperty('--hv-cw', UI.cw + 'px');
+    const f = folded(); sp.classList.toggle('hv-folded', f);
+    if (f === !!$('#hvStage')) { $$('#hvSplit > :is(.hv-splith,.hv-stage,.hv-rail)').forEach(n => n.remove()); sp.insertAdjacentHTML('beforeend', stageHTML()); syncPlay(); }
+    const h = $('.hv-splith'); if (h) h.setAttribute('aria-valuenow', String(UI.cw));
+    topTools();
+  }
+  function setWidth(k, w) {
+    if (k === 'chat') UI.cmode = 'chat';
+    else { UI.cmode = 'open'; UI.peek = true; UI.cw = Math.round(w || (WIDTHS.find(x => x[0] === k) || WIDTHS[1])[2]); }
+    const sp = $('#hvSplit'); if (sp && UI.cmode !== 'chat') UI.cw = Math.max(380, Math.min(UI.cw, sp.clientWidth - 320));
+    store.set('hv.chatw', UI.cw); store.set('hv.chatmode', UI.cmode === 'chat' ? 'chat' : 'open'); layout();
+  }
+  let DRAG = null;
+  function dragStart(e) { const h = e.target.closest?.('[data-drag="chatw"]'); if (!h || e.button) return;
+    e.preventDefault(); h.setPointerCapture?.(e.pointerId); DRAG = {h, x0: e.clientX, w0: UI.cw}; h.classList.add('on'); ROOT.classList.add('hv-dragging'); }
+  function dragMove(e) { if (!DRAG) return; const sp = $('#hvSplit'); if (!sp) return;
+    UI.cw = Math.round(Math.max(380, Math.min(sp.clientWidth - 320, DRAG.w0 + e.clientX - DRAG.x0))); sp.style.setProperty('--hv-cw', UI.cw + 'px');
+    DRAG.h.setAttribute('aria-valuenow', String(UI.cw)); topTools(); }
+  function dragEnd() { if (!DRAG) return; DRAG.h.classList.remove('on'); ROOT.classList.remove('hv-dragging'); DRAG = null; store.set('hv.chatw', UI.cw); }
   // the takes of one ask, kept together and placed after the reply of the turn that made them
   function sets() {
     const m = new Map();
@@ -427,19 +485,26 @@ window.HoolaVocal = function (ctx) {
   }
   function setCard(s) {
     const f = s.items[0] || {}, credits = s.items.reduce((n, x) => n + (+x.credits || 0), 0), t = f.title || 'Your sound';
-    const meta = [f.lang ? short(f.lang) : '', f.voice_name, f.style ? styleName(f.style) : '', f.speed && +f.speed !== 1 ? `${+f.speed}x` : '', plural(s.items.length, 'take')].filter(Boolean).join(' · ');
+    const meta = [f.lang ? short(f.lang) : '', f.voice_name, f.style ? styleName(f.style) : '', f.speed && +f.speed !== 1 ? `${+f.speed}x` : '', plural(s.items.length, 'take'), f.engine ? engName(f.engine) : ''].filter(Boolean).join(' · ');
+    const who = f.voice_name && (f.kind === 'tts' || !f.kind) ? `<span class="hv-av l" aria-hidden="true">${initial(f.voice_name)}</span>` : `<span class="hv-tile l">${ic(f.kind === 'sfx' ? 'fx' : f.kind === 'dialogue' || f.kind === 'podcast' ? 'dialog' : 'speech', 20)}</span>`;
     const take = (it, i) => { const L = it.take || String.fromCharCode(65 + i), on = kept(it.id);
-      return `<div class="hv-take${on ? ' kept' : ''}">${playBtn(it.id, `Play take ${L}`, 14)}<div class="hv-tk"><span class="hv-tn">Take ${esc(L)}${on ? ' <span class="hv-st ok">Kept</span>' : ''}</span>${wave(it.id)}</div>
+      return `<div class="hv-take${on ? ' kept' : ''}">${playBtn(it.id, `Play take ${L}`, 14, ' l')}<span class="hv-tn">Take ${esc(L)}</span>${wave(it.id, 64)}
         <span class="hv-len hv-num">${it.seconds ? secs(it.seconds) : ''}</span>
-        <button type="button" class="hv-ib s" data-a="takemenu" data-id="${esc(it.id)}" aria-label="More for take ${esc(L)}: keep, download">${ic('more')}</button></div>`; };
-    const chips = [['Slower', `Make "${t}" a little slower`], ['Warmer', `Make "${t}" warmer`], ['Another voice', `Read "${t}" again in another voice`], ['Make it English', `Make "${t}" in English`]];
-    return `<article class="hv-card hv-setc" aria-label="${esc(t)}"><div class="hv-seth"><span class="hv-tile l">${ic('speech', 20)}</span><div class="hv-ct"><b>${esc(t)}</b><small>${esc(meta)}</small></div></div>
-      ${s.items.map(take).join('')}
-      <div class="hv-chips">${chips.map(([l, ask]) => `<button type="button" class="hv-chip" data-a="ask" data-val="${esc(ask)}">${l}</button>`).join('')}</div>
-      <span class="hv-mut hv-sm">Made by AI · marked in the file${f.engine ? ' · ' + esc(engName(f.engine)) : ''}${credits ? ' · ' + cr(credits) : ''}</span></article>`;
+        <button type="button" class="hv-keep${on ? ' on' : ''}" data-a="keep" data-id="${esc(it.id)}" aria-pressed="${on}" aria-label="${on ? `Take ${esc(L)} is kept` : `Keep take ${esc(L)}`}">${on ? ic('check', 13) + 'Kept' : 'Keep'}</button>
+        <button type="button" class="hv-ib s" data-a="takemenu" data-id="${esc(it.id)}" aria-label="More for take ${esc(L)}: download, dub it, remove">${ic('more')}</button></div>`; };
+    const dlg = f.kind === 'dialogue' || f.kind === 'podcast';
+    const chips = [['Slower', `Make "${t}" a little slower`], ['Warmer', `Make "${t}" warmer`], ['Another voice', `Read "${t}" again in another voice`],
+      dlg ? ['Add soft music', `Make "${t}" again with soft music under it`] : ['Make it English', `Make "${t}" in English`]];
+    return `<article class="hv-card hv-setc" aria-label="${esc(t)}"><div class="hv-seth">${who}<div class="hv-ct"><b>${esc(t)}</b><small>${esc(meta)}</small></div>
+        ${s.items.length > 1 ? `<button type="button" class="hv-btn s" data-a="compare" data-val="${esc(s.items.map(x => x.id).join(','))}" aria-label="Play the takes one after another">Compare</button>` : ''}</div>
+      <div class="hv-takesl">${s.items.map(take).join('')}</div>
+      <div class="hv-chips">${chips.map(([l, ask]) => `<button type="button" class="hv-chip" data-a="ask" data-val="${esc(ask)}">${l}</button>`).join('')}
+        ${canDub(f) ? `<button type="button" class="hv-chip pri" data-a="dubit" data-id="${esc(f.id)}" aria-haspopup="menu">${ic('globe', 13)}Dub it into another language</button>` : ''}</div>
+      <span class="hv-mut hv-sm">Made by AI · marked in the file${credits ? ' · ' + cr(credits) : ''}</span></article>`;
   }
   function threadList() {
-    const msgs = C.rows.filter(r => r.role === 'user' || r.role === 'assistant').map(r => ({id: r.id, role: r.role === 'user' ? 'her' : 'hoola', text: r.role === 'user' ? strip(r.text) : String(r.text || ''), at: atOf(r.at || r.created_at)}));
+    const first = C.rows.findIndex(r => r.role === 'user');
+    const msgs = C.rows.filter((r, i) => r.role === 'user' || (r.role === 'assistant' && first >= 0 && i > first)).map(r => ({id: r.id, role: r.role === 'user' ? 'her' : 'hoola', text: r.role === 'user' ? strip(r.text) : String(r.text || ''), at: atOf(r.at || r.created_at)}));
     const after = new Map();
     for (const s of sets()) { let i = -1; msgs.forEach((m, j) => { if (m.at <= s.at + 1) i = j; });
       if (i >= 0 && msgs[i].role === 'her' && msgs[i + 1]?.role === 'hoola') i++;
@@ -489,9 +554,11 @@ window.HoolaVocal = function (ctx) {
       const c = id ? {id} : await api('GET', `${A}/chat`);
       C.conv = c.id; C.rows = []; C.items = []; C.turn = null; C.lastSend = null; if (c.title) C.title = c.title;
       C.thread?.clear?.(); await chatLoad(true);
-      if (PAGE === 'chat') draw();
+      if (PAGE === 'chat') { crumb(); side(); draw(); }
+      recent();
     } catch (e) { toast(`The Vocal chat could not open: ${e.message}`, true); }
   }
+  function recent() { api('GET', `${A}/chats`).then(r => { UI.recent = (r.chats || []).slice(0, 4); side(); }).catch(() => { /* the list waits for next time */ }); }
   async function chatLoad(first) {
     if (!C.conv || C.loading) return; const conv = C.conv; C.loading = true;
     try {
@@ -502,7 +569,7 @@ window.HoolaVocal = function (ctx) {
       if (conv !== C.conv) return;
       const before = C.items.length; C.rows = rows; C.items = items; if (rows.some(r => r.role === 'user')) C.pend = '';
       if (first) return;
-      if (PAGE === 'chat') { if (rows.some(r => r.role === 'user') || items.length) $('.hv-ideas')?.remove(); paintChat(); if (items.length !== before) { await load(); refreshSide(); side(); } }
+      if (PAGE === 'chat') { if ($('.hv-fresh') && !fresh()) return draw(); paintChat(); if (items.length !== before) { await load(); refreshSide(); side(); } }
     } finally { C.loading = false; }
   }
   function refreshSide() { const g = $('#hvSndGrid'); if (!g) return; const f = PAGE === 'sounds' ? UI.snd : UI.side;
@@ -525,7 +592,7 @@ window.HoolaVocal = function (ctx) {
     C.lastSend = {text, at: Date.now() / 1000, voice: S.voice, lang: S.lang, style: S.style, speed: S.speed, takes: S.takes, engine: S.engine, format: S.format, expressive: S.expressive, rules: S.rules};
     if (textIn == null) C.ask = ''; C.files = []; C.pend = text;
     if (ta && textIn == null) { ta.value = ''; ta.style.height = ''; } const t = $('#hvTray'); if (t) { t.innerHTML = ''; t.hidden = true; }
-    $('.hv-ideas')?.remove();
+    if ($('.hv-fresh')) draw();
     C.thread?.her(text, {pending: true, files: files.map(f => f.name)});
     paintChat();
     try {
@@ -548,8 +615,10 @@ window.HoolaVocal = function (ctx) {
     }
   }
   function refreshSet() {           // the chat's settings sheet + pill + price, without redrawing the thread
-    const p = $('#hvSetp'); if (p) { p.hidden = !C.setOpen; p.innerHTML = C.setOpen ? setPanel() : ''; }
+    const p = $('#hvSetp'); if (p) { const was = !p.hidden; p.hidden = !C.setOpen; p.innerHTML = C.setOpen ? setPanel() : '';
+      if (C.setOpen && !was && p.closest('.hv-hero')) requestAnimationFrame(() => p.scrollIntoView({block: 'nearest'})); }
     const s = $('#hvSum'); if (s) s.textContent = summary();
+    const av = $('#hvAv'); if (av) av.innerHTML = pillAv();
     const e = $('#hvEng'); if (e) e.textContent = engShort();
     const o = $('[data-a="setopen"]'); if (o) { o.setAttribute('aria-expanded', String(C.setOpen)); const svgs = o.querySelectorAll('svg'); if (svgs[1]) svgs[1].outerHTML = ic(C.setOpen ? 'down' : 'up', 12); }
     const comp = $('#hvComp');
@@ -562,7 +631,7 @@ window.HoolaVocal = function (ctx) {
 
   // ------------------------------------------------------------------ pages ---
   const ENTER = {
-    chat() { if (!C.conv) openChat().then(() => { if (C.ask && PAGE === 'chat' && C.autosend) { C.autosend = false; chatSend(); } chatPoll(); });
+    chat() { if (!UI.recent) recent(); if (!C.conv) openChat().then(() => { if (C.ask && PAGE === 'chat' && C.autosend) { C.autosend = false; chatSend(); } chatPoll(); });
       else { chatLoad(false).then(() => { paintChat(); if (C.autosend) { C.autosend = false; chatSend(); } chatPoll(); }); } },
     dub() { if (ARG) { loadDub(ARG); return; } api('GET', `${A}/dubs`).then(r => { UI.dubs = r.dubs || []; if (PAGE === 'dub' && !ARG) draw(); }).catch(e => { UI.dubs = []; toast(e.message, true); }); },
     mine() { consentLine(UI.clone.lang); },
@@ -1178,6 +1247,10 @@ window.HoolaVocal = function (ctx) {
       case 'play': return id.startsWith('line:') ? playLine(+id.slice(5)) : play(id);
       case 'playurl': return d.val === 'before' && UI.cl.before ? play('before', UI.cl.before, 'Before') : null;
       case 'keep': return keep(id);
+      case 'cwidth': return setWidth(d.val);
+      case 'unfold': UI.peek = true; return setWidth(UI.cw < 550 ? 'narrow' : UI.cw > 760 ? 'wide' : 'balanced', UI.cw);
+      case 'openchat': { const c = (UI.recent || []).find(x => x.id === id); C.title = c?.title || 'Vocal chat'; if (PAGE !== 'chat') go('chat'); return openChat(id); }
+      case 'compare': { const ids = String(d.val || '').split(',').filter(Boolean); if (!ids.length) return; UI.queue = ids.slice(1); return play(ids[0]); }
       case 'closebar': $('#hvAudio').pause(); $('#hvBar').hidden = true; return;
       case 'hear': { const v = voice(id) || libVoice(id); b.disabled = true;
         const path = libVoice(id) && UI.vtab === 'shared' ? (v.preview ? (String(v.preview).startsWith('/api/') ? v.preview : `${A}/library/preview?url=${q(v.preview)}`) : '') : `${A}/voice/preview?id=${q(id)}&lang=${q(S.lang === 'auto' ? ((v?.langs || [])[0] || 'en') : S.lang)}`;
@@ -1292,6 +1365,9 @@ window.HoolaVocal = function (ctx) {
     }
   }
   function onKey(ev) {
+    if (ev.target.closest?.('[data-drag="chatw"]') && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(ev.key)) { ev.preventDefault();
+      const sp = $('#hvSplit'), max = sp ? sp.clientWidth - 320 : 1400;
+      UI.cw = ev.key === 'Home' ? 380 : ev.key === 'End' ? max : UI.cw + (ev.key === 'ArrowLeft' ? -40 : 40); return setWidth('open', Math.max(380, UI.cw)); }
     if (ev.key !== 'Escape') return;
     if (C.setOpen && PAGE === 'chat') { ev.preventDefault(); C.setOpen = false; refreshSet(); return $('[data-a="setopen"]')?.focus(); }
     if (UI.nav) { UI.nav = false; side(); return $('.hv-menu')?.focus(); }

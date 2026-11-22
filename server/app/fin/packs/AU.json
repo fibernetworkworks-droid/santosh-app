@@ -1,0 +1,224 @@
+{
+ "cc": "AU",
+ "name": "Australia",
+ "currency": "AUD",
+ "minor_unit": 2,
+ "languages": [
+  "en"
+ ],
+ "version": 2,
+ "official_hosts": [
+  "accc.gov.au",
+  "afca.org.au",
+  "asic.gov.au",
+  "cyber.gov.au",
+  "fcs.gov.au",
+  "gov.au",
+  "idcare.org",
+  "scamwatch.gov.au"
+ ],
+ "about": "F1 money-safety pack. Every value is 'verify' until Hoola reads the official page (source_read) or a person checks it (checked).",
+ "sections": {
+  "regulators": {
+   "banking": {
+    "value": "Australian Securities and Investments Commission",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "scam_refund": {
+   "regime": {
+    "value": "Scams Prevention Framework (rules phasing in) and the ePayments Code for unauthorised transactions",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "covers": {
+    "value": "Unauthorised transactions; scam protections as the sector rules start",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "report_within": {
+    "value": null,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "firm_answer_within": {
+    "value": null,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "max_claim": {
+    "value": null,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "card_dispute": {
+   "law": {
+    "value": "ePayments Code and the card scheme chargeback",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "report_within": {
+    "value": null,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "ombudsman": {
+   "name": {
+    "value": "Australian Financial Complaints Authority (AFCA)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "firm_first": {
+    "value": {
+     "n": 30,
+     "unit": "days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "refer_within": {
+    "value": {
+     "n": 2,
+     "unit": "years"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "site": {
+    "value": "afca.org.au",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "fraud_report": {
+   "police": {
+    "value": "ReportCyber (cyber.gov.au)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "bank_hotline": {
+    "value": "Your bank's fraud line",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "portal": {
+    "value": "scamwatch.gov.au",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "deposit_insurance": {
+   "scheme": {
+    "value": "Financial Claims Scheme",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "limit": {
+    "value": 250000,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "per": {
+    "value": "per account holder, per bank",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "credit_bureaus": {
+   "list": {
+    "value": [
+     "Equifax",
+     "Experian",
+     "illion"
+    ],
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "free_report": {
+    "value": "Free report every 3 months from each bureau",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "answer_within": {
+    "value": {
+     "n": 30,
+     "unit": "days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "identity_theft": {
+   "report_to": {
+    "value": "IDCARE (national identity support service)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "freeze": {
+    "value": "Free credit ban from each bureau",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "unclaimed": {
+   "finder": {
+    "value": "MoneySmart unclaimed money search (ASIC)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "pensions": {
+    "value": "Lost and unclaimed super through the ATO on myGov",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "benefits": {
+   "checker": {
+    "value": "Services Australia payment and service finder",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "student": {
+    "value": "Study assistance on Services Australia",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "self_employed_tax": {
+    "value": "PAYG instalments (ato.gov.au)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "pension": {
+   "state": {
+    "value": "Age Pension (Services Australia)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "bereavement": {
+   "tell_once": {
+    "value": "Australian Death Notification Service",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "estate": {
+   "will_registry": {
+    "value": "Your state's wills register",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "housing": {
+   "deposit_protection": {
+    "value": "Your state's rental bond authority",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  }
+ }
+}

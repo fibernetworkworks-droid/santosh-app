@@ -7,7 +7,7 @@
   "en",
   "cy"
  ],
- "version": 1,
+ "version": 3,
  "official_hosts": [
   "gov.uk",
   "fca.org.uk",
@@ -82,20 +82,31 @@
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    },
-   "firm_first_weeks": {
-    "value": 8,
+   "firm_first": {
+    "value": {
+     "n": 8,
+     "unit": "weeks"
+    },
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    },
-   "refer_within_months": {
-    "value": 6,
+   "refer_within": {
+    "value": {
+     "n": 6,
+     "unit": "months"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "site": {
+    "value": "financial-ombudsman.org.uk",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }
   },
   "fraud_report": {
    "police": {
-    "value": "Action Fraud (England, Wales, NI); Police Scotland on 101",
+    "value": "Action Fraud (England, Wales, Northern Ireland); Police Scotland on 101",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    },
@@ -103,21 +114,42 @@
     "value": "159",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
+   },
+   "portal": {
+    "value": "actionfraud.police.uk",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
    }
   },
   "scam_refund": {
    "regime": {
-    "value": "PSR APP fraud reimbursement (Faster Payments and CHAPS)",
+    "value": "PSR APP fraud reimbursement requirement (Faster Payments and CHAPS); Payment Services Regulations 2017 for unauthorised payments",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    },
-   "max_claim_gbp": {
+   "covers": {
+    "value": "Scams where you were tricked into sending a Faster Payment or CHAPS from a UK account; unauthorised payments too",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "report_within": {
+    "value": {
+     "n": 13,
+     "unit": "months"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "firm_answer_within": {
+    "value": {
+     "n": 5,
+     "unit": "working_days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "max_claim": {
     "value": 85000,
-    "status": "verify",
-    "note": "from research / memory - verify on the official page before use"
-   },
-   "claim_within_months": {
-    "value": 13,
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }
@@ -128,8 +160,13 @@
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    },
-   "limit_gbp": {
-    "value": 85000,
+   "limit": {
+    "value": 120000,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "per": {
+    "value": "per person, per authorised bank",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }
@@ -141,6 +178,19 @@
      "Equifax",
      "TransUnion"
     ],
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "free_report": {
+    "value": "Free statutory report from each agency",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "answer_within": {
+    "value": {
+     "n": 28,
+     "unit": "days"
+    },
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }
@@ -252,6 +302,100 @@
   "ai_rules": {
    "approach": {
     "value": "Principles-based (FCA / ICO guidance); no single AI Act",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "card_dispute": {
+   "law": {
+    "value": "Consumer Credit Act 1974 section 75 (credit card purchases of 100 to 30,000 pounds) and the card scheme chargeback",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "report_within": {
+    "value": {
+     "n": 120,
+     "unit": "days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "identity_theft": {
+   "report_to": {
+    "value": "Action Fraud and Cifas Protective Registration",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "freeze": {
+    "value": "No legal freeze; Cifas Protective Registration flags your file",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "unclaimed": {
+   "finder": {
+    "value": "My Lost Account (mylostaccount.org.uk)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "pensions": {
+    "value": "Pension Tracing Service (gov.uk)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "insurance": {
+    "value": "Unclaimed Assets Register",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "benefits": {
+   "checker": {
+    "value": "Benefits calculators listed on gov.uk",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "tax_credits": {
+    "value": "Universal Credit and Tax-Free Childcare (gov.uk)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "student": {
+    "value": "Student Finance (England, Scotland, Wales, Northern Ireland)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "self_employed_tax": {
+    "value": "Self Assessment and payments on account (gov.uk)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "pension": {
+   "state": {
+    "value": "New State Pension - check your forecast on gov.uk",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "bereavement": {
+   "tell_once": {
+    "value": "Tell Us Once (gov.uk)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "estate": {
+   "will_registry": {
+    "value": "No compulsory register; your solicitor keeps the will",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "housing": {
+   "deposit_protection": {
+    "value": "Tenancy deposit protection schemes in England and Wales",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
    }
