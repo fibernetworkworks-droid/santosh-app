@@ -331,10 +331,12 @@ def test_team_page_in_a_real_browser(t_server):
     pg.check("#spQueue input[name=member]")
     with pg.expect_response(lambda r: r.url.endswith("/api/seva/team/queues")):
         pg.click("#spQueue button[type=submit]")
+    pg.wait_for_function("() => document.querySelector('#spPage').innerText.includes('(spanish)')", timeout=15000)
     pg.wait_for_selector("#spRoute")
     pg.fill("#spRoute [name=language]", "es")
     with pg.expect_response(lambda r: r.url.endswith("/api/seva/team/routes")):
         pg.click("#spRoute button[type=submit]")
+    pg.wait_for_function("() => document.querySelector('#spPage').innerText.includes('language es')", timeout=15000)
     pg.wait_for_selector("#spRule")
     pg.fill("#spRule [name=name]", "Urgent to Ana")
     pg.select_option("#spRule [name=cfield]", "priority")
@@ -344,6 +346,7 @@ def test_team_page_in_a_real_browser(t_server):
     with pg.expect_response(lambda r: r.url.endswith("/api/seva/team/rules")):
         pg.click("#spRule button[type=submit]")
     pg.wait_for_function("() => document.querySelector('#spPage').innerText.includes('Urgent to Ana')", timeout=15000)
+    pg.wait_for_selector("#spBand")
     pg.fill("#spBand [name=steps]", "supervisor")
     with pg.expect_response(lambda r: r.url.endswith("/api/seva/team/bands")):
         pg.click("#spBand button[type=submit]")
