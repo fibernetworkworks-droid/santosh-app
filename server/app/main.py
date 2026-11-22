@@ -12277,6 +12277,55 @@ async def sites_launch(ref: str, body: dict, tenant: str = Depends(current_tenan
     return out
 
 
+def _upg(fn, *a):
+    from .site import prototype as PT
+    from .site import service as S
+    from .site import upgrade as UP
+    try:
+        return fn(*a)
+    except UP.UpgradeError as e:
+        raise HTTPException(e.code, str(e))
+    except PT.ProtoError as e:
+        raise HTTPException(getattr(e, "code", 400), str(e))
+    except S.SiteError as e:
+        raise HTTPException(404 if "not found" in str(e).lower() else 400, str(e))
+
+
+@app.get("/api/sites/{ref}/upgrade", dependencies=[Depends(require_key)])
+async def sites_upgrade_view(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.999.107 D9: the state of "Upgrade this site" (the old design + the new one beside it)."""
+    from .site import upgrade as UP
+    return await asyncio.to_thread(_upg, lambda: UP.view(UP.site_of(tenant, ref)))
+
+
+@app.post("/api/sites/{ref}/upgrade", dependencies=[Depends(require_key)])
+async def sites_upgrade_start(ref: str, tenant: str = Depends(current_tenant)):
+    """HER TAP: make the new design of her website beside the old one (nothing she has changes meanwhile)."""
+    from .site import upgrade as UP
+    return await asyncio.to_thread(_upg, UP.start, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/upgrade/keep", dependencies=[Depends(require_key)])
+async def sites_upgrade_keep(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP on the fingerprint of the new design she looked at: the website uses it from now on."""
+    from .site import upgrade as UP
+    return await asyncio.to_thread(_upg, UP.accept, tenant, ref, str((body or {}).get("hash") or ""))
+
+
+@app.post("/api/sites/{ref}/upgrade/back", dependencies=[Depends(require_key)])
+async def sites_upgrade_back(ref: str, tenant: str = Depends(current_tenant)):
+    """HER TAP: back to the old design (kept unchanged)."""
+    from .site import upgrade as UP
+    return await asyncio.to_thread(_upg, UP.back, tenant, ref)
+
+
+@app.delete("/api/sites/{ref}/upgrade", dependencies=[Depends(require_key)])
+async def sites_upgrade_discard(ref: str, tenant: str = Depends(current_tenant)):
+    """HER TAP: throw the new design away while it waits beside the old website."""
+    from .site import upgrade as UP
+    return await asyncio.to_thread(_upg, UP.discard, tenant, ref)
+
+
 @app.post("/api/sites/{ref}/rollback-request", dependencies=[Depends(require_key)])
 async def sites_rollback_request(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     from .site import hosting as H

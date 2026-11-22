@@ -68,6 +68,7 @@ class Settings(BaseSettings):
     site_critic_alt_model: str = "google/gemini-3.8-flash"   # v0.999.67 D5: the critic through OpenRouter when the writer is Anthropic's (never the writer's company)
     site_refs: bool = True                # v0.999.75 D6: the writer starts from Hoola's own references (built sites the critic scored, the kit, the sites she likes) and every reviewed site teaches the next
     studio_react_sites: bool = False      # v0.999.65 D4: "Build the real website" writes a React site from the kit (owner decision 1: behind a switch until D10)
+    site_upgrade: bool = True             # v0.999.107 D9: "Upgrade this site" - her HTML website moved to the new engine, on her tap
     app_engine_publish_checks: bool = True  # v0.832 SABOOT (L11): going live runs the quick scan + rule tests + browser check and is refused on a FAIL
     site_quick_checks: bool = True        # v0.789 CHHOTA BADLAAV: a one-section change is checked on its own page only
     studio_chat_model: str = ""            # v0.782 Chat mode may run on a cheaper model ("" = the turn's normal model)

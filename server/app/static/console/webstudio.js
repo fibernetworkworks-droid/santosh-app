@@ -1069,7 +1069,7 @@
     const fn = {preview, code, cloud, integrations, health, settings, history: historyView, drafts: draftsView, publish, details: detailsView, plans: planView}[VIEW] || preview;
     if (fn !== preview) delete pane.dataset.live;
     fn(pane, CUR);
-    if (WORKING(CUR)) startPoll();
+    if (WORKING(CUR) || M(CUR.upgrade).status === 'building') startPoll();
   }
 
   function fit() {
@@ -1125,6 +1125,7 @@
       ${v.preview ? `<a class="ib" href="${esc(S(v.preview))}" target="_blank" rel="noopener" aria-label="Open in a new tab">${ico('ext', 16)}</a>` : ''}`;
     const jd = LIVE.justDone && LIVE.justDone.site === S(v.id) ? LIVE.justDone : null;
     if (jd && LIVE.compare) return compareView(pane, v, jd, top);
+    if (UPG.compare === S(v.id) && S(M(v.upgrade).after)) return upgradeView(pane, v, top);
     pane.innerHTML = viewsBar(top)
       + (jd ? `<div class="edbar okbar"><b>New version v${esc(S(jd.to))} is ready</b><span class="ell">You are looking at it now. Nothing is live until you publish.</span><span class="sp"></span>
           <button class="b sm" type="button" data-act="compare">Before / after</button><button class="ib" type="button" data-act="jd-close" aria-label="Close">×</button></div>` : '')
@@ -1137,6 +1138,7 @@
           <button class="b sm ghost" type="button" data-act="rx-undo">Undo</button>
           <a class="b sm ghost" href="#/app/${esc(S(rx.id))}">Open the code</a></div>` : '')
       + (isRx && M(rx.critic).say ? `<div class="edbar okbar" data-critic><b>Design review</b><span class="ell">${esc(S(M(rx.critic).say))}${L(M(rx.critic).problems).length && !M(rx.critic).passed ? ' · still: ' + esc(L(M(rx.critic).problems).slice(0, 2).join('; ')) : ''}</span></div>` : '')
+      + upgBar(v, isRx)
       + '<div class="perrbar" id="wsPerr" role="alert" hidden></div>'
       + `<div class="stage">${v.preview ? frame(src, 'Website preview') : '<div class="empty">No preview yet.</div>'}${isRx ? '<aside id="wsRx" class="rxpanel" hidden></aside>' : ''}</div>`
       + (EDIT ? '<div id="wsYW"></div>' : '');
@@ -1635,6 +1637,54 @@
     fit();
   }
 
+  /* ---------- v0.999.107 D9: Upgrade this site - the new design beside her website, her tap to keep it ---------- */
+  const UPG = {compare: '', busy: false};
+  function upgBar(v, isRx) {
+    const u = M(v.upgrade);
+    if (!Object.keys(u).length) return '';
+    if (isRx && u.kept) return `<div class="edbar" data-upgrade="kept"><b>On the new design</b><span class="ell">Your old design is kept unchanged; you can go back to it any time.</span><span class="sp"></span>
+        <button class="b sm ghost" type="button" data-act="upg-back">Go back to the old design</button></div>`;
+    if (isRx) return '';
+    if (u.status === 'building') return `<div class="edbar" data-upgrade="building"><span class="spin" aria-hidden="true"></span><b>Making the new design</b><span class="ell">With your pages, your words and your photos. Your website stays exactly as it is meanwhile.</span></div>`;
+    if (u.status === 'ready') {
+      const c = M(u.counts);
+      return `<div class="edbar okbar" data-upgrade="ready"><b>The new design is ready</b><span class="ell">${c.sections ? esc(S(c.with_her_words)) + ' of ' + esc(S(c.sections)) + ' sections carry your own words. ' : ''}${L(u.blanks).length ? 'Fill in before going live: ' + esc(L(u.blanks).join(', ')) + '. ' : ''}Compare it with your website before you decide.</span><span class="sp"></span>
+        <button class="b sm pri" type="button" data-act="upg-compare">Compare</button><button class="b sm ghost" type="button" data-act="upg-discard">Throw it away</button></div>`;
+    }
+    if (u.status === 'failed') return `<div class="edbar" data-upgrade="failed"><b>The new design did not work out</b><span class="ell">${esc(S(u.error))} Your website is unchanged.</span><span class="sp"></span>
+        <button class="b sm" type="button" data-act="upg-start">Try again</button><button class="b sm ghost" type="button" data-act="upg-discard">Throw it away</button></div>`;
+    if (u.can) return `<div class="edbar" data-upgrade="can"><b>A new design engine is here</b><span class="ell">Hoola rebuilds this website in the new design with your pages, words and photos. Your website does not change until you compare and keep it. It uses some credits.</span><span class="sp"></span>
+        <button class="b sm" type="button" data-act="upg-start">Upgrade this site</button></div>`;
+    return '';
+  }
+  function upgradeView(pane, v, top) {
+    delete pane.dataset.live;
+    const u = M(v.upgrade), page = pageRel(LIVE.page);
+    pane.innerHTML = viewsBar(top) + `<div class="edbar okbar" data-upgrade="compare"><b>Your website and its new design</b><span class="ell">Your website now on the left, the new design on the right. Nothing changes until you keep it; your live address changes only when you put the website live.</span><span class="sp"></span>
+        <button class="b sm pri" type="button" data-act="upg-keep" data-hash="${esc(S(u.hash))}">Keep the new design</button><button class="b sm" type="button" data-act="upg-close">Not now</button></div>
+      <div class="cmp"><div><div class="lhead"><b>Your website now</b></div>${frame(S(u.before) + page, 'Your website now')}</div>
+        <div><div class="lhead"><b>The new design</b></div>${frame(S(u.after) + page, 'The new design')}</div></div>`;
+    fit();
+  }
+  async function upgAct(act, d) {
+    if (UPG.busy || !CUR) return;
+    if (act === 'upg-compare') { UPG.compare = S(CUR.id); drawPane(); return; }
+    if (act === 'upg-close') { UPG.compare = ''; drawPane(); return; }
+    if (act === 'upg-discard' && !confirm('Throw the new design away? Your website stays as it is.')) return;
+    UPG.busy = true;
+    try {
+      const id = enc(CUR.id);
+      const out = act === 'upg-start' ? await api('POST', `/api/sites/${id}/upgrade`, {})
+        : act === 'upg-keep' ? await api('POST', `/api/sites/${id}/upgrade/keep`, {hash: S(d.hash)})
+        : act === 'upg-back' ? await api('POST', `/api/sites/${id}/upgrade/back`, {})
+        : await api('DELETE', `/api/sites/${id}/upgrade`);
+      UPG.compare = '';
+      if (out && out.say) toast(out.say);
+    } catch (e) { toast(e.message, true); }
+    finally { UPG.busy = false; }
+    await reload();
+  }
+
   const studioBtn = (label, ask, pri) => `<button class="b ${pri ? 'pri' : ''}" type="button" data-ask="${esc(ask)}">${esc(label)}</button>`;
 
   async function code(pane, v) {
@@ -2116,7 +2166,7 @@
   }
 
   /* ---------- polling while the server works ---------- */
-  function sig(v) { return [v.status, v.version, M(v.board).pct, M(v.board).now, L(v.looks).length, L(v.looks).map(x => x.full).join(), v.error, M(v.prototype).v, M(v.prototype).status, L(M(v.prototype).made).length].join('|'); }
+  function sig(v) { return [v.status, v.version, M(v.board).pct, M(v.board).now, L(v.looks).length, L(v.looks).map(x => x.full).join(), v.error, M(v.prototype).v, M(v.prototype).status, L(M(v.prototype).made).length, M(v.upgrade).status, M(v.upgrade).hash, !!M(v.upgrade).kept].join('|'); }
   function startPoll() {
     stopPoll(); SIG = sig(CUR);
     const id = CUR.id;
@@ -2999,6 +3049,7 @@
     if (d.act === 'attach') { $('#wsFile')?.click(); return; }
     if (d.act === 'att-x') { THREAD.files.splice(Number(d.i), 1); drawTray(); return; }
     if (d.act === 'jump-latest') { const bx = $('#wsMsgs'); if (bx) { THREAD.pinned = true; bx.scrollTop = bx.scrollHeight; } b.hidden = true; return; }
+    if (S(d.act).startsWith('upg-')) { upgAct(d.act, d); return; }
     if (d.act === 'compare') { LIVE.compare = !LIVE.compare; drawPane(); return; }
     if (d.act === 'jd-close') { LIVE.justDone = null; LIVE.compare = false; drawPane(); return; }
     if (d.view) { VIEW = d.view; EDIT = false; history.replaceState(null, '', `#/site/${enc(CUR.id)}/${VIEW}`); drawPane(); return; }
