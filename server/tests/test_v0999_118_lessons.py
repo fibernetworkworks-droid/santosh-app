@@ -123,3 +123,28 @@ def test_a_trial_judges_only_lessons_about_its_own_sites():
     out = L.settle(_card(100.0, rows, trial=True), base, sites={"practice.example.com"})
     assert out["verdict"] == "none" and L.listing()["lessons"][0]["status"] == "candidate"
     assert L.settle(_card(100.0, rows, trial=True), base, sites={"sam.gov"})["verdict"] == "keep"
+
+
+def test_a_break_where_no_lesson_was_read_is_not_a_lessons_fault():
+    rows_base = [{"id": i, "ok": True} for i in ("sam", "vat", "ted", "irs", "ssa")]
+    base = _card(100.0, rows_base)
+    trial_rows = [dict(r) for r in rows_base]
+    trial_rows[1]["ok"] = False                          # vat broke - no lesson was about gov.uk's VAT page
+    trial_rows.append({"id": "sg", "ok": True})          # sg now passes: same % overall
+    trial = _card(100.0 * 5 / 6, trial_rows)
+    base["summary"]["success_pct"] = 100.0 * 5 / 6
+    blame = {"sam": True, "vat": False, "ted": True, "irs": False, "ssa": False, "sg": False}
+    v, why = L.judge(base, trial, blame)
+    assert v == "keep" and "vat" in why
+    blame["vat"] = True
+    assert L.judge(base, trial, blame)[0] == "drop"
+
+
+def test_a_page_check_counts_only_on_the_jobs_own_site():
+    from app.quality import pccard as P
+    from app.pc import lessons as LL
+    want = LL.sites_of("Open bizfile.gov.sg and search")
+    assert want == {"bizfile.gov.sg"}
+    assert P._site_hosts("Search results - TED\nhttps://ted.europa.eu/en/search") == {"ted.europa.eu"}
+    src = open("app/quality/pccard.py").read()
+    assert "the page in front is not" in src

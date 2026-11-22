@@ -9912,3 +9912,7 @@ Owner: "GO F3" on docs/FINANCE_GLOBAL_PLAN.md (phase F3).
 - Tests `server/tests/test_fin_f3.py` (6); tool-count pins 636 -> 637, Hub 157 -> 158, desks 100 -> 101.
 
 NOT DONE: live accounting-system connections (exports only); bahi's register into the spine; consolidation / intercompany; partial payments of foreign documents; credit notes; phone screens.
+
+
+## v0.999.135 FAIR EXAM
+Fair exam (P8 fix). `pc/lessons.py`: judge(base, trial, blame=) counts a passed-before-failed-now job only when blame[id] (a candidate lesson is about its site), the rest named as 'broke where no lesson was read'; settle(..., task_sites=) builds blame; _on() now matches like block() (host == site or under it). `quality/pccard.py`: _site_hosts(), and run_task fails a page check whose page in front is not the ask's site (real-site exams only, not the practice portal). Tests added to test_v0999_118_lessons.py. NOT VERIFIED on her server.

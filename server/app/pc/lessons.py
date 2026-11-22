@@ -266,8 +266,10 @@ def block(task: str = "", url: str = "") -> str:
 
 # ---------------------------------------------------------------- 4. the exam decides
 
-def judge(base: dict | None, trial: dict) -> tuple[str, str]:
-    """('keep' | 'drop' | 'wait', why) from two cards of the same exam on the same PC."""
+def judge(base: dict | None, trial: dict, blame: dict | None = None) -> tuple[str, str]:
+    """('keep' | 'drop' | 'wait', why) from two cards of the same exam on the same PC. `blame` = task id -> True when a
+    candidate lesson was about that task's site: a task that broke where no lesson was read is chance, not a lesson's
+    fault (noted, never counted against them)."""
     ts = trial.get("summary") or {}
     if int(ts.get("ran") or 0) < MIN_TASKS_TO_JUDGE:
         return "wait", f"only {ts.get('ran')} task(s) ran - too few to judge, candidates kept waiting"
@@ -281,10 +283,16 @@ def judge(base: dict | None, trial: dict) -> tuple[str, str]:
     passed_before = {r["id"] for r in base.get("rows") or [] if r.get("ok")}
     now_failed = sorted(r["id"] for r in trial.get("rows") or [] if r["id"] in passed_before and not r.get("ok")
                         and not r.get("skipped"))
+    if blame is not None:
+        chance = [i for i in now_failed if not blame.get(i)]
+        now_failed = [i for i in now_failed if blame.get(i)]
+    else:
+        chance = []
     if now_failed:
         return "drop", "passed before, failed now: " + ", ".join(now_failed[:6])
     gain = round(float(ts.get("success_pct") or 0) - float(bs.get("success_pct") or 0), 1)
-    return "keep", f"success {bs.get('success_pct')}% -> {ts.get('success_pct')}% ({'+' if gain >= 0 else ''}{gain}), none dropped"
+    return "keep", (f"success {bs.get('success_pct')}% -> {ts.get('success_pct')}% ({'+' if gain >= 0 else ''}{gain}), none dropped"
+                    + (f" (broke where no lesson was read: {', '.join(chance[:6])})" if chance else ""))
 
 
 def sites_of(text: str) -> set[str]:
@@ -292,10 +300,12 @@ def sites_of(text: str) -> set[str]:
 
 
 def _on(site: str, sites: set[str] | None) -> bool:
-    return sites is None or any(site == h or h.endswith("." + site) or site.endswith("." + h) for h in sites)
+    """A lesson for `site` is read on host h when h is that site or under it (the same rule as block())."""
+    return sites is None or any(site == h or h.endswith("." + site) for h in sites)
 
 
-def settle(trial: dict, base: dict | None, sites: set[str] | None = None) -> dict:
+def settle(trial: dict, base: dict | None, sites: set[str] | None = None,
+           task_sites: dict[str, set[str]] | None = None) -> dict:
     """After a trial card: keep or drop the candidates the trial really tried (wait = leave them). `sites` = the hosts
     the exam's jobs visit; a candidate about another site was never read in this run, so it is not judged by it."""
     cands = [x for x in _load().get("lessons") or [] if x.get("status") == "candidate"]
@@ -304,7 +314,11 @@ def settle(trial: dict, base: dict | None, sites: set[str] | None = None) -> dic
     if not any(_on(str(x.get("site") or ""), sites) for x in cands):
         return {"verdict": "none", "why": "no candidate lesson is about a site of this exam - run the exam those sites are in",
                 "lessons": []}
-    verdict, why = judge(base, trial)
+    blame = None
+    if task_sites is not None:
+        cs = [str(x.get("site") or "") for x in cands]
+        blame = {tid: any(_on(c, hs) for c in cs) for tid, hs in task_sites.items()}
+    verdict, why = judge(base, trial, blame)
     with _lock:
         d = _load()
         ids = []
