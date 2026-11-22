@@ -696,6 +696,9 @@ def _shared_answer(tenant: str, q: str, customer: str) -> dict | None:
 
 
 def _log_q(tenant: str, channel: str, customer: str, text: str, entry_id: str, conf: float, outcome: str) -> None:
+    from .quality import DRY
+    if DRY.get():                 # G11: a simulated customer leaves nothing behind
+        return
     with session() as s:
         s.add(SevaQuestion(tenant_id=tenant, at=clock(), channel=channel[:12], customer=customer[:200], text=mask(text)[:600],
                            entry_id=entry_id, confidence=round(conf, 3), outcome=outcome))
@@ -1820,6 +1823,11 @@ def tick(at: datetime | None = None) -> dict:
         SM.poll_all()
     except Exception:
         log.exception("seva support mail")
+    try:
+        from . import quality as QL                # G11: retention per channel + numbers left unmasked
+        QL.sweep_all()
+    except Exception:
+        log.exception("seva quality sweep")
     try:
         from . import teams as TM                  # G10: her delayed rules ("still open after 2 h -> supervisor")
         TM.sweep_all()

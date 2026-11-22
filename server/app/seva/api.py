@@ -333,6 +333,84 @@ def make_router(require_key, current_tenant) -> APIRouter:
         warm = b.get("warm_transfer")
         return {"phone": await prun(SC.save_phone, tenant, None if warm is None else bool(warm), b.get("wa_calls"))}
 
+    # ---------------------------------------------------------------- G11 quality, simulations, the law, data rights, audit
+    async def qrun(fn, *a, **kw):
+        from . import quality as QL
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except (QL.QualityError, S.SevaError) as e:
+            raise HTTPException(400, str(e))
+        except (TypeError, ValueError) as e:
+            raise HTTPException(400, f"Invalid details: {e}")
+
+    @r.get("/quality")
+    async def quality_all(tenant: str = Depends(current_tenant)):
+        from . import quality as QL
+        return await qrun(QL.overview, tenant)
+
+    @r.put("/quality/settings")
+    async def quality_settings(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import quality as QL
+        return {"settings": await qrun(QL.save_settings, tenant, _b(body))}
+
+    @r.get("/quality/sample")
+    async def quality_sample(n: int = 0, tenant: str = Depends(current_tenant)):
+        from . import quality as QL
+        return {"sample": await qrun(QL.sample, tenant, n)}
+
+    @r.post("/quality/marks/{qid}")
+    async def quality_mark(qid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import quality as QL
+        b = _b(body)
+        return await qrun(QL.mark, tenant, qid, str(b.get("mark") or ""), str(b.get("note") or ""))
+
+    @r.post("/quality/card")
+    async def quality_card(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """The simulated customers through her answer engine. Nothing is saved or sent."""
+        from . import quality as QL
+        b = _b(body)
+        return await qrun(QL.run_card, tenant, b.get("channels") or None, b.get("languages") or None)
+
+    @r.post("/quality/replay")
+    async def quality_replay(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import quality as QL
+        return await qrun(QL.replay, tenant, int(_b(body).get("days") or 7))
+
+    @r.post("/quality/export")
+    async def quality_export(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import quality as QL
+        return await qrun(QL.export_customer, tenant, str(_b(body).get("customer") or ""))
+
+    @r.post("/quality/delete")
+    async def quality_delete(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import quality as QL
+        b = _b(body)
+        return await qrun(QL.delete_customer, tenant, str(b.get("customer") or ""), str(b.get("confirm") or ""))
+
+    @r.get("/quality/audit")
+    async def quality_audit(days: int = 30, kind: str = "", tenant: str = Depends(current_tenant)):
+        from . import quality as QL
+        return {"audit": await qrun(QL.audit, tenant, max(1, min(365, days)), kind)}
+
+    @r.get("/quality/audit.csv")
+    async def quality_audit_csv(days: int = 30, tenant: str = Depends(current_tenant)):
+        from fastapi.responses import Response as R_
+        from . import quality as QL
+        body = await qrun(QL.audit_csv, tenant, max(1, min(365, days)))
+        return R_(content=body, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=support-audit.csv"})
+
+    @r.post("/translate")
+    async def translate(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """A customer's words in her language, beside the original (the original is never changed)."""
+        from . import engine as E
+        b = _b(body)
+        text = S._clean(b.get("text"), 3000)
+        to = str(b.get("to") or "en")[:10]
+        if not text:
+            raise HTTPException(400, "Nothing to translate.")
+        words, done = await asyncio.to_thread(E.in_lang, text, to, E.lang_code(text))
+        return {"text": words, "translated": done, "from": E.lang_code(text)}
+
     # ---------------------------------------------------------------- G10 teams, queues and rules
     async def trun(fn, *a, **kw):
         from . import teams as TM

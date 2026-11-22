@@ -127,7 +127,8 @@ def _has(low: str, words) -> bool:
 SCRIPTS = (("hi", r"[ऀ-ॿ]"), ("bn", r"[ঀ-৿]"), ("pa", r"[਀-੿]"), ("gu", r"[઀-૿]"), ("ta", r"[஀-௿]"), ("te", r"[ఀ-౿]"),
            ("kn", r"[ಀ-೿]"), ("ml", r"[ഀ-ൿ]"), ("ar", r"[؀-ۿ]"), ("he", r"[֐-׿]"), ("ru", r"[Ѐ-ӿ]"), ("el", r"[Ͱ-Ͽ]"),
            ("th", r"[฀-๿]"), ("ko", r"[가-힯]"), ("ja", r"[぀-ヿ]"), ("zh", r"[一-鿿]"), ("am", r"[ሀ-፿]"))
-LATIN = {"es": ("el", "la", "que", "de", "mi", "por", "para", "pedido", "hola", "cuando", "dónde", "donde", "gracias", "está"),
+LATIN = {"es": ("el", "la", "que", "de", "mi", "por", "para", "pedido", "hola", "cuando", "dónde", "donde", "gracias", "está",
+                "qué", "las", "los", "usted", "cuál", "cómo"),
          "pt": ("o", "a", "que", "de", "meu", "minha", "para", "pedido", "olá", "quando", "onde", "obrigado", "não", "está"),
          "fr": ("le", "la", "les", "de", "mon", "ma", "pour", "commande", "bonjour", "quand", "où", "merci", "est", "pas"),
          "de": ("der", "die", "das", "ich", "mein", "meine", "für", "bestellung", "hallo", "wann", "wo", "danke", "ist", "nicht"),
@@ -147,6 +148,8 @@ def lang_code(text: str) -> str:
             if code == "zh" and re.search(r"[぀-ヿ]", t):
                 return "ja"
             return code
+    if re.search(r"[¿¡]", t):              # only Spanish opens a question / exclamation upside down
+        return "es"
     words = set(re.findall(r"[a-zà-ÿğşıç]+", _low(t)))
     best, n = "en", 1
     for code, ws in LATIN.items():
@@ -384,6 +387,9 @@ def reply(tenant: str, text: str, channel: str = "whatsapp", customer: str = "",
 
 # ---------------------------------------------------------------- drafts a person sends
 def save_draft(tenant: str, channel: str, customer: str, question: str, reply_: str, source: str, topic: str, by: str = "") -> dict:
+    from .quality import DRY
+    if DRY.get():                 # G11: a simulated customer's draft is never kept
+        return {"id": "simulation"}
     _ensure()
     with session() as s:
         d = SevaDraft(tenant_id=tenant, channel=channel[:12], customer=customer[:200], question=question[:1000], reply=reply_[:3000],

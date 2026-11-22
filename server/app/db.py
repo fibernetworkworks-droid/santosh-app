@@ -876,6 +876,7 @@ def init_db(url: str | None = None):
     from .seva import webchat as _seva_webchat  # noqa: F401  (G5 website / app chat)
     from .seva import supportmail as _seva_mail  # noqa: F401  (G6 support email)
     from .seva import teams as _seva_teams  # noqa: F401  (G10 people, queues, rules, approval chains)
+    from .seva import quality as _seva_quality  # noqa: F401  (G11 reviews, simulations, data requests)
     from .helpdesk import models as _helpdesk  # noqa: F401
     from .shikayat import models as _shikayat  # noqa: F401
     from .aftersales import service as _aftersales  # noqa: F401

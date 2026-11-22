@@ -86,7 +86,7 @@ SEVA_TOOLS = [
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["day", "tickets", "ticket", "kb", "gaps", "macros", "exceptions", "report", "duplicates",
                                              "settings", "rules", "brain", "trust", "drafts", "flows", "stuck",
-                                             "watch", "reminders", "digest", "handovers", "chats", "calls", "team"]},
+                                             "watch", "reminders", "digest", "handovers", "chats", "calls", "team", "quality"]},
          "status": {"type": "string"}, "q": {"type": "string"}, "ticket": {"type": "string"}, "days": {"type": "integer"}},
          "required": ["what"]}},
 ]
@@ -296,6 +296,11 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
         if what == "chats":
             from ..seva import channels as CH
             return CH.overview(t)
+        if what == "quality":
+            from ..seva import quality as QL
+            v = QL.overview(t)
+            v.pop("sample", None)
+            return v
         if what == "team":
             from ..seva import teams as TM
             return TM.overview(t)
