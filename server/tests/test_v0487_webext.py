@@ -181,7 +181,7 @@ def test_manifest_is_mv3_hoola():
     assert m["manifest_version"] == 3 and m["name"] == "Hoola"
     assert m["version"] == "1.10.0"                         # the extension version rides the desktop
     assert m["background"] == {"service_worker": "background.js"}
-    assert set(m["permissions"]) == {"storage", "contextMenus", "scripting", "activeTab", "tabCapture", "offscreen"}   # W5: the tab audio rides kaan live captions
+    assert set(m["permissions"]) == {"storage", "contextMenus", "scripting", "activeTab", "tabCapture", "offscreen", "alarms"}   # v0.999.111 alarms keep the page engine's socket; W5: the tab audio rides kaan live captions
     assert "https://hoola.ainewtika.com/*" in m["host_permissions"]
     assert m["optional_host_permissions"]                 # a custom server asks first (options page)
     assert m["action"]["default_popup"] == "popup.html"
@@ -459,9 +459,9 @@ def test_spec_rides_the_ext_payload():
 
 def test_versions():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.101"
+    assert APP_VERSION == "0.999.122"
     pubspec = (ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.999.101+1096" in pubspec
+    assert "version: 0.999.122+1117" in pubspec
     import santosh_desktop
     assert santosh_desktop.__version__ == "1.10.0"           # desktop unchanged by W5 (server + extension files only)
     meta = json.loads((PLUGIN / "plugin.json").read_text(encoding="utf-8-sig"))

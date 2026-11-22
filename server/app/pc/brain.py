@@ -187,9 +187,20 @@ def from_openai(data: dict) -> Reply:
 
 
 async def _post(url: str, key: str, body: dict, timeout: float) -> dict:
+    """v0.999.109 a HARD total limit per PC step. httpx's timeout is per read: OpenRouter keeps a slow request alive by
+    sending a few blank bytes while its provider has not answered, so no single read ever waits 35 s and the step could
+    wait for ever - sam.gov / irs.gov exam jobs sat silent for 6 minutes after the step's screenshot (the server log
+    showed no 'pc brain' line in between). Now the whole call must end inside the limit, else it is a timeout (said to
+    her, tried once more, then BrainSlow ends the task cleanly)."""
     import httpx
-    async with httpx.AsyncClient(timeout=timeout) as c:
-        r = await c.post(url, json=body, headers={"Authorization": f"Bearer {key}"})
+
+    async def go() -> httpx.Response:
+        async with httpx.AsyncClient(timeout=timeout) as c:
+            return await c.post(url, json=body, headers={"Authorization": f"Bearer {key}"})
+    try:
+        r = await asyncio.wait_for(go(), timeout=timeout + min(5.0, timeout))
+    except asyncio.TimeoutError as e:
+        raise httpx.ReadTimeout(f"no full answer in {int(timeout)} s") from e
     if r.status_code >= 400:
         raise QwenError(r.status_code, r.text[:300])
     return r.json()

@@ -471,6 +471,14 @@ class Ctx:
         self.app_home = href_of(app) if self.lists and app else ""
         qx = ax.get("queue") if isinstance(ax.get("queue"), dict) else {}
         self.queue = {"label": _t(qx.get("label"), 40) or "Queue"} if qx and self.lists else {}   # v0.999.82 wave 8
+        # v0.999.106 D8 wave 10: her own live Hoola AI App (built + published in AI Apps, website channel on) answers on
+        # the home page; only its public face rides into the code (never a key)
+        ix = sx.get("ai") if isinstance(sx.get("ai"), dict) else {}
+        code = str(ix.get("code") or "")
+        self.ai = ({"code": code, "name": _t(ix.get("name"), 80), "kind": "form" if ix.get("kind") == "form" else "chat",
+                    "opening": _t(ix.get("opening"), 400), "notice": _t(ix.get("notice"), 800),
+                    "suggested": [_t(x, 120) for x in (ix.get("suggested") or []) if _t(x, 120)][:4]}
+                   if re.fullmatch(r"[A-Za-z0-9_-]{1,24}", code) else {})
         self.lang = ""                                # the language this context writes ("" = the first)
         self.ui: dict[str, str] = {}
 
@@ -1418,6 +1426,14 @@ def page_file(page: dict[str, Any], ctx: Ctx, custom: dict[str, str],
         body.insert(at, _wrap(f"{page['slug']}:queue", "      <QueueBoard " + _jsx_props(
             {"site": ctx.site_id, "label": ctx.queue["label"], "signin": ctx.signin or None}) + " />"))
         rows.append({"type": "queue_board", "block": "member_queue", "sec": f"{page['slug']}:queue", "island": "QueueBoard",
+                     "variant": "", "tone": "", "alts": [], "tones": [], "texts": []})
+    if ctx.ai and page["slug"] == "home":           # v0.999.106 wave 10: her AI assistant, before the last section
+        imports["AiChat"] = 'import AiChat from "@/islands/AiChat";'
+        at = max(len(body) - 1, 1) if len(body) > 1 else len(body)
+        body.insert(at, _wrap("home:ai", "      <AiChat " + _jsx_props(
+            {"code": ctx.ai["code"], "name": ctx.ai["name"] or None, "opening": ctx.ai["opening"] or None,
+             "notice": ctx.ai["notice"] or None, "kind": ctx.ai["kind"], "suggested": ctx.ai["suggested"] or None}) + " />"))
+        rows.append({"type": "ai_chat", "block": "member_ai", "sec": "home:ai", "island": "AiChat",
                      "variant": "", "tone": "", "alts": [], "tones": [], "texts": []})
     if not any(r.get("block") == "hero" for r in rows) and public:
         body.insert(0, f'      <h1 className="sr-only">{_esc_text(page.get("title") or ctx.name)}</h1>')

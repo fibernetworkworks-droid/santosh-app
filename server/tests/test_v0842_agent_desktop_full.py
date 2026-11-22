@@ -297,7 +297,7 @@ def test_linux_pc_has_the_same_axtree_and_routes_every_action():
         assert f'"{n}"' in src, n
     dock = (ROOT / "desktop-linux" / "Dockerfile").read_text()
     assert "ARG AGENT_DESKTOP=1.2.0" in dock and "sha256sum -c -" in dock and "at-spi2-core" in dock
-    assert "COPY agent.py axtree.py ./" in dock
+    assert "COPY agent.py axtree.py " in dock          # v0.999.114 pagekit.py + datakit.py ride the same line
     start = (ROOT / "desktop-linux" / "start.sh").read_text()
     assert "at-spi2-registryd" in start and "dbus-launch --sh-syntax" in start
 

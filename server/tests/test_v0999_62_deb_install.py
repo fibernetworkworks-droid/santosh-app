@@ -100,7 +100,7 @@ def test_install_keeps_a_copy_logs_it_and_replays_it(tmp_path, monkeypatch):
     log = (a.DATA / "installed.log").read_text()
     assert f" deb hello-hoola {kept[0]} rc=0" in log
     assert a.replay_installs(dry=True) == ["deb:hello-hoola"]
-    assert a.VERSION in ("1.8.0", "1.9.0", "1.9.1")
+    assert a.VERSION in ("1.8.0", "1.9.0", "1.9.1", "1.9.2")
 
 
 @pytest.mark.asyncio
@@ -147,5 +147,5 @@ async def test_the_operator_checks_then_asks_her_then_installs(bz, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.101"
-    assert "version: 0.999.101+1096" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.122"
+    assert "version: 0.999.122+1117" in (ROOT / "pubspec.yaml").read_text()

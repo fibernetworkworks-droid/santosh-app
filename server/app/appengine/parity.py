@@ -177,6 +177,14 @@ def _sections_for(kinds: list[str], limits: list[str] | None = None) -> Check:
 
 
 def _ai() -> tuple[str, list[str]]:
+    # v0.999.106 D8 wave 10: her own Hoola AI App (chat or form) answers on her website's address, on Hoola's backend
+    # and her credits (its monthly cost ceiling), only her own app passes there, the visitor agrees first
+    if (_has("template/src/islands/AiChat.tsx", "aiAgree(code)", "I agree", "aiSealed()") and
+            _has("template/src/lib/member.ts", "export async function aiApp", "consent: true", "/api/aiapp-pub/") and
+            _has("writer.py", 'import AiChat from "@/islands/AiChat";') and
+            _has("../site/rxhost.py", "def ai_allowed", "tenant_id") and _own_address()):
+        return "partial", ["a picture maker for her visitors (her AI App answers questions and fills forms; it does "
+                           "not make pictures)"]
     return "not yet", ["a chat / writer / picture maker inside her site, on Hoola's backend and her credits"]
 
 

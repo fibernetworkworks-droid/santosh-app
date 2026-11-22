@@ -184,7 +184,8 @@ def test_hoola_agent_returns_only_length_and_matches():
     assert "def do_page_elements" in src and "def do_page_click" in src
     assert "def do_page_type" in src and "def do_page_fill_form" in src and "def do_wait_for" in src
     # the type JS returns length + matches - the raw value never leaves the page
-    assert "length:v.length, matches: v === TXT || v.endsWith(TXT)" in src
+    pk = (Path(__file__).resolve().parents[2] / "desktop-linux/pagekit.py").read_text()   # v0.999.111 the JS lives there now
+    assert "length:v.length, matches: v === TXT || v.endsWith(TXT)" in pk and "PK.TYPE_BODY" in src
     assert "self._els" in src and 'ref {ref} is gone' in src  # refs resolve through the page_elements map
 
 
@@ -196,4 +197,4 @@ def test_desktop_page_type_returns_only_length_and_matches():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.101"
+    assert APP_VERSION == "0.999.122"

@@ -6,6 +6,7 @@
    used - the model is told to list the page again."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -70,6 +71,6 @@ def test_the_private_sign_in_form_is_the_clean_hand_off():
 
 def test_versions():
     src = (ROOT / "desktop-linux" / "agent.py").read_text()
-    assert 'VERSION = "1.9.1"' in src and "PW_REFUSED" in src
+    assert re.search(r'VERSION = "1\.9\.[1-9]"', src) and "PW_REFUSED" in src
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.101"
+    assert APP_VERSION == "0.999.122"

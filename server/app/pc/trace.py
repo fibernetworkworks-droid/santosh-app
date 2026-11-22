@@ -84,6 +84,19 @@ def step(op: Any, tool: str, args: dict | None) -> None:
         line = {"n": n, "t": round(time.time(), 2), "tool": str(tool)[:40], "action": str(op.action or "")[:160],
                 "args": _mask(dict(args or {})), "window": str(op.window or "")[:160], "shot": shot,
                 "brain": str(getattr(op, "brain", "") or "")}
+        el = getattr(op, "elems", None) or {}     # v0.999.115 P5 what each ref WAS (role 'name') - a routine replays by it
+        if el and isinstance(args, dict):
+            tg = {}
+            for k in ("ref", "to_ref"):
+                try:
+                    if k in args and int(args[k]) in el:
+                        tg[k] = el[int(args[k])]
+                except (TypeError, ValueError):
+                    pass
+            if isinstance(args.get("entries"), list):
+                tg["entries"] = [el.get(int(e.get("ref") or 0), "") if isinstance(e, dict) else "" for e in args["entries"][:20]]
+            if tg:
+                line["targets"] = tg
         if getattr(op, "thought_fresh", False) and op.thought:
             line["thought"] = _mask(str(op.thought))[:300]
         with (d / "steps.jsonl").open("a") as fh:

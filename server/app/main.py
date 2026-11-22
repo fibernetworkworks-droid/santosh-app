@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.101"   # v0.999.101 HOOLA VOCAL REDESIGN (built as 0.999.100; their SUPPORT EMAIL took 0.999.100 - REBASE PROTOCOL, both kept; owner: "CHECK FIRST ... MATCH DESIGN WITH HOOLA AI" -> design canvas claude.ai/artifact/GkVsAZLf4iTSJMUrEjtiuH -> "IS IT SAME FOR BOTH VOCAL AND VOICE" -> one place -> "GO BUILD"; contract docs/HOOLA_VOCAL_REDESIGN.md): Hoola Vocal on the Create Studio frame - console vocal.js + vocal2.css rebuilt (248 px sidebar with the real Hoola mark, 52 px crumb bar, Vocal chat with the Music chat bar docked, Your sounds stage, a settings panel + stage on every page, HoolaMenu dropdowns, tokens only so dark follows, a drawer at phone width), Create -> Voice mounts Vocal Speech (HoolaVocal.mountSpeech), phone lib/ui/vocal rebuilt (drawer frame, docked bar, every page); server: dub SRT / VTT + a line editor for matched dubs (edit, redo one line, 1 credit), Speech + downloads in MP3 / WAV / OGG / M4A, the AI mark in every format, prices by job id, 6 dub speakers, own-voice dubs counted, the changer takes a page recording, no designed option without sound, 0 credits refused before any engine call, no key names in messages, the shared ElevenLabs voice library (search, add, preview), natural dialogue in one take, IPA rules + CSV import, saved defaults (/settings), more languages for a dub (a new dub of the same video), POST /music removed. NOT BUILT: streaming playback, line editing of own-voice dubs. NOT VERIFIED with a real ElevenLabs / Gemini call or on her server / phone. Previous: v0.999.100 SUPPORT EMAIL: (G6 of docs/SUPPORT_GLOBAL_PLAN.md, owner: "GO G6"): her support address in the one support desk (`seva/supportmail.py`) - mail comes in from her own mailbox over IMAP (any provider; Gmail / Microsoft 365 with an app password) every two minutes and / or through a Hoola forwarding address support-<code>@<HOOLA_MAIL_DOMAIN> (the owner's email worker posts it, signed; agentmail.py hands it over); answers go out over SMTP from HER address in the same thread (Re: subject, In-Reply-To, References), her signature under every mail, the ticket number in the subject; a reply finds its ticket by [T-1001] or by Hoola's own Message-ID and goes onto that ticket for the person working it (quoted earlier text left out), 'did this fix it?' answered by mail closes it, a reply on a closed ticket reopens it; a new mail goes through the answer engine like every channel; automatic mails, mailing lists, bounces, no-reply senders and her own address are never answered and at most 5 answers an hour go to one address (no mail loops); attachments kept (10 MB) and a PDF's / document's text noted on the ticket; the contact form's customers (G5) answered from her address; her password sealed and never shown (an empty box keeps it). Routes /api/seva/email (GET / PUT), /email/check, /email/poll; desk Settings 'Support email' (address, from name, IMAP / SMTP, app password, signature, forwarding address, Check, Read now) and email threads in Messages on your apps. FIXED in the desk: a page that finished loading after she had moved on overwrote the newer page (only the newest load draws now). 9 tests incl. a browser walk. NOT VERIFIED with a real mailbox (IMAP and SMTP are fakes in the tests); a direct Google / Microsoft sign-in for the support mailbox is not built. ... older stories live in git history.
+APP_VERSION = "0.999.122"   # v0.999.122 THE WHOLE AI TEAM: (owner: "FIRST CHECK THE APP SIDE HOW MANY AI EMPLOYEE IT HAS AND ALSO SHOW ALL CATEGORY WISE IN CONSOLE"): the phone's Your AI team has 81 desks; 9 were already Hub employees, the 72 phone AI team desks now sit in the console Hub by department (156 employees, 16 departments: Customer Service, Logistics Travel & Trade, Legal & Compliance, Hospitality & Events new) and open on the desk room (forms from their own tool) or their studio; the phone opens them on the screen they always had; hiring gates no tool Previous: v0.999.121 MAC AND LINUX DESKTOP (ULTIMATE PC PLAN P9): the same Hoola Desktop for Mac and Linux - build-desktop.yml gains a mac-linux job (macos-14 Apple silicon + ubuntu-22.04): same Python app, same pairing, same page / screen / ax_* actions, the agent-desktop helper from the same official v1.2.0 release (checksum-checked), the Mac build wrapped as 'Hoola Desktop.app' (bundle id com.newtika.hoola.desktop, Screen Recording / Accessibility reasons in its Info.plist, ad-hoc signature, helper inside Contents/MacOS) and released as desktop-mac-latest (Hoola-Desktop-mac.zip), Linux as desktop-linux-latest (Hoola-Desktop-linux.tar.gz, X11 desktops); the Windows release desktop-latest is untouched; desktop control.py finds installed apps on a Mac (/Applications, /System/Applications, ~/Applications) and on Linux (.desktop entries, hidden ones skipped) and opens them by name (open / gtk-launch / the entry's Exec), Mac / Linux shells and system keys refused like cmd / PowerShell; the PC worker is told when her computer is a Mac (cmd shortcuts, no Start menu, the Privacy & Security permissions) or Linux (from the OS the desktop app reports); 3 tests. NOT VERIFIED: no Mac or Linux build has run yet (the next push runs it), not notarised (right-click > Open the first time), Wayland sessions need X11 for screen control. Previous head: v0.999.120 SEEING AND POINTING (ULTIMATE PC PLAN P4): two new screen tools turn words into a click on the screenshot the model just saw, through the normal click path (her rules, the checker, the step record) - NEW server/app/pc/grounding.py: click_text {text, nth} reads every word on the screen with its box (tesseract on the server, free, no GPU), matches the whole line, then the words in order, then a close spelling, and clicks the centre; the same text twice and no nth = NOT clicked, both places listed; point {description} asks a grounding model (UI-TARS 1.5 7B or any OpenAI-compatible vision model) on a GPU server SHE runs - off until PC_GROUNDING_URL (+ PC_GROUNDING_MODEL / PC_GROUNDING_KEY) is in the VPS .env, its answer read in pixels or UI-TARS' 0-1000 space; both offered only when they can work and never in background mode; deploy now says when tesseract is missing (sudo apt-get install -y tesseract-ocr); 5 tests. Reflection after each step stays the existing 'screen unchanged' note and the drift guard; 'what can I do here' = page_elements / ax_snapshot. Not done: running UI-TARS on a GPU (her cost decision). NOT VERIFIED on her server. Previous head: v0.999.119 UPGRADE THIS SITE (built as 0.999.107; their SUPPORT EMAIL, HOOLA VOCAL REDESIGN - H, HOOLA VOCAL REDESIGN, BROWSER PUSH - R, SUPPORT CALLS, PORTAL EXAM HONEST, SUPPORT TEAMS, HER AI ASSISTANT, PORTAL EXAM TWO, SUPPORT QUALITY, PC STEP DEADLINE, SUPPORT LAYER - H, HER CHROME,  ENGINE 2, PC SAFETY IN CODE, SUPPORT REPORTS, SUPPORT REPORTS - S, DATA WITHOUT CLICKING - H, LEARN ONCE,  REPLAY, WATCH AND CONTROL, PORTALS PER COUNTRY, HOOLA LEARNS took 0.999.107-0.999.118, all kept) (D9 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D9"): her HTML website moves to the new engine on her tap (site/upgrade.py). Hoola rewrites the SAME website (same forms, booking, shop, blog, members, photos and address) as a React website from the kit, BESIDE the old one: its pages and sections from its plan (or the prototype she approved), her words read back out of the pages she has now (her edits included, never rewritten by a model), her colour pinned in the new design; nothing of the old website changes meanwhile. The Studio compares her website and the new design side by side; Keep the new design is her tap on the fingerprint of what she saw (her address changes only when she puts it live with the launch card); Go back to the old design any time; Throw it away. Routes /api/sites/{ref}/upgrade (+ keep / back / DELETE); the chat only says where it stands (website action=upgrade); prototype.write_react shared with Build the real website. 8 tests incl. a box build and a Chromium walk of the Studio. Previous: v0.999.118 HOOLA LEARNS (ULTIMATE PC PLAN P8); older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -194,7 +194,7 @@ app = FastAPI(title="Santosh Core", version=APP_VERSION, lifespan=lifespan)
 
 def _rx_visitor(m: dict, path: str) -> bool:
     from .site import rxhost as RH
-    return RH.allowed(str(m.get("site") or ""), path)
+    return RH.allowed(str(m.get("site") or ""), path, str(m.get("tenant") or ""))
 
 
 @app.middleware("http")
@@ -1625,6 +1625,12 @@ async def receive_webhook(request: Request):
                 updates.extend(value.get("statuses") or [])
                 for m in value.get("messages") or []:
                     updates.append({"reply_from": m.get("from"), "text": (m.get("text") or {}).get("body")})
+            elif field == "calls":      # G3: a customer rang her WhatsApp number (WhatsApp Business Calling API)
+                try:
+                    from .seva import calls as _seva_calls
+                    _seva_calls.wa_calls(value)
+                except Exception:
+                    logging.getLogger("santosh.webhook").exception("whatsapp calls webhook")
             elif field == "message_template_status_update":
                 camp.apply_template_status(str(value.get("message_template_id")), value.get("event", ""), value.get("reason"))
     if updates:
@@ -1928,6 +1934,16 @@ def computer_page():
     """v0.890 HOOLA COMPUTER: Hoola PC + Your PC as one section with its own page (own sidebar, a live screen and the
     computer's OWN chats). Same sign-in as the console, same strict CSP."""
     return FileResponse(STATIC / "console" / "computer.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
+
+
+@app.get("/console/pcjobs")
+@app.get("/console/pcjobs/")
+def pcjobs_page():
+    """v0.999.116 ULTIMATE PC PLAN P6: PC jobs step by step (the screen at each step, the click marked), Stop, save as a
+    routine, run routines, her PC rules. Same sign-in as the console, same strict CSP."""
+    return FileResponse(STATIC / "console" / "pcjobs.html", headers={
         **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
 
@@ -2471,6 +2487,14 @@ from .quicklane import router as quicklane_router               # noqa: E402
 app.include_router(quicklane_router)                            # POST /api/pc/quickask (+ /messages)
 from .pc import trace as _pc_trace                              # noqa: E402  v0.999.67 ULTIMATE PC PLAN P0
 _pc_trace.mount(app, current_tenant, require_key)               # /api/pc/trace* (every PC job, step by step)
+from .pc import extlink as _pc_extlink                          # noqa: E402
+_pc_extlink.mount(app)
+from .pc import guard as _pc_guard                              # noqa: E402
+_pc_guard.mount(app, current_tenant, require_key)
+from .pc import routines as _pc_routines                        # noqa: E402
+_pc_routines.mount(app, current_tenant, require_key)            # /api/pc/routines* (learn once, replay - v0.999.115 P5)               # /api/pc/rules (her PC rules, v0.999.112 P2)                                          # /api/pc/ext-ws (page engine 2 in her Chrome, v0.999.111)
+from .pc import lessons as _pc_lessons  # noqa: E402
+_pc_lessons.mount(app, current_tenant, require_key)            # /api/pc/lessons* (Hoola improves itself - v0.999.118 P8)
 from .practice import router as _exam_practice_router                 # noqa: E402  v0.999.67 the practice portal for the exams
 app.include_router(_exam_practice_router)                            # /practice/<run>/<page> (public, harmless, per-run records)
 from . import computer as _computer_mod                           # noqa: E402  v0.890 HOOLA COMPUTER
@@ -12271,6 +12295,55 @@ async def sites_launch(ref: str, body: dict, tenant: str = Depends(current_tenan
     out = await asyncio.to_thread(_host, H.launch, tenant, ref, str(body.get("hash") or ""), body.get("free", True) is not False)
     _pled(tenant, _pled_sid(tenant, ref), "published")
     return out
+
+
+def _upg(fn, *a):
+    from .site import prototype as PT
+    from .site import service as S
+    from .site import upgrade as UP
+    try:
+        return fn(*a)
+    except UP.UpgradeError as e:
+        raise HTTPException(e.code, str(e))
+    except PT.ProtoError as e:
+        raise HTTPException(getattr(e, "code", 400), str(e))
+    except S.SiteError as e:
+        raise HTTPException(404 if "not found" in str(e).lower() else 400, str(e))
+
+
+@app.get("/api/sites/{ref}/upgrade", dependencies=[Depends(require_key)])
+async def sites_upgrade_view(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.999.119 D9: the state of "Upgrade this site" (the old design + the new one beside it)."""
+    from .site import upgrade as UP
+    return await asyncio.to_thread(_upg, lambda: UP.view(UP.site_of(tenant, ref)))
+
+
+@app.post("/api/sites/{ref}/upgrade", dependencies=[Depends(require_key)])
+async def sites_upgrade_start(ref: str, tenant: str = Depends(current_tenant)):
+    """HER TAP: make the new design of her website beside the old one (nothing she has changes meanwhile)."""
+    from .site import upgrade as UP
+    return await asyncio.to_thread(_upg, UP.start, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/upgrade/keep", dependencies=[Depends(require_key)])
+async def sites_upgrade_keep(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP on the fingerprint of the new design she looked at: the website uses it from now on."""
+    from .site import upgrade as UP
+    return await asyncio.to_thread(_upg, UP.accept, tenant, ref, str((body or {}).get("hash") or ""))
+
+
+@app.post("/api/sites/{ref}/upgrade/back", dependencies=[Depends(require_key)])
+async def sites_upgrade_back(ref: str, tenant: str = Depends(current_tenant)):
+    """HER TAP: back to the old design (kept unchanged)."""
+    from .site import upgrade as UP
+    return await asyncio.to_thread(_upg, UP.back, tenant, ref)
+
+
+@app.delete("/api/sites/{ref}/upgrade", dependencies=[Depends(require_key)])
+async def sites_upgrade_discard(ref: str, tenant: str = Depends(current_tenant)):
+    """HER TAP: throw the new design away while it waits beside the old website."""
+    from .site import upgrade as UP
+    return await asyncio.to_thread(_upg, UP.discard, tenant, ref)
 
 
 @app.post("/api/sites/{ref}/rollback-request", dependencies=[Depends(require_key)])

@@ -990,3 +990,7 @@ def save_settings(tenant: str, key: str, **kw: Any) -> dict[str, Any]:
         st.update({k: v for k, v in kw.items() if v is not None})
         r.settings = json.dumps(st, ensure_ascii=False)
         return _view(r)
+
+
+# v0.999.114 the phone's AI team desks join the Hub (employee/teamdesks.py; it fills CATALOG when imported).
+from . import teamdesks as _teamdesks  # noqa: E402,F401

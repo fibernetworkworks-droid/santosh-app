@@ -3504,3 +3504,39 @@ G5 of the global Customer Support plan: website chat widget, hosted chat page, c
 
 Task ID: v0.999.100 SUPPORT EMAIL
 G6 of the global Customer Support plan: support email over IMAP / SMTP or forwarding, threads, ticket replies, loop guard, attachments; 9 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+---
+Task ID: v0.999.102 BROWSER PUSH
+Ask: GO D8 WAVE 9
+Built: public/hoola-push-sw.js (locked worker), pushState / pushOn / pushOff in src/lib/member.ts (locked), signOut stops this browser's notifications, Notify part on My account (MemberRows), appengine/parity.py push = works
+Not verified: a real notification through Google / Mozilla / Apple; her server; AI inside her site still to build; studio_react_sites still OFF
+
+Task ID: v0.999.103 SUPPORT CALLS
+G3 of the global Customer Support plan: phone calls in the support desk - calls on the desk, warm transfer, machine / menu check, learned reply wait, idle + fillers, WhatsApp calls; 15 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.105 SUPPORT TEAMS
+G10 of the global Customer Support plan: people + shifts, queues, routing, rule engine, roles, money approval chains, macros with actions, custom fields, saved views; 10 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+---
+Task ID: v0.999.106 HER AI ASSISTANT
+Ask: GO D8 WAVE 10
+Built: src/islands/AiChat.tsx (notice + I agree, chat, suggested questions, form fields), aiApp / aiAgree / aiSealed in src/lib/member.ts (locked), site/rxhost.ai_allowed (only her own app on her address), site/prototype.her_ai_app, writer places it on the home page, appengine/parity.py ai = partial
+Not verified: a real model answer on her server; a picture maker for visitors not built; studio_react_sites still OFF
+
+Task ID: v0.999.108 SUPPORT QUALITY
+G11 of the global Customer Support plan: answer sample + auto draft, pretend customers + replay, law packs, AI disclosure, data export / erase / retention, masking sweep, audit log; 10 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.110 SUPPORT LAYER
+G12 of the global Customer Support plan: layer mode on Chatwoot, Zendesk, Freshdesk, ServiceNow, Jira SM - sort, suggest, summarise, close by rule, remind, where-is-my-ticket; 8 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.113 SUPPORT REPORTS
+G13 of the global Customer Support plan (its last phase): reports with breakdowns, trends, CSV / PDF and a monthly PDF; 7 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+---
+Task ID: v0.999.119 UPGRADE THIS SITE
+Ask: GO D9
+Built: site/upgrade.py (her words read out of her pages, the new design beside the old, keep / go back / throw away), prototype.write_react shared, routes /api/sites/<site>/upgrade*, Studio Upgrade bar + side-by-side compare, website action=upgrade (read only)
+Not verified: her own site moved and approved (the D9 done-line); a real model; studio_react_sites still OFF
+
+Task ID: v0.999.122 THE WHOLE AI TEAM
+Counted the phone's AI team (81 desks, 9 already Hub employees) and added the other 72 to the console Hub by department, opening on the desk room or their studio; 4 new departments.

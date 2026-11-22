@@ -2,18 +2,34 @@
   "manifest_version": 3,
   "name": "Hoola",
   "version": "1.10.0",
-  "description": "Send the page you are reading to Hoola, with a question. The answer comes in your Hoola conversation. Also live captions from the tab audio.",
-  "default_locale": "en",
+  "description": "Send the page you are reading to Hoola, with a question. The answer comes in your Hoola conversation. Also live captions from the tab audio. Also lets Hoola work on the page you have open (when you turn it on).",
   "icons": {
     "16": "icons/hoola16.png",
     "32": "icons/hoola32.png",
     "48": "icons/hoola48.png",
     "128": "icons/hoola128.png"
   },
-  "permissions": ["storage", "contextMenus", "scripting", "activeTab", "tabCapture", "offscreen"],
-  "host_permissions": ["https://hoola.ainewtika.com/*"],
-  "optional_host_permissions": ["http://localhost/*", "http://127.0.0.1/*", "https://*/*", "http://*/*"],
-  "background": { "service_worker": "background.js" },
+  "permissions": [
+    "storage",
+    "contextMenus",
+    "scripting",
+    "activeTab",
+    "tabCapture",
+    "offscreen",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://hoola.ainewtika.com/*"
+  ],
+  "optional_host_permissions": [
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://*/*",
+    "http://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_title": "Send to Hoola",
@@ -26,8 +42,14 @@
   "options_page": "options.html",
   "commands": {
     "send-page": {
-      "suggested_key": { "default": "Ctrl+Shift+H", "mac": "Command+Shift+H" },
+      "suggested_key": {
+        "default": "Ctrl+Shift+H",
+        "mac": "Command+Shift+H"
+      },
       "description": "Send this page to Hoola (you can type a question in the popup)"
     }
-  }
+  },
+  "optional_permissions": [
+    "debugger"
+  ]
 }

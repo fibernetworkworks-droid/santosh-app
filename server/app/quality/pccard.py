@@ -259,6 +259,16 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
                 pend = getattr(op, "pending", None) or {}
                 # v0.999.84 the exam plays HER tap - only on its own practice portal and only where the task says so; the
                 # checkout task never approves (stopping there IS the right answer)
+                row["approval_asked"] = str(pend.get("what") or "")[:200]   # v0.999.104 what the stop was about (the card shows it)
+                # v0.999.104 on a REAL site (the portal exam) only a cookie-consent question is answered for her (a yes there
+                # changes nothing of hers); anything else stops the job, as before
+                cookie = bool(re.search(r"\bcookie|consent|privacy (choices|settings)", row["approval_asked"], re.I)) \
+                    and not re.search(r"pay|buy|order|submit|send|sign|delete|password", row["approval_asked"], re.I)
+                if task.get("cookies") and cookie and pend.get("id") and row["approved"] < MAX_APPROVALS:
+                    if O.decide(tenant, sid, pend["id"], True):
+                        row["approved"] += 1
+                        await asyncio.sleep(POLL_S)
+                        continue
                 if task.get("approve") and task.get("_run") and pend.get("id") and row["approved"] < MAX_APPROVALS:
                     if O.decide(tenant, sid, pend["id"], True):
                         row["approved"] += 1
@@ -272,6 +282,7 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
                     if O.give_answer(tenant, task["answer"], op.conv):
                         row["answered"] += 1
                 else:
+                    row["asked_q"] = str(ask.get("question") or "")[:200]   # v0.999.107 what it asked her
                     final, stop_after = "asked", True
                     break
             lg = getattr(op, "login", None)        # v0.999.96 the private sign-in form opened = a clean hand-off to her
@@ -315,6 +326,15 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
         row.update(ok=ok, reason=why, status=final)
         row["stopped_at_approval"] = final == "needs_confirm"
         row["false_done"] = final == "done" and not ok
+        # v0.999.104 a real site that refuses this cloud computer (403 / CloudFront / blank) AND Hoola said so plainly: an
+        # honest hand-off for her own PC (plan P7), counted apart - never a pass
+        said = state["answer"].lower()
+        if not ok and final in ("partial", "done") and re.search(r"block|403|refus|not load|nahi khul|cloud", said):
+            row["blocked_said"] = True
+        # v0.999.107 a 'verify you are human' check (Cloudflare / captcha) handed to her: also a right hand-off, counted apart
+        if not ok and final == "asked" and re.search(r"human|captcha|robot|verify you|cloudflare|security check",
+                                                     row.get("asked_q", ""), re.I):
+            row["human_check"] = True
         row["page_seen"] = str(state.get("page") or "")[:300]
         row["title_seen"] = str(state.get("title") or "")[:120]
     finally:
@@ -354,6 +374,8 @@ def summarize(rows: list[dict], rupees: float | None = None, groups_order: tuple
             "median_seconds": round(statistics.median(secs), 1) if secs else None,
             "median_steps": statistics.median(steps) if steps else None,
             "false_done": sum(1 for r in ran if r.get("false_done")),
+            "blocked_said": sum(1 for r in ran if r.get("blocked_said")),
+            "human_check": sum(1 for r in ran if r.get("human_check")),
             "asks": sum(r.get("asks", 0) for r in ran),
             "approval_stops": sum(1 for r in ran if r.get("stopped_at_approval")),
             "rupees": (f"~Rs {rupees} (estimate from steps x brain price)" if rupees is not None else "not measured"),
@@ -363,7 +385,7 @@ def summarize(rows: list[dict], rupees: float | None = None, groups_order: tuple
 async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv: str | None = None,
                    budget_minutes: float = 240, confirm_not_her_pc: bool = False,
                    skip_needs: list[str] | None = None, label: str = "", save_card: bool = True,
-                   set_name: str = "desktop") -> dict:
+                   set_name: str = "desktop", trial: bool = False) -> dict:
     """Run one exam (desktop | browser | portal), or the tasks in `ids`, on the named TEST PC (or a Hoola PC), in order.
     Returns the saved card."""
     global _RUNNING, _STOP
@@ -386,6 +408,8 @@ async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv
         for t in tasks:
             t["ask"], t["_run"] = t["ask"].replace("{P}", f"{base}/practice/{run}"), run
     _RUNNING, _STOP = True, False
+    from ..pc import lessons as _lessons    # v0.999.118 P8 a trial card is the only run that reads candidate lessons
+    _lessons.TRIAL["on"] = bool(trial)
     conv = conv or "__pccard__"
     skip = set(skip_needs or [])
     fname = f"pccard-{time.strftime('%Y%m%d-%H%M%S')}.json"   # v0.999.80 one file, written after EVERY task
@@ -433,15 +457,23 @@ async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv
             STATUS["ok"] = sum(1 for r in rows if r.get("ok"))
     finally:
         _RUNNING = False
+        _lessons.TRIAL["on"] = False
         STATUS.update(running=False, task="")
     rupees = round(_rescue.spent_today(tenant) - spent0, 1) if _rescue.spent_today(tenant) >= spent0 else None
     card = {"kind": "pccard", "exam": set_name, "set": SETS[set_name]["v"], "practice_run": run, "pc": dev.get("name") or "", "device_id": dev["device_id"],
             "label": label, "at": int(time.time()), "minutes": round((time.time() - t0) / 60, 1),
             "asked_for": len(tasks), "note": note, "summary": summarize(rows, rupees, SETS[set_name]["groups"]), "rows": rows,
             "not_run": [t["id"] for t in tasks if t["id"] not in {r["id"] for r in rows}], "status": "finished",
-            "ids_asked": [t["id"] for t in tasks]}
+            "ids_asked": [t["id"] for t in tasks], "trial": bool(trial)}
     if save_card:
         card = save(card, fname)
+    if trial and not note:     # v0.999.118 P8 the exam decides: keep the candidates or drop them
+        try:
+            card["lessons"] = _lessons.settle(card, _lessons.base_card(set_name, card["pc"], card.get("file", "")))
+            if save_card:
+                card = save(card, fname)
+        except Exception:
+            log.exception("pc lessons settle failed")
     STATUS["last"] = card.get("file", "")
     return card
 
@@ -526,6 +558,8 @@ def lines(card: dict) -> list[str]:
            f"{s.get('ok')}/{s.get('ran')} passed ({s.get('success_pct')}%), median {s.get('median_seconds')} s / "
            f"{s.get('median_steps')} steps, false done {s.get('false_done')}, asks {s.get('asks')}, "
            f"approval stops {s.get('approval_stops')}, rupees {s.get('rupees')}"
+           + (f", blocked by the site + said so: {s['blocked_said']}" if s.get("blocked_said") else "")
+           + (f", 'are you human' check handed to her: {s['human_check']}" if s.get("human_check") else "")
            + (f" - {card['note']}" if card.get("note") else "")]
     if card.get("not_run"):
         out.append(f"  not run yet: {', '.join(card['not_run'])}")

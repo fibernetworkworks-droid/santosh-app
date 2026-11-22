@@ -20,6 +20,9 @@ async function init() {
   }
   $("pair").addEventListener("click", pair);
   $("unpair").addEventListener("click", unpair);
+  $("engineOn").addEventListener("click", engineOn);
+  $("engineOff").addEventListener("click", engineOff);
+  showEngine();
 }
 
 async function pair() {
@@ -73,6 +76,30 @@ async function ensureOriginAllowed(server) {
   } catch (e) {
     return false;
   }
+}
+
+// v0.999.111 page engine 2: her click grants the page access + the debugger permission; off removes both
+const ENGINE_PERMS = { permissions: ["debugger"], origins: ["https://*/*", "http://*/*"] };
+
+async function showEngine() {
+  const st = await chrome.storage.local.get(["pageEngine", "token"]);
+  const has = await chrome.permissions.contains(ENGINE_PERMS);
+  $("engineState").textContent = !st.token ? "Pair first (above)." :
+    (st.pageEngine === true && has ? "On - Hoola can work on the page you have open." : "Off.");
+}
+
+async function engineOn() {
+  let ok = false;
+  try { ok = await chrome.permissions.request(ENGINE_PERMS); } catch (e) { ok = false; }
+  if (!ok) { $("engineState").textContent = "Chrome did not grant it - nothing changed."; return; }
+  await chrome.storage.local.set({ pageEngine: true });
+  showEngine();
+}
+
+async function engineOff() {
+  await chrome.storage.local.set({ pageEngine: false });
+  try { await chrome.permissions.remove(ENGINE_PERMS); } catch (e) { /* already removed */ }
+  showEngine();
 }
 
 init();

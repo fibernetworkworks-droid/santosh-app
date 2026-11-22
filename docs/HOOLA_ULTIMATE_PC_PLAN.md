@@ -86,3 +86,63 @@ never used now).
 28 / 30, **false done 0**, about Rs 48. The password guard held: login_handoff passed through the private sign-in form,
 and no job typed a password. Both failures were the exam's own (v0.999.98, set v3): the card did not answer ask_otp, and
 did not fill the private sign-in form a task needed. Hoola itself did both steps the right way.
+
+## Browser exam 30 / 30 (21-22 Nov, v0.999.98, Hoola PC, set v3) - twice in a row, false done 0, ~Rs 46-56, ~13-17 s a job.
+
+## First portal exam (22 Nov 2026, Hoola PC, set v0): 9 / 15
+Passed: SSA office, SAM.gov search, UK VAT rate, EU VIES, EU TED search, GST Search Taxpayer, Income Tax due dates, Canada
+GST/HST, World Bank GDP. Refused the cloud computer and Hoola said so (P7 = her PC): u.ae (blank), bizfile.gov.sg
+(CloudFront 403), epfindia.gov.in (blank) - with parivahan.gov.in that is four government sites that drop cloud servers.
+The exam's own faults (fixed v0.999.104, set v1): 'do not fill anything' forbade the asked search (ABN Lookup), a cookie
+banner question stopped Companies House. Unknown: irs.gov hung 6 minutes after its second step.
+
+## Second portal exam (22 Nov 2026, Hoola PC, set v1): 11 / 15
+New passes: irs.gov Where's My Refund, Companies House TESCO 00445790, ABN Lookup Woolworths, u.ae working hours (it loaded
+this time, 3 min). Cloud blocks said plainly: bizfile.gov.sg, epfindia.gov.in (Hoola even read Google's results about it).
+World Bank: a Cloudflare "verify you are human" box - Hoola asked her to click it (right; counted apart from v0.999.107).
+Open: sam.gov went silent 6 minutes after page_elements (irs.gov did the same in run 1) - the server log lines pc_trace
+prints now will say where. On Hoola PC the real ceiling of this set is 12-13 / 15; the rest needs her PC (P7).
+
+## The 6-minute silences, found (v0.999.109)
+pc_trace's server log lines for sam.gov: the step's screenshot at 02:28:19, then nothing until the card gave up at
+02:33:59. The AI call for the next step never ended: httpx's timeout is per read, and OpenRouter keeps a slow request
+alive with blank bytes, so the 35 s limit never fired. A hard total limit per step now (said to her, retried once, then
+the task ends cleanly). This hit real users too, not only the exam: any PC step on a slow provider could hang.
+
+## P1 rest as built (v0.999.111): the engine on HER PC, through the Hoola extension
+- One engine, three copies: `desktop-linux/pagekit.py` (Hoola PC agent), `server/app/pc/pagekit.py` (the server) and the
+  generated `desktop/ext/hoola-extension/pagekit.js` (her Chrome) - a test keeps all three equal.
+- `engine.js` (her click turns it on in Options: page access + the debugger permission): one socket to `/api/pc/ext-ws`
+  with its paired token; runs one pagekit function in the front tab, or the real mouse through chrome.debugger.
+- `server/app/pc/extlink.py` keeps the refs and makes the same decisions as the Hoola PC agent; `operator._pc` sends her
+  PC's page_* there while her extension is connected (not in background mode); otherwise the old accessibility path.
+- Found: the manifest's `default_locale` without `_locales` - Chrome refuses the extension; removed.
+- Not done yet in P1: allowed sites per job, WebMCP, Electron apps as pages, her own tab group, BrowserOS.
+
+## P2 as built (v0.999.112)
+- `server/app/pc/guard.py`: her rules (never-open / ask-first sites + her sentences, `/api/pc/rules`), an approval covers only the site she saw, a password is typed only on the site it was asked for, data leaving Hoola PC asks first. The editor for her rules comes with the Watch page (P6). Not built: a model-based 'reads free, changes ask' judge beyond the existing independent action checker (v0.999.37) - that checker already does it.
+
+## P3 as built (v0.999.114)
+- Hoola PC: data_read / sheet_write / doc_fill (`desktop-linux/datakit.py`) and page_tables; her PC: page_tables through the extension. The 'code helper' is the existing `run` on Hoola PC (free) - on her PC it stays off (her files, her machine). Not built: data tools on her Windows PC itself (needs a desktop exe rebuild; her files reach Hoola PC with user_pc_pull meanwhile).
+
+## P5 as built (v0.999.115)
+- A good job -> a routine (`server/app/pc/routines.py`), replay with no AI through the normal operator path, self-heal = the AI takes over from the step that no longer fits. Chat: 'save that as a routine' / 'run my routine X with ...'. Not built yet: 'watch me once' recording of HER own clicks (extension record mode), schedules for routines, loops / checks inside a routine, the Skyvern service (AGPL, a separate program - waits for her OK).
+
+## P6 as built (v0.999.116)
+- `/console/pcjobs`: every job step by step (screens, click marks, thoughts, times), live screen + Stop for a running job, save as routine, run routines, edit her rules. Take control stays on the Hoola Computer page. Not built: a video of the job, step mode (one step at a time on her tap), the phone app screen for it.
+
+## P7 as built (v0.999.117)
+- `server/app/pc/portals.py`: cloud-refusing sites (starter list + what Hoola PC learns, 14 days) are refused at once on Hoola PC and pointed at her PC; national sign-ins of 27 countries / schemes are handed to her (Take control), never typed. CAPTCHA / OTP hand-offs unchanged. Not built: best-of-N for read-only Hoola PC jobs (it multiplies the cost of a job - waits for her budget word).
+
+
+## P8 as built (v0.999.118)
+- `server/app/pc/lessons.py`: weekly lessons from the job records (checked in code, candidates only), the exam decides (vps-ops pc_card_trial: kept only if the score did not drop and no passing task broke), kept lessons ride later jobs on that site. vps-ops pc_lessons drafts now. Not built: helper CODE written by the model (Agent-S S4 style) - lessons are text the worker reads; code helpers would need the sandbox review she has not asked for.
+
+
+## P4 as built (v0.999.120)
+- `server/app/pc/grounding.py`: click_text (the words on the screenshot, read by tesseract on the server, clicked at their centre; twins refused) and point (a described thing, through a grounding model on a GPU she runs - off until PC_GROUNDING_URL is set). Reflection stays the existing 'screen unchanged' note + drift guard. Not done: UI-TARS on a GPU (needs her OK on the GPU cost); tesseract must be installed once on the VPS (deploy says so).
+
+
+## P9 as built (v0.999.121)
+- Hoola Desktop for Mac (Apple silicon) and Linux from the same code: CI job mac-linux, releases desktop-mac-latest / desktop-linux-latest, apps found and opened by name there, the PC worker told which computer it is. Not done: notarisation (needs her Apple Developer account), Intel Macs, Wayland screen control, Tally (Windows only). 'Done when' (the desktop exam on a Mac) waits for a Mac she can lend.
+

@@ -59,6 +59,57 @@ DEPTS: list[dict[str, Any]] = [
                 "keys": ["const_predesign", "const_bim", "const_drawqa", "const_survey", "const_green"]},
                {"id": "studio", "name": "Studio & learning", "keys": ["const_studio", "const_learn"]}]},
 ]
+# v0.999.114 the phone's AI team desks (employee/teamdesks.py): new departments, and new lanes in Finance / Retail /
+# Construction. Each desk works with the chat tool it always had.
+from . import teamdesks as TD   # noqa: E402
+
+_EXTRA_LANES = {"fin": ("books", "Books, payroll & insurance"), "retail": ("owners", "Shop owners"),
+                "const": ("property", "Contractor, property & site")}
+for _d in DEPTS:
+    if _d["id"] in _EXTRA_LANES:
+        _lid, _lname = _EXTRA_LANES[_d["id"]]
+        _d["lanes"].append({"id": _lid, "name": _lname, "keys": list(TD.LANES[_d["id"]])})
+DEPTS += [
+    {"id": "biz", "group": "Business", "name": "Business", "icon": "biz",
+     "line": "Calls to plan, words to write, ads, posters, letters and the office. It prepares; sending, spending and "
+             "publishing wait for your yes.",
+     "lanes": [{"id": "sales", "name": "Sales & marketing", "keys": ["telecall", "kalam", "ads", "brand"]},
+               {"id": "office", "name": "Office", "keys": ["office", "lekhak"]}]},
+    {"id": "care", "group": TD.CARE_GROUP, "name": "Customer Service", "icon": "care",
+     "line": "Complaints, returns, service visits, feedback, the IT helpdesk and your community. Refunds and "
+             "replies that promise anything wait for your tap.",
+     "lanes": [{"id": "care", "name": "Customers", "keys": ["shikayat", "service_desk", "wapsi", "feedback", "samudaay"]},
+               {"id": "it", "name": "IT helpdesk", "keys": ["helpdesk"]}]},
+    {"id": "soft", "group": H.SW_GROUP, "name": "Software & IT", "icon": "soft",
+     "line": "Testing, IT admin, network faults, security alerts, builds, manuals, app reviews and product plans. "
+             "It reads and drafts; a change goes in on your tap.",
+     "lanes": [{"id": "build", "name": "Build & ship", "keys": ["qa", "devops", "docs_writer", "app_review", "product"]},
+               {"id": "run", "name": "Run & protect", "keys": ["it_admin", "noc", "cyber"]},
+               {"id": "3d", "name": "3D", "keys": ["blender_3d"]}]},
+    {"id": "move", "group": TD.MOVE_GROUP, "name": "Logistics, Travel & Trade", "icon": "move",
+     "line": "Shipments, fleet, warehouse, courier, drivers, travel, import and export papers. Bookings and filings "
+             "wait for your yes.",
+     "lanes": [{"id": "goods", "name": "Goods", "keys": ["logistics", "warehouse", "courier"]},
+               {"id": "road", "name": "Fleet & drivers", "keys": ["fleet", "drivers"]},
+               {"id": "trade", "name": "Trade & travel", "keys": ["customs", "niryat", "travel"]}]},
+    {"id": "legal", "group": TD.LEGAL_GROUP, "name": "Legal & Compliance", "icon": "legal",
+     "line": "Court diary, legal research, contracts, company secretary work, notary drafts, compliance dates and "
+             "data protection. It drafts and tracks; a lawyer or officer signs.",
+     "lanes": [{"id": "law", "name": "Law", "keys": ["vakil", "legalres", "contracts", "notary"]},
+               {"id": "comp", "name": "Compliance", "keys": ["compliance", "cosec", "dpo", "pidesk"]}]},
+    {"id": "hosp", "group": TD.HOSP_GROUP, "name": "Hospitality & Events", "icon": "hosp",
+     "line": "Hotel front office, homestays, banquets, events, weddings and tours. Confirmed bookings and money "
+             "wait for your yes.",
+     "lanes": [{"id": "stay", "name": "Stays", "keys": ["front_office", "homestay"]},
+               {"id": "events", "name": "Events", "keys": ["banquet", "event_plan", "shaadi"]},
+               {"id": "tours", "name": "Tours", "keys": ["tour_guide"]}]},
+    {"id": "media", "group": H.FILM_GROUP, "name": "Media & Creative", "icon": "media",
+     "line": "Video and motion work, graphics, photo shoots, journalism, books, podcasts, artists and creators. "
+             "Delivery and invoices wait for your yes.",
+     "lanes": [{"id": "studio", "name": "Studio work", "keys": ["edit_desk", "motion_desk", "graphic", "photo_assist"]},
+               {"id": "words", "name": "Words & shows", "keys": ["patrakar", "kitab", "podcast"]},
+               {"id": "talent", "name": "Talent", "keys": ["artist_manager", "influencer"]}]},
+]
 # Kaan (Voice, Meetings & Transcription) already has its own console page: Hoola Flow (/console/flow).
 ELSEWHERE = {"kaan": "flow"}
 
@@ -142,7 +193,9 @@ def _segments(desc: str, actions: list[str], read: bool) -> dict[str, str]:
             pats = [rf"what=\s*{esc}\b", rf"\|\s*{esc}\b"]
         else:
             pats = [rf"action=\s*{esc}(?![A-Za-z0-9_])[^:.;|>]{{0,60}}?:", rf"action=\s*{esc}(?![A-Za-z0-9_])",
-                    rf"(?:^|[.;]\s+|\s){esc}\b(?:\s*\([^)]{{0,60}}\))?\s*:"]
+                    rf"(?:^|[.;]\s+|\s){esc}\b(?:\s*\([^)]{{0,60}}\))?\s*:",
+                    # v0.999.114 the older desks write "Actions: settings* (...); book (...)" and "| use (item, qty)"
+                    rf"(?:^|[.;:|]\s*|\s){esc}\*?\s*(?=\()"]
         for p in pats:
             m = re.search(p, desc)
             if m:

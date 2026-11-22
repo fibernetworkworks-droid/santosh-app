@@ -875,6 +875,10 @@ def init_db(url: str | None = None):
     from .seva import channels as _seva_channels  # noqa: F401  (G4 messaging apps)
     from .seva import webchat as _seva_webchat  # noqa: F401  (G5 website / app chat)
     from .seva import supportmail as _seva_mail  # noqa: F401  (G6 support email)
+    from .seva import teams as _seva_teams  # noqa: F401  (G10 people, queues, rules, approval chains)
+    from .seva import quality as _seva_quality  # noqa: F401  (G11 reviews, simulations, data requests)
+    from .seva import layer as _seva_layer  # noqa: F401  (G12 her own helpdesk)
+    from .seva import reports as _seva_reports  # noqa: F401  (G13 monthly reports)
     from .helpdesk import models as _helpdesk  # noqa: F401
     from .shikayat import models as _shikayat  # noqa: F401
     from .aftersales import service as _aftersales  # noqa: F401

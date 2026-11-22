@@ -687,7 +687,35 @@ def site_link(r) -> dict[str, Any]:
                 log.info("queue not read for the React website", exc_info=True)
     except Exception:                                # noqa: BLE001 - no lists: the app screens keep their sample rows
         log.info("lists not read for the React website", exc_info=True)
+    try:                                             # v0.999.106 D8 wave 10: her own live Hoola AI App, embed on
+        ai = her_ai_app(str(r.tenant_id or ""))
+        if ai:
+            out["ai"] = ai
+    except Exception:                                # noqa: BLE001 - no assistant: none shown
+        log.info("AI app not read for the React website", exc_info=True)
     return out
+
+
+def her_ai_app(tenant: str) -> dict[str, Any]:
+    """v0.999.106 D8 wave 10: her newest LIVE Hoola AI App whose website channel (embed) is on - its public face only
+    (the same fields its own chat page shows), {} when she has none. Nothing is made for her: an assistant appears on
+    her website only after she built and published it in AI Apps and left its website channel on."""
+    if not tenant:
+        return {}
+    from ..aiapps import public as AP
+    from ..aiapps import store as AST
+    for v in AST.apps(tenant):
+        if v.get("status") != "live" or not v.get("live_version"):
+            continue
+        a = AP.live_app(str(v.get("code") or ""), "embed")
+        if a is None or str(a.tenant_id or "") != tenant:
+            continue
+        info = AP.public_info(a)
+        return {"code": a.code, "name": str(info.get("name") or a.name or "")[:80],
+                "kind": str(info.get("kind") or "chat")[:12], "opening": str(info.get("opening") or "")[:400],
+                "notice": str(info.get("notice") or "")[:800],
+                "suggested": [str(x)[:120] for x in (info.get("suggested") or []) if str(x).strip()][:4]}
+    return {}
 
 
 PHOTO_W = 1600
@@ -815,16 +843,76 @@ def lang_link(r, ref: str) -> dict[str, Any]:
     return out
 
 
+def write_react(r, pages: list[dict[str, Any]], wfacts: dict[str, Any], ref: str = "", step=None,
+                pin: str = "", start: str = "") -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any] | None]:
+    """Pages (the prototype's shape) -> a React website in the App Engine box: the design genome (her colour pinned), her
+    languages, photos and catalogue, the writer (+ the critic when on), the build. `ref` = the app to write into ("" = a
+    new one). Returns (link, build result, writer stats, critic review). v0.999.119 D9: shared by Build the real
+    website and Upgrade this site."""
+    from ..appengine import critic as C
+    from ..appengine import genome as GN
+    from ..appengine import service as AE
+    from ..appengine import writer as W
+    from . import ai as AI
+    step = step or (lambda *a: None)
+    _, tk, _ = tokens_for(r)
+    S_work = step
+    S_work("start", "Writing the website", start or f"{len(pages)} pages, in React")
+    if ref:
+        try:
+            AE._load(r.tenant_id, ref)
+        except Exception:                    # noqa: BLE001 - the app was removed: a new one
+            ref = ""
+    if not ref:
+        gen = GN.generate(seed=r.id, pin=pin or str(tk.get("primary") or ""), words=r.brief or "", name=r.name or "")
+        app = AE.create(r.tenant_id, name=r.name or "My website", brief=r.brief or "", genome=gen, render="site",
+                        conversation_id=r.conv or "")
+        ref = app["id"]
+    wfacts["_langs"] = lang_link(r, ref)         # v0.999.77 D8: her extra languages (what is translated)
+    try:                                         # v0.999.82 D8: her photos in the React website
+        wfacts["_site"]["photos"] = sync_photos(r, ref)
+    except Exception:                            # noqa: BLE001 - stand-ins in the design's colours instead
+        log.info("photos not brought to the React website", exc_info=True)
+    try:                                         # v0.999.82 D8: her catalogue's lists and items
+        wfacts["_site"]["catalog"] = catalog_link(r, ref)
+    except Exception:                            # noqa: BLE001 - the catalogue stays on her HTML website
+        log.info("catalogue not brought to the React website", exc_info=True)
+    mdl = lambda system, prompt: AI.ask(system, prompt, 6000, "section")   # noqa: E731 - her tier's web writer
+    review: dict[str, Any] | None = None
+    if C.on():
+        # v0.999.67 D5: write -> build -> a SEPARATE critic looks on a computer + a phone -> code fixes, the best kept
+        spec = (_j(r.plan, {}) or {}).get("spec") or {}
+        gdir = ((AE._genome(AE._load(r.tenant_id, ref)) or {}).get("direction") or {}).get("seed") or ""
+        review = C.improve(r.tenant_id, ref, pages, name=r.name or "", facts=wfacts, model=mdl, seed=r.id,
+                           brief=r.brief or "", purpose=str(spec.get("purpose") or ""),
+                           field=str(spec.get("field_hint") or ""), kind=str(spec.get("kind") or ""),
+                           direction=str(gdir), step=lambda a, b: S_work(a, b, ""))
+        st, res = review["write"], review["build"]
+    else:
+        st = W.write_app(r.tenant_id, ref, pages, name=r.name or "", facts=wfacts, model=mdl, seed=r.id)
+        S_work("start", "Building the pages", "every page as finished HTML, code only where it moves")
+        res = AE.build(r.tenant_id, ref)
+    app = AE._load(r.tenant_id, ref)
+    link = {"id": app.id, "number": app.number, "version": app.version, "built": bool(res.get("built")),
+            "preview": f"/api/app-preview/{app.preview_token}/" if app.version else "",
+            "written": st["written"], "fixed": st["fixed"], "refused": st["refused_left"],
+            "custom": st["custom_written"], "blanks": st["blanks"], "say": res.get("say", "")[:600]}
+    if review is not None:
+        link["critic"] = {"score": review.get("score"), "passed": review.get("passed"), "bar": review.get("bar"),
+                          "rounds": len(review.get("rounds") or []), "best_round": review.get("best_round"),
+                          "inr": review.get("inr"), "hero": review.get("hero"), "model": review["critic"].get("model"),
+                          "skipped": review.get("skipped", ""), "say": C.say(review),
+                          "refs": int((review.get("refs") or {}).get("used") or 0),
+                          "problems": ((review.get("rounds") or [{}])[-1].get("problems") or [])[:3]}
+    return link, res, st, review
+
+
 def react_job(site_id: str) -> None:
     """Her approved prototype -> a React website: the design genome from the colour she approved, every page written
     by the writer (kit blocks + her words + her facts; custom sections by the model on her tier through AutoFix + the
     rules), built in the box (every page pre-rendered, islands only). The site's preview shows the app's preview."""
     from ..appengine import critic as C
-    from ..appengine import genome as GN
-    from ..appengine import service as AE
-    from ..appengine import writer as W
     from ..usage import scope
-    from . import ai as AI
     from . import service as S
     r = S._load(site_id)
     with scope(r.tenant_id, "site"):
@@ -832,57 +920,10 @@ def react_job(site_id: str) -> None:
             pages = pages_of(r)
             facts = _j(r.facts, {})
             wfacts = {**facts, "_site": site_link(r)}     # v0.999.77 D8: her website's forms, booking and shop
-            _, tk, _ = tokens_for(r)
-            link = react_link(r)
-            S._work(r, "start", "Writing the website", f"{len(pages)} pages from your prototype, in React")
-            ref = link.get("id") or ""
-            if ref:
-                try:
-                    AE._load(r.tenant_id, ref)
-                except Exception:                    # noqa: BLE001 - the app was removed: a new one
-                    ref = ""
-            if not ref:
-                gen = GN.generate(seed=r.id, pin=str(tk.get("primary") or ""), words=r.brief or "", name=r.name or "")
-                app = AE.create(r.tenant_id, name=r.name or "My website", brief=r.brief or "", genome=gen, render="site",
-                                conversation_id=r.conv or "")
-                ref = app["id"]
-            wfacts["_langs"] = lang_link(r, ref)         # v0.999.77 D8: her extra languages (what is translated)
-            try:                                         # v0.999.82 D8: her photos in the React website
-                wfacts["_site"]["photos"] = sync_photos(r, ref)
-            except Exception:                            # noqa: BLE001 - stand-ins in the design's colours instead
-                log.info("photos not brought to the React website", exc_info=True)
-            try:                                         # v0.999.82 D8: her catalogue's lists and items
-                wfacts["_site"]["catalog"] = catalog_link(r, ref)
-            except Exception:                            # noqa: BLE001 - the catalogue stays on her HTML website
-                log.info("catalogue not brought to the React website", exc_info=True)
-            mdl = lambda system, prompt: AI.ask(system, prompt, 6000, "section")   # noqa: E731 - her tier's web writer
-            review: dict[str, Any] | None = None
-            if C.on():
-                # v0.999.67 D5: write -> build -> a SEPARATE critic looks on a computer + a phone -> code fixes, the best kept
-                spec = (_j(r.plan, {}) or {}).get("spec") or {}
-                gdir = ((AE._genome(AE._load(r.tenant_id, ref)) or {}).get("direction") or {}).get("seed") or ""
-                review = C.improve(r.tenant_id, ref, pages, name=r.name or "", facts=wfacts, model=mdl, seed=r.id,
-                                   brief=r.brief or "", purpose=str(spec.get("purpose") or ""),
-                                   field=str(spec.get("field_hint") or ""), kind=str(spec.get("kind") or ""),
-                                   direction=str(gdir), step=lambda a, b: S._work(S._load(site_id), a, b, ""))
-                st, res = review["write"], review["build"]
-            else:
-                st = W.write_app(r.tenant_id, ref, pages, name=r.name or "", facts=wfacts, model=mdl, seed=r.id)
-                S._work(S._load(site_id), "start", "Building the pages", "every page as finished HTML, code only where it moves")
-                res = AE.build(r.tenant_id, ref)
-            app = AE._load(r.tenant_id, ref)
-            link = {"id": app.id, "number": app.number, "version": app.version, "built": bool(res.get("built")),
-                    "preview": f"/api/app-preview/{app.preview_token}/" if app.version else "",
-                    "written": st["written"], "fixed": st["fixed"], "refused": st["refused_left"],
-                    "custom": st["custom_written"], "blanks": st["blanks"], "proto_v": meta(r).get("approved_v"),
-                    "say": res.get("say", "")[:600]}
-            if review is not None:
-                link["critic"] = {"score": review.get("score"), "passed": review.get("passed"), "bar": review.get("bar"),
-                                  "rounds": len(review.get("rounds") or []), "best_round": review.get("best_round"),
-                                  "inr": review.get("inr"), "hero": review.get("hero"), "model": review["critic"].get("model"),
-                                  "skipped": review.get("skipped", ""), "say": C.say(review),
-                                  "refs": int((review.get("refs") or {}).get("used") or 0),
-                                  "problems": ((review.get("rounds") or [{}])[-1].get("problems") or [])[:3]}
+            link, res, st, review = write_react(r, pages, wfacts, react_link(r).get("id") or "",
+                                                step=lambda a, b, c="": S._work(S._load(site_id), a, b, c),
+                                                start=f"{len(pages)} pages from your prototype, in React")
+            link["proto_v"] = meta(r).get("approved_v")
             facts["react_app"] = link
             ok = bool(res.get("built"))
             S._save(site_id, facts=json.dumps(facts), status="ready" if ok else "failed",
