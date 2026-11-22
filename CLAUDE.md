@@ -407,6 +407,10 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
 `santosh`, folder names). User-facing text says **Hoola** / the avatar's name. Don't rename internals.
 
 ## How to work with the owner
+- EVERY AI EMPLOYEE IS GLOBAL (owner, 22 Nov 2026: "EVERY AI EMPLOYEE WE BUILD IS FOR GLOBLE NOT ONLY FOR INDIA"): design, research and build
+  each AI employee for users in every country - rules, regulators, currencies, languages, tax and payment rails per country
+  as data (country packs), India one pack among many, never India-only logic in code. A rule we have not checked for a
+  country is said as 'check this', never assumed.
 - She writes short, often ALL CAPS ("BUILD", "GO V36"). Means: do it fully, production-ready, no back-and-forth.
 - Read the real source before changing it. Ship complete versions: server + tests + Flutter + Android + CI green.
 - Each version: bump `server/app/main.py` version, `pubspec.yaml` version (+build), the version assert in
