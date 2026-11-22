@@ -108,6 +108,7 @@ class SevaMacro(Base):
     status: Mapped[str] = mapped_column(String(10), default="draft")          # draft | approved
     uses: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    actions: Mapped[str | None] = mapped_column(Text, nullable=True, default="")        # G10 {label, stage, status, assign}
 
 
 class SevaTicket(Base):
@@ -152,6 +153,9 @@ class SevaTicket(Base):
     cust_update_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)   # last "still on it" update
     confirm_asked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True) # "did this fix it?" sent
     reopens: Mapped[int] = mapped_column(Integer, default=0)
+    queue: Mapped[str | None] = mapped_column(String(30), nullable=True, default="")      # G10 her queue
+    labels: Mapped[str | None] = mapped_column(Text, nullable=True, default="")          # G10 ["vip", ...]
+    custom: Mapped[str | None] = mapped_column(Text, nullable=True, default="")          # G10 her custom fields {key: value}
 
 
 class SevaException(Base):
@@ -726,7 +730,7 @@ PLACEHOLDERS = ("name", "ticket", "status", "business")
 
 
 def _macro_view(m: SevaMacro) -> dict:
-    return {"id": m.id, "name": m.name, "texts": _j(m.texts, {}), "status": m.status, "uses": m.uses}
+    return {"id": m.id, "name": m.name, "texts": _j(m.texts, {}), "status": m.status, "uses": m.uses, "actions": _j(m.actions or "", {})}
 
 
 def macro_add(tenant: str, name: str, text: str, lang: str = "") -> dict:
@@ -879,6 +883,7 @@ def _ticket_view(t: SevaTicket, st: SevaSettings | None = None, internal: bool =
     v = {"id": t.id, "number": t.number, "channel": t.channel, "customer": t.customer_label or t.customer, "category": t.category,
          "category_label": R.CATEGORY_LABEL.get(t.category) or _pack_label(t.tenant_id, t.category), "priority": t.priority, "status": t.status,
          "text": t.text, "assignee": t.assignee, "lang": t.lang, "customer_line": t.customer_line,
+         "queue": t.queue or "", "labels": _j(t.labels or "", []), "custom": _j(t.custom or "", {}),
          "status_line": R.status_line(t.status, t.number, t.lang, t.merged_into) + (f" {t.customer_line}" if t.customer_line else ""),
          "merged_into": t.merged_into, "csat": t.csat, "created": _utc(t.created_at).isoformat(),
          "updated": _utc(t.updated_at).isoformat(), "resolved": _utc(t.resolved_at).isoformat() if t.resolved_at else ""}
@@ -1021,6 +1026,12 @@ def new_ticket(tenant: str, text: str, channel: str = "phone", customer: str = "
         FL.start(tenant, tid, by or "hoola")
     except Exception:   # noqa: BLE001 - a workflow problem never loses the ticket
         log.exception("seva workflow start failed")
+    try:        # G10: her routing (queue + the person on shift with room), then her rules for a new ticket
+        from . import teams as TM
+        TM.route(tenant, tid, by or "hoola")
+        TM.fire(tenant, "created", tid)
+    except Exception:   # noqa: BLE001
+        log.exception("seva routing / rules")
     with session() as s:
         t = s.get(SevaTicket, tid)
         st = _st(s, tenant)
@@ -1226,6 +1237,12 @@ def update(tenant: str, ref: str, status: str = "", priority: str = "", public: 
                 s.get(SevaTicket, tid).csat_asked_at = clock()
     out = ticket(tenant, tid)
     _publish(tenant, "seva_ticket", out | {"event": "update"})
+    if status and status != old and by != "rule":
+        try:
+            from . import teams as TM
+            TM.fire(tenant, "status", tid, status)
+        except Exception:   # noqa: BLE001
+            log.exception("seva rules on status")
     return {"ticket": out, "told": told, "say": f"{number}: {out['status']}" + (" · customer told" if told.get("sent") else
                                                                             " · draft ready for the customer" if told.get("draft") else "")}
 
@@ -1416,6 +1433,11 @@ def exception_request(tenant: str, kind: str, reason: str, amount=0, ticket: str
         if tid:
             _add_note(s.get(SevaTicket, tid), by, f"Request {number}: {R.EXC_KINDS[kind]} {_rs(amt) if amt else ''} - waiting for your approval.")
     _publish(tenant, "seva_exception", v | {"say": _exc_say(v)}, conv)
+    try:        # G10: her amount bands -> the people who say yes, in order (none = her tap, as before)
+        from . import teams as TM
+        v["chain"] = TM.start_chain(tenant, v["id"])
+    except Exception:   # noqa: BLE001
+        log.exception("seva approval chain")
     return {"exception": v, "say": f"Request {number} sent for the owner's approval. " + ("It is within the rules, but the decision is still the owner's."
                                                                                     if chk["within"] else "Outside the rules: " + " ".join(chk["reasons"])),
             "customer_say": "Your request has reached the owner; they will look at it and reply. We cannot promise anything yet."}
@@ -1432,7 +1454,14 @@ def exceptions(tenant: str, status: str = "") -> list[dict]:
         sel = select(SevaException).where(SevaException.tenant_id == tenant)
         if status:
             sel = sel.where(SevaException.status == status)
-        return [_exc_view(e) for e in s.scalars(sel.order_by(SevaException.created_at.desc()).limit(200)).all()]
+        out = [_exc_view(e) for e in s.scalars(sel.order_by(SevaException.created_at.desc()).limit(200)).all()]
+    try:        # G10: the approval chain of each request (who says yes, in order)
+        from . import teams as TM
+        for v in out:
+            v["chain"] = TM.chain(tenant, v["id"])
+    except Exception:   # noqa: BLE001
+        log.exception("seva chain view")
+    return out
 
 
 def approval_card(tenant: str, exc_id: str) -> dict | None:
@@ -1508,8 +1537,21 @@ def decide(tenant: str, exc_id: str, yes: bool, digest: str = "", proof: dict | 
         _fp_verify(tenant, exc_id, proof)
     if note and _secret(note):
         raise SevaError("The note holds details that are not allowed.")
+    try:        # G10: her own tap decides the whole request; waiting chain steps close
+        from . import teams as TM
+        TM.owner_decided(tenant, exc_id)
+    except Exception:   # noqa: BLE001
+        log.exception("seva chain close")
+    return _settle(tenant, exc_id, yes, note=note, amount=amount, by="owner")
+
+
+def _settle(tenant: str, exc_id: str, yes: bool, note: str = "", amount=None, by: str = "owner") -> dict:
+    """The decision itself (her tap, or the last yes of her approval chain). Money still moves only by her."""
     with session() as s:
         e = s.get(SevaException, exc_id)
+        if e is None or e.status != "pending":
+            raise SevaError("This request has already been decided.")
+        amt = e.amount
         e.status, e.decided_at, e.note = ("approved" if yes else "rejected"), clock(), mask(_clean(note, 600))
         if yes:
             a = _num(amount) if amount not in (None, "") else amt
@@ -1522,7 +1564,7 @@ def decide(tenant: str, exc_id: str, yes: bool, digest: str = "", proof: dict | 
         if tid:
             t = s.get(SevaTicket, tid)
             lang = t.lang
-            _add_note(t, "owner", f"Request {e.number}: {'YES' if yes else 'NO'}" + (f" ({note[:200]})" if note else ""))
+            _add_note(t, by, f"Request {e.number}: {'YES' if yes else 'NO'}" + (f" ({note[:200]})" if note else ""))
     words = _decision_words(kind, yes, v["approved_amount"], pol.get("refund_mode", ""), note, lang)
     told = _tell(tenant, tid, words, first=True) if tid else {}
     _publish(tenant, "seva_exception", v | {"say": f"{v['number']}: {'approved' if yes else 'declined'}"}, v.get("conv", ""))
@@ -1778,6 +1820,11 @@ def tick(at: datetime | None = None) -> dict:
         SM.poll_all()
     except Exception:
         log.exception("seva support mail")
+    try:
+        from . import teams as TM                  # G10: her delayed rules ("still open after 2 h -> supervisor")
+        TM.sweep_all()
+    except Exception:
+        log.exception("seva rules sweep")
     mornings = 0
     for t in due_mornings(at):
         try:

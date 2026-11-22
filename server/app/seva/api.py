@@ -333,6 +333,126 @@ def make_router(require_key, current_tenant) -> APIRouter:
         warm = b.get("warm_transfer")
         return {"phone": await prun(SC.save_phone, tenant, None if warm is None else bool(warm), b.get("wa_calls"))}
 
+    # ---------------------------------------------------------------- G10 teams, queues and rules
+    async def trun(fn, *a, **kw):
+        from . import teams as TM
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except (TM.TeamError, S.SevaError) as e:
+            raise HTTPException(400, str(e))
+        except (TypeError, ValueError) as e:
+            raise HTTPException(400, f"Invalid details: {e}")
+
+    @r.get("/team")
+    async def team_all(tenant: str = Depends(current_tenant)):
+        from . import teams as TM
+        return await trun(TM.overview, tenant)
+
+    @r.get("/team/board")
+    async def team_board(tenant: str = Depends(current_tenant)):
+        from . import teams as TM
+        return {"board": await trun(TM.board, tenant)}
+
+    @r.post("/team/people")
+    async def team_person_new(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import teams as TM
+        return {"person": await trun(TM.save_agent, tenant, _b(body))}
+
+    @r.put("/team/people/{aid}")
+    async def team_person_put(aid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import teams as TM
+        return {"person": await trun(TM.save_agent, tenant, _b(body), aid)}
+
+    @r.delete("/team/people/{aid}")
+    async def team_person_del(aid: str, tenant: str = Depends(current_tenant)):
+        from . import teams as TM
+        return await trun(TM.remove_agent, tenant, aid)
+
+    @r.put("/team/queues")
+    async def team_queue_put(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import teams as TM
+        return {"queue": await trun(TM.save_queue, tenant, _b(body))}
+
+    @r.delete("/team/queues/{key}")
+    async def team_queue_del(key: str, tenant: str = Depends(current_tenant)):
+        from . import teams as TM
+        return await trun(TM.remove_queue, tenant, key)
+
+    @r.put("/team/routes")
+    async def team_routes(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import teams as TM
+        return await trun(TM.save_routes, tenant, _b(body).get("routes") or [])
+
+    @r.post("/team/rules")
+    async def team_rule_new(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import teams as TM
+        return {"rule": await trun(TM.save_rule, tenant, _b(body))}
+
+    @r.put("/team/rules/{rid}")
+    async def team_rule_put(rid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import teams as TM
+        return {"rule": await trun(TM.save_rule, tenant, _b(body), rid)}
+
+    @r.delete("/team/rules/{rid}")
+    async def team_rule_del(rid: str, tenant: str = Depends(current_tenant)):
+        from . import teams as TM
+        return await trun(TM.remove_rule, tenant, rid)
+
+    @r.put("/team/roles")
+    async def team_role(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import teams as TM
+        b = _b(body)
+        return await trun(TM.save_role, tenant, str(b.get("name") or ""), list(b.get("perms") or []))
+
+    @r.put("/team/bands")
+    async def team_bands(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import teams as TM
+        b = _b(body)
+        return await trun(TM.save_bands, tenant, b.get("bands") or [], str(b.get("currency") or ""))
+
+    @r.put("/team/fields")
+    async def team_fields(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import teams as TM
+        return await trun(TM.save_fields, tenant, _b(body).get("fields") or [])
+
+    @r.put("/team/views")
+    async def team_view_put(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import teams as TM
+        b = _b(body)
+        return await trun(TM.save_view, tenant, str(b.get("name") or ""), b.get("filters") or {})
+
+    @r.delete("/team/views/{name}")
+    async def team_view_del(name: str, tenant: str = Depends(current_tenant)):
+        from . import teams as TM
+        return await trun(TM.remove_view, tenant, name)
+
+    @r.get("/team/views/{name}")
+    async def team_view_get(name: str, tenant: str = Depends(current_tenant)):
+        from . import teams as TM
+        return await trun(TM.view_tickets, tenant, name)
+
+    @r.put("/tickets/{ref}/custom")
+    async def ticket_custom(ref: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import teams as TM
+        return await trun(TM.set_custom, tenant, ref, _b(body))
+
+    @r.post("/tickets/{ref}/macro/{mid}")
+    async def ticket_macro(ref: str, mid: str, tenant: str = Depends(current_tenant)):
+        from . import teams as TM
+        return await trun(TM.run_macro, tenant, ref, mid)
+
+    @r.put("/macros/{mid}/actions")
+    async def macro_actions(mid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import teams as TM
+        return await trun(TM.set_macro_actions, tenant, mid, _b(body))
+
+    @r.post("/exceptions/{exc_id}/steps/{sid}/link")
+    async def step_link(exc_id: str, sid: str, tenant: str = Depends(current_tenant)):
+        """A new one-time approval link for the person at this step (the old one stops working)."""
+        from . import teams as TM
+        await trun(TM.new_link, tenant, sid)
+        return {"chain": await trun(TM.chain, tenant, exc_id)}
+
     @r.get("/chatfiles/{fid}")
     async def webchat_file(fid: str, tenant: str = Depends(current_tenant)):
         from fastapi.responses import Response as R_
@@ -634,6 +754,51 @@ def make_web_router() -> APIRouter:
     @r.get("/api/support/v1/messages")
     async def api_get(request: Request, user_id: str = "", after: str = ""):
         return await _do(request, WC.api_messages, request.headers.get("authorization") or "", user_id, after)
+
+    def _approve_page(body: str, status: int = 200) -> HTMLResponse:
+        page = ("<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+                "<title>Approval</title><style>body{margin:0;font-family:system-ui,sans-serif;background:#f7f7f8;color:#1b1b1f}"
+                "main{max-width:520px;margin:32px auto;padding:24px;background:#fff;border-radius:14px;border:1px solid #e6e6ea}"
+                "h1{font-size:20px;margin:0 0 6px}.big{font-size:28px;font-weight:600;margin:10px 0}.s{color:#555;font-size:14px;line-height:1.5}"
+                "textarea{width:100%;box-sizing:border-box;border:1px solid #d9d9e0;border-radius:10px;padding:10px;font:inherit}"
+                "button{border:0;border-radius:10px;padding:12px 18px;font-size:15px;cursor:pointer;margin-right:8px}"
+                ".y{background:#1b1b1f;color:#fff}.n{background:#f0f0f3}</style></head><body><main>" + body + "</main></body></html>")
+        return HTMLResponse(page, status_code=status, headers={"Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; "
+                                                                                          "form-action 'self'; frame-ancestors 'none'",
+                                                               "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer",
+                                                               "Cache-Control": "no-store"})
+
+    @r.get("/support/approve/{token}", response_class=HTMLResponse)
+    async def approve_page(token: str):
+        """G10: one person's step of a money approval chain, on their own one-time link (bound to the request)."""
+        import html
+        from . import teams as TM
+        try:
+            i = await asyncio.to_thread(TM.step_by_token, token)
+        except TM.TeamError as e:
+            return _approve_page(f"<h1>Approval</h1><p class='s'>{html.escape(str(e))}</p>", 410)
+        q = i["request"]
+        e = html.escape
+        return _approve_page(
+            f"<h1>{e(q['kind'])} · {e(q['number'])}</h1><p class='s'>For {e(i['person'] or 'you')} ({e(i['role'])}). Customer: "
+            f"{e(q['customer'] or '')}</p><div class='big'>{e(q['amount'] or '')}</div><p class='s'>{e(q['reason'] or '')}</p>"
+            f"<p class='s'>{'Within the written policy.' if q['within'] else 'Outside the written policy.'} Saying yes does not move "
+            "money: the owner pays from her own bank or gateway.</p>"
+            f"<form method='post' action='/support/approve/{e(token)}'><p><textarea name='note' rows='2' placeholder='A note (optional)'>"
+            "</textarea></p><button class='y' name='yes' value='1' type='submit'>Yes</button><button class='n' name='yes' value='0' "
+            "type='submit'>No</button></form>")
+
+    @r.post("/support/approve/{token}", response_class=HTMLResponse)
+    async def approve_post(token: str, request: Request):
+        import html
+        from . import teams as TM
+        from .service import SevaError
+        form = await request.form()
+        try:
+            out = await asyncio.to_thread(TM.decide_step, token, str(form.get("yes") or "") == "1", str(form.get("note") or ""))
+        except (TM.TeamError, SevaError) as e:
+            return _approve_page(f"<h1>Approval</h1><p class='s'>{html.escape(str(e))}</p>", 410)
+        return _approve_page(f"<h1>Done</h1><p class='s'>{html.escape(out['say'])}</p>")
 
     @r.get("/support/chat/{key}", response_class=HTMLResponse)
     async def hosted(key: str):
