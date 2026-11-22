@@ -1,4 +1,4 @@
-/* v0.999.121 D10 PROOF CARD page (owner only): the old website engine and the new one on the same briefs, side by side;
+/* v0.999.123 D10 PROOF CARD page (owner only): the old website engine and the new one on the same briefs, side by side;
    the critic's pick, HER pick per pair (which outranks every number), blind Arena duels of the new engine's websites,
    the recommendation code makes, and HER decision: the new engine as the default for NEW websites (or back).
    Reads /api/proofcard* and /api/engine-default; never starts a run. */

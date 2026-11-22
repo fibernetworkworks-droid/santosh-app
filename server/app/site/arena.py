@@ -223,7 +223,7 @@ def _home_shots(site_id: str) -> list[bytes]:
     from . import rxhost as RH
     from . import service as S
     r = S._load(site_id)
-    if RH.is_react(r):                               # v0.999.121 D10: a website on the new engine (its finished pages)
+    if RH.is_react(r):                               # v0.999.123 D10: a website on the new engine (its finished pages)
         d = RH.dist(r)
         if d is None:
             return []

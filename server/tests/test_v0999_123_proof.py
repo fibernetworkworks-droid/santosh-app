@@ -1,4 +1,4 @@
-"""v0.999.121 D10: proof + default. The same briefs built on the old engine and the new one, photographed by one
+"""v0.999.123 D10: proof + default. The same briefs built on the old engine and the new one, photographed by one
 photographer, scored by one scorer and one critic, the order alternating; her pick per pair outranks the numbers;
 blind Arena duels of the new engine's websites; a recommendation made by code that never decides; and HER tap,
 bound to the evidence she saw, making the new engine the default for NEW websites (or back)."""

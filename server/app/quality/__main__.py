@@ -182,7 +182,7 @@ def _designcard(argv: list[str]) -> int:
 
 
 def _proofcard(argv: list[str]) -> int:
-    """v0.999.121 D10 PROOF CARD: old engine vs new. Free by default; --live builds every brief twice, needs --budget-inr."""
+    """v0.999.123 D10 PROOF CARD: old engine vs new. Free by default; --live builds every brief twice, needs --budget-inr."""
     from . import designcard as DC
     from . import proofcard as PC
     val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
@@ -501,7 +501,7 @@ def main(argv: list[str]) -> int:
         return _skillscard(argv[1:])
     if argv and argv[0] == "music":         # v0.999.79 M0 MUSIC TEST CARD (free; --live makes songs, needs --budget-inr)
         return _musiccard(argv[1:])
-    if argv and argv[0] == "proof" and not (len(argv) > 1 and argv[1] in ("--help",)):   # v0.999.121 D10 PROOF CARD
+    if argv and argv[0] == "proof" and not (len(argv) > 1 and argv[1] in ("--help",)):   # v0.999.123 D10 PROOF CARD
         return _proofcard(argv[1:])
     if argv and argv[0] == "design":        # v0.999.50 D0 DESIGN CARD (free; --live builds websites, needs --budget-inr)
         return _designcard(argv[1:])

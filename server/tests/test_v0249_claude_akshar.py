@@ -146,8 +146,8 @@ def test_nothing_lost_the_reply_is_still_rendered_markdown():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.122"
-    assert "0.999.122+1117" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.123"
+    assert "0.999.123+1118" in (ROOT / "pubspec.yaml").read_text()
     assert (CON / "v2.html").read_text().count(f"?v={APP_VERSION}") == 35   # grows as main adds console files
 
 

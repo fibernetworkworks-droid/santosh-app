@@ -1,4 +1,4 @@
-/* v0.999.121 D10 PROOF CARD page: the old engine and the new one side by side (on top of designcard.css) */
+/* v0.999.123 D10 PROOF CARD page: the old engine and the new one side by side (on top of designcard.css) */
 .pc-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
 .pc-pair>div{min-width:0;border:1px solid var(--line,#e5e5e5);border-radius:12px;padding:10px}
 .pc-pair h3{font-size:14px;font-weight:600;margin:0 0 6px;display:flex;gap:8px;align-items:baseline}

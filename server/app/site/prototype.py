@@ -631,7 +631,7 @@ def approve(tenant: str, ref: str, h: str, conv: str = "") -> dict[str, Any]:
 
 # ---------------------------------------------------------------- v0.999.65 D4: the React website from the prototype
 def react_on() -> bool:
-    """New builds on the React engine: the server's switch, or (v0.999.121 D10) the owner's own decision."""
+    """New builds on the React engine: the server's switch, or (v0.999.123 D10) the owner's own decision."""
     from ..config import get_settings
     st = get_settings()
     if not bool(getattr(st, "app_engine", True)):

@@ -3540,3 +3540,9 @@ Not verified: her own site moved and approved (the D9 done-line); a real model; 
 
 Task ID: v0.999.122 THE WHOLE AI TEAM
 Counted the phone's AI team (81 desks, 9 already Hub employees) and added the other 72 to the console Hub by department, opening on the desk room or their studio; 4 new departments.
+
+---
+Task ID: v0.999.123 OLD OR NEW ENGINE
+Ask: GO D10
+Built: quality/proofcard.py (old vs new on the same briefs, one photographer / scorer / critic / speed lab, her picks, Arena duels, the recommendation), site/enginedefault.py (her tap bound to the evidence makes the new engine the default for new websites; back at once), /console/proofcard, vps-ops proof_card_*
+Not verified: no live proof card has run; she has not decided; studio_react_sites still OFF
