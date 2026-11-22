@@ -552,6 +552,7 @@ async def tick() -> None:
         team_jobs, research_jobs, scrape_crawl_jobs, spider_jobs, dhara_jobs, eventlog_jobs, kaan_jobs, aboutme_jobs, applogic_jobs,
         game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs, api_box_jobs, aiapp_ops_jobs, design_asset_jobs,
         hoola_batch_jobs, pipeline_jobs, pipeline_branch_jobs, practice_jobs, lead_desk_jobs, vocal_sweep_jobs,
+        appengine_box_jobs,
     ):
         await _slot(fn)
     BEAT["slot"] = ""
@@ -570,6 +571,14 @@ def health() -> dict:
     return {"ok": not (in_slot or no_tick), "started": True, "slot": BEAT["slot"],
             "last_tick_s": round(now - BEAT["tick_at"], 1) if BEAT["tick_at"] else None,
             "ticks": BEAT["ticks"], "slot_timeouts": BEAT["slot_timeouts"]}
+
+async def appengine_box_jobs() -> None:
+    """ONE ENGINE: while the new engine builds new websites, its builder box is checked every 10 minutes; a missing /
+    old image is rebuilt by itself, what code cannot fix (Docker down, a full disk) is told to the owner."""
+    from .appengine import boxcare
+    if boxcare.on() and boxcare.in_use():
+        await asyncio.to_thread(boxcare.tick)
+
 
 _ops_last = 0.0
 

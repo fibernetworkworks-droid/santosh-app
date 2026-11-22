@@ -70,6 +70,7 @@ class Settings(BaseSettings):
     studio_react_sites: bool = False      # v0.999.65 D4: "Build the real website" writes a React site from the kit (owner decision 1: behind a switch until D10)
     site_upgrade: bool = True             # v0.999.119 D9: "Upgrade this site" - her HTML website moved to the new engine, on her tap
     app_engine_publish_checks: bool = True  # v0.832 SABOOT (L11): going live runs the quick scan + rule tests + browser check and is refused on a FAIL
+    app_engine_box_care: bool = True     # ONE ENGINE: the builder box checked before every build + every 10 min, a missing / old image rebuilt by itself
     site_quick_checks: bool = True        # v0.789 CHHOTA BADLAAV: a one-section change is checked on its own page only
     studio_chat_model: str = ""            # v0.782 Chat mode may run on a cheaper model ("" = the turn's normal model)
     chat_turn_cost: bool = True           # v0.777 CHAT JAISA: each chat turn's rupees kept (turncost) for the Studio line

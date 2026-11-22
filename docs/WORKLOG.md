@@ -3591,3 +3591,9 @@ vertical flow, if-else + loop drawn, plain step rows, in-page Change it, header 
 
 Task ID: v0.999.145 PAYMENTS F8
 F8 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/payments.py, agent/paydesk_tools.py (tool 643), fin/card_f8.py, /api/fin/payments. tests/test_fin_f8.py 5 pass; card 6/6.
+
+---
+Task ID: v0.999.148 ONE ENGINE
+Ask: GO ONE ENGINE
+Built: appengine/boxcare.py - check before every build + every 10 min, the image rebuilt by itself, owner told, no switch to a box that cannot build, builder health on /console/proofcard
+Not verified: a real rebuild on her server

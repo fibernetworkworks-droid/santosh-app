@@ -84,6 +84,12 @@ def decide(go: bool, h: str = "", run: str = "", by: str = "owner") -> dict[str,
                 raise DefaultError("The proof card is still running; decide when it has finished.", 409)
             if not h or h != ev["hash"]:
                 raise DefaultError("The proof changed since you looked (a pick, a pair or a duel); look at it again, then decide.", 409)
+            from ..appengine import boxcare
+            if boxcare.on():                       # ONE ENGINE: never switch to an engine that cannot build here
+                bx = boxcare.ensure("switching the default")
+                if not bx.get("ok"):
+                    raise DefaultError("The new engine cannot build on this server right now: " + str(bx.get("why") or "")
+                                       + ". Fix that first (VPS ops > appengine_setup), then decide.", 409)
             rec = {"engine": "new", "at": time.time(), "by": by[:40], "run": ev["card"].get("run"), "hash": h,
                    "recommendation": (ev.get("recommendation") or {}).get("say"),
                    "seen": {k: ev["card"].get(k) for k in ("old", "new", "critic", "her", "duels")}}
@@ -108,3 +114,14 @@ def view() -> dict[str, Any]:
     switch = bool(getattr(get_settings(), "studio_react_sites", False))
     return {"engine": st.get("engine"), "at": st.get("at"), "run": st.get("run"), "history": st.get("history")[-10:],
             "server_switch": switch, "new_sites_on": "new" if (switch or st.get("engine") == "new") else "old"}
+
+
+def view_with_box() -> dict[str, Any]:
+    """ONE ENGINE: the decision + the builder box's health (for the owner page)."""
+    out = view()
+    try:
+        from ..appengine import boxcare
+        out["box"] = boxcare.status()
+    except Exception as e:                           # noqa: BLE001 - the page still shows the decision
+        out["box"] = {"ok": False, "why": f"not checked: {type(e).__name__}"}
+    return out
