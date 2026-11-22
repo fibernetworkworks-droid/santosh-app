@@ -1,4 +1,4 @@
-"""v0.999.112 ULTIMATE PC PLAN P2 - safety in code on both PCs: her rules (never-open / ask-first sites + her
+"""v0.999.113 ULTIMATE PC PLAN P2 - safety in code on both PCs: her rules (never-open / ask-first sites + her
 sentences), an approval is for the site she saw, a password only where it was asked for, data leaving Hoola PC asks."""
 from __future__ import annotations
 

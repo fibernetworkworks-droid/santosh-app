@@ -3528,3 +3528,6 @@ G11 of the global Customer Support plan: answer sample + auto draft, pretend cus
 
 Task ID: v0.999.110 SUPPORT LAYER
 G12 of the global Customer Support plan: layer mode on Chatwoot, Zendesk, Freshdesk, ServiceNow, Jira SM - sort, suggest, summarise, close by rule, remind, where-is-my-ticket; 8 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.113 SUPPORT REPORTS
+G13 of the global Customer Support plan (its last phase): reports with breakdowns, trends, CSV / PDF and a monthly PDF; 7 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
