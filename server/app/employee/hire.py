@@ -344,7 +344,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                                    "Let a draft count without a second named person",
                                    "Accuse a customer in a report",
                                    "Keep a whistleblower's name"]},
-    # v0.999.150 F10 INVESTMENTS & MARKETS (docs/FINANCE_GLOBAL_PLAN.md employees 9 and 10; a person up to an institution, any country)
+    # v0.999.151 F10 INVESTMENTS & MARKETS (docs/FINANCE_GLOBAL_PLAN.md employees 9 and 10; a person up to an institution, any country)
     "investments_desk": {"name": "Investments & Wealth", "live": True, "icon": "receipt", "group": FIN_GROUP,
                          "pitch": "Your investments, worked out: capital gains by tax lot in your country's method, what your fees cost over the years, losses you could realise and the rules that may stop them counting, the real risk in an option or a future, the signs of an investment scam, how long a retirement pot lasts, and a fund's NAV.",
                          "does": ["Capital gains by tax lot: UK share matching and the pool, US first-in-first-out with wash sales, Canada average cost with superficial losses, India, Australia and Germany first in, first out",

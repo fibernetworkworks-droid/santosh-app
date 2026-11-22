@@ -2154,6 +2154,17 @@ class Api {
   /// A finished dub language's subtitles: format srt | vtt.
   Future<List<int>?> vocalDubSubtitles(String did, String lang, String format) =>
       _vocalBytes(_u('/api/vocal/dub/${Uri.encodeComponent(did)}/subtitles', {'lang': lang, 'format': format}));
+  // v0.999.148 the dub in steps: her OK, the changed lines made again, a shorter line, names, the downloads
+  Future<Map<String, dynamic>> vocalDubOk(String did, String lang) => _vocal('POST', '/dub/${Uri.encodeComponent(did)}/ok', body: {'lang': lang});
+  Future<Map<String, dynamic>> vocalDubRemake(String did, String lang) =>
+      _vocal('POST', '/dub/${Uri.encodeComponent(did)}/remake', body: {'lang': lang});
+  Future<Map<String, dynamic>> vocalDubShorten(String did, int n, String lang) =>
+      _vocal('POST', '/dub/${Uri.encodeComponent(did)}/lines/$n/shorten', body: {'lang': lang}, timeout: const Duration(seconds: 90));
+  Future<Map<String, dynamic>> vocalDubNames(String did, Map<String, String> names) =>
+      _vocal('PUT', '/dub/${Uri.encodeComponent(did)}/speakers', body: {'names': names});
+  /// what: video | subbed | sound | voices | subs
+  Future<List<int>?> vocalDubExport(String did, String what, List<String> langs) =>
+      _vocalBytes(_u('/api/vocal/dub/${Uri.encodeComponent(did)}/export', {'what': what, 'langs': langs.join(',')}));
   Future<Map<String, dynamic>> vocalSfx(Map<String, dynamic> body) => _vocal('POST', '/sfx', body: body, timeout: const Duration(seconds: 180));
   Future<Map<String, dynamic>> vocalCleanup(Map<String, dynamic> body) =>
       _vocal('POST', '/cleanup', body: body, timeout: const Duration(seconds: 300));

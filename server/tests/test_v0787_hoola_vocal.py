@@ -51,8 +51,8 @@ def run(c):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.150"
-    assert "0.999.150+1145" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.151"
+    assert "0.999.151+1146" in (ROOT / "pubspec.yaml").read_text()
 
 
 def test_speech_is_kept_with_her_rules_applied_by_code(vocal):
@@ -192,7 +192,7 @@ def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
     for page, said in PAGES:
         page_to(pg, page)
         if page == "dub":
-            pg.wait_for_function("() => document.querySelector('#hvView').textContent.includes('product-tour.mp4')")
+            pg.wait_for_function("() => document.querySelector('#hvView').textContent.includes('product-tour')")
         assert said in pg.locator("#hvView").text_content(), page
         assert pg.locator("#hvRoot h1").count() == 1, page
         assert pg.evaluate("document.querySelector('#hvView').scrollWidth <= document.querySelector('#hvView').clientWidth + 1"), page

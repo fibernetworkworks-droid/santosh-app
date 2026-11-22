@@ -840,6 +840,58 @@ void main() {
     await _done(t, app, store);
   });
 
+  testWidgets('a dub made in steps: the lines wait for her OK, a long line is shortened, names and the new downloads', (t) async {
+    _phone(t);
+    final d = vocalData();
+    (d['dubs'] as List)[1] = {'id': 'd2', 'v': 2, 'status': 'check', 'name': 'Product video', 'mode': 'matched', 'made': 1700000500, 'check': true,
+      'langs': [{'code': 'es', 'name': 'Spanish', 'status': 'check', 'step': 'check'}], 'changed': {'es': 0},
+      'people': [{'id': 'S1', 'name': 'Priya', 'lines': 1}, {'id': 'S2', 'name': 'Speaker 2', 'lines': 1}]};
+    d['dub_lines'] = {'lang': 'es', 'editable': true, 'status': 'check', 'lines': [
+      {'n': 0, 'start': 0, 'end': 4, 'speaker': 'S1', 'name': 'Priya', 'src': 'Welcome to Asha Sweets.', 'dst': 'Bienvenidos a Asha Dulces.',
+       'fit': 82, 'kept_missing': ['Asha Sweets']},
+      {'n': 1, 'start': 4, 'end': 5, 'speaker': 'S2', 'name': 'Speaker 2', 'src': 'No colours. Ever.', 'dst': 'Nunca colores. Jamás, es nuestra promesa.',
+       'fit': 168, 'too_long': true},
+    ]};
+    d['dub_shorten'] = {'line': {'n': 1, 'dst': 'Nunca colores.', 'fit': 92, 'too_long': false, 'edited': true}, 'before': 'Nunca colores. Jamás, es nuestra promesa.'};
+    final (app, store) = await _pageWith(t, d, (s, p) => VocalDubbingPage(store: s, player: p, embedded: false));
+    await t.tap(find.bySemanticsLabel(RegExp('^Product video')));
+    await _settle(t);
+    expect(find.text('Nothing is spoken yet. Read the Spanish lines, change any, then say OK.'), findsOneWidget);
+    expect(find.text('Priya'), findsOneWidget, reason: 'the lines say who speaks by name');
+    expect(find.text('168% of their time'), findsOneWidget);
+    expect(find.text('“Asha Sweets” is missing; it is kept as it is.'), findsOneWidget);
+    expect(find.bySemanticsLabel('Redo'), findsNothing, reason: 'changed lines are made again together');
+    await t.tap(find.bySemanticsLabel('Shorten'));
+    await _settle(t);
+    expect(_sent('dub_shorten'), {'n': 1, 'lang': 'es'});
+    expect(find.text('Nunca colores.'), findsOneWidget);
+    expect(find.bySemanticsLabel('Shorten'), findsNothing);
+    await t.pump(const Duration(seconds: 5));                                     // the toast over the dock goes first
+    await _settle(t);
+    await t.tap(find.bySemanticsLabel('OK, speak them'));
+    await _settle(t);
+    expect(_sent('dub_ok'), {'lang': 'es'});
+    expect(find.text('Names', skipOffstage: false), findsOneWidget, reason: 'the people can be named');
+    expect(t.takeException(), isNull);
+    await _done(t, app, store);
+  });
+
+  testWidgets('a new dub asks for her OK first and keeps her words', (t) async {
+    _phone(t);
+    final (app, store) = await _page(t, (s, p) => VocalDubbingPage(store: s, player: p, embedded: false));
+    expect(find.text('Let me read the lines before they are spoken'), findsOneWidget);
+    expect(find.text('Words to keep as they are'), findsOneWidget);
+    await t.enterText(find.byType(TextField).last, 'Kaju Katli');
+    await t.testTextInput.receiveAction(TextInputAction.done);
+    await t.pump();
+    expect(find.text('Kaju Katli  ×'), findsOneWidget);
+    await t.tap(find.text('Their own voices'));
+    await t.pump();
+    expect(find.text('Let me read the lines before they are spoken'), findsNothing, reason: 'their own voices are made in one go');
+    expect(t.takeException(), isNull);
+    await _done(t, app, store);
+  });
+
   testWidgets('an own-voice dub that could not be made again says why', (t) async {
     _phone(t);
     final d = vocalData();

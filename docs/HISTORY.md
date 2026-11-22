@@ -10191,8 +10191,63 @@ Owner: "GO F9" on docs/FINANCE_GLOBAL_PLAN.md (phase F9).
 - Tests: `tests/test_fin_f9.py` 5; pins 644 / 165 / 108.
 - NOT VERIFIED: no human SAR score yet; SSO, region hosting, partitions, webhooks not built; not on her server.
 
+## v0.999.150 DUBBING, PREMIUM (22 Nov 2026; built as 0.999.148, their 0.999.148-0.999.149 kept)
 
-## v0.999.150 INVESTMENTS & MARKETS F10 (owner: "F10, Investments & Markets")
+Owner: "NOW LETS WORK ON DUBBING SECTION -- SHOW DESIGN FIRST". Design canvas claude.ai/artifact/1RY3K8sXaPCNCMifjEgbyp
+(seven boards: a dub at work, your dubs, a new dub, being made, voices, download, phone) -> "GO BUILD".
+
+Console (`static/console/vocal.js` `V.dub` and the dub helpers; styles in the `v0.999.148 DUBBING, PREMIUM` block of
+`vocal2.css`):
+- **Your dubs:** "Your video, in any language." with a drop area, and the dubs as video cards (a frame from the video, its
+  length, the title, source language · voices · when, each language with its state: Ready / Read the lines / 40% / Failed).
+- **A new dub:** her video (a preview frame, its length, Ready to dub), Into (up to 4 languages matched, 6 own), How they
+  sound (their own voices = Premium, or matched voices), Keep the music and room sound, "Let me read the lines before they
+  are spoken" (matched only), Words to keep as they are (names, brands, products: never translated), the price, Make the dub.
+- **Being made:** each language as a card with five steps (Heard, Translated, Your OK, Spoken, Mixed; "No OK asked" when
+  she did not ask), "The Spanish lines are ready to read" + Read the lines, Stop; beside it What Hoola heard (the people,
+  named in place, a quote of each to hear, the heard lines).
+- **A dub at work:** language tabs + Add a language; the video playing the dub, the original, or both; subtitles on the
+  picture; a lane per person and the original under it with a playhead; the lines in the language: who, the original, the
+  new words (serif), how much of their time it takes (a bar, warned over), Changed, a kept word that is missing, Read
+  faster; a line opens to change its words, Hear it, Shorten it (one model call, Undo puts the old words back), Read it a
+  little faster, Who says it; the foot = "OK, speak the Spanish lines" while it waits, "Speaking line 2 of 3" + Stop while
+  it works, "N lines changed · Make the changes" when finished (own voices: asked first, ElevenLabs charges).
+- **Dialogs:** Voices (each person: a name, a voice from the matched voices, their lines), Words to keep, Download (what:
+  the video with the dub, the video with the subtitles on it, the sound only, each voice on its own track, subtitles only;
+  which languages; several languages = one zip with a folder each).
+
+Server (NEW `server/app/vocal/dubbing.py`; v=2 matched dubs; old dubs keep their old path):
+- run: hear once (`listen`: the speech, the speakers, every language's translation, her words never translated), then each
+  language either waits for her OK (`check`) or is spoken; voice_lang speaks the lines 4 at a time with each person's voice
+  and the line's pace, mixes them over the kept sound, writes the video once and records a signature per line (voice, words,
+  pace); changed = a line whose signature differs; remake speaks only those and writes the same video again.
+- add languages to the same dub (translates the heard lines, the same voices); stop; ok and remake start again after a Stop.
+- lines: fit (% of the original line's time), room, too long, kept words missing (checked in code), edited, pace; line_set
+  (words / pace / speaker), shorten (one model call to fit the time, the old words returned for Undo), keep_set.
+- people (name, lines, seconds, a quote, the voice), names / voices saved, a person's sample of the original (mp3), the poster
+  (a frame), the source video; export video / subbed (burned with ffmpeg + libass) / sound / voices (each person's track +
+  the original sound) / subs (SRT + VTT), a zip with a folder per language when there are several; remove a dub.
+- `create/service._listen` takes the words to keep.
+- routes: POST /dub (keep, check), GET /dub/{id} (people, changed), POST /dub/{id}/ok, /remake, /stop, PUT
+  /dub/{id}/speakers, /keep, PUT /dub/{id}/lines/{n} (pace, speaker), POST /dub/{id}/lines/{n}/shorten, GET
+  /dub/{id}/speaker, /poster, /source, /export, DELETE /dub/{id}.
+
+Phone (`lib/ui/vocal/vocal_make.dart` `VocalDubbingPage`): a new dub asks "Let me read the lines before they are spoken"
+(matched only) and takes words to keep; a dub made in steps says "Nothing is spoken yet" with OK, speak them; the lines show
+the person's name, how much of their time, a missing kept word, Shorten on a too-long line; Make the changes for the
+changed lines; Names; the downloads (video, sound, subtitles, each voice). api.dart: vocalDubOk / Remake / Shorten / Names /
+Export.
+
+Tests: NEW `server/tests/test_v0999_148_vocal_dubbing.py` (waits for her OK then speaks, changed lines made again together,
+more languages join the same dub, the downloads and the people, a failed hearing, OK after a Stop, the files carry the
+design, a real-Chromium walk light / dark / phone width of library -> new dub -> being made -> lines (shorten, undo, OK) ->
+work (a changed line, Make the changes) -> Voices / Words to keep / Download); old console tests moved to the new pages;
+phone `test/vocal_phone_test.dart` two new tests.
+
+NOT VERIFIED: no real Gemini hearing, translation or voices (faked at their seams; ffmpeg is real); burned subtitles need
+ffmpeg with libass on her server; on her server, in her browser or on her phone.
+
+## v0.999.151 INVESTMENTS & MARKETS F10 (built as 0.999.150; their DUBBING, PREMIUM took 0.999.150, both kept; owner: "F10, Investments & Markets")
 
 F10 of docs/FINANCE_GLOBAL_PLAN.md: employee 9 (the parts F7 did not build) and employee 10.
 

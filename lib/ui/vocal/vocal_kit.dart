@@ -1287,6 +1287,7 @@ String vocalMime(String ext) => switch (ext) {
       'mp4' => 'video/mp4',
       'srt' => 'application/x-subrip',
       'vtt' => 'text/vtt',
+      'zip' => 'application/zip',
       _ => 'application/octet-stream',
     };
 

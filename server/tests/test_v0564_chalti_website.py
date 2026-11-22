@@ -16,7 +16,7 @@ IST = timezone(timedelta(hours=5, minutes=30))
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.150"
+    assert APP_VERSION == "0.999.151"
 
 
 def _site(S):

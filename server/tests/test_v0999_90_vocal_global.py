@@ -269,21 +269,29 @@ def test_sounds_from_words_changer_and_people_removal_need_their_engine(vg, monk
 
 # ---------------------------------------------------------------- dubbing
 def test_matched_dub_runs_in_the_background_and_keeps_its_lines(vg, monkeypatch, tmp_path):
-    from app.create import service as CS
-    vid = tmp_path / "tour.mp4"; vid.write_bytes(b"\x00\x00\x00\x18ftypmp42" + b"\x00" * 200)
-    monkeypatch.setattr(V, "_seconds_of", lambda p: 40.0)
-
-    async def dub(video, name, langs, keep_sound=True, voices_for=None, progress=None):
-        return {"source_language": "English", "lines": [{"start": 0.5, "end": 2.0, "speaker": "S1", "text": "Hello",
-                                                         "tr": {"Japanese": "こんにちは"}}],
-                "outputs": [{"language": "Japanese", "bytes": b"MP4", "seconds": 40.0}]}
-    monkeypatch.setattr(CS, "dub", dub)
+    import shutil
+    import subprocess
+    import time
+    from app.vocal import dubbing as DB
+    if not shutil.which("ffmpeg"):
+        pytest.skip("ffmpeg is not installed here")
+    vid = tmp_path / "tour.mp4"
+    subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "color=c=black:s=64x64:d=3",
+                    "-f", "lavfi", "-i", "sine=frequency=440:duration=3", "-shortest", "-c:v", "mpeg4", "-c:a", "aac", str(vid)],
+                   check=True, capture_output=True, timeout=120)
+    monkeypatch.setattr(DB, "listen", lambda src, names, keep: {"source_language": "English", "lines": [
+        {"start": 0.5, "end": 2.0, "speaker": "S1", "text": "Hello", "tr": {"Japanese": "こんにちは"}}]})
+    from tests.test_v0999_96_vocal_redesign_server import tone
+    monkeypatch.setattr(DB, "speak", lambda text, voice, lang, pace=1.0: tone(0.6))
     with pytest.raises(V.VocalError, match="Zulu"):
         V.dub_start("t1", str(vid), ["zu"])                            # matched voices: Gemini lacks Zulu - refused
     with pytest.raises(V.VocalError, match="ElevenLabs key"):
         V.dub_start("t1", str(vid), ["ja"], mode="own")
     r = V.dub_start("t1", str(vid), ["ja"])
-    V._DUB_THREADS.get(r["id"]) and V._DUB_THREADS[r["id"]].join(10)
+    for _ in range(400):
+        if V.dub_get("t1", r["id"])["status"] != "working":
+            break
+        time.sleep(0.05)
     g = V.dub_get("t1", r["id"])
     assert g["status"] == "ready" and g["langs"][0]["video_id"] and g["lines"][0]["tr"]["ja"] == "こんにちは"
     assert V.dubs("t1")[0]["id"] == r["id"]
@@ -333,4 +341,4 @@ def test_the_routes_and_version():
     assert "/api/vocal/chat/{conv}/items" in (ROOT / "server/app/vocalchat.py").read_text()
     assert "_vocalchat_mod.mount(app, current_tenant, require_key)" in (ROOT / "server/app/main.py").read_text()
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.150"
+    assert APP_VERSION == "0.999.151"

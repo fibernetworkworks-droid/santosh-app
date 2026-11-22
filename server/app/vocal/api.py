@@ -9,6 +9,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Response
 from fastapi.responses import FileResponse, JSONResponse
 
 from . import book as BK
+from . import dubbing as DB
 from . import engines as EN
 from . import service as V
 
@@ -272,11 +273,56 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         on()
         return run(V.dub_start, tenant, upload(tenant, b.get("file_id")), b.get("langs"), mode=str(b.get("mode") or "matched"),
                    keep_sound=b.get("keep_sound") is not False, name=str(b.get("name") or ""),
-                   speakers=b.get("speakers") or 0, voices=b.get("voices"))
+                   speakers=b.get("speakers") or 0, voices=b.get("voices"), keep=b.get("keep"), check=bool(b.get("check")))
 
     @r.get("/dub/{did}")
     def dub_get(did: str, tenant: str = Depends(current_tenant)):
-        return run(V.dub_get, tenant, did)
+        return run(DB.view, tenant, did)
+
+    @r.delete("/dub/{did}")
+    def dub_remove(did: str, tenant: str = Depends(current_tenant)):
+        return run(DB.remove, tenant, did)
+
+    @r.post("/dub/{did}/ok")
+    def dub_ok(did: str, b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return run(DB.ok, tenant, did, str(b.get("lang") or ""))
+
+    @r.post("/dub/{did}/remake")
+    def dub_remake(did: str, b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return run(DB.remake, tenant, did, str(b.get("lang") or ""))
+
+    @r.post("/dub/{did}/stop")
+    def dub_stop(did: str, tenant: str = Depends(current_tenant)):
+        return run(DB.stop, tenant, did)
+
+    @r.put("/dub/{did}/speakers")
+    def dub_speakers(did: str, b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return run(DB.speakers_set, tenant, did, b.get("names"), b.get("voices"))
+
+    @r.put("/dub/{did}/keep")
+    def dub_keep(did: str, b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return run(DB.keep_set, tenant, did, b.get("words"))
+
+    @r.get("/dub/{did}/speaker")
+    def dub_speaker(did: str, sp: str = "", tenant: str = Depends(current_tenant)):
+        f = run(DB.speaker_sample, tenant, did, sp)
+        return FileResponse(f, media_type="audio/mpeg", headers={"Cache-Control": "private, no-store"})
+
+    @r.get("/dub/{did}/poster")
+    def dub_poster(did: str, tenant: str = Depends(current_tenant)):
+        f = run(DB.poster, tenant, did)
+        return FileResponse(f, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})
+
+    @r.get("/dub/{did}/source")
+    def dub_source(did: str, tenant: str = Depends(current_tenant)):
+        f = run(DB.source, tenant, did)
+        return FileResponse(f, media_type="video/mp4", headers={"Cache-Control": "private, no-store"})
+
+    @r.get("/dub/{did}/export")
+    def dub_export(did: str, what: str = "video", langs: str = "", tenant: str = Depends(current_tenant)):
+        on()
+        data, name, mime = run(DB.export, tenant, did, what, [x for x in langs.split(",") if x.strip()])
+        return Response(data, media_type=mime, headers=_attach(name))
 
     @r.post("/dub/{did}/langs")
     def dub_langs(did: str, b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
@@ -309,7 +355,11 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
 
     @r.put("/dub/{did}/lines/{n}")
     def dub_line_save(did: str, n: int, b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
-        return run(V.dub_line_save, tenant, did, n, str(b.get("lang") or ""), b.get("text"))
+        return run(V.dub_line_save, tenant, did, n, str(b.get("lang") or ""), b.get("text"), b.get("pace"), b.get("speaker"))
+
+    @r.post("/dub/{did}/lines/{n}/shorten")
+    def dub_line_shorten(did: str, n: int, b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return run(DB.shorten, tenant, did, n, str(b.get("lang") or ""))
 
     @r.post("/dub/{did}/lines/{n}/redo")
     def dub_line_redo(did: str, n: int, b: dict = Body(default={}), tenant: str = Depends(current_tenant)):

@@ -1909,7 +1909,7 @@ def _dub_voices(d: dict[str, Any], voices: Any) -> dict[str, str]:
 
 
 def dub_start(tenant: str, path: str, langs_in: Any, mode: str = "matched", keep_sound: bool = True, name: str = "",
-              speakers: Any = 0, voices: Any = None) -> dict[str, Any]:
+              speakers: Any = 0, voices: Any = None, keep: Any = None, check: bool = False) -> dict[str, Any]:
     """Her own video spoken again in other languages. 'matched' = Gemini voices close to each speaker (create.service),
     up to 6 speakers, each line kept so one line can be changed and re-spoken later; 'own' = ElevenLabs Dubbing v2,
     each speaker in their own voice. Runs in the background; GET /dub/{id} follows it."""
@@ -1948,7 +1948,8 @@ def dub_start(tenant: str, path: str, langs_in: Any, mode: str = "matched", keep
     per = EN.quote("dub_own" if mode == "own" else "dub_matched", seconds=secs, engine="eleven" if mode == "own" else "gemini")["credits"]
     row = {"id": did, "status": "working", "mode": mode, "name": _clean(name, 80) or Path(path).name, "made": _now(),
            "seconds": round(secs, 1), "source_lang": "", "keep_sound": bool(keep_sound), "src": dst.name,
-           "speakers": n_speakers, "voices": picked,
+           "speakers": n_speakers, "voices": picked, "v": 2 if mode == "matched" else 1,
+           "keep": _keep_words(keep), "check": bool(check) and mode == "matched", "names": {},
            "langs": [{"code": c, "name": L.name_of(c), "status": "waiting"} for c in codes], "lines": [], "error": "",
            "credits": per * len(codes)}
     with _LOCK:
@@ -1963,6 +1964,11 @@ def dub_start(tenant: str, path: str, langs_in: Any, mode: str = "matched", keep
     return dub_get(tenant, did)
 
 
+def _keep_words(words: Any) -> list[str]:
+    from . import dubbing as DB
+    return DB.keep_words(words if isinstance(words, list) else [w for w in str(words or "").split(",")])
+
+
 def _dub_update(tenant: str, did: str, **kw: Any) -> None:
     with _LOCK:
         d = _load(tenant)
@@ -1975,13 +1981,26 @@ def _dub_update(tenant: str, did: str, **kw: Any) -> None:
 def _dub_run(tenant: str, did: str, path: str) -> None:
     try:
         r = next(x for x in _load(tenant)["dubs"] if x["id"] == did)
-        if r["mode"] == "matched":
+        if r["mode"] == "matched" and r.get("v") == 2:
+            from . import dubbing as DB
+            DB.run(tenant, did, path)
+        elif r["mode"] == "matched":
             _dub_matched(tenant, r, path)
         else:
             _dub_own(tenant, r, path)
     except Exception as e:   # noqa: BLE001
         log.exception("dub %s failed", did)
-        _dub_update(tenant, did, status="failed", error=str(e)[:200] or "The dub could not be made.")
+        msg = str(e)[:200] or "The dub could not be made."
+        with _LOCK:
+            d = _load(tenant)
+            rr = next((x for x in d["dubs"] if x["id"] == did), None)
+            if rr is not None:
+                for x in rr.get("langs") or []:
+                    if x.get("status") not in ("ready", "check"):
+                        x.update(status="failed", error=msg)
+                rr.update(status="ready" if any(x.get("status") == "ready" for x in rr["langs"]) else
+                          "check" if any(x.get("status") == "check" for x in rr["langs"]) else "failed", error=msg)
+                _store(tenant, d)
     finally:
         _DUB_THREADS.pop(did, None)
         try:
@@ -2174,6 +2193,9 @@ def dub_lines(tenant: str, did: str, lang: str = "") -> dict[str, Any]:
     if r["mode"] == "own":
         from . import more as M
         return M.own_lines(tenant, r, x, base)
+    if r.get("v") == 2:
+        from . import dubbing as DB
+        return DB.lines(tenant, r, x, base)
     lines = r.get("lines") or []
     out = []
     for i, ln in enumerate(lines):
@@ -2196,12 +2218,15 @@ def dub_lines(tenant: str, did: str, lang: str = "") -> dict[str, Any]:
     return {**base, "lines": out, "editable": editable, "why": why}
 
 
-def dub_line_save(tenant: str, did: str, n: Any, lang: str, text: Any) -> dict[str, Any]:
-    """Her own words for one dubbed line (saved; Redo speaks them)."""
+def dub_line_save(tenant: str, did: str, n: Any, lang: str, text: Any, pace: Any = None, speaker: Any = None) -> dict[str, Any]:
+    """Her own words for one dubbed line (saved; Redo speaks them); in a matched dub also its pace or who says it."""
     r, x = _dub_and_lang(tenant, did, lang)
     if r["mode"] == "own":
         from . import more as M
         return M.own_line_save(tenant, r, x, n, text)
+    if r.get("v") == 2:
+        from . import dubbing as DB
+        return DB.line_set(tenant, did, n, x["code"], text=text, pace=pace, speaker=speaker)
     t = _clean(text, 600)
     if len(GV.strip_feelings(t)) < 1:
         raise VocalError("Write the words for this line.")
@@ -2248,6 +2273,9 @@ def dub_line_redo(tenant: str, did: str, n: Any, lang: str) -> dict[str, Any]:
     except CS.CreateError as e:
         raise VocalError(f"The line could not be spoken again: {str(e)[:140]}") from None
     _clip_path(tenant, r, x, i).write_bytes(CS.wav_bytes(pcm))
+    if r.get("v") == 2:
+        from . import dubbing as DB
+        DB._upd(tenant, did, lambda rr: rr.setdefault("spoken", {}).setdefault(x["code"], {}).update({str(i): DB.line_sig(rr, rr["lines"][i], x["code"])}))
     clips = [(_clip_path(tenant, r, x, k) if _clip_path(tenant, r, x, k).is_file() else None) for k in range(len(lines))]
     with tempfile.TemporaryDirectory(prefix="hoola_redo_") as tmp:
         out = Path(tmp) / "dub.mp4"
@@ -2290,14 +2318,17 @@ def dub_get(tenant: str, did: str) -> dict[str, Any]:
     r = next((x for x in _load(tenant)["dubs"] if x["id"] == did), None)
     if not r:
         raise VocalError("That dub was not found.")
-    if r["status"] == "working" and did not in _DUB_THREADS:
+    from . import dubbing as DB
+    if r["status"] == "working" and not DB.alive(did):
         r = {**r, "status": "failed", "error": "The server restarted while this dub was being made. Start it again."}
         _dub_update(tenant, did, status="failed", error=r["error"])
     return r
 
 
 def dubs(tenant: str) -> list[dict[str, Any]]:
-    return [{k: x.get(k) for k in ("id", "status", "mode", "name", "made", "seconds", "langs", "credits", "error", "speakers")}
+    return [{**{k: x.get(k) for k in ("id", "status", "mode", "name", "made", "seconds", "langs", "credits", "error", "speakers",
+                                       "source_lang", "check")},
+             "people": len({str(y.get("speaker")) for y in x.get("lines") or []}) or int(x.get("speakers") or 0)}
             for x in _load(tenant)["dubs"]]
 
 
@@ -2518,6 +2549,9 @@ def dub_more(tenant: str, did: str, langs_in: Any) -> dict[str, Any]:
     src = _home(tenant) / "dubs" / str(r.get("src") or "")
     if not r.get("src") or not src.is_file():
         raise VocalError("The video of that dub is no longer kept - upload it again.")
+    if r.get("mode") == "matched" and r.get("v") == 2 and r.get("lines"):
+        from . import dubbing as DB
+        return DB.add_langs(tenant, did, langs_in)
     have = {x.get("code") for x in r.get("langs") or []}
     codes = [c for c in dict.fromkeys(L.code_of(str(x)) for x in (langs_in or [])) if c and c != "auto" and c not in have]
     if not codes:

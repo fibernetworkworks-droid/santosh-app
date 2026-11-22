@@ -1274,6 +1274,11 @@ class _VocalDubbingPageState extends State<VocalDubbingPage> {
   final List<String> _pick = [];
   String _mode = 'matched';
   bool _keep = true, _starting = false;
+  // v0.999.148: the lines wait for her OK; her words are never translated
+  bool _check = true, _wasWorking = false, _oking = false;
+  final List<String> _words = [];
+  final TextEditingController _wordCtl = TextEditingController();
+  final Set<int> _shortening = {};
   Map<String, dynamic> _quote = const {};
   VocalStore get store => widget.store;
 
@@ -1287,6 +1292,7 @@ class _VocalDubbingPageState extends State<VocalDubbingPage> {
   @override
   void dispose() {
     _poll?.cancel();
+    _wordCtl.dispose();
     super.dispose();
   }
 
@@ -1327,9 +1333,12 @@ class _VocalDubbingPageState extends State<VocalDubbingPage> {
         }
       }
       _wasRemaking = remaking;
+      final busy = crS(d['status']) == 'working' || langs.any((l) => crS(l['status']) == 'working');
+      if (_wasWorking && !busy) unawaited(_loadLines());
+      _wasWorking = busy;
       if (remaking) {
         _poll = Timer(const Duration(seconds: 10), () => _openDub(id));
-      } else if (crS(d['status']) == 'working') {
+      } else if (busy) {
         _poll = Timer(const Duration(seconds: 6), () => _openDub(id));
       }
     } catch (e) {
@@ -1438,6 +1447,102 @@ class _VocalDubbingPageState extends State<VocalDubbingPage> {
     }
   }
 
+  /// v0.999.148: her OK on a language's lines; they are spoken now.
+  Future<void> _ok() async {
+    setState(() => _oking = true);
+    try {
+      if (!VocalStore.debug) {
+        await store.app.api!.vocalDubOk(crS(_dub['id']), _lang);
+        await _openDub(crS(_dub['id']));
+      } else {
+        VocalStore.debugAnswer('dub_ok', {'lang': _lang});
+      }
+      if (mounted) crToast(context, 'The lines are being spoken now.');
+    } catch (e) {
+      if (mounted) vocalError(context, store, e);
+    }
+    if (mounted) setState(() => _oking = false);
+  }
+
+  /// v0.999.148: every changed line of a matched dub spoken again together, then the video once.
+  Future<void> _remake() async {
+    setState(() => _oking = true);
+    try {
+      if (!VocalStore.debug) {
+        await store.app.api!.vocalDubRemake(crS(_dub['id']), _lang);
+        await _openDub(crS(_dub['id']));
+      } else {
+        VocalStore.debugAnswer('dub_remake', {'lang': _lang});
+      }
+      if (mounted) crToast(context, 'The changed lines are being made again.');
+    } catch (e) {
+      if (mounted) vocalError(context, store, e);
+    }
+    if (mounted) setState(() => _oking = false);
+  }
+
+  Future<void> _shorten(Map<String, dynamic> ln) async {
+    final n = crInt(ln['n']);
+    setState(() => _shortening.add(n));
+    try {
+      Map<String, dynamic> r;
+      if (VocalStore.debug) {
+        r = VocalStore.debugAnswer('dub_shorten', {'n': n, 'lang': _lang});
+      } else {
+        r = await store.app.api!.vocalDubShorten(crS(_dub['id']), n, _lang);
+      }
+      final line = crMap(r['line']);
+      if (mounted && line.isNotEmpty) {
+        setState(() => _lines = {..._lines, 'lines': crList(_lines['lines']).map((x) => crInt(x['n']) == n ? {...x, ...line} : x).toList()});
+        if (!VocalStore.debug) unawaited(_openDub(crS(_dub['id'])));
+        crToast(context, 'Shortened. Edit the line to put other words.');
+      }
+    } catch (e) {
+      if (mounted) vocalError(context, store, e);
+    }
+    if (mounted) setState(() => _shortening.remove(n));
+  }
+
+  /// v0.999.148: the people's names, so the lines and the voices say who is who.
+  Future<void> _names() async {
+    final people = crList(_dub['people']);
+    final ctls = {for (final p in people) crS(p['id']): TextEditingController(text: crS(p['name']))};
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Who is who'),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            for (final p in people)
+              TextField(controller: ctls[crS(p['id'])], maxLength: 40,
+                  decoration: InputDecoration(labelText: '${crS(p['id'])} · ${crInt(p['lines'])} line${crInt(p['lines']) == 1 ? '' : 's'}', counterText: '')),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Save')),
+        ],
+      ),
+    );
+    final names = {for (final e in ctls.entries) e.key: e.value.text.trim()};
+    for (final x in ctls.values) {
+      x.dispose();
+    }
+    if (ok != true || !mounted) return;
+    try {
+      if (VocalStore.debug) {
+        VocalStore.debugAnswer('dub_names', {'names': names});
+      } else {
+        await store.app.api!.vocalDubNames(crS(_dub['id']), names);
+        await _openDub(crS(_dub['id']));
+        await _loadLines();
+      }
+      if (mounted) crToast(context, 'Names saved.');
+    } catch (e) {
+      if (mounted) vocalError(context, store, e);
+    }
+  }
+
   Future<void> _redo(Map<String, dynamic> ln) async {
     final n = crInt(ln['n']);
     setState(() => _redoing.add(n));
@@ -1455,6 +1560,7 @@ class _VocalDubbingPageState extends State<VocalDubbingPage> {
   }
 
   Future<void> _download() async {
+    if (crInt(_dub['v']) == 2) return _export();
     final l = _langRow;
     final vid = crS(l?['video_id']);
     const opts = ['Video with the dub', 'Sound only, MP3', 'Subtitles, SRT', 'Subtitles, VTT'];
@@ -1477,6 +1583,26 @@ class _VocalDubbingPageState extends State<VocalDubbingPage> {
       }
       if (bytes == null) throw Exception('This file is not on Hoola.');
       if (mounted) await crShareBytes(context, bytes, '$name.$ext', vocalMime(ext));
+    } catch (e) {
+      if (mounted) vocalError(context, store, e);
+    }
+  }
+
+  /// v0.999.148: a dub made in steps downloads the video, the sound, the subtitles or each voice on its own track.
+  Future<void> _export() async {
+    const opts = {'The video with the dub': 'video', 'The sound only, MP3': 'sound', 'Subtitles, SRT and VTT': 'subs', 'Each voice on its own track': 'voices'};
+    final v = await crPick(context, 'Download', opts.keys.toList(), '');
+    if (v == null || !mounted || VocalStore.debug) return;
+    final api = store.app.api;
+    if (api == null) return;
+    final what = opts[v]!;
+    final base = (crS(_dub['name']).isEmpty ? (crS(_dub['title']).isEmpty ? 'Dub' : crS(_dub['title'])) : crS(_dub['name'])).replaceAll(RegExp(r'\.[a-zA-Z0-9]{2,4}$'), '');
+    final ext = {'video': 'mp4', 'sound': 'mp3', 'subs': 'zip', 'voices': 'zip'}[what]!;
+    crToast(context, 'Getting the file…');
+    try {
+      final bytes = await api.vocalDubExport(crS(_dub['id']), what, [_lang]);
+      if (bytes == null) throw Exception('This file is not on Hoola.');
+      if (mounted) await crShareBytes(context, bytes, '$base - ${crS(_langRow?['name'])}.$ext', vocalMime(ext));
     } catch (e) {
       if (mounted) vocalError(context, store, e);
     }
@@ -1539,12 +1665,13 @@ class _VocalDubbingPageState extends State<VocalDubbingPage> {
       } else {
         final fid = await vocalUpload(store, widget.conv, v);
         d = await store.app.api!.vocalDubStart({'file_id': fid, 'langs': _pick.take(_maxLangs).toList(), 'mode': _mode, 'keep_sound': _keep,
-            'name': v.name});
+            'name': v.name, 'keep': _words, 'check': _mode == 'matched' && _check});
       }
       if (!mounted) return;
       setState(() {
         _video = null;
         _pick.clear();
+        _words.clear();
       });
       if (crS(d['id']).isNotEmpty) await _openDub(crS(d['id']));
     } catch (e) {
@@ -1620,6 +1747,29 @@ class _VocalDubbingPageState extends State<VocalDubbingPage> {
             const SizedBox(height: 10),
             CrSwitch(title: 'Keep the background sound', sub: 'Music and room sound stay under the new voices.', value: _keep,
                 onChanged: (v) => setState(() => _keep = v)),
+            if (_mode == 'matched')
+              CrSwitch(title: 'Let me read the lines before they are spoken', sub: 'The translation waits for your OK; nothing is spoken until then.',
+                  value: _check, onChanged: (v) => setState(() => _check = v)),
+            const SizedBox(height: 10),
+            const VocalLabel('Words to keep as they are', note: 'names, brands'),
+            Wrap(spacing: 6, runSpacing: 0, children: [
+              for (final w in _words) VocalChip(label: '$w  ×', on: true, onTap: () => setState(() => _words.remove(w))),
+            ]),
+            Semantics(
+              label: 'Add a word to keep',
+              textField: true,
+              child: TextField(
+                controller: _wordCtl,
+                maxLength: 60,
+                textInputAction: TextInputAction.done,
+                decoration: const InputDecoration(hintText: 'A name or a brand, then Done', counterText: ''),
+                onSubmitted: (v) {
+                  final w = v.trim();
+                  if (w.isNotEmpty && _words.length < 30 && !_words.any((x) => x.toLowerCase() == w.toLowerCase())) setState(() => _words.add(w));
+                  _wordCtl.clear();
+                },
+              ),
+            ),
             if (_dubs.isNotEmpty) ...[
               const SizedBox(height: 18),
               VocalLabel('Your dubs', note: '${_dubs.length}'),
@@ -1712,6 +1862,11 @@ class _VocalDubbingPageState extends State<VocalDubbingPage> {
     final changed = lines.any((x) => x['edited'] == true);
     final working = crS(_dub['status']) == 'working' || crS(l?['status']) == 'working' || crS(l?['status']) == 'waiting';
     final first = lines.isEmpty ? '' : crS(lines.first['dst']);
+    // v0.999.148: a matched dub made in steps (her OK first; changed lines made again together)
+    final v2 = crInt(_dub['v']) == 2 && !own;
+    final waitsOk = crS(l?['status']) == 'check';
+    final changedN = crInt(crMap(_dub['changed'])[_lang]);
+    final lname = crS(l?['name']).isEmpty ? store.langName(_lang) : crS(l?['name']);
     return Column(children: [
       AspectRatio(
         aspectRatio: 16 / 9,
@@ -1775,6 +1930,10 @@ class _VocalDubbingPageState extends State<VocalDubbingPage> {
               ),
             ),
           VocalChip(label: 'Add a language', menu: true, onTap: _addLang),
+          if (crList(_dub['people']).isNotEmpty) ...[
+            const SizedBox(width: 6),
+            VocalChip(label: 'Names', menu: true, onTap: _names),
+          ],
         ]),
       ),
       Expanded(
@@ -1815,8 +1974,15 @@ class _VocalDubbingPageState extends State<VocalDubbingPage> {
                   Padding(padding: const EdgeInsets.only(bottom: 8), child: CrNote(_refusal, glyph: CrGlyph.info)),
                 if (lines.isEmpty && !_loadingLines)
                   Text(working ? 'The lines show here when this language is made.' : 'No lines for this language.', style: HoolaType.small(c)),
-                for (final ln in lines) _lineRow(c, ln, editable && !remaking, own: own),
-                if (lines.isNotEmpty && editable && !own)
+                if (waitsOk)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: CrNote('Nothing is spoken yet. Read the $lname lines, change any, then say OK.', glyph: CrGlyph.info),
+                  ),
+                for (final ln in lines) _lineRow(c, ln, editable && !remaking, own: own, v2: v2),
+                if (lines.isNotEmpty && editable && v2)
+                  Text('Change any line; only the changed lines are spoken again, in the same voices.', style: HoolaType.small(c).copyWith(fontSize: 12))
+                else if (lines.isNotEmpty && editable && !own)
                   Text('Edit any line, then redo only that line · 1 credit a line', style: HoolaType.small(c).copyWith(fontSize: 12)),
                 if (lines.isNotEmpty && editable && own)
                   Text('Edit the lines you want, then make the changes together', style: HoolaType.small(c).copyWith(fontSize: 12)),
@@ -1826,7 +1992,12 @@ class _VocalDubbingPageState extends State<VocalDubbingPage> {
         child: Row(children: [
           Expanded(child: VocalPill(label: 'Download', quiet: true, onTap: vid.isEmpty && lines.isEmpty ? null : _download)),
           const SizedBox(width: 10),
-          if (own && editable)
+          if (v2 && waitsOk)
+            Expanded(child: VocalPill(label: 'OK, speak them', busy: _oking, onTap: _oking ? null : _ok))
+          else if (v2 && crS(l?['status']) == 'ready' && editable)
+            Expanded(child: VocalPill(label: changedN > 0 ? 'Make the changes · $changedN' : 'Make the changes', busy: _oking,
+                onTap: changedN > 0 && !_oking ? _remake : null))
+          else if (own && editable)
             Expanded(child: VocalPill(label: 'Make the changes', busy: remaking, onTap: changed && !remaking ? _makeChanges : null))
           else
             Expanded(child: VocalPill(label: 'Add a language', onTap: _addLang)),
@@ -1835,9 +2006,12 @@ class _VocalDubbingPageState extends State<VocalDubbingPage> {
     ]);
   }
 
-  Widget _lineRow(HoolaColors c, Map<String, dynamic> ln, bool editable, {bool own = false}) {
+  Widget _lineRow(HoolaColors c, Map<String, dynamic> ln, bool editable, {bool own = false, bool v2 = false}) {
     final n = crInt(ln['n']);
     final long = ln['too_long'] == true;
+    final fit = crInt(ln['fit']);
+    final missing = [for (final x in (ln['kept_missing'] is List ? ln['kept_missing'] as List : const [])) '$x'];
+    final who = crS(ln['name']).isEmpty ? crS(ln['speaker']) : crS(ln['name']);
     final at = ln['start'] is num ? vocalClock(ln['start'] as num) : '';
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -1849,10 +2023,14 @@ class _VocalDubbingPageState extends State<VocalDubbingPage> {
           Row(children: [
             if (at.isNotEmpty) Text(at, style: HoolaType.small(c).copyWith(fontSize: 12, fontFeatures: const [FontFeature.tabularFigures()])),
             if (at.isNotEmpty) const SizedBox(width: 8),
-            Expanded(child: Text('${crS(ln['speaker'])}${ln['edited'] == true ? ' · edited' : ''}', maxLines: 1, overflow: TextOverflow.ellipsis,
+            Expanded(child: Text('$who${ln['edited'] == true ? ' · edited' : ''}', maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: HoolaType.small(c).copyWith(fontSize: 12, fontWeight: FontWeight.w500, color: c.accent))),
             if (editable) VocalIconButton(label: 'Edit the line at ${at.isEmpty ? '$n' : at}', glyph: CrGlyph.pen, onTap: () => _edit(ln)),
-            if (editable && !own)
+            if (editable && v2 && long)
+              _shortening.contains(n)
+                  ? const SizedBox(width: 48, height: 48, child: Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))))
+                  : VocalChip(label: 'Shorten', onTap: () => _shorten(ln)),
+            if (editable && !own && !v2)
               _redoing.contains(n)
                   ? const SizedBox(width: 48, height: 48, child: Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))))
                   : VocalChip(label: 'Redo', onTap: () => _redo(ln)),
@@ -1860,10 +2038,19 @@ class _VocalDubbingPageState extends State<VocalDubbingPage> {
           Text(crS(ln['src']), style: HoolaType.small(c).copyWith(fontSize: 12, color: c.ink2)),
           const SizedBox(height: 2),
           Text(crS(ln['dst']), style: HoolaType.body(c).copyWith(height: 1.45)),
+          if (fit > 0) ...[
+            const SizedBox(height: 4),
+            Text('$fit% of their time', style: HoolaType.small(c).copyWith(fontSize: 12, color: long ? c.warn : c.ink3,
+                fontFeatures: const [FontFeature.tabularFigures()])),
+          ],
           if (long) ...[
             const SizedBox(height: 4),
             Text('Longer than the original. Shorten it, or it is read a little faster.',
                 style: HoolaType.small(c).copyWith(fontSize: 12, color: c.warn)),
+          ],
+          for (final w in missing.take(2)) ...[
+            const SizedBox(height: 4),
+            Text('“$w” is missing; it is kept as it is.', style: HoolaType.small(c).copyWith(fontSize: 12, color: c.warn)),
           ],
         ]),
       ),

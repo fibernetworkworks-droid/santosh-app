@@ -39,7 +39,8 @@ window.HoolaVocal = function (ctx) {
       pod: {src: 'file', url: '', text: '', file: null, minutes: 5, kind: 'podcast', must: '', draft: null}},
     proj: null, chN: 0, cast: null, edited: {}, imp: {open: false, src: 'file', url: '', text: '', title: '', author: '', file: null, pv: null, keep: {}},
     sd: null, ab: {fmt: 'm4b', even: true}, para: null, editing: false,
-    dubs: null, dub: null, dubTab: '', dubLines: null, dubNew: {file: null, langs: [], mode: 'matched', keep: true, secs: 0, speakers: 0},
+    dubs: null, dub: null, dubTab: '', dubLines: null, dubNew: {file: null, langs: [], mode: 'matched', keep: true, secs: 0, speakers: 0, check: true, words: [], preview: ''},
+    dubSel: null, dubHear: 'dub', dubRead: false, dubUndo: null, dubDl: {what: 'video', on: {}}, dubKeep: [],
     chg: {file: null, voice: '', denoise: true, secs: 0, out: null},
     cl: {file: null, denoise: true, echo: true, level: true, silence: false, people: false, music: false, secs: 0, out: null, before: ''},
     fx: {prompt: '', seconds: 0, loop: false, takes: 4, out: []}, seed: 1, snd: {tab: 'All', q: ''}, side: {tab: 'All', q: ''},
@@ -311,6 +312,7 @@ window.HoolaVocal = function (ctx) {
   function topTools() {
     const t = $('#hvTopR'); if (!t) return;
     if (PAGE === 'studio' || PAGE === 'reading') return readTools();
+    if (PAGE === 'dub') return dubTools();
     t.innerHTML = PAGE !== 'chat' ? '' : `<button type="button" class="hv-sndbtn" data-a="go" data-p="sounds" aria-label="Your sounds${D?.history?.length ? ', ' + plural(D.history.length, 'sound') : ''}">${ic('sounds', 17)}${D?.history?.length ? `<span class="hv-cnt on">${num(D.history.length)}</span>` : ''}</button><div class="hv-widths" role="group" aria-label="Chat width">${WIDTHS.map(([k, l]) =>
         `<button type="button" data-a="cwidth" data-val="${k}" aria-pressed="${widthNow() === k}">${l}</button>`).join('')}</div>
       <button type="button" class="hv-ib" data-a="chats" aria-label="Earlier chats" title="Earlier chats">${ic('clock', 18)}</button>
@@ -670,7 +672,12 @@ window.HoolaVocal = function (ctx) {
     changer() { price('chg', {job: 'change', seconds: UI.chg.secs || 60, voice: UI.chg.voice}, r => r.credits != null ? `${UI.chg.secs ? secs(UI.chg.secs) + ' of sound · ' : 'Priced for a minute · '}nothing is spent until you tap` : ''); },
     cleanup() { price('cl', {job: UI.cl.people || UI.cl.music ? 'isolate' : 'cleanup', seconds: UI.cl.secs || 60}); },
     sfx() { price('fx', {job: 'sfx', seconds: UI.fx.seconds || 5, takes: UI.fx.takes}); },
-    dub() { if (!ARG) price('dub', {job: UI.dubNew.mode === 'own' ? 'dub_own' : 'dub_matched', seconds: UI.dubNew.secs || 60, langs: UI.dubNew.langs.length || 1}); else dubMedia(); },
+    dub() { topTools(); dubPosters();
+      if (!ARG) { if (UI.dubNew.file) price('dub', {job: UI.dubNew.mode === 'own' ? 'dub_own' : 'dub_matched', seconds: UI.dubNew.secs || 60, langs: UI.dubNew.langs.length || 1});
+        $$('[data-drop="dub"]').forEach(el => { el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('over'); }); el.addEventListener('dragleave', () => el.classList.remove('over'));
+          el.addEventListener('drop', e => { e.preventDefault(); el.classList.remove('over'); const f = e.dataTransfer?.files?.[0]; if (f) pageFile('dub', f); }); });
+        return; }
+      dubMediaSet(); $$('.hv-dedit textarea').forEach(t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }); },
     reading() { const p = UI.proj, ch = p?.chapters?.[UI.chN]; readTools(); fillCovers();
       const todo = c => paraList(c).filter(x => x.state !== 'made').reduce((n, x) => n + x.text.length, 0);
       if (ch) price('readch', {job: 'chapter', chars: todo(ch) || (ch.text || '').length, lang: p.lang || 'en'}, r => r.credits != null ? (ch.audio ? 'Only the changed paragraphs are read' : 'Each paragraph in the voice of who says it') : '');
@@ -1283,24 +1290,21 @@ window.HoolaVocal = function (ctx) {
 
     dub() {
       if (ARG) return dubView();
-      const n = UI.dubNew, ownWhy = ready('eleven') ? '' : whyNot('eleven'), lim = D.limits || {}, maxL = n.mode === 'own' ? (lim.dub_langs_own || 6) : (lim.dub_langs_matched || 4), maxS = lim.dub_speakers || 6;
-      if (n.langs.length > maxL) n.langs = n.langs.slice(0, maxL);
-      const go_ = gate(paid(!ready('gemini') && !ready('eleven') ? 'No dubbing engine is connected on this server yet.' : !n.file?.file_id ? 'Add the video first.' : !n.langs.length ? 'Choose at least one language.' : (n.mode === 'own' && ownWhy) ? ownWhy : ''));
-      const og = gate(ownWhy);
-      return `<div class="hv-split hv-tool">${panel('New dub', `<form class="hv-form" data-f="dub"><b class="hv-t">New dub</b>
-          <p class="hv-mut hv-sm">Your video in another language. Only your own videos, or ones you have the right to dub. Each dub is marked as AI.</p>
-          <div class="hv-filerow"><button type="button" class="hv-btn" data-a="pickfile" data-k="dub" data-accept="video/*,audio/*">${ic('upload', 14)}Choose a video or recording</button><span class="hv-mut hv-sm">${n.file ? esc(n.file.name) + (n.secs ? ' · ' + secs(n.secs) : '') + (n.file.up ? ' · uploading…' : n.file.file_id ? ' · ready' : '') : ''}</span></div>
-          <div class="hv-fld"><span class="hv-lab">Into (up to ${maxL})</span><div class="hv-chips">${n.langs.map(c => `<button type="button" class="hv-chip on" data-a="dubrm" data-val="${esc(c)}" aria-label="Remove ${esc(langLabel(c))}">${esc(short(c))}${ic('x', 12)}</button>`).join('')}
-            ${n.langs.length < maxL ? `<button type="button" class="hv-chip" data-a="picklang" data-k="dubadd" data-need="dub" aria-haspopup="menu">${ic('plus', 12)}Add a language</button>` : ''}</div></div>
-          <div class="hv-ways" role="radiogroup" aria-label="How it sounds"><button type="button" role="radio" class="hv-way" aria-checked="${n.mode === 'own'}" data-a="seg" data-m="UI.dubNew.mode" data-val="own"${og.a}><b>Their own voices</b><span>Each speaker sounds like themselves in the new language</span></button>${og.l}
-            <button type="button" role="radio" class="hv-way" aria-checked="${n.mode === 'matched'}" data-a="seg" data-m="UI.dubNew.mode" data-val="matched"><b>Matched voices</b><span>A close Hoola voice per speaker</span></button></div>
-          ${n.mode === 'matched' ? `<div class="hv-fld"><span class="hv-lab">Speakers in the video</span>${seg('UI.dubNew.speakers', [[0, 'Auto'], ...Array.from({length: maxS}, (_, i) => [i + 1, String(i + 1)])], n.speakers, null, 'Speakers')}</div>` : ''}
-          ${check('UI.dubNew.keep', 'Keep the music and room sound underneath', n.keep)}
-          <span class="hv-grow"></span><button class="hv-cta" data-qbtn="dub" data-label="Make the dubs"${go_.a}><span>Make the dubs</span></button>${go_.l}<p class="hv-hint c" data-qline="dub"></p></form>`)}
-        ${stage('Your dubs', `<b>Your dubs</b>`, UI.dubs == null ? '<p class="hv-mut">Loading…</p>' : UI.dubs.length ? `<div class="hv-list">${UI.dubs.map(x => `<article class="hv-card hv-mv"><span class="hv-tile">${ic('dub')}</span><span class="hv-vt"><b>${esc(x.title || x.name || 'Dub')}</b>
-            <span class="hv-mut hv-sm">${esc((x.langs || []).map(l => typeof l === 'string' ? short(l) : (l.name || l.code)).join(', '))}${x.made ? ' · ' + esc(ago(x.made)) : ''}</span></span>
-            <span class="hv-st ${x.status === 'ready' ? 'ok' : x.status === 'failed' ? 'bad' : 'work'}">${esc(x.status === 'ready' ? 'Ready' : x.status === 'failed' ? 'Failed' : 'Working')}</span><button type="button" class="hv-btn" data-a="dubopen" data-id="${esc(x.id)}">Open</button></article>`).join('')}</div>`
-          : empty('No dubs yet', 'Choose a video on the left.'))}</div>`;
+      if (UI.dubNew.file) return dubNewView();
+      const ds = UI.dubs;
+      return `<div class="hv-doc hv-lib hv-dublib"><div class="hv-libhero"><div class="hv-libcopy"><h2 class="hv-libh">Your video, in any language.</h2>
+          <p>The same people, speaking Hindi, Spanish or Tamil, with the music kept underneath. Read every line before it is spoken, change any of them, and only that line is made again.</p>
+          <div class="hv-libtags"><span>Their own voices, or a matched voice</span><span>Up to 6 languages in one dub</span><span>Subtitles with every dub</span></div></div>
+          <button type="button" class="hv-sdrop" data-a="pickfile" data-k="dub" data-drop="dub" data-accept="video/*,audio/*" aria-label="New dub: drop a video here or choose one">
+            <span class="hv-sdi">${ic('upload', 24)}</span><b>Drop a video here</b><span>or choose a file · MP4, MOV or a recording</span></button></div>
+        <div class="hv-shelfh"><b>Your dubs</b>${ds?.length ? `<span class="hv-num hv-mut hv-sm">${ds.length}</span>` : ''}<span class="hv-grow"></span>${ds?.length > 1 ? '<span class="hv-mut hv-sm">Newest first</span>' : ''}</div>
+        ${ds == null ? '<p class="hv-mut">Loading…</p>' : ds.length ? `<div class="hv-dubgrid">${ds.map(x => `<button type="button" class="hv-dubc" data-a="dubopen" data-id="${esc(x.id)}">
+            <span class="hv-poster t${tint(x.name)}" aria-hidden="true"><img alt="" data-dposter="${esc(x.id)}"><span class="hv-plen hv-num">${secs(x.seconds)}</span></span>
+            <b>${esc(String(x.title || x.name || 'Dub').replace(/\.[a-z0-9]{2,4}$/i, ''))}</b>
+            <span class="hv-mut hv-sm">${esc([x.source_lang, x.mode === 'own' ? 'their own voices' : 'matched voices', ago(x.made)].filter(Boolean).join(' · '))}</span>
+            <span class="hv-ltags">${(x.langs || []).map(l => typeof l === 'string' ? {code: l, name: short(l), status: x.status} : l).map(l =>
+              `<span class="hv-ltag ${dubSt(l.status)}"><span class="hv-dot ${dubSt(l.status)}" aria-hidden="true"></span>${esc(l.name || short(l.code))}${l.status === 'ready' ? '' : ' · ' + dubWord(l)}</span>`).join('')}</span></button>`).join('')}</div>`
+          : empty('No dubs yet', 'Drop a video above, or choose one. You read the lines before anything is spoken.')}</div>`;
     },
 
     changer() {
@@ -1466,39 +1470,203 @@ window.HoolaVocal = function (ctx) {
   }
 
   // ------------------------------------------------------------------ one dub ---
+  // ------------------------------------------------------------------ Dubbing (v0.999.148): a new dub, being made, at work ---
+  const dubSt = s => s === 'ready' ? 'made' : s === 'failed' ? 'bad' : s === 'check' ? 'changed' : 'work';
+  const STEPW = {heard: 'Listening', translated: 'Translating', check: 'Waiting for you', spoken: 'Speaking', mixed: 'Mixing'};
+  const dubWord = l => l.status === 'failed' ? 'Failed' : l.status === 'check' ? 'Read the lines' : l.status === 'ready' ? 'Ready'
+    : l.step === 'spoken' && l.total ? `${Math.round((+l.done || 0) / l.total * 100)}%` : (STEPW[l.step] || 'Waiting');
+  const DSTEPS = [['heard', 'Heard'], ['translated', 'Translated'], ['check', 'Your OK'], ['spoken', 'Spoken'], ['mixed', 'Mixed']];
+  const dubName = (d, sp) => (d.people || []).find(p => p.id === sp)?.name || (d.names || {})[sp] || sp || '';
+  const dubBase = d => String(d.name || d.title || 'dub').replace(/\.[a-z0-9]{2,4}$/i, '');
+  function dubNewView() {
+    const n = UI.dubNew, ownWhy = ready('eleven') ? '' : whyNot('eleven'), lim = D.limits || {}, maxL = n.mode === 'own' ? (lim.dub_langs_own || 6) : (lim.dub_langs_matched || 4);
+    if (n.langs.length > maxL) n.langs = n.langs.slice(0, maxL);
+    const go_ = gate(paid(!ready('gemini') && !ready('eleven') ? 'No dubbing engine is connected on this server yet.' : n.file?.up ? 'The video is still uploading.'
+      : !n.file?.file_id ? (n.file?.err || 'Add the video first.') : !n.langs.length ? 'Choose at least one language.' : (n.mode === 'own' && ownWhy) ? ownWhy : ''));
+    const og = gate(ownWhy), ck = gate(n.mode === 'own' ? 'In their own voices the whole dub is made in one go, so the lines cannot wait for you.' : '');
+    const sw = (k, name, note, g = {a: '', l: ''}) => `<button type="button" role="switch" class="hv-switchrow" data-a="dubsw" data-k="${k}" aria-checked="${!!n[k] && !g.a}"${g.a}><span class="hv-sw${n[k] && !g.a ? ' on' : ''}" aria-hidden="true"><span></span></span>
+      <span class="hv-vt"><b>${name}</b><span class="hv-mut hv-sm">${note}</span></span></button>${g.l}`;
+    return `<div class="hv-split hv-tool hv-dubnew"><section class="hv-panel wide" aria-label="What to dub">
+        <div class="hv-card hv-dubsrc"><span class="hv-poster s" aria-hidden="true">${n.preview ? `<video src="${esc(n.preview)}" muted preload="metadata"></video>` : ''}</span>
+          <span class="hv-vt"><b>${esc(n.file.name || 'Your video')}</b><span class="hv-sm">${n.secs ? `<span class="hv-num">${secs(n.secs)}</span> · ` : ''}the language and the people are found by Hoola</span>
+            <span class="hv-sm ${n.file.err ? 'hv-bad' : n.file.file_id ? 'hv-ok' : 'hv-mut'}">${n.file.up ? 'Uploading…' : n.file.err ? esc(n.file.err) : n.file.file_id ? 'Ready to dub' : ''}</span></span>
+          <button type="button" class="hv-btn s" data-a="pickfile" data-k="dub" data-accept="video/*,audio/*">Choose another</button></div>
+        <div class="hv-fld"><div class="hv-rh"><b class="hv-t">Into</b><span class="hv-mut hv-sm">Up to ${maxL} languages · each one its own dub, made at the same time</span></div>
+          <div class="hv-chips">${n.langs.map(c => `<button type="button" class="hv-chip on" data-a="dubrm" data-val="${esc(c)}" aria-label="Remove ${esc(langLabel(c))}">${esc(langLabel(c))}${ic('x', 12)}</button>`).join('')}
+            ${n.langs.length < maxL ? `<button type="button" class="hv-chip" data-a="picklang" data-k="dubadd" data-need="dub" aria-haspopup="menu">${ic('plus', 12)}Add a language</button>` : ''}</div></div>
+        <div class="hv-fld"><b class="hv-t">How they sound</b><div class="hv-ways two" role="radiogroup" aria-label="How they sound">
+          <button type="button" role="radio" class="hv-way" aria-checked="${n.mode === 'own'}" data-a="seg" data-m="UI.dubNew.mode" data-val="own"${og.a}><span class="hv-wayh"><span class="hv-rad" aria-hidden="true"></span><b>Their own voices</b><span class="hv-badge">Premium</span></span>
+            <span>Each person sounds like themselves, speaking the new language.</span><span>Changed lines are made again together.</span></button>
+          <button type="button" role="radio" class="hv-way" aria-checked="${n.mode === 'matched'}" data-a="seg" data-m="UI.dubNew.mode" data-val="matched"><span class="hv-wayh"><span class="hv-rad" aria-hidden="true"></span><b>Matched voices</b></span>
+            <span>A close Hoola voice for each person, chosen by their sound.</span><span>Any line can be changed and made again on its own.</span></button></div>${og.l}</div>
+        <div class="hv-fld">${sw('keep', 'Keep the music and room sound', 'Only the voices change')}
+          ${sw('check', 'Let me read the lines before they are spoken', 'The translation waits for your OK; nothing is spoken until then', ck)}
+          <p class="hv-mut hv-sm">Subtitles come with every dub.</p></div>
+        <div class="hv-fld"><div class="hv-rh"><b class="hv-t">Words to keep as they are</b><span class="hv-mut hv-sm">Names, brands, products: never translated</span></div>
+          <div class="hv-words2">${(n.words || []).map((w, i) => `<span class="hv-wtag">${esc(w)}<button type="button" class="hv-ib xs" data-a="dubwrm" data-n="${i}" aria-label="Remove ${esc(w)}">${ic('x', 11)}</button></span>`).join('')}
+            <label class="hv-sr" for="hvDubW">Add a word to keep</label><input id="hvDubW" class="hv-win" placeholder="${n.words?.length ? 'Add another…' : 'Add a word, then Enter'}" maxlength="60" data-dubword="1"></div></div>
+      </section>
+      <aside class="hv-stage hv-side2" aria-label="Your dub"><div class="hv-stageb"><b class="hv-t">Your dub</b>
+        <div class="hv-tot2">${n.langs.length ? n.langs.map(c => `<div><span>${esc(langLabel(c))}</span><span class="hv-mut hv-sm">${n.mode === 'own' ? 'their own voices' : 'matched voices'}</span></div>`).join('') : '<p class="hv-mut hv-sm">Choose the languages on the left.</p>'}</div>
+        <p class="hv-sm">${n.check && n.mode !== 'own' ? 'Hoola listens and translates first; you read the lines, then they are spoken.' : 'You can leave this page; each language is ready on its own.'}</p>
+        <span class="hv-grow"></span><form data-f="dub" class="hv-form tight"><button class="hv-cta" data-qbtn="dub" data-label="Make ${n.langs.length > 1 ? n.langs.length + ' dubs' : 'the dub'}"${go_.a}><span>Make ${n.langs.length > 1 ? n.langs.length + ' dubs' : 'the dub'}</span></button>${go_.l}</form>
+        <p class="hv-hint c" data-qline="dub"></p>
+        <p class="hv-hint c">Only your own videos, or ones you have the right to dub. Every dub is marked as made with AI.</p>
+        <button type="button" class="hv-btn s" data-a="dubcancel">${ic('back', 14)}All dubs</button></div></aside></div>`;
+  }
   function dubView() {
     const d = UI.dub;
     if (!d || d.id !== ARG) return `<div class="hv-doc"><p class="hv-mut">Loading the dub…</p></div>`;
-    const tab = UI.dubTab || d.langs?.[0]?.code || '', L = (d.langs || []).find(l => l.code === tab) || {}, DL = UI.dubLines;
-    const st = s => s === 'ready' ? 'Ready' : s === 'failed' ? 'Failed' : s === 'waiting' ? 'Waiting' : 'Working';
-    const rows = DL && DL.lang === tab ? DL.lines : null, ed = DL ? DL.editable !== false : false, own = !!DL?.own;
-    const changed = own && (rows || []).some(r => r.edited);
-    const speakers = [...new Set((rows || d.lines || []).map(r => r.speaker).filter(Boolean))];
-    const lname = L.name || langLabel(tab);
-    return `<div class="hv-split hv-tool"><section class="hv-panel wide" aria-label="Lines"><div class="hv-chips"><span class="hv-mut">From</span><span class="hv-chip static">${esc(d.source_lang ? langLabel(d.source_lang) + ', found by Hoola' : 'Found by Hoola')}</span><span class="hv-mut">to</span>
-          ${(d.langs || []).map(l => `<button type="button" class="hv-chip${l.code === tab ? ' on' : ''}" data-a="dubtab" data-val="${esc(l.code)}" aria-pressed="${l.code === tab}">${esc(short(l.code) || l.name)}${l.status === 'ready' ? '' : ' · ' + st(l.status)}</button>`).join('')}
-          ${d.status !== 'working' ? `<button type="button" class="hv-chip" data-a="dubmore" aria-haspopup="menu">${ic('plus', 12)}Add a language</button>` : ''}</div>
-        ${d.status === 'failed' ? warnNote(d.error || 'This dub could not be made.') : ''}
-        ${DL && DL.lang === tab && DL.editable === false ? `<p class="hv-note">${esc(scrub(DL.why || 'These lines were made in their own voices and cannot be changed one by one here.'))}</p>` : ''}
-        <div class="hv-tablew"><table class="hv-table hv-dubt"><thead><tr><th>Time</th><th>Speaker</th><th>They said</th><th>${esc(short(tab) || 'Dubbed')}</th><th><span class="hv-sr">Actions</span></th></tr></thead><tbody>
-          ${rows == null ? '<tr><td colspan="5" class="hv-mut">Loading the lines…</td></tr>' : rows.length ? rows.map(r => `<tr class="${r.too_long ? 'long' : ''}"><td class="hv-num">${secs(r.start)}</td><td><span class="hv-who t${Math.max(0, speakers.indexOf(r.speaker)) % 4}">${esc(r.speaker || '')}</span></td>
-              <td>${esc(r.src || '')}</td><td>${ed ? `<label class="hv-sr" for="hvDl${r.n}">Line ${r.n} in ${esc(lname)}</label><textarea id="hvDl${r.n}" class="hv-lt" rows="2" lang="${esc(tab)}" data-dubline="${r.n}">${esc(r.dst || '')}</textarea>` : `<span lang="${esc(tab)}">${esc(r.dst || '')}</span>`}
-                ${r.too_long ? `<span class="hv-why">Longer than the ${(+r.end - +r.start).toFixed(1)} s they spoke. Shorten it, or it is read a little faster.</span>` : ''}</td>
-              <td class="r"><span class="hv-acts nw">${playBtn('line:' + r.n, `Play line ${r.n}`, 11, ' o s')}${r.edited && own ? '<span class="hv-st work">Changed</span>' : ''}${ed && !own ? `<button type="button" class="hv-ib s" data-a="dubredo" data-n="${r.n}" aria-label="Redo line ${r.n}" title="Redo this line · 1 credit">${ic('redo', 14)}</button>` : ''}</span></td></tr>`).join('')
-            : '<tr><td colspan="5" class="hv-mut">The lines appear when the speech is read.</td></tr>'}</tbody></table></div>
-        ${ed && !own ? `<p class="hv-mut hv-sm">Change any ${esc(lname)} line, then redo only that line · ${cr(DL.credits_redo || 1)} a line</p>` : ''}
-        ${ed && own ? `<div class="hv-ctarow">${L.remaking ? `<span class="hv-st work">Making the changed lines…</span><span class="hv-mut hv-sm">The page checks every 10 seconds.</span>`
-            : `<button type="button" class="hv-btn dark" data-a="ownredo"${changed ? '' : ' disabled'}>${ic('redo', 14)}Make the changes</button><span class="hv-mut hv-sm">${esc(DL.note || '')}</span>`}</div>
-          ${L.remake_error ? warnNote(L.remake_error) : ''}` : ''}</section>
-      <aside class="hv-stage hv-side2" aria-label="Preview and export"><div class="hv-stageb">
-        ${L.video_id ? `<video class="hv-media" id="hvDubMedia" controls preload="none" playsinline data-src="${esc(L.video_id)}"></video>` : L.audio_id ? `<audio class="hv-media" id="hvDubMedia" controls preload="none" data-src="${esc(L.audio_id)}"></audio>`
-          : `<p class="hv-mut">${L.status === 'failed' ? 'This language could not be made.' : 'This language is still being made. The page checks every few seconds.'}</p>`}
-        <b class="hv-t">Speakers</b>${speakers.length ? speakers.map((s, i) => `<div class="hv-role"><span class="hv-dot t${i % 4}"></span><span><b>${esc(s)}</b> · <span class="hv-mut">${d.mode === 'own' ? 'their own voice' : 'a matched voice'}, in ${esc(short(tab))}</span></span></div>`).join('') : '<p class="hv-mut hv-sm">Found when the speech is read.</p>'}
-        <b class="hv-t">Download</b><div class="hv-acts">${L.video_id ? `<button type="button" class="hv-btn" data-a="dubdl" data-val="video">Video with the dub</button>` : ''}${L.audio_id ? `<button type="button" class="hv-btn" data-a="dubdl" data-val="mp3">Sound only, MP3</button>` : ''}
-          ${L.status === 'ready' ? `<button type="button" class="hv-btn" data-a="dubdl" data-val="srt">Subtitles, SRT</button><button type="button" class="hv-btn" data-a="dubdl" data-val="vtt">Subtitles, VTT</button>` : ''}</div>
-        <span class="hv-grow"></span><button type="button" class="hv-btn" data-a="go" data-p="dub">${ic('back', 14)}All dubs</button>
-        <p class="hv-hint c hv-num">${esc([d.seconds ? secs(d.seconds) + ' video' : '', d.mode === 'own' ? 'their own voices' : 'matched voices'].filter(Boolean).join(' · '))}</p></div></aside></div>`;
+    const anyReady = (d.langs || []).some(l => l.status === 'ready');
+    if (!anyReady && !UI.dubRead && ['working', 'check'].includes(d.status)) return dubMaking(d);
+    if (!anyReady && d.status === 'failed') return `<div class="hv-doc"><div class="hv-rh"><b class="hv-t">${esc(dubBase(d))}</b></div>${warnNote(d.error || 'This dub could not be made.')}
+      <p class="hv-mut">Nothing more is charged. Try again with a shorter video, or another language.</p><button type="button" class="hv-btn" data-a="dubopen" data-id="">${ic('back', 14)}All dubs</button></div>`;
+    return dubWork(d);
   }
+  function dubMaking(d) {
+    const checks = (d.langs || []).filter(l => l.status === 'check');
+    return `<div class="hv-split hv-tool hv-dubmk"><section class="hv-panel wide" aria-label="Each language">
+        <div class="hv-vt"><h2 class="hv-h2">${(d.langs || []).length > 1 ? `${plural(d.langs.length, 'dub')} on the way` : 'Your dub is on the way'}</h2>
+          <span class="hv-mut hv-sm">Each language moves on by itself. You can leave this page; come back any time.</span></div>
+        ${checks.map(l => `<div class="hv-dubask"><span class="hv-sdi s" aria-hidden="true">${ic('lines', 16)}</span><span class="hv-vt"><b>The ${esc(l.name)} lines are ready to read</b>
+            <span class="hv-sm">${plural((d.lines || []).length, 'line')}. Nothing is spoken until you say OK.</span></span>
+          <button type="button" class="hv-btn dark" data-a="dubread" data-val="${esc(l.code)}">Read the ${esc(l.name)} lines</button></div>`).join('')}
+        <ol class="hv-mklist">${(d.langs || []).map(l => { const at = DSTEPS.findIndex(s => s[0] === l.step), done = l.status === 'ready';
+          return `<li class="hv-card"><div class="hv-rh"><b>${esc(l.name)}</b><span class="hv-grow"></span><span class="hv-sm hv-mkst ${dubSt(l.status)}">${esc(l.status === 'failed' ? (l.error || 'Failed') : l.status === 'check' ? 'Waiting for you'
+              : l.step === 'spoken' && l.total ? `Speaking · line ${Math.min(l.total, (+l.done || 0) + 1)} of ${l.total}` : STEPW[l.step] || 'Waiting')}</span></div>
+            <div class="hv-steps" role="list">${DSTEPS.map(([k, name], i) => { const skip = k === 'check' && !d.check, s = done || i < at ? 'done' : i === at ? (l.status === 'check' ? 'you' : l.status === 'failed' ? 'bad' : 'now') : '';
+              return `<span role="listitem" class="hv-stp ${skip ? 'skip' : s}"><span class="hv-stpb" aria-hidden="true"></span><span>${skip ? 'No OK asked' : name}</span></span>`; }).join('')}</div></li>`; }).join('')}</ol>
+        ${d.status === 'working' ? '<div class="hv-acts"><button type="button" class="hv-btn s" data-a="dubstop">Stop</button></div>' : ''}</section>
+      <aside class="hv-stage hv-side2" aria-label="What Hoola heard"><div class="hv-stageb"><b class="hv-t">What Hoola heard</b>
+        ${(d.lines || []).length ? `<span class="hv-mut hv-sm">${esc([d.source_lang, ((d.people || []).length === 1 ? '1 person' : `${(d.people || []).length} people`)].filter(Boolean).join(' · '))}. Name them so the lines and the voices say who is who.</span>
+          ${(d.people || []).map((p, i) => `<div class="hv-namer"><span class="hv-dav t${i % 4}" aria-hidden="true">${initial(p.name)}</span><span class="hv-vt"><span class="hv-mut hv-sm">${esc(p.id)} · ${plural(p.lines, 'line')}</span>
+              <label class="hv-sr" for="hvDn${i}">Name of ${esc(p.id)}</label><input id="hvDn${i}" class="hv-bkt" value="${esc(p.name)}" maxlength="40" data-dubname="${esc(p.id)}"></span>
+            <button type="button" class="hv-play o" data-a="dubsp" data-val="${esc(p.id)}" aria-label="Hear ${esc(p.name)} in the video">${ic('play', 10)}</button></div>`).join('')}
+          <ol class="hv-heard">${(d.lines || []).slice(0, 60).map(ln => `<li><span class="hv-num hv-mut hv-sm">${secs(ln.start)}</span><span class="hv-vt"><b class="hv-sm">${esc(dubName(d, ln.speaker))}</b><span class="serif">${esc(ln.text || '')}</span></span></li>`).join('')}</ol>`
+          : '<p class="hv-mut hv-sm">Hoola is listening to the video. The people and their lines show here in a moment.</p>'}</div></aside></div>`;
+  }
+  function dubWork(d) {
+    const tab = UI.dubTab || (d.langs || []).find(l => l.status === 'ready')?.code || d.langs?.[0]?.code || '', L = (d.langs || []).find(l => l.code === tab) || {}, DL = UI.dubLines;
+    const rows = DL && DL.lang === tab ? DL.lines : null, own = d.mode === 'own', ed = !!DL?.editable, people = d.people || [];
+    const order = people.map(p => p.id), total = +d.seconds || Math.max(1, ...((rows || []).map(r => +r.end || 0)));
+    const lname = L.name || langLabel(tab), sel = UI.dubSel;
+    const changedN = own ? (rows || []).filter(r => r.edited).length : (d.changed || {})[tab] || 0;
+    const tooLong = (rows || []).filter(r => r.too_long).length;
+    const pct = v => `${Math.max(0, Math.min(100, (+v || 0) / total * 100)).toFixed(2)}%`;
+    const lanes = order.map((sp, i) => `<div class="hv-dlane"><span class="hv-sm t${i % 4}">${esc(dubName(d, sp))}</span><span class="hv-dtrack">${(rows || []).filter(r => r.speaker === sp).map(r =>
+      `<i class="t${i % 4}${r.too_long ? ' long' : ''}${r.n === sel ? ' sel' : ''}" style="left:${pct(r.start)};width:${pct(Math.max(0.3, (+r.end || +r.start + 1) - +r.start))}"></i>`).join('')}</span></div>`).join('');
+    const foot = L.status === 'check' ? `<div class="hv-dubfoot"><span class="hv-vt"><b>Nothing is spoken yet</b><span class="hv-mut hv-sm">Read the ${esc(lname)} lines, change any, then say OK.</span></span>
+          <button type="button" class="hv-cta s" data-a="dubok" data-val="${esc(tab)}"><span>OK, speak the ${esc(lname)} lines</span></button></div>`
+      : L.status === 'working' || L.status === 'waiting' ? `<div class="hv-dubfoot"><span class="hv-vt"><b>${esc(L.step === 'spoken' && L.total ? `Speaking line ${Math.min(L.total, (+L.done || 0) + 1)} of ${L.total}` : STEPW[L.step] || 'Working')}</b><span class="hv-mut hv-sm">The page follows it by itself.</span></span>
+          <button type="button" class="hv-btn s" data-a="dubstop">Stop</button></div>`
+      : own && (L.remaking || DL?.remaking) ? `<div class="hv-dubfoot"><span class="hv-vt"><b>Making the changed lines…</b><span class="hv-mut hv-sm">The page checks every 10 seconds.</span></span></div>`
+      : L.status === 'ready' && ed ? (() => { const g = gate(changedN ? '' : 'Change a line first; only changed lines are spoken again.');
+          return `<div class="hv-dubfoot"><span class="hv-vt"><b>${changedN ? plural(changedN, 'line') + ' changed' : 'No changes yet'}</b><span class="hv-mut hv-sm">Only those are spoken again, in the same voices</span></span>
+          <button type="button" class="hv-cta s" data-a="dubremake" data-val="${esc(tab)}"${g.a}><span>Make the changes${changedN && !own ? ' · ' + cr(changedN) : ''}</span></button></div>${g.l}`; })() : '';
+    return `<div class="hv-split hv-tool hv-dubwork"><section class="hv-panel wide hv-dubstage" aria-label="The video">
+        <div class="hv-chips" role="tablist" aria-label="Language">${(d.langs || []).map(l => `<button type="button" role="tab" class="hv-chip hv-ltab${l.code === tab ? ' on' : ''}" data-a="dubtab" data-val="${esc(l.code)}" aria-selected="${l.code === tab}">
+            <span class="hv-dot ${dubSt(l.status)}" aria-hidden="true"></span>${esc(l.name || short(l.code))}${l.status === 'ready' ? '' : `<span class="hv-sm"> · ${esc(dubWord(l))}</span>`}</button>`).join('')}
+          ${!own || d.status !== 'working' ? `<button type="button" class="hv-chip dash" data-a="dubmore" aria-haspopup="menu">${ic('plus', 12)}Add a language</button>` : ''}</div>
+        ${L.status === 'failed' ? warnNote(L.error || 'This language could not be made.') : ''}
+        <div class="hv-dubv"><video id="hvDubMedia" playsinline controls preload="metadata" data-src="${esc(L.status === 'ready' && UI.dubHear !== 'orig' ? (L.video_id || '') : '')}"></video>
+          <span class="hv-dubsub" id="hvDubSub" lang="${esc(L.status === 'ready' && UI.dubHear !== 'orig' ? tab : d.source_lang ? '' : '')}" aria-live="off"></span>
+          <span class="hv-dubin">${L.status === 'ready' ? (UI.dubHear === 'orig' ? 'Playing the original' : `Playing in ${esc(lname)}`) : 'The original · not spoken yet'}</span></div>
+        <div class="hv-card hv-dubplay"><div class="hv-rh"><span class="hv-mut hv-sm">${esc(own ? 'their own voices' : 'matched voices')} · ${d.keep_sound === false ? 'the voices only' : 'the music and room sound stay under the new voices'}</span><span class="hv-grow"></span>
+            ${L.status === 'ready' ? seg('UI.dubHear', [['dub', 'The dub'], ['orig', 'The original'], ['both', 'Both']], UI.dubHear || 'dub', null, 'Hear') : ''}</div>
+          <div class="hv-dlanes" aria-hidden="true"><div class="hv-dlane"><span class="hv-sm">Original</span><span class="hv-dtrack o">${(d.lines || []).map(ln => `<i style="left:${pct(ln.start)};width:${pct(Math.max(0.3, (+ln.end || +ln.start + 1) - +ln.start))}"></i>`).join('')}</span></div>
+            ${lanes}<span class="hv-dhead" id="hvDubHead"></span></div></div></section>
+      <aside class="hv-stage hv-side2 hv-dublines" aria-label="The lines"><div class="hv-rh hv-dlh"><b class="hv-t">Lines in ${esc(lname)}</b><span class="hv-mut hv-sm">${rows ? plural(rows.length, 'line') + (tooLong ? ` · ${tooLong} too long` : '') : ''}</span><span class="hv-grow"></span>
+          ${!own ? `<button type="button" class="hv-btn s" data-a="sdopen" data-k="dkeep" aria-haspopup="dialog">Words to keep${(d.keep || []).length ? ` · ${d.keep.length}` : ''}</button>` : ''}</div>
+        ${DL && DL.lang === tab && !ed && DL.why ? `<p class="hv-note">${esc(scrub(DL.why))}</p>` : ''}
+        <ol class="hv-dlist">${rows == null ? '<li class="hv-mut">Loading the lines…</li>' : rows.length ? rows.map(r => { const on = r.n === sel, sp = Math.max(0, order.indexOf(r.speaker));
+          return `<li class="hv-dline${on ? ' on' : ''}${r.too_long ? ' long' : ''}" data-dn="${r.n}"><button type="button" class="hv-dlb" data-a="dubsel" data-n="${r.n}" aria-expanded="${on}">
+              <span class="hv-num hv-mut hv-sm">${secs(r.start)}</span><span class="hv-vt"><span class="hv-dsrc"><b class="t${sp % 4}">${esc(r.name || dubName(d, r.speaker))}</b> <span class="hv-mut">${esc(r.src || '')}</span></span>
+              <span class="hv-ddst serif" lang="${esc(tab)}">${esc(r.dst || '')}</span>
+              <span class="hv-dfit">${r.fit ? `<span class="hv-fitb" aria-hidden="true"><span class="${r.too_long ? 'long' : ''}" style="width:${Math.min(100, r.fit)}%"></span></span><span class="hv-num hv-sm${r.too_long ? ' hv-warn' : ' hv-mut'}">${r.fit}% of their time${r.too_long ? ' · too long' : ''}</span>` : ''}
+                ${r.edited ? '<span class="hv-sm hv-warn">Changed</span>' : ''}${(r.kept_missing || []).length ? `<span class="hv-sm hv-warn">“${esc(r.kept_missing[0])}” is missing</span>` : ''}${r.pace > 1 ? '<span class="hv-sm hv-mut">Read faster</span>' : ''}</span></span></button>
+            ${on ? `<div class="hv-dedit">${ed ? `<label class="hv-sr" for="hvDl${r.n}">Line ${r.n + 1} in ${esc(lname)}</label><textarea id="hvDl${r.n}" class="hv-in serif" rows="2" lang="${esc(tab)}" data-dubline="${r.n}">${esc(r.dst || '')}</textarea>` : ''}
+              <div class="hv-acts wrap">${L.status === 'ready' ? `<button type="button" class="hv-btn s" data-a="dubhearl" data-n="${r.n}">${ic('play', 11)}Hear it</button>` : ''}
+                ${ed && !own ? `<button type="button" class="hv-btn s" data-a="dubshort" data-n="${r.n}">Shorten it</button>
+                  <button type="button" class="hv-btn s" data-a="dubfast" data-n="${r.n}" aria-pressed="${r.pace > 1}">${r.pace > 1 ? 'Read at the normal pace' : 'Read it a little faster'}</button>
+                  ${order.length > 1 ? `<button type="button" class="hv-btn s" data-a="dubwho" data-n="${r.n}" aria-haspopup="menu">Who says it</button>` : ''}` : ''}
+                ${UI.dubUndo?.n === r.n ? `<button type="button" class="hv-btn s" data-a="dubundo">Undo</button>` : ''}</div>
+              ${r.too_long ? `<p class="hv-why">Their line lasts ${(+r.room || Math.max(0, (+r.end || 0) - (+r.start || 0))).toFixed(1)} s; this one would not fit. Shorten the words, or it is read faster to fit.</p>` : ''}</div>` : ''}</li>`; }).join('')
+          : `<li class="hv-mut">${L.status === 'ready' || L.status === 'check' ? 'No lines were found.' : 'The lines show when the speech is heard.'}</li>`}</ol>
+        ${foot}</aside></div>`;
+  }
+  function dubTools() {
+    const t = $('#hvTopR'); if (!t) return;
+    if (!ARG) { t.innerHTML = UI.dubNew.file ? '' : `<button type="button" class="hv-btn s dark" data-a="pickfile" data-k="dub" data-accept="video/*,audio/*" aria-label="New dub">${ic('plus', 14)}<span class="hv-tlab">New dub</span></button>`; return; }
+    const d = UI.dub; if (!d || d.id !== ARG) { t.innerHTML = ''; return; }
+    const anyReady = (d.langs || []).some(l => l.status === 'ready');
+    t.innerHTML = `${(d.people || []).length ? `<button type="button" class="hv-btn s" data-a="sdopen" data-k="dvoices" aria-haspopup="dialog" aria-label="Voices">${ic('dialog', 14)}<span class="hv-tlab">Voices</span></button>` : ''}
+      ${anyReady ? `<button type="button" class="hv-btn s dark" data-a="sdopen" data-k="ddl" aria-haspopup="dialog" aria-label="Download">${ic('dl', 14)}<span class="hv-tlab">Download</span></button>` : ''}
+      <button type="button" class="hv-ib" data-a="dubmenu" aria-label="More for this dub" aria-haspopup="menu">${ic('more', 16)}</button>`;
+  }
+  function dvVoices() {
+    const d = UI.dub || {}, own = d.mode === 'own';
+    return `<div class="hv-vph"><span class="hv-vt"><h2 class="hv-t" id="hvSdH">Voices</h2><span class="hv-mut hv-sm">Who speaks in the video, and how they sound in every language of this dub.</span></span>
+        <button type="button" class="hv-ib" data-a="sdclose" aria-label="Close">${ic('x', 16)}</button></div>
+      <div class="hv-sdb">${(d.people || []).map((p, i) => `<div class="hv-person">
+          <span class="hv-dav l t${i % 4}" aria-hidden="true">${initial(p.name)}</span>
+          <span class="hv-vt"><span><label class="hv-sr" for="hvDvn${i}">Name of ${esc(p.id)}</label><input id="hvDvn${i}" class="hv-bkt w" value="${esc(p.name)}" maxlength="40" data-dubname="${esc(p.id)}"> <span class="hv-mut hv-sm">${plural(p.lines, 'line')} · ${secs(p.seconds)} of speech</span></span><span class="hv-pq serif">${esc(p.quote ? '“' + p.quote + '”' : '')}</span></span>
+          <button type="button" class="hv-play o" data-a="dubsp" data-val="${esc(p.id)}" aria-label="Hear ${esc(p.name)} in the original">${ic('play', 11)}</button>
+          ${own ? `<span class="hv-vpick off"><span class="hv-dav s" aria-hidden="true">${initial(p.name)}</span><span>Their own voice</span></span>`
+            : `<button type="button" class="hv-vpick" data-a="dubvoice" data-k="${esc(p.id)}" aria-haspopup="menu" aria-label="Voice for ${esc(p.name)}: ${esc(p.voice || 'Hoola picks')}"><span class="hv-dav s" aria-hidden="true">${initial(p.voice || '?')}</span><span>${esc(p.voice || 'Hoola picks')}</span>${ic('down', 12)}</button>`}</div>`).join('')}
+        <p class="hv-note">${own ? 'Their own voices are made from the video itself. A changed line is made again together with the other changed lines.' : 'A matched voice is a Hoola voice close to how they sound, the same in every language. Choose another and that person’s lines are marked changed; Make the changes speaks only those.'}</p></div>
+      <div class="hv-vpf"><span class="hv-mut hv-sm">Names are saved as you type them.</span><span class="hv-grow"></span><button type="button" class="hv-cta s" data-a="sdclose">Done</button></div>`;
+  }
+  const DLKINDS = [['video', 'The video with the dub', 'MP4, the same picture with the new voices', 24000],
+    ['subbed', 'The video with the subtitles on it', 'The words shown on the picture, in the same language', 24000],
+    ['sound', 'The sound only', 'MP3, for a podcast or a reel you edit yourself', 2000],
+    ['voices', 'Each voice on its own track', 'A zip: each dubbed voice, the full length, and the original sound', 6000],
+    ['subs', 'Subtitles only', 'SRT and VTT, timed to the dub', 0]];
+  function dvDownload() {
+    const d = UI.dub || {}, x = UI.dubDl, own = d.mode === 'own';
+    const ready_ = (d.langs || []).filter(l => l.status === 'ready');
+    if (!Object.keys(x.on).length && ready_.length) x.on[UI.dubTab && ready_.some(l => l.code === UI.dubTab) ? UI.dubTab : ready_[0].code] = true;
+    const n = ready_.filter(l => x.on[l.code]).length, kind = DLKINDS.find(k => k[0] === x.what) || DLKINDS[0];
+    const no = own && x.what === 'voices' ? 'A dub in their own voices comes as one mix; each voice on its own track works for matched voices.' : !n ? 'Choose a language.' : '';
+    const g = gate(no);
+    return `<div class="hv-vph hv-abh"><span class="hv-poster m" aria-hidden="true"><img alt="" data-dposter="${esc(d.id)}"></span><span class="hv-vt"><span class="hv-rh"><h2 class="hv-t" id="hvSdH">Download</h2><span class="hv-grow"></span><button type="button" class="hv-ib" data-a="sdclose" aria-label="Close">${ic('x', 16)}</button></span>
+        <span>${esc(dubBase(d))} · <span class="hv-num">${secs(d.seconds)}</span></span><span class="hv-mut hv-sm">Dubbed into ${esc(ready_.map(l => l.name).join(', ') || 'no language yet')}${(d.langs || []).some(l => l.status !== 'ready') ? ' · the others are still being made' : ''}</span></span></div>
+      <div class="hv-sdb"><div class="hv-fld"><b>Languages</b><div class="hv-chips">${(d.langs || []).map(l => { const on = l.status === 'ready' && !!x.on[l.code];
+          return `<button type="button" role="checkbox" class="hv-chip hv-ckchip${on ? ' on' : ''}" data-a="dldlang" data-val="${esc(l.code)}" aria-checked="${on}"${l.status === 'ready' ? '' : ' disabled'}><span class="hv-ckb" aria-hidden="true">${on ? ic('check', 11) : ''}</span>${esc(l.name)}${l.status === 'ready' ? '' : ` <span class="hv-sm">· ${esc(dubWord(l))}</span>`}</button>`; }).join('')}</div></div>
+        <div class="hv-fld"><b>What</b><div class="hv-ways col" role="radiogroup" aria-label="What to download">${DLKINDS.map(([k, name, note, kbs]) =>
+          `<button type="button" role="radio" class="hv-way" aria-checked="${x.what === k}" data-a="dldwhat" data-val="${k}"><span class="hv-rad" aria-hidden="true"></span><span class="hv-vt"><b>${name}</b><span>${note}</span></span><span class="hv-num hv-mut hv-sm">${kbs ? `about ${Math.max(1, Math.round((+d.seconds || 60) * kbs / 8e6 * 8))} MB each` : 'small'}</span></button>`).join('')}</div></div>
+        <p class="hv-note">Every dubbed file says it was made with AI, in its details. Share it only where you have the right to.</p></div>
+      <div class="hv-vpf"><span class="hv-mut hv-sm">${n > 1 ? 'More than one language comes as one zip, a folder per language. Free.' : 'Free: the dub is already made.'}</span><span class="hv-grow"></span>
+        <button type="button" class="hv-cta s" data-a="dldgo"${g.a}><span>${n > 1 ? `Download ${n} languages` : 'Download'}</span></button></div>${g.l}`;
+  }
+  function dvKeep() {
+    const d = UI.dub || {}, w = UI.dubKeep || [];
+    return `<div class="hv-vph"><span class="hv-vt"><h2 class="hv-t" id="hvSdH">Words to keep as they are</h2><span class="hv-mut hv-sm">Names, brands and products that are never translated. Lines are checked for them: a kept word that went missing from a line is marked on it.</span></span>
+        <button type="button" class="hv-ib" data-a="sdclose" aria-label="Close">${ic('x', 16)}</button></div>
+      <div class="hv-sdb"><div class="hv-words2">${w.map((x, i) => `<span class="hv-wtag">${esc(x)}<button type="button" class="hv-ib xs" data-a="dkrm" data-n="${i}" aria-label="Remove ${esc(x)}">${ic('x', 11)}</button></span>`).join('')}
+          <label class="hv-sr" for="hvDkW">Add a word to keep</label><input id="hvDkW" class="hv-win" maxlength="60" placeholder="Add a word, then Enter" data-dkword="1"></div>
+        <p class="hv-mut hv-sm">${d.mode === 'own' ? '' : 'Languages added from now on keep these words. For lines already translated, change a line or shorten it and it is kept.'}</p></div>
+      <div class="hv-vpf"><span class="hv-grow"></span><button type="button" class="hv-cta s" data-a="dksave">Save</button></div>`;
+  }
+  // the video beside the lines: the dub, the original, or both together; the line said shown on the picture and the lanes' playhead
+  async function dubMediaSet() {
+    const m = $('#hvDubMedia'); if (!m || !UI.dub) return; const d = UI.dub, L = (d.langs || []).find(l => l.code === (UI.dubTab || '')) || (d.langs || []).find(l => l.status === 'ready') || {};
+    const orig = UI.dubHear === 'orig' || L.status !== 'ready';
+    try { m.src = await blobUrl(orig ? `${A}/dub/${q(d.id)}/source` : `${A}/audio?id=${q(L.video_id)}`); } catch { /* the controls stay */ }
+    let o = $('#hvDubOrig'); o?.pause(); o?.remove(); o = null;
+    if (UI.dubHear === 'both' && L.status === 'ready') {
+      o = document.createElement('audio'); o.id = 'hvDubOrig'; o.className = 'hv-sr'; o.volume = 0.35; (ROOT || document.body).appendChild(o);
+      try { o.src = await blobUrl(`${A}/dub/${q(d.id)}/source`); } catch { o = null; }
+      if (o) { const sync = () => { if (Math.abs(o.currentTime - m.currentTime) > 0.25) o.currentTime = m.currentTime; };
+        m.addEventListener('play', () => { sync(); o.play().catch(() => {}); }); m.addEventListener('pause', () => o.pause()); m.addEventListener('seeked', sync); }
+    }
+    const rows = () => (UI.dubLines?.lines || []), sub = $('#hvDubSub'), head = $('#hvDubHead');
+    m.addEventListener('timeupdate', () => { const t = m.currentTime, r = rows().find(x => t >= +x.start && t <= Math.max(+x.end || 0, +x.start + 1.5));
+      if (sub) { const w = r ? (orig ? r.src : r.dst) : ''; if (sub.textContent !== w) sub.textContent = w || ''; sub.hidden = !w; }
+      if (head) head.style.left = `calc(var(--lw) + (100% - var(--lw)) * ${Math.min(1, t / Math.max(1, +d.seconds || m.duration || 1)).toFixed(4)})`; });
+  }
+  function dubPosters() { for (const im of $$('img[data-dposter]')) { if (im.src) continue; blobUrl(`${A}/dub/${q(im.dataset.dposter)}/poster`).then(u => { im.src = u; im.onload = () => im.parentElement?.classList.add('img'); }, () => im.remove()); } }
+  async function dubRefresh() { if (!ARG) return; await loadDub(ARG); }
+
   async function loadDub(id) {
     try { UI.dub = await api('GET', `${A}/dub/${q(id)}`); } catch (e) { toast(e.message, true); return; }
     if (PAGE !== 'dub' || ARG !== id) return;
@@ -1507,7 +1675,7 @@ window.HoolaVocal = function (ctx) {
   }
   async function dubLines(id) {
     const lc = UI.dubTab; if (!lc) return;
-    try { const r = await api('GET', `${A}/dub/${q(id)}/lines?lang=${q(lc)}`); UI.dubLines = {lang: lc, lines: r.lines || [], editable: r.editable, why: r.why, credits_redo: r.credits_redo, own: !!r.own, note: r.note || ''}; }
+    try { const r = await api('GET', `${A}/dub/${q(id)}/lines?lang=${q(lc)}`); UI.dubLines = {lang: lc, lines: r.lines || [], editable: r.editable, why: r.why, credits_redo: r.credits_redo, own: !!r.own, note: r.note || '', remaking: !!r.remaking}; }
     catch { UI.dubLines = {lang: lc, lines: (UI.dub.lines || []).map((l, i) => ({n: i + 1, start: l.start, end: l.end, speaker: l.speaker, src: l.text, dst: (l.tr || {})[lc] || ''})), editable: false, why: ''}; }
     if (PAGE === 'dub' && ARG === id) { const keep = ROOT.querySelector(':focus')?.id; draw(); $$('.hv-lt').forEach(t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }); if (keep) $('#' + keep)?.focus(); }
   }
@@ -1552,7 +1720,8 @@ window.HoolaVocal = function (ctx) {
     const set = o => { if (k === 'pod') UI.dlg.pod.file = o; else if (k === 'imp') UI.imp.file = o; else if (k === 'dub') UI.dubNew.file = o; else if (k === 'cl') UI.cl.file = o; };
     set(slot); draw();
     const s = ['dub', 'cl'].includes(k) ? await fileSecs(file) : 0;
-    if (k === 'dub') UI.dubNew.secs = s; if (k === 'cl') { UI.cl.secs = s; UI.cl.out = null; try { UI.cl.before = URL.createObjectURL(file); } catch { /* no preview */ } }
+    if (k === 'dub') { UI.dubNew.secs = s; try { UI.dubNew.preview = URL.createObjectURL(file); } catch { UI.dubNew.preview = ''; } topTools(); }
+    if (k === 'cl') { UI.cl.secs = s; UI.cl.out = null; try { UI.cl.before = URL.createObjectURL(file); } catch { /* no preview */ } }
     try { slot.file_id = await up(file); } catch (e) { slot.err = scrub(e.message); toast(e.message, true); }
     slot.up = false; draw();
     if (k === 'imp' && slot.file_id && PAGE === 'studio' && UI.imp.file === slot) impPreview();
@@ -1658,22 +1827,25 @@ window.HoolaVocal = function (ctx) {
 
   // ------------------------------------------------------------------ the two Studio dialogs: who reads whom, make the audiobook ---
   async function sdOpen(k, back) {
-    const p = UI.proj; if (!p) return;
-    if (!p.id || projDirty()) { if (!await saveProj()) return; }
+    const dubK = ['dvoices', 'ddl', 'dkeep'].includes(k);
+    if (!dubK) { const p = UI.proj; if (!p) return; if (!p.id || projDirty()) { if (!await saveProj()) return; } }
+    if (k === 'dkeep') UI.dubKeep = [...(UI.dub?.keep || [])];
     UI.sd = {k, back: back || document.activeElement, data: null, err: ''};
     const host = document.createElement('div'); host.id = 'hvSd'; host.className = 'hv-vphost';
     host.innerHTML = `<div class="hv-vpscrim" data-a="sdclose" aria-hidden="true"></div><div class="hv-vp hv-sd" role="dialog" aria-modal="true" aria-labelledby="hvSdH"></div>`;
     ROOT.appendChild(host); sdPaint(); host.querySelector('[data-a="sdclose"]:not(.hv-vpscrim)')?.focus();
+    if (dubK) { UI.sd.data = true; dubPosters(); return; }
     try { UI.sd.data = await api('GET', `${A}/project/${k === 'people' ? 'people' : 'check'}?id=${q(UI.proj.id)}`); }
     catch (e) { if (UI.sd) UI.sd.err = scrub(e.message); }
     sdPaint(); fillCovers();
   }
-  function sdClose() { const back = UI.sd?.back, k = UI.sd?.k, inTop = !!back?.closest?.('#hvTopR'); UI.sd = null; $('#hvSd')?.remove(); draw(); readTools();
+  function sdClose() { const back = UI.sd?.back, k = UI.sd?.k, inTop = !!back?.closest?.('#hvTopR'); UI.sd = null; $('#hvSd')?.remove(); draw(); topTools();
     (back?.isConnected ? back : $(`${inTop ? '#hvTopR ' : ''}[data-a="sdopen"][data-k="${k}"]`))?.focus(); }
   function sdPaint() {
     const sd = UI.sd, box = $('#hvSd .hv-vp'); if (!sd || !box) return; const p = UI.proj;
     const fk = document.activeElement?.closest?.('#hvSd [data-a]'), key = fk && `[data-a="${fk.dataset.a}"]${fk.dataset.k ? `[data-k="${CSS.escape(fk.dataset.k)}"]` : ''}${fk.dataset.val ? `[data-val="${CSS.escape(fk.dataset.val)}"]` : ''}`;
-    box.innerHTML = sd.k === 'people' ? sdPeople(p, sd) : sdBook(p, sd);
+    box.innerHTML = sd.k === 'people' ? sdPeople(p, sd) : sd.k === 'book' ? sdBook(p, sd) : sd.k === 'dvoices' ? dvVoices() : sd.k === 'ddl' ? dvDownload() : dvKeep();
+    if (sd.k === 'ddl') dubPosters();
     (key && box.querySelector(key) || box.querySelector('[data-a="sdclose"]'))?.focus();
   }
   function sdPeople(p, sd) {
@@ -1978,19 +2150,44 @@ window.HoolaVocal = function (ctx) {
       case 'export': return act(() => api('POST', `${A}/project/export`, {id: UI.proj.id, format: d.val}), r => { toast('Exported. It is in Your sounds.'); side(); draw(); if (r?.id) download(r.id, d.val === 'srt' || d.val === 'm4b' ? '' : d.val, UI.proj.title); }, b, 'Exporting…');
       case 'rmproj': return confirm('Remove this reading? Sounds already made stay in Your sounds.') && act(() => api('DELETE', `${A}/project?id=${q(id)}`), () => { UI.proj = null; go('studio'); });
       case 'dubrm': UI.dubNew.langs = UI.dubNew.langs.filter(c => c !== d.val); return draw();
-      case 'dubopen': UI.dub = null; UI.dubTab = ''; UI.dubLines = null; return go('dub', id);
-      case 'dubtab': UI.dubTab = d.val; UI.dubLines = null; draw(); dubMedia(); return dubLines(ARG);
-      case 'dubredo': { const n = +d.n; return act(() => api('POST', `${A}/dub/${q(ARG)}/lines/${n}/redo`, {lang: UI.dubTab}), async () => { URLS.clear(); toast(`Line ${n} was made again.`); await loadDub(ARG); }, b); }
-      case 'ownredo': { const first = (UI.dubLines?.lines || []).find(r => r.edited); if (!first) return;
-        if (!confirm('Make the changed lines again? ElevenLabs charges for the seconds it makes again.')) return;
-        return act(() => api('POST', `${A}/dub/${q(ARG)}/lines/${first.n}/redo`, {lang: UI.dubTab}), async r => { toast(`Making ${plural(r?.lines || 1, 'changed line')} again${r?.credits ? ' · ' + cr(r.credits) : ''}.`); await loadDub(ARG); }, b, 'Starting…'); }
-      case 'dubdl': { const L = (UI.dub.langs || []).find(l => l.code === UI.dubTab) || {}, nm = `${(UI.dub.title || 'dub').replace(/\.[a-z0-9]+$/i, '')}-${UI.dubTab}`;
-        if (d.val === 'video') return saveFile(`${A}/audio?id=${q(L.video_id)}`, `${nm}.mp4`);
-        if (d.val === 'mp3') return saveFile(`${A}/audio?id=${q(L.audio_id)}&format=mp3`, `${nm}.mp3`);
-        return saveFile(`${A}/dub/${q(ARG)}/subtitles?lang=${q(UI.dubTab)}&format=${d.val}`, `${nm}.${d.val}`); }
+      case 'dubsw': UI.dubNew[d.k] = !UI.dubNew[d.k]; draw(); return $(`[data-a="dubsw"][data-k="${d.k}"]`)?.focus();
+      case 'dubwrm': UI.dubNew.words.splice(+d.n, 1); draw(); return $('#hvDubW')?.focus();
+      case 'dubcancel': UI.dubNew = {file: null, langs: UI.dubNew.langs, mode: UI.dubNew.mode, keep: UI.dubNew.keep, secs: 0, speakers: 0, check: UI.dubNew.check, words: UI.dubNew.words, preview: ''}; draw(); return topTools();
+      case 'dubopen': UI.dub = null; UI.dubTab = ''; UI.dubLines = null; UI.dubSel = null; UI.dubRead = false; UI.dubUndo = null; UI.dubDl = {what: 'video', on: {}}; return go('dub', id);
+      case 'dubtab': UI.dubTab = d.val; UI.dubLines = null; UI.dubSel = null; UI.dubUndo = null; draw(); dubMediaSet(); return dubLines(ARG);
+      case 'dubread': UI.dubRead = true; UI.dubTab = d.val; UI.dubLines = null; draw(); dubMediaSet(); return dubLines(ARG);
+      case 'dubsel': UI.dubSel = UI.dubSel === +d.n ? null : +d.n; draw(); dubMediaSet(); { const el = $(`[data-a="dubsel"][data-n="${+d.n}"]`); el?.focus(); el?.closest('li')?.scrollIntoView({block: 'nearest'}); } return;
+      case 'dubhearl': return playLine(+d.n);
+      case 'dubsp': return blobUrl(`${A}/dub/${q(ARG)}/speaker?sp=${q(d.val)}`).then(u => play(`sp:${d.val}`, u, `${dubName(UI.dub, d.val)} in the original`), e => toast(e.message, true));
+      case 'dubok': return act(() => api('POST', `${A}/dub/${q(ARG)}/ok`, {lang: d.val}), async r => { UI.dub = r; toast('The lines are being spoken now.'); await dubRefresh(); }, b, 'Starting…');
+      case 'dubremake': if (UI.dub?.mode === 'own' && !confirm('Make the changed lines again? ElevenLabs charges for the seconds it makes again.')) return;
+        return act(() => api('POST', `${A}/dub/${q(ARG)}/remake`, {lang: d.val}), async () => { URLS.clear(); toast('The changed lines are being made again.'); UI.dubUndo = null; await dubRefresh(); }, b, 'Starting…');
+      case 'dubstop': return confirm('Stop this dub? Languages that are made stay.') && act(() => api('POST', `${A}/dub/${q(ARG)}/stop`), () => dubRefresh(), b);
+      case 'dubshort': { const n = +d.n; return act(() => api('POST', `${A}/dub/${q(ARG)}/lines/${n}/shorten`, {lang: UI.dubTab}), async r => { UI.dubUndo = {n, text: r.before}; toast('Shortened. Undo puts the old words back.'); await dubRefresh(); }, b, 'Shortening…'); }
+      case 'dubfast': { const n = +d.n, r0 = (UI.dubLines?.lines || []).find(x => x.n === n); return act(() => api('PUT', `${A}/dub/${q(ARG)}/lines/${n}`, {lang: UI.dubTab, pace: r0?.pace > 1 ? 1.0 : 1.15}), () => dubRefresh(), b); }
+      case 'dubundo': { const u = UI.dubUndo; if (!u) return; return act(() => api('PUT', `${A}/dub/${q(ARG)}/lines/${u.n}`, {lang: UI.dubTab, text: u.text}), async () => { UI.dubUndo = null; await dubRefresh(); }, b); }
+      case 'dubwho': { const n = +d.n, r0 = (UI.dubLines?.lines || []).find(x => x.n === n);
+        return choose(b, {title: 'Who says it', cur: r0?.speaker, list: (UI.dub.people || []).map(p => ({v: p.id, label: p.name, sub: plural(p.lines, 'line')})),
+          onPick: v => act(() => api('PUT', `${A}/dub/${q(ARG)}/lines/${n}`, {lang: UI.dubTab, speaker: v}), () => dubRefresh())}); }
+      case 'dubvoice': { const sp = d.k, cur = ((UI.dub.people || []).find(p => p.id === sp) || {}).voice_id;
+        return choose(b, {title: `Voice for ${dubName(UI.dub, sp)}`, find: 'Search voices', cur, list: voiceList(v => v.ready && v.kind === 'hoola' && v.engine === 'gemini' && !v.gid),
+          onPick: v => act(() => api('PUT', `${A}/dub/${q(ARG)}/speakers`, {voices: {[sp]: v}}), async r => { UI.dub = r; await dubRefresh(); sdPaint(); })}); }
+      case 'dubmenu': return menu(b, [{label: 'Remove this dub', sub: 'The dubbed videos stay in Your sounds', danger: true,
+        run: () => confirm('Remove this dub? The dubbed videos stay in Your sounds.') && act(() => api('DELETE', `${A}/dub/${q(ARG)}`), () => { UI.dub = null; UI.dubs = null; go('dub'); })}]);
+      case 'dldlang': UI.dubDl.on[d.val] = !UI.dubDl.on[d.val]; return sdPaint();
+      case 'dldwhat': UI.dubDl.what = d.val; return sdPaint();
+      case 'dldgo': { const x = UI.dubDl, dd_ = UI.dub, langs = (dd_.langs || []).filter(l => l.status === 'ready' && x.on[l.code]);
+        const ext = langs.length > 1 || ['voices'].includes(x.what) || x.what === 'subs' ? 'zip' : x.what === 'sound' ? 'mp3' : 'mp4';
+        const name = langs.length > 1 ? `${dubBase(dd_)} - ${({video: 'videos', subbed: 'videos with subtitles', sound: 'sound', voices: 'voices', subs: 'subtitles'})[x.what]}.zip`
+          : `${dubBase(dd_)} - ${langs[0]?.name || ''}${x.what === 'subbed' ? ' (subtitles)' : ''}.${ext}`;
+        b.disabled = true; b.textContent = 'Getting it ready…';
+        return saveFile(`${A}/dub/${q(ARG)}/export?what=${q(x.what)}&langs=${q(langs.map(l => l.code).join(','))}`, name).then(() => sdClose()); }
+      case 'dkrm': UI.dubKeep.splice(+d.n, 1); sdPaint(); return $('#hvDkW')?.focus();
+      case 'dksave': return act(() => api('PUT', `${A}/dub/${q(ARG)}/keep`, {words: UI.dubKeep}), async r => { UI.dub = r; sdClose(); toast('Saved. Lines are checked for these words.'); await dubRefresh(); }, b);
       case 'dubmore': { const have = new Set((UI.dub.langs || []).map(l => l.code));
         return choose(b, {title: 'Add a language', find: 'Search languages', cur: '', list: langList(false, 'dub').filter(l => !have.has(l.v)), onPick: v =>
-          act(() => api('POST', `${A}/dub/${q(ARG)}/langs`, {langs: [v]}), r => { toast(`A new dub in ${short(v)} is being made from the same video.`); UI.dub = null; UI.dubTab = ''; UI.dubLines = null; side(); if (r?.id) go('dub', r.id); else draw(); }, b, 'Starting…')}); }
+          act(() => api('POST', `${A}/dub/${q(ARG)}/langs`, {langs: [v]}), r => { side(); if (r?.id && r.id !== ARG) { toast(`A new dub in ${short(v)} is being made from the same video.`); UI.dub = null; UI.dubTab = ''; UI.dubLines = null; go('dub', r.id); }
+            else { toast(`${short(v)} is being added to this dub.`); UI.dub = r; UI.dubTab = v; UI.dubLines = null; draw(); dubLines(ARG); dubPoll(ARG); } }, b, 'Starting…')}); }
       case 'fxloop': UI.fx.loop = !UI.fx.loop; return draw();
       case 'preset': return act(() => api('POST', `${A}/sfx`, {preset: d.val, seed: +UI.seed || 1}), r => { const it = r?.items?.[0] || r; if (it?.id) { UI.fx.out = [it, ...UI.fx.out].slice(0, 8); } side(); draw(); if (it?.id) play(it.id); }, b);
     }
@@ -2060,8 +2257,9 @@ window.HoolaVocal = function (ctx) {
   function onChange(ev) {
     const t = ev.target;
     if (t.dataset?.dubline) { const n = +t.dataset.dubline, text = t.value;
-      return api('PUT', `${A}/dub/${q(ARG)}/lines/${n}`, {lang: UI.dubTab, text}).then(() => { const r = (UI.dubLines?.lines || []).find(x => x.n === n); if (r) { r.dst = text; r.edited = true; }
-        if (UI.dubLines?.own) { toast(`Line ${n} saved. Tap Make the changes when you are done.`); draw(); } else toast(`Line ${n} saved. Redo it to hear the change.`); }).catch(e => toast(e.message, true)); }
+      return api('PUT', `${A}/dub/${q(ARG)}/lines/${n}`, {lang: UI.dubTab, text}).then(() => { UI.dubUndo = null; toast(`Line ${n + 1} saved. Make the changes when you are done.`); return dubRefresh(); }).catch(e => toast(e.message, true)); }
+    if (t.dataset?.dubname) { const sp = t.dataset.dubname, name = t.value.trim(); if (!name) return;
+      return api('PUT', `${A}/dub/${q(ARG)}/speakers`, {names: {[sp]: name}}).then(r => { UI.dub = r; toast('Saved.'); if (!UI.sd) { const keep = ROOT.querySelector(':focus')?.id; draw(); if (keep) $('#' + keep)?.focus(); } }).catch(e => toast(e.message, true)); }
     if (t.dataset?.m) {
       if (t.type === 'checkbox' || t.type === 'range') setM(t.dataset.m, t.type === 'checkbox' ? t.checked : +t.value);
       if (/^UI\.dlg\.cast\.\d+\.name$/.test(t.dataset.m)) return draw();
@@ -2070,6 +2268,9 @@ window.HoolaVocal = function (ctx) {
     }
   }
   function onKey(ev) {
+    if (ev.key === 'Enter' && (ev.target.dataset?.dubword || ev.target.dataset?.dkword)) { ev.preventDefault(); const w = ev.target.value.trim(); if (!w) return;
+      const list = ev.target.dataset.dubword ? UI.dubNew.words : UI.dubKeep; if (!list.some(x => x.toLowerCase() === w.toLowerCase()) && list.length < 30) list.push(w);
+      if (ev.target.dataset.dubword) { draw(); $('#hvDubW')?.focus(); } else { sdPaint(); $('#hvDkW')?.focus(); } return; }
     if (ev.target.closest?.('[data-drag="chatw"]') && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(ev.key)) { ev.preventDefault();
       const sp = $('#hvSplit'), max = sp ? sp.clientWidth - 320 : 1400;
       UI.cw = ev.key === 'Home' ? 380 : ev.key === 'End' ? max : UI.cw + (ev.key === 'ArrowLeft' ? -40 : 40); return setWidth('open', Math.max(380, UI.cw)); }
@@ -2120,8 +2321,9 @@ window.HoolaVocal = function (ctx) {
       case 'dialogue': return;
       case 'import': return impPreview(btn);
       case 'dub': { const n = UI.dubNew;
-        return act(() => api('POST', `${A}/dub`, {file_id: n.file.file_id, langs: n.langs, mode: n.mode, keep_sound: !!n.keep, ...(n.mode === 'matched' && n.speakers ? {speakers: n.speakers} : {})}),
-          r => { UI.dubNew = {file: null, langs: [], mode: n.mode, keep: n.keep, secs: 0, speakers: n.speakers}; UI.dub = null; UI.dubLines = null; go('dub', r.id); }, btn, 'Starting…'); }
+        return act(() => api('POST', `${A}/dub`, {file_id: n.file.file_id, langs: n.langs, mode: n.mode, keep_sound: !!n.keep, keep: n.words || [], check: n.mode === 'matched' && !!n.check,
+          ...(n.mode === 'matched' && n.speakers ? {speakers: n.speakers} : {})}),
+          r => { UI.dubNew = {file: null, langs: [], mode: n.mode, keep: n.keep, secs: 0, speakers: n.speakers, check: n.check, words: [], preview: ''}; UI.dub = null; UI.dubLines = null; UI.dubs = null; UI.dubRead = false; go('dub', r.id); }, btn, 'Starting…'); }
       case 'change': return act(() => api('POST', `${A}/change`, {file_id: UI.chg.file.file_id, voice: UI.chg.voice, denoise: !!UI.chg.denoise}), r => { UI.chg.out = r; side(); draw(); if (r?.id) play(r.id); }, btn, 'Changing…');
       case 'cleanup': { const c = UI.cl, prem = ready('eleven');
         return act(() => api('POST', `${A}/cleanup`, {file_id: c.file.file_id, denoise: !!c.denoise, voice: !!c.echo, silence: !!c.silence, level: !!c.level, people: prem && !!c.people, music: prem && !!c.music}),
