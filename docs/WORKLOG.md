@@ -3588,3 +3588,6 @@ Every Hoola Route page walked in Chromium at 1440 / 390 px, light + dark; backen
 steps and 4xx/5xx web requests counted as done, Runs filter after the limit, success shown for refused run actions, wrong approval
 question, stale failures in Needs you, never-run routes 'Working'; added webhook address + delete route; phone cards / top bar /
 vertical flow, if-else + loop drawn, plain step rows, in-page Change it, header On / Off, search. 6 tests incl. a browser walk.
+
+Task ID: v0.999.145 PAYMENTS F8
+F8 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/payments.py, agent/paydesk_tools.py (tool 643), fin/card_f8.py, /api/fin/payments. tests/test_fin_f8.py 5 pass; card 6/6.

@@ -317,7 +317,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                       "never": ["File, send to a client or pay - your named people do",
                                 "Show one client anything of another",
                                 "Sign for a person or write an adviser's recommendation"]},
-    # v0.999.144 F8 PAYMENTS (docs/FINANCE_GLOBAL_PLAN.md employee 8; merchants and payment firms, any country)
+    # v0.999.145 F8 PAYMENTS (docs/FINANCE_GLOBAL_PLAN.md employee 8; merchants and payment firms, any country)
     "payments_desk": {"name": "Payments", "live": True, "icon": "receipt", "group": FIN_GROUP,
                       "pitch": "Your payments, checked: chargeback responses built from the network's reason code, every gateway reconciled against your orders and your bank, fees against your contract, failed payments, seller payouts, export money; for payment firms, onboarding, merchant risk, safeguarding and payment-message checks.",
                       "does": ["Chargeback response packs for Visa, Mastercard and Amex reason codes, with the evidence still missing named",

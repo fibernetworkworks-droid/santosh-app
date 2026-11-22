@@ -10068,3 +10068,13 @@ Page faults fixed (route.js / route.css):
 Tests: `server/tests/test_v0999_128_route_check.py` 6 (code step fails, web 503 fails, SQL filter, the API end to end incl. 409 /
 address / delete / needs, page source pins, a Chromium walk at 390 + 1440). The 13 reds in crawl jobs / officehours / magic21 / crew
 fail the same on untouched main. NOT VERIFIED on her server.
+
+## v0.999.145 PAYMENTS F8 (built as 0.999.144; their 0.999.144 took that number - REBASE PROTOCOL, both kept) — Payments
+
+Owner: "GO F8" on docs/FINANCE_GLOBAL_PLAN.md (phase F8).
+
+- `server/app/fin/desks/payments.py` - dispute (reason-code table, evidence split, verdict, deadline, letter, Visa compelling evidence), prevention, reconcile, fee_audit, dunning, payouts, export, kyb, merchant_risk, safeguarding, iso20022, exceptions, returns, reasons; submit / charge / pay refused.
+- `agent/paydesk_tools.py` tool `payments_desk` (registry 642 -> 643); labels, admit family paydesk, voice VOICE_VIA_KAAM, hire.py Hub entry, deskroom Payments lane, employees.js; `/api/fin/payments/{part}`.
+- `fin/card_f8.py` - 16 reason codes x 3 schemes, compelling evidence with known answers, 3 months x 3 gateways reconciled; 8 mutations each fail it.
+- Tests: `tests/test_fin_f8.py` 5; pins 643 / 164 / 107.
+- NOT VERIFIED: reason codes and rules from memory; no connectors; not on her server.
