@@ -582,6 +582,10 @@ def lines(card: dict) -> list[str]:
            + (f", blocked by the site + said so: {s['blocked_said']}" if s.get("blocked_said") else "")
            + (f", 'are you human' check handed to her: {s['human_check']}" if s.get("human_check") else "")
            + (f" - {card['note']}" if card.get("note") else "")]
+    if card.get("trial"):     # v0.999.136 P8 the verdict on Hoola's lessons, right in the status
+        lv = card.get("lessons") or {}
+        out.append(f"  lessons: {lv.get('verdict', 'not judged')} - {lv.get('why', 'the trial did not finish')}"
+                   + (f" ({len(lv.get('lessons') or [])} lesson(s))" if lv.get("lessons") else ""))
     if card.get("not_run"):
         out.append(f"  not run yet: {', '.join(card['not_run'])}")
     for g, v in (s.get("groups") or {}).items():
