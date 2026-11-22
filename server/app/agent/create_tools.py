@@ -32,7 +32,7 @@ CREATE_TOOLS = [
         "In the Hoola Vocal page's own chat only (v0.999.90): action=voice makes speech on her Vocal shelf in ANY language - "
         "text (feelings in square brackets allowed: [warm] [whispers] [laughs] [sighs] [excited] [serious] [slowly] [cheerful] "
         "[pause]), voice = a voice id from the Vocal list below (hv_... / gx_... / ev_... / mv_...) or empty, language = a "
-        "language code or name or 'auto', style, speed 0.7-1.3, takes 1-3, engine auto|gemini|eleven; action=dialogue: "
+        "language code or name or 'auto', style, speed 0.7-1.3, takes 1-4, engine auto|gemini|eleven; action=dialogue: "
         "lines [{speaker, text}] + cast {speaker: voice id}, language; action=sound: a sound effect from words, prompt, "
         "seconds 0-30, loop, takes 1-4. Each take appears in the chat by itself; never say it is ready."),
      "input_schema": {"type": "object", "properties": {

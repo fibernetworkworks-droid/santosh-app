@@ -5855,6 +5855,8 @@ from .interactive.console import make_hub_router as _interactive_hub_router  # n
 app.include_router(_interactive_hub_router(require_key, current_tenant))   # v0.772 HOOLA INTERACTIVE: the twelve pages (brand, templates, translate, trash...)
 from .vocal.api import make_router as _vocal_router  # noqa: E402
 app.include_router(_vocal_router(require_key, current_tenant))   # v0.787 HOOLA VOCAL: the voice studio (speech, dialogue, readings, her voices, effects)
+from .vocal.api import make_public_router as _vocal_public  # noqa: E402
+app.include_router(_vocal_public())   # v0.999.102: the one-time stream link + her own apps' doors (app key)
 from .cinema.api import make_router as _cinema_router  # noqa: E402
 app.include_router(_cinema_router(require_key, current_tenant))   # v0.807 HOOLA CINEMA: the Create studio's Cinema section
 
