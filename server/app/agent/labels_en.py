@@ -482,6 +482,8 @@ LABELS_EN = {
     'institution_desk': "Working on the institution's controls",
     'investments_desk': "Working on the investments",
     'markets_desk': "Working on the trades and positions",
+    'community_finance': "Working on the group and community money",
+    'digital_assets': "Working on the digital assets",
     'pathyakram': 'Making a paper or plan',
     'pathyakram_dekho': 'Checking a paper or plan',
     'patrakar': 'Working on the news',

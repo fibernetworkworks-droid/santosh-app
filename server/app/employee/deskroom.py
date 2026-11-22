@@ -38,7 +38,8 @@ DEPTS: list[dict[str, Any]] = [
                {"id": "risk", "name": "Markets & credit", "keys": ["risk_desk", "credit_lending"]},
                {"id": "payments", "name": "Payments", "keys": ["payments_desk"]},
                {"id": "institution", "name": "Crime, compliance, risk, audit", "keys": ["institution_desk"]},
-               {"id": "markets", "name": "Investments & markets", "keys": ["investments_desk", "markets_desk"]}]},
+               {"id": "markets", "name": "Investments & markets", "keys": ["investments_desk", "markets_desk"]},
+               {"id": "community", "name": "Community, Islamic & digital assets", "keys": ["community_finance", "digital_assets"]}]},
     {"id": "retail", "group": H.RETAIL_GROUP, "name": "Retail & E-commerce", "icon": "retail",
      "line": "A shop and online-seller copilot: today's sales, reorder, margin and MRP checks, growth plans and trust checks. "
              "It prepares; you set prices and place orders.",

@@ -10270,3 +10270,32 @@ F10 of docs/FINANCE_GLOBAL_PLAN.md: employee 9 (the parts F7 did not build) and 
   not carried, custodian last line wins, confirm tolerance ignored, settled counted as failed, affirm allowed, zero line breaks).
 - Tests `server/tests/test_fin_f10.py` (6).
 - NOT VERIFIED: the country methods and holding periods are from memory; no real broker or custodian file has been read; not run on her server.
+
+
+## v0.999.152 COMMUNITY & DIGITAL F11 (owner: "F11 (Community & Inclusive, Islamic, Digital Assets)")
+
+F11 of docs/FINANCE_GLOBAL_PLAN.md: employees 17 (Community & Inclusive Finance, with Islamic personal finance and SME structures) and 18
+(Digital Assets).
+
+- `fin/desks/community.py` + tool `community_finance` (family commfin): cashbook (spoken lines; unread lines listed), group (any savings
+  tradition; savings in amounts or shares, fines, social fund, loans only from the box, interest first, counted box vs book, share-out to
+  the cent by savings with largest-remainder cents), rosca (plain and auction chit: dividend, organiser fee, IRR per member, safety signs),
+  mfi (true yearly rate, repayments vs income, more than two lenders), field (collection rate, arrears, PAR30), farmer (margin, break-even,
+  crop claim), remit, mobile_money, zakat (nisab 85 g gold / 595 g silver at her prices, purity, jewellery by school, debts, stock,
+  receivables, shares at her scholar's share), islamic (murabaha, ijara, diminishing musharaka, mudaraba; compliance stays with her board),
+  styles (group traditions by country).
+- `fin/desks/digital.py` + tool `digital_assets` (family digiasset): gains (events -> trades through investments.lots; swaps as a sale and
+  a buy; income recorded; own transfers ignored; IN no loss set-off, DE exempt after a year, US no wash sale for crypto, GB pooling, CA
+  ACB + superficial loss, AU 12 months), wallet (bech32 / bech32m and base58check, Tron, EVM shape only, poisoning look-alikes, drainer
+  signs), stablecoin, reserve, custody, travel_rule, token_dd, surveillance, returns. Seed-phrase / private-key arguments refused.
+- Refusals: collect / lend / send / transfer / pay / fatwa / certify (community) and sign / send / transfer / withdraw / broadcast / buy /
+  sell / order (digital) raise L.Refused.
+- Registrations: agent/tools.py, labels_en, voice list, deskroom lane, employees.js, admit families, hire.py entries, fin/api.py routes.
+  Registry 648, Hub catalogue 169, desk keys 112.
+- `fin/card_f11.py`: savings groups in KE / UG / IN / MX against the card's own books (cash, savings, owed, balance identity, planted wrong
+  counts, share-out cents, refusals, a part repayment interest-first); 13 zakat cases by hand (SCHOLAR_REVIEWED = False until a named
+  scholar signs it off); crypto hand cases in 6 countries, random histories on the cost laws, real and changed addresses. 11/11; 19 of 19
+  planted bugs caught.
+- Tests `server/tests/test_fin_f11.py` (6).
+- NOT VERIFIED: no scholar has reviewed the zakat set; country rules from memory; no real group record or exchange file read; not run on
+  her server.
