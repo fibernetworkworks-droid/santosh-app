@@ -93,6 +93,9 @@ Widget _results(BuildContext context, VocalStore store, VocalPlayer player, List
 }
 
 // ================================================================================================ Voice changer
+// v0.999.158 (design canvas claude.ai/artifact/HGbVJ4bghAiMFg9QyFCh2P): her recording, the voice, room noise, how close
+// to the voice and how much of her feeling stays; Before / After on the result (her own recording is kept 30 days); her
+// recent changes, each one changed again into another voice from the kept recording.
 class VocalChangerPage extends StatefulWidget {
   const VocalChangerPage({super.key, required this.store, required this.player, this.conv = '', this.embedded = true});
   final VocalStore store;
@@ -105,10 +108,11 @@ class VocalChangerPage extends StatefulWidget {
 
 class _VocalChangerPageState extends State<VocalChangerPage> {
   VocalFile? _file;
-  String _voice = '';
+  String _voice = '', _hear = 'After';
   bool _denoise = true, _busy = false;
+  double _close = 75, _feel = 50;
   Map<String, dynamic> _quote = const {};
-  List<Map<String, dynamic>> _made = [];
+  Map<String, dynamic>? _out;
   VocalStore get store => widget.store;
 
   @override
@@ -123,15 +127,20 @@ class _VocalChangerPageState extends State<VocalChangerPage> {
       return;
     }
     try {
-      final q = await store.app.api?.vocalQuote({'job': 'change', 'seconds': (_file?.seconds ?? 0) > 0 ? _file!.seconds : 60});
+      final q = await store.app.api?.vocalQuote({'job': 'change', 'seconds': (_file?.seconds ?? 0) > 0 ? _file!.seconds : 60, 'voice': _voice});
       if (q != null && mounted) setState(() => _quote = q);
     } catch (_) {}
   }
 
   Future<void> _pickVoice() async {
     final id = await vocalPickVoice(context, store, widget.player, picked: _voice);
-    if (id != null && mounted) setState(() => _voice = id);
+    if (id != null && mounted) {
+      setState(() => _voice = id);
+      _requote();
+    }
   }
+
+  Map<String, dynamic> get _settings => {'denoise': _denoise, 'closeness': _close.round(), 'feel': _feel.round()};
 
   Future<void> _go() async {
     final f = _file;
@@ -143,14 +152,84 @@ class _VocalChangerPageState extends State<VocalChangerPage> {
         made = crList(VocalStore.debugData!['speech']).take(1).toList();
       } else {
         final fid = await vocalUpload(store, widget.conv, f);
-        made = vocalMade(await store.app.api!.vocalChange({'file_id': fid, 'voice': _voice, 'denoise': _denoise}));
+        made = vocalMade(await store.app.api!.vocalChange({'file_id': fid, 'voice': _voice, ..._settings}));
         unawaited(store.load());
       }
-      if (mounted) setState(() => _made = [...made, ..._made]);
+      if (mounted && made.isNotEmpty) setState(() { _out = made.first; _hear = 'After'; });
     } catch (e) {
       if (mounted) vocalError(context, store, e);
     }
     if (mounted) setState(() => _busy = false);
+  }
+
+  /// Again into another voice, from her recording kept beside an earlier change; the price is asked first.
+  Future<void> _another(Map<String, dynamic> h) async {
+    final v = await vocalPickVoice(context, store, widget.player, picked: '');
+    if (v == null || !mounted) return;
+    final api = store.app.api;
+    if (api == null) return;
+    try {
+      final q = await api.vocalQuote({'job': 'change', 'seconds': (h['src_secs'] ?? h['seconds'] ?? 60), 'voice': v});
+      final cr = vocalCredits(q);
+      if (!mounted) return;
+      final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+        title: const Text('Change it into another voice?'),
+        content: Text('“${crS(h['title'])}” in ${vocalVoiceName(store, v)}${cr.isEmpty ? '' : '. About $cr'}.'),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Not now')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Change it'))]));
+      if (ok != true || !mounted) return;
+      setState(() => _busy = true);
+      final made = vocalMade(await api.vocalChange({'source_of': crS(h['id']), 'voices': [v], 'denoise': h['denoise'] != false,
+        'closeness': _close.round(), 'feel': _feel.round()}));
+      unawaited(store.load());
+      if (mounted && made.isNotEmpty) setState(() { _out = made.first; _voice = v; _hear = 'After'; });
+    } catch (e) {
+      if (mounted) vocalError(context, store, e);
+    }
+    if (mounted) setState(() => _busy = false);
+  }
+
+  Future<void> _more(Map<String, dynamic> h) async {
+    final pick = await vocalMore(context, crS(h['title']), [if (crS(h['src']).isNotEmpty) 'Into another voice', 'Download', 'Delete']);
+    if (!mounted || pick == null) return;
+    if (pick == 'Into another voice') return _another(h);
+    if (pick == 'Download') return vocalShare(context, store.app, h, store: store);
+    if (pick == 'Delete' && await vocalDeleteSound(context, store, h) && mounted && crS(_out?['id']) == crS(h['id'])) setState(() => _out = null);
+  }
+
+  Widget _slider(HoolaColors c, String label, String left, String right, double v, ValueChanged<double> on) =>
+      Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        VocalLabel(label),
+        Semantics(label: label, value: '${v.round()} percent', child: Slider(value: v, min: 0, max: 100, divisions: 20, activeColor: CrHue.voice.b, onChanged: on)),
+        Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: Row(children: [
+          Text(left, style: HoolaType.small(c).copyWith(color: c.ink3)), const Spacer(), Text(right, style: HoolaType.small(c).copyWith(color: c.ink3))])),
+      ]);
+
+  Widget _hearBox(BuildContext context, HoolaColors c, Map<String, dynamic> h) {
+    final p = widget.player, before = _hear == 'Before', kept = crS(h['src']).isNotEmpty, id = crS(h['id']);
+    final key = before ? 'chgsrc:$id' : id;
+    return VocalBox(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      VocalTabs(tabs: const ['Before', 'After'], picked: _hear, onPick: (v) => setState(() => _hear = v)),
+      const SizedBox(height: 12),
+      Row(children: [
+        VocalPlayButton(label: before ? 'Play your own recording' : 'Play the new voice', playing: p.playing(key), loading: p.busy(key),
+            size: 48, onTap: () {
+              if (before && !kept) return;
+              p.toggle(context, key, () => before ? store.app.api!.vocalChangeSource(id) : store.app.api!.vocalAudio(id), ext: 'wav');
+            }),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(before ? 'You' : crS(h['voice_name']).isEmpty ? 'The new voice' : crS(h['voice_name']), style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w600)),
+          Text(before && !kept ? 'Your own recording is no longer kept.' : 'Same words, same timing.', style: HoolaType.small(c).copyWith(color: c.ink3)),
+        ])),
+      ]),
+      const SizedBox(height: 12),
+      Row(children: [
+        Expanded(child: VocalChip(label: 'Download', onTap: () => vocalShare(context, store.app, h, store: store))),
+        const SizedBox(width: 8),
+        if (kept) Expanded(child: VocalChip(label: 'Other voices', onTap: () => _another(h))),
+      ]),
+    ]));
   }
 
   @override
@@ -160,27 +239,50 @@ class _VocalChangerPageState extends State<VocalChangerPage> {
       builder: (context, _) {
         final c = HoolaColors.of(context);
         final credits = vocalCredits(_quote);
+        final out = _out == null ? null : store.history.firstWhere((x) => crS(x['id']) == crS(_out!['id']), orElse: () => _out!);
+        final recent = store.history.where((x) => crS(x['kind']) == 'change' && crS(x['id']) != crS(out?['id'])).take(3).toList();
         return Column(children: [
           Expanded(
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 24), children: [
-              Text('Say it your way; it comes out in another voice with your timing and feeling.',
+              Text('Say it your way. It comes back in another voice, with your timing and feeling.',
                   style: HoolaType.small(c).copyWith(fontSize: 14, color: c.ink2)),
               const SizedBox(height: 12),
               _Source(file: _file, what: 'change', onFile: (f) {
-                setState(() => _file = f);
+                setState(() { _file = f; _out = null; });
                 _requote();
               }),
               const SizedBox(height: 12),
               VocalRows([('Into', _voice.isEmpty ? 'Choose a voice' : vocalVoiceName(store, _voice), _pickVoice)]),
               const SizedBox(height: 10),
-              CrSwitch(title: 'Remove room noise first', sub: 'A cleaner recording changes better.', value: _denoise,
+              CrSwitch(title: 'Remove room noise first', sub: 'Fans, traffic, echo.', value: _denoise,
                   onChanged: (v) => setState(() => _denoise = v)),
-              _results(context, store, widget.player, _made, 'Changed',
-                  (t) => setState(() => _made = _made.where((x) => crS(x['id']) != crS(t['id'])).toList())),
+              const SizedBox(height: 6),
+              _slider(c, _voice.isEmpty ? 'How close to the voice' : 'How close to ${vocalVoiceName(store, _voice).split(' ').first}',
+                  'More of you', 'All the voice', _close, (v) => setState(() => _close = v)),
+              _slider(c, 'Keep my feeling', 'Even', 'Every rise and laugh', _feel, (v) => setState(() => _feel = v)),
+              if (out != null) ...[
+                const SizedBox(height: 16),
+                const VocalLabel('Hear the difference'),
+                _hearBox(context, c, out),
+              ],
+              if (recent.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const VocalLabel('Recent changes'),
+                VocalBox(child: Column(children: [
+                  for (var i = 0; i < recent.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 8),
+                    VocalTakeRow(store: store, player: widget.player, item: recent[i], name: crS(recent[i]['title']).isEmpty ? 'Change' : crS(recent[i]['title']),
+                        note: crS(recent[i]['voice_name']), onMore: () => _more(recent[i])),
+                  ],
+                ])),
+              ],
+              const SizedBox(height: 12),
+              Text('Only the voice changes. Change only your own voice, or one you have the right to use. Your own recording is kept beside the change for 30 days.',
+                  style: HoolaType.small(c).copyWith(color: c.ink3)),
             ]),
           ),
           VocalDock(
-            note: 'Your own voice works when it was made on the premium engine; Hoola says so when it cannot.',
+            note: 'Nothing is spent until you tap.',
             child: VocalPill(label: credits.isEmpty ? 'Change it' : 'Change it · $credits', busy: _busy,
                 onTap: _file == null || _voice.isEmpty ? null : _go),
           ),

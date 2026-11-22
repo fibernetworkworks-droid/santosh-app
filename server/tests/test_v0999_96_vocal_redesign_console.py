@@ -70,7 +70,7 @@ def overview(broke=False):
 
 
 PAGES = [("chat", "nothing is spent until you send"), ("speech", "Add a tone"), ("dialogue", "How it sounds"), ("studio", "The Lighthouse Keeper"),
-         ("dub", "product-tour"), ("voices", "Meera"), ("mine", "Make another voice"), ("changer", "Record here"), ("cleanup", "Take the voice out of music"),
+         ("dub", "product-tour"), ("voices", "Meera"), ("mine", "Make another voice"), ("changer", "Say it your way"), ("cleanup", "Take the voice out of music"),
          ("sfx", "Quick game sounds"), ("sounds", "Shop podcast, episode 3"), ("dict", "Mi-thaas"), ("settings", "What things cost")]
 
 CHECKS = """() => {
@@ -355,10 +355,10 @@ def test_speech_changer_credits_and_create_voice(arena_server):  # noqa: F811
 
     # the voice changer records in the page: MediaRecorder -> upload -> /change, into her own voice on ElevenLabs
     page_to(pg, "changer")
-    pg.locator("#hvRoot [data-a='pickinto']").click()
+    pg.locator("#hvRoot [data-a='chgpick']").click()
     assert "My voice" in pg.locator(".hmenu").text_content()
     old = pg.locator(".hmenu .mi", has_text="Old storyteller")
-    assert old.get_attribute("aria-disabled") == "true" and "needs a voice on ElevenLabs" in old.text_content()
+    assert old.get_attribute("aria-disabled") == "true" and "only with voices on ElevenLabs" in old.text_content()
     pg.locator(".hmenu .mi", has_text="My voice").click()
     pg.locator("#hvRoot [data-a='rec'][data-k='chg']").click()
     pg.wait_for_selector("#hvRoot [data-a='recstop'][data-k='chg']")
@@ -367,7 +367,7 @@ def test_speech_changer_credits_and_create_voice(arena_server):  # noqa: F811
     pg.wait_for_function("() => !document.querySelector('[data-qbtn=chg]').disabled", timeout=10000)
     assert "recording-chg." in pg.locator("#hvView").text_content()
     pg.locator("#hvRoot [data-qbtn='chg']").click()
-    pg.wait_for_selector("#hvView .hv-takecard")
+    pg.wait_for_selector("#hvView .hv-chgab [data-a='chgplay']")
     assert st["change"] and st["change"][0]["file_id"].startswith("f_up") and st["change"][0]["voice"] == "v_mine"
 
     # the dubbing editor: lines from /lines, a too-long line warned, subtitles in the download list

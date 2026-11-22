@@ -1442,6 +1442,15 @@ def _seconds_of(path: str) -> float:
         return 0.0
 
 
+def _wav_sizes(b: bytes) -> bytes:
+    """ffmpeg writing WAV into a pipe cannot go back to fill in the sizes (it leaves 0xFFFFFFFF), so players and engines
+    read a wrong length: the RIFF and data sizes are set from the real bytes."""
+    i = b.find(b"data", 12)
+    if b[:4] != b"RIFF" or i < 0:
+        return b
+    return b"RIFF" + (len(b) - 8).to_bytes(4, "little") + b[8:i + 4] + (len(b) - i - 8).to_bytes(4, "little") + b[i + 8:]
+
+
 def _for_changer(data: bytes) -> tuple[bytes, str]:
     """A recording made in the page (webm / ogg / m4a from the browser's recorder) or any upload -> what the voice changer
     is sent. WAV and MP3 go as they are; everything else is turned into a 44.1 kHz mono WAV by ffmpeg first."""
@@ -1456,15 +1465,14 @@ def _for_changer(data: bytes) -> tuple[bytes, str]:
                         "-sample_fmt", "s16", "-f", "wav", "pipe:1"], input=data, capture_output=True, timeout=300)
     if r.returncode or not r.stdout:
         raise VocalError("That recording could not be read. Record again, or upload a WAV or MP3 file.")
-    return r.stdout, "recording.wav"
+    return _wav_sizes(r.stdout), "recording.wav"
 
 
-def change(tenant: str, path: str, voice: str, denoise: bool = True, name: str = "") -> dict[str, Any]:
-    """Her recording spoken again in another voice, keeping the timing and feeling. Voices on ElevenLabs only: the
-    Premium voices, voices added from the shared library, and her own voices that live on ElevenLabs."""
-    if not EL.ready():
-        raise VocalError("The voice changer needs an ElevenLabs key on the server.")
-    d = _load(tenant)
+CHG_MAX = 3                 # voices one recording can be changed into at once
+CHG_SRC_DAYS = 30           # her own recording is kept beside its changes this long, so Before plays and it can change again
+
+
+def _chg_voice(d: dict[str, Any], voice: str) -> dict[str, Any]:
     v = _voice(d, voice)
     if _engine_of(v) != "eleven":
         if v.get("kind") in ("clone", "design", "remix"):
@@ -1472,22 +1480,158 @@ def change(tenant: str, path: str, voice: str, denoise: bool = True, name: str =
             raise VocalError(f"{v.get('name') or 'This voice'} lives on {where}, and the voice changer works only with "
                              "voices on ElevenLabs. Choose a Premium voice, or one added from the shared library.")
         raise VocalError("The voice changer works with Premium voices. Choose a Premium voice.")
+    return v
+
+
+def _pct(x: Any) -> float | None:
+    if x is None or x == "":
+        return None
+    try:
+        return max(0.0, min(100.0, float(x)))
+    except (TypeError, ValueError):
+        raise VocalError("The settings must be numbers from 0 to 100.") from None
+
+
+def _chg_settings(closeness: Any, feel: Any) -> dict[str, float]:
+    """How close to the voice (0-100) -> similarity_boost 0-1; keep my feeling (0-100) -> stability 1-0. The defaults
+    (75, 50) are ElevenLabs' own defaults, so leaving the sliders alone changes nothing."""
+    c, f = _pct(closeness), _pct(feel)
+    out = {}
+    if c is not None:
+        out["similarity_boost"] = round(c / 100, 2)
+    if f is not None:
+        out["stability"] = round(1 - f / 100, 2)
+    return out
+
+
+def _cut(data: bytes, start: float, end: float) -> bytes:
+    """Only the part she marked, as a 44.1 kHz mono WAV."""
+    if not shutil.which("ffmpeg"):
+        raise VocalError("ffmpeg is not installed on this server, so only a whole recording can be changed.")
+    r = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-ss", f"{start:.2f}", "-to", f"{end:.2f}",
+                        "-vn", "-ac", "1", "-ar", "44100", "-sample_fmt", "s16", "-f", "wav", "pipe:1"],
+                       input=data, capture_output=True, timeout=300)
+    if r.returncode or len(r.stdout) < 1000:
+        raise VocalError("That part of the recording could not be cut. Use all of it, or record again.")
+    return _wav_sizes(r.stdout)
+
+
+def _chg_prepare(path: str, start: Any, end: Any) -> tuple[bytes, str, float, list[float] | None]:
     data = Path(path).read_bytes()
     if len(data) > 50 * 1024 * 1024:
         raise VocalError("Up to 50 MB at a time.")
     secs = _seconds_of(path)
-    if secs > 300:
-        raise VocalError("Up to 5 minutes at a time. Cut the recording into parts.")
-    data, fname = _for_changer(data)
-    need_credits(tenant)
     try:
-        out = EL.change(data, fname, v.get("eid") or v["id"].removeprefix("ev_"), bool(denoise))
-    except EL.ElevenError as e:
-        raise VocalError(str(e)) from None
-    return _keep(tenant, out, "wav", {"kind": "change", "title": _clean(name, 60) or f"In {v['name']}'s voice", "text": "",
-                                      "voice": v["id"], "voice_name": v["name"], "lang": "", "chars": 0,
-                                      "seconds": wav_seconds(out), "engine": "eleven",
-                                      "credits": EN.quote("change", seconds=secs, engine="eleven")["credits"]})
+        a, b = max(0.0, float(start or 0)), float(end or 0)
+    except (TypeError, ValueError):
+        raise VocalError("The start and end of the part must be numbers of seconds.") from None
+    trim = None
+    if b and secs and b > secs:
+        b = secs
+    if a > 0 or (b and secs and b < secs - 0.05):
+        b = b or secs
+        if b - a < 1:
+            raise VocalError("Mark at least one second of the recording.")
+        data, secs, trim = _cut(data, a, b), b - a, [round(a, 2), round(b, 2)]
+    if secs > 300:
+        raise VocalError("Up to 5 minutes at a time. Mark a shorter part, or cut the recording into parts.")
+    data, fname = _for_changer(data)
+    return data, fname, secs, trim
+
+
+def change_source(tenant: str, hid: str) -> tuple[Path, dict[str, Any]]:
+    """Her own recording kept beside a change (the part she marked, as it was sent)."""
+    h = next((x for x in _load(tenant)["history"] if x["id"] == hid), None)
+    src = str((h or {}).get("src") or "")
+    f = _home(tenant) / "sources" / f"{src}.{(h or {}).get('src_ext', 'wav')}"
+    if not h or h.get("kind") != "change" or not re.fullmatch(r"cs_[0-9a-f]{12}", src) or not f.is_file():
+        raise VocalError("Your own recording for this change is no longer kept.")
+    return f, h
+
+
+def change(tenant: str, path: str, voice: str, denoise: bool = True, name: str = "", start: Any = 0, end: Any = 0,
+           closeness: Any = None, feel: Any = None) -> dict[str, Any]:
+    """Her recording spoken again in another voice, keeping the timing and feeling. Voices on ElevenLabs only: the
+    Premium voices, voices added from the shared library, and her own voices that live on ElevenLabs."""
+    out = change_many(tenant, path, [voice], denoise, name, start, end, closeness, feel)
+    if not out["items"]:
+        raise VocalError(out["failed"][0]["why"] if out["failed"] else "The voice changer did not answer.")
+    return out["items"][0]
+
+
+def change_many(tenant: str, path: str, voices: Any, denoise: bool = True, name: str = "", start: Any = 0, end: Any = 0,
+                closeness: Any = None, feel: Any = None, source_of: str = "") -> dict[str, Any]:
+    """One recording changed into up to three voices, each changed and priced on its own. Her recording (the part she
+    marked) is kept beside the changes for CHG_SRC_DAYS days."""
+    if not EL.ready():
+        raise VocalError("The voice changer needs an ElevenLabs key on the server.")
+    ids = [str(v) for v in (voices if isinstance(voices, list) else [voices]) if v]
+    ids = list(dict.fromkeys(ids))
+    if not ids:
+        raise VocalError("Choose the voice to change into.")
+    if len(ids) > CHG_MAX:
+        raise VocalError(f"Up to {CHG_MAX} voices at a time.")
+    d = _load(tenant)
+    vs = [_chg_voice(d, v) for v in ids]
+    settings = _chg_settings(closeness, feel)
+    home = _home(tenant)
+    if source_of:                       # again, from the recording kept beside an earlier change
+        f, old = change_source(tenant, source_of)
+        data, fname, secs, trim = f.read_bytes(), f.name.replace(old["src"], "recording"), float(old.get("src_secs") or _seconds_of(str(f))), old.get("trim")
+        sid, sext = old["src"], old.get("src_ext", "wav")
+    else:
+        data, fname, secs, trim = _chg_prepare(path, start, end)
+        sid, sext = _id("cs"), fname.rsplit(".", 1)[-1]
+    need_credits(tenant)
+    (home / "sources").mkdir(parents=True, exist_ok=True)
+    srcf = home / "sources" / f"{sid}.{sext}"
+    until = datetime.fromtimestamp(time.time() + CHG_SRC_DAYS * 86400, timezone.utc).isoformat(timespec="seconds")
+    items: list[dict[str, Any]] = []
+    failed: list[dict[str, str]] = []
+    for v in vs:
+        try:
+            out = EL.change(data, fname, v.get("eid") or v["id"].removeprefix("ev_"), bool(denoise), settings)
+        except EL.ElevenError as e:
+            failed.append({"voice": v["id"], "name": v["name"], "why": str(e)})
+            continue
+        if not srcf.is_file():
+            srcf.write_bytes(data)
+        title = _clean(name, 60) or f"In {v['name']}'s voice"
+        items.append(_keep(tenant, out, "wav", {"kind": "change", "title": title, "text": "", "voice": v["id"], "voice_name": v["name"],
+                                                 "lang": "", "chars": 0, "seconds": wav_seconds(out), "engine": "eleven",
+                                                 "credits": EN.quote("change", seconds=secs, engine="eleven")["credits"],
+                                                 "src": sid, "src_ext": sext, "src_secs": round(secs, 2), "src_until": until,
+                                                 "trim": trim, "denoise": bool(denoise),
+                                                 "closeness": _pct(closeness), "feel": _pct(feel)}))
+    if not items and len(vs) == 1 and failed:
+        raise VocalError(failed[0]["why"])
+    return {"items": items, "failed": failed}
+
+
+def sources_sweep(tenant: str, now: float | None = None) -> int:
+    """Her own recordings kept beside changes go after CHG_SRC_DAYS days (the changes stay)."""
+    now = now or time.time()
+    home = _home(tenant) / "sources"
+    gone = 0
+    with _LOCK:
+        d = _load(tenant)
+        changed = False
+        for h in d["history"]:
+            if h.get("src") and _ts(h.get("src_until")) and _ts(h.get("src_until")) < now:
+                for f in home.glob(f"{h['src']}.*"):
+                    f.unlink(missing_ok=True)
+                    gone += 1
+                h.pop("src", None)
+                changed = True
+        live = {h.get("src") for h in d["history"] if h.get("src")}
+        if home.is_dir():
+            for f in home.iterdir():
+                if f.stem not in live and f.stat().st_mtime < now - 3600:
+                    f.unlink(missing_ok=True)
+                    gone += 1
+        if changed:
+            _store(tenant, d)
+    return gone
 
 
 # ------------------------------------------------------------------ studio: long readings ---
@@ -2449,6 +2593,9 @@ def history_remove(tenant: str, hid: str) -> dict[str, Any]:
         if not h:
             raise VocalError("That item was not found.")
         d["history"].remove(h)
+        if h.get("src") and not any(x.get("src") == h["src"] for x in d["history"]):   # her recording, once no change needs it
+            for f in (_home(tenant) / "sources").glob(f"{h['src']}.*"):
+                f.unlink(missing_ok=True)
         for p in d["projects"]:
             for c in p.get("chapters", []):
                 if c.get("audio") == hid:

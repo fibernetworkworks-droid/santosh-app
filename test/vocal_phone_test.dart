@@ -553,7 +553,7 @@ void main() {
     await t.pump();
     expect(find.text('Start from'), findsOneWidget);
     expect(find.bySemanticsLabel('Make the changed voice'), findsOneWidget);
-    expect(find.text('Recorded · consent kept'), findsOneWidget, reason: 'Your voices lists her clone');
+    expect(find.textContaining('Recorded from you', skipOffstage: false), findsWidgets, reason: 'Your voices lists her clone');
     expect(t.takeException(), isNull);
     await _done(t, app, store);
   });
@@ -621,7 +621,7 @@ void main() {
       ('Studio', (s, p) => VocalStudioPage(store: s, player: p, settings: vocalDesignSettings(), embedded: false),
           ['New reading', 'Your readings', 'The Lighthouse Keeper', '3 chapters · 2 made · English']),
       ('Voice changer', (s, p) => VocalChangerPage(store: s, player: p, embedded: false),
-          ['Tap to record', 'Remove room noise first', 'Change it · 4 credits']),
+          ['Tap to record', 'Remove room noise first', 'Keep my feeling', 'Change it · 4 credits']),
       ('Clean-up', (s, p) => VocalCleanupPage(store: s, player: p, embedded: false),
           ['Remove background noise', 'Even out the loudness', 'Take the voice out of music', 'Clean it']),
       ('Sound effects', (s, p) => VocalSfxPage(store: s, player: p, embedded: false),

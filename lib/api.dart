@@ -2092,6 +2092,8 @@ class Api {
       _u('/api/vocal/audio', {'id': id, if (format.isNotEmpty) 'format': format}).toString();
   Future<List<int>?> vocalAudio(String id, {String format = ''}) =>
       _vocalBytes(_u('/api/vocal/audio', {'id': id, if (format.isNotEmpty) 'format': format}));
+  /// v0.999.158: her own recording kept beside a voice change (30 days), for Before / After.
+  Future<List<int>?> vocalChangeSource(String id) => _vocalBytes(_u('/api/vocal/change/source', {'id': id}));
   Future<List<int>?> _vocalBytes(Uri u) async {
     final req = http.Request('GET', u)..headers.addAll(_headers);
     final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 120)));

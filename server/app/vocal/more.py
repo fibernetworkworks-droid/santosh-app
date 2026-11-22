@@ -549,6 +549,8 @@ def sweep_all(force: bool = False) -> int:
         if not p.is_dir() or p.name.startswith("_") or not (p / "vocal.json").is_file():
             continue
         try:
+            if (p / "sources").is_dir():
+                V.sources_sweep(p.name)
             raw = V._load(p.name).get("settings") or {}
             if int(raw.get("keep_days") or 0) > 0:
                 r = sweep(p.name)
