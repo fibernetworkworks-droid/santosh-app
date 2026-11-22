@@ -9543,3 +9543,63 @@ THE DESKS. Each works through the chat tool it always had (key + key_dekho), so 
 CONSOLE: employees.js names Construction, Voice and the four new departments; deptdesk.js has their icons. PHONE: the phone's AI Employees tab shows the same 156; Open desk on a phone team desk opens the phone screen it always had (_teamTitle -> hoolaTeamEntries); the four new departments named.
 
 Tests test_v0999_114_ai_team.py (6, incl. a browser walk at 1280 light + 390 dark). test_v0799_desk_room.py moved to the new numbers (99 seats, 11 departments) and its Telecaller / Support own-page check fixed. Still red before and after: test_v0799 css scale, test_v0317 telecaller-not-live pin. NOT VERIFIED on her phone (Dart compiles first on CI) or her server.
+
+## v0.999.123 OLD OR NEW ENGINE (built as 0.999.121) (D10 of docs/WEB_DESIGN_ENGINE_PLAN.md, its last phase; owner: "GO D10"): the proof and the decision. quality/proofcard.py builds the same 40 briefs on the old engine and the new one (the order alternating), one photographer takes the same pictures of both, one scorer + one critic from another company score them, the same speed lab measures them; her pick per pair (the old one / the new one / the same) outranks every number; blind Arena duels of the new engine websites against a public website another builder made; a recommendation made by code that never decides. Her tap on /console/proofcard, bound to the fingerprint of the evidence she saw, makes the new engine the default for NEW websites (site/enginedefault.py; Back to the old engine at once); websites already built stay as they are. vps-ops proof_card_check / proof_card_try / proof_card. 8 tests incl. a box build on both engines and a Chromium walk of the page.
+
+What it is: D10, the last phase of the Web Design Engine plan, is the proof and the decision. The plan's done-line is "she says go"; this release builds everything she needs to say it, and the tap that makes it happen.
+
+- **The proof card** (`quality/proofcard.py`) builds the same 40 briefs as the D0 design card (`design_asks.py`) on both engines, through the Web Studio's own Build path, on the hidden tenant `__proofcard__` (never her sites, never her budget).
+  - **Fair by construction:**
+    - the order alternates (old then new, new then old);
+    - each build's engine is forced in the card's own process only (`enginedefault.FORCE`), so the server, her decision and her sites are untouched, and her decision never steers the card's builds;
+    - both built websites are folders of finished pages, so ONE photographer takes the same pictures of both, with no section numbers: the home page's first screen and the page down on a computer, the home page down a phone, two more pages;
+    - ONE scorer (the D0 `score_row`) and ONE critic from another company than the website writer read them, told nothing about which engine made what;
+    - the same speed lab (`appengine.speed.lab`) measures each home page;
+    - generated photos are off for both.
+  - **A pair** records the critic's pick (the old one / the new one / the same within 0.25 / neither built) and the design gain.
+  - **The summary** gives per engine: built, built right, median design, looks AI-made, minutes, rupees, launch blockers, AI tells, LCP.
+  - **The recommendation** is made by code from the numbers and her picks: built count, median design, critic picks, blockers, her picks. It says "not yet" with the reasons, "compare some pairs yourself first", or "the new engine looks ready". It never decides.
+  - A run is free by default (`python -m app.quality proof`, with calibration on planted pairs). `--live --budget-inr N` builds and stops itself at the budget. `--status` shows the card; `pick` records her choice.
+  - vps-ops jobs:
+    - `proof_card_check` - free
+    - `proof_card_try` - 3 briefs, each built twice, Rs 450
+    - `proof_card` - all 40, Rs 4000; a guess, to be set after the try
+- **Her picks.** Per pair she taps the old one / the new one / the same, with a note. Her picks outrank every number and change the evidence's fingerprint.
+- **Arena duels** (`proofcard.duel`): a blind duel in the existing Arena between this brief's NEW-engine website and a public https website another builder made for the same brief. The judge sees A / B in a random order. Results are stored per rival and counted on the card. Arena `_home_shots` now photographs a new-engine website too.
+- **The decision** (`site/enginedefault.py`):
+  - "Make the new engine the default for new websites" is her tap on the owner page, bound to the fingerprint of exactly the evidence she saw. If a pick, a pair or a duel changed since then, the tap is refused (409). A card still running is refused.
+  - She may go against the numbers: her verdict outranks them.
+  - "Back to the old engine" works at once.
+  - Each decision is kept with when, the run and the recommendation she saw.
+  - `prototype.react_on()` = the card's force, else the server's `studio_react_sites`, else her decision.
+  - It changes only which engine a NEW build uses. Websites already built stay as they are; an HTML website moves only by Upgrade this site (D9).
+- **Owner page** `/console/proofcard` (linked from the design card page):
+  - the run picker and the engine table;
+  - per brief, both engines side by side with their pictures, the critic's pick, her pick buttons, and a duel form;
+  - the decision panel (critic and her tallies, duels, the recommendation and its reasons, the button).
+- **Routes** (owner only):
+  - `GET /api/proofcard`
+  - `GET /api/proofcard/shot/{run}/{name}`
+  - `POST /api/proofcard/pick`
+  - `POST /api/proofcard/duel`
+  - `GET` / `POST /api/engine-default`
+
+Tests (`server/tests/test_v0999_123_proof.py`, 8):
+- the free card and its planted pairs
+- each brief on both engines, each build on the engine asked for, nothing left forced afterwards
+- her tap on the evidence:
+  - no card refused
+  - a changed pick refused
+  - the new engine becomes the default, the card's own builds unaffected
+  - back, history kept
+- a running card refused; she may go against the numbers
+- the owner routes
+- a blind duel of the new engine's website (http refused, the tally)
+- one brief built on both engines in the App Engine box and photographed the same way
+- a Chromium walk of the owner page: both sides, her pick, the default on, back
+
+NOT VERIFIED:
+- no live proof card has run (no numbers yet; Rs 4000 for all 40 is a guess)
+- no real duel against a Lovable / Emergent site has run
+- she has not decided
+- `studio_react_sites` stays OFF; her tap is the switch now

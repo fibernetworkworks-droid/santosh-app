@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.122"   # v0.999.122 THE WHOLE AI TEAM: (owner: "FIRST CHECK THE APP SIDE HOW MANY AI EMPLOYEE IT HAS AND ALSO SHOW ALL CATEGORY WISE IN CONSOLE"): the phone's Your AI team has 81 desks; 9 were already Hub employees, the 72 phone AI team desks now sit in the console Hub by department (156 employees, 16 departments: Customer Service, Logistics Travel & Trade, Legal & Compliance, Hospitality & Events new) and open on the desk room (forms from their own tool) or their studio; the phone opens them on the screen they always had; hiring gates no tool Previous: v0.999.121 MAC AND LINUX DESKTOP (ULTIMATE PC PLAN P9): the same Hoola Desktop for Mac and Linux - build-desktop.yml gains a mac-linux job (macos-14 Apple silicon + ubuntu-22.04): same Python app, same pairing, same page / screen / ax_* actions, the agent-desktop helper from the same official v1.2.0 release (checksum-checked), the Mac build wrapped as 'Hoola Desktop.app' (bundle id com.newtika.hoola.desktop, Screen Recording / Accessibility reasons in its Info.plist, ad-hoc signature, helper inside Contents/MacOS) and released as desktop-mac-latest (Hoola-Desktop-mac.zip), Linux as desktop-linux-latest (Hoola-Desktop-linux.tar.gz, X11 desktops); the Windows release desktop-latest is untouched; desktop control.py finds installed apps on a Mac (/Applications, /System/Applications, ~/Applications) and on Linux (.desktop entries, hidden ones skipped) and opens them by name (open / gtk-launch / the entry's Exec), Mac / Linux shells and system keys refused like cmd / PowerShell; the PC worker is told when her computer is a Mac (cmd shortcuts, no Start menu, the Privacy & Security permissions) or Linux (from the OS the desktop app reports); 3 tests. NOT VERIFIED: no Mac or Linux build has run yet (the next push runs it), not notarised (right-click > Open the first time), Wayland sessions need X11 for screen control. Previous head: v0.999.120 SEEING AND POINTING (ULTIMATE PC PLAN P4): two new screen tools turn words into a click on the screenshot the model just saw, through the normal click path (her rules, the checker, the step record) - NEW server/app/pc/grounding.py: click_text {text, nth} reads every word on the screen with its box (tesseract on the server, free, no GPU), matches the whole line, then the words in order, then a close spelling, and clicks the centre; the same text twice and no nth = NOT clicked, both places listed; point {description} asks a grounding model (UI-TARS 1.5 7B or any OpenAI-compatible vision model) on a GPU server SHE runs - off until PC_GROUNDING_URL (+ PC_GROUNDING_MODEL / PC_GROUNDING_KEY) is in the VPS .env, its answer read in pixels or UI-TARS' 0-1000 space; both offered only when they can work and never in background mode; deploy now says when tesseract is missing (sudo apt-get install -y tesseract-ocr); 5 tests. Reflection after each step stays the existing 'screen unchanged' note and the drift guard; 'what can I do here' = page_elements / ax_snapshot. Not done: running UI-TARS on a GPU (her cost decision). NOT VERIFIED on her server. Previous head: v0.999.119 UPGRADE THIS SITE (built as 0.999.107; their SUPPORT EMAIL, HOOLA VOCAL REDESIGN - H, HOOLA VOCAL REDESIGN, BROWSER PUSH - R, SUPPORT CALLS, PORTAL EXAM HONEST, SUPPORT TEAMS, HER AI ASSISTANT, PORTAL EXAM TWO, SUPPORT QUALITY, PC STEP DEADLINE, SUPPORT LAYER - H, HER CHROME,  ENGINE 2, PC SAFETY IN CODE, SUPPORT REPORTS, SUPPORT REPORTS - S, DATA WITHOUT CLICKING - H, LEARN ONCE,  REPLAY, WATCH AND CONTROL, PORTALS PER COUNTRY, HOOLA LEARNS took 0.999.107-0.999.118, all kept) (D9 of docs/WEB_DESIGN_ENGINE_PLAN.md; owner: "GO D9"): her HTML website moves to the new engine on her tap (site/upgrade.py). Hoola rewrites the SAME website (same forms, booking, shop, blog, members, photos and address) as a React website from the kit, BESIDE the old one: its pages and sections from its plan (or the prototype she approved), her words read back out of the pages she has now (her edits included, never rewritten by a model), her colour pinned in the new design; nothing of the old website changes meanwhile. The Studio compares her website and the new design side by side; Keep the new design is her tap on the fingerprint of what she saw (her address changes only when she puts it live with the launch card); Go back to the old design any time; Throw it away. Routes /api/sites/{ref}/upgrade (+ keep / back / DELETE); the chat only says where it stands (website action=upgrade); prototype.write_react shared with Build the real website. 8 tests incl. a box build and a Chromium walk of the Studio. Previous: v0.999.118 HOOLA LEARNS (ULTIMATE PC PLAN P8); older stories live in git history.
+APP_VERSION = "0.999.123"   # v0.999.123 OLD OR NEW ENGINE (built as 0.999.121) (D10 of docs/WEB_DESIGN_ENGINE_PLAN.md, its last phase; owner: "GO D10"): the proof and the decision. quality/proofcard.py builds the same 40 briefs on the old engine and the new one (the order alternating), one photographer takes the same pictures of both, one scorer + one critic from another company score them, the same speed lab measures them; her pick per pair (the old one / the new one / the same) outranks every number; blind Arena duels of the new engine websites against a public website another builder made; a recommendation made by code that never decides. Her tap on /console/proofcard, bound to the fingerprint of the evidence she saw, makes the new engine the default for NEW websites (site/enginedefault.py; Back to the old engine at once); websites already built stay as they are. vps-ops proof_card_check / proof_card_try / proof_card. 8 tests incl. a box build on both engines and a Chromium walk of the page. Previous: v0.999.122 THE WHOLE AI TEAM; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -11259,6 +11259,82 @@ async def designcard_verdict(body: dict, tenant: str = Depends(current_tenant)):
                                        str(body.get("verdict") or ""), str(body.get("note") or ""))
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+
+@app.get("/api/proofcard", dependencies=[Depends(require_key)])
+async def proofcard_get(run: str = "", tenant: str = Depends(current_tenant)):
+    """v0.999.123 D10: the proof card (old engine vs new on the same briefs), her picks, the duels, the decision."""
+    _dc_owner(tenant)
+    from .quality import proofcard as PC
+    from .site import enginedefault as ED
+
+    def go():
+        return {"card": PC.load(run), "runs": [p.stem for p in PC.cards()][:20], "critic": PC.DC.critic_company(),
+                "briefs": {a["id"]: a["ask"] for a in PC.ASKS}, "engine": ED.view(),
+                "how": "Start a run with the VPS ops job proof_card_try (3 briefs, each built twice) or proof_card (all 40)."}
+    return await asyncio.to_thread(go)
+
+
+@app.get("/api/proofcard/shot/{run}/{name}", dependencies=[Depends(require_key)])
+async def proofcard_shot(run: str, name: str, tenant: str = Depends(current_tenant)):
+    _dc_owner(tenant)
+    from .quality import proofcard as PC
+    f = PC.shot_path(run, name)
+    if f is None:
+        raise HTTPException(404, "Not found.")
+    return FileResponse(f, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})
+
+
+@app.post("/api/proofcard/pick", dependencies=[Depends(require_key)])
+async def proofcard_pick(body: dict, tenant: str = Depends(current_tenant)):
+    """HER word on one pair (the old one / the new one / the same): it outranks every number on the card."""
+    _dc_owner(tenant)
+    from .quality import proofcard as PC
+    try:
+        return await asyncio.to_thread(PC.set_pick, str(body.get("run") or ""), str(body.get("id") or ""),
+                                       str(body.get("pick") or ""), str(body.get("note") or ""))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/proofcard/duel", dependencies=[Depends(require_key)])
+async def proofcard_duel(body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP: a blind Arena duel - this brief's new-engine website against a public website another builder made."""
+    _dc_owner(tenant)
+    from .quality import proofcard as PC
+    try:
+        return await asyncio.to_thread(PC.duel, str(body.get("run") or ""), str(body.get("id") or ""),
+                                       str(body.get("rival") or "other"), str(body.get("url") or ""))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/engine-default", dependencies=[Depends(require_key)])
+async def engine_default_get(tenant: str = Depends(current_tenant)):
+    _dc_owner(tenant)
+    from .site import enginedefault as ED
+    return await asyncio.to_thread(lambda: {**ED.view(), "evidence": ED.evidence()})
+
+
+@app.post("/api/engine-default", dependencies=[Depends(require_key)])
+async def engine_default_set(body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP ONLY: the new engine becomes the default for NEW websites (bound to the evidence she saw), or back."""
+    _dc_owner(tenant)
+    from .site import enginedefault as ED
+    try:
+        return await asyncio.to_thread(ED.decide, body.get("go") is True, str(body.get("hash") or ""), str(body.get("run") or ""))
+    except ED.DefaultError as e:
+        raise HTTPException(e.code, str(e))
+
+
+@app.get("/console/proofcard")
+@app.get("/console/proofcard/")
+def proofcard_page():
+    """D10: the old engine and the new one side by side, her picks, the duels, and her decision."""
+    html = re.sub(r"\?v=[0-9.]+", "?v=" + APP_VERSION, (STATIC / "console" / "proofcard.html").read_text(encoding="utf-8"))
+    return Response(html, media_type="text/html; charset=utf-8", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY", "Cache-Control": "no-cache",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
 
 
 @app.get("/console/designcard")

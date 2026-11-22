@@ -220,8 +220,15 @@ def card(site_id: str, inr: float, minutes: float) -> dict[str, Any]:
 
 def _home_shots(site_id: str) -> list[bytes]:
     from . import build as B
+    from . import rxhost as RH
     from . import service as S
     r = S._load(site_id)
+    if RH.is_react(r):                               # v0.999.123 D10: a website on the new engine (its finished pages)
+        d = RH.dist(r)
+        if d is None:
+            return []
+        from ..quality import proofcard as PC
+        return PC.home_pair(d)
     chk = S._j(r.checks, {})
     shots = ((chk.get("pages") or {}).get("home") or {}).get("shots") or {}
     base = B.site_dir(r.tenant_id, r.id) / "shots" / f"v{r.version}"
