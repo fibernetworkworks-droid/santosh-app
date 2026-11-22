@@ -227,7 +227,8 @@ def test_line_tools_are_customer_safe(cc):
     tk = S.run_line_tool(c, "register_complaint", {"text": "Dard ki dawai nahi mili"})["ticket"]
     other = S.CallCtx(T, row["call_id"], "+919833333333", S.approved(T))
     assert S.run_line_tool(other, "ticket_status", {"ticket_no": tk})["found"] is False   # someone else's ticket: nothing
-    assert S.run_line_tool(c, "ticket_status", {"ticket_no": tk})["tickets"][0]["status"] == "open"
+    st = S.run_line_tool(c, "ticket_status", {"ticket_no": tk})["tickets"][0]   # G3: a support-desk ticket now
+    assert st["status"] == "new" and tk in st["status_line"]
     msg = S.run_line_tool(c, "take_message", {"message": "Mera OTP 445566 hai, refund chahiye", "name": "Ramesh"})
     assert msg["saved"] and "445566" not in S.messages(T)[0]["text"]
     # a script without appointments: the line can't book

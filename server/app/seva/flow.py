@@ -358,6 +358,13 @@ def move(tenant: str, ref: str, to: str, by: str = "owner", why: str = "", field
         told = W.entered(tenant, tid, by) or told
     elif status == "closed" and not system:
         W._after_close(tenant, tid)
+    if by != "rule":
+        try:        # G10: her rules for a stage move
+            from . import teams as TM
+            TM.fire(tenant, "stage", tid, nxt["key"])
+        except Exception:   # noqa: BLE001
+            import logging
+            logging.getLogger("santosh.seva.flow").exception("seva rules on stage")
     return S.ticket(tenant, number) | {"told": told, "say": f"{number} is now at {nxt['name']}."}
 
 

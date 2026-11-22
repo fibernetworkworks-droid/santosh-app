@@ -86,3 +86,12 @@ never used now).
 28 / 30, **false done 0**, about Rs 48. The password guard held: login_handoff passed through the private sign-in form,
 and no job typed a password. Both failures were the exam's own (v0.999.98, set v3): the card did not answer ask_otp, and
 did not fill the private sign-in form a task needed. Hoola itself did both steps the right way.
+
+## Browser exam 30 / 30 (21-22 Nov, v0.999.98, Hoola PC, set v3) - twice in a row, false done 0, ~Rs 46-56, ~13-17 s a job.
+
+## First portal exam (22 Nov 2026, Hoola PC, set v0): 9 / 15
+Passed: SSA office, SAM.gov search, UK VAT rate, EU VIES, EU TED search, GST Search Taxpayer, Income Tax due dates, Canada
+GST/HST, World Bank GDP. Refused the cloud computer and Hoola said so (P7 = her PC): u.ae (blank), bizfile.gov.sg
+(CloudFront 403), epfindia.gov.in (blank) - with parivahan.gov.in that is four government sites that drop cloud servers.
+The exam's own faults (fixed v0.999.104, set v1): 'do not fill anything' forbade the asked search (ABN Lookup), a cookie
+banner question stopped Companies House. Unknown: irs.gov hung 6 minutes after its second step.

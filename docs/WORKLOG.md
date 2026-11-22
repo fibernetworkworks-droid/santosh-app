@@ -3510,3 +3510,9 @@ Task ID: v0.999.102 BROWSER PUSH
 Ask: GO D8 WAVE 9
 Built: public/hoola-push-sw.js (locked worker), pushState / pushOn / pushOff in src/lib/member.ts (locked), signOut stops this browser's notifications, Notify part on My account (MemberRows), appengine/parity.py push = works
 Not verified: a real notification through Google / Mozilla / Apple; her server; AI inside her site still to build; studio_react_sites still OFF
+
+Task ID: v0.999.103 SUPPORT CALLS
+G3 of the global Customer Support plan: phone calls in the support desk - calls on the desk, warm transfer, machine / menu check, learned reply wait, idle + fillers, WhatsApp calls; 15 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.105 SUPPORT TEAMS
+G10 of the global Customer Support plan: people + shifts, queues, routing, rule engine, roles, money approval chains, macros with actions, custom fields, saved views; 10 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).

@@ -288,6 +288,7 @@ def settings(tenant: str) -> dict[str, Any]:
              "rate_inr_per_min": r.rate_inr_per_min, "rate_per_min": r.rate_inr_per_min, "creds_set": c_set, "ws_user": r.ws_user,
              "country": r.country or "IN", "currency": r.currency or _cur(r.country), "registered_line": r.registered_line,
              "confirmed_countries": _j(r.confirmed, []),
+             "warm_transfer": r.warm_transfer is not False, "wa_calls": r.wa_calls or "callback",
              "urls": _urls(tenant, r), "setup": SETUP.get(r.provider, [])}
         each = {k: _urls(tenant, r, k) for k in R.PROVIDERS}     # v0.999.78 every company's own Hoola addresses
     v["hours_text"] = hours_text(v["hours"])
@@ -391,9 +392,13 @@ def save_settings(tenant: str, **kw) -> dict[str, Any]:
         for k, lo, hi in (("max_concurrent", 1, 10), ("queue_max", 0, 8), ("max_minutes", 2, 30)):
             if k in kw and kw[k] is not None:
                 setattr(r, k, max(lo, min(hi, int(kw[k]))))
-        for k in ("transfer_on", "record"):
+        for k in ("transfer_on", "record", "warm_transfer"):
             if k in kw and kw[k] is not None:
                 setattr(r, k, bool(kw[k]))
+        if kw.get("wa_calls") is not None:
+            if kw["wa_calls"] not in ("callback", "off"):
+                raise CcError("wa_calls: callback or off")
+            r.wa_calls = kw["wa_calls"]
         if "rate_inr_per_min" in kw and kw["rate_inr_per_min"] is not None:
             r.rate_inr_per_min = max(0.0, min(50.0, float(kw["rate_inr_per_min"])))
         if "handover" in kw:
@@ -652,7 +657,20 @@ def caller_info(tenant: str, number: str) -> dict[str, Any]:
         return {}
     with session() as s:
         c = s.scalar(select(CcCaller).where(CcCaller.tenant_id == tenant, CcCaller.key == k))
-        return {"name": c.name, "lang": c.lang, "calls": c.calls, "last_intent": c.last_intent} if c else {}
+        return {"name": c.name, "lang": c.lang, "calls": c.calls, "last_intent": c.last_intent,
+                "reply_wait_ms": int(c.reply_wait_ms or 0)} if c else {}
+
+
+def remember_wait(tenant: str, number: str, ms: int) -> None:
+    """G3: the caller's learned wait before Hoola replies, kept for their next call."""
+    from . import listen as LI
+    k = R.phone_key(number)
+    if not k or not ms:
+        return
+    with session() as s:
+        c = s.scalar(select(CcCaller).where(CcCaller.tenant_id == tenant, CcCaller.key == k))
+        if c is not None:
+            c.reply_wait_ms = LI.blend(int(c.reply_wait_ms or 0), int(ms))
 
 
 def _remember_caller(tenant: str, number: str, lang: str, intent: str, name: str = "") -> None:
@@ -857,6 +875,8 @@ class CallCtx:
         self.seen_text = ""          # tool results said on this call (numbers in them are allowed in replies)
         self.messages: list[str] = []
         self.handover: dict[str, Any] | None = None
+        self.heard = ""               # G3: the caller's last words (masked), for the hand-over packet
+        self.menu = None              # G3: a listen.MenuWatch once a call Hoola made reached a phone menu
 
     @property
     def can(self) -> dict[str, bool]:
@@ -951,8 +971,19 @@ def book_appointment(cc: CallCtx, when: str = "", name: str = "", note_: str = "
 def ticket_status(cc: CallCtx, ticket_no: str = "", ticket: str = "", **_) -> dict[str, Any]:
     if not cc.can.get("ticket_status"):
         return {"not_allowed": True, "do": "Ticket status is not in her script: take_message instead."}
-    from ..net.business import Ticket
     num = str(ticket_no or ticket or "").strip().upper().replace(" ", "")
+    try:        # G3: the support desk's tickets of this caller (phone, WhatsApp, SMS... by their number)
+        from ..seva import calls as SC
+        mine_s = SC.tickets_of(cc.tenant, cc.caller, 5)
+        if num:
+            mine_s = [t for t in mine_s if t["number"].upper().replace(" ", "") == num]
+        if mine_s:
+            cc.seen_text += " " + " ".join(t["number"] for t in mine_s)
+            return {"tickets": [{"number": t["number"], "status": t["status"], "status_line": t["status_line"]} for t in mine_s[:3]],
+                    "say": "Say only the ticket number and its status line; no other details."}
+    except Exception:   # noqa: BLE001
+        log.exception("seva ticket status on a call")
+    from ..net.business import Ticket
     k = R.phone_key(cc.caller)
     mine = {f"tel:{k}", f"wa:91{k}", f"wa:{k}"}
     with session() as s:
@@ -973,6 +1004,14 @@ def register_complaint(cc: CallCtx, text: str = "", **_) -> dict[str, Any]:
     text = R.mask_text(str(text or "").strip())[:2000]
     if len(text) < 5:
         raise CcError("Ask the caller what the complaint is.")
+    try:        # G3: a ticket on the support desk (her workflow, clocks and updates)
+        from ..seva import calls as SC
+        if SC.key_of(cc.caller):
+            number = SC.complaint(cc.tenant, cc.caller, text, (cc.script or {}).get("lang", ""))
+            cc.seen_text += " " + number
+            return {"ticket": number, "say": f"Tell the caller the complaint number {number} slowly, once."}
+    except Exception:   # noqa: BLE001 - the older ticket book still takes it
+        log.exception("seva complaint on a call")
     from ..employee.inbox import _ensure_business
     from ..net.business import Business, Ticket, ticket_view
     _ensure_business(cc.tenant)
@@ -996,12 +1035,13 @@ def plan_handover(cc: CallCtx, reason: str) -> dict[str, Any]:
     with session() as s:
         r = _row(s, cc.tenant)
         people, on = _handover(r), r.transfer_on
-        prov = r.provider
+        prov, warm = r.provider, r.warm_transfer is not False
     lang = cc.script.get("lang") or R.default_lang()
     if on and people and is_open(cc.tenant):
         who = people[0]
+        from . import providers as P
         plan = {"mode": "transfer", "to": who["phone"], "name": who.get("name", ""), "provider": prov,
-                "say": R.CONNECTING[R.lang3(lang)]}
+                "say": R.CONNECTING[R.lang3(lang)], "warm": bool(warm and getattr(P.KINDS.get(prov), "warm_ok", False))}
     else:
         plan = {"mode": "callback", "say": "No person can take the call right now: take_message with what they need and tell "
                                           "them the team will call back."}
@@ -1013,7 +1053,57 @@ def plan_handover(cc: CallCtx, reason: str) -> dict[str, Any]:
             c.handover_reason = reason[:20]
             if plan["mode"] == "transfer":
                 c.transfer_to = plan["to"]
+    if not cc.out:
+        try:        # G3: the person gets the hand-over packet on the support desk before the call even reaches them
+            from ..seva import calls as SC
+            plan["handover_id"] = SC.call_handover(cc.tenant, cc.call_id, cc.caller, reason, plan["mode"],
+                                                  getattr(cc, "heard", ""))
+        except Exception:   # noqa: BLE001 - the call moves even if the desk is not set up
+            log.exception("seva call hand-over")
     return plan
+
+
+def save_whisper(call_id: str, text: str) -> None:
+    with session() as s:
+        c = s.get(CcCall, call_id)
+        if c is not None:
+            c.whisper = R.mask_text(str(text or ""))[:600]
+
+
+def whisper_text(call_id: str) -> tuple[str, str]:
+    """What the person hears before the caller joins (masked; never an OTP / card / long number)."""
+    with session() as s:
+        c = s.get(CcCall, call_id)
+        if c is None:
+            return "", "en-IN"
+        text = c.whisper or f"A customer from the number ending {R.digits(c.caller)[-4:] or 'unknown'} needs you."
+    return text + " Press 1 to take the call.", "en-IN"
+
+
+def transfer_done(tenant: str, call_id: str, status: str) -> dict[str, Any]:
+    """G3: how the person's leg ended. Answered = a transfer. Nobody picked up = a call-back with a time window, told to
+    the caller, a call-back message for her and the hand-over waiting on the desk."""
+    with session() as s:
+        c = s.get(CcCall, call_id)
+        if c is None or c.tenant_id != tenant:
+            return {"say": "", "lang": "en-IN"}
+        c.transfer_status = status[:12]
+        if status == "answered":
+            c.outcome = "transferred"
+            return {"say": "", "lang": c.lang or "en-IN", "answered": True}
+        caller, lang = c.caller, c.lang or "en-IN"
+        c.outcome = "callback"
+    window = ""
+    try:
+        from ..seva import calls as SC
+        window = SC.callback_window(tenant, call_id, caller, status)
+    except Exception:   # noqa: BLE001
+        log.exception("seva call-back window")
+    _missed(tenant, call_id, caller, "callback", "The person did not pick up the transfer: call the caller back"
+            + (f" ({window})" if window else ""))
+    lg = R.lang3(lang)
+    say = R.CALLBACK_SAY[lg].format(window=window or R.CALLBACK_SOON[lg])
+    return {"say": say, "lang": lang, "answered": False}
 
 
 def transfer_human(cc: CallCtx, reason: str = "asked_human", **_) -> dict[str, Any]:
@@ -1038,6 +1128,20 @@ def lookup(cc: CallCtx, source: str = "", value: str = "", **_) -> dict[str, Any
     return got
 
 
+def press_keys(cc: CallCtx, keys: str = "", digits: str = "", **_) -> dict[str, Any]:
+    """G3: a call Hoola made reached a phone menu: press 1-3 menu keys (the tones are played by the line)."""
+    from . import listen as LI
+    if not cc.out or cc.menu is None:
+        return {"error": "There is no phone menu on this call: talk to the person."}
+    ok, d = LI.keys_ok(keys or digits)
+    if not ok:
+        return {"error": d}
+    ok, d = cc.menu.press(d)
+    if not ok:
+        return {"error": d, "end": True}
+    return {"press": d, "say": "Say nothing now. The keys are pressed; listen to what the menu says next."}
+
+
 def _save_result(cc: CallCtx, **kw) -> dict[str, Any]:
     from . import outbound as O
     return O.save_result(cc, **kw)
@@ -1056,7 +1160,7 @@ def _call_back(cc: CallCtx, **kw) -> dict[str, Any]:
 LINE_TOOLS = {"faq_answer": faq_answer, "take_message": take_message, "free_slots": free_slots,
               "book_appointment": book_appointment, "ticket_status": ticket_status, "register_complaint": register_complaint,
               "transfer_human": transfer_human, "end_call": end_call, "lookup": lookup, "save_result": _save_result,
-              "do_not_call": _do_not_call, "call_back": _call_back}
+              "do_not_call": _do_not_call, "call_back": _call_back, "press_keys": press_keys}
 
 
 def line_specs(script: dict[str, Any], cc: "CallCtx | None" = None, tenant: str = "", out: bool = False,
@@ -1112,6 +1216,10 @@ def line_specs(script: dict[str, Any], cc: "CallCtx | None" = None, tenant: str 
               {"name": "do_not_call", "description": "The person said not to call them again (or that it is a wrong "
                                                      "number): never call again. Apologise once and end.",
                "input_schema": {"type": "object", "properties": {}}},
+              {"name": "press_keys", "description": "ONLY when the system said this call reached a phone menu (a recording, "
+                                                    "not a person): press the menu choice that leads to a person / the goal "
+                                                    "(1-3 keys like '2' or '0'). Never an account, card, PIN or birth date.",
+               "input_schema": {"type": "object", "properties": {"keys": {"type": "string"}}, "required": ["keys"]}},
               {"name": "call_back", "description": "They asked to be called at another time: save it.",
                "input_schema": {"type": "object", "properties": {"when": {"type": "string", "description": "their words, e.g. 'tomorrow 4 pm'"}},
                                 "required": ["when"]}}]
@@ -1381,10 +1489,12 @@ def finish(call_id: str, data: dict[str, Any]) -> dict[str, Any]:
             c.outcome = "complaint"
         elif "take_message" in tools:
             c.outcome = "message"
+        elif data.get("outcome") in ("voicemail", "no_answer"):
+            c.outcome = data["outcome"]           # G3: a recording answered a call Hoola made
         elif data.get("failed"):
             c.outcome = "failed"
         else:
-            c.outcome = c.outcome if c.outcome in ("transferred",) else "answered"
+            c.outcome = c.outcome if c.outcome in ("transferred", "voicemail", "callback") else "answered"
         name, outcome = c.caller_name, c.outcome
     release_slot(tenant, call_id)
     raw = "\n".join(f"{w}: {t}" for w, t in turns[-60:])
@@ -1399,10 +1509,19 @@ def finish(call_id: str, data: dict[str, Any]) -> dict[str, Any]:
         c.summary = summary
         view = _call_view(c)
     _remember_caller(tenant, caller, view["lang"], view["intent"], name)
+    if data.get("reply_wait_ms"):
+        remember_wait(tenant, caller, int(data["reply_wait_ms"]))
     if (data.get("unanswered") or []):
         view["unanswered"] = list(dict.fromkeys(data["unanswered"]))[:5]
     view["transcript_tail"] = turns[-12:]
     view["say"] = (f"Call {R.mask_phone(caller) if caller else ''}{' (' + name + ')' if name else ''}: {summary}").strip()
+    try:     # G3: the call joins the customer's conversation + ticket on the support desk
+        from ..seva import calls as SC
+        got = SC.after_call(tenant, call_id, view)
+        if got.get("ticket"):
+            view["ticket"] = got["ticket"]
+    except Exception:      # noqa: BLE001 - the call note is never lost because of the desk
+        log.exception("seva after_call failed")
     publish(tenant, "callcentre_call", view)
     if view.get("direction") == "out":
         try:

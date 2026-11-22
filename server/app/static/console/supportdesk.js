@@ -39,7 +39,7 @@
   window.HoolaQuality?.use(api);
 
   const TABS = [['today', 'Today'], ['inbox', 'Inbox'], ['workflow', 'Workflow'], ['knowledge', 'Knowledge'], ['approvals', 'Approvals'], ['reports', 'Reports'],
-    ['settings', 'Channels & settings']];
+    ['team', 'Team & rules'], ['settings', 'Channels & settings']];
   const STARTERS = {
     today: ['What came in today?', 'Which tickets are late?', 'What needs my yes?'],
     inbox: ['Open a ticket for a caller', 'Which customers are waiting longest?', 'Join the duplicate tickets'],
@@ -210,6 +210,7 @@
       else if (t === 'approvals') put(await pageApprovals());
       else if (t === 'reports') put(await pageReports());
       else if (t === 'settings') put(await pageSettings());
+      else if (t === 'team') put(await pageTeam());
     } catch (e) { if (seq !== ST.pageSeq) return; box.innerHTML = `<div class="card"><p class="lead">${esc(e.message)}</p><button class="btn soft sm" type="button" data-act="reload">Try again</button></div>`; }
   }
   const tRow = t => `<div class="row"><div style="flex:1;min-width:0"><div class="t"><a href="#/ticket/${enc(t.number)}">${esc(t.number)} · ${esc(t.customer || 'Customer')}</a> ${pill(PRI[t.priority], t.priority)} ${due(t)}</div>
@@ -301,6 +302,8 @@
       <section class="card" style="overflow-x:auto;padding:4px 16px">${rows ? `<table class="tb"><thead><tr><th>Ticket</th><th>Customer</th><th>Problem</th><th>Priority</th><th>Status</th><th>Opened</th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="mut" style="padding:14px 0;margin:0">No tickets here.</p>'}</section>`;
   }
   async function pageTicket(ref) {
+    const tm = await api('GET', '/api/seva/team').catch(() => ({fields: []}));
+    ST.tFields = tm.fields || [];
     const [t, mac, rm, hv] = await Promise.all([api('GET', `/api/seva/tickets/${enc(ref)}`), api('GET', '/api/seva/macros'),
       api('GET', `/api/seva/reminders?ticket=${enc(ref)}`).catch(() => ({reminders: []})),
       api('GET', `/api/seva/handovers?ticket=${enc(ref)}`).catch(() => ({handovers: []}))]);
@@ -342,6 +345,11 @@
         </div>
         <div style="display:flex;flex-direction:column;gap:18px">
           ${hoTicket}${clockSec}
+          ${t.queue || (t.labels || []).length ? sec('Queue and labels', `<div class="s">${t.queue ? `Queue: <b>${esc(t.queue)}</b>` : ''}${(t.labels || []).map(l => ' ' + pill('', l)).join('')}</div>`) : ''}
+          ${macros.some(m => Object.keys(m.actions || {}).length) ? sec('One-click replies', macros.filter(m => Object.keys(m.actions || {}).length).map(m => `<div class="row"><div style="flex:1;min-width:0"><div class="t">${esc(m.name)}</div><div class="s">Sends the reply, then: ${esc(Object.entries(m.actions).map(([k, v]) => `${k} ${v}`).join(', '))}</div></div><button class="btn soft sm" type="button" data-runmacro="${esc(m.id)}">Run</button></div>`).join('')) : ''}
+          ${ST.tFields.length ? sec('Custom fields', `<form id="spCustom" class="grid2" style="gap:12px">${ST.tFields.map(f => f.type === 'choice'
+            ? `<label class="f"><span>${esc(f.label)}</span><select class="in" name="${esc(f.key)}"><option value=""></option>${f.options.map(o => `<option${(t.custom || {})[f.key] === o ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select></label>`
+            : field(f.key, f.label, `type="${f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}" value="${esc((t.custom || {})[f.key] || '')}"`)).join('')}<div><button class="btn soft sm" type="submit">Save fields</button></div></form>`) : ''}
           ${sec('Deadline', `<div class="t">${s.late ? '<b style="color:var(--badt)">Past the reply time</b>' : s.first_response_left_h !== undefined ? `First reply due in ${hours(s.first_response_left_h)}` : s.resolve_left_h !== undefined ? `Solve within ${hours(s.resolve_left_h)}` : 'Closed'}</div>
             <p class="mut" style="margin:0;font-size:13px">Reply within ${hours(s.first_response_h)}, solve within ${hours(s.resolve_h)}${s.paused ? ' · clock paused while you wait on the customer' : ''}.</p>${legal}`)}
           ${sec('Change', `<form id="spUpdate" class="grid2" style="gap:12px">
@@ -434,6 +442,8 @@
           <p style="margin:6px 0 0;font-size:14px;line-height:1.55">${esc(e.reason)}</p></div>${e.amount_text ? `<div style="font-size:24px;font-weight:600">${esc(e.amount_text)}</div>` : ''}</div>
         <div class="row" style="padding:8px 0">${pill(c.within ? 'ok' : 'warn', c.within ? 'Within your rules' : 'Outside your rules')}<div class="s" style="flex:1">${esc((c.reasons || []).join(' ') || (c.within ? 'It fits your written policy - the decision is still yours.' : ''))}${e.days_since !== null && e.days_since !== undefined ? ` Asked ${num(e.days_since)} days after.` : ''}</div></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><button class="btn soft sm" type="button" data-cancel="${esc(e.id)}">Withdraw</button><button class="btn soft sm" type="button" data-decide="${esc(e.id)}" data-yes="0">No</button><button class="btn sm" type="button" data-decide="${esc(e.id)}" data-yes="1">Yes</button></div>
+        ${(e.chain || []).length ? `<div style="display:flex;flex-direction:column;gap:6px"><div class="t">Who says yes, in order</div>${e.chain.map(c => `<div class="row" style="flex-wrap:wrap">${pill(c.status === 'yes' ? 'ok' : c.status === 'no' ? 'bad' : c.status === 'skipped' ? '' : 'warn', {yes: 'Yes', no: 'No', skipped: 'Not needed', waiting: 'Waiting'}[c.status] || c.status)}<div style="flex:1;min-width:200px"><div class="t">${c.n}. ${esc(c.person || c.role)} (${esc(c.role)})</div>${c.why ? `<div class="s">${esc(c.why)}</div>` : ''}${c.note ? `<div class="s">“${esc(c.note)}”</div>` : ''}
+          ${c.link ? `<div class="s">Their link: <code style="word-break:break-all">${esc(c.link)}</code></div>` : ''}</div>${c.link ? `<button class="btn soft sm" type="button" data-copy="${esc(c.link)}">Copy link</button>` : ''}${c.status === 'waiting' && c.person && c.person !== 'you' ? `<button class="btn soft sm" type="button" data-steplink="${esc(e.id)}:${esc(c.id)}">New link</button>` : ''}</div>`).join('')}<p class="mut" style="margin:0;font-size:12.5px">Your own Yes or No decides it at once, whoever is still waiting.</p></div>` : ''}
         <p class="mut" style="margin:0;font-size:12.5px">Hoola never moves money. After a yes you pay from your bank or gateway; then mark it paid and Hoola tells the customer.</p></article>`; };
     const pay = toPay.map(e => `<div class="row" style="flex-wrap:wrap"><div style="flex:1;min-width:220px"><div class="t">${esc(e.number)} · ${esc(e.kind_label)} ${esc(e.amount_text)} · ${esc(e.customer)}</div><div class="s">You said yes on ${esc(when(e.decided))}</div></div>
       <form class="spSent" data-id="${esc(e.id)}" style="display:flex;gap:6px"><label class="sr" for="spRef${esc(e.id)}">Payment reference</label><input class="in" id="spRef${esc(e.id)}" name="ref" placeholder="UTR / reference (optional)"><button class="btn sm" type="submit">I have paid</button></form></div>`).join('');
@@ -563,6 +573,94 @@
     $('#spPreview').scrollIntoView({behavior: 'smooth', block: 'start'});
   }
   /* ---------------------------------------------------------------- Channels & settings */
+  /* ---------------------------------------------------------------- Team & rules (G10) */
+  async function pageTeam() {
+    const d = await api('GET', '/api/seva/team');
+    ST.team = d;
+    const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const opt = (v, cur, label) => `<option value="${esc(v)}"${String(cur) === String(v) ? ' selected' : ''}>${esc(label || v)}</option>`;
+    const roleNames = Object.keys(d.roles || {});
+    const board = (d.board || []).map(b => `<article class="card" style="display:flex;flex-direction:column;gap:8px" aria-label="Queue ${esc(b.name)}">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="font-size:15px">${esc(b.name)}</b>${pill(b.waiting.length ? 'warn' : 'ok', `${b.waiting.length} waiting`)}
+        ${b.people.map(p => pill(p.on_shift ? (p.open >= p.capacity ? 'bad' : 'ok') : '', `${p.name} ${p.open}/${p.capacity}${p.on_shift ? '' : ' · off shift'}`)).join('')}</div>
+      ${b.waiting.slice(0, 6).map(w => `<div class="row"><div style="flex:1;min-width:0"><div class="t"><a href="#/ticket/${enc(w.number)}">${esc(w.number)}</a> · ${esc(w.customer || '')} ${w.priority === 'urgent' ? pill('bad', 'Urgent') : ''}${w.vip ? pill('warn', 'VIP') : ''}</div><div class="s">${esc(w.assignee ? 'With ' + w.assignee : 'Nobody yet')} · waiting since ${esc(when(w.since))} · ${esc(w.text)}</div></div></div>`).join('') || '<p class="mut" style="margin:0">Nothing waiting.</p>'}</article>`).join('');
+    const people = (d.people || []).filter(p => p.active).map(p => `<div class="row" style="flex-wrap:wrap">${pill(p.on_shift ? 'ok' : '', p.on_shift ? 'On shift' : 'Off shift')}<div style="flex:1;min-width:220px"><div class="t">${esc(p.name)} · ${esc(p.role)}</div>
+      <div class="s">${esc((p.langs || []).join(', ') || 'any language')} · ${esc((p.skills || []).join(', ') || 'no skills set')} · ${esc((p.shift.days || []).map(x => DAYS[x]).join(' '))} ${esc(p.shift.start)}-${esc(p.shift.end)}${p.shift.tz ? ' ' + esc(p.shift.tz) : ''} · ${p.open}/${p.capacity} open${p.day_limit ? ` · approves up to ${num(p.day_limit)} a day` : ''}</div></div>
+      <button class="btn soft sm" type="button" data-delperson="${esc(p.id)}">Remove</button></div>`).join('');
+    const pForm = `<form id="spPerson" style="display:flex;flex-direction:column;gap:10px"><div class="grid2" style="gap:12px">
+      ${field('name', 'Name', 'required')}<label class="f"><span>Role</span><select class="in" name="role">${roleNames.map(r => opt(r, 'agent')).join('')}</select></label>
+      ${field('langs', 'Languages (comma between, e.g. en, hi, es)')}${field('skills', 'Skills (comma between, e.g. billing, fibre)')}
+      ${field('start', 'Shift starts', 'type="time" value="09:00"')}${field('end', 'Shift ends', 'type="time" value="18:00"')}
+      ${field('tz', 'Time zone (e.g. Asia/Kolkata; empty = yours)')}${field('capacity', 'Open tickets at most', 'type="number" min="1" value="8"')}
+      ${field('day_limit', 'Money they may approve a day (0 = no limit of their own)', 'type="number" min="0" value="0"')}${field('phone', 'Phone (optional)')}</div>
+      <fieldset style="border:0;padding:0;margin:0;display:flex;gap:10px;flex-wrap:wrap"><legend class="mut" style="font-size:13px;margin-bottom:4px">Days</legend>${DAYS.map((x, i) => `<label style="display:flex;gap:4px;align-items:center"><input type="checkbox" name="day" value="${i}"${i < 6 ? ' checked' : ''}>${x}</label>`).join('')}</fieldset>
+      <div><button class="btn sm" type="submit">Add the person</button></div></form>`;
+    const queues = (d.queues || []).map(q => `<div class="row" style="flex-wrap:wrap"><div style="flex:1;min-width:220px"><div class="t">${esc(q.name)} <span class="mut">(${esc(q.key)})</span></div>
+      <div class="s">${esc(q.member_names.join(', ') || 'nobody in it')} · ${q.strategy === 'round_robin' ? 'in turn' : 'least busy first'}${q.langs.length ? ' · ' + esc(q.langs.join(', ')) : ''}${q.skills.length ? ' · needs ' + esc(q.skills.join(', ')) : ''}${q.overflow ? ' · overflow to ' + esc(q.overflow) : ''}</div></div>
+      <button class="btn soft sm" type="button" data-delqueue="${esc(q.key)}">Remove</button></div>`).join('');
+    const qForm = `<form id="spQueue" style="display:flex;flex-direction:column;gap:10px"><div class="grid2" style="gap:12px">${field('name', 'Queue name (e.g. Billing, Spanish, VIP)', 'required')}
+      <label class="f"><span>Who gets the next ticket</span><select class="in" name="strategy">${opt('least_busy', 'least_busy', 'The least busy person')}${opt('round_robin', '', 'Each person in turn')}</select></label>
+      ${field('skills', 'Skill needed (optional)')}<label class="f"><span>When nobody can take it</span><select class="in" name="overflow"><option value="">Wait in this queue</option>${(d.queues || []).map(q => opt(q.key, '', 'Go to ' + q.name)).join('')}</select></label></div>
+      <fieldset style="border:0;padding:0;margin:0;display:flex;gap:10px;flex-wrap:wrap"><legend class="mut" style="font-size:13px;margin-bottom:4px">People in it</legend>${(d.people || []).filter(p => p.active).map(p => `<label style="display:flex;gap:4px;align-items:center"><input type="checkbox" name="member" value="${esc(p.id)}">${esc(p.name)}</label>`).join('') || '<span class="mut">Add people first.</span>'}</fieldset>
+      <div><button class="btn sm" type="submit">Save the queue</button></div></form>`;
+    const rtext = r => Object.entries(r.if).map(([k, v]) => `${k} ${Array.isArray(v) ? v.join(' / ') : v}`).join(' and ') || 'everything else';
+    const routes = (d.routes || []).map((r, i) => `<div class="row"><div style="flex:1;min-width:0"><div class="t">${i + 1}. If ${esc(rtext(r))} → ${esc(r.queue)}</div></div><button class="btn soft sm" type="button" data-delroute="${i}">Remove</button></div>`).join('');
+    const rForm = (d.queues || []).length ? `<form id="spRoute" class="grid2" style="gap:12px">${field('category', 'Category (e.g. billing)')}${field('language', 'Language (e.g. es)')}${field('country', 'Country code (e.g. IN, US)')}
+      ${field('channel', 'Channel (e.g. whatsapp, email, phone)')}${field('words', 'Words in the message (comma between)')}
+      <label class="f"><span>VIP customers</span><select class="in" name="vip"><option value="">Either</option><option value="1">Only VIP</option></select></label>
+      <label class="f"><span>Goes to queue</span><select class="in" name="queue">${(d.queues || []).map(q => opt(q.key, '', q.name)).join('')}</select></label>
+      <div style="align-self:end"><button class="btn sm" type="submit">Add the routing rule</button></div></form>` : '<p class="mut" style="margin:0">Make a queue first.</p>';
+    const ctext = c => `${c.field} ${String(c.op).replace(/_/g, ' ')} ${c.value ?? ''}`.trim();
+    const rules = (d.rules || []).map(r => `<div class="row" style="flex-wrap:wrap">${pill(r.on ? 'ok' : '', r.on ? 'On' : 'Off')}<div style="flex:1;min-width:220px"><div class="t">${esc(r.name)}</div>
+      <div class="s">When: ${esc((d.events || {})[r.event] || r.event)}${r.delay_h ? ` and ${esc(num(r.delay_h))} h later` : ''}${r.conditions.length ? ' · if ' + esc(r.conditions.map(ctext).join(' and ')) : ''} · then ${esc(r.actions.map(a => `${a.do} ${a.value}`).join(', '))} · ran ${r.runs} time(s)</div></div>
+      <button class="btn soft sm" type="button" data-ruleon="${esc(r.id)}" data-on="${r.on ? 0 : 1}">${r.on ? 'Turn off' : 'Turn on'}</button><button class="btn soft sm" type="button" data-delrule="${esc(r.id)}">Remove</button></div>`).join('');
+    const ruleForm = `<form id="spRule" style="display:flex;flex-direction:column;gap:10px"><div class="grid2" style="gap:12px">${field('name', 'Rule name (e.g. Still open after 2 hours)', 'required')}
+      <label class="f"><span>When</span><select class="in" name="event">${Object.entries(d.events || {}).map(([k, v]) => opt(k, 'created', v)).join('')}</select></label>
+      ${field('delay_h', 'Hours later (0 = at once)', 'type="number" min="0" step="0.25" value="0"')}<span></span>
+      <label class="f"><span>If</span><select class="in" name="cfield"><option value="">(always)</option>${(d.cond_fields || []).map(f => opt(f, '')).join('')}</select></label>
+      <label class="f"><span>Condition</span><select class="in" name="cop">${(d.ops || []).map(o => opt(o, 'is', o.replace(/_/g, ' '))).join('')}</select></label>
+      ${field('cvalue', 'Value (e.g. urgent, billing, 2)')}<span></span>
+      <label class="f"><span>Then</span><select class="in" name="ado">${(d.actions || []).map(a => opt(a, 'notify')).join('')}</select></label>
+      ${field('avalue', 'With (a queue, a person, a role, a label, a saved reply...)', 'required')}</div>
+      <div><button class="btn sm" type="submit">Add the rule</button></div></form>`;
+    const roles = Object.entries(d.roles || {}).map(([r, ps]) => `<div class="row"><div style="flex:1;min-width:0"><div class="t">${esc(r)}${(d.builtin_roles || []).includes(r) ? '' : ' (yours)'}</div><div class="s">${esc(ps.join(', '))}</div></div></div>`).join('');
+    const roleForm = `<form id="spRole" style="display:flex;flex-direction:column;gap:10px">${field('name', 'Your own role (e.g. team_lead)', 'required')}
+      <fieldset style="border:0;padding:0;margin:0;display:flex;gap:10px;flex-wrap:wrap"><legend class="mut" style="font-size:13px;margin-bottom:4px">May</legend>${(d.perms || []).map(p => `<label style="display:flex;gap:4px;align-items:center"><input type="checkbox" name="perm" value="${esc(p)}"${p === 'read' ? ' checked' : ''}>${esc(p.replace(/_/g, ' '))}</label>`).join('')}</fieldset>
+      <div><button class="btn soft sm" type="submit">Save the role</button></div></form>`;
+    const bd = d.bands || {bands: [], currency: 'INR'};
+    const bands = (bd.bands || []).map((b, i) => `<div class="row"><div style="flex:1;min-width:0"><div class="t">${esc(b.currency)} ${b.upto ? 'up to ' + esc(num(b.upto)) : 'any amount'}: ${esc(b.steps.join(' → '))}</div></div><button class="btn soft sm" type="button" data-delband="${i}">Remove</button></div>`).join('');
+    const bandForm = `<form id="spBand" class="grid2" style="gap:12px">${field('currency', 'Currency', `value="${esc(bd.currency || 'INR')}" maxlength="3"`)}${field('upto', 'Up to this amount (0 = any amount)', 'type="number" min="0" value="0"')}
+      ${field('steps', 'Who says yes, in order (roles, comma between; owner = you)', 'value="supervisor, owner" required')}<div style="align-self:end"><button class="btn sm" type="submit">Add the band</button></div></form>`;
+    const fieldsL = (d.fields || []).map((f, i) => `<div class="row"><div style="flex:1;min-width:0"><div class="t">${esc(f.label)} <span class="mut">(${esc(f.type)}${f.options.length ? ': ' + esc(f.options.join(', ')) : ''})</span></div></div><button class="btn soft sm" type="button" data-delfield="${i}">Remove</button></div>`).join('');
+    const fieldForm = `<form id="spField" class="grid2" style="gap:12px">${field('label', 'Field name (e.g. Order number, Plan, Site address)', 'required')}
+      <label class="f"><span>Type</span><select class="in" name="type">${['text', 'number', 'date', 'choice'].map(x => opt(x, 'text')).join('')}</select></label>
+      ${field('options', 'Choices (for a choice field, comma between)')}<div style="align-self:end"><button class="btn soft sm" type="submit">Add the field</button></div></form>`;
+    const viewsL = (d.views || []).map(v => `<div class="row"><div style="flex:1;min-width:0"><div class="t">${esc(v.name)}</div><div class="s">${esc(Object.entries(v.filters).map(([k, x]) => `${k}: ${x}`).join(' · ') || 'all tickets')}</div></div><button class="btn soft sm" type="button" data-openview="${esc(v.name)}">Open</button><button class="btn soft sm" type="button" data-delview="${esc(v.name)}">Remove</button></div>`).join('');
+    const viewForm = `<form id="spView" class="grid2" style="gap:12px">${field('name', 'View name (e.g. My urgent billing)', 'required')}
+      <label class="f"><span>Queue</span><select class="in" name="queue"><option value=""></option>${(d.queues || []).map(q => opt(q.key, '', q.name)).join('')}</select></label>
+      <label class="f"><span>Status</span><select class="in" name="status"><option value=""></option>${['open', 'new', 'pending', 'on_hold', 'resolved', 'closed'].map(x => opt(x, '')).join('')}</select></label>
+      <label class="f"><span>Priority</span><select class="in" name="priority"><option value=""></option>${['urgent', 'high', 'normal', 'low'].map(x => opt(x, '')).join('')}</select></label>
+      ${field('assignee', 'Given to')}${field('label', 'Label')}<div style="align-self:end"><button class="btn soft sm" type="submit">Save the view</button></div></form>`;
+    const macs = (d.macros || []).filter(m => m.status === 'approved').map(m => `<form class="spMacAct row" data-id="${esc(m.id)}" style="flex-wrap:wrap;gap:8px"><div style="flex:1;min-width:160px"><div class="t">${esc(m.name)}</div></div>
+      <label class="sr" for="ma-l-${esc(m.id)}">Label</label><input class="in" id="ma-l-${esc(m.id)}" name="label" placeholder="label" value="${esc((m.actions || {}).label || '')}" style="width:110px">
+      <label class="sr" for="ma-s-${esc(m.id)}">Status</label><select class="in" id="ma-s-${esc(m.id)}" name="status" style="width:auto"><option value="">status</option>${['open', 'pending', 'on_hold', 'resolved'].map(x => opt(x, (m.actions || {}).status || '')).join('')}</select>
+      <label class="sr" for="ma-g-${esc(m.id)}">Stage</label><select class="in" id="ma-g-${esc(m.id)}" name="stage" style="width:auto"><option value="">stage</option>${(d.stages || []).map(x => opt(x, (m.actions || {}).stage || '')).join('')}</select>
+      <label class="sr" for="ma-a-${esc(m.id)}">Person</label><select class="in" id="ma-a-${esc(m.id)}" name="assign" style="width:auto"><option value="">person</option>${(d.people || []).filter(p => p.active).map(p => opt(p.name, (m.actions || {}).assign || '')).join('')}</select>
+      <button class="btn soft sm" type="submit">Save</button></form>`).join('');
+    return `${head('Team & rules', 'Who works on what: your people and their shifts, queues, routing, rules that act by themselves, roles and who approves money.')}
+      ${sec('Queues now', board || '<p class="mut" style="margin:0">No queues yet.</p>')}
+      ${sec('Your people', `${people || '<p class="mut" style="margin:0">Nobody added yet.</p>'}${pForm}`)}
+      ${sec('Queues', `<p class="mut" style="margin:0">A ticket goes to the person on shift now, with room, who speaks the customer's language and has the skill. Urgent and VIP come first, then the longest waiting.</p>${queues}${qForm}`)}
+      ${sec('Routing', `<p class="mut" style="margin:0">Which queue a new ticket goes to. The first rule that matches wins.</p>${routes}${rForm}`)}
+      ${sec('Rules that act by themselves', `<p class="mut" style="margin:0">When something happens to a ticket - now or hours later if it is still the same - these actions run once. A reply is only ever an approved saved reply.</p>${rules}${ruleForm}`)}
+      ${sec('Who approves money', `<p class="mut" style="margin:0">Amount bands: who must say yes, in order. Each person gets their own one-time link for that request. Over a person's daily limit, it moves up to the next role and says why. Hoola never moves money: after the last yes you pay from your bank or gateway. Without bands only you decide.</p>${bands}${bandForm}`)}
+      ${sec('Roles', `${roles}${roleForm}`)}
+      ${sec('Saved replies that do more', macs || '<p class="mut" style="margin:0">Approve a saved reply in Knowledge first.</p>')}
+      ${sec('Custom fields on tickets', `${fieldsL}${fieldForm}`)}
+      ${sec('Saved views', `${viewsL}${viewForm}<div id="spViewOut"></div>`)}
+      <details><summary class="mut" style="cursor:pointer;font-size:13px">Not built yet</summary>${(d.not_built || []).map(x => `<div class="s">${esc(x)}</div>`).join('')}</details>`;
+  }
+
   async function pageSettings() {
     const [st, d] = [await api('GET', '/api/seva/settings'), ST.d || {}];
     const chs = (d.channels || []).map(c => `<div class="row"><div style="flex:1;min-width:0"><div class="t">${esc(c.name)} ${pill({on: 'ok', off: 'warn', manual: '', soon: ''}[c.state], {on: 'On', off: 'Off', manual: 'You add tickets', soon: 'Not joined yet'}[c.state] || c.state)}</div><div class="s">${esc(c.line)}</div></div>${c.key === 'phone' ? '<a class="btn soft sm" href="/console/telecaller">Telecaller</a>' : ''}</div>`).join('');
@@ -585,6 +683,17 @@
     const cho = await api('GET', '/api/seva/channels').catch(() => ({channels: [], catalog: {kinds: [], not_built: {}}}));
     const wc = await api('GET', '/api/seva/webchat').catch(() => ({}));
     const em = (await api('GET', '/api/seva/email').catch(() => ({}))).email || null;
+    const ph = (await api('GET', '/api/seva/phone').catch(() => ({}))).phone || null;
+    const out = {answered: 'Answered', message: 'Message', callback: 'Call back', complaint: 'Complaint', transferred: 'To a person',
+      appointment: 'Booked', failed: 'Line problem', voicemail: 'Voicemail', no_answer: 'No answer'};
+    const phSec = ph ? sec('Phone calls', `<p class="mut" style="margin:0">Your phone line is answered by Hoola from the same knowledge. Every call lands on the customer's conversation and ticket here, and a caller who already wrote on WhatsApp or another app does not have to repeat themselves.</p>
+      <div class="row">${pill(ph.line_on ? 'ok' : 'warn', ph.line_on ? 'Line on' : 'Line off')}<div style="flex:1;min-width:0"><div class="t">${esc(ph.number || 'No number yet')}</div><div class="s">${esc(ph.provider_name || '')}${ph.people ? ` · ${ph.people} person${ph.people === 1 ? '' : 's'} to hand over to` : ' · nobody to hand over to yet'}</div></div><a class="btn soft sm" href="/console/telecaller">Phone line settings</a></div>
+      <form id="spPhone" style="display:flex;flex-direction:column;gap:10px">
+        <label class="row" style="cursor:pointer"><input type="checkbox" name="warm_transfer"${ph.warm_transfer ? ' checked' : ''} style="width:18px;height:18px"><span class="t">Warm transfer: the person hears who is calling and why, presses 1, then the caller joins${ph.warm_possible ? '' : ' (your phone company has no whisper in Hoola yet: a plain transfer, with the hand-over packet on this desk)'}</span></label>
+        <label class="f"><span>When a customer rings your WhatsApp number</span><select class="in" name="wa_calls"><option value="callback"${ph.wa_calls !== 'off' ? ' selected' : ''}>Decline, open a call-back ticket and tell them on WhatsApp</option><option value="off"${ph.wa_calls === 'off' ? ' selected' : ''}>Leave it to WhatsApp (Hoola does nothing)</option></select></label>
+        <div><button class="btn sm" type="submit">Save phone settings</button></div></form>
+      ${(ph.calls || []).length ? (ph.calls || []).map(c => `<div class="row" style="flex-wrap:wrap">${pill(['message', 'callback', 'failed', 'complaint'].includes(c.outcome) ? 'warn' : 'ok', out[c.outcome] || c.outcome || 'Call')}<div style="flex:1;min-width:200px"><div class="t">${esc(c.name || c.caller)} · ${esc(Math.floor(c.seconds / 60) + ':' + String(c.seconds % 60).padStart(2, '0'))}${c.transfer && c.transfer !== 'answered' ? ` · ${esc('transfer not answered')}` : ''}</div><div class="s">${esc(c.summary || '')}</div><div class="s">${esc(when(c.at))}</div></div>${c.ticket ? `<a class="btn soft sm" href="#/ticket/${enc(c.ticket)}">${esc(c.ticket)}</a>` : ''}${c.customer ? `<a class="btn soft sm" href="#/chat/${enc(c.customer)}">Conversation</a>` : ''}</div>`).join('') : '<p class="mut" style="margin:0">No calls yet.</p>'}
+      <details><summary class="mut" style="cursor:pointer;font-size:13px">Not built yet</summary>${(ph.not_built || []).map(x => `<div class="s">${esc(x)}</div>`).join('')}</details>`) : '';
     const emSec = sec('Support email', `<p class="mut" style="margin:0">Mail to your support address comes into this desk; Hoola answers from your knowledge in the same thread, from your address, with your signature. Automatic mails, mailing lists and your own address are never answered. For Gmail or Microsoft 365 use an app password.</p>
       ${em ? `<div class="row">${pill(em.status === 'ok' ? 'ok' : em.status === 'error' ? 'bad' : 'warn', em.status === 'ok' ? 'Working' : em.status === 'error' ? 'Problem' : 'Saved')}<div style="flex:1;min-width:0"><div class="t">${esc(em.address)}</div><div class="s">${esc(em.note || '')}</div>${em.last_poll ? `<div class="s">Last read ${esc(when(em.last_poll))}</div>` : ''}</div><button class="btn soft sm" type="button" data-mailcheck="1">Check</button><button class="btn soft sm" type="button" data-mailpoll="1">Read now</button></div>
         ${em.forward ? `<div class="s"><b>Or forward your support mail to:</b> <code>${esc(em.forward)}</code></div>` : ''}` : ''}
@@ -636,7 +745,7 @@
       <div class="grid2" style="gap:14px">${field('vip', 'VIP numbers (comma between)', `value="${esc((hr.vip || []).join(', '))}"`)}${field('words', 'Other words that always go to a person (comma between)', `value="${esc((hr.words || []).join(', '))}"`)}
       ${field('callback_h', 'Call-back window on a phone call (hours)', `type="number" min="0.5" max="48" step="0.5" value="${esc(hr.callback_h ?? 2)}"`)}</div>
       <label class="row" style="cursor:pointer"><input type="checkbox" name="page_urgent"${hr.page_urgent ? ' checked' : ''} style="width:18px;height:18px"><span class="t">Tell me at once about an urgent one, even when closed</span></label>
-      <p class="mut" style="margin:0;font-size:13px">On a phone call Hoola gives a call-back time; a live transfer to a person's phone is not built yet.</p>`)}
+      <p class="mut" style="margin:0;font-size:13px">On a phone call Hoola rings the first person on your hand-over list (warm transfer when it is on); if nobody picks up, the caller is told this call-back window.</p>`)}
       <div><button class="btn sm" type="submit">Save hand-over rules</button></div></form>`;
     const DN = {mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday'};
     const wchk = (name, label) => `<label class="row" style="cursor:pointer"><input type="checkbox" name="${name}"${wr[name] ? ' checked' : ''} style="width:18px;height:18px"><span class="t">${esc(label)}</span></label>`;
@@ -666,7 +775,7 @@
         <label class="sr" for="spTr-${esc(topic)}">How much Hoola may do: ${esc(name)}</label><select class="in" id="spTr-${esc(topic)}" style="width:auto">${cur || topic === '*' ? '' : '<option value="" selected>Same as the starting rule</option>'}${lv(cur ? cur.level : (topic === '*' ? tr.default : ''))}</select><button class="btn soft sm" type="button" data-trustsave="1">Save</button></div>`; }).join('');
     const trustSec = sec('How much Hoola may do', `<p class="mut" style="margin:0">Per topic: answer alone, draft for a person to send, or always hand over. A refund request, an angry or urgent message and "I want a person" always go to a person, whatever you set. Every reply is checked before it goes: its numbers must be in your knowledge, and it never promises a call-back or a refund that nobody made.</p>${trows}`);
     return `${head('Channels & settings', 'Where customers reach you, and the service rules Hoola follows.')}
-      ${setupSec}${emSec}${wcSec}${chSec}${trustSec}${hoSet}${watchSec}
+      ${setupSec}${phSec}${emSec}${wcSec}${chSec}${trustSec}${hoSet}${watchSec}
       ${sec('Where customers reach you', chs)}
       <form id="spSettings" style="display:flex;flex-direction:column;gap:18px">
       ${sec('Reply times', `<label class="f"><span>Start from the usual times for</span><select class="in" name="kind">${(st.presets || []).map(k => `<option value="${k}"${st.kind === k ? ' selected' : ''}>${esc({shop: 'A shop or service business', isp: 'An internet / cable provider', ecommerce: 'An online seller', clinic: 'A clinic'}[k] || k)}</option>`).join('')}</select></label>
@@ -717,6 +826,19 @@
         const r = await api('POST', '/api/support/setup/apply', {answers: p.answers, hash: p.hash}); toast(r.say || 'Setup saved.');
         await refreshDesk(false); location.hash = '#/today'; return; }
       if (b.dataset.act === 'newticket') { const box = $('#spNewTicket'); box.hidden = !box.hidden; if (!box.hidden) box.querySelector('input').focus(); return; }
+      if (b.dataset.delperson) { if (!confirm('Take this person off the team?')) return; const r = await api('DELETE', `/api/seva/team/people/${enc(b.dataset.delperson)}`); toast(r.say); return showPage(true); }
+      if (b.dataset.delqueue) { const r = await api('DELETE', `/api/seva/team/queues/${enc(b.dataset.delqueue)}`); toast(r.say); return showPage(true); }
+      if (b.dataset.delroute !== undefined) { const rs = (ST.team.routes || []).filter((_, i) => i !== Number(b.dataset.delroute)); const r = await api('PUT', '/api/seva/team/routes', {routes: rs}); toast(r.say); return showPage(true); }
+      if (b.dataset.delrule) { const r = await api('DELETE', `/api/seva/team/rules/${enc(b.dataset.delrule)}`); toast(r.say); return showPage(true); }
+      if (b.dataset.ruleon) { const x = (ST.team.rules || []).find(r => r.id === b.dataset.ruleon); await api('PUT', `/api/seva/team/rules/${enc(x.id)}`, {...x, on: b.dataset.on === '1'}); toast(b.dataset.on === '1' ? 'Rule on.' : 'Rule off.'); return showPage(true); }
+      if (b.dataset.delband !== undefined) { const bd = ST.team.bands || {bands: []}; const r = await api('PUT', '/api/seva/team/bands', {bands: bd.bands.filter((_, i) => i !== Number(b.dataset.delband))}); toast(r.say); return showPage(true); }
+      if (b.dataset.delfield !== undefined) { const r = await api('PUT', '/api/seva/team/fields', {fields: (ST.team.fields || []).filter((_, i) => i !== Number(b.dataset.delfield))}); toast(r.say); return showPage(true); }
+      if (b.dataset.delview) { await api('DELETE', `/api/seva/team/views/${enc(b.dataset.delview)}`); toast('View removed.'); return showPage(true); }
+      if (b.dataset.openview) { const r = await api('GET', `/api/seva/team/views/${enc(b.dataset.openview)}`); const out = $('#spViewOut');
+        if (out) out.innerHTML = sec(r.view.name, (r.tickets || []).map(tRow).join('') || '<p class="mut" style="margin:0">No tickets in this view.</p>'); return; }
+      if (b.dataset.runmacro) { const r = await api('POST', `/api/seva/tickets/${enc(ST.arg)}/macro/${enc(b.dataset.runmacro)}`, {}); toast(r.say); return showPage(true); }
+      if (b.dataset.steplink) { const [x, sid] = b.dataset.steplink.split(':'); await api('POST', `/api/seva/exceptions/${enc(x)}/steps/${enc(sid)}/link`, {}); toast('A new link is ready; the old one stopped working.'); return showPage(true); }
+      if (b.dataset.copy) { try { await navigator.clipboard.writeText(b.dataset.copy); toast('Copied.'); } catch (_) { toast('Copy it from the box.', true); } return; }
       if (b.dataset.mailcheck) { const r = await api('POST', '/api/seva/email/check', {}); toast(r.note || 'Checked.', r.status === 'error'); return showPage(true); }
       if (b.dataset.mailpoll) { const r = await api('POST', '/api/seva/email/poll', {}); toast(`${r.read} new mail${r.read === 1 ? '' : 's'} read.`); return showPage(true); }
       if (b.dataset.rotate) { const [k, w] = b.dataset.rotate.split(':'); if (!confirm('The old one stops working at once. Go on?')) return;
@@ -790,6 +912,23 @@
       if (f.id === 'spFlowNew') { const key = S(v.name).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'flow';
         const r = await api('PUT', `/api/seva/flows/${enc(key)}`, {key, name: v.name, stages: [{key: 'new', name: 'New', owner: 'hoola', hours: 2}, {key: 'working', name: 'Being worked on', owner: 'team', hours: 48, customer_told: true}, {key: 'closed', name: 'Closed', owner: 'team', hours: 0}], arrows: {new: ['working'], working: ['closed'], closed: []}});
         toast(r.say || 'Added.'); return showPage(true); }
+      const all = n => [...f.querySelectorAll(`input[name=${n}]:checked`)].map(x => x.value);
+      if (f.id === 'spPerson') { const r = await api('POST', '/api/seva/team/people', {name: v.name, role: v.role, langs: v.langs, skills: v.skills, phone: v.phone,
+          capacity: Number(v.capacity || 8), day_limit: Number(v.day_limit || 0), shift: {days: all('day').map(Number), start: v.start, end: v.end, tz: v.tz}});
+        toast(`${r.person.name} added.`); return showPage(true); }
+      if (f.id === 'spQueue') { await api('PUT', '/api/seva/team/queues', {name: v.name, strategy: v.strategy, skills: v.skills, overflow: v.overflow, members: all('member')}); toast('Queue saved.'); return showPage(true); }
+      if (f.id === 'spRoute') { const cond = {}; for (const k of ['category', 'language', 'country', 'channel', 'words']) if (v[k]) cond[k] = v[k]; if (v.vip) cond.vip = true;
+        const r = await api('PUT', '/api/seva/team/routes', {routes: [...(ST.team.routes || []), {if: cond, queue: v.queue}]}); toast(r.say); return showPage(true); }
+      if (f.id === 'spRule') { const body = {name: v.name, event: v.event, delay_h: Number(v.delay_h || 0), conditions: v.cfield ? [{field: v.cfield, op: v.cop, value: v.cvalue}] : [],
+          actions: [{do: v.ado, value: v.avalue}]}; await api('POST', '/api/seva/team/rules', body); toast('Rule added.'); return showPage(true); }
+      if (f.id === 'spRole') { const r = await api('PUT', '/api/seva/team/roles', {name: v.name, perms: all('perm')}); toast(r.say); return showPage(true); }
+      if (f.id === 'spBand') { const bd = ST.team.bands || {bands: []}; const r = await api('PUT', '/api/seva/team/bands', {currency: v.currency,
+          bands: [...bd.bands, {currency: v.currency, upto: Number(v.upto || 0), steps: S(v.steps).split(',').map(x => x.trim()).filter(Boolean)}]}); toast(r.say); return showPage(true); }
+      if (f.id === 'spField') { const r = await api('PUT', '/api/seva/team/fields', {fields: [...(ST.team.fields || []), {label: v.label, type: v.type, options: v.options}]}); toast(r.say); return showPage(true); }
+      if (f.id === 'spView') { const fl = {}; for (const k of ['queue', 'status', 'priority', 'assignee', 'label']) if (v[k]) fl[k] = v[k]; const r = await api('PUT', '/api/seva/team/views', {name: v.name, filters: fl}); toast(r.say); return showPage(true); }
+      if (f.classList.contains('spMacAct')) { const r = await api('PUT', `/api/seva/macros/${enc(f.dataset.id)}/actions`, {label: v.label, status: v.status, stage: v.stage, assign: v.assign}); toast(r.say); return showPage(true); }
+      if (f.id === 'spCustom') { await api('PUT', `/api/seva/tickets/${enc(ST.arg)}/custom`, v); toast('Fields saved.'); return showPage(true); }
+      if (f.id === 'spPhone') { const r = await api('PUT', '/api/seva/phone', {warm_transfer: !!f.warm_transfer.checked, wa_calls: v.wa_calls}); toast(r.say || 'Saved.'); return showPage(true); }
       if (f.id === 'spMail') { const body = {address: v.address, name: v.name, imap_host: v.imap_host, smtp_host: v.smtp_host, smtp_port: v.smtp_port,
           user: v.user, signature: v.signature}; if (v.password) body.password = v.password;
         const r = await api('PUT', '/api/seva/email', body); toast(r.say || 'Saved.'); return showPage(true); }

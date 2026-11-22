@@ -311,6 +311,34 @@ class Provider:
         """The answer to a webhook that needs nothing done."""
         return "", "text/plain"
 
+    # v0.999.101 G3 warm transfer: the person hears who is calling and why, presses 1, then the caller joins
+    warm_ok = False
+
+    def warm_dial(self, text: str, lang: str, dial: str, caller_id: str, whisper_url: str, done_url: str) -> tuple[str, str]:
+        """The caller hears `text`, the person is rung; when they answer they hear the whisper first. done_url is told
+        how the person's leg ended. A company without a whisper keeps the plain (cold) transfer."""
+        return self.say(text, lang, dial=dial, caller_id=caller_id)
+
+    def whisper(self, text: str, lang: str, accept_url: str) -> tuple[str, str]:
+        """What the PERSON hears before the caller joins: the summary, then 'press 1 to take the call'."""
+        return self.say(text, lang)
+
+    def whisper_accept(self, params: dict[str, Any]) -> tuple[str, str] | None:
+        """The person's key after the whisper (companies that ask it in a second step). None = not this company's way."""
+        return None
+
+    def dial_status(self, params: dict[str, Any]) -> str:
+        """How the person's leg of the transfer ended: answered | no_answer | busy | failed."""
+        st = str(params.get("DialStatus") or params.get("DialCallStatus") or params.get("dial_status") or params.get("status")
+                 or "").lower()
+        if st in ("completed", "answer", "answered", "in-progress"):
+            return "answered"
+        if "busy" in st:
+            return "busy"
+        if any(x in st for x in ("fail", "invalid", "reject")):
+            return "failed"
+        return "no_answer"
+
 
 class Plivo(Provider):
     name = "plivo"
@@ -344,6 +372,18 @@ class Plivo(Provider):
     def hold(self, text, lang, redirect, wait_s=15):
         return (f'<Response><Speak language="{_speak_lang(lang)}">{escape(text)}</Speak><Wait length="{int(wait_s)}" />'
                 f"<Redirect>{escape(redirect)}</Redirect></Response>", "application/xml")
+
+    warm_ok = True
+
+    def warm_dial(self, text, lang, dial, caller_id, whisper_url, done_url):
+        # Plivo <Dial confirmSound / confirmKey>: the called person hears the XML at confirmSound and must press the key
+        cid = f' callerId={quoteattr(caller_id)}' if caller_id else ""
+        return (f'<Response><Speak language="{_speak_lang(lang)}">{escape(text)}</Speak>'
+                f'<Dial{cid} timeout="30" action={quoteattr(done_url)} method="POST" confirmSound={quoteattr(whisper_url)}'
+                f' confirmKey="1"><Number>{escape(dial)}</Number></Dial></Response>', "application/xml")
+
+    def whisper(self, text, lang, accept_url):
+        return f'<Response><Speak language="{_speak_lang(lang)}">{escape(text)}</Speak><Wait length="6" /></Response>', "application/xml"
 
     def line(self):
         return PlivoLine()
@@ -470,6 +510,19 @@ class Fake(Provider):
     def hold(self, text, lang, redirect, wait_s=15):
         return json.dumps({"action": "hold", "text": text, "redirect": redirect, "wait": wait_s}), "application/json"
 
+    warm_ok = True
+
+    def warm_dial(self, text, lang, dial, caller_id, whisper_url, done_url):
+        return json.dumps({"action": "warm", "text": text, "dial": dial, "caller_id": caller_id, "whisper": whisper_url,
+                           "done": done_url}), "application/json"
+
+    def whisper(self, text, lang, accept_url):
+        return json.dumps({"action": "whisper", "text": text, "accept": accept_url}), "application/json"
+
+    def whisper_accept(self, params):
+        ok = str(params.get("Digits") or params.get("digits") or "") == "1"
+        return json.dumps({"action": "connect" if ok else "hangup"}), "application/json"
+
     def line(self):
         return FakeLine()
 
@@ -585,6 +638,24 @@ class Twilio(Provider):
     def hold(self, text, lang, redirect, wait_s=15):
         return (f"<Response><Say language={quoteattr(lang or 'en-US')}>{escape(text)}</Say><Pause length=\"{int(wait_s)}\" />"
                 f"<Redirect method=\"POST\">{escape(redirect)}</Redirect></Response>", "application/xml")
+
+    warm_ok = True
+
+    def warm_dial(self, text, lang, dial, caller_id, whisper_url, done_url):
+        # TwiML <Number url>: the called person runs the whisper TwiML before the two are connected
+        cid = f" callerId={quoteattr(caller_id)}" if caller_id else ""
+        return (f"<Response><Say language={quoteattr(lang or 'en-US')}>{escape(text)}</Say>"
+                f'<Dial{cid} timeout="30" action={quoteattr(done_url)} method="POST">'
+                f'<Number url={quoteattr(whisper_url)} method="POST">{escape(dial)}</Number></Dial></Response>', "application/xml")
+
+    def whisper(self, text, lang, accept_url):
+        return (f'<Response><Gather numDigits="1" timeout="8" action={quoteattr(accept_url)} method="POST">'
+                f"<Say language={quoteattr(lang or 'en-US')}>{escape(text)}</Say></Gather><Hangup /></Response>", "application/xml")
+
+    def whisper_accept(self, params):
+        if str(params.get("Digits") or "") == "1":
+            return "<Response></Response>", "application/xml"       # an empty answer = connect the two
+        return "<Response><Hangup /></Response>", "application/xml"
 
     def line(self):
         return TwilioLine()
@@ -725,6 +796,10 @@ def telnyx_valid(public_key: str, timestamp: str, signature: str, body: str, max
 
 class Telnyx(Twilio):
     name = "telnyx"
+    warm_ok = False      # G3: TeXML whisper not checked on Telnyx's docs yet - plain transfer + the packet on the desk
+    warm_dial = Provider.warm_dial
+    whisper = Provider.whisper
+    whisper_accept = Provider.whisper_accept
     API = "https://api.telnyx.com/v2/texml"
 
     def _key(self) -> str:
