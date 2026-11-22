@@ -10450,3 +10450,51 @@ department desk. Now it has its own section like the Money Safety / business des
   Chromium walk: set up -> invoice with two lines -> import -> confirm both lines -> every tab -> Xero download -> dark + 390).
 
 NOT VERIFIED: on her server; a real model turn in the Books chat; the phone opens the console page (no native screen).
+
+## v0.999.159 VOICE CHANGER, PREMIUM (built as 0.999.158; their BOOKS DESK took 0.999.158, both kept)
+
+Owner: "NOW LETS WORK ON VOICE CHANGER SECTION -- MAKE IT PREMIUM AND ADVANCE. PERFECTLY MATCHING IT WITH OTHER DESIGN WORKS"
+-> design canvas claude.ai/artifact/HGbVJ4bghAiMFg9QyFCh2P (7 boards) -> "GO BUILD".
+
+**Server** (`vocal/service.py`, `vocal/eleven.py`, `vocal/api.py`, `vocal/more.py`):
+- `change_many(tenant, path, voices, denoise, name, start, end, closeness, feel, source_of)`: one recording into up to 3
+  voices (`CHG_MAX`), each changed and priced on its own; a failing voice is listed in `failed` and never stops the others.
+  `change()` keeps its old shape (one voice -> the sound).
+- The part she marks: `start` / `end` seconds -> `_cut` (ffmpeg, 44.1 kHz mono WAV); at least one second; the 5-minute
+  limit counts the marked part.
+- The two sliders reach ElevenLabs as `voice_settings` (a JSON string, per its voice changer page): "How close to the
+  voice" 0-100 -> `similarity_boost` 0-1, "Keep my feeling" 0-100 -> `stability` 1-0. The page defaults (75, 50) equal
+  ElevenLabs' own defaults; with no slider sent, nothing is sent (as before).
+- Her own recording (the marked part, as sent) is kept beside the change in `<home>/sources/cs_<id>.<ext>` for
+  `CHG_SRC_DAYS` 30 days (`src`, `src_ext`, `src_secs`, `src_until` on the row); GET `/api/vocal/change/source?id=` plays
+  it (private, no-store); `source_of` changes it again into another voice with no new upload. Removing a change deletes
+  the recording only when no other change needs it; `sources_sweep` (every tenant, from `sweep_all`) deletes it after 30
+  days and the change stays.
+- `/quote` prices the changer per voice (`voices: n`).
+- FIXED (found by the new test): ffmpeg writing WAV into a pipe leaves the RIFF / data sizes unset (0xFFFFFFFF), so every
+  recording the changer prepared read as hours long; `_wav_sizes` sets them (also on the old `_for_changer` path).
+
+**Console** (`static/console/vocal.js` "Voice changer (v0.999.159 ...)", `vocal2.css` "v0.999.159 Voice changer"):
+the page = title + "Your changes · N"; steps Your recording / Into a voice / Change it; the mic with the progress ring and
+live level (up to 5:00), "or choose a recording or a video", three tips; her recording drawn from its own sound
+(`chgPeaks`), the part she marks with Start / End sliders moving live (`chgTrim`, no redraw), play the part, Use all of it,
+checks read from the sound; Into = a voice card opening the grouped picker (`chgPick`: Your voices / Premium / shared
+library, "Cannot be used here" with the reason); Remove room noise; the two sliders; Change it with the price before the
+tap. Right: Hear the difference = Before (her recording) and After (the new voice) on one timeline, one play button,
+Before / After switches at the same moment (`chgPlay`, two players kept in step); Download, Try it in other voices, Into
+another voice; the honest note; Recent changes. Try it in other voices = up to three places, one total price, Choose this
+one, Go on with it (the others removed if she leaves the box ticked). Your changes = every change as a pair (You / the
+voice), Open, Into another voice. When the changer cannot run (ElevenLabs not on the server, no voice on ElevenLabs, no
+credits) the page says so in cards and charges nothing (`chgNot`). Removed: the old one-box form (`pickinto`, `change`).
+`--chga` / `--chgb` (v2.css registers `--a` as an angle).
+
+**Phone** (`lib/ui/vocal/vocal_tools.dart` `VocalChangerPage`, `lib/api.dart` `vocalChangeSource`): the two sliders,
+Hear the difference with Before / After (her kept recording), Download and Other voices (priced, asked first), Recent
+changes with Into another voice / Download / Delete. Also fixed the phone test my v0.999.157 left stale ("Recorded from you").
+
+**Tests**: NEW `test_v0999_159_voice_changer.py` (4: the marked part + sliders + kept recording, three voices + again +
+cleanup + price per voice, the files, a Chromium walk at light / dark 1440 and 390 + the not-ready page);
+`test_v0999_96_vocal_redesign_console.py` walk moved to the new picker; `test/vocal_phone_test.dart` 32/32 (Flutter 3.24.5 here).
+
+NOT VERIFIED: a real ElevenLabs voice change with voice_settings (its page names the field but not the keys; stability /
+similarity_boost are its standard voice settings), on her server or phone.

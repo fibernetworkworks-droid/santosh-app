@@ -93,7 +93,7 @@ Widget _results(BuildContext context, VocalStore store, VocalPlayer player, List
 }
 
 // ================================================================================================ Voice changer
-// v0.999.158 (design canvas claude.ai/artifact/HGbVJ4bghAiMFg9QyFCh2P): her recording, the voice, room noise, how close
+// v0.999.159 (design canvas claude.ai/artifact/HGbVJ4bghAiMFg9QyFCh2P): her recording, the voice, room noise, how close
 // to the voice and how much of her feeling stays; Before / After on the result (her own recording is kept 30 days); her
 // recent changes, each one changed again into another voice from the kept recording.
 class VocalChangerPage extends StatefulWidget {

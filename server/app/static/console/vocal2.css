@@ -1347,7 +1347,7 @@
   #hvRoot .hv-yvbar .hv-seg{flex-wrap:nowrap;width:100%;box-sizing:border-box} #hvRoot .hv-yvbar .hv-seg .hv-chip{flex:1;padding:0 6px;min-width:0;justify-content:center;font-size:13px} #hvRoot .hv-yvmic{gap:14px} #hvRoot .hv-recb.xl{width:64px;height:64px} }
 @media (prefers-reduced-motion:reduce){ #hvRoot .hv-yvlvl span,#hvRoot .hv-yvway{transition:none} }
 
-/* ---------------------------------------------------------------- v0.999.158 Voice changer: record, mark, into a voice, before and after */
+/* ---------------------------------------------------------------- v0.999.159 Voice changer: record, mark, into a voice, before and after */
 #hvRoot .hv-doc.hv-chg{gap:18px}
 #hvRoot .hv-chgtop{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:0}
 #hvRoot .hv-chgtop>.hv-vt{min-width:0;gap:2px}

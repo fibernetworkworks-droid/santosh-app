@@ -1,4 +1,4 @@
-"""v0.999.158 VOICE CHANGER, PREMIUM - on the server: only the part she marks is changed, the two sliders reach ElevenLabs as
+"""v0.999.159 VOICE CHANGER, PREMIUM - on the server: only the part she marks is changed, the two sliders reach ElevenLabs as
 voice settings, her own recording is kept beside the change (and goes with the last change that needs it, or after 30 days),
 up to three voices from one recording, again from a kept recording, a price per voice; and the console page walked in a
 real Chromium: record, the part she marks, into a voice, Before / After, three voices side by side, Your changes, and the
@@ -105,7 +105,7 @@ def test_the_files_carry_the_design():
               "Into another voice", "Your changes", "Say it once. Hear it in another voice.", "Cannot be used here",
               "/change/source", "source_of", "voices: vs"):
         assert k in JS, k
-    for k in ("v0.999.158 Voice changer", ".hv-chggrid", ".hv-chgwave", ".hv-chgsel", ".hv-chglane", ".hv-chgslots", ".hv-chglist", ".hv-chgnots"):
+    for k in ("v0.999.159 Voice changer", ".hv-chggrid", ".hv-chgwave", ".hv-chgsel", ".hv-chglane", ".hv-chgslots", ".hv-chglist", ".hv-chgnots"):
         assert k in CSS, k
     assert "case 'pickinto'" not in JS and "case 'change':" not in JS          # the old one-box changer is gone
 

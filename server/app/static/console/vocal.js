@@ -1958,7 +1958,7 @@ window.HoolaVocal = function (ctx) {
     if (UI.dub?.status !== 'working' && !remake) return;
     dubPoll.t = setTimeout(() => { if (PAGE === 'dub' && ARG === id && ROOT && !ROOT.hidden) { if (remake) URLS.clear(); loadDub(id); } }, remake ? 10000 : 3000); }
 
-  // ------------------------------------------------------------------ Voice changer (v0.999.158, design canvas claude.ai/artifact/HGbVJ4bghAiMFg9QyFCh2P)
+  // ------------------------------------------------------------------ Voice changer (v0.999.159, design canvas claude.ai/artifact/HGbVJ4bghAiMFg9QyFCh2P)
   // her recording -> the part she marks -> a voice on ElevenLabs -> Before / After on one timeline; up to three voices
   // at once; every change kept as a pair, her own recording beside it for 30 days so it can be heard and changed again.
   const CHG = {a: null, b: null, raf: 0, on: false};
