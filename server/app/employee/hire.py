@@ -304,7 +304,7 @@ CATALOG: dict[str, dict[str, Any]] = {
                        "never": ["Approve, decline or pay out a loan",
                                  "Contact anyone about a debt itself, or contact family, employers or friends",
                                  "Threaten or shame a borrower", "Score a person on protected grounds"]},
-    # v0.999.141 F7 FIRM MODE (docs/FINANCE_GLOBAL_PLAN.md; accounting, tax and advisory firms, any country)
+    # v0.999.143 F7 FIRM MODE (docs/FINANCE_GLOBAL_PLAN.md; accounting, tax and advisory firms, any country)
     "firm_practice": {"name": "Firm Practice", "live": True, "icon": "receipt", "group": FIN_GROUP,
                       "pitch": "Run your firm's clients in one place: a book per client, a switcher, engagement letters, paper requests, a client portal, drafts reviewed and signed by the named person, the review queue, a dashboard and each client's audit trail - and the adviser parts.",
                       "does": ["A book for every client; each of your people sees only their clients, each client only their own",

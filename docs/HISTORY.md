@@ -10021,3 +10021,14 @@ opens More settings before the language (the v0.999.133 change).
 
 NOT VERIFIED: on her server, in her browser, or on her phone; no real engine made a talk with these pauses or cut-ins, so
 how a natural take treats the written-in hints is not heard yet.
+
+## v0.999.143 FIRM MODE F7 (built as 0.999.140; their 0.999.140 REPLAY TICKS, 0.999.141 and 0.999.142 DIALOGUE, PREMIUM took those numbers - REBASE PROTOCOL, both kept) — Firm mode (Practice)
+
+Owner: "GO F7" on docs/FINANCE_GLOBAL_PLAN.md (phase F7).
+
+- `server/app/fin/desks/firm.py` - person_add, client_add, clients, engagement, request + provide, portal, draft / edit / review / sign / share, queue, dashboard, audit, factfind, meeting, suitability, drift, cfo_pack; access checked per person and client on every call; file / send / pay refused.
+- `fin/models.py` FinDraft.meta (nullable: prepared_by, reviews, signer, signature, shared).
+- `agent/firmmode_tools.py` tool `firm_practice` (registry 641 -> 642); labels, admit family firmmode, voice VOICE_VIA_KAAM, hire.py Hub entry, deskroom Finance desk lane, employees.js (+ the missing F6 credit_lending entry); `/api/fin/firm/{part}`.
+- `fin/card_f7.py` - a firm with 50 clients: isolation, review gate, signatures; 6 mutations each fail it.
+- Tests: `tests/test_fin_f7.py` 6 (incl. the stale-approval lock and a console-desk check for every finance-plan employee); pins 642 / 163 / 106.
+- NOT VERIFIED: no client sign-in yet; tax research and time sheets not built; not on her server.

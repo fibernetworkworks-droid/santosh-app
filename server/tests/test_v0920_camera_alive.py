@@ -42,5 +42,5 @@ def test_tiles_use_it_and_real_clip_stays_on_top():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.142"' in main  # the newest story now leads; v0.920 lives in CLAUDE.md + HISTORY
-    assert "version: 0.999.142+1137" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.143"' in main  # the newest story now leads; v0.920 lives in CLAUDE.md + HISTORY
+    assert "version: 0.999.143+1138" in (ROOT / "pubspec.yaml").read_text()

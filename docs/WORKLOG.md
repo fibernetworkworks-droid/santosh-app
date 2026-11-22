@@ -3579,3 +3579,6 @@ F5 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/payroll.py + cash.py, agent/payroll
 
 Task ID: v0.999.139 CREDIT AND LENDING F6
 F6 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/credit.py, agent/lending_tools.py (tool 641), fin/card_f6.py, /api/fin/credit. tests/test_fin_f6.py 6 pass; card 14/14.
+
+Task ID: v0.999.143 FIRM MODE F7
+F7 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/firm.py, FinDraft.meta, agent/firmmode_tools.py (tool 642), fin/card_f7.py, /api/fin/firm. tests/test_fin_f7.py 6 pass; card 50 clients 0 leaks.

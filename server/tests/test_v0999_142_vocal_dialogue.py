@@ -1,4 +1,4 @@
-"""v0.999.142 DIALOGUE, PREMIUM - the server half: line times, a pause after a line, a line that cuts in, making one line
+"""v0.999.143 DIALOGUE, PREMIUM - the server half: line times, a pause after a line, a line that cuts in, making one line
 again, each voice on its own track, subtitles, and scripts from a document that name their page and check their
 figures. No network: the engines are faked at their seams (the fixtures of the v0.999.96 suite)."""
 import io
