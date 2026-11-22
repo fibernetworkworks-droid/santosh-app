@@ -503,6 +503,10 @@ from .books_tools import BOOKS_HANDLERS, BOOKS_LABELS, BOOKS_TOOLS  # noqa: E402
 TOOLS.extend(BOOKS_TOOLS)
 TOOL_LABELS.update(BOOKS_LABELS)
 HANDLERS.update(BOOKS_HANDLERS)
+from .taxwide_tools import TAXWIDE_HANDLERS, TAXWIDE_LABELS, TAXWIDE_TOOLS  # noqa: E402  v0.999.135 F4 Tax worldwide
+TOOLS.extend(TAXWIDE_TOOLS)
+TOOL_LABELS.update(TAXWIDE_LABELS)
+HANDLERS.update(TAXWIDE_HANDLERS)
 
 from .finops_tools import FINOPS_HANDLERS, FINOPS_LABELS, FINOPS_TOOLS  # noqa: E402  v0.602 Vitt Sahayak (finance desk assists, Wave 2)
 

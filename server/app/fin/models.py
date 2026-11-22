@@ -238,6 +238,7 @@ class FinInvoice(Base):
     rate_source: Mapped[str] = mapped_column(String(120), default="")
     code: Mapped[str] = mapped_column(String(16), default="")                        # income / expense account
     lines: Mapped[str] = mapped_column(Text, default="[]")
+    supply: Mapped[str | None] = mapped_column(Text, nullable=True, default="{}")    # F4: where it was supplied {country, state, b2b, buyer_tax_id}
     status: Mapped[str] = mapped_column(String(10), default="draft")                # draft | open | paid | void
     source: Mapped[str] = mapped_column(String(16), default="manual")               # manual | receipt
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

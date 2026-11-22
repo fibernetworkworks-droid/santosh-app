@@ -216,6 +216,25 @@ def _hint(w: dict[str, Any]) -> str:
     return f"For {cc} Hoola has {v} (not confirmed - check this); the rate used is the one you entered." if v else ""
 
 
+def _supply(x: Any) -> dict[str, Any]:
+    """Where the supply was made, for the tax returns (F4): the other party's country / state, whether it is a business, its tax id
+    (kept masked: last 4 only)."""
+    if not isinstance(x, dict):
+        return {}
+    out: dict[str, Any] = {}
+    if x.get("country"):
+        out["country"] = str(x["country"]).upper()[:2]
+    if x.get("state"):
+        out["state"] = str(x["state"]).upper()[:8]
+    if "b2b" in x:
+        out["b2b"] = bool(x["b2b"])
+    tid = re.sub(r"\s", "", str(x.get("buyer_tax_id") or x.get("tax_id") or ""))
+    if tid:
+        out["tax_id"] = ("*" * max(0, len(tid) - 4) + tid[-4:])[:40]
+        out["b2b"] = out.get("b2b", True)
+    return out
+
+
 def create_doc(tenant: str, ws: str, kind: str, a: dict[str, Any], actor: str, source: str = "manual") -> dict[str, Any]:
     """An invoice (sales) or a bill (purchase). Lines [{description, qty, price, tax_pct}] in the document's currency.
     issue=true posts it to the books; otherwise it stays a draft."""
@@ -234,8 +253,13 @@ def create_doc(tenant: str, ws: str, kind: str, a: dict[str, Any], actor: str, s
         amt = _m(q * Decimal(str(l.get("price") or 0)), cur)
         t = _m(Decimal(amt) * Decimal(str(l.get("tax_pct") or 0)) / 100 / (10 ** P.minor_unit(cur)), cur)
         net, tax = net + amt, tax + t
-        lines.append({"description": str(l.get("description") or "")[:160], "qty": float(q), "price": float(l.get("price") or 0),
-                      "tax_pct": float(l.get("tax_pct") or 0), "net_minor": amt, "tax_minor": t})
+        row = {"description": str(l.get("description") or "")[:160], "qty": float(q), "price": float(l.get("price") or 0),
+               "tax_pct": float(l.get("tax_pct") or 0), "net_minor": amt, "tax_minor": t}
+        if l.get("tax_code"):   # F4: how the line is treated for VAT / GST (std, reduced, zero, exempt, export, rc_in ...)
+            row["tax_code"] = str(l["tax_code"])[:16]
+        if l.get("capital"):
+            row["capital"] = True
+        lines.append(row)
     if not lines or net <= 0:
         raise BooksError("lines: [{description, qty, price, tax_pct}] with a positive amount.")
     rate, rd, src = _fx(cur, book, a)
@@ -244,6 +268,7 @@ def create_doc(tenant: str, ws: str, kind: str, a: dict[str, Any], actor: str, s
         d = M.FinInvoice(tenant_id=tenant, workspace_id=ws, kind=kind, party=str(a["party"])[:120], issue=issue, due=due, currency=cur,
                          net_minor=net, tax_minor=tax, total_minor=net + tax, rate=rate, carried_rate=rate, rate_date=rd, rate_source=src,
                          code=str(a.get("code") or ("4000" if kind == "sales" else "6000")), lines=json.dumps(lines),
+                         supply=json.dumps(_supply(a.get("supply"))),
                          status="draft", source=source)
         s.add(d)
         s.commit()
