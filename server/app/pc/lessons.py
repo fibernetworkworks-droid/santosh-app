@@ -287,16 +287,29 @@ def judge(base: dict | None, trial: dict) -> tuple[str, str]:
     return "keep", f"success {bs.get('success_pct')}% -> {ts.get('success_pct')}% ({'+' if gain >= 0 else ''}{gain}), none dropped"
 
 
-def settle(trial: dict, base: dict | None) -> dict:
-    """After a trial card: keep or drop every candidate (wait = leave them)."""
-    if not any(x.get("status") == "candidate" for x in _load().get("lessons") or []):
+def sites_of(text: str) -> set[str]:
+    return {_site(h) for h in _HOST.findall(str(text or ""))} - {""}
+
+
+def _on(site: str, sites: set[str] | None) -> bool:
+    return sites is None or any(site == h or h.endswith("." + site) or site.endswith("." + h) for h in sites)
+
+
+def settle(trial: dict, base: dict | None, sites: set[str] | None = None) -> dict:
+    """After a trial card: keep or drop the candidates the trial really tried (wait = leave them). `sites` = the hosts
+    the exam's jobs visit; a candidate about another site was never read in this run, so it is not judged by it."""
+    cands = [x for x in _load().get("lessons") or [] if x.get("status") == "candidate"]
+    if not cands:
         return {"verdict": "none", "why": "no candidate lessons to try", "lessons": []}
+    if not any(_on(str(x.get("site") or ""), sites) for x in cands):
+        return {"verdict": "none", "why": "no candidate lesson is about a site of this exam - run the exam those sites are in",
+                "lessons": []}
     verdict, why = judge(base, trial)
     with _lock:
         d = _load()
         ids = []
         for x in d.get("lessons") or []:
-            if x.get("status") == "candidate":
+            if x.get("status") == "candidate" and _on(str(x.get("site") or ""), sites):
                 ids.append(x["id"])
                 if verdict in ("keep", "drop"):
                     x["status"] = "kept" if verdict == "keep" else "dropped"

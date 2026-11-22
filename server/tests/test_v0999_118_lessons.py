@@ -114,3 +114,12 @@ def test_no_lessons_about_hoolas_own_site_and_no_near_copies(monkeypatch):
         {"id": "4", "site": "sam.gov", "text": "Use page_type by ref for the keyword box.", "status": "candidate"}]})
     ids = [x["id"] for x in L.listing()["lessons"]]
     assert ids == ["1", "4"]
+
+
+def test_a_trial_judges_only_lessons_about_its_own_sites():
+    rows = [{"id": f"b{i}", "ok": True} for i in range(6)]
+    base = _card(83.3, rows[:5] + [{"id": "b5", "ok": False}])
+    L._save({"lessons": [{"id": "p", "site": "sam.gov", "text": "Use page_type by ref.", "status": "candidate"}]})
+    out = L.settle(_card(100.0, rows, trial=True), base, sites={"practice.example.com"})
+    assert out["verdict"] == "none" and L.listing()["lessons"][0]["status"] == "candidate"
+    assert L.settle(_card(100.0, rows, trial=True), base, sites={"sam.gov"})["verdict"] == "keep"

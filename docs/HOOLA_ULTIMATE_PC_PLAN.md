@@ -149,3 +149,6 @@ the task ends cleanly). This hit real users too, not only the exam: any PC step 
 
 - v0.999.131: a lesson about Hoola's own practice site is refused (it would teach the exam), near-copies dropped.
 
+
+- v0.999.132: a trial keeps / drops only the lessons about the sites its jobs visit (run the portal trial for portal lessons).
+

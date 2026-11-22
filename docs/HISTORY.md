@@ -9847,3 +9847,7 @@ NOT VERIFIED:
 
 ## v0.999.131 LESSONS CLEAN
 Lessons clean (P8 fix). `pc/lessons.py`: _own_hosts() / _own() (Hoola's own addresses incl. the practice portal), check_lesson refuses them, build drops them and skips a candidate whose words half-overlap an earlier one of the same site (_same), tidy() at listing() and at the start of a trial card (pccard.run_card). Test added to test_v0999_118_lessons.py. NOT VERIFIED on her server.
+
+
+## v0.999.132 TRIAL ON ITS OWN SITES
+Trial on its own sites (P8 fix). `pc/lessons.py`: sites_of(), _on(), settle(trial, base, sites=) judges only candidates whose site is one of the exam's hosts, verdict 'none' with a plain reason otherwise; `quality/pccard.py` passes the hosts of the run's task asks. Test added to test_v0999_118_lessons.py. NOT VERIFIED on her server.

@@ -471,7 +471,8 @@ async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv
         card = save(card, fname)
     if trial and not note:     # v0.999.118 P8 the exam decides: keep the candidates or drop them
         try:
-            card["lessons"] = _lessons.settle(card, _lessons.base_card(set_name, card["pc"], card.get("file", "")))
+            card["lessons"] = _lessons.settle(card, _lessons.base_card(set_name, card["pc"], card.get("file", "")),
+                                              sites=set().union(*(_lessons.sites_of(t["ask"]) for t in tasks)))
             if save_card:
                 card = save(card, fname)
         except Exception:
