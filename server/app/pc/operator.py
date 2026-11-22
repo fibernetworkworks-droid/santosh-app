@@ -3046,6 +3046,11 @@ async def _run(op: Op) -> None:
         system += _guard.prompt_block(op.tenant)
     except Exception:
         log.exception("pc rules block failed")
+    try:   # v0.999.118 P8 Hoola's own lessons for the sites of this job (only those an exam kept)
+        from . import lessons as _lessons
+        system += _lessons.block(op.task, getattr(op, "cur_url", "") or "")
+    except Exception:
+        log.exception("pc lessons block failed")
     try:   # v0.867 PC SASTA: the cheap worker reads the fixed desktop playbook
         from . import rescue as _rescue
         if _rescue.playbook_on(op):

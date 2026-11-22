@@ -482,6 +482,7 @@ class Settings(BaseSettings):
     pc_rescue_max: int = 4                  # rescues per task
     pc_playbook: bool = True                # v0.867 the fixed desktop playbook in the cheap worker's prompt
     pc_step_cap: int = 64                   # v0.867 hard step cap per PC task (= the browser budget, so by default it changes nothing; lower it with PC_STEP_CAP; 0 = off)
+    pc_lessons: bool = True                 # v0.999.118 P8 weekly PC lessons from job records (kept only if an exam rises); PC_LESSONS=false in .env stops it
     pc_daily_inr: int = 300                 # v0.867 daily PC allowance per person, an ESTIMATE (0 = no cap); PC_DAILY_INR in .env
     pc_qwen_openrouter_model: str = "qwen/qwen3.8-max-0902"   # v0.853 Qwen ONLY via OpenRouter on the server's OpenRouter key (never Alibaba Cloud)
     pc_sonnet_model: str = "claude-sonnet-5-5"   # never rewritten to Haiku / GLM for the PC loop
