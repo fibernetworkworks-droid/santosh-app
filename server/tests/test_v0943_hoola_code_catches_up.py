@@ -177,5 +177,5 @@ def test_drop_old_looks_keeps_only_the_newest_pictures():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.114"' in main
-    assert "version: 0.999.114+1109" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.115"' in main
+    assert "version: 0.999.115+1110" in (ROOT / "pubspec.yaml").read_text()

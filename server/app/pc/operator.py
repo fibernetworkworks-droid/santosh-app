@@ -3086,6 +3086,15 @@ async def _run(op: Op) -> None:
             from . import pool as _pool
             await _pool.prepare(op)
         first = await _shot_retry(op)          # v0.185.4 one busy capture at task start must not kill the task
+        if getattr(op, "replay", None):        # v0.999.115 P5 LEARN ONCE, REPLAY: the routine's steps with no AI
+            from . import routines as _rt
+            _ok, _n, _note = await _rt.play(op)
+            log.info("pc task %s replay %s: %d steps, all=%s | %s", op.id, (op.replay or {}).get("id"), _n, _ok, _note[:160])
+            if _ok and op.status == "running":
+                op.status, op.summary = "done", _note
+            elif op.status == "running":
+                op.carry = (op.carry + "\n\n" if op.carry else "") + _note   # the AI takes over FROM that step
+                first = await _shot_retry(op)
         op.native = _native_on(op)             # v0.859 D1 Claude's own computer toolset on the Claude brain
         op.plan = await _make_plan(op)         # v0.859 D2 checked stages (a short job gets none)
         if op.plan:
@@ -3586,7 +3595,7 @@ def _lane_pc(tenant: str):
 
 async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str = "", pc: str = "",
                 team: str = "", replace: bool = True, brain: str = "", quiet: bool = False,
-                batch_ok: bool = False) -> dict[str, Any]:
+                batch_ok: bool = False, replay: dict | None = None) -> dict[str, Any]:
     """Start one PC task. v0.836 DESKTOP TEAM: one task per PC (not per person) - her office PC, her home PC and
     Hoola's own PCs can each work at the same time. A new task on a BUSY PC replaces the old one (the old
     pc_do behaviour) unless replace=False, which raises PcBusy instead (pc_team never cancels her running work)."""
@@ -3629,6 +3638,7 @@ async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str 
             device_id=dev, device_name=str((conn.info or {}).get("name") or "")[:60], team=team)
     op.quiet, op.batch_ok = bool(quiet), bool(batch_ok)
     op.lane = lane
+    op.replay = replay or None       # v0.999.115 P5 a saved routine: its steps run first, with no AI
     if ckind != HOOLA_PC_KIND:
         try:   # v0.999.47 her 'Work in the background' switch (Hoola Computer > Your PC)
             from .. import computer as _hc

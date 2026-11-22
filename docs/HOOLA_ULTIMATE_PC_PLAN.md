@@ -124,3 +124,6 @@ the task ends cleanly). This hit real users too, not only the exam: any PC step 
 
 ## P3 as built (v0.999.114)
 - Hoola PC: data_read / sheet_write / doc_fill (`desktop-linux/datakit.py`) and page_tables; her PC: page_tables through the extension. The 'code helper' is the existing `run` on Hoola PC (free) - on her PC it stays off (her files, her machine). Not built: data tools on her Windows PC itself (needs a desktop exe rebuild; her files reach Hoola PC with user_pc_pull meanwhile).
+
+## P5 as built (v0.999.115)
+- A good job -> a routine (`server/app/pc/routines.py`), replay with no AI through the normal operator path, self-heal = the AI takes over from the step that no longer fits. Chat: 'save that as a routine' / 'run my routine X with ...'. Not built yet: 'watch me once' recording of HER own clicks (extension record mode), schedules for routines, loops / checks inside a routine, the Skyvern service (AGPL, a separate program - waits for her OK).

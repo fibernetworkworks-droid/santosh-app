@@ -118,5 +118,5 @@ def test_phone_picker_and_call_badge_wired():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.114"
-    assert "0.999.114+1109" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.115"
+    assert "0.999.115+1110" in (ROOT / "pubspec.yaml").read_text()

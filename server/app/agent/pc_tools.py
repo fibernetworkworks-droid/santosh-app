@@ -53,7 +53,7 @@ PC_TOOLS.append({"name": "pc_do", "description": (
     "submitting, deleting, paying, installing or changing settings, and never types passwords/OTPs. Needs 'Let Hoola "
     "control the PC' switched on in Santosh Desktop. Slow (a few seconds per step). While her PC task runs, her "
     "follow-ups go here too (pc_do again): they steer THAT task - never hoola_pc_do / browse_web for them."),
-    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}, "model": {"type": "string", "enum": ["qwen", "sonnet"], "description": "Only when she names the PC model for this task (Qwen 3.8 Max / Sonnet 5.5); leave out = the server default."}, "pc": {"type": "string", "description": "Which of HER PCs, by her name for it ('office', 'home laptop'). Never a Hoola PC (that is hoola_pc_do). Leave out when she has one PC or did not say; pc_devices lists the names."}, "fresh": {"type": "boolean", "description": "Only for a completely NEW, different job while a PC task is running. Leave out for her follow-ups ('use Chrome', 'take this one'): they go INTO the running task."}}, "required": ["task"]}})
+    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}, "routine": {"type": "string", "description": "Replay one of her SAVED routines by its name (fast, no AI; the AI takes over only if the site changed). Put the routine's blanks in values."}, "values": {"type": "object", "description": "Values for the routine's blanks, e.g. {\"Invoice no\": \"INV-7\"}."}, "save_as_routine": {"type": "string", "description": "Save the LAST job of this chat that finished well as a routine with this name (she said 'save that' / 'remember how you did it'); task can be 'save'."}, "model": {"type": "string", "enum": ["qwen", "sonnet"], "description": "Only when she names the PC model for this task (Qwen 3.8 Max / Sonnet 5.5); leave out = the server default."}, "pc": {"type": "string", "description": "Which of HER PCs, by her name for it ('office', 'home laptop'). Never a Hoola PC (that is hoola_pc_do). Leave out when she has one PC or did not say; pc_devices lists the names."}, "fresh": {"type": "boolean", "description": "Only for a completely NEW, different job while a PC task is running. Leave out for her follow-ups ('use Chrome', 'take this one'): they go INTO the running task."}}, "required": ["task"]}})
 PC_TOOLS.append({"name": "pc_task_result", "description": "[HER PC] Status or result of a pc_do task (session_id).",
                  "input_schema": {"type": "object", "properties": {"session_id": {"type": "string"}}, "required": ["session_id"]}})
 PC_LABELS.update({"pc_do": "Working on your PC", "pc_task_result": "Checking your PC task"})
@@ -80,7 +80,7 @@ PC_TOOLS.append({"name": "hoola_pc_do", "description": (
     "files live in /data. Same safety rules as pc_do for anything that leaves the VM (sends, submits, pays). "
     "Describe the full goal with every detail. The user watches it live; it asks on the phone before sending, "
     "submitting, deleting or paying, and never types passwords/OTPs. Slow (a few seconds per step)."),
-    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}, "model": {"type": "string", "enum": ["qwen", "sonnet"], "description": "Only when she names the PC model for this task (Qwen 3.8 Max / Sonnet 5.5); leave out = the server default."}, "pc": {"type": "string", "description": "Which PC, by her name for it ('Hoola PC 2'); leave out = any FREE Hoola PC. Leave out when she has one PC or did not say; pc_devices lists the names."}, "fresh": {"type": "boolean", "description": "Only for a completely NEW job while a Hoola PC task of this chat runs; her follow-ups go INTO the running task."}}, "required": ["task"]}})
+    "input_schema": {"type": "object", "properties": {"task": {"type": "string"}, "routine": {"type": "string", "description": "Replay one of her SAVED routines by its name (fast, no AI; the AI takes over only if the site changed). Put the routine's blanks in values."}, "values": {"type": "object", "description": "Values for the routine's blanks, e.g. {\"Invoice no\": \"INV-7\"}."}, "save_as_routine": {"type": "string", "description": "Save the LAST job of this chat that finished well as a routine with this name (she said 'save that' / 'remember how you did it'); task can be 'save'."}, "model": {"type": "string", "enum": ["qwen", "sonnet"], "description": "Only when she names the PC model for this task (Qwen 3.8 Max / Sonnet 5.5); leave out = the server default."}, "pc": {"type": "string", "description": "Which PC, by her name for it ('Hoola PC 2'); leave out = any FREE Hoola PC. Leave out when she has one PC or did not say; pc_devices lists the names."}, "fresh": {"type": "boolean", "description": "Only for a completely NEW job while a Hoola PC task of this chat runs; her follow-ups go INTO the running task."}}, "required": ["task"]}})
 PC_LABELS.update({"hoola_pc_do": "Working on Hoola's own PC"})
 
 # v0.885 REPEAT JOBS on Hoola PC (owner: "LEGACY PORTALS AND GOV PORTALS WHERE NEED A HUGE REPEATED MANUAL WORK" +
@@ -123,9 +123,45 @@ async def hoola_pc_batch(ctx: Ctx, action="start", task="", file_id="", rows=Non
         raise ToolError(str(e))
 
 
-async def hoola_pc_do(ctx: Ctx, task, pc="", model="", fresh=False, _wait=None, **_):
+async def _routine_step(ctx, kind: str, pc: str, routine: str, values: dict | None, save_as: str, wait: float):
+    """v0.999.115 P5 replay a saved routine / save the last good job as one. None = not a routine call."""
+    from ..pc import operator, routines
+    if save_as:
+        job = routines.last_done_job(ctx.tenant_id, ctx.conversation_id, kind)
+        if not job:
+            raise ToolError("No job in this chat finished well yet - a routine is made from a job that worked.")
+        try:
+            r = routines.from_job(ctx.tenant_id, job, save_as)
+        except ValueError as e:
+            raise ToolError(str(e))
+        return {"saved_routine": r["name"], "steps": len(r["steps"]), "blanks": [b["name"] for b in r["blanks"]],
+                "say": f"Saved as the routine '{r['name']}' ({len(r['steps'])} steps"
+                       + (f"; blanks: {', '.join(b['name'] for b in r['blanks'])}" if r["blanks"] else "")
+                       + "). Next time it replays in seconds with no AI."}
+    if not routine:
+        return None
+    r = routines.find(ctx.tenant_id, routine)
+    if r is None:
+        names = ", ".join(x["name"] for x in routines.listing(ctx.tenant_id)[:12]) or "none yet"
+        raise ToolError(f"No routine called '{routine}'. Her routines: {names}.")
+    vals = dict(values or {})
+    out = await operator.start(ctx.tenant_id, ctx.conversation_id, routines.task_text(r, vals), kind=kind, pc=str(pc or ""),
+                               wait=wait, replay={**r, "values": vals})
+    out.pop("timeline", None)
+    missing = [b["name"] for b in r.get("blanks") or [] if b["name"] not in vals]
+    out["say"] = (f"Replaying the routine '{r['name']}'" + (f" (blanks left at last time's values: {', '.join(missing)})" if missing else "")
+                  + ". Tell her in one short line.")
+    return out
+
+
+async def hoola_pc_do(ctx: Ctx, task, pc="", model="", fresh=False, _wait=None, routine="", values=None,
+                      save_as_routine="", **_):
     from ..pc import operator
     from ..pc.hub import HOOLA_PC_KIND
+    _r = await _routine_step(ctx, HOOLA_PC_KIND, pc, str(routine or ""), values, str(save_as_routine or ""),
+                             get_settings().pc_wait_seconds if _wait is None else float(_wait))
+    if _r is not None:
+        return _r
     task = str(task or "").strip()
     if len(task) < 3:
         raise ToolError("Tell me what to do on the Hoola PC")
@@ -162,8 +198,13 @@ async def hoola_pc_do(ctx: Ctx, task, pc="", model="", fresh=False, _wait=None, 
     return r
 
 
-async def pc_do(ctx: Ctx, task, pc="", model="", fresh=False, _wait=None, **_):
+async def pc_do(ctx: Ctx, task, pc="", model="", fresh=False, _wait=None, routine="", values=None,
+                save_as_routine="", **_):
     from ..pc import operator
+    _r = await _routine_step(ctx, "", pc, str(routine or ""), values, str(save_as_routine or ""),
+                             get_settings().pc_wait_seconds if _wait is None else float(_wait))
+    if _r is not None:
+        return _r
     task = str(task or "").strip()
     if len(task) < 3:
         raise ToolError("Tell me what to do on the PC")
