@@ -214,6 +214,30 @@ def make_router(require_key, current_tenant):
         except (IN.InstError, PR.ProfileError) as e:
             _err(e)
 
+    @r.post("/api/fin/investments/{part}", dependencies=dep)
+    def _investdesk(part: str, body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        from . import core
+        from .desks import investments as IV
+        a = dict(body or {})
+        try:
+            return core.run_tool(tenant, "owner", "investments_desk", part, a, lambda: IV.run(tenant, part, a, "owner"))
+        except L.Refused as e:
+            raise HTTPException(403, str(e))
+        except IV.InvestError as e:
+            _err(e)
+
+    @r.post("/api/fin/markets/{part}", dependencies=dep)
+    def _mktdesk(part: str, body: dict | None = None, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        from . import core
+        from .desks import markets as MK
+        a = dict(body or {})
+        try:
+            return core.run_tool(tenant, "owner", "markets_desk", part, a, lambda: MK.run(tenant, part, a, "owner"))
+        except L.Refused as e:
+            raise HTTPException(403, str(e))
+        except MK.MarketsError as e:
+            _err(e)
+
     @r.get("/api/fin/laws", dependencies=dep)
     def _laws() -> dict[str, Any]:
         return {"tier_c": [L.tier_c(k) for k in L.TIER_C], "not_advice": L.NOT_ADVICE}

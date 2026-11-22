@@ -10190,3 +10190,28 @@ Owner: "GO F9" on docs/FINANCE_GLOBAL_PLAN.md (phase F9).
 - `fin/card_f9.py` - 1 M-transaction sandbox, SAR drafts, maker-checker bypass routes, load; 9 of 10 mutations fail it (the 10th, state words in the arguments, is a second lock behind maker-checker ignoring them).
 - Tests: `tests/test_fin_f9.py` 5; pins 644 / 165 / 108.
 - NOT VERIFIED: no human SAR score yet; SSO, region hosting, partitions, webhooks not built; not on her server.
+
+
+## v0.999.150 INVESTMENTS & MARKETS F10 (owner: "F10, Investments & Markets")
+
+F10 of docs/FINANCE_GLOBAL_PLAN.md: employee 9 (the parts F7 did not build) and employee 10.
+
+- `fin/desks/investments.py` + tool `investments_desk` (family investdesk): `lots` (capital gains by tax lot in GB / US / IN / CA / AU / DE
+  methods or her own: GB same day -> next 30 days -> Section 104 pool; US FIFO + 30-day wash sale moving the loss and the holding period into
+  the replacement shares; CA average cost + superficial loss in the share still held 30 days after; IN / AU / DE FIFO with their holding
+  lines; methods from memory, marked check this; the tax on gains is not worked out), `statement`, `fees` (her assumed return only),
+  `harvest`, `derivatives`, `scam` (signs + her pasted register), `retirement`, `nav_check`, `methods`.
+- `fin/desks/markets.py` + tool `markets_desk` (family mktdesk): `recon` (positions + cash vs a custodian file, rows or CSV; split custodian
+  lines summed, zero lines not breaks), `confirm`, `fails` (penalty at her rate), `corp_action` (split / consolidation / cash or stock
+  dividend / bonus / rights at the record date; fractions and cash in lieu), `reclaim` (her treaty rates and claim years), `margin` (her
+  haircuts; none given = refused), `best_ex`, `comps`, `ssi`, `calendar`.
+- No order: every place / buy / sell / execute / cancel / allocate / affirm / submit / send / route / transfer action is refused by both
+  desks (L.Refused place_order) and the laws screen; neither desk imports a network library.
+- Registrations: agent/tools.py, labels_en, voice list, deskroom lane "Investments & markets", employees.js deptdesk, admit families,
+  hire.py entries, fin/api.py routes. Registry 646, Hub catalogue 167, desk keys 110.
+- `fin/card_f10.py`: 11 hand-worked lot cases (6 countries), random trade lists checked on the cost and gain laws and against a second
+  FIFO / average implementation, fixed-file reconciliation with planted breaks and traps, confirmations, fails, the no-order sweep.
+  18/18; 12 of 12 planted bugs caught (wash off, UK 30-day off, CA held-at-end ignored, term off by a day, LIFO, fees dropped, holding period
+  not carried, custodian last line wins, confirm tolerance ignored, settled counted as failed, affirm allowed, zero line breaks).
+- Tests `server/tests/test_fin_f10.py` (6).
+- NOT VERIFIED: the country methods and holding periods are from memory; no real broker or custodian file has been read; not run on her server.
