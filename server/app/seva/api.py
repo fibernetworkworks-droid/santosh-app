@@ -333,6 +333,170 @@ def make_router(require_key, current_tenant) -> APIRouter:
         warm = b.get("warm_transfer")
         return {"phone": await prun(SC.save_phone, tenant, None if warm is None else bool(warm), b.get("wa_calls"))}
 
+    # ---------------------------------------------------------------- G13 reports
+    async def rrun(fn, *a, **kw):
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except (ValueError, TypeError) as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/reports/full")
+    async def reports_full(days: int = 30, tenant: str = Depends(current_tenant)):
+        from . import reports as RP
+        return await rrun(RP.build, tenant, days)
+
+    @r.get("/reports/tickets.csv")
+    async def reports_csv(days: int = 30, tenant: str = Depends(current_tenant)):
+        from fastapi.responses import Response as R_
+        from . import reports as RP
+        body = await rrun(RP.tickets_csv, tenant, days)
+        return R_(content=body, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=support-tickets-{days}d.csv"})
+
+    @r.get("/reports/report.pdf")
+    async def reports_pdf(days: int = 30, tenant: str = Depends(current_tenant)):
+        from fastapi.responses import Response as R_
+        from . import reports as RP
+        body = await rrun(RP.pdf, tenant, days)
+        return R_(content=body, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename=support-report-{days}d.pdf"})
+
+    @r.get("/reports/monthly")
+    async def reports_monthly(tenant: str = Depends(current_tenant)):
+        from . import reports as RP
+        return {"monthly": await rrun(RP.monthlies, tenant)}
+
+    @r.post("/reports/monthly")
+    async def reports_monthly_now(tenant: str = Depends(current_tenant)):
+        """Make last month's report now (it is also made by itself on the 1st)."""
+        from . import reports as RP
+        got = await rrun(RP.make_monthly, tenant, None, True)
+        return {"made": got, "monthly": await rrun(RP.monthlies, tenant), "say": got["say"] if got else "Last month's report already exists."}
+
+    @r.get("/reports/monthly/{month}.pdf")
+    async def reports_monthly_pdf(month: str, tenant: str = Depends(current_tenant)):
+        from fastapi.responses import Response as R_
+        from . import reports as RP
+        body = await rrun(RP.monthly_pdf, tenant, month)
+        return R_(content=body, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename=support-{month}.pdf"})
+
+    # ---------------------------------------------------------------- G12 her own helpdesk (layer mode)
+    async def lrun(fn, *a, **kw):
+        from . import layer as LY
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except LY.LayerError as e:
+            raise HTTPException(400, str(e))
+        except (TypeError, ValueError) as e:
+            raise HTTPException(400, f"Invalid details: {e}")
+
+    @r.get("/helpdesk")
+    async def helpdesk_get(tenant: str = Depends(current_tenant)):
+        from . import layer as LY
+        return {"helpdesk": await lrun(LY.view, tenant)}
+
+    @r.put("/helpdesk")
+    async def helpdesk_put(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """Her helpdesk's key, typed in the app: sealed at once, never returned."""
+        from . import layer as LY
+        return {"helpdesk": await lrun(LY.connect, tenant, _b(body))}
+
+    @r.put("/helpdesk/settings")
+    async def helpdesk_settings(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import layer as LY
+        return {"helpdesk": await lrun(LY.save_settings, tenant, _b(body))}
+
+    @r.post("/helpdesk/check")
+    async def helpdesk_check(tenant: str = Depends(current_tenant)):
+        from . import layer as LY
+        return {"helpdesk": await lrun(LY.check, tenant)}
+
+    @r.post("/helpdesk/run")
+    async def helpdesk_run(tenant: str = Depends(current_tenant)):
+        from . import layer as LY
+        return await lrun(LY.run, tenant, True)
+
+    @r.delete("/helpdesk")
+    async def helpdesk_off(tenant: str = Depends(current_tenant)):
+        from . import layer as LY
+        return await lrun(LY.disconnect, tenant)
+
+    # ---------------------------------------------------------------- G11 quality, simulations, the law, data rights, audit
+    async def qrun(fn, *a, **kw):
+        from . import quality as QL
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except (QL.QualityError, S.SevaError) as e:
+            raise HTTPException(400, str(e))
+        except (TypeError, ValueError) as e:
+            raise HTTPException(400, f"Invalid details: {e}")
+
+    @r.get("/quality")
+    async def quality_all(tenant: str = Depends(current_tenant)):
+        from . import quality as QL
+        return await qrun(QL.overview, tenant)
+
+    @r.put("/quality/settings")
+    async def quality_settings(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import quality as QL
+        return {"settings": await qrun(QL.save_settings, tenant, _b(body))}
+
+    @r.get("/quality/sample")
+    async def quality_sample(n: int = 0, tenant: str = Depends(current_tenant)):
+        from . import quality as QL
+        return {"sample": await qrun(QL.sample, tenant, n)}
+
+    @r.post("/quality/marks/{qid}")
+    async def quality_mark(qid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import quality as QL
+        b = _b(body)
+        return await qrun(QL.mark, tenant, qid, str(b.get("mark") or ""), str(b.get("note") or ""))
+
+    @r.post("/quality/card")
+    async def quality_card(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """The simulated customers through her answer engine. Nothing is saved or sent."""
+        from . import quality as QL
+        b = _b(body)
+        return await qrun(QL.run_card, tenant, b.get("channels") or None, b.get("languages") or None)
+
+    @r.post("/quality/replay")
+    async def quality_replay(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import quality as QL
+        return await qrun(QL.replay, tenant, int(_b(body).get("days") or 7))
+
+    @r.post("/quality/export")
+    async def quality_export(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import quality as QL
+        return await qrun(QL.export_customer, tenant, str(_b(body).get("customer") or ""))
+
+    @r.post("/quality/delete")
+    async def quality_delete(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import quality as QL
+        b = _b(body)
+        return await qrun(QL.delete_customer, tenant, str(b.get("customer") or ""), str(b.get("confirm") or ""))
+
+    @r.get("/quality/audit")
+    async def quality_audit(days: int = 30, kind: str = "", tenant: str = Depends(current_tenant)):
+        from . import quality as QL
+        return {"audit": await qrun(QL.audit, tenant, max(1, min(365, days)), kind)}
+
+    @r.get("/quality/audit.csv")
+    async def quality_audit_csv(days: int = 30, tenant: str = Depends(current_tenant)):
+        from fastapi.responses import Response as R_
+        from . import quality as QL
+        body = await qrun(QL.audit_csv, tenant, max(1, min(365, days)))
+        return R_(content=body, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=support-audit.csv"})
+
+    @r.post("/translate")
+    async def translate(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """A customer's words in her language, beside the original (the original is never changed)."""
+        from . import engine as E
+        b = _b(body)
+        text = S._clean(b.get("text"), 3000)
+        to = str(b.get("to") or "en")[:10]
+        if not text:
+            raise HTTPException(400, "Nothing to translate.")
+        words, done = await asyncio.to_thread(E.in_lang, text, to, E.lang_code(text))
+        return {"text": words, "translated": done, "from": E.lang_code(text)}
+
     # ---------------------------------------------------------------- G10 teams, queues and rules
     async def trun(fn, *a, **kw):
         from . import teams as TM
@@ -767,6 +931,22 @@ def make_web_router() -> APIRouter:
                                                                                           "form-action 'self'; frame-ancestors 'none'",
                                                                "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer",
                                                                "Cache-Control": "no-store"})
+
+    @r.post("/api/support/layer/{token}")
+    async def layer_ping(token: str):
+        """G12: her helpdesk's webhook - only a nudge to read it now (the body is never trusted or stored)."""
+        from . import layer as LY
+        tenant = await asyncio.to_thread(LY.by_hook, token)
+        if not tenant:
+            raise HTTPException(404, "unknown")
+
+        def _go():
+            try:
+                LY.run(tenant)
+            except Exception:   # noqa: BLE001
+                pass
+        asyncio.get_running_loop().run_in_executor(None, _go)
+        return {"ok": True}
 
     @r.get("/support/approve/{token}", response_class=HTMLResponse)
     async def approve_page(token: str):

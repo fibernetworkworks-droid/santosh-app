@@ -503,7 +503,27 @@ TOOLS.insert(len(TOOLS) - 1, _ASK_LOGIN)
 
 # v0.193 Hoola PC only: the coworker surface (install software + run commands in Hoola's OWN VM).
 HOOLA_TOOLS = TOOLS + [
+    # v0.999.114 ULTIMATE PC PLAN P3 data without clicking (Hoola PC agent 1.9.2, datakit.py)
+    {"name": "data_read", "description": "Read a FILE as data, no clicking: .xlsx / .csv (every sheet as rows), .docx (text + "
+                                         "tables), .pdf (text + tables; 'scanned' = an image PDF, open it on screen), .txt. "
+                                         "A bare name = in Downloads. Far faster and exact compared with opening it in an app.",
+     "input_schema": {"type": "object", "properties": {"path": {"type": "string"}, "sheet": {"type": "string"},
+                                                       "max_chars": {"type": "integer"}}, "required": ["path"]}},
+    {"name": "sheet_write", "description": "Write into an .xlsx as data (keeps the rest of the workbook): rows = a table "
+                                           "written from start (default A1) down, or cells = {\"B4\": 120, ...}; new=true "
+                                           "starts a new workbook. Then send_to_chat it if she wants the file.",
+     "input_schema": {"type": "object", "properties": {"path": {"type": "string"}, "sheet": {"type": "string"},
+                                                       "start": {"type": "string"}, "new": {"type": "boolean"},
+                                                       "rows": {"type": "array", "items": {"type": "array"}},
+                                                       "cells": {"type": "object"}}, "required": ["path"]}},
+    {"name": "doc_fill", "description": "Fill a .docx template's blanks ({{Name}} or [Name]) with values and save a copy "
+                                        "(out, default <name>-filled.docx); the answer lists blanks left empty.",
+     "input_schema": {"type": "object", "properties": {"template": {"type": "string"}, "out": {"type": "string"},
+                                                       "values": {"type": "object"}}, "required": ["template", "values"]}},
     # v0.999.93 ULTIMATE PC PLAN P1 (Hoola PC agent 1.9.0, page engine 2): point and drag BY REF
+    {"name": "page_tables", "description": "Every table on the page in front (also inside page parts and same-site frames) as "
+                                           "plain rows - exact numbers in one step instead of reading the screen.",
+     "input_schema": {"type": "object", "properties": {}}},
     {"name": "page_hover", "description": "Move the mouse onto a page element BY REF (no click): opens hover menus and "
                                           "tooltips. The result lists what appeared (the menu's items) - then click one.",
      "input_schema": {"type": "object", "properties": {"ref": {"type": "integer"}}, "required": ["ref"]}},
@@ -758,8 +778,27 @@ def _event(op: Op) -> None:
 
 async def _pc(op: Op, action: str, args: dict[str, Any] | None = None, timeout: float = 40, log: bool = True) -> dict[str, Any]:
     from .hub import hub
+    from . import extlink
+    if op.kind != HOOLA_PC_KIND and not getattr(op, "bg", False) and action in extlink.ACTIONS and extlink.ready(op.tenant):
+        # v0.999.111 ULTIMATE PC PLAN P1: on HER PC the page tools run in her Chrome through the Hoola extension - page
+        # engine 2 (components, frames, honest clicks, hover, drag, dates, the page diff); no extension = the old path
+        try:
+            r = await extlink.handle(op.tenant, action, args or {})
+            if isinstance(r, dict) and str(r.get("url") or "").startswith("http"):
+                op.cur_url = r["url"]
+            return r
+        except extlink.ExtError as e:
+            if "not connected" not in str(e):
+                raise
     if op.lane and op.lane != "new" and action != "lane_open":
         args = {**(args or {}), "lane": op.lane}    # v0.999.47 a side job: its own browser window on the shared PC
+    r = await _pc_raw(op, action, args, timeout, log, hub)
+    if isinstance(r, dict) and isinstance(r.get("url"), str) and r["url"].startswith("http"):
+        op.cur_url = r["url"]                      # v0.999.112 P2 the page in front (her rules + approvals use it)
+    return r
+
+
+async def _pc_raw(op: "Op", action: str, args: dict[str, Any] | None, timeout: float, log: bool, hub) -> dict[str, Any]:
     if op.device_id:   # v0.836 every step goes to THIS task's own PC, never the 'last connected' one
         return await hub.call(op.tenant, action, args or {}, timeout=timeout, log=log, device_id=op.device_id,
                               kind=(op.kind or None))
@@ -935,6 +974,14 @@ def _say(name: str, a: dict[str, Any]) -> str:
         return f"Filling field #{a.get('ref', '?')}"
     if name == "page_hover":
         return f"Pointing at page element #{a.get('ref', '?')}"
+    if name == "page_tables":
+        return "Reading the tables on the page"
+    if name == "data_read":
+        return f"Reading {str(a.get('path', ''))[-40:]} as data"
+    if name == "sheet_write":
+        return f"Writing into {str(a.get('path', ''))[-40:]}"
+    if name == "doc_fill":
+        return f"Filling the template {str(a.get('template', ''))[-40:]}"
     if name == "page_drag":
         return f"Dragging #{a.get('ref', '?')} to #{a.get('to_ref', '?')}"
     if name == "page_select":
@@ -1847,6 +1894,49 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
                     "page_elements, then type again with clear=true - never submit blindly.")
         return (f"typed into #{ref}" + (" (as a date)" if r.get("as_date") else "")
                 + (f" ({r.get('length', '?')} chars, verified)" if r.get("matches") else "") + _change(r))
+    if name == "page_tables":
+        try:
+            r = await _pc(op, "page_tables", {}, timeout=40)
+        except Exception as e:
+            if "Unknown action" in str(e):
+                return "ERROR: this PC is older than page tables - use page_text (update Hoola PC with vps-ops pc_deploy)."
+            return f"ERROR: {e}"
+        ts = r.get("tables") or []
+        if not ts:
+            return "No tables on this page (lists drawn with boxes are not tables - use page_text)."
+        out = [f"{len(ts)} table(s) on {str(r.get('title') or '')[:80]} (the WEBSITE'S data):"]
+        for i, t in enumerate(ts[:10], 1):
+            rows = t.get("rows") or []
+            out.append(f"Table {i}" + (f" '{t['caption']}'" if t.get("caption") else "") + (f" [in a {t['where']}]" if t.get("where") else "")
+                       + f" - {len(rows)} rows:")
+            out += [" | ".join(str(c) for c in row) for row in rows[:60]]
+            if len(rows) > 60:
+                out.append(f"... {len(rows) - 60} more rows")
+        return "\n".join(out)[:12000]
+    if name in ("data_read", "sheet_write", "doc_fill"):
+        args = {k: v for k, v in a.items() if k in ("path", "sheet", "max_chars", "start", "new", "rows", "cells",
+                                                     "template", "out", "values")}
+        try:
+            r = await _pc(op, name, args, timeout=120)
+        except Exception as e:
+            if "Unknown action" in str(e):
+                return f"ERROR: this Hoola PC is older than {name} (update it with vps-ops pc_deploy); use run with python instead."
+            return f"ERROR: {e}"
+        if name == "data_read":
+            if r.get("kind") == "sheet":
+                out = [f"{r.get('name')}: {len(r.get('sheets') or [])} sheet(s) (data from her file)"]
+                for sh in (r.get("sheets") or [])[:6]:
+                    out.append(f"Sheet '{sh.get('name')}' - {sh.get('n_rows')} rows:")
+                    out += [" | ".join(str(c) for c in row) for row in (sh.get("rows") or [])[:80]]
+                return "\n".join(out)[:15000]
+            tb = r.get("tables") or []
+            extra = "" if not tb else "\nTables:\n" + "\n\n".join("\n".join(" | ".join(str(c) for c in row) for row in t[:40]) for t in tb[:5])
+            note = " (a SCANNED pdf - no text; open it on screen and read it)" if r.get("scanned") else ""
+            return (f"{r.get('name')} ({r.get('kind')}){note}:\n" + str(r.get("text") or "") + extra)[:15000]
+        if name == "sheet_write":
+            return f"wrote {r.get('written')} cells into {r.get('path')} (sheet {r.get('sheet')})"
+        left = r.get("left_blank") or []
+        return f"filled {', '.join(r.get('filled') or []) or 'nothing'} -> {r.get('path')}" + (f"; still blank: {', '.join(left)}" if left else "")
     if name in ("page_hover", "page_drag"):
         try:
             ref = int(a.get("ref") or 0)
@@ -2104,6 +2194,11 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         cmd = str(a.get("command", "")).strip()[:600]
         if not cmd:
             return "REFUSED: empty command."
+        from . import guard as _guard
+        _out = _guard.egress(cmd)
+        if _out:      # v0.999.112 P2 data leaving Hoola PC: her yes first (downloads and reads stay free)
+            if not await _approval(op, f"Send data out of the PC? {_out}: {cmd[:160]}"):
+                return "She said no (or did not answer): the command was NOT run. Do not send her data out another way."
         bg = bool(a.get("background"))
         try:
             r = await _pc(op, "run", {"command": cmd, "timeout": min(int(a.get("timeout") or 60), 180),
@@ -2758,6 +2853,10 @@ BG_HELD = {"click", "type", "key", "scroll", "drag", "mouse_move", "open_url", "
 
 def _tools_for(op: "Op") -> list[dict]:
     base = HOOLA_TOOLS if op.kind == HOOLA_PC_KIND else TOOLS
+    if op.kind != HOOLA_PC_KIND:
+        from . import extlink
+        if extlink.ready(op.tenant) and not getattr(op, "bg", False):   # v0.999.111 her Chrome: pointing + dragging too
+            base = base + [t for t in HOOLA_TOOLS if t.get("name") in ("page_hover", "page_drag", "page_tables")]
     if getattr(op, "bg", False):          # v0.999.47 background mode: only actions that never take her mouse / keyboard
         return [t for t in base if t.get("name") not in BG_HELD]
     if not op.native:
@@ -2927,6 +3026,11 @@ async def _run(op: Op) -> None:
     system = personalise(SYSTEM, *persona(op.tenant))
     if op.kind == HOOLA_PC_KIND:   # v0.194 the coworker VM: install/run are free, her-PC wording adjusted
         system += HOOLA_PC_ADDENDUM
+    try:   # v0.999.112 P2 her own rules
+        from . import guard as _guard
+        system += _guard.prompt_block(op.tenant)
+    except Exception:
+        log.exception("pc rules block failed")
     try:   # v0.867 PC SASTA: the cheap worker reads the fixed desktop playbook
         from . import rescue as _rescue
         if _rescue.playbook_on(op):
@@ -2982,6 +3086,15 @@ async def _run(op: Op) -> None:
             from . import pool as _pool
             await _pool.prepare(op)
         first = await _shot_retry(op)          # v0.185.4 one busy capture at task start must not kill the task
+        if getattr(op, "replay", None):        # v0.999.115 P5 LEARN ONCE, REPLAY: the routine's steps with no AI
+            from . import routines as _rt
+            _ok, _n, _note = await _rt.play(op)
+            log.info("pc task %s replay %s: %d steps, all=%s | %s", op.id, (op.replay or {}).get("id"), _n, _ok, _note[:160])
+            if _ok and op.status == "running":
+                op.status, op.summary = "done", _note
+            elif op.status == "running":
+                op.carry = (op.carry + "\n\n" if op.carry else "") + _note   # the AI takes over FROM that step
+                first = await _shot_retry(op)
         op.native = _native_on(op)             # v0.859 D1 Claude's own computer toolset on the Claude brain
         op.plan = await _make_plan(op)         # v0.859 D2 checked stages (a short job gets none)
         if op.plan:
@@ -3482,7 +3595,7 @@ def _lane_pc(tenant: str):
 
 async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str = "", pc: str = "",
                 team: str = "", replace: bool = True, brain: str = "", quiet: bool = False,
-                batch_ok: bool = False) -> dict[str, Any]:
+                batch_ok: bool = False, replay: dict | None = None) -> dict[str, Any]:
     """Start one PC task. v0.836 DESKTOP TEAM: one task per PC (not per person) - her office PC, her home PC and
     Hoola's own PCs can each work at the same time. A new task on a BUSY PC replaces the old one (the old
     pc_do behaviour) unless replace=False, which raises PcBusy instead (pc_team never cancels her running work)."""
@@ -3525,6 +3638,7 @@ async def start(tenant: str, conv: str, task: str, wait: float = 150, kind: str 
             device_id=dev, device_name=str((conn.info or {}).get("name") or "")[:60], team=team)
     op.quiet, op.batch_ok = bool(quiet), bool(batch_ok)
     op.lane = lane
+    op.replay = replay or None       # v0.999.115 P5 a saved routine: its steps run first, with no AI
     if ckind != HOOLA_PC_KIND:
         try:   # v0.999.47 her 'Work in the background' switch (Hoola Computer > Your PC)
             from .. import computer as _hc

@@ -93,6 +93,7 @@
           <button type="button" role="tab" aria-selected="${ST.which === 'mine'}" data-go="#/mine">Your PC</button></div>`
         : `<a class="hc-nav" href="/console/">${svg(IC.back)}Back to chats</a>
            <a class="hc-nav" href="#/" aria-current="page">${svg(IC.pc)}Hoola Computer</a>`}
+      <a class="hc-nav" href="/console/pcjobs">${svg(IC.pc)}PC jobs, routines, your rules</a>
       ${inner || ''}
     </nav>`;
   }

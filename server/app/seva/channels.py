@@ -713,6 +713,11 @@ def handle(tenant: str, cid: str, msgs: list[dict]) -> list[str]:
             from . import handover as H
             words, dec = H.start(tenant, customer, TICKET_CH.get(c.kind, c.kind), "Hoola could not answer (an error)", "unknown",
                                  text, "", m.get("name", ""))["customer_line"], "handover"
+        try:        # G11: the first reply to a customer says it is an AI (their language), never twice
+            from . import quality as QL
+            words = QL.disclose(tenant, customer, words, text)
+        except Exception:   # noqa: BLE001
+            log.exception("seva disclose")
         replies.append(_reply(tenant, c, customer, words, dec))
         S._publish(tenant, "seva_chat", {"customer": customer, "kind": c.kind, "text": S.mask(text)[:300], "decision": dec})
     return [r for r in replies if r]

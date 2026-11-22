@@ -154,6 +154,26 @@ JS_ELEMENTS = "(() => {" + JS_PRE + r"""
 
 JS_SNAP = "(() => {" + JS_PRE + "return _snap(); })()"
 
+# v0.999.114 P3 page data into rows: every table of the page (and of its components / same-site frames) as plain rows
+JS_TABLES = "(() => {" + JS_PRE + r"""
+  const out = [];
+  const grab = (t, where) => {
+    if (out.length >= 20 || !_vis(t)) return;
+    const rows = [];
+    for (const tr of t.querySelectorAll('tr')) {
+      if (rows.length >= 300) break;
+      const cells = Array.from(tr.children).filter(c => /^(TD|TH)$/.test(c.tagName)).slice(0, 30)
+        .map(c => (c.innerText || c.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 200));
+      if (cells.length) rows.push(cells);
+    }
+    if (rows.length) out.push({caption: (t.caption ? _txt(t.caption) : (t.getAttribute('aria-label') || '')).slice(0, 120),
+                              where: where, rows: rows});
+  };
+  _walk((el, hops) => { if (el.tagName === 'TABLE')
+    grab(el, hops.some(h => h.k === 'f') ? 'frame' : (hops.some(h => h.k === 's') ? 'component' : '')); });
+  return {title: document.title, url: location.href, tables: out};
+})()"""
+
 # the page's text in reading order, plus the text inside web components and same-origin frames (labelled)
 JS_TEXT = "(() => {" + JS_PRE + r"""
   let out = document.body ? document.body.innerText : '';
@@ -194,6 +214,48 @@ POINT_BODY = r"""
 """
 
 CLICK_FALLBACK = "el.click(); return {ok:true};"
+
+# v1.9.2 typing + choosing, shared by Hoola PC (agent.py) and her Chrome (the Hoola extension). Uses TXT / CLR / ISO
+# (typing) and VAL (choosing), set by the caller. A password box is refused here; the value itself never comes back.
+TYPE_BODY = r""" if ((el.type || '').toLowerCase() === 'password' || /password/i.test(el.getAttribute('autocomplete') || ''))
+          return {ok:false, err:'password'};    // v1.9.1 Hoola never types a password: ask_login (she types it privately)
+        el.scrollIntoView({block:'center'}); el.focus();
+        if (el.disabled || el.readOnly) return {ok:false, err:'disabled'};
+        if (ISO) { const d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+          d.set.call(el, ISO); el.dispatchEvent(new Event('input', {bubbles:true})); el.dispatchEvent(new Event('change', {bubbles:true}));
+          return {ok:true, length:(el.value || '').length, matches: el.value === ISO, as_date: true}; }
+        if (el.isContentEditable && el.value === undefined) {
+          if (CLR) { const s = el.ownerDocument.defaultView.getSelection(); const rg = el.ownerDocument.createRange();
+            rg.selectNodeContents(el); s.removeAllRanges(); s.addRange(rg); }
+          try { el.ownerDocument.execCommand('insertText', false, TXT); } catch(e) {}
+          const v = el.innerText || '';
+          return {ok:true, length:v.length, matches: v.trim() === TXT.trim() || v.includes(TXT)}; }
+        if (CLR) { if (el.select) try { el.select(); } catch(e) {}
+          let okDel = false; try { okDel = el.ownerDocument.execCommand('delete'); } catch(e) {}
+          if (!okDel && el.value !== undefined) { try { el.value = ''; } catch(e) {} } }
+        let ok = false; try { ok = el.ownerDocument.execCommand('insertText', false, TXT); } catch(e) {}
+        if (!ok || (el.value || '') === '') {
+          const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+          const d = Object.getOwnPropertyDescriptor(proto, 'value');
+          if (d && d.set) { d.set.call(el, (CLR ? '' : (el.value || '')) + TXT);
+            el.dispatchEvent(new Event('input', {bubbles:true})); el.dispatchEvent(new Event('change', {bubbles:true})); }
+        }
+        const v = el.value || '';
+        return {ok:true, length:v.length, matches: v === TXT || v.endsWith(TXT)};"""
+
+SELECT_BODY = r"""
+              if (el.tagName === 'SELECT') { el.focus();
+                for (const o of el.options) { if (o.value === VAL || o.text.trim() === VAL ||
+                    o.text.trim().toLowerCase() === VAL.toLowerCase()) { el.value = o.value;
+                    el.dispatchEvent(new Event('input', {bubbles:true}));
+                    el.dispatchEvent(new Event('change', {bubbles:true}));
+                    return {ok:true, picked:o.text.trim()}; } }
+                return {ok:false, err:'option', options: Array.from(el.options).slice(0,30).map(o=>o.text.trim())}; }
+              el.focus();
+              const d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+              if (d && d.set) { d.set.call(el, VAL); el.dispatchEvent(new Event('input', {bubbles:true}));
+                el.dispatchEvent(new Event('change', {bubbles:true})); }
+              return {ok:true, picked:VAL};"""
 
 DRAG_BODY = r"""
   const D = T.el;
@@ -309,3 +371,43 @@ def diff_line(d: dict) -> str:
     if d.get("new_text"):
         parts.append("new text (page data): " + " | ".join(str(x)[:80] for x in d["new_text"]))
     return "page change: " + " / ".join(parts)
+
+
+# ---------------------------------------------------------------- v1.9.2 the same engine inside her Chrome
+def _body(js: str) -> str:
+    """The statements of one of the IIFEs above, without the shared helpers and the call wrapper."""
+    head = "(() => {" + JS_PRE
+    assert js.startswith(head) and js.rstrip().endswith("})()")
+    return js[len(head):].rstrip()[:-4]
+
+
+def extension_js() -> str:
+    """desktop/ext/hoola-extension/pagekit.js - GENERATED from this file (a test keeps them equal). The Hoola extension
+    injects it into the page (its own isolated world: the page's scripts cannot touch it) and calls window.__hoolaPK.<fn>;
+    the server keeps the refs and decides (pc/extlink.py), exactly as agent.py does on Hoola PC."""
+    w = "(el, ox, oy, moved, newpath) => {"
+    return ("// GENERATED by desktop-linux/pagekit.py extension_js() - do not edit by hand (v0.999.111 ULTIMATE PC PLAN P1).\n"
+            "// Hoola's page engine 2 inside her Chrome: frames, page components, refs checked by what they are, the\n"
+            "// honest-click aim, typing (never a password), choosing, drag, the page diff. Returns data only.\n"
+            "(() => {\nif (window.__hoolaPK) return;\n" + JS_PRE +
+            "\nconst _with = (a, fn) => { const F = _find(a.path || [], a.role || '', a.name || '');"
+            " if (!F) return {ok:false, err:'gone'}; return fn(F.el, F.ox, F.oy, F.moved, F.path || null); };\n"
+            "window.__hoolaPK = {\n"
+            "  elements: () => {" + _body(JS_ELEMENTS) + "},\n"
+            "  snap: () => _snap(),\n"
+            "  text: () => {" + _body(JS_TEXT) + "},\n"
+            "  tables: () => {" + _body(JS_TABLES) + "},\n"
+            "  point: (a) => _with(a, " + w + POINT_BODY + "}),\n"
+            "  click: (a) => _with(a, " + w + CLICK_FALLBACK + "}),\n"
+            "  type: (a) => _with(a, " + w + " const TXT = String(a.txt || ''), CLR = !!a.clr, ISO = String(a.iso || '');"
+            + TYPE_BODY + "}),\n"
+            "  select: (a) => _with(a, " + w + " const VAL = String(a.val || '');" + SELECT_BODY + "}),\n"
+            "  drag: (a) => { const F = _find(a.src.path, a.src.role, a.src.name);"
+            " const T = _find(a.dst.path, a.dst.role, a.dst.name) || {}; if (!F) return {ok:false, err:'gone'};"
+            " const el = F.el;" + DRAG_BODY + "},\n"
+            "};\n})();\n")
+
+
+if __name__ == "__main__":       # python desktop-linux/pagekit.py > desktop/ext/hoola-extension/pagekit.js
+    import sys as _s
+    _s.stdout.write(extension_js())

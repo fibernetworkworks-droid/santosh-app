@@ -273,7 +273,9 @@ def _secret(text: str) -> str:
 def _ai(system: str, prompt: str, max_tokens: int = 1200) -> str:
     try:
         from ..net.ai import llm
-        return llm(system, prompt, max_tokens, timeout=60) or ""
+        from .. import usage
+        with usage.scope(None, "support"):         # G13: support's own AI cost, per ticket in the reports
+            return llm(system, prompt, max_tokens, timeout=60) or ""
     except Exception as e:
         log.info("seva model unavailable: %s", e)
         return ""
@@ -696,6 +698,9 @@ def _shared_answer(tenant: str, q: str, customer: str) -> dict | None:
 
 
 def _log_q(tenant: str, channel: str, customer: str, text: str, entry_id: str, conf: float, outcome: str) -> None:
+    from .quality import DRY
+    if DRY.get():                 # G11: a simulated customer leaves nothing behind
+        return
     with session() as s:
         s.add(SevaQuestion(tenant_id=tenant, at=clock(), channel=channel[:12], customer=customer[:200], text=mask(text)[:600],
                            entry_id=entry_id, confidence=round(conf, 3), outcome=outcome))
@@ -1820,6 +1825,21 @@ def tick(at: datetime | None = None) -> dict:
         SM.poll_all()
     except Exception:
         log.exception("seva support mail")
+    try:
+        from . import reports as RP                # G13: the month before as a PDF on the 1st
+        RP.monthly_all()
+    except Exception:
+        log.exception("seva monthly report")
+    try:
+        from . import layer as LY                  # G12: her own helpdesk, read every few minutes
+        LY.run_all()
+    except Exception:
+        log.exception("seva helpdesk layer")
+    try:
+        from . import quality as QL                # G11: retention per channel + numbers left unmasked
+        QL.sweep_all()
+    except Exception:
+        log.exception("seva quality sweep")
     try:
         from . import teams as TM                  # G10: her delayed rules ("still open after 2 h -> supervisor")
         TM.sweep_all()

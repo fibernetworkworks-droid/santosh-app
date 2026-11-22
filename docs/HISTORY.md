@@ -9369,3 +9369,103 @@ What it is: the last "not yet" row of the D8 parity checklist. Her own Hoola AI 
 Tests: `server/tests/test_v0999_106_ai.py` (6). The writer places it on the home page only and never above the hero, and gives none without a live app or with a bad code. The island keeps the rules, asks only after her tap and never holds the token; the locked calls are checked. Only her own app passes on her address (another owner's code, a wrong path and an unknown owner are all closed). The site reads her live app with the website channel on (not a draft, not with embed off, not another owner's). The checklist says partial and names the picture maker. A real-server Chromium walk on `*.localhost`: the launched website, the notice, no POST before her tap, I agree, a suggested question answered by the fake model, her own question, a reload keeps the talk, another owner's app refused on her address, every call with `embed=1`. One shipped pin moved to the new truth: `test_v0999_102_push.py` now expects ai "partial" (was "not yet").
 
 NOT VERIFIED: a real model answer on her server; a picture maker for visitors (not built); studio_react_sites still OFF.
+
+
+## v0.999.107 PORTAL EXAM TWO
+Second real-portal exam on Hoola PC (set v1): 11/15 (from 9), 2 cloud blocks said (bizfile, EPFO). World Bank answered
+with a Cloudflare "verify you are human" box and Hoola asked her to click it - the right hand-off; `pccard` keeps the
+question (`row["asked_q"]`) and marks `human_check` (counted on the card line, never a pass). sam.gov went silent for
+6 minutes after its 2nd step (irs.gov did the same in run 1; the trace writes a step when its action starts, so the time
+went into the next model step, its screenshot or the action itself). `quality/pctrace_read.py` now prints the server's
+own PC log lines (pm2 santosh-error.log; `PCTRACE_LOG` overrides) written while each failed job ran, matched by time
+because the 'pc brain' / 'pc step screen' lines carry no job id. Tests: `test_v0999_107_portal_two.py` (2).
+
+## v0.999.108 SUPPORT QUALITY — Quality, trust and the law in the support desk (G11)
+
+Owner: "GO G11" on docs/SUPPORT_GLOBAL_PLAN.md section 9 (built as 0.999.106; their HER AI ASSISTANT took 0.999.106 and PORTAL EXAM TWO 0.999.107 - REBASE PROTOCOL, all kept).
+
+- NEW `server/app/seva/quality.py` (tables seva_reviews, seva_quality_cfg, seva_sim_runs, seva_data_requests; self-healing, registered in db.init_db):
+  - Sample: `sample` (answered questions of the last day, else 7 days, not yet marked, one topic at a time so every topic shows), `mark` right | wrong | person (note masked, never a secret), `accuracy` per topic and per language (30 days), `_check_topic` = right share under her line (default 80%) with her minimum marks (default 10) while the topic still answers alone -> engine trust 'draft' for that topic, kept in `auto`, told in her chat once.
+  - Pretend customers: `CARD` (angry, person, card number, refund, safety, injection, outside, status, thanks) in en / hi / es + her first three live knowledge questions, on whatsapp / web / email by default, through `engine.reply` inside `dry()` (a contextvar: `service._log_q` and `engine.save_draft` keep nothing); a case passes when the decision is one of its allowed decisions and the reply has no card-like number, no injected discount, passes the engine's own number check, no made-up ticket number, no secret; runs kept (`runs`). `replay` = the last 7 days' real questions through today's engine in dry mode, the ones whose outcome would change listed with the reasons.
+  - Law packs `LAW` (18 rows: EU AI Act Art. 50, California bot law, GDPR / UK GDPR, CCPA / CPRA, India DPDP, Brazil LGPD, Canada PIPEDA, China PIPL, Singapore PDPA, Japan APPI, South Africa POPIA, Australia APP 12, all-party recording states, recording under GDPR, India e-commerce complaint rules, EU ADR, European Accessibility Act) with source + link; `law_for(countries)` (EU members map to EU), every row 'check this' and what Hoola applies; `_deadline` = the strictest data-rights deadline for their country (30 days by Hoola's own rule where no pack exists).
+  - AI disclosure `disclose` (on by default, once per customer, in en / hi / es / fr / pt / de / it / id / ar from their words + the reply; never in a simulation), called in `channels.handle` for every app, website chat and email reply.
+  - Data rights: `export_customer` (tickets with public notes + custom fields, messages, questions; her team's internal notes left out; the request logged with the law and due date), `delete_customer` (confirm=DELETE: messages and questions deleted, tickets kept as numbers with words erased, hand-over packets emptied, the phone line's memory forgotten, earlier requests lose who it was), `requests_`; a typed number gets the desk's own key and country.
+  - `sweep` (every 6 hours a business): chat messages older than her days deleted, closed tickets older than her days erased, `mask_numbers` (13-19 digits passing the Luhn check, or 12 digits) on stored ticket words and chat messages; worker via seva.service.tick.
+  - `audit` (ticket notes, marks, data requests, stage moves, money steps, knowledge) + `audit_csv` (a cell never starts as a spreadsheet formula); `overview` (incl. the honest data-location line and what is not built).
+- `seva/engine.py`: the language reader knows the inverted ¿ ¡ (Spanish) and six more Spanish words.
+- `seva/api.py`: /api/seva/quality (+ /settings, /sample, /marks/{id}, /card, /replay, /export, /delete, /audit, /audit.csv), /api/seva/translate (the original never changed). Tool `support_desk_dekho what=quality`.
+- Desk: NEW Quality & law tab (answers to check, how right Hoola is + settings, pretend customers + replay, the law where her customers live, a customer's data + how long to keep, who did what + CSV, not built); a Translate button beside each customer message in a conversation.
+- Tests: `test_v0999_108_support_quality.py` 10 (sample + marks + accuracy + the topic dropping to draft, the card leaves nothing behind, replay before / after a knowledge and a trust change, law rows, disclosure once and in Spanish, export / erase with deadlines and the number gone, retention + masking, audit + CSV formula guard, routes + translate, a Chromium walk incl. the download at desktop + phone width).
+- NOT BUILT: single sign-on (the desk has one sign-in), a lawyer's check of the law rows. NOT VERIFIED on her server.
+
+
+## v0.999.109 PC STEP DEADLINE
+The first pc_trace read with the server's own log lines (v0.999.107) explained the portal exam's 6-minute silences
+(sam.gov this run, irs.gov in run 1): "pc step 2 screen 0.2s" at 02:28:19, then no 'pc brain' line and no slow-step
+retry until the card stopped the job at 02:33:59 - the AI call for step 3 never ended. `pc/brain._post` used
+httpx.AsyncClient(timeout=pc_brain_timeout_s), which limits each READ; OpenRouter answers a non-streamed request that
+is still waiting on its provider with keep-alive blank bytes, so no read ever waited 35 s. Now the whole call runs under
+asyncio.wait_for(limit + min(5 s, limit)); a timeout raises httpx.ReadTimeout into the existing v0.879 path (said to her
+via on_slow, tried once more, then BrainSlow ends the task partial with a plain line). Test:
+`test_v0999_109_brain_deadline.py`. NOT VERIFIED live yet (the next portal run).
+
+## v0.999.110 SUPPORT LAYER — Hoola on top of her own helpdesk (G12)
+
+Owner: "GO G12" on docs/SUPPORT_GLOBAL_PLAN.md section 10 (built as 0.999.109; their PC STEP DEADLINE took 0.999.109 - REBASE PROTOCOL, both kept).
+
+- NEW `server/app/seva/layer.py` (tables seva_layer, seva_layer_tickets, seva_layer_log; self-healing, registered in db.init_db):
+  - Adapters on one `Desk` interface (check, recent, thread, note, reply, tag, set_priority, solve, find), built from each company's public API docs: Chatwoot (api_access_token; conversations by status, messages, private notes, labels, toggle_priority, toggle_status, contacts search), Zendesk (email/token basic auth; search API, comments, ticket update with comment public false, additional_tags, priority, status solved), Freshdesk (API key basic auth; tickets updated_since with requester + description, conversations, private notes, reply, tags, priority 1-4, status 4), ServiceNow (basic auth Table API on incident; work_notes, comments, impact / urgency, state 6 with close code; the sort goes into a work note as incidents have no free tags), Jira Service Management (Atlassian email + API token; open requests, comments with public false, labels and priority through the Jira issue API; Hoola does not move Jira workflows). Normalized ticket: number, subject, text, status (new / open / pending / solved / closed + the tool's own word), priority, tags, requester, updated.
+  - `connect` (https only, no private / local hosts, an empty key keeps the saved one, sealed with the desk's vault, hints only), `check` (a read call), `save_settings` (tags, priority, notes, public_replies, summaries + after N messages, close_on_confirm, remind_h), `disconnect` (key forgotten, nothing changed there), `view`, `logs`.
+  - `run` (every 3 minutes at most, from a cursor; webhook = a nudge only, the body never trusted): `_one` per ticket - once: the answer engine's category / language + her G10 routing queue as tags, priority when allowed; when the customer wrote since Hoola last looked: `engine.reply` (by 'layer') -> an internal 'Suggested reply (from <source>)' note, a public reply only with public_replies + trust 'answer', a draft note for draft topics, a person note + hoola-person tag otherwise; a summary every N messages (her model, else a code summary); solve only when pending + the customer's words say fixed + close_on_confirm. Every action logged (masked).
+  - `remind` (customers waiting past remind_h, once a day each, her chat + the desk), `status_for` (the customer's own tickets in her helpdesk by their email / phone with the tool's own status), `run_all` on the worker (seva.service.tick), `by_hook`.
+- `seva/engine.py`: 'where is my ticket' falls back to her helpdesk when the desk has no ticket for that customer (never for the layer's own call).
+- `seva/api.py`: /api/seva/helpdesk GET / PUT / DELETE, /settings, /check, /run; public POST /api/support/layer/{token} (a nudge). Tool `support_desk_dekho what=helpdesk`. `seva/profile.py`: the setup line points to the new section.
+- Desk: Channels & settings > Your helpdesk (choose the tool - only its own fields redraw -, address / account / user / key, Check / Read now / Leave, the switches, the webhook, what Hoola did there, the ones not joined yet).
+- Tests: `test_v0999_110_support_layer.py` 8 (join + seal + private host + not-built refused, sorting + suggestion + person note + nothing new written without a new customer message + never a DELETE, the public answer only with switch + trust, summary + reminders once a day + close by rule, where is my ticket only for that customer, webhook nudge + leave, the request shapes of Zendesk / Freshdesk / ServiceNow / Jira, a Chromium walk at desktop + phone width with the key never in the page).
+- NOT BUILT: Zoho Desk, Salesforce Service Cloud, HubSpot, Intercom (each needs an OAuth app registered by Newtika). NOT VERIFIED against a live account of any helpdesk.
+
+
+## v0.999.111 HER CHROME, ENGINE 2 (ULTIMATE PC PLAN P1 rest)
+Her Windows PC read Chrome through UI Automation (desktop/santosh_desktop/browser.py): no shadow DOM, no frames, no real
+mouse, no hover / drag / date boxes. Page engine 2 now runs in her Chrome through the Hoola extension, the SAME code as
+Hoola PC: `pagekit.extension_js()` generates `desktop/ext/hoola-extension/pagekit.js` (window.__hoolaPK.elements / snap /
+text / point / click / type / select / drag, injected into the extension's isolated world); typing / choosing JS moved
+from agent.py into pagekit (TYPE_BODY, SELECT_BODY) so both share it. `engine.js` (imported by background.js) connects
+when paired AND `pageEngine` is on AND the host + debugger permissions are granted (Options > "Let Hoola work on my
+pages"; Turn off removes them); it answers `js`, `mouse` (chrome.debugger, detached after 30 s idle) and `tab`, pings every
+20 s, reconnects with backoff and on a 1-minute alarm. `server/app/pc/extlink.py`: `/api/pc/ext-ws` (first message
+= the paired spc_ token, refused otherwise), one link per tenant, request ids + futures, and `handle()` = the agent's
+decisions (refs checked, honest click / covered, hover, drag, dates by her time zone's day order, diff, PW_REFUSED).
+`operator._pc` routes page_* for her PC there when `extlink.ready()` (not background mode); `_tools_for` adds page_hover /
+page_drag then. FOUND: manifest `default_locale: en` with no `_locales` folder - Chrome refuses to load such an
+extension; removed. Tests `test_v0999_111_ext_engine.py` (6): equal copies, the server engine against a real Chromium
+practice page (shadow, banner, hover menu, wizard dates, password refusal, drag, text), the real extension loaded in
+Chromium answering over its socket (elements, aim, a real debugger mouse click, tab), routing, the token-checked
+socket, the manifest. NOT VERIFIED on her Windows Chrome (needs the next desktop build's extension + her Turn on).
+
+
+## v0.999.112 PC SAFETY IN CODE
+Safety in code on both PCs (P2). `server/app/pc/guard.py`: per-person rules in data/pc_rules/<tenant>.json (`never`, `ask` site lists cleaned to registrable hosts, up to 20 `notes`), GET / PUT `/api/pc/rules`, `prompt_block` appended to the PC worker's system prompt; `blocked_open` (hands.check refuses open_url to a never site, before any other check), `must_ask` (a risky step on an ask-first site always asks, also inside batch_ok; only the step right after her yes on the same site goes), `same_site` (her yes covers 3 steps only while the job stays on the site she saw - `operator._pc` keeps `op.cur_url` from every PC / extension answer, `hands.gate` stores `op.ok_url`), `egress` (a `run` command that uploads or sends - curl -d/-F/-T/-X POST, wget --post, scp/sftp/ftp/smbclient/mail, rsync to host:, nc/socat/telnet, rclone/aws/gsutil copy, requests/httpx post - asks her via _approval; downloads stay free). `hands.ask_login` re-reads the page URL before typing her sign-in and refuses when `vault.key_of(site, now_url)` is not the key the form was opened for. Tests `test_v0999_112_pc_safety.py` (7).
+
+## v0.999.113 SUPPORT REPORTS — Support reports (G13)
+
+Owner: "GO G13" on docs/SUPPORT_GLOBAL_PLAN.md section 11 (the last phase of the global Customer Support plan; built as 0.999.111 - their HER CHROME, ENGINE 2 took 0.999.111 and PC SAFETY IN CODE 0.999.112, REBASE PROTOCOL, all kept).
+
+- NEW `server/app/seva/reports.py` (table seva_monthly; self-healing, registered in db.init_db): `_period` (tickets created in (since, until], each as a row: channel, country from the number, language (teams.lang_of_ticket), brand / product custom fields, queue, person, topic, status, first reply and solve hours on her clocks, CSAT, reopened, handed over, solved by Hoola or a person; questions answered alone; on-time shares from the SLA state; late open tickets by workflow stage), `_cost` (usage_days of features support + callcentre -> credits at $0.001), `_gaps` (unknown / clarify questions grouped by similarity), `build` (the period + the one before: 13 headline numbers with change and better / worse, the eight breakdowns, late by stage, satisfaction, gaps, cost, a one-line summary), `tickets_csv` (18 columns; a cell never starts as a formula), `pdf` (reportlab: headline vs before, breakdowns, late by stage, satisfaction, gaps, cost), `make_monthly` (on the 1st in her time zone, once per month, never an empty month; kept + her chat + a desk event), `monthly_all` on the worker, `monthlies`, `monthly_pdf`.
+- `seva/service.py`: support's model calls run in `usage.scope(feature='support')`; tick -> monthly_all. `usage.py`: /api/seva and /api/support routes are labelled support, /api/callcentre callcentre.
+- `seva/api.py`: /api/seva/reports/full, /reports/tickets.csv, /reports/report.pdf, /reports/monthly (GET; POST = last month now), /reports/monthly/{YYYY-MM}.pdf. Tool `support_desk_dekho what=reports`.
+- Desk Reports page: against the period before, requests by (eight tabs), late right now by stage, satisfaction with the spread, AI cost, downloads (every ticket CSV, this report PDF), monthly reports with their PDFs + make last month's now.
+- Tests: `test_v0999_113_support_reports.py` 7 (the report end to end, trends + credits per request counting only support's cost + the route labels, late by stage on a telecom workflow, CSV without formulas + the PDF's text, the monthly PDF once on the 1st in her time zone and never for an empty month, routes, a Chromium walk with both downloads and the monthly button at desktop + phone width).
+- NOT VERIFIED on her server. The credit figure covers only AI work labelled support or phone line.
+
+
+## v0.999.114 DATA WITHOUT CLICKING
+Data without clicking (P3). `desktop-linux/datakit.py`: `read` (xlsx via openpyxl data_only, csv, docx paragraphs + tables, pdf via pdfplumber text + tables or pypdf, scanned flag, txt / md / json / xml / html), `sheet_write` (rows from start / cells by address, new workbook or keep the existing one), `doc_fill` (blanks in paragraphs and table cells, first run keeps the format, filled + left_blank). Agent 1.9.2 actions do_data_read / do_sheet_write / do_doc_fill (bare name = Downloads, `_guard` keeps other users' folders out) and do_page_tables (pagekit `JS_TABLES`, also in the generated extension pagekit.js). requirements + Dockerfile carry datakit.py, openpyxl, python-docx, pdfplumber. Operator: data_read / sheet_write / doc_fill / page_tables on Hoola PC, page_tables on her PC while her extension is connected (extlink `tables`); older agents get a pc_deploy line. Tests `test_v0999_114_data_kit.py` (5).
+
+
+## v0.999.115 LEARN ONCE, REPLAY
+Learn once, replay (P5). `pc/trace.py` step lines carry `targets` (ref / to_ref / entries -> "role 'name'" from op.elems). `pc/routines.py`: `from_job` (done jobs only; KEEP open_url / page_click / page_type / page_select / page_fill_form / page_hover / page_drag / wait_for / key / switch_tab; a typed text found in the task = a blank named after the element; pixel steps counted as `pixel_steps_left_to_ai`), `listing` / `get` / `find` (id or part of the name) / `delete`, `last_done_job` (this chat, this kind of PC), `play(op)`: per step page_elements -> `_find_ref` (exact role + name, else one unique partial match) -> `hands.gate` -> timeline + trace + `_do`; a failure line, a refusal or 'NOTHING visible changed' after a click = stop with a note (steps done + the rest) that `operator._run` puts in op.carry before the AI loop starts; all done = status done with no model call. `operator.start(replay=)`. Chat: `_routine_step` in agent/pc_tools.py behind pc_do / hoola_pc_do (routine, values, save_as_routine - no new tool). Routes `/api/pc/routines` (+ /from-job/{job}, /{id}, DELETE, /{id}/run). Tests `test_v0999_115_routines.py` (4).
+
+
+## v0.999.116 WATCH AND CONTROL
+Watch and control (P6). `server/app/static/console/pcjobs.html|js|css` served at `/console/pcjobs` (console CSP, linked from computer.js's sidebar): #/ the job list from /api/pc/trace (status dot, PC, steps, age; refreshes while one runs), #/job/<id> the steps from /api/pc/trace/<id> with each frame fetched with her token as a blob (img-src blob:) and a dot where a pixel click went (x / y against the frame's own size), Stop (POST /api/browser/<id>/stop) and the live frame every 1.5 s for a running job, 'Save as a routine' (POST /api/pc/routines/from-job/<id>), #/routines (run with blank values, delete), #/rules (PUT /api/pc/rules). Test `test_v0999_116_pc_jobs_page.py` (2; HOOLA_CHROMIUM for the walk).

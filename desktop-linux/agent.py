@@ -40,14 +40,15 @@ import httpx
 
 import sys as _sys
 _sys.path.insert(0, str(Path(__file__).resolve().parent))
-import pagekit as PK  # noqa: E402  # v1.9.0 page engine 2 (frames, components, honest clicks, dates, page diff)
+import pagekit as PK  # noqa: E402
+import datakit as DK  # noqa: E402  # v1.9.2 data without clicking (xlsx / docx / pdf as data)  # v1.9.0 page engine 2 (frames, components, honest clicks, dates, page diff)
 
 DATA = Path(os.environ.get("HOOLA_DATA", "/data"))
 SERVER = os.environ.get("HOOLA_SERVER", "http://127.0.0.1:8077").strip().rstrip("/")
 NAME = os.environ.get("HOOLA_PC_NAME", "Hoola PC")
 DISPLAY = os.environ.get("DISPLAY", ":1")
 CDP = "http://127.0.0.1:9222"
-VERSION = "1.9.1"   # v0.999.96 a password box is never typed into, a hidden ref is never used; v1.9.0 v0.999.93 ULTIMATE PC PLAN P1: page engine 2 (pagekit.py: frames, web components, honest clicks, hover, drag, date boxes, page diff) + the PC follows her time zone / language; v0.999.62 DEB INSTALL: install a downloaded .deb (checked: her folder, real Debian package, this PC's architecture, size), kept so a rebuild puts it back; v0.999.47 TAB LANES: a second job of the same user works in its own background browser window (same Chrome = same logins) through CDP only; v0.885 HOOLA PC POOL: a locked folder per user, files to chat, background commands, installs that survive; v0.884.1 a blank tab at the deadline = no_page; v0.884 CHROME SAAF: India clock + language, portal-friendly Chrome, open_url says what went wrong
+VERSION = "1.9.2"   # v0.999.114 data_read / sheet_write / doc_fill / page_tables (datakit.py); v1.9.1 v0.999.96 a password box is never typed into, a hidden ref is never used; v1.9.0 v0.999.93 ULTIMATE PC PLAN P1: page engine 2 (pagekit.py: frames, web components, honest clicks, hover, drag, date boxes, page diff) + the PC follows her time zone / language; v0.999.62 DEB INSTALL: install a downloaded .deb (checked: her folder, real Debian package, this PC's architecture, size), kept so a rebuild puts it back; v0.999.47 TAB LANES: a second job of the same user works in its own background browser window (same Chrome = same logins) through CDP only; v0.885 HOOLA PC POOL: a locked folder per user, files to chat, background commands, installs that survive; v0.884.1 a blank tab at the deadline = no_page; v0.884 CHROME SAAF: India clock + language, portal-friendly Chrome, open_url says what went wrong
 MAX_SEND = 50 * 1024 * 1024   # same upload cap as the Windows Santosh Desktop
 DOWNLOADS = DATA / "Downloads"
 PROFILE = DATA / "chrome"
@@ -1377,31 +1378,7 @@ class Actions:
                 "note": "refs may have changed - run page_elements again before the next step"}
 
     # the field's value itself never comes back: length + matches only (the privacy contract since v0.208)
-    _JS_TYPE = r""" if ((el.type || '').toLowerCase() === 'password' || /password/i.test(el.getAttribute('autocomplete') || ''))
-          return {ok:false, err:'password'};    // v1.9.1 Hoola never types a password: ask_login (she types it privately)
-        el.scrollIntoView({block:'center'}); el.focus();
-        if (el.disabled || el.readOnly) return {ok:false, err:'disabled'};
-        if (ISO) { const d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
-          d.set.call(el, ISO); el.dispatchEvent(new Event('input', {bubbles:true})); el.dispatchEvent(new Event('change', {bubbles:true}));
-          return {ok:true, length:(el.value || '').length, matches: el.value === ISO, as_date: true}; }
-        if (el.isContentEditable && el.value === undefined) {
-          if (CLR) { const s = el.ownerDocument.defaultView.getSelection(); const rg = el.ownerDocument.createRange();
-            rg.selectNodeContents(el); s.removeAllRanges(); s.addRange(rg); }
-          try { el.ownerDocument.execCommand('insertText', false, TXT); } catch(e) {}
-          const v = el.innerText || '';
-          return {ok:true, length:v.length, matches: v.trim() === TXT.trim() || v.includes(TXT)}; }
-        if (CLR) { if (el.select) try { el.select(); } catch(e) {}
-          let okDel = false; try { okDel = el.ownerDocument.execCommand('delete'); } catch(e) {}
-          if (!okDel && el.value !== undefined) { try { el.value = ''; } catch(e) {} } }
-        let ok = false; try { ok = el.ownerDocument.execCommand('insertText', false, TXT); } catch(e) {}
-        if (!ok || (el.value || '') === '') {
-          const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
-          const d = Object.getOwnPropertyDescriptor(proto, 'value');
-          if (d && d.set) { d.set.call(el, (CLR ? '' : (el.value || '')) + TXT);
-            el.dispatchEvent(new Event('input', {bubbles:true})); el.dispatchEvent(new Event('change', {bubbles:true})); }
-        }
-        const v = el.value || '';
-        return {ok:true, length:v.length, matches: v === TXT || v.endsWith(TXT)};"""
+    _JS_TYPE = PK.TYPE_BODY   # v1.9.2 shared with the Hoola extension (pagekit.extension_js)
 
     def _type(self, it: dict[str, Any], text: str, clear: bool = True) -> dict[str, Any]:
         txt = str(text or "")[:4000]
@@ -1426,19 +1403,7 @@ class Actions:
     def do_page_select(self, ref: int, value: str = "", **_) -> dict[str, Any]:
         _chrome_up()
         before = self._snap()
-        r = self._on(self._ref(ref), " const VAL = " + json.dumps(str(value or "")) + ";" r"""
-              if (el.tagName === 'SELECT') { el.focus();
-                for (const o of el.options) { if (o.value === VAL || o.text.trim() === VAL ||
-                    o.text.trim().toLowerCase() === VAL.toLowerCase()) { el.value = o.value;
-                    el.dispatchEvent(new Event('input', {bubbles:true}));
-                    el.dispatchEvent(new Event('change', {bubbles:true}));
-                    return {ok:true, picked:o.text.trim()}; } }
-                return {ok:false, err:'option', options: Array.from(el.options).slice(0,30).map(o=>o.text.trim())}; }
-              el.focus();
-              const d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
-              if (d && d.set) { d.set.call(el, VAL); el.dispatchEvent(new Event('input', {bubbles:true}));
-                el.dispatchEvent(new Event('change', {bubbles:true})); }
-              return {ok:true, picked:VAL};""")
+        r = self._on(self._ref(ref), " const VAL = " + json.dumps(str(value or "")) + ";" + PK.SELECT_BODY)
         if not r.get("ok"):
             raise ActionError(f"select failed ({r.get('err', '?')})"
                               + (f" - options: {', '.join((r.get('options') or [])[:12])}" if r.get("options") else ""))
@@ -1546,6 +1511,47 @@ class Actions:
             entries.append({"name": c.name, "path": str(c), "dir": c.is_dir(), "size": st.st_size if c.is_file() else None,
                             "modified": time.strftime("%Y-%m-%d %H:%M", time.localtime(st.st_mtime))})
         return {"path": str(p), "entries": entries}
+
+    # ---- v1.9.2 (v0.999.114 ULTIMATE PC PLAN P3) data without clicking: her files and page tables as data ----
+    def _her_file(self, path: str) -> Path:
+        p = Path(str(path or ""))
+        if not p.is_absolute():
+            p = DOWNLOADS / p                      # a bare name = in her Downloads
+        _guard(p)
+        return p
+
+    def do_data_read(self, path: str = "", max_chars: int = 20000, sheet: str = "", **_) -> dict[str, Any]:
+        p = self._her_file(path)
+        if not p.is_file():
+            raise ActionError(f"No such file: {p}")
+        try:
+            return {"path": str(p), "name": p.name, **DK.read(p, max(1000, min(int(max_chars or 20000), 60000)), str(sheet or ""))}
+        except DK.DataError as e:
+            raise ActionError(str(e))
+        except Exception as e:
+            raise ActionError(f"Could not read {p.name} as data: {type(e).__name__}: {str(e)[:160]}")
+
+    def do_sheet_write(self, path: str = "", rows: list | None = None, cells: dict | None = None, sheet: str = "",
+                       start: str = "A1", new: bool = False, **_) -> dict[str, Any]:
+        p = self._her_file(path)
+        try:
+            return DK.sheet_write(p, rows=rows, cells=cells, sheet=str(sheet or ""), start=str(start or "A1"), new=bool(new))
+        except DK.DataError as e:
+            raise ActionError(str(e))
+
+    def do_doc_fill(self, template: str = "", out: str = "", values: dict | None = None, **_) -> dict[str, Any]:
+        t = self._her_file(template)
+        o = self._her_file(out or (t.stem + "-filled.docx"))
+        if not t.is_file():
+            raise ActionError(f"No such file: {t}")
+        try:
+            return DK.doc_fill(t, o, dict(values or {}))
+        except DK.DataError as e:
+            raise ActionError(str(e))
+
+    def do_page_tables(self, **_) -> dict[str, Any]:
+        _chrome_up()
+        return _cdp_eval(_active_target(), PK.JS_TABLES, timeout=25) or {"tables": []}
 
     def do_read(self, path: str = "", max_chars: int = 12000, **_) -> dict[str, Any]:
         p = Path(path)
