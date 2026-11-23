@@ -71,7 +71,7 @@ def overview(broke=False):
 
 PAGES = [("chat", "nothing is spent until you send"), ("speech", "Add a tone"), ("dialogue", "How it sounds"), ("studio", "The Lighthouse Keeper"),
          ("dub", "product-tour"), ("voices", "Meera"), ("mine", "Make another voice"), ("changer", "Say it your way"), ("cleanup", "Take the voice out of music"),
-         ("sfx", "Quick game sounds"), ("sounds", "Shop podcast, episode 3"), ("dict", "Mi-thaas"), ("settings", "What things cost")]
+         ("sfx", "Ideas to start from"), ("sounds", "Shop podcast, episode 3"), ("dict", "Mi-thaas"), ("settings", "What things cost")]
 
 CHECKS = """() => {
   const R = document.querySelector('#hvRoot'), W = innerWidth, out = {};
