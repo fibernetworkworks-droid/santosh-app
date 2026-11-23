@@ -7,7 +7,7 @@
   "ar",
   "en"
  ],
- "version": 2,
+ "version": 3,
  "official_hosts": [
   "aecb.gov.ae",
   "centralbank.ae",
@@ -186,6 +186,41 @@
     "value": "Ejari tenancy registration (Dubai)",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "payroll": {
+   "starting_list": {
+    "value": {
+     "frequency": "monthly",
+     "contributions": [
+      {
+       "name": "GPSSA pension (UAE nationals)",
+       "employee_pct": 11,
+       "employer_pct": 12.5,
+       "base": "gross",
+       "note": "only for UAE nationals; Abu Dhabi has its own fund"
+      }
+     ],
+     "income_tax": {
+      "method": "none",
+      "note": "no personal income tax on salary"
+     },
+     "filings": [
+      {
+       "name": "WPS salary file",
+       "every": "monthly",
+       "due_day": 10
+      },
+      {
+       "name": "GPSSA contribution",
+       "every": "monthly",
+       "due_day": 15
+      }
+     ]
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use",
+    "where_to_check": "https://gpssa.gov.ae and the Wage Protection System of the Ministry of Human Resources"
    }
   }
  }

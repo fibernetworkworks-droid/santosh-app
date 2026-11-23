@@ -44,7 +44,7 @@ def test_hire_chat_block_and_wiring(bk):
     from app.agent.tools import FAMILY_OF
     assert FAMILY_OF["books_accounts"] in bk.FAMILIES
     for f in ("callconv.py", "convs.py"):
-        assert '"money", "books")' in (root / "server/app" / f).read_text()
+        assert '"money", "books"' in (root / "server/app" / f).read_text()
     from app.main import APP_VERSION, app
     r = TestClient(app).get("/console/books")
     assert r.status_code == 200 and "Content-Security-Policy" in r.headers and "booksdesk.js" in r.text

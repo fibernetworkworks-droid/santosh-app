@@ -552,7 +552,7 @@ async def tick() -> None:
         team_jobs, research_jobs, scrape_crawl_jobs, spider_jobs, dhara_jobs, eventlog_jobs, kaan_jobs, aboutme_jobs, applogic_jobs,
         game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs, api_box_jobs, aiapp_ops_jobs, design_asset_jobs,
         hoola_batch_jobs, pipeline_jobs, pipeline_branch_jobs, practice_jobs, lead_desk_jobs, books_feed_jobs, vocal_sweep_jobs,
-        appengine_box_jobs,
+        appengine_box_jobs, payroll_desk_jobs,
     ):
         await _slot(fn)
     BEAT["slot"] = ""
@@ -1023,6 +1023,19 @@ async def books_feed_jobs() -> None:
     await _bf.tick()
     from .fin.desks import books_bank as _bb      # v0.999.166 bank connections: new bank lines every hour
     await asyncio.to_thread(_bb.tick)
+
+
+_pr_last = 0.0
+
+
+async def payroll_desk_jobs() -> None:
+    """v0.999.169 PAYROLL DESK: pay inputs from her payroll email, sheet and programs, and the Paid check, every 30 minutes."""
+    global _pr_last
+    if time.time() - _pr_last < 1800:
+        return
+    _pr_last = time.time()
+    from .fin.desks import payroll_desk as _pd
+    await _pd.tick()
 
 
 async def vocal_sweep_jobs() -> None:

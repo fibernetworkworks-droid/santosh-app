@@ -1622,6 +1622,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_bkc.block, tenant_id)
     except Exception:
         log.exception("books desk block failed")
+    try:   # v0.999.169 PAYROLL DESK: a turn in the Payroll chat (or a call started from it) knows the desk
+        from .. import payrollchat as _prc
+        if _prc.is_payroll(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_prc.block, tenant_id)
+    except Exception:
+        log.exception("payroll desk block failed")
     _mark("hint")
     return state
 
@@ -2376,6 +2382,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "books chat"
     except Exception:
         log.exception("books chat admission failed")
+    try:   # v0.999.169 PAYROLL DESK: the payroll tool in view in the Payroll chat
+        from .. import payrollchat as _prc
+        if adm is not None and _prc.is_payroll(conversation_id):
+            adm.admit_families(_prc.FAMILIES)
+            for f in _prc.FAMILIES:
+                adm.why[f] = "payroll chat"
+    except Exception:
+        log.exception("payroll chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,

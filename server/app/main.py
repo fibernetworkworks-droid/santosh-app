@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.168"   # v0.999.168 VOCAL CHECK (built as 0.999.167; their BANK CONNECT took 0.999.167, both kept; owner: "NOW CHECK IS EVERY TOOL IN VOCAL FUCTIONAL OR NOT --- END TO END --- MEANS IS IT WIRED PROPERLY OR NOT TO RESPECED LLM"): every console and phone call has its server route; every request checked against ElevenLabs and Google pages read 23 Nov 2026; NEW python -m app.vocal.check + vps-ops vocal_check / vocal_check_paid = each Vocal tool through the server function its button uses, the smallest real request, LIVE / DEAD / NOT CONNECTED with the engine words, a throwaway account wiped after; FIXED own-voice dub subtitles from the language target signed WebVTT link (the old transcript route is the legacy API), signed downloads follow redirects. Previous: v0.999.167 BANK CONNECT (owner: "ANOTHER MAIN ATTACHMENT IN BANK AND MATCHING IS A BANK ATTACHMENT FOR ACCOUNT STATEMENT FETCHING --- AS WE ARE DEVELOPING IT FOR WORLD WHAT IS GENERALIZE WAY OF CONNECTING THIS" -> "GO BUILD"): Books & Accounts > Bank & matching gets Bank accounts - four routes chosen by her country, all landing bank lines in one place (fin.spine.import_rows) for matching: (1) a bank connection through a LICENSED open-banking partner behind one interface (fin/sources/openbanking.py: India Account Aggregator through Setu, UK + EU GoCardless Bank Account Data, US + Canada Plaid Hosted Link; Basiq / Belvo / Lean / Mono / Stitch named for later) - she signs in at her own bank, read-only, consent with expiry, new lines every hour, renew said once a week before it ends, Disconnect; a partner offered only when its keys are in the VPS .env AND OPEN_BANKING_ACK names it; (2) bank files (MT940 / CAMT.053 / OFX / QIF) by her business email or POST /api/books/bank-file with her books key; (3) her bank's statement email from a sender she names, a PDF password sealed and used only for that bank; (4) upload; statements never reach the invoice reader; table fin_bank_link; desk parts bank_* (owner / admin connect, accountant syncs); FIXED a wide bank table scrolling the whole page on a phone; NOT VERIFIED with a live partner call; previous head v0.999.166 YOUR SOUNDS, DICTIONARY, SETTINGS, PREMIUM; older stories live in git history.; older stories live in git history.
+APP_VERSION = "0.999.169"   # v0.999.169 PAYROLL DESK (built as 0.999.168; their VOCAL CHECK took 0.999.168, both kept; owner: "WE WILL WORK ON NEXT AI EMPLOYEE SAME WAY A PAYROLL" -> the design claude.ai/artifact/M5ukAtPfTjN89y7NzqT8pt -> "GO"): the Payroll employee gets its own section /console/payroll like Books & Accounts - its own chat (kind payroll, payrollchat.py) beside Today, People, Inputs, Run payroll, Payslips & pay, Dates & filings, Settings; pay inputs arrive by themselves (her sheet, payroll email, time / HR software read tools, upload, POST /api/payroll/in with a py_ key) and each row is checked in code (one of her people, inside the period, under her hours limit, never counted twice) or waits with its reason; the change list against the last run (joined / left with day proration, pay rises, overtime, bonus); approval = her tap on the hash of the run she saw, a second person above her limit, which locks it and posts the wage journal to Books; the payment file (bank CSV, or ISO 20022 pain.001 with accounts typed for that file and never kept); Paid only when Bank & matching has the bank line; payslip PDFs in each person's language put in her mailbox Drafts; country starting lists in the packs (IN PF / ESI / PT / TDS, GB, US, SG, AU, AE) whose rules stay "check this" and block the run until a person checks each one; people moved from the older India payroll by her tap; the Books & Accounts team roles (fin/desks/payroll_desk.py); NOT VERIFIED on her server or with a real payroll. Previous: v0.999.169 VOCAL CHECK (built as 0.999.167; their BANK CONNECT took 0.999.167, both kept; owner: "NOW CHECK IS EVERY TOOL IN VOCAL FUCTIONAL OR NOT --- END TO END --- MEANS IS IT WIRED PROPERLY OR NOT TO RESPECED LLM"): every console and phone call has its server route; every request checked against ElevenLabs and Google pages read 23 Nov 2026; NEW python -m app.vocal.check + vps-ops vocal_check / vocal_check_paid = each Vocal tool through the server function its button uses, the smallest real request, LIVE / DEAD / NOT CONNECTED with the engine words, a throwaway account wiped after; FIXED own-voice dub subtitles from the language target signed WebVTT link (the old transcript route is the legacy API), signed downloads follow redirects.; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2018,6 +2018,16 @@ def books_desk_page():
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/payroll")
+@app.get("/console/payroll/")
+def payroll_desk_page():
+    """v0.999.169 PAYROLL DESK: the Payroll employee's own section - its chat beside the desk's screens (Today, People, Inputs,
+    Run payroll, Payslips & pay, Dates & filings, Settings). Same sign-in + strict CSP."""
+    return FileResponse(STATIC / "console" / "payrolldesk.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/money")
 @app.get("/console/money/")
 def money_desk_page():
@@ -2556,6 +2566,8 @@ from . import moneychat as _moneychat_mod                        # noqa: E402  v
 _moneychat_mod.mount(app, current_tenant, require_key)          # /api/money/*
 from . import bookschat as _bookschat_mod                        # noqa: E402  v0.999.158 BOOKS DESK
 _bookschat_mod.mount(app, current_tenant, require_key)          # /api/books/*
+from . import payrollchat as _payrollchat_mod                    # noqa: E402  v0.999.169 PAYROLL DESK
+_payrollchat_mod.mount(app, current_tenant, require_key)        # /api/payroll/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

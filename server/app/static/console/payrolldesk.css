@@ -1,0 +1,15 @@
+/* v0.999.169 PAYROLL DESK - the Payroll employee's own section. Frame, chat, cards and buttons come from seodesk.css, the shared
+   desk parts (md-*) from moneydesk.css and the books parts (bk-*) from booksdesk.css; only the payroll parts are here. */
+.pr-steps{display:flex;gap:6px;flex-wrap:wrap}
+.pr-step{flex:1 1 120px;min-width:0;border-radius:10px;padding:9px 11px;font-size:12.5px;background:var(--soft);color:var(--mut)}
+.pr-step b{display:block;font-weight:600;color:var(--ink);font-size:13.5px}
+.pr-step.done{background:var(--oks)}
+.pr-step.now{background:var(--accs);box-shadow:inset 0 0 0 1.5px var(--acc)}
+.pr-rule{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:11px 0;border-top:1px solid var(--line);font-size:14px}
+.pr-rule:first-of-type{border-top:0}
+.pr-rule>div{min-width:0}
+.pr-rule .bk-pick input{width:220px;max-width:42vw}
+@media (max-width:640px){.pr-rule{flex-direction:column}.pr-rule .bk-pick{width:100%}.pr-rule .bk-pick input{flex:1;width:auto;max-width:none}}
+.pr-h3{font-size:14px;font-weight:600;margin:14px 0 6px}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13px}
+.sd details summary{cursor:pointer;font-size:14px}

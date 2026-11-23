@@ -10850,3 +10850,49 @@ sweep, and the settings read (the overview carries settings).
 The Vocal suites stay green.
 
 NOT VERIFIED until `vocal_check` runs on her server.
+
+
+## v0.999.169 PAYROLL DESK (built as 0.999.168; their VOCAL CHECK took 0.999.168, both kept)
+
+Owner: "WE WILL WORK ON NEXT AI EMPLOYEE SAME WAY A PAYROLL" -> design claude.ai/artifact/M5ukAtPfTjN89y7NzqT8pt -> "GO".
+
+What existed: two engines that never talked - Payroll Worldwide (F5, `fin/desks/payroll.py`, any country on her own rules) and the
+older India payroll (`payroll/service.py`, PF / ESIC / PT / TDS written in code). No desk, no chat, every input typed by hand.
+
+Built (steps 1-5 of the design):
+- Step 1 the desk + chat: `/console/payroll` (`static/console/payrolldesk.html/.js/.css`) with Today, People, Inputs, Run payroll,
+  Payslips & pay, Dates & filings, Settings; Payroll chat = Conversation kind `payroll` (`app/payrollchat.py`), out of her chat
+  lists (convs / callconv), its turns get the `<payroll_desk>` block + the payrollwide family in view (agent/santosh.py). Routes
+  /api/payroll/{chat,chat/new,chat/{id}/ok,desk,do/{part},payslip,in,workspace}. employees.js + phone hoola_employees.dart open it.
+- Step 2 inputs by themselves (`fin/desks/payroll_desk.py`): her Google Sheet (read every 30 min), a payroll email she attaches
+  (CSV / Excel attachments), time / HR software through Connectors (READ tools only: Deputy, BambooHR, Factorial, Keka, Personio,
+  HiBob, When I Work, Homebase, Clockify, Harvest, Toggl, Zoho People), upload, POST /api/payroll/in with a `py_` key (hash kept).
+  Each row checked in code: one of her people (a close name = "did you mean"), date inside the period, hours under her limit
+  (260 / 130 / 65 by frequency, hers to change), not negative, never counted twice (same row = skipped; same field for the same
+  person from another file = waits). She matches or drops a waiting row. Overtime hours become pay by her multiplier (1.5) and
+  standard hours (160). Worker slot payroll_desk_jobs every 30 min.
+- Engine additions (`fin/desks/payroll.py`): a joiner / leaver inside the period is paid for the calendar days worked (salaried);
+  pay changes keep a history; a contribution can apply only up to a pay level (`only_upto`, e.g. ESI); payslip language, email,
+  her bank payee reference and job on each person; the run refuses while any starting-list rule is unchecked.
+- Run + approval: prepare = people + checked inputs; the change list against the run before (new, joined, leaves, pay changed,
+  overtime hours, bonus, unpaid days); approval = her tap on the hash of the run she saw; above her limit the approver must not be
+  the person who prepared it; approval locks the period and posts the wage journal to Books (Dr 6300 wages, 6310 employer costs;
+  Cr 2210 wages payable, 2220 taxes and contributions payable, 2230 pay deductions payable; accounts added when missing; a payroll
+  in another currency than the books is not posted and says why).
+- Pay: her bank's CSV (names, payee references, amounts) or ISO 20022 pain.001.001.09 (SALA) with IBANs typed for that file only -
+  never stored, kept out of the audit log; Paid only when Bank & matching has one line for the whole net or a line per person
+  (amount + first name); payslip PDFs in en / hi / mr / es / fr / de / pt (Devanagari font for hi / mr; other languages English and
+  said on the slip); "Put payslip emails in my Drafts" saves one draft per person in her mailbox - she sends them.
+- Step 3 country rules: `payroll.starting_list` in the packs for IN (EPF 12/12 to 15,000; ESI 0.75 / 3.25 only up to 21,000;
+  Maharashtra PT slabs; new-regime TDS bands with the 87A rebate NOT applied - said), GB, US, SG, AU, AE - all status verify, each
+  with where to check. Applying a list marks every rule "check this" (rules_meta); the run is refused until each is checked with
+  its source, date and who. India's older-payroll people move over by her tap (import_old); their old runs stay there.
+- Step 5 team: the Books & Accounts team works here; accountant = preparer, approver approves, auditor / viewer read (viewer cannot
+  open payslips); team changed in Books & Accounts.
+- Tool `payroll_worldwide` gains desk, inputs, input_rows, missing, changes, prepare, rules, starting_list, apply_starting_list;
+  approving, the payment file, payslip emails and checking a rule stay her taps on the desk.
+
+Tests: server/tests/test_v0999_169_payroll_desk.py (6 incl. a Chromium walk at 1440 and 390). Pins moved: test_fin_f7
+(payroll_worldwide -> payrolldesk), test_v0999_158 (chat-list kinds). hinglish_baseline: payroll_desk.py 20 (the Hindi / Marathi
+payslip words). NOT VERIFIED: on her server, with a real sheet / mailbox / HR program, or a real payroll; every starting-list rate
+is from memory and marked so.

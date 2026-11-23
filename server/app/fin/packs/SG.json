@@ -9,7 +9,7 @@
   "ms",
   "ta"
  ],
- "version": 2,
+ "version": 3,
  "official_hosts": [
   "fidrec.com.sg",
   "gov.sg",
@@ -212,6 +212,43 @@
     "value": "Wills Registry (Ministry of Law)",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "payroll": {
+   "starting_list": {
+    "value": {
+     "frequency": "monthly",
+     "contributions": [
+      {
+       "name": "CPF",
+       "employee_pct": 20,
+       "employer_pct": 17,
+       "upto": 7400,
+       "base": "gross",
+       "note": "rates for ages 55 and below; ordinary wage ceiling"
+      }
+     ],
+     "income_tax": {
+      "method": "none",
+      "note": "Singapore does not withhold income tax from monthly pay"
+     },
+     "filings": [
+      {
+       "name": "CPF contribution",
+       "every": "monthly",
+       "due_day": 14
+      },
+      {
+       "name": "IR8A",
+       "every": "yearly",
+       "month": 12,
+       "due_offset_days": 60
+      }
+     ]
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use",
+    "where_to_check": "https://www.cpf.gov.sg/employer"
    }
   }
  }

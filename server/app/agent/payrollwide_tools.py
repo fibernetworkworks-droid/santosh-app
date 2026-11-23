@@ -8,8 +8,10 @@ from typing import Any
 
 from .tools import Ctx, ToolError
 
-_ACTIONS = ["settings", "employee", "people", "run", "close", "payslip", "payments", "filings", "done", "contractors"]
-_CHANGES = {"settings", "employee", "run", "close", "done"}
+_ACTIONS = ["settings", "employee", "people", "run", "close", "payslip", "payments", "filings", "done", "contractors",
+            "desk", "inputs", "input_rows", "missing", "changes", "prepare", "rules", "starting_list", "apply_starting_list"]
+_CHANGES = {"settings", "employee", "run", "close", "done", "input_rows", "prepare", "apply_starting_list"}
+# v0.999.169 approving a run, the payment file, payslip emails and checking a country rule are HER taps on the Payroll desk
 
 PAYROLLWIDE_TOOLS = [
     {"name": "payroll_worldwide", "description": (
@@ -24,7 +26,14 @@ PAYROLLWIDE_TOOLS = [
         "contributions, net, employer cost, the arithmetic; a draft. close: period (locks). payslip: period, employee. payments: period "
         "-> net to each person + to each authority (she pays). filings: year -> due dates from her rules, done / overdue. done: filing, "
         "for, on, reference (she filed). contractors: year, rows [{payee, amount, date, tax_id}] or contractors [names] from her bills, "
-        "threshold, tax_ids -> totals, who to report, missing tax ids, CSV."),
+        "threshold, tax_ids -> totals, who to report, missing tax ids, CSV. "
+        "v0.999.169 Payroll desk: desk (this period, inputs, what needs her); inputs (period, status checked|waiting); input_rows "
+        "rows [{name, date, hours, overtime_hours, overtime, bonus, commission, unpaid_days, leave_days}] from a timesheet she gave - "
+        "each row is checked (her people, the period, her hours limit, never twice); missing (who has no hours); prepare (period) = "
+        "the run from her people + checked inputs, with changes from the last run; changes (period); rules (her country rules and "
+        "which still need a check); starting_list (country) / apply_starting_list (country): the country's starting list, every rule "
+        "marked 'check this' and not used until a person checks it on the desk. Approving a run, the payment file, payslip emails "
+        "and checking a rule are HER taps on the Payroll desk - never say they are done."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": _ACTIONS}, "workspace": {"type": "string"}, "country": {"type": "string"},
          "frequency": {"type": "string"}, "source": {"type": "string"},
@@ -36,7 +45,8 @@ PAYROLLWIDE_TOOLS = [
          "period": {"type": "string"}, "extras": {"type": "object"}, "employee": {"type": "string"}, "year": {"type": "integer"},
          "filing": {"type": "string"}, "for": {"type": "string"}, "on": {"type": "string"}, "reference": {"type": "string"},
          "rows": {"type": "array", "items": {"type": "object"}}, "contractors": {"type": "array", "items": {"type": "string"}},
-         "threshold": {"type": "number"}, "tax_ids": {"type": "object"}, "basis": {"type": "string"}},
+         "threshold": {"type": "number"}, "tax_ids": {"type": "object"}, "basis": {"type": "string"},
+         "status": {"type": "string"}, "source_name": {"type": "string"}, "file": {"type": "string"}},
          "required": ["action"]}},
 ]
 PAYROLLWIDE_LABELS = {"payroll_worldwide": "Working out the payroll"}
