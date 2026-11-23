@@ -2094,6 +2094,7 @@ class Api {
       _vocalBytes(_u('/api/vocal/audio', {'id': id, if (format.isNotEmpty) 'format': format}));
   /// v0.999.158: her own recording kept beside a voice change (30 days), for Before / After.
   Future<List<int>?> vocalChangeSource(String id) => _vocalBytes(_u('/api/vocal/change/source', {'id': id}));
+  Future<List<int>?> vocalCleanupSource(String id) => _vocalBytes(_u('/api/vocal/cleanup/source', {'id': id}));
   Future<List<int>?> _vocalBytes(Uri u) async {
     final req = http.Request('GET', u)..headers.addAll(_headers);
     final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 120)));
@@ -2174,7 +2175,9 @@ class Api {
       _vocalBytes(_u('/api/vocal/dub/${Uri.encodeComponent(did)}/export', {'what': what, 'langs': langs.join(',')}));
   Future<Map<String, dynamic>> vocalSfx(Map<String, dynamic> body) => _vocal('POST', '/sfx', body: body, timeout: const Duration(seconds: 180));
   Future<Map<String, dynamic>> vocalCleanup(Map<String, dynamic> body) =>
-      _vocal('POST', '/cleanup', body: body, timeout: const Duration(seconds: 300));
+      _vocal('POST', '/cleanup', body: body, timeout: const Duration(seconds: 600));
+  Future<Map<String, dynamic>> vocalCleanupListen(Map<String, dynamic> body) =>
+      _vocal('POST', '/cleanup/listen', body: body, timeout: const Duration(seconds: 180));
   Future<Map<String, dynamic>> vocalChange(Map<String, dynamic> body) =>
       _vocal('POST', '/change', body: body, timeout: const Duration(seconds: 300));
   Future<Map<String, dynamic>> vocalRule(String word, String say, {String ipa = '', String lang = ''}) =>

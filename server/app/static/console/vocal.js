@@ -43,7 +43,7 @@ window.HoolaVocal = function (ctx) {
     dubs: null, dub: null, dubTab: '', dubLines: null, dubNew: {file: null, langs: [], mode: 'matched', keep: true, secs: 0, speakers: 0, check: true, words: [], preview: ''},
     dubSel: null, dubHear: 'dub', dubRead: false, dubUndo: null, dubDl: {what: 'video', on: {}}, dubKeep: [],
     chg: {file: null, voice: '', denoise: true, secs: 0, out: null, view: '', start: 0, end: 0, close: 75, feel: 50, hear: 'after', cmp: ['', '', ''], cmpOut: null, cmpPick: '', rm: true, filt: '', fileFor: ''},
-    cl: {file: null, denoise: true, echo: true, level: true, silence: false, people: false, music: false, secs: 0, out: null, before: ''},
+    cl: {file: null, denoise: true, noise: 'medium', voice: true, level: true, target: 'podcast', silence: false, gap: 1, people: false, music: false, secs: 0, out: null, heard: null, listening: false, kind: '', job: null, view: '', hear: 'after', filt: '', fileFor: ''},
     fx: {prompt: '', seconds: 0, loop: false, takes: 4, out: []}, seed: 1, snd: {tab: 'All', q: ''}, side: {tab: 'All', q: ''},
     dict: {imp: false, text: '', lang: ''}, apps: null, newKey: null, newHook: null, appName: '', hookUrl: '', kept: store.get('hv.kept', []), nav: false, slim: !!store.get('hv.slim', false),
     cw: Math.max(380, +store.get('hv.chatw', 640) || 640), cmode: store.get('hv.chatmode', 'balanced'), peek: false, recent: null, queue: []};
@@ -694,7 +694,9 @@ window.HoolaVocal = function (ctx) {
       if (UI.dlg.podOpen) return; dlPrice();
       const one = $('[data-qbtn="dlone"]'); if (one) { const l = UI.dlg.lines[+one.dataset.n]; price('dlone', {job: 'dialogue', chars: (l?.text || '').length, lang: UI.dlg.lang || 'auto'}, r => r.credits != null ? 'Only this line is spoken' : ''); } },
     changer() { chgPrice(); },
-    cleanup() { price('cl', {job: UI.cl.people || UI.cl.music ? 'isolate' : 'cleanup', seconds: UI.cl.secs || 60}); },
+    cleanup() { clPrice();
+      $$('[data-drop="cl"]').forEach(el => { el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('over'); }); el.addEventListener('dragleave', () => el.classList.remove('over'));
+        el.addEventListener('drop', e => { e.preventDefault(); el.classList.remove('over'); const f = e.dataTransfer?.files?.[0]; if (f) clFile(f, 0); }); }); },
     sfx() { price('fx', {job: 'sfx', seconds: UI.fx.seconds || 5, takes: UI.fx.takes}); },
     dub() { topTools(); dubPosters();
       if (!ARG) { if (UI.dubNew.file) price('dub', {job: UI.dubNew.mode === 'own' ? 'dub_own' : 'dub_matched', seconds: UI.dubNew.secs || 60, langs: UI.dubNew.langs.length || 1});
@@ -1318,18 +1320,11 @@ window.HoolaVocal = function (ctx) {
     },
 
     cleanup() {
-      const c = UI.cl, w = ready('eleven') ? '' : whyNot('eleven'), gw = gate(paid(!c.file?.file_id ? 'Choose the recording first.' : ''));
-      const opt = (k, n, prem) => { const g = gate(prem ? w : ''); return `<label class="hv-check"><input type="checkbox" data-m="UI.cl.${k}" data-t="bool" data-redraw="1"${c[k] && !(prem && w) ? ' checked' : ''}${g.a}><span>${n}${prem ? ' <span class="hv-src">ElevenLabs</span>' : ''}</span></label>${g.l}`; };
-      return `<div class="hv-split hv-tool">${panel('Clean-up', `<form class="hv-form" data-f="cleanup"><b class="hv-t">Clean-up</b><p class="hv-mut hv-sm">Make a voice clear, or lift it out of music.</p>
-          <div class="hv-filerow"><button type="button" class="hv-btn" data-a="pickfile" data-k="cl" data-accept="audio/*,video/*">${ic('upload', 14)}Choose a recording</button><span class="hv-mut hv-sm">${c.file ? esc(c.file.name) + (c.secs ? ' · ' + secs(c.secs) : '') + (c.file.up ? ' · uploading…' : c.file.file_id ? ' · ready' : '') : 'or a video'}</span></div>
-          <fieldset class="hv-fs"><legend class="hv-lab">Fix</legend>${opt('denoise', 'Remove background noise')}${opt('echo', 'Make the voice clearer')}${opt('level', 'Even out the loudness')}${opt('silence', 'Cut long silences')}
-            ${opt('people', 'Remove street sounds and other people', true)}${opt('music', 'Take the voice out of music', true)}</fieldset>
-          <span class="hv-grow"></span><button class="hv-cta" data-qbtn="cl" data-label="Clean it"${gw.a}><span>Clean it</span></button>${gw.l}
-          <p class="hv-hint c" data-qline="cl">${c.people || c.music ? '' : 'Noise, clarity, silences and loudness are made on Hoola’s own server.'}</p></form>`)}
-        ${stage('Before and after', `<b>Before and after</b>`, c.file ? `<div class="hv-card hv-ba"><span class="hv-mut hv-sm">Before · ${esc(c.file.name)}</span>${wave('b' + c.file.name, 60, 'thin')}
-            <span class="hv-mut hv-sm">After</span>${c.out ? wave('a' + c.out.id, 60) : '<span class="hv-mut hv-sm">Not cleaned yet</span>'}
-            <div class="hv-acts">${c.before ? `<button type="button" class="hv-btn" data-a="playurl" data-val="before">${ic('play', 12)}Hear before</button>` : ''}${c.out ? `<button type="button" class="hv-btn" data-a="play" data-id="${esc(c.out.id)}" data-s="12">${ic('play', 12)}Hear after</button>
-              <button type="button" class="hv-btn" data-a="dlmenu" data-id="${esc(c.out.id)}" aria-haspopup="menu">Download${ic('down', 12)}</button>` : ''}</div></div>` : empty('Nothing here yet', 'Choose a recording on the left.'))}</div>`;
+      if (!ready('server')) return clNot();
+      if (UI.cl.job) return clWork();
+      if (UI.cl.view === 'list') return clList();
+      if (!UI.cl.file && !UI.cl.out) return clStart();
+      return clMain();
     },
 
     sfx() {
@@ -2118,17 +2113,18 @@ window.HoolaVocal = function (ctx) {
   }
   // Before / After players: both run together, she hears one; switching never restarts
   function chgStop() { CHG.on = false; cancelAnimationFrame(CHG.raf); try { CHG.a?.pause(); CHG.b?.pause(); } catch { /* */ }
-    $$('[data-a="chgplay"]').forEach(x => { x.innerHTML = ic('play', 14); x.setAttribute('aria-label', 'Play before and after'); }); }
-  function chgMute() { if (CHG.b) CHG.b.muted = UI.chg.hear === 'before' && !!CHG.a; if (CHG.a) CHG.a.muted = UI.chg.hear !== 'before'; }
+    $$('[data-a="chgplay"],[data-a="clplay"]').forEach(x => { x.innerHTML = ic('play', 14); x.setAttribute('aria-label', 'Play before and after'); }); }
+  function chgMute() { const st = CHG.st || UI.chg; if (CHG.b) CHG.b.muted = st.hear === 'before' && !!CHG.a; if (CHG.a) CHG.a.muted = st.hear !== 'before'; }
   async function chgPlay(h) {
     if (CHG.on) return chgStop();
     try { const after = await blobUrl(`${A}/audio?id=${q(h.id)}`); let before = '', off = 0;
-      if (h.src) { try { before = await blobUrl(`${A}/change/source?id=${q(h.id)}`); } catch { before = ''; } }
-      if (!before && UI.chg.fileFor === h.id && UI.chg.file?.url) { before = UI.chg.file.url; off = h.trim ? h.trim[0] : 0; }
-      $('#hvAudio')?.pause(); chgStop(); CHG.b = new Audio(after); CHG.a = before ? new Audio(before) : null; CHG.off = off; chgMute(); CHG.on = true;
+      const st = h.kind === 'cleanup' ? UI.cl : UI.chg;
+      if (h.src) { try { before = await blobUrl(`${A}/${h.kind === 'cleanup' ? 'cleanup' : 'change'}/source?id=${q(h.id)}`); } catch { before = ''; } }
+      if (!before && st.fileFor === h.id && st.file?.url) { before = st.file.url; off = h.trim ? h.trim[0] : 0; }
+      $('#hvAudio')?.pause(); chgStop(); CHG.st = st; CHG.b = new Audio(after); CHG.a = before ? new Audio(before) : null; CHG.off = off; chgMute(); CHG.on = true;
       if (CHG.a) CHG.a.currentTime = off;
       await Promise.all([CHG.b.play(), CHG.a?.play()].filter(Boolean));
-      $$('[data-a="chgplay"]').forEach(x => { x.innerHTML = ic('pause', 14); x.setAttribute('aria-label', 'Pause before and after'); });
+      $$('[data-a="chgplay"],[data-a="clplay"]').forEach(x => { x.innerHTML = ic('pause', 14); x.setAttribute('aria-label', 'Pause before and after'); });
       const tick = () => { if (!CHG.on) return; const b = CHG.b, d = b.duration || h.seconds || 1, p = Math.min(1, b.currentTime / d);
         if (CHG.a && Math.abs(CHG.a.currentTime - CHG.off - b.currentTime) > 0.15) CHG.a.currentTime = CHG.off + b.currentTime;
         $$('[data-ph]').forEach(x => { x.style.left = `${(p * 100).toFixed(2)}%`; }); const t = $('[data-chgt]'); if (t) t.textContent = `${secs(b.currentTime)} / ${secs(d)}`;
@@ -2159,6 +2155,211 @@ window.HoolaVocal = function (ctx) {
     if (c.view === 'compare' && n) price('chgn', {job: 'change', seconds: lc || 60, voices: n}, r => r.credits != null ? `${n} × ${secs(lc || 60)} · nothing is spent until you tap` : esc(scrub(r.line || '')));
   }
 
+  // ------------------------------------------------------------------ Clean-up (v0.999.161, design canvas claude.ai/artifact/1U18RieVdsG2uj2KqVeYUW)
+  // Hoola listens first (measured on the server), says what is wrong and picks the fixes; she can change any of them; the
+  // clean-up runs step by step in the background (Stop between steps); Before / After on one timeline with the readings
+  // before and after; her recording kept beside it for 30 days (Before, Clean again).
+  const CL_KINDS = [
+    ['phone', 'Phone recording', 'Light noise removal, a clearer voice, loudness for reels and WhatsApp.', {denoise: true, noise: 'light', voice: true, level: true, target: 'reels', silence: false, people: false, music: false}],
+    ['podcast', 'Podcast', 'Clearer voice, pauses kept natural, loudness at -16 for podcast apps.', {denoise: true, noise: 'medium', voice: true, level: true, target: 'podcast', silence: true, gap: 1, people: false, music: false}],
+    ['meeting', 'Meeting call', 'Strong noise removal, a clearer voice, long pauses shortened.', {denoise: true, noise: 'strong', voice: true, level: true, target: 'podcast', silence: true, gap: 2, people: false, music: false}],
+    ['outside', 'Interview outside', 'Street sounds and other people lifted out, then cleaned and evened out.', {denoise: true, noise: 'strong', voice: true, level: true, target: 'podcast', silence: true, gap: 1, people: true, music: false}],
+    ['music', 'Voice in music', 'The voice is taken out of the music first, then evened out.', {denoise: false, voice: false, level: true, target: 'reels', silence: false, people: false, music: true}]];
+  const CL_TGT = [['podcast', 'Podcast', -16], ['reels', 'Reels and YouTube', -14], ['audiobook', 'Audiobook', -19], ['broadcast', 'Radio and TV', -23]];
+  const clHist = () => D.history.filter(h => h.kind === 'cleanup');
+  const clPrem = () => UI.cl.people || UI.cl.music;
+  const clSrc = () => { const c = UI.cl, f = c.file; return f?.from ? {source_of: f.from} : f?.sound ? {sound: f.sound} : f?.file_id ? {file_id: f.file_id} : null; };
+  const db = v => v == null ? '–' : `${v > 0 ? '+' : ''}${(+v).toFixed(1)} dB`;
+  const lu = v => v == null ? '–' : `${(+v).toFixed(0)} LUFS`;
+  function clTop(title, sub) {
+    const n = clHist().length;
+    return `<div class="hv-chgtop"><span class="hv-vt"><b class="hv-chgt">${esc(title)}</b><span class="hv-mut hv-sm">${esc(sub)}</span></span><span class="hv-grow"></span>
+      ${UI.cl.view ? `<button type="button" class="hv-btn" data-a="clview" data-val="">${ic('back', 14)}<span>Clean-up</span></button>` : ''}
+      ${UI.cl.view !== 'list' ? `<button type="button" class="hv-btn" data-a="clview" data-val="list">Your clean-ups <span class="hv-num hv-mut">${num(n)}</span></button>` : ''}</div>`;
+  }
+  // what Hoola heard, as cards: each reading said in words, its number under it
+  function clHeard(m) {
+    const f = m.found || {}, out = [];
+    out.push(f.noise ? ['warn', 'Background noise under the voice', `${db(m.background)} background`] : ['ok', 'Little background noise', `${db(m.background)} background`]);
+    out.push(f.quiet ? ['warn', 'Quiet', `${lu(m.lufs)} · podcasts sit at -16`] : f.loud ? ['warn', 'Loud', `${lu(m.lufs)} · reels sit at -14`] : ['ok', 'Loudness is fine', lu(m.lufs)]);
+    out.push(f.clips ? ['bad', m.clips ? `Loud words hit the top ${m.clips === 1 ? 'once' : m.clips + ' times'}` : 'Loud words hit the top', `loudest ${db(m.peak)}`] : ['ok', 'No crackle on loud words', `loudest ${db(m.peak)}`]);
+    out.push(f.pauses ? ['info', `${plural(m.pauses, 'long pause')}`, `longest ${(+m.longest).toFixed(1)} s`] : ['ok', 'No long pauses', 'none over 1 s']);
+    return `<div class="hv-clheard">${out.map(([k, t, v]) => `<div class="hv-clh ${k}"><span class="hv-clht"><span class="hv-cldt" aria-hidden="true"></span>${esc(t)}</span><span class="hv-num hv-sm">${esc(v)}</span></div>`).join('')}</div>
+      ${m.partial ? '<span class="hv-mut hv-sm">Measured on the first 20 minutes.</span>' : ''}`;
+  }
+  function clRec() {
+    const c = UI.cl, f = c.file, s = c.secs || f?.secs || 0;
+    return `<div class="hv-card hv-chgrec"><div class="hv-rh"><b>Your recording</b><span class="hv-mut hv-sm hv-ell">${esc([f.name, s ? secs(s) : '', f.up ? 'uploading…' : f.err || '', f.from ? 'kept from before' : ''].filter(Boolean).join(' · '))}</span><span class="hv-grow"></span>
+        <button type="button" class="hv-lnk" data-a="clnew">Choose another</button></div>
+      <div class="hv-chgwave" aria-hidden="true">${chgBars(f.peaks, f.name + (f.from || ''), 96)}</div>
+      ${f.url ? `<div class="hv-rh"><button type="button" class="hv-play" data-a="clpart" aria-label="Play your recording">${ic('play', 12)}</button><span class="hv-mut hv-sm">Your recording as it is</span></div>` : ''}
+      <span class="hv-lab">What Hoola heard</span>
+      ${c.listening ? `<div class="hv-clwait" role="status"><span class="hv-spin" aria-hidden="true"></span>Listening for noise, loudness, crackle and long pauses…</div>`
+        : c.heard ? clHeard(c.heard) : f.err ? `<p class="hv-why">${esc(f.err)}</p>` : f.up ? '<span class="hv-mut hv-sm">Hoola listens as soon as it has uploaded.</span>' : ''}</div>`;
+  }
+  function clFixes() {
+    const c = UI.cl, fnd = c.heard?.found || {}, w = ready('eleven') ? '' : whyNot('eleven'), pw = w || (broke() ? 'No credits left for lifting the voice out. The free clean-ups still work.' : '');
+    const row = (k, t, found, more) => `<div class="hv-clfix"><label class="hv-check"><input type="checkbox" data-m="UI.cl.${k}" data-t="bool" data-redraw="1"${c[k] ? ' checked' : ''}><span>${t}</span></label>
+      ${found ? '<span class="hv-badge warn">Found</span>' : ''}${c[k] && more ? `<div class="hv-clopt">${more}</div>` : ''}</div>`;
+    const prem = (k, t) => { const g = gate(pw); return `<label class="hv-check"><input type="checkbox" data-m="UI.cl.${k}" data-t="bool" data-redraw="1"${c[k] && !pw ? ' checked' : ''}${g.a}><span>${t}</span></label>${g.l}`; };
+    return `<div class="hv-card hv-clfixes">
+      ${row('denoise', 'Remove background noise', fnd.noise, `<span class="hv-lab">How much</span>${seg('UI.cl.noise', [['light', 'Light'], ['medium', 'Medium'], ['strong', 'Strong']], c.noise, null, 'How much noise to remove')}`)}
+      ${row('voice', 'Make the voice clearer', false, '')}
+      ${row('level', 'Even out the loudness', fnd.quiet || fnd.loud || fnd.clips, `<span class="hv-lab">Heard on</span>${seg('UI.cl.target', CL_TGT.map(([v, l]) => [v, l]), c.target, null, 'Where it will be heard')}`)}
+      ${row('silence', 'Shorten long pauses', fnd.pauses, `<span class="hv-lab">Longer than</span>${seg('UI.cl.gap', [[0.5, '0.5 s'], [1, '1 s'], [2, '2 s']], c.gap, null, 'Shorten pauses longer than')}`)}
+      <div class="hv-clprem"><div class="hv-rh"><b class="hv-sm">Lift the voice out</b><span class="hv-src">ElevenLabs · uses credits</span></div>
+        ${prem('people', 'Remove street sounds and other people')}${prem('music', 'Take the voice out of music')}
+        ${pw ? `<span class="hv-mut hv-sm">${esc(scrub(pw))}${broke() && !w ? ` <a class="hv-lnk" href="${esc(D.credits_page || '/console/?v=credits')}">Get credits</a>` : ''}</span>` : ''}</div></div>`;
+  }
+  function clReadings(h) {
+    const b = h.before || {}, a = h.after || {}, fx = h.fixes || {}, tgt = CL_TGT.find(x => x[0] === fx.target);
+    const rows = [['Loudness', lu(b.lufs), lu(a.lufs), fx.level && tgt ? `${tgt[1]} level` : ''],
+      ['Loudest peak', db(b.peak), db(a.peak), a.peak != null && a.peak < -1 && b.peak != null && b.peak >= -1 ? 'No more crackle' : ''],
+      ['Background', db(b.background), db(a.background), b.background != null && a.background != null && b.background - a.background >= 3 ? `${Math.round(b.background - a.background)} dB quieter` : ''],
+      ['Length', b.seconds ? secs(b.seconds) : '–', a.seconds ? secs(a.seconds) : '–', fx.silence && b.pauses ? `${plural(b.pauses, 'pause')} shortened` : '']];
+    return `<div class="hv-card hv-clreadw"><table class="hv-clread"><caption class="hv-sr">Measured before and after</caption><thead><tr><th scope="col">Measured</th><th scope="col">Before</th><th scope="col">After</th><th scope="col"><span class="hv-sr">What changed</span></th></tr></thead>
+      <tbody>${rows.map(([t, x, y, n]) => `<tr><th scope="row">${t}</th><td class="hv-num b">${x}</td><td class="hv-num a">${y}</td><td class="hv-sm">${esc(n)}</td></tr>`).join('')}</tbody></table></div>`;
+  }
+  function clHear(h) {
+    const c = UI.cl, srcKept = h ? !!h.src || (c.fileFor === h.id && !!c.file?.url) : !!c.file;
+    const lane = (k, who, bars, on, note) => `<div class="hv-chglane${on ? ' on' : ''} l-${k}"><span class="hv-vt"><b class="hv-sm">${k === 'before' ? 'Before' : 'After'}</b><span class="hv-mut hv-sm hv-ell">${esc(who)}</span></span>
+      <span class="hv-chgw${note ? ' empty' : ''}">${note ? `<span class="hv-chgnote">${esc(note)}</span>` : `${bars}<span class="hv-chgph" data-ph></span>`}</span></div>`;
+    const bp = c.file?.peaks && (!h || c.fileFor === h.id) ? c.file.peaks : null;
+    return `<div class="hv-rh hv-chgh"><b class="hv-chgt2">Hear the difference</b><span class="hv-mut hv-sm">${h ? `Cleaned · ${esc(String(ago(h.made)).toLowerCase())}` : 'Your words and timing stay'}</span><span class="hv-grow"></span>
+        ${h ? `<div class="hv-seg" role="radiogroup" aria-label="Hear">${[['before', 'Before'], ['after', 'After']].map(([k, l]) => { const dis = k === 'before' && !srcKept;
+          return `<button type="button" role="radio" aria-checked="${c.hear === k && !dis}" data-a="clhear" data-val="${k}"${dis ? ' disabled aria-describedby="hvClNs"' : ''}>${l}</button>`; }).join('')}</div>${srcKept ? '' : '<span class="hv-sr" id="hvClNs">Your own recording is no longer kept</span>'}` : ''}</div>
+      <div class="hv-card hv-chgab">
+        ${lane('before', h ? secs(h.before?.seconds || h.src_secs || 0) : 'As recorded', chgBars(bp, (h?.id || 'rec') + 'src', 72), c.hear === 'before', !srcKept ? (h ? 'Your own recording is no longer kept' : 'Choose a recording') : '')}
+        ${lane('after', h ? secs(h.seconds || 0) : 'Cleaned', chgBars(null, h?.id || 'none', 72), c.hear !== 'before', h ? '' : 'Made when you tap Clean it')}
+        ${h ? `<div class="hv-rh hv-chgpl"><button type="button" class="hv-play l" data-a="clplay" aria-label="${CHG.on ? 'Pause' : 'Play'} before and after">${ic(CHG.on ? 'pause' : 'play', 14)}</button>
+          <span class="hv-num" data-chgt>0:00 / ${secs(h.seconds || 0)}</span><span class="hv-mut hv-sm">${srcKept ? 'Tap Before or After while it plays to switch at the same moment.' : 'Only the cleaned recording can be played.'}</span></div>` : ''}</div>`;
+  }
+  function clStart() {
+    const recOn = !!REC.cl, free = 'Free · on Hoola’s own server', prem = 'ElevenLabs · uses credits';
+    const cards = [['Background noise', 'Fans, hiss, AC hum and room sound, light to strong.', free], ['A clearer voice', 'Muddy or far-away voices brought forward and warmer.', free],
+      ['Loudness', 'Too quiet or too loud, set right for where it will be heard.', free], ['Long pauses', 'Gaps longer than you choose made shorter, words untouched.', free],
+      ['Street sounds and other people', 'Only the main voice is kept: traffic, crowds, other talk gone.', prem], ['Take the voice out of music', 'The singing or speaking voice lifted out of the song.', prem]];
+    return `<div class="hv-doc hv-chg hv-cl hv-clstart">${clTop('Clean-up', 'Hoola listens first, tells you what is wrong, and fixes only that.')}
+      <div class="hv-chghero"><span class="hv-clfig" aria-hidden="true"><span class="hv-chgw s dim">${chgBars(null, 'rough', 18)}</span>${ic('chev', 18)}<span class="hv-chgw s ok">${chgBars(null, 'clean', 18)}</span></span>
+        <h2 class="hv-yvtitle">Make any recording sound clear</h2>
+        <p class="hv-yvlead">Hoola listens first and tells you what is wrong: noise, a quiet voice, crackle on loud words, long pauses. Then it fixes only that. Your words and timing stay as they are.</p></div>
+      <div class="hv-cldrop" data-drop="cl">
+        ${recOn ? `<div class="hv-yvmic"><button type="button" class="hv-recb xl on" data-a="recstop" data-k="cl" style="--p:0" aria-label="Stop recording"><span class="hv-sq"></span></button>
+          <span class="hv-vt"><b>Listening…</b><span class="hv-mut hv-num" data-rect="cl">0:00 of 5:00</span><span class="hv-yvlvl" aria-hidden="true"><span data-lvl="cl"></span></span></span></div>`
+        : `<div class="hv-acts c"><button type="button" class="hv-cta s" data-a="pickfile" data-k="cl" data-accept="audio/*,video/*">${ic('upload', 14)}<span>Choose a recording or a video</span></button>
+          <button type="button" class="hv-btn" data-a="rec" data-k="cl">${ic('mic', 14)}Record here</button>
+          <button type="button" class="hv-btn" data-a="clsound" aria-haspopup="menu"${D.history.length ? '' : ' disabled'}>From Your sounds</button></div>
+          <span class="hv-mut hv-sm">or drop a file here · WAV, MP3, M4A, OGG, FLAC, or a video</span>`}</div>
+      <div class="hv-clcan"><b>What Hoola can fix</b><div class="hv-clcards">${cards.map(([h, b, t]) => `<article class="hv-card hv-clcard${t === prem ? ' prem' : ''}"><b>${esc(h)}</b><span class="hv-sm">${esc(b)}</span><span class="hv-sm hv-cltag">${esc(t)}</span></article>`).join('')}</div></div></div>`;
+  }
+  function clWorkInner() {
+    const j = UI.cl.job, st = j.steps || [], done = st.filter(s => s.state === 'done').length, f = UI.cl.file || {};
+    const p = st.length ? done / st.length : 0, bars = chgBars(f.peaks, (f.name || 'x') + (f.from || ''), 120);
+    return `<div class="hv-chgwave hv-clprog" style="--clp:${p.toFixed(3)}" aria-hidden="true">${bars}</div>
+      <ol class="hv-clsteps" aria-label="Steps">${st.map(s => `<li class="${s.state}"${s.state === 'now' ? ' aria-current="step"' : ''}><span class="hv-cldot">${s.state === 'done' ? ic('check', 12) : s.state === 'now' ? '<span class="hv-spin" aria-hidden="true"></span>' : ''}</span>
+        <span class="hv-vt"><b>${esc(s.t)}</b>${s.sub ? `<span class="hv-mut hv-sm">${esc(s.sub)}</span>` : ''}</span><span class="hv-num hv-mut hv-sm">${s.secs != null ? secs(s.secs) : ''}</span>
+        <span class="hv-sr">${s.state === 'done' ? 'done' : s.state === 'now' ? 'working' : 'waiting'}</span></li>`).join('')}</ol>`;
+  }
+  function clWork() {
+    const j = UI.cl.job;
+    return `<div class="hv-doc hv-chg hv-cl hv-clwork">${clTop('Clean-up', UI.cl.file?.name || '')}
+      <div class="hv-clworkb"><div class="hv-rh"><h2 class="hv-yvtitle">Cleaning your recording</h2><span class="hv-num hv-mut" data-clclock>${secs(j.seconds || 0)}</span><span class="hv-grow"></span>
+        <button type="button" class="hv-btn" data-a="clstop"${j.stop ? ' disabled' : ''}>${j.stop ? 'Stopping after this step…' : 'Stop'}</button></div>
+        <div data-clwork>${clWorkInner()}</div>
+        <p class="hv-mut hv-sm">You can leave this page. The clean recording lands in Your sounds and here when it is done.</p></div></div>`;
+  }
+  function clMain() {
+    const c = UI.cl, h = c.out && D.history.find(x => x.id === c.out.id) || c.out, src = clSrc();
+    const g = gate(clPrem() && broke() ? NO_CR : !src ? (c.file?.up ? 'The recording is still uploading.' : c.file?.err ? 'The recording did not upload. Choose another.' : 'Choose a recording first.')
+      : !['denoise', 'voice', 'level', 'silence', 'people', 'music'].some(k => c[k]) ? 'Choose at least one thing to fix.' : '');
+    const kind = CL_KINDS.find(k => k[0] === c.kind), recent = clHist().filter(x => x.id !== h?.id).slice(0, 3);
+    const label = clPrem() ? 'Clean it' : 'Clean it · free';
+    return `<div class="hv-doc hv-chg hv-cl">${clTop('Clean-up', 'Hoola listens first, tells you what is wrong, and fixes only that.')}
+      <div class="hv-chggrid"><section class="hv-chgl" aria-label="What to fix">
+        ${clRec()}
+        <div class="hv-fld"><span class="hv-lab" id="hvClKind">What kind of recording is it?</span>
+          <div class="hv-chips" role="radiogroup" aria-labelledby="hvClKind">${CL_KINDS.map(([k, l]) => `<button type="button" class="hv-chip" role="radio" aria-checked="${c.kind === k}" data-a="clkind" data-val="${k}">${esc(l)}</button>`).join('')}</div>
+          <span class="hv-mut hv-sm">${esc(kind ? kind[2] : c.heard ? 'Hoola picked the fixes from what it heard. Pick a kind to start from that instead.' : 'Pick one to start from, or tick the fixes yourself.')}</span></div>
+        ${clFixes()}
+        <div class="hv-chgcta"><button type="button" class="hv-cta" data-a="clrun" data-qbtn="cl" data-label="${label}"${g.a}><span>${label}</span></button>${g.l}
+          <p class="hv-hint c" data-qline="cl">${clPrem() ? '' : 'Noise, clarity, pauses and loudness are free · only lifting the voice out uses credits'}</p></div>
+      </section>
+      <section class="hv-chgr" aria-label="Before and after">
+        ${clHear(h)}
+        ${h && h.before && h.after ? clReadings(h) : ''}
+        ${h ? `<div class="hv-acts"><button type="button" class="hv-cta s" data-a="dlmenu" data-id="${esc(h.id)}" aria-haspopup="menu"><span>Download</span>${ic('down', 12)}</button>
+          ${h.src && h.fixes?.noise !== 'strong' ? `<button type="button" class="hv-btn" data-a="clagain" data-id="${esc(h.id)}" data-val="stronger">Clean again, stronger</button>` : ''}
+          ${h.src ? `<button type="button" class="hv-btn" data-a="clagain" data-id="${esc(h.id)}" data-val="settings">Clean again, other settings</button>` : ''}
+          <button type="button" class="hv-btn" data-a="go" data-p="changer">Change the voice</button>
+          <span class="hv-mut hv-sm">Kept in Your sounds${h.src ? ' · your recording kept 30 days' : ''}</span></div>` : ''}
+        ${recent.length ? `<div class="hv-chgrecent"><div class="hv-rh"><b>Recent clean-ups</b><button type="button" class="hv-lnk" data-a="clview" data-val="list">See all</button></div>
+          ${recent.map(x => `<div class="hv-chgrow">${playBtn(x.id, `Play ${x.title || 'clean-up'}`, 11, ' s')}<button type="button" class="hv-chgrt" data-a="clopen" data-id="${esc(x.id)}">${esc(x.title || 'Clean-up')}</button><span class="hv-mut hv-sm hv-ell">${esc(x.voice_name || '')}</span><span class="hv-num hv-mut hv-sm">${x.seconds ? secs(x.seconds) : ''}</span></div>`).join('')}</div>` : ''}
+      </section></div></div>`;
+  }
+  function clList() {
+    const all = clHist(), fl = UI.cl.filt, list = all.filter(h => !fl || (fl === 'free' ? h.engine !== 'eleven' : h.engine === 'eleven'));
+    const card = h => `<article class="hv-card hv-chgc"><div class="hv-rh"><b class="hv-ell">${esc(h.title || 'Clean-up')}</b><span class="hv-grow"></span><span class="hv-mut hv-sm">${esc(ago(h.made))}</span>
+        <button type="button" class="hv-ib s" data-a="sndmenu" data-id="${esc(h.id)}" aria-label="More for ${esc(h.title || 'this clean-up')}: download, remove">${ic('more')}</button></div>
+      <div class="hv-chgpair"><span class="hv-sm">Before</span>${h.src ? `<button type="button" class="hv-play s" data-a="chgsrc" data-id="${esc(h.id)}" aria-label="Play your own recording">${ic('play', 11)}</button>` : '<span class="hv-play s off" aria-hidden="true"></span>'}<span class="hv-chgw s dim" aria-hidden="true">${chgBars(null, h.id + 'src', 48)}</span>
+        <b class="hv-sm hv-okt">After</b>${playBtn(h.id, `Play ${h.title || 'the clean-up'}`, 11, ' s')}<span class="hv-chgw s ok" aria-hidden="true">${chgBars(null, h.id, 48)}</span></div>
+      ${(h.done || []).length ? `<div class="hv-chips">${h.done.map(x => `<span class="hv-tag">${esc(x)}</span>`).join('')}</div>` : h.voice_name ? `<span class="hv-mut hv-sm">${esc(h.voice_name)}</span>` : ''}
+      <div class="hv-rh"><button type="button" class="hv-btn s" data-a="clopen" data-id="${esc(h.id)}">Open</button><button type="button" class="hv-btn s" data-a="dlmenu" data-id="${esc(h.id)}" aria-haspopup="menu">Download</button><span class="hv-grow"></span>
+        <span class="hv-mut hv-sm">${h.src ? `Your recording kept until ${esc(new Date(h.src_until).toLocaleDateString(undefined, {day: 'numeric', month: 'short'}))}` : 'Your recording no longer kept'}</span></div></article>`;
+    return `<div class="hv-doc hv-chg hv-cl">${clTop('Your clean-ups', plural(all.length, 'cleaned recording'))}
+      ${all.length ? `<div class="hv-chips" role="radiogroup" aria-label="Show">${[['', 'All'], ['free', 'Free'], ['lift', 'Voice lifted out']].map(([k, l]) => `<button type="button" class="hv-chip" role="radio" aria-checked="${fl === k}" data-a="clfilt" data-val="${k}">${l}</button>`).join('')}</div>
+        <div class="hv-chglist">${list.map(card).join('') || '<span class="hv-mut hv-sm">None of this kind yet.</span>'}</div>
+        <p class="hv-mut hv-sm">Your own recording is kept beside each clean-up for 30 days so you can hear it and clean it again. The cleaned sound stays until you remove it.</p>`
+        : empty('No clean-ups yet', 'Choose a recording and Hoola will tell you what to fix.', '<button type="button" class="hv-cta s" data-a="clview" data-val=""><span>Clean a recording</span></button>')}</div>`;
+  }
+  function clNot() {
+    const cards = [['bad', 'Not on this server', 'The sound tool is missing', `Cleaning runs on ffmpeg on this Hoola server. ${whyNot('server')} Nothing can be cleaned until it is, and nothing is charged.`, '', 'For the owner: install ffmpeg on the server.']];
+    if (!ready('eleven')) cards.push(['', 'Not connected', 'Lifting the voice out is not connected', 'Removing street sounds, other people or music needs ElevenLabs on this server.', '', 'For the owner: add the key in the server settings, never in a chat.']);
+    return `<div class="hv-doc hv-chg hv-cl hv-chgnot"><div class="hv-chghero"><span class="hv-clfig" aria-hidden="true"><span class="hv-chgw s dim">${chgBars(null, 'rough', 18)}</span>${ic('chev', 18)}<span class="hv-chgw s ok">${chgBars(null, 'clean', 18)}</span></span>
+        <h2 class="hv-yvtitle">Make any recording sound clear.</h2>
+        <p class="hv-yvlead">Noise, a quiet voice, crackle and long pauses are fixed on Hoola’s own server for free. Lifting a voice out of street sounds or music runs on ElevenLabs.</p></div>
+      <div class="hv-chgnots">${cards.map(([t, tag, h, b, btn, foot]) => `<article class="hv-card hv-chgnc${t ? ' ' + t : ''}"><span class="hv-badge">${esc(tag)}</span><b>${esc(h)}</b><span class="hv-sm">${esc(scrub(b))}</span>${btn}<span class="hv-mut hv-sm">${esc(foot)}</span></article>`).join('')}</div>
+      <p class="hv-note">Your recordings and earlier clean-ups stay in <button type="button" class="hv-lnk" data-a="go" data-p="sounds">Your sounds</button> whatever happens here.</p></div>`;
+  }
+  // a recording chosen (file, the mic, a sound she made here, or her recording kept beside a clean-up) -> Hoola listens
+  async function clFile(file, s) {
+    chgStop(); const slot = {name: file.name, up: true, secs: s || 0};
+    Object.assign(UI.cl, {file: slot, secs: s || 0, heard: null, out: null, job: null, fileFor: '', kind: ''}); draw();
+    if (!s) slot.secs = UI.cl.secs = await fileSecs(file);
+    try { slot.url = URL.createObjectURL(file); } catch { /* no playback */ }
+    slot.peaks = await chgPeaks(file, 120); if (PAGE === 'cleanup') draw();
+    try { slot.file_id = await up(file); } catch (e) { slot.err = scrub(e.message); toast(e.message, true); }
+    slot.up = false; if (UI.cl.file === slot && slot.file_id) return clListen();
+    if (PAGE === 'cleanup') draw();
+  }
+  async function clListen() {
+    const c = UI.cl, body = clSrc(); if (!body) return;
+    c.listening = true; if (PAGE === 'cleanup') draw();
+    try { const r = await api('POST', `${A}/cleanup/listen`, body); if (clSrc()?.file_id !== body.file_id || clSrc()?.source_of !== body.source_of) return;
+      c.heard = r; if (!c.secs && r.seconds) c.secs = r.seconds;
+      if (!c.kind && r.pick) Object.assign(c, {denoise: r.pick.denoise, noise: r.pick.noise, level: r.pick.level, silence: r.pick.silence, voice: true}); }
+    catch (e) { toast(e.message, true); }
+    c.listening = false; if (PAGE === 'cleanup') { draw(); clPrice(); }
+  }
+  function clBody() {
+    const c = UI.cl;
+    return {...clSrc(), wait: false, name: c.file?.name || '', denoise: !!c.denoise, noise: c.noise, voice: !!c.voice, level: !!c.level, target: c.target,
+      silence: !!c.silence, gap: +c.gap, people: ready('eleven') && !!c.people, music: ready('eleven') && !!c.music};
+  }
+  function clPoll() {
+    clearTimeout(UI.cl.poll);
+    UI.cl.poll = setTimeout(async () => { const j = UI.cl.job; if (!j) return;
+      try { const r = await api('GET', `${A}/cleanup/job?id=${q(j.id)}`); r.stop = j.stop; UI.cl.job = r;
+        if (r.status === 'done') { Object.assign(UI.cl, {job: null, out: r.result, hear: 'after', fileFor: r.result?.id || ''}); await load(); side(); toast('Cleaned. Hear the difference.'); draw(); if (innerWidth < 1100) $('#hvView .hv-chgr')?.scrollIntoView({block: 'start'}); return; }
+        if (r.status !== 'working') { UI.cl.job = null; toast(r.status === 'stopped' ? 'Stopped. Nothing was kept.' : (r.error || 'That recording could not be cleaned.'), r.status !== 'stopped'); return draw(); }
+        if (PAGE === 'cleanup') { const w = $('[data-clwork]'); if (w) w.innerHTML = clWorkInner(); else draw(); const t = $('[data-clclock]'); if (t) t.textContent = secs(r.seconds || 0); }
+      } catch (e) { UI.cl.job = null; toast(e.message, true); draw(); return; }
+      clPoll(); }, 700);
+  }
+  function clPrice() {
+    if (PAGE !== 'cleanup' || !clPrem()) return;
+    price('cl', {job: 'isolate', seconds: UI.cl.secs || 60}, r => r.credits != null ? `${UI.cl.secs ? secs(UI.cl.secs) + ' of sound' : 'Priced for a minute'} · lifting the voice out · the rest is free` : esc(scrub(r.line || '')));
+  }
+
   // ------------------------------------------------------------------ recording in the page ---
   const REC = {};
   async function recStart(k) {
@@ -2168,7 +2369,7 @@ window.HoolaVocal = function (ctx) {
       mr.onstop = () => { st.getTracks().forEach(t => t.stop()); const s = (Date.now() - REC[k].t0) / 1000; delete REC[k];
         const type = (mr.mimeType || 'audio/webm').split(';')[0], ext = /ogg/.test(type) ? 'ogg' : /mp4|m4a|aac/.test(type) ? 'm4a' : 'webm';
         const blob = new Blob(parts, {type}); recFile(k, new File([blob], `recording-${k}.${ext}`, {type}), s); };
-      const limit = k === 'chg' ? 300 : 30;
+      const limit = k === 'chg' || k === 'cl' ? 300 : 30;
       let an = null, ac = null, buf = null;                    // the live level: a meter of her voice while she speaks (nothing leaves the browser)
       try { const AC = window.AudioContext || window.webkitAudioContext; ac = new AC(); an = ac.createAnalyser(); an.fftSize = 1024; ac.createMediaStreamSource(st).connect(an); buf = new Float32Array(an.fftSize); } catch { an = null; }
       mr.addEventListener('stop', () => { try { ac?.close(); } catch { /* closed */ } });
@@ -2176,12 +2377,13 @@ window.HoolaVocal = function (ctx) {
       const lvl = () => { if (!REC[k] || !an) return; an.getFloatTimeDomainData(buf); let x = 0; for (const v of buf) x = Math.max(x, Math.abs(v));
         const bar = $(`[data-lvl="${k}"]`); if (bar) { bar.style.width = `${Math.round(Math.min(1, x * 1.4) * 100)}%`; bar.classList.toggle('hot', x >= 0.98); } requestAnimationFrame(lvl); }; lvl();
       const tick = () => { if (!REC[k]) return; const t = (Date.now() - REC[k].t0) / 1000, el = $(`[data-rect="${k}"]`), btn = $(`[data-a="recstop"][data-k="${k}"]`);
-        if (el) el.textContent = k === 'chg' ? `${secs(t)} of 5:00` : `${secs(t)} of 0:30`; if (btn) btn.style.setProperty('--p', Math.min(1, t / limit).toFixed(3));
+        if (el) el.textContent = k === 'chg' || k === 'cl' ? `${secs(t)} of 5:00` : `${secs(t)} of 0:30`; if (btn) btn.style.setProperty('--p', Math.min(1, t / limit).toFixed(3));
         if (t >= limit) { REC[k].mr.stop(); return; } setTimeout(tick, 200); }; tick(); }
     catch (e) { toast(`The microphone did not start: ${e.message}`, true); }
   }
   // a recording or a picked file for the voice pages: uploaded at once, its length kept for the price and the checks
   async function recFile(k, file, s) {
+    if (k === 'cl') return clFile(file, s);
     const slot = {name: file.name, up: true, secs: s || 0};
     if (k === 'chg') { chgStop(); Object.assign(UI.chg, {file: slot, start: 0, end: 0, out: null, cmpOut: null, cmpPick: '', fileFor: ''}); } else UI.clone[k] = slot;
     draw(); if (!s) slot.secs = await fileSecs(file);
@@ -2199,12 +2401,12 @@ window.HoolaVocal = function (ctx) {
   // a picked file on a tool page: uploaded at once, its length read for the price
   async function pageFile(k, file) {
     if (k === 'chg') return recFile('chg', file, 0);
+    if (k === 'cl') return clFile(file, 0);
     const slot = {name: file.name, up: true};
     const set = o => { if (k === 'pod') UI.dlg.pod.file = o; else if (k === 'imp') UI.imp.file = o; else if (k === 'dub') UI.dubNew.file = o; else if (k === 'cl') UI.cl.file = o; };
     set(slot); draw();
     const s = ['dub', 'cl'].includes(k) ? await fileSecs(file) : 0;
     if (k === 'dub') { UI.dubNew.secs = s; try { UI.dubNew.preview = URL.createObjectURL(file); } catch { UI.dubNew.preview = ''; } topTools(); }
-    if (k === 'cl') { UI.cl.secs = s; UI.cl.out = null; try { UI.cl.before = URL.createObjectURL(file); } catch { /* no preview */ } }
     try { slot.file_id = await up(file); } catch (e) { slot.err = scrub(e.message); toast(e.message, true); }
     slot.up = false; draw();
     if (k === 'imp' && slot.file_id && PAGE === 'studio' && UI.imp.file === slot) impPreview();
@@ -2440,8 +2642,33 @@ window.HoolaVocal = function (ctx) {
           act(() => api('POST', `${A}/change`, {source_of: h.id, voices: [v], denoise: h.denoise !== false, closeness: UI.chg.close, feel: UI.chg.feel}), r => {
             (r?.failed || []).forEach(f => toast(`${f.name}: ${f.why}`, true)); const it = r?.items?.[0];
             if (it) Object.assign(UI.chg, {out: it, voice: v, view: '', hear: 'after', fileFor: ''}); side(); draw(); if (it) chgPlay(it); }); }); }
-      case 'chgsrc': { const h = D.history.find(x => x.id === id); return blobUrl(`${A}/change/source?id=${q(id)}`).then(u => play('src:' + id, u, `${h?.title || 'Change'} · your recording`)).catch(e => toast(e.message, true)); }
+      case 'chgsrc': { const h = D.history.find(x => x.id === id); return blobUrl(`${A}/${h?.kind === 'cleanup' ? 'cleanup' : 'change'}/source?id=${q(id)}`).then(u => play('src:' + id, u, `${h?.title || 'Change'} · your recording`)).catch(e => toast(e.message, true)); }
       case 'chgfilt': UI.chg.filt = d.val || ''; return draw();
+      case 'clview': { chgStop(); UI.cl.view = d.val || ''; draw(); const vw = $('#hvView'); if (vw) vw.scrollTop = 0; return; }
+      case 'clnew': chgStop(); Object.assign(UI.cl, {file: null, heard: null, out: null, kind: '', fileFor: '', listening: false}); return draw();
+      case 'clkind': { const k = CL_KINDS.find(x => x[0] === d.val); if (!k) return; Object.assign(UI.cl, {kind: k[0], gap: 1, ...k[3]}); draw(); return clPrice(); }
+      case 'clrun': return act(() => api('POST', `${A}/cleanup`, clBody()), j => { chgStop(); UI.cl.job = j; draw(); const vw = $('#hvView'); if (vw) vw.scrollTop = 0; clPoll(); }, b, 'Starting…');
+      case 'clstop': { const j = UI.cl.job; if (!j) return; j.stop = true; b.disabled = true; b.textContent = 'Stopping after this step…';
+        return api('POST', `${A}/cleanup/stop`, {id: j.id}).catch(e => toast(e.message, true)); }
+      case 'clplay': { const h = D.history.find(x => x.id === UI.cl.out?.id) || UI.cl.out; return h && chgPlay(h); }
+      case 'clhear': UI.cl.hear = d.val; chgMute();
+        $$('.hv-chglane').forEach(x => x.classList.toggle('on', x.classList.contains('l-' + (d.val === 'before' ? 'before' : 'after'))));
+        $$('[data-a="clhear"]').forEach(x => x.setAttribute('aria-checked', String(x.dataset.val === d.val))); return;
+      case 'clpart': { const u = UI.cl.file?.url; return u ? play('clsrc', u, 'Your recording') : null; }
+      case 'clopen': case 'clagain': { chgStop(); const h = D.history.find(x => x.id === id); if (!h) return;
+        const fx = h.fixes || {}, stronger = d.a === 'clagain' && d.val === 'stronger';
+        Object.assign(UI.cl, {out: h, view: '', hear: 'after', kind: '', heard: h.before?.found ? h.before : null, fileFor: h.id,
+          file: {name: h.title || 'Clean-up', secs: h.src_secs || 0, from: h.src ? h.id : ''}, secs: h.src_secs || 0,
+          ...(fx.noise ? {denoise: !!fx.denoise, noise: fx.noise, voice: !!fx.voice, level: !!fx.level, target: fx.target || 'podcast', silence: !!fx.silence, gap: fx.gap || 1, people: !!fx.people, music: !!fx.music} : {})});
+        if (stronger) { UI.cl.denoise = true; UI.cl.noise = fx.noise === 'light' ? 'medium' : 'strong';
+          return act(() => api('POST', `${A}/cleanup`, clBody()), j => { UI.cl.job = j; draw(); const vw = $('#hvView'); if (vw) vw.scrollTop = 0; clPoll(); }, b, 'Starting…'); }
+        draw(); const vw = $('#hvView'); if (vw) vw.scrollTop = 0;
+        if (d.a === 'clagain') toast('Your recording is ready to clean again. Change the fixes and tap Clean it.');
+        return; }
+      case 'clsound': { const list = D.history.filter(h => h.kind !== 'dub').slice(0, 40);
+        return menu(b, [{header: 'Clean one of your sounds'}, {search: 'Find a sound', empty: 'Nothing matches'}, ...list.map(h => ({label: h.title || KIND[h.kind] || 'Sound', sub: [KIND[h.kind] || '', h.seconds ? secs(h.seconds) : ''].filter(Boolean).join(' · '),
+          run: () => { chgStop(); Object.assign(UI.cl, {file: {name: h.title || 'Sound', secs: h.seconds || 0, sound: h.id}, secs: h.seconds || 0, heard: null, out: null, kind: '', fileFor: '', view: ''}); draw(); clListen(); }}))], {width: 340}); }
+      case 'clfilt': UI.cl.filt = d.val || ''; return draw();
       case 'pickcast': return cpOpen(+d.n);
       case 'castopen': return cpOpen(0);
       case 'cpclose': return cpClose();
@@ -2642,7 +2869,6 @@ window.HoolaVocal = function (ctx) {
       case 'lnjoin': { const ids = spLines().map((l, i) => l.trim() ? lineState(i, l).row?.id : null).filter(Boolean);
         return act(() => api('POST', `${A}/join`, {ids, format: S.format}), r => { side(); draw(); toast(`One file made from ${plural(ids.length, 'line')}. It is in Your sounds.`); if (r?.id) download(r.id); }, b, 'Joining…'); }
       case 'play': return id.startsWith('line:') ? playLine(+id.slice(5)) : play(id);
-      case 'playurl': return d.val === 'before' && UI.cl.before ? play('before', UI.cl.before, 'Before') : null;
       case 'keep': return keep(id);
       case 'cwidth': return setWidth(d.val);
       case 'unfold': UI.peek = true; return setWidth(UI.cw < 550 ? 'narrow' : UI.cw > 760 ? 'wide' : 'balanced', UI.cw);
@@ -2892,9 +3118,6 @@ window.HoolaVocal = function (ctx) {
         return act(() => api('POST', `${A}/dub`, {file_id: n.file.file_id, langs: n.langs, mode: n.mode, keep_sound: !!n.keep, keep: n.words || [], check: n.mode === 'matched' && !!n.check,
           ...(n.mode === 'matched' && n.speakers ? {speakers: n.speakers} : {})}),
           r => { UI.dubNew = {file: null, langs: [], mode: n.mode, keep: n.keep, secs: 0, speakers: n.speakers, check: n.check, words: [], preview: ''}; UI.dub = null; UI.dubLines = null; UI.dubs = null; UI.dubRead = false; go('dub', r.id); }, btn, 'Starting…'); }
-      case 'cleanup': { const c = UI.cl, prem = ready('eleven');
-        return act(() => api('POST', `${A}/cleanup`, {file_id: c.file.file_id, denoise: !!c.denoise, voice: !!c.echo, silence: !!c.silence, level: !!c.level, people: prem && !!c.people, music: prem && !!c.music}),
-          r => { UI.cl.out = r; side(); draw(); if (r?.id) play(r.id); toast('Cleaned.'); }, btn, 'Cleaning…'); }
       case 'sfx': return act(() => api('POST', `${A}/sfx`, {prompt: UI.fx.prompt.trim(), seconds: +UI.fx.seconds, loop: !!UI.fx.loop, takes: +UI.fx.takes}), r => { UI.fx.out = r.items || []; side(); draw(); if (UI.fx.out[0]) play(UI.fx.out[0].id); }, btn, 'Making…');
       case 'appkey': return act(() => api('POST', `${A}/apps/keys`, {name: UI.appName || 'My app'}), r => { UI.newKey = r; UI.appName = ''; loadApps(); }, btn, 'Making…');
       case 'apphook': if (!UI.hookUrl.trim()) { toast("Type your server's address first.", true); return $('#hvHookU')?.focus(); }

@@ -10532,3 +10532,51 @@ Owner: "HOW BIG ENTERPRISE WILL USE IT" -> the gap list -> "MAKE IT ENTERPRISE R
 
 NOT BUILT (need her decision or a partner): single sign-on (SAML / OIDC), bank feeds, a live push to SAP / Oracle / NetSuite
 (the Enterprise desk can write SAP / Salesforce on her tap but is not joined to these books). NOT VERIFIED on her server.
+
+## v0.999.161 CLEAN-UP, PREMIUM (built as 0.999.160; their BOOKS ENTERPRISE took 0.999.160, both kept)
+
+Owner: "NOW LETS WORK ON CLEAN UP -- MAKE IT PREMIUM AND ADVANCE LIKE OTHER SECTION"
+-> design canvas claude.ai/artifact/1U18RieVdsG2uj2KqVeYUW (6 boards) -> "GO BUILD".
+
+**Server** (`vocal/service.py` "clean-up (v0.999.161)", `vocal/api.py`):
+- Hoola listens first: `cleanup_measure(path)` on this server - loudness + loudest peak (ffmpeg loudnorm), the background
+  level (the quietest 10 % of 50 ms windows), loud words that hit the top (windows at -1 dBFS or above, 250 ms apart =
+  separate hits; only counted when the true peak is over -1 dB), long pauses (quieter than background + 10 dB, clamped
+  -50..-30 dB, for 1 s or more, inside the speech only); the first 20 minutes of a longer recording (`partial`).
+  `cleanup_heard` turns the readings into `found` (noise / quiet / loud / clips / pauses) and `pick` (noise strength by
+  the background: strong over -42 dB, medium over -50, light over -58; level when quiet / loud / clipping; pauses when the
+  longest is 2 s or more). POST `/api/vocal/cleanup/listen` (`file_id`, `sound` = one of her sounds here, or `source_of`).
+- `cleanup()` keeps its old call and gains `noise` light / medium / strong, `target` podcast -16 / reels -14 / audiobook
+  -19 / broadcast -23 LUFS, `gap` 0.5 / 1 / 2 s, `source_of`; anything else is refused with what is allowed. It runs step
+  by step (`_cleanup_do`: one ffmpeg pass a step, lossless WAV in between, ElevenLabs isolation first when people / music
+  are ticked), measures before and after, and keeps `before` (with found / pick), `after`, `fixes`, `done` (what was done,
+  in words), `steps` (each with its seconds) on the row.
+- `wait: false` = a background job (`cleanup_start`, in memory): GET `/cleanup/job?id=` gives the steps (wait / now / done
+  + seconds), POST `/cleanup/stop` stops it between steps (nothing is kept). A restart loses a running job and says so.
+- Her recording is kept beside each clean-up for 30 days (`sources/cl_<id>`, like the voice changer's): GET
+  `/cleanup/source?id=` plays it (private, no-store, its own media type); `source_of` cleans it again without a new
+  upload. `source_file` serves both changes and clean-ups (`change_source` still only a change's).
+
+**Console** (`static/console/vocal.js` "Clean-up (v0.999.161 ...)", `vocal2.css` "v0.999.161 Clean-up"): the start page
+(Make any recording sound clear: choose a recording or a video, Record here up to 5:00, From Your sounds, drop a file; what
+Hoola can fix, free vs uses credits); with a recording: its shape, play it, What Hoola heard as four cards (background,
+loudness, loud words hitting the top, long pauses) while it is measured; What kind of recording is it? (Phone recording /
+Podcast / Meeting call / Interview outside / Voice in music) sets the fixes; each fix with Found and its own setting (How
+much, Heard on, Longer than); Lift the voice out (ElevenLabs · uses credits, said plainly when not connected or out of
+credits); Clean it · free (or the price when lifting). While it cleans: each step ticked with its time, the recording
+filling in, Stop. After: Before / After on one timeline (the voice changer's players, now shared), the readings before and
+after with what changed, Download, Clean again stronger / other settings (from her kept recording), Change the voice,
+Recent clean-ups. Your clean-ups: pairs, All / Free / Voice lifted out, her recording played from the server, kept-until
+date. The server without ffmpeg: a page that says so and charges nothing. Removed: the old one-box form (`echo`, `before`,
+`playurl`).
+
+**Phone** (`lib/ui/vocal/vocal_tools.dart` `VocalCleanupPage`, `lib/api.dart` `vocalCleanupListen` /
+`vocalCleanupSource`): Hoola listens after she records or chooses (What Hoola heard), the kinds, each fix with its setting,
+Lift the voice out (said when not connected), Before / After with the readings, Download, Clean again stronger, Recent
+clean-ups.
+
+**Tests**: NEW `server/tests/test_v0999_161_cleanup.py` (listening + picks, a clean-up step by step with before / after
+and her recording kept, lifting on ElevenLabs first, the background job + stop + source route, the files, a Chromium walk
+at light / dark 1440 and 390 + the not-ready page); `test/vocal_phone_test.dart` 33/33 (Flutter 3.24.5 here).
+
+NOT VERIFIED: on her server or phone; a real recording's readings (tested on made-up sound); a real ElevenLabs isolation.
