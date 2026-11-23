@@ -295,7 +295,7 @@ class _VocalChangerPageState extends State<VocalChangerPage> {
 }
 
 // ================================================================================================ Clean-up
-// v0.999.160: Hoola listens first (what it heard, measured on the server) and picks the fixes; a kind of recording sets
+// v0.999.161: Hoola listens first (what it heard, measured on the server) and picks the fixes; a kind of recording sets
 // them; how much noise, where it will be heard, how long a pause; Before / After from her kept recording, the readings
 // before and after, Download and Clean again.
 const _clKinds = <(String, String, Map<String, Object>)>[

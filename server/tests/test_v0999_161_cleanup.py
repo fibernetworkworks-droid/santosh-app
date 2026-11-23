@@ -1,4 +1,4 @@
-"""v0.999.160 CLEAN-UP, PREMIUM - on the server: Hoola listens first (loudness, loudest peak, background, loud words
+"""v0.999.161 CLEAN-UP, PREMIUM - on the server: Hoola listens first (loudness, loudest peak, background, loud words
 that hit the top, long pauses, measured here) and says what it would pick; the clean-up runs step by step (how much noise,
 where it will be heard, how long a pause), in the background with its steps and Stop, measures before and after, keeps
 her recording 30 days beside it (Before, Clean again); and the console page walked in a real Chromium."""

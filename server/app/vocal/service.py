@@ -1389,7 +1389,7 @@ def sfx_text(tenant: str, prompt: Any, seconds: Any = 0, loop: bool = False, tak
     return {"items": items, "credits": q["credits"] * len(items)}
 
 
-# ------------------------------------------------------------------ clean-up (v0.999.160) ---
+# ------------------------------------------------------------------ clean-up (v0.999.161) ---
 CL_NOISE = ("light", "medium", "strong")
 CL_TARGETS = {"podcast": ("podcast", -16.0, "Podcast"), "reels": ("social", -14.0, "Reels and YouTube"),
               "audiobook": ("audiobook", -19.0, "Audiobook"), "broadcast": ("broadcast", -23.0, "Radio and TV")}

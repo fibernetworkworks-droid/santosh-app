@@ -2155,7 +2155,7 @@ window.HoolaVocal = function (ctx) {
     if (c.view === 'compare' && n) price('chgn', {job: 'change', seconds: lc || 60, voices: n}, r => r.credits != null ? `${n} × ${secs(lc || 60)} · nothing is spent until you tap` : esc(scrub(r.line || '')));
   }
 
-  // ------------------------------------------------------------------ Clean-up (v0.999.160, design canvas claude.ai/artifact/1U18RieVdsG2uj2KqVeYUW)
+  // ------------------------------------------------------------------ Clean-up (v0.999.161, design canvas claude.ai/artifact/1U18RieVdsG2uj2KqVeYUW)
   // Hoola listens first (measured on the server), says what is wrong and picks the fixes; she can change any of them; the
   // clean-up runs step by step in the background (Stop between steps); Before / After on one timeline with the readings
   // before and after; her recording kept beside it for 30 days (Before, Clean again).
