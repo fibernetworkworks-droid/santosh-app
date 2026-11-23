@@ -311,7 +311,31 @@ class FinBooksRequest(Base):
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
-TABLES = (FinBooksMember, FinBooksRequest, FinCoa, FinJournal, FinLine, FinInvoice, FinAsset, FinPeriod, FinWorkspace, FinEntity, FinBook, FinAccount, FinTxn, FinDoc, FinParty, FinObligation, FinCase, FinDraft, FinEvent)
+class FinBooksInbox(Base):
+    """v0.999.161 one invoice / bill that came in by itself - her mail, Hoola's own address, another program, her shop -
+    read by Hoola, checked in code, and the books document it became (or why not)."""
+    __tablename__ = "fin_books_inbox"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("fbi"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    workspace_id: Mapped[str] = mapped_column(String(40), index=True, default="")
+    source: Mapped[str] = mapped_column(String(16), default="")                    # email | hoola_mail | software | api | shop
+    source_ref: Mapped[str] = mapped_column(String(200), index=True, default="")   # the mail / record it came from (read once)
+    sender: Mapped[str] = mapped_column(String(200), default="")
+    subject: Mapped[str] = mapped_column(String(300), default="")
+    file_name: Mapped[str] = mapped_column(String(200), default="")
+    file_sha: Mapped[str] = mapped_column(String(64), index=True, default="")
+    kind: Mapped[str] = mapped_column(String(10), default="")                      # sales | purchase
+    fields: Mapped[str] = mapped_column(Text, default="{}")
+    checks: Mapped[str] = mapped_column(Text, default="[]")
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    reader: Mapped[str] = mapped_column(String(16), default="")                    # ai | text | data
+    status: Mapped[str] = mapped_column(String(16), default="new", index=True)     # posted | draft | waiting | duplicate | not_invoice | failed | dropped
+    doc_id: Mapped[str] = mapped_column(String(40), default="")
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+TABLES = (FinBooksInbox, FinBooksMember, FinBooksRequest, FinCoa, FinJournal, FinLine, FinInvoice, FinAsset, FinPeriod, FinWorkspace, FinEntity, FinBook, FinAccount, FinTxn, FinDoc, FinParty, FinObligation, FinCase, FinDraft, FinEvent)
 _READY: set[int] = set()
 
 

@@ -12,12 +12,14 @@ AND ACCOUNT --- FIRST CHECK WANT IT HAS AND THEN A NEW DESIGN HERE" -> the desig
 """
 from __future__ import annotations
 
+import json
 import logging
+import re
 import time
 from datetime import date, timedelta
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func, or_, select
 
 from .db import Conversation, Message, session
@@ -143,6 +145,14 @@ def numbers(tenant: str, ws: str) -> dict[str, Any]:
                         "done": sum(1 for i in ck["items"] if i["ok"]), "of": len(ck["items"])}
     except Exception:   # noqa: BLE001
         out["close"] = {"period": lm, "locked": False, "ready": False, "done": 0, "of": 0}
+    try:                                     # v0.999.161 the books inbox
+        from .fin.desks import books_feed as F
+        cnt = F.listing(tenant, ws, limit=0)["counts"]
+        out["inbox_on"] = bool(F.settings(tenant, ws).get("on"))
+        out["inbox_needs"] = cnt.get("draft", 0) + cnt.get("failed", 0)
+        out["inbox_posted"] = cnt.get("posted", 0)
+    except Exception:   # noqa: BLE001
+        out["inbox_on"], out["inbox_needs"] = False, 0
     return out
 
 
@@ -217,10 +227,38 @@ def do(caller: str, part: str, a: dict[str, Any]) -> dict[str, Any]:
     if part == "consolidate":
         return E.consolidate(caller, a.get("businesses") or [], str(a.get("currency") or ""), a.get("rates") or {},
                              str(a.get("since") or "0000-01-01"), str(a.get("upto") or date.today()))
+    if part.startswith("inbox"):
+        return _inbox(owner, ws, part, a, me)
     from .fin import core
     out = core.run_tool(owner, me, "books_accounts", part, a, lambda: BK.run(owner, part, a, me))
     forget(owner)
     forget(caller)
+    return out
+
+
+def _inbox(owner: str, ws: str, part: str, a: dict[str, Any], me: str) -> dict[str, Any]:
+    """v0.999.161 the books inbox: invoices and bills that came in by themselves (mail, programs, her shop)."""
+    import asyncio
+    from .fin.desks import books_feed as F
+    if not ws:
+        raise F.FeedError("workspace: which business.")
+    if part == "inbox":
+        return F.listing(owner, ws, str(a.get("status") or ""))
+    if part == "inbox_settings":
+        return F.set_settings(owner, ws, a)
+    if part == "inbox_key":
+        return F.new_api_key(owner, ws)
+    if part == "inbox_key_stop":
+        return F.stop_api(owner, ws)
+    if part == "inbox_post":
+        out = F.post(owner, ws, str(a.get("item") or ""), me)
+    elif part == "inbox_drop":
+        out = F.drop(owner, ws, str(a.get("item") or ""), me)
+    elif part == "inbox_scan":
+        out = {"read": asyncio.run(F.scan_now(owner, ws))}
+    else:
+        raise F.FeedError("Unknown inbox action.")
+    forget(owner)
     return out
 
 
@@ -316,6 +354,11 @@ def block(tenant: str) -> str:
                    + (f"\nApprovals are ON: a posting over {(d.get('controls') or {}).get('limit') or 0} {cur} waits for a second person "
                       f"(the tool answers queued); tell her it waits, never that it is posted. Waiting now: {d.get('pending', 0)}."
                       if (d.get("controls") or {}).get("on") else "")
+                   + (f"\nInbox: ON - invoices and bills come in by themselves from her mail, Hoola's own address, her connected programs, "
+                      f"other systems and her shop; {n.get('inbox_posted', 0)} posted by Hoola, {n.get('inbox_needs', 0)} waiting for her look "
+                      "(Books & Accounts > Inbox). Never ask her to type in an invoice that will come in by itself."
+                      if n.get("inbox_on") else "\nInbox: off. If she wants invoices and bills to come in by themselves (mail, programs, shop), "
+                      "send her to Books & Accounts > Inbox to turn it on.")
                    + (f"\nShe is the {d.get('role')} on these books (someone else owns them): the tool works only on her own businesses, "
                       "so explain from these figures and send her to the desk for changes." if d.get("role") not in (None, "owner") else "")
                    + "</books_desk>")
@@ -367,6 +410,41 @@ def mount(app, current_tenant, require_key) -> None:
             raise HTTPException(403, str(e))
         except (SafetyError, ValueError) as e:
             raise HTTPException(400, str(e))
+
+    @router.post("/api/books/in")
+    async def books_in(request: Request):
+        """v0.999.161 her other programs send invoices and bills here (Authorization: Bearer <her books key>)."""
+        from .fin.desks import books_feed as F
+        tok = str(request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
+        hit = F.ws_of_key(tok) if tok.startswith("bk_") else None
+        if not hit:
+            raise HTTPException(401, "Not a books key")
+        raw = await request.body()
+        if len(raw) > 25 * 1024 * 1024:
+            raise HTTPException(413, "Too big")
+        try:
+            body = json.loads(raw or b"{}")
+        except ValueError:
+            raise HTTPException(400, "Send JSON")
+        try:
+            out = await F.from_api(hit[0], hit[1], body if isinstance(body, dict) else {})
+        except F.FeedError as e:
+            raise HTTPException(400, str(e))
+        forget(hit[0])
+        return out
+
+    @router.get("/api/books/inbox/{item}/file", dependencies=dep)
+    def books_inbox_file(item: str, workspace: str = "", tenant: str = Depends(current_tenant)):
+        from fastapi.responses import Response
+        from .fin.desks import books_ent as E
+        from .fin.desks import books_feed as F
+        acc = E.access(tenant, workspace)
+        try:
+            name, data = F.file_of(acc["owner"], item)
+        except F.FeedError as e:
+            raise HTTPException(404, str(e))
+        safe = re.sub(r'[^A-Za-z0-9._ -]', "_", name)[:120] or "file"
+        return Response(data, media_type="application/octet-stream", headers={"Content-Disposition": f'attachment; filename="{safe}"'})
 
     @router.put("/api/books/workspace", dependencies=dep)
     def books_workspace(body: dict, tenant: str = Depends(current_tenant)):

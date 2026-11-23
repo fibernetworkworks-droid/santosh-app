@@ -40,7 +40,7 @@
     warn: '<path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h0"/>'};
   window.HoolaQuality?.use(api);
 
-  const TABS = [['today', 'Today'], ['docs', 'Sales & bills'], ['bank', 'Bank & matching'], ['owed', 'Owed & owing'],
+  const TABS = [['today', 'Today'], ['inbox', 'Inbox'], ['docs', 'Sales & bills'], ['bank', 'Bank & matching'], ['owed', 'Owed & owing'],
     ['close', 'Reports & month-end'], ['settings', 'Settings & exports']];
   const TRUST = {Learning: 'Reads, drafts and proposes. Every posting waits for your tap.',
     Partner: 'Also keeps drafts and matches up to date on its own. Posting still waits for you.',
@@ -204,11 +204,11 @@
   }
   function paintTabs() {
     const n = (ST.d && ST.d.numbers) || {};
-    const tabs = (ctl().on || (ST.d && ST.d.pending)) ? [...TABS.slice(0, 5), ['approvals', 'Approvals'], TABS[5]] : TABS;
+    const tabs = (ctl().on || (ST.d && ST.d.pending)) ? [...TABS.slice(0, 6), ['approvals', 'Approvals'], TABS[6]] : TABS;
     $('#sdTabs').innerHTML = tabs.map(([k, name]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${k === ST.tab}"${!ws() && k !== 'settings' ? ' disabled' : ''}>${esc(name)}${
-      k === 'bank' && n.bank_to_confirm ? `<span class="n">${esc(n.bank_to_confirm)}</span>` : k === 'approvals' && ST.d.pending ? `<span class="n">${esc(ST.d.pending)}</span>` : ''}</button>`).join('');
+      k === 'bank' && n.bank_to_confirm ? `<span class="n">${esc(n.bank_to_confirm)}</span>` : k === 'approvals' && ST.d.pending ? `<span class="n">${esc(ST.d.pending)}</span>` : k === 'inbox' && n.inbox_needs ? `<span class="n">${esc(n.inbox_needs)}</span>` : ''}</button>`).join('');
   }
-  function clearCache() { ST.docs = ST.matches = ST.recon = ST.chart = ST.ar = ST.ap = ST.ck = ST.rep = ST.reqs = ST.team = ST.ccr = ST.group = null; }
+  function clearCache() { ST.docs = ST.matches = ST.recon = ST.chart = ST.ar = ST.ap = ST.ck = ST.rep = ST.reqs = ST.team = ST.ccr = ST.group = ST.inbox = null; }
   async function refreshDesk(repaint) {
     try { ST.d = await api('GET', deskUrl()); } catch { return; }
     stateLine(); paintTabs();
@@ -218,7 +218,7 @@
   /* ---------------------------------------------------------------- pages */
   function showPage(keep) {
     const box = $('#mdPage'); if (!box) return;
-    const fn = {today: pToday, docs: pDocs, bank: pBank, owed: pOwed, close: pClose, settings: pSettings, approvals: pApprovals}[ST.tab] || pToday;
+    const fn = {today: pToday, docs: pDocs, bank: pBank, owed: pOwed, close: pClose, settings: pSettings, approvals: pApprovals, inbox: pInbox}[ST.tab] || pToday;
     box.innerHTML = fn();
     starters();
     if (!keep) $('#sdDesk').scrollTop = 0;
@@ -242,12 +242,14 @@
         ST.ck = ck; ST.rep = rep; ST.ccr = ccr;
       } else if (t === 'settings' && (!ST.chart || !ST.team)) {
         const [ch, tm] = await Promise.all([books('chart'), books('team').catch(() => ({team: []}))]); ST.chart = ch; ST.team = tm.team || [];
+      } else if (t === 'inbox' && !ST.inbox) {
+        ST.inbox = await books('inbox');
       } else if (t === 'approvals' && !ST.reqs) {
         const [p, d] = await Promise.all([books('requests', {status: 'pending'}), books('requests', {status: ''})]);
         ST.reqs = {pending: p.requests || [], all: (d.requests || []).filter(x => x.status !== 'pending').slice(0, 30)};
       } else return;
     } catch (e) { toast(e.message, true); return; }
-    if (ST.tab === t) { $('#mdPage').innerHTML = ({docs: pDocs, bank: pBank, owed: pOwed, close: pClose, settings: pSettings, approvals: pApprovals})[t](); }
+    if (ST.tab === t) { $('#mdPage').innerHTML = ({docs: pDocs, bank: pBank, owed: pOwed, close: pClose, settings: pSettings, approvals: pApprovals, inbox: pInbox})[t](); }
   }
   const monthEnd = p => { const [y, m] = p.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10); };
   const loading = '<section class="card"><p class="mut" style="margin:0">Reading your books…</p></section>';
@@ -261,6 +263,8 @@
     const needs = [];
     if (n.bank_to_confirm) needs.push([`${n.bank_to_confirm} bank line${n.bank_to_confirm > 1 ? 's' : ''} to confirm`, n.bank_sure ? `Hoola found a sure match for ${n.bank_sure}` : 'Pick an invoice, a bill or an account', 'v', 'Matches ready', 'bank', 'Review']);
     if (od.length) needs.push([`${od.length} invoice${od.length > 1 ? 's' : ''} overdue`, od.slice(0, 2).map(x => `${x.party} ${money(x.open, x.currency)}`).join(' · '), 'warn', `Up to ${Math.max(...od.map(x => x.days))} days late`, 'owed', 'See who']);
+    if (n.inbox_needs) needs.push([`${n.inbox_needs} incoming document${n.inbox_needs > 1 ? 's' : ''} to look at`, 'Invoices or bills Hoola could not post by itself', 'warn', 'Inbox', 'inbox', 'Look']);
+    else if (n.inbox_on === false) needs.push(['Let invoices and bills come in by themselves', 'From your mail, your programs and your shop - no typing', 'v', 'Inbox', 'inbox', 'Set up']);
     if (n.drafts) needs.push([`${n.drafts} draft${n.drafts > 1 ? 's' : ''} to check`, 'Invoices or bills not posted yet', '', 'Draft', 'docs', 'Check']);
     if (ck.of && !ck.locked) needs.push([`${ck.period} can be closed`, `${ck.done} of ${ck.of} checks done`, ck.ready ? 'ok' : 'warn', ck.ready ? 'Ready' : `${ck.of - ck.done} open`, 'close', 'Close it']);
     const rows = needs.map(([t, s, k, p, go, b]) => `<tr><td><b>${esc(t)}</b><div class="mut" style="font-size:13px">${esc(s)}</div></td><td><span class="pill ${k}">${esc(p)}</span></td><td style="text-align:right"><button class="btn soft sm" type="button" data-go="${go}">${esc(b)}</button></td></tr>`).join('');
@@ -295,6 +299,58 @@
       <section class="card tight"><div class="bk-bar"><h2 class="md-h2" style="margin:0">Waiting</h2></div>
         ${rows ? `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>Posting</th><th class="num">Amount</th><th></th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="mut" style="margin:0 0 12px">Nothing is waiting.</p>'}</section>
       ${done ? `<section class="card tight"><div class="bk-bar"><h2 class="md-h2" style="margin:0">Decided</h2></div><div style="overflow-x:auto"><table class="tb"><tbody>${done}</tbody></table></div></section>` : ''}`;
+  }
+
+  /* --- Inbox (v0.999.161: invoices and bills that came in by themselves) */
+  const INST = {posted: ['ok', 'Posted'], waiting: ['v', 'Waits for an approver'], draft: ['warn', 'Needs your look'], failed: ['warn', 'Could not be read'],
+    duplicate: ['', 'Already in your books'], not_invoice: ['', 'Not an invoice'], dropped: ['', 'Set aside']};
+  const INSRC = {email: 'Your mail', hoola_mail: "Hoola's address", software: 'Your program', api: 'Your program', shop: 'Your shop'};
+  function inRow(x, act) {
+    const [k, tx] = INST[x.status] || ['', x.status];
+    const what = x.party || x.subject || x.file || 'A document';
+    const why = (x.status === 'draft' || x.status === 'failed') ? x.note : '';
+    const btn = act ? `<div class="bk-pick">${x.file ? `<button class="btn soft sm" type="button" data-infile="${esc(x.id)}" data-name="${esc(x.file)}">File</button>` : ''}
+      ${x.status === 'draft' && x.doc_id && can('inbox_post') ? `<button class="btn sm" type="button" data-inpost="${esc(x.id)}" title="Posts the draft Hoola made from it - check it in Sales & bills first">Post</button>` : ''}
+      ${can('inbox_drop') ? `<button class="btn soft sm" type="button" data-indrop="${esc(x.id)}">Set aside</button>` : ''}</div>` : (x.file ? `<button class="btn soft sm" type="button" data-infile="${esc(x.id)}" data-name="${esc(x.file)}">File</button>` : '');
+    return `<tr><td><b>${esc(what)}</b>${x.number ? ` <span class="mut">${esc(x.number)}</span>` : ''}<div class="mut" style="font-size:12.5px">${esc(INSRC[x.source] || x.source)}${x.sender ? ' · ' + esc(x.sender) : ''} · ${esc((x.at || '').slice(0, 16).replace('T', ' '))}${x.kind ? ' · ' + (x.kind === 'sales' ? 'sale' : 'bill') : ''}</div>${why ? `<div class="mut" style="font-size:12.5px">${esc(why)}</div>` : ''}</td>
+      <td class="num nw">${x.total ? esc(money(x.total, x.currency || cur())) : '-'}</td><td><span class="pill ${k}">${esc(tx)}</span></td><td style="text-align:right">${btn}</td></tr>`;
+  }
+  function pInbox() {
+    if (!ST.inbox) return head('Inbox') + loading;
+    const I = ST.inbox, st = I.settings || {}, src = I.sources || {}, c = I.counts || {};
+    const admin = can('inbox_settings');
+    if (!st.on) return `${head('Inbox', 'Invoices and bills come into your books by themselves - you do not type them in.')}
+      <section class="card"><h2 class="md-h2">How it works</h2><ul class="bk-list">
+        <li><b>Your mail.</b> Hoola looks at new mail in the accounts you connected and reads every invoice or bill it finds (PDF, photo or the mail itself).</li>
+        <li><b>Hoola's own address.</b> Any program that can email an invoice sends it there${src.hoola_address ? `: <b>${esc(src.hoola_address)}</b>` : ''}. Or forward a bill to it.</li>
+        <li><b>Your programs.</b> QuickBooks, Xero, Zoho Books, Stripe, Razorpay, Shopify and others connected in Connectors are read on their own.</li>
+        <li><b>Any other system.</b> Your ERP or billing software can send documents to your books address.</li>
+        <li><b>Your Hoola website shop.</b> Confirmed orders become sales invoices.</li></ul>
+        <p class="mut">Hoola reads each one, checks the total and the number are really on it, and posts it when every check passes. Anything doubtful waits here for you. Your approval rules still apply. Hoola never pays a bill or sends an invoice.</p>
+        ${admin ? '<button class="btn" type="button" data-inon="1">Turn on the inbox</button>' : '<p class="mut">The owner or an admin turns it on.</p>'}</section>`;
+    const needs = I.items.filter(x => x.status === 'draft' || x.status === 'failed');
+    const rest = I.items.filter(x => !(x.status === 'draft' || x.status === 'failed')).slice(0, 60);
+    const tbl = (rows, act) => `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>Document</th><th class="num">Total</th><th></th><th></th></tr></thead><tbody>${rows.map(x => inRow(x, act)).join('')}</tbody></table></div>`;
+    const soft = (src.software || []).map(x => { const ready = x.state === 'ready';
+      return `<label class="bk-chk"><input type="checkbox" data-insw="${esc(x.key)}"${x.on ? ' checked' : ''}${ready || x.on ? '' : ' disabled'}${admin ? '' : ' disabled'}> ${esc(x.name)} <span class="mut">${ready ? 'connected' : 'connect it in Connectors first'}</span></label>`; }).join('');
+    const key = ST.inKey ? `<div class="md-alert">${svg(IC.warn)}<div><div class="t">Copy your books key now</div><div class="s">Address: ${esc(location.origin + ST.inKey.url)} · Header: Authorization: Bearer <code>${esc(ST.inKey.key)}</code>. Hoola keeps only a fingerprint; it is not shown again.</div></div></div>` : '';
+    return `${head('Inbox', 'Invoices and bills that came in by themselves - read by Hoola, checked, and posted when every check passed.')}
+      <div class="bk-4">${kpi('Posted by Hoola', String(c.posted || 0))}${kpi('Waiting for an approver', String(c.waiting || 0))}${kpi('Need your look', String((c.draft || 0) + (c.failed || 0)), (c.draft || c.failed) ? 'bad' : '')}${kpi('Copies and non-invoices skipped', String((c.duplicate || 0) + (c.not_invoice || 0)))}</div>
+      <section class="card tight"><div class="bk-bar"><h2 class="md-h2" style="margin:0">Needs your look</h2>${can('inbox_scan') ? '<button class="btn soft sm" type="button" data-inscan="1">Check now</button>' : ''}</div>
+        ${needs.length ? tbl(needs, true) : '<p class="mut" style="margin:0 0 12px">Nothing needs you. New invoices and bills are posted as they come in.</p>'}</section>
+      ${rest.length ? `<section class="card tight"><div class="bk-bar"><h2 class="md-h2" style="margin:0">Came in</h2></div>${tbl(rest, false)}</section>` : ''}
+      <section class="card"><h2 class="md-h2">Where they come from</h2>${key}
+        <label class="bk-chk"><input type="checkbox" id="inMail"${st.mail ? ' checked' : ''}${admin ? '' : ' disabled'}> Your mail ${src.mail && src.mail.length ? `<span class="mut">(${esc(src.mail.join(', '))})</span>` : '<span class="mut">- connect a mail account first</span>'}</label>
+        <div class="md-field"><label for="inAcc">Only these mail accounts (leave empty for all)</label><input class="in" id="inAcc" value="${esc((st.accounts || []).join(', '))}"${admin ? '' : ' disabled'}></div>
+        <p class="mut" style="margin:8px 0">Hoola's own address: ${src.hoola_address ? `<b>${esc(src.hoola_address)}</b> - set your billing programs to send invoices here, or forward a bill.` : 'not set up on this server yet.'}</p>
+        <div class="bk-soft">${soft}</div>
+        <label class="bk-chk"><input type="checkbox" id="inShop"${st.shop ? ' checked' : ''}${admin ? '' : ' disabled'}> Your Hoola website shop's confirmed orders</label>
+        <label class="bk-chk"><input type="checkbox" id="inAuto"${st.auto_post ? ' checked' : ''}${admin ? '' : ' disabled'}> Post by itself when every check passes (otherwise each one waits for your tap)</label>
+        <div class="md-field"><label for="inTax">Your tax numbers (GSTIN, VAT ...), so Hoola can tell your sales from your bills</label><input class="in" id="inTax" value="${esc((st.tax_ids || []).join(', '))}"${admin ? '' : ' disabled'}></div>
+        ${admin ? `<div class="bk-pick" style="margin-top:10px"><button class="btn" type="button" data-insave="1">Save</button>
+          <button class="btn soft" type="button" data-inkey="1">${st.api_on ? 'Make a new books key' : 'Make a books key for other systems'}</button>
+          ${st.api_on ? '<button class="btn soft" type="button" data-inkeystop="1">Close the books address</button>' : ''}
+          <button class="btn soft" type="button" data-inon="0">Turn the inbox off</button></div>` : ''}</section>`;
   }
 
   /* --- Sales & bills */
@@ -548,6 +604,23 @@
       }
       if (ds.approve) { t.disabled = true; const r = await books('approve', {request: ds.approve}); toast(r.says || 'Approved.'); ST.reqs = null; clearCache(); await refreshDesk(true); return; }
       if (ds.reject) { const why = prompt('Why is it rejected? The person who made it sees this.'); if (!why) return; await books('reject', {request: ds.reject, reason: why}); toast('Rejected.'); ST.reqs = null; await refreshDesk(true); return; }
+      if (ds.inon !== undefined) { t.disabled = true; await books('inbox_settings', {on: ds.inon === '1'}); ST.inbox = null; toast(ds.inon === '1' ? 'The inbox is on. Hoola checks your mail every few minutes.' : 'The inbox is off.'); await refreshDesk(true); return; }
+      if (ds.inscan) { t.disabled = true; t.textContent = 'Checking…'; const r = await books('inbox_scan'); ST.inbox = null; clearCache(); toast(r.read ? `${r.read} new document${r.read === 1 ? '' : 's'} read.` : 'Nothing new.'); await refreshDesk(true); return; }
+      if (ds.inpost) { t.disabled = true; const r = await books('inbox_post', {item: ds.inpost}); toast(r.status === 'waiting' ? 'Sent for approval.' : 'Posted to the books.'); clearCache(); await refreshDesk(true); return; }
+      if (ds.indrop) { t.disabled = true; await books('inbox_drop', {item: ds.indrop}); toast('Set aside. Hoola will not read that file again.'); clearCache(); await refreshDesk(true); return; }
+      if (ds.infile) { const r = await fetch(`/api/books/inbox/${enc(ds.infile)}/file?workspace=${enc(ws().id)}`, {headers: {Authorization: 'Bearer ' + TOKEN}});
+        if (!r.ok) { toast('The file is not kept.', true); return; } const b = await r.blob(); const a = document.createElement('a'); a.href = URL.createObjectURL(b);
+        a.download = ds.name || 'document'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); return; }
+      if (ds.inkey) { t.disabled = true; const r = await books('inbox_key'); ST.inKey = r; ST.inbox = null; await refreshDesk(true); return; }
+      if (ds.inkeystop) { t.disabled = true; await books('inbox_key_stop'); ST.inKey = null; ST.inbox = null; toast('The books address is closed.'); await refreshDesk(true); return; }
+      if (ds.insave) {
+        t.disabled = true;
+        const soft = [...document.querySelectorAll('[data-insw]')].filter(x => x.checked).map(x => x.dataset.insw);
+        const acc = ($('#inAcc').value || '').split(',').map(x => x.trim()).filter(Boolean);
+        const tax = ($('#inTax').value || '').split(',').map(x => x.trim()).filter(Boolean);
+        await books('inbox_settings', {mail: $('#inMail').checked, shop: $('#inShop').checked, auto_post: $('#inAuto').checked, software: soft, accounts: acc, tax_ids: tax});
+        ST.inbox = null; toast('Saved.'); await refreshDesk(true); return;
+      }
       if (ds.unteam) { t.disabled = true; await books('team_remove', {member: ds.unteam}); ST.team = null; toast('Removed from these books.'); await refreshDesk(true); return; }
       if (ds.remind) { send(`Draft a polite payment reminder to ${ds.remind} for what is overdue. I will send it myself.`); return; }
       if (ds.export) {
