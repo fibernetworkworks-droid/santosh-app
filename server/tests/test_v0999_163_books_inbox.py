@@ -1,4 +1,4 @@
-"""v0.999.162 BOOKS INBOX: invoices and bills come into the books by themselves - her mail, Hoola's own address, her other programs
+"""v0.999.163 BOOKS INBOX: invoices and bills come into the books by themselves - her mail, Hoola's own address, her other programs
 (Composio and her books address), her website shop - are read (one AI call), checked in code against the document's own text, and
 posted when every check passed (through her approval rules); anything doubtful waits in the Inbox with the reason."""
 from __future__ import annotations

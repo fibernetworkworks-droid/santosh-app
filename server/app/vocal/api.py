@@ -268,10 +268,49 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
     # ---------------------------------------------------------------- sound tools
     @r.post("/sfx")
     def sfx(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """A sound from words (`prompt`; `wait: false` = make the takes in the background, read them from /sfx/job), or
+        keep a game sound (`preset` + `seed`, free)."""
         if b.get("prompt"):
-            return run(V.sfx_text, tenant, b.get("prompt"), seconds=b.get("seconds") or 0, loop=bool(b.get("loop")),
-                       takes=b.get("takes") or 4, chat=str(b.get("chat") or ""))
+            kw = dict(seconds=b.get("seconds") or 0, loop=bool(b.get("loop")), takes=b.get("takes") or 4, follow=b.get("follow"))
+            if b.get("wait") is False:
+                return run(V.sfx_start, tenant, b.get("prompt"), **kw)
+            return run(V.sfx_text, tenant, b.get("prompt"), chat=str(b.get("chat") or ""), **kw)
         return run(V.sfx, tenant, str(b.get("preset") or ""), b.get("seed"))
+
+    @r.get("/sfx/job")
+    def sfx_job(id: str, tenant: str = Depends(current_tenant)):
+        return run(V.sfx_job, tenant, id)
+
+    @r.post("/sfx/stop")
+    def sfx_stop(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return run(V.sfx_stop, tenant, str(b.get("id") or ""))
+
+    @r.post("/sfx/improve")
+    def sfx_improve(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """Her description made clearer for the sound engine; nothing is spent and her words stay until she takes it."""
+        return run(V.sfx_improve, b.get("prompt"))
+
+    @r.get("/sfx/play")
+    def sfx_play(preset: str, seed: int = 1, download: int = 0, tenant: str = Depends(current_tenant)):
+        """A game sound to listen to (free, nothing kept); `download=1` = as a WAV file."""
+        data, info = run(V.sfx_sound, preset, seed)
+        h = {"Cache-Control": "private, max-age=86400"}
+        if download:
+            h.update(_attach(f"{info['title'].replace(' #', '-').replace(' ', '-').lower()}.wav"))
+        return Response(data, media_type="audio/wav", headers=h)
+
+    @r.get("/sfx/set")
+    def sfx_set(seed: int = 1, tenant: str = Depends(current_tenant)):
+        """Every game sound at one number, as a ZIP of WAV files (free)."""
+        on()
+        return Response(run(V.sfx_set, seed), media_type="application/zip", headers=_attach(f"hoola-game-sounds-{max(1, seed)}.zip"))
+
+    @r.post("/sfx/shape")
+    def sfx_shape(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """Trim, fade, volume, speed, backwards, a smooth loop: a new sound, made on this server for free."""
+        return run(V.sfx_shape, tenant, str(b.get("id") or ""), start=b.get("start"), end=b.get("end"),
+                   fade_in=b.get("fade_in"), fade_out=b.get("fade_out"), gain=b.get("gain"), speed=b.get("speed"),
+                   reverse=bool(b.get("reverse")), loop=bool(b.get("loop")))
 
     def _cl_path(tenant: str, b: dict) -> str:
         """The recording to clean: a file she uploaded, or one of the sounds she made here (`sound` = its id)."""
@@ -541,6 +580,10 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
     @r.post("/join")
     def join(b: dict = Body(...), tenant: str = Depends(current_tenant)):
         return run(V.join_takes, tenant, b.get("ids"), b.get("title"), b.get("format") or "wav", b.get("gap"))
+
+    @r.post("/history/star")
+    def history_star(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return run(V.history_star, tenant, str(b.get("id") or ""), b.get("on", True))
 
     @r.delete("/history")
     def history_remove(id: str, tenant: str = Depends(current_tenant)):

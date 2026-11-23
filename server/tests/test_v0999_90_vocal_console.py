@@ -59,7 +59,7 @@ OVG = {
 }
 PAGES = [("chat", "nothing is spent until you send"), ("speech", "Add a tone"), ("voices", "Amani"), ("mine", "Make another voice"),
          ("dialogue", "How it sounds"), ("studio", "The Lighthouse Keeper"), ("dub", "product-tour"), ("changer", "ElevenLabs is not connected"),
-         ("cleanup", "Take the voice out of music"), ("sfx", "Quick game sounds"), ("dict", "Uh-ko-laa"), ("sounds", "<b>Karibu</b> Mkate"),
+         ("cleanup", "Take the voice out of music"), ("sfx", "Ideas to start from"), ("dict", "Uh-ko-laa"), ("sounds", "<b>Karibu</b> Mkate"),
          ("settings", "What things cost")]
 
 UNSAID = """() => [...document.querySelectorAll('#hvView :is(button,input,select,textarea):disabled')].map(e => {

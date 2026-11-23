@@ -625,7 +625,7 @@ void main() {
       ('Clean-up', (s, p) => VocalCleanupPage(store: s, player: p, embedded: false),
           ['Remove background noise', 'Even out the loudness', 'Take the voice out of music', 'Clean it']),
       ('Sound effects', (s, p) => VocalSfxPage(store: s, player: p, embedded: false),
-          ['Describe the sound', 'Loops smoothly', 'Ready-made, free', 'door bell']),
+          ['From words', 'Game sounds', 'Describe the sound', 'Improve the words', 'How closely to follow your words', 'Loops smoothly', 'Make 4 takes']),
       ('Dictionary', (s, p) => VocalDictionaryPage(store: s, embedded: false),
           ['Add a word', 'Import a list', 'Mithas', '/mɪˈt̪ʰaːs/ · Every language']),
       ('Settings', (s, p) => VocalSettingsPage(store: s, settings: vocalDesignSettings(), embedded: false),
@@ -1146,6 +1146,53 @@ void main() {
     await t.tap(find.text('Clean again, stronger'));
     await _settle(t);
     expect(find.text('Clean again', skipOffstage: false), findsOneWidget);           // the new one is strong already
+    expect(t.takeException(), isNull);
+    await t.pumpWidget(const SizedBox.shrink());
+    store.dispose();
+    app.dispose();
+    _sem?.dispose();
+    _sem = null;
+  });
+  testWidgets('Sound effects: Improve the words, takes kept with a star, game sounds with numbered versions', (t) async {
+    _phone(t);
+    final data = vocalData();
+    final ov = Map<String, dynamic>.from(data['overview'] as Map);
+    ov['engines'] = [for (final e in (ov['engines'] as List)) {...(e as Map), if (e['id'] == 'eleven') 'state': 'ready'}];
+    data['overview'] = ov;
+    data['sfx_improve'] = {'text': 'A single temple bell struck once, far away, its echo fading slowly', 'why': 'Said how it fades'};
+    final (app, store) = await _pageWith(t, data, (s, p) => VocalSfxPage(store: s, player: p, embedded: false));
+    await t.enterText(find.byType(TextField).first, 'temple bell');
+    await _settle(t);
+    await t.tap(find.text('Far away'));
+    await _settle(t);
+    expect(find.text('temple bell, far away'), findsOneWidget);
+    await t.tap(find.text('Improve the words'));
+    await _settle(t);
+    expect(find.text('Hoola suggests · Said how it fades'), findsOneWidget);
+    await t.tap(find.text('Use these words'));
+    await _settle(t);
+    expect(find.text('A single temple bell struck once, far away, its echo fading slowly'), findsOneWidget);
+    expect(find.text('Balanced'), findsOneWidget);
+    await t.tap(find.textContaining('Make 4 takes'));
+    await _settle(t);
+    await t.drag(find.byType(Scrollable).first, const Offset(0, -1600));
+    await _settle(t);
+    expect(find.bySemanticsLabel('Keep this take'), findsWidgets);
+    await t.tap(find.bySemanticsLabel('Keep this take').first);
+    await _settle(t);
+    expect(find.bySemanticsLabel('Kept: tap to unkeep'), findsOneWidget);
+    await t.drag(find.byType(Scrollable).first, const Offset(0, 3000));
+    await _settle(t);
+    await t.tap(find.text('Game sounds'));
+    await _settle(t);
+    expect(find.text('Coin'), findsOneWidget);
+    expect(find.text('Door bell'), findsOneWidget);
+    await t.tap(find.text('Coin'));
+    await _settle(t);
+    expect(find.text('Other versions of Coin'), findsOneWidget);
+    await t.tap(find.text('#3'));
+    await _settle(t);
+    expect(find.text('Keep Coin #3'), findsOneWidget);
     expect(t.takeException(), isNull);
     await t.pumpWidget(const SizedBox.shrink());
     store.dispose();

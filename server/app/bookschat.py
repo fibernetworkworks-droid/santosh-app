@@ -145,7 +145,7 @@ def numbers(tenant: str, ws: str) -> dict[str, Any]:
                         "done": sum(1 for i in ck["items"] if i["ok"]), "of": len(ck["items"])}
     except Exception:   # noqa: BLE001
         out["close"] = {"period": lm, "locked": False, "ready": False, "done": 0, "of": 0}
-    try:                                     # v0.999.162 the books inbox
+    try:                                     # v0.999.163 the books inbox
         from .fin.desks import books_feed as F
         cnt = F.listing(tenant, ws, limit=0)["counts"]
         out["inbox_on"] = bool(F.settings(tenant, ws).get("on"))
@@ -237,7 +237,7 @@ def do(caller: str, part: str, a: dict[str, Any]) -> dict[str, Any]:
 
 
 def _inbox(owner: str, ws: str, part: str, a: dict[str, Any], me: str) -> dict[str, Any]:
-    """v0.999.162 the books inbox: invoices and bills that came in by themselves (mail, programs, her shop)."""
+    """v0.999.163 the books inbox: invoices and bills that came in by themselves (mail, programs, her shop)."""
     import asyncio
     from .fin.desks import books_feed as F
     if not ws:
@@ -413,7 +413,7 @@ def mount(app, current_tenant, require_key) -> None:
 
     @router.post("/api/books/in")
     async def books_in(request: Request):
-        """v0.999.162 her other programs send invoices and bills here (Authorization: Bearer <her books key>)."""
+        """v0.999.163 her other programs send invoices and bills here (Authorization: Bearer <her books key>)."""
         from .fin.desks import books_feed as F
         tok = str(request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
         hit = F.ws_of_key(tok) if tok.startswith("bk_") else None

@@ -2174,6 +2174,10 @@ class Api {
   Future<List<int>?> vocalDubExport(String did, String what, List<String> langs) =>
       _vocalBytes(_u('/api/vocal/dub/${Uri.encodeComponent(did)}/export', {'what': what, 'langs': langs.join(',')}));
   Future<Map<String, dynamic>> vocalSfx(Map<String, dynamic> body) => _vocal('POST', '/sfx', body: body, timeout: const Duration(seconds: 180));
+  /// v0.999.162: her description made clearer (nothing spent), a game sound to listen to (nothing kept), keep a sound.
+  Future<Map<String, dynamic>> vocalSfxImprove(String prompt) => _vocal('POST', '/sfx/improve', body: {'prompt': prompt}, timeout: const Duration(seconds: 60));
+  Future<List<int>?> vocalSfxPlay(String preset, int seed) => _vocalBytes(_u('/api/vocal/sfx/play', {'preset': preset, 'seed': '$seed'}));
+  Future<Map<String, dynamic>> vocalHistoryStar(String id, bool on) => _vocal('POST', '/history/star', body: {'id': id, 'on': on});
   Future<Map<String, dynamic>> vocalCleanup(Map<String, dynamic> body) =>
       _vocal('POST', '/cleanup', body: body, timeout: const Duration(seconds: 600));
   Future<Map<String, dynamic>> vocalCleanupListen(Map<String, dynamic> body) =>

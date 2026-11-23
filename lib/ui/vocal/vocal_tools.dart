@@ -4,7 +4,8 @@
 //    timing and feeling; her own cloned voice too when the server can (it says plainly when it cannot).
 //  - Clean-up: Hoola listens first and picks the fixes; noise, a clearer voice, long pauses, loudness for where it is heard, the voice out
 //    of music or street sounds; before and after with the readings, clean again from her kept recording.
-//  - Sound effects: describe the sound, its length, a smooth loop, takes to pick from.
+//  - Sound effects: describe the sound (Improve the words), its length, how closely to follow the words, a smooth loop,
+//    takes kept with a star; game sounds made on the server for free, heard without keeping, numbered versions.
 //  - Dictionary: how a word is said (with its sounds in IPA, a language, a list imported at once).
 //  - Settings: the engines (Hoola Auto picks one per job), what things cost in credits, her defaults, how long her sounds
 //    are kept, keys and webhooks for her own apps (each key or signing secret shown once), the AI mark.
@@ -66,33 +67,6 @@ class _Source extends StatelessWidget {
 }
 
 /// The made sound(s) under a tool, each with play and More.
-Widget _results(BuildContext context, VocalStore store, VocalPlayer player, List<Map<String, dynamic>> made, String name,
-    void Function(Map<String, dynamic>) onGone) {
-  if (made.isEmpty) return const SizedBox.shrink();
-  Future<void> more(Map<String, dynamic> t, String n) async {
-    final pick = await vocalMore(context, n, const ['Download', 'Delete']);
-    if (!context.mounted || pick == null) return;
-    if (pick == 'Download') await vocalShare(context, store.app, t, store: store);
-    if (pick == 'Delete' && context.mounted && await vocalDeleteSound(context, store, t)) onGone(t);
-  }
-
-  return Padding(
-    padding: const EdgeInsets.only(top: 16),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      const VocalLabel('Made'),
-      VocalBox(
-        child: Column(children: [
-          for (var i = 0; i < made.length; i++) ...[
-            if (i > 0) const SizedBox(height: 8),
-            VocalTakeRow(store: store, player: player, item: made[i], name: made.length == 1 ? name : '$name ${i + 1}',
-                onMore: () => more(made[i], made.length == 1 ? name : '$name ${i + 1}')),
-          ],
-        ]),
-      ),
-    ]),
-  );
-}
-
 // ================================================================================================ Voice changer
 // v0.999.159 (design canvas claude.ai/artifact/HGbVJ4bghAiMFg9QyFCh2P): her recording, the voice, room noise, how close
 // to the voice and how much of her feeling stays; Before / After on the result (her own recording is kept 30 days); her
@@ -580,6 +554,14 @@ class _VocalCleanupPageState extends State<VocalCleanupPage> {
 }
 
 // ================================================================================================ Sound effects
+// v0.999.162 (design canvas claude.ai/artifact/2vU7LhKsPWKeT58GXAwRdK): From words = describe it (Improve the words, add to
+// the words), length, how closely to follow the words, a smooth loop, takes; each take kept with a star. Game sounds = made
+// on Hoola's own server for free, heard without being kept, numbered versions, kept with a star.
+const _fxAdds = [('Far away', 'far away'), ('Close up', 'close up'), ('Echo', 'with an echo'), ('Indoors', 'indoors'), ('Outdoors', 'outdoors'), ('Slow', 'slow')];
+const _fxPadNames = {'coin': 'Coin', 'jump': 'Jump', 'powerup': 'Power-up', 'laser': 'Laser', 'explosion': 'Explosion', 'hit': 'Hit', 'hurt': 'Hurt',
+  'blip': 'Blip', 'click': 'Click', 'select': 'Select'};
+String _fxPad(String p) => _fxPadNames[p] ?? (p.isEmpty ? '' : p.replaceAll('_', ' ')[0].toUpperCase() + p.replaceAll('_', ' ').substring(1));
+
 class VocalSfxPage extends StatefulWidget {
   const VocalSfxPage({super.key, required this.store, required this.player, this.conv = '', this.embedded = true});
   final VocalStore store;
@@ -592,10 +574,11 @@ class VocalSfxPage extends StatefulWidget {
 
 class _VocalSfxPageState extends State<VocalSfxPage> {
   final _prompt = TextEditingController();
-  String _secs = 'Auto';
-  bool _loop = false, _busy = false;
-  int _takes = 4;
-  Map<String, dynamic> _quote = const {};
+  String _tab = 'From words', _secs = 'Auto', _pad = '';
+  bool _loop = false, _busy = false, _improving = false;
+  int _takes = 4, _seed = 1;
+  double _follow = 3;
+  Map<String, dynamic> _quote = const {}, _imp = const {}, _partial = const {};
   List<Map<String, dynamic>> _made = [];
   VocalStore get store => widget.store;
 
@@ -615,6 +598,10 @@ class _VocalSfxPageState extends State<VocalSfxPage> {
   }
 
   double get _seconds => _secs == 'Auto' ? 0 : (double.tryParse(_secs.replaceAll(' s', '')) ?? 0);
+  String get _followWord => _follow <= 2 ? 'Loose' : _follow <= 6 ? 'Balanced' : 'Close';
+  bool get _wordsReady => store.engines.isEmpty || store.engines.any((e) => crS(e['id']) == 'eleven' && crS(e['state']) == 'ready');
+  List<String> get _pads => (store.ov['sfx'] is List) ? (store.ov['sfx'] as List).map(crS).where((x) => x.isNotEmpty).toList() : const <String>[];
+  bool _has(String w) => RegExp('(^|[\\s,])${RegExp.escape(w)}(\$|[\\s,.])', caseSensitive: false).hasMatch(_prompt.text);
 
   Future<void> _requote() async {
     if (VocalStore.debug) {
@@ -627,30 +614,227 @@ class _VocalSfxPageState extends State<VocalSfxPage> {
     } catch (_) {}
   }
 
-  Future<void> _go({String preset = ''}) async {
+  void _add(String w) {
+    var t = _prompt.text.trim();
+    if (_has(w)) {
+      t = t.replaceFirst(RegExp('\\s*,?\\s*${RegExp.escape(w)}(?=\$|[\\s,.])', caseSensitive: false), '').replaceFirst(RegExp(r'^\s*,\s*'), '').trim();
+    } else {
+      t = t.replaceFirst(RegExp(r'[.,\s]+$'), '');
+      t = t.isEmpty ? w : '$t, $w';
+    }
+    _prompt.text = t.length > 450 ? t.substring(0, 450) : t;
+  }
+
+  Future<void> _improve() async {
     final p = _prompt.text.trim();
-    if (p.isEmpty && preset.isEmpty) return;
+    if (p.length < 3) return;
+    setState(() => _improving = true);
+    try {
+      final r = VocalStore.debug ? crMap(VocalStore.debugData!['sfx_improve']) : await store.app.api!.vocalSfxImprove(p);
+      if (mounted) setState(() => _imp = r);
+    } catch (e) {
+      if (mounted) vocalError(context, store, e);
+    }
+    if (mounted) setState(() => _improving = false);
+  }
+
+  Future<void> _go({int? takes}) async {
+    final p = _prompt.text.trim();
+    if (p.length < 3) return;
+    final n = takes ?? _takes;
     setState(() => _busy = true);
     try {
-      List<Map<String, dynamic>> made;
+      Map<String, dynamic> r;
       if (VocalStore.debug) {
-        made = crList(VocalStore.debugData!['speech']);
+        r = {'items': crList(VocalStore.debugData!['speech']), 'made': 1, 'asked': 1};
       } else {
-        made = vocalMade(await store.app.api!.vocalSfx(preset.isNotEmpty
-            ? {'preset': preset, 'seed': DateTime.now().millisecondsSinceEpoch % 1000}
-            : {'prompt': p, 'seconds': _seconds, 'loop': _loop, 'takes': _takes, if (widget.conv.isNotEmpty) 'chat': widget.conv}));
+        r = await store.app.api!.vocalSfx({'prompt': p, 'seconds': _seconds, 'loop': _loop, 'takes': n, 'follow': _follow / 10,
+          if (widget.conv.isNotEmpty) 'chat': widget.conv});
         unawaited(store.load());
       }
-      if (mounted) setState(() => _made = made);
-      if (made.isNotEmpty && mounted) {
-        final id = crS(made.first['id']);
-        final ext = crS(made.first['ext']).isEmpty ? 'mp3' : crS(made.first['ext']);
-        unawaited(widget.player.toggle(context, id, () => store.app.api!.vocalAudio(id, format: ext), ext: ext));
-      }
+      final made = vocalMade(r);
+      if (mounted) setState(() { _made = made; _partial = (r['failed'] is num && (r['failed'] as num) > 0) ? r : const {}; });
+      if (made.isNotEmpty && mounted) _play(made.first);
     } catch (e) {
       if (mounted) vocalError(context, store, e);
     }
     if (mounted) setState(() => _busy = false);
+  }
+
+  void _play(Map<String, dynamic> t) {
+    final id = crS(t['id']);
+    final ext = crS(t['ext']).isEmpty ? 'mp3' : crS(t['ext']);
+    unawaited(widget.player.toggle(context, id, () => store.app.api!.vocalAudio(id, format: ext), ext: ext));
+  }
+
+  Future<void> _star(Map<String, dynamic> t) async {
+    final on = t['star'] != true;
+    try {
+      if (!VocalStore.debug) await store.app.api!.vocalHistoryStar(crS(t['id']), on);
+      if (!mounted) return;
+      setState(() => _made = [for (final x in _made) crS(x['id']) == crS(t['id']) ? {...x, 'star': on} : x]);
+      crToast(context, on ? 'Kept in Your sound effects.' : 'No longer kept.');
+      if (!VocalStore.debug) unawaited(store.load());
+    } catch (e) {
+      if (mounted) vocalError(context, store, e);
+    }
+  }
+
+  void _hear() {
+    final p = _pad.isEmpty && _pads.isNotEmpty ? _pads.first : _pad;
+    if (p.isEmpty || VocalStore.debug) return;
+    unawaited(widget.player.toggle(context, 'fx:$p:$_seed', () => store.app.api!.vocalSfxPlay(p, _seed), ext: 'wav'));
+  }
+
+  Future<void> _keepGame() async {
+    final p = _pad.isEmpty && _pads.isNotEmpty ? _pads.first : _pad;
+    if (p.isEmpty) return;
+    setState(() => _busy = true);
+    try {
+      if (!VocalStore.debug) {
+        final r = await store.app.api!.vocalSfx({'preset': p, 'seed': _seed});
+        await store.app.api!.vocalHistoryStar(crS(r['id']), true);
+        unawaited(store.load());
+      }
+      if (mounted) crToast(context, 'Kept ${_fxPad(p)} #$_seed in Your sound effects.');
+    } catch (e) {
+      if (mounted) vocalError(context, store, e);
+    }
+    if (mounted) setState(() => _busy = false);
+  }
+
+  Widget _words(BuildContext context, HoolaColors c) {
+    final ready = _wordsReady;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (!ready)
+        VocalBox(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Sounds from words are not on this server yet', style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          Text('They run on ElevenLabs, which is not connected here. Nothing was charged. Game sounds always work.', style: HoolaType.small(c).copyWith(color: c.ink2)),
+          const SizedBox(height: 8),
+          VocalChip(label: 'Open game sounds', onTap: () => setState(() => _tab = 'Game sounds')),
+        ])),
+      if (!ready) const SizedBox(height: 12),
+      const VocalLabel('Describe the sound'),
+      TextField(controller: _prompt, minLines: 2, maxLines: 4, maxLength: 450, style: HoolaType.reply(c).copyWith(fontSize: 16),
+          buildCounter: (_, {required int currentLength, required bool isFocused, required int? maxLength}) => null,
+          decoration: vocalInput(c, 'A temple bell rung once, far away, with a soft echo')),
+      const SizedBox(height: 6),
+      Row(children: [
+        Expanded(child: Align(alignment: Alignment.centerLeft,
+            child: VocalChip(label: _improving ? 'Improving…' : 'Improve the words', onTap: _improving || _prompt.text.trim().length < 3 ? null : _improve))),
+        const SizedBox(width: 8),
+        Text('${_prompt.text.length} / 450', style: HoolaType.small(c).copyWith(color: c.ink3)),
+      ]),
+      if (_imp.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        VocalBox(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(crS(_imp['why']).isEmpty ? 'Hoola suggests' : 'Hoola suggests · ${crS(_imp['why'])}', style: HoolaType.small(c).copyWith(color: c.ink2)),
+          const SizedBox(height: 4),
+          Text(crS(_imp['text']), style: HoolaType.reply(c).copyWith(fontSize: 15)),
+          const SizedBox(height: 8),
+          Wrap(spacing: 6, children: [
+            VocalChip(label: 'Use these words', on: true, onTap: () => setState(() { _prompt.text = crS(_imp['text']); _imp = const {}; })),
+            VocalChip(label: 'Keep mine', onTap: () => setState(() => _imp = const {})),
+          ]),
+        ])),
+      ],
+      const SizedBox(height: 10),
+      const VocalLabel('Add to the words'),
+      Wrap(spacing: 6, runSpacing: 0, children: [
+        for (final (l, w) in _fxAdds) VocalChip(label: l, on: _has(w), onTap: () => setState(() => _add(w))),
+      ]),
+      const SizedBox(height: 8),
+      const VocalLabel('Length'),
+      Wrap(spacing: 6, runSpacing: 0, children: [
+        for (final s in const ['Auto', '1 s', '3 s', '5 s', '10 s', '30 s']) VocalChip(label: s, on: s == _secs, onTap: () {
+          setState(() => _secs = s);
+          _requote();
+        }),
+      ]),
+      const SizedBox(height: 8),
+      Row(children: [const Expanded(child: VocalLabel('How closely to follow your words')), Text(_followWord, style: HoolaType.small(c).copyWith(color: CrHue.voice.b, fontWeight: FontWeight.w500))]),
+      Semantics(label: 'How closely to follow your words', value: _followWord,
+          child: Slider(value: _follow, min: 0, max: 10, divisions: 10, activeColor: CrHue.voice.b, onChanged: (v) => setState(() => _follow = v))),
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: Row(children: [
+        Expanded(child: Text('Free, more surprising', style: HoolaType.small(c).copyWith(color: c.ink3))),
+        Expanded(child: Text('Exactly what I wrote', textAlign: TextAlign.end, style: HoolaType.small(c).copyWith(color: c.ink3)))])),
+      const SizedBox(height: 8),
+      CrSwitch(title: 'Loops smoothly', sub: 'The end runs into the start, for rain, a fan or a crowd behind a video.', value: _loop,
+          onChanged: (v) => setState(() => _loop = v)),
+      const SizedBox(height: 8),
+      const VocalLabel('Takes'),
+      Wrap(spacing: 6, runSpacing: 0, children: [
+        for (final n in const [1, 2, 3, 4]) VocalChip(label: '$n', on: n == _takes, onTap: () {
+          setState(() => _takes = n);
+          _requote();
+        }),
+      ]),
+      if (_partial.isNotEmpty) ...[
+        const SizedBox(height: 12),
+        VocalBox(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('${_partial['made']} of ${_partial['asked']} takes were made', style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w600)),
+          Text('${crS(_partial['error'])} You were charged only for the takes that landed.', style: HoolaType.small(c).copyWith(color: c.ink2)),
+          const SizedBox(height: 6),
+          VocalChip(label: 'Make ${_partial['failed']} more', onTap: _busy ? null : () => _go(takes: (_partial['failed'] as num).toInt())),
+        ])),
+      ],
+      if (_made.isNotEmpty) ...[
+        const SizedBox(height: 16),
+        VocalLabel(_made.length == 1 ? 'Your sound' : '${_made.length} takes'),
+        VocalBox(child: Column(children: [
+          for (var i = 0; i < _made.length; i++) ...[
+            if (i > 0) const SizedBox(height: 8),
+            VocalTakeRow(store: store, player: widget.player, item: _made[i], name: 'Take ${crS(_made[i]['take']).isEmpty ? i + 1 : crS(_made[i]['take'])}',
+                trailing: VocalIconButton(label: _made[i]['star'] == true ? 'Kept: tap to unkeep' : 'Keep this take',
+                    icon: _made[i]['star'] == true ? Icons.star_rounded : Icons.star_outline_rounded, onTap: () => _star(_made[i])),
+                onMore: () async {
+                  final pick = await vocalMore(context, 'Take ${i + 1}', const ['Download', 'Delete']);
+                  if (!context.mounted || pick == null) return;
+                  if (pick == 'Download') await vocalShare(context, store.app, _made[i], store: store);
+                  if (pick == 'Delete' && context.mounted && await vocalDeleteSound(context, store, _made[i])) {
+                    setState(() => _made = _made.where((x) => crS(x['id']) != crS(_made[i]['id'])).toList());
+                  }
+                }),
+          ],
+        ])),
+      ],
+    ]);
+  }
+
+  Widget _game(BuildContext context, HoolaColors c) {
+    final pads = _pads;
+    if (pads.isEmpty) return Text('No game sounds on this server.', style: HoolaType.small(c).copyWith(color: c.ink2));
+    final cur = _pad.isEmpty ? pads.first : _pad;
+    final lo = _seed > 2 ? _seed - 2 : 1;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Text('Free, made on Hoola’s own server. Tap to hear one. Listening keeps nothing; the same number always gives the same sound.',
+          style: HoolaType.small(c).copyWith(color: c.ink2)),
+      const SizedBox(height: 10),
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        for (final p in pads)
+          SizedBox(width: 160, child: VocalChip(label: _fxPad(p), on: p == cur, onTap: () {
+            setState(() { if (_pad != p) _seed = 1; _pad = p; });
+            _hear();
+          })),
+      ]),
+      const SizedBox(height: 14),
+      VocalLabel('Other versions of ${_fxPad(cur)}'),
+      Wrap(spacing: 6, runSpacing: 0, children: [
+        for (var n = lo; n < lo + 6; n++) VocalChip(label: '#$n', on: n == _seed, onTap: () {
+          setState(() { _pad = cur; _seed = n; });
+          _hear();
+        }),
+        VocalChip(label: 'Another one', onTap: () {
+          setState(() { _pad = cur; _seed += 1; });
+          _hear();
+        }),
+      ]),
+      const SizedBox(height: 14),
+      VocalPill(label: 'Keep ${_fxPad(cur)} #$_seed', busy: _busy, onTap: _keepGame),
+      const SizedBox(height: 8),
+      Text('Need a door, a crowd or rain? Describe it under From words.', style: HoolaType.small(c).copyWith(color: c.ink3)),
+    ]);
   }
 
   @override
@@ -660,49 +844,21 @@ class _VocalSfxPageState extends State<VocalSfxPage> {
       builder: (context, _) {
         final c = HoolaColors.of(context);
         final credits = vocalCredits(_quote);
-        final presets = (store.ov['sfx'] is List) ? (store.ov['sfx'] as List).map(crS).where((x) => x.isNotEmpty).take(12).toList() : const <String>[];
+        final words = _tab == 'From words';
         return Column(children: [
           Expanded(
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 24), children: [
-              const VocalLabel('Describe the sound'),
-              TextField(controller: _prompt, minLines: 2, maxLines: 4, maxLength: 400, style: HoolaType.body(c),
-                  buildCounter: (_, {required int currentLength, required bool isFocused, required int? maxLength}) => null,
-                  decoration: vocalInput(c, 'A temple bell, far away, soft echo')),
-              const SizedBox(height: 10),
-              const VocalLabel('Length'),
-              Wrap(spacing: 6, runSpacing: 0, children: [
-                for (final s in const ['Auto', '3 s', '6 s', '10 s', '20 s']) VocalChip(label: s, on: s == _secs, onTap: () {
-                  setState(() => _secs = s);
-                  _requote();
-                }),
-              ]),
-              const SizedBox(height: 8),
-              const VocalLabel('Takes'),
-              Wrap(spacing: 6, runSpacing: 0, children: [
-                for (final n in const [1, 2, 4]) VocalChip(label: '$n', on: n == _takes, onTap: () {
-                  setState(() => _takes = n);
-                  _requote();
-                }),
-              ]),
-              const SizedBox(height: 8),
-              CrSwitch(title: 'Loops smoothly', sub: 'The end runs into the start, for a background.', value: _loop,
-                  onChanged: (v) => setState(() => _loop = v)),
-              if (presets.isNotEmpty) ...[
-                const SizedBox(height: 14),
-                const VocalLabel('Ready-made, free'),
-                Wrap(spacing: 6, runSpacing: 0, children: [
-                  for (final p in presets) VocalChip(label: p.replaceAll('_', ' '), onTap: _busy ? null : () => _go(preset: p)),
-                ]),
-              ],
-              _results(context, store, widget.player, _made, 'Version',
-                  (t) => setState(() => _made = _made.where((x) => crS(x['id']) != crS(t['id'])).toList())),
+              VocalTabs(tabs: const ['From words', 'Game sounds'], picked: _tab, onPick: (t) => setState(() => _tab = t)),
+              const SizedBox(height: 14),
+              words ? _words(context, c) : _game(context, c),
             ]),
           ),
-          VocalDock(
-            note: 'Nothing is spent until you tap',
-            child: VocalPill(label: credits.isEmpty ? 'Make $_takes' : 'Make $_takes · $credits', busy: _busy,
-                onTap: _prompt.text.trim().isEmpty ? null : () => _go()),
-          ),
+          if (words)
+            VocalDock(
+              note: 'Sounds from words run on ElevenLabs · nothing is spent until you tap',
+              child: VocalPill(label: credits.isEmpty ? 'Make $_takes ${_takes == 1 ? 'take' : 'takes'}' : 'Make $_takes ${_takes == 1 ? 'take' : 'takes'} · $credits', busy: _busy,
+                  onTap: !_wordsReady || _prompt.text.trim().length < 3 ? null : () => _go()),
+            ),
         ]);
       },
     );

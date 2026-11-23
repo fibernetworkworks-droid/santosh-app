@@ -10581,9 +10581,55 @@ at light / dark 1440 and 390 + the not-ready page); `test/vocal_phone_test.dart`
 
 NOT VERIFIED: on her server or phone; a real recording's readings (tested on made-up sound); a real ElevenLabs isolation.
 
-## v0.999.162 BOOKS INBOX — invoices and bills come into the books by themselves (owner: "INVOICES AND BILLS --- TO BE AUTO FETCHED VIA EMAIL, DIFFERENT SOFTWARES --- NOT TO BE MANUALLY FED HERE --- THUS THE SYSTEM WILL BE AUTOMATED AND AI WILL READ AND ACCUMULATE DATA ACCORDINGLY")
+## v0.999.162 SOUND EFFECTS, PREMIUM
 
-Built as 0.999.161; main's CLEAN-UP, PREMIUM took 0.999.161, both kept.
+Owner: "NOW LETS WORK ON SOUND EFFECT SECTION. MAKE IT PERFECT ADVANCE AND PREMIUM AS OTHER SECTION DONE. SHOW DESIGN HERE
+FIRST" -> design canvas claude.ai/artifact/2vU7LhKsPWKeT58GXAwRdK (7 boards) -> "GO BUILD".
+
+**Server** (`vocal/service.py` "sound effects (v0.999.162)", `vocal/api.py`):
+- `sfx_text` keeps its call and gains `follow` (0-1 = ElevenLabs `prompt_influence`, 0.3 when she leaves it); each take
+  is its own row with `length`, `loop`, `follow`, `take`, `job`; the real length is read from the file. A run that breaks
+  after a take keeps the made takes and returns `made` / `asked` / `failed` / `error` ("ElevenLabs stopped answering after
+  take B").
+- POST `/sfx` with `wait: false` = `sfx_start`: the takes are made in the background (in memory, like the clean-up job);
+  GET `/sfx/job?id=` gives a slot per take (wait / now / done + the row / failed / skipped); POST `/sfx/stop` = Stop
+  after this take (the made takes stay, paid only for those). A restart loses a running job and says so.
+- POST `/sfx/improve` = her description made clearer for a sound engine by one Gemini text call (`_gem_json`; her words
+  sent as data, never turned into another sound; nothing spent; her words stay until she takes the suggestion).
+- POST `/sfx/shape` = Shape it on this server, free: trim (start / end), fade in / out, volume (-24..+12 dB), speed and
+  pitch together (0.5-2x, like a tape), backwards, a smooth loop (the tail laid over the head), never clipped; numpy on
+  44.1 kHz stereo from ffmpeg; a NEW sound (`shaped_from`, `shaped` = what was done), the take unchanged; sounds from
+  words stay MP3, game sounds WAV.
+- Game sounds: GET `/sfx/play?preset=&seed=` = heard without being kept (`download=1` = as a WAV file); GET `/sfx/set?seed=`
+  = every game sound at one number as a ZIP; POST `/sfx` with `preset` keeps one (free, as before).
+- POST `/history/star` keeps (stars) any sound; a kept sound is never dropped by the history limit.
+
+**Console** (`static/console/vocal.js` "Sound effects (v0.999.162 ...)", `vocal2.css` "v0.999.162 Sound effects"):
+From words / Game sounds tabs + Your sound effects; the description box in Literata with Improve the words (Hoola suggests,
+Use these words / Keep mine), Add to the words chips, length Auto / 1 / 3 / 5 / 10 / 30 s, How closely to follow your
+words (Loose / Balanced / Close), Loops smoothly, takes 1-4, Make with the price; before any take: Describe any sound + ideas
+in 8 kinds (6 each) + the game-sounds strip; while making: a slot per take filling in, Stop after this take; the takes as
+cards (play, keep star, download, Make N more like these, a partly made run said with Make the rest); Shape take X (the trim
+on the waveform, sliders, Play backwards, Smooth loop, Undo all, Save as a new sound, shaped from this take); Game sounds =
+10 pads, the chosen one with numbered versions + Another one, Keep, Download WAV, Shape it, Download the set; Your sound
+effects by day (Today / Yesterday / Earlier this week / Older) with search and All / From words / Game sounds / Shaped / Kept,
+More like this / Other versions, Download; when ElevenLabs is not connected the words side says so and sends her to game
+sounds. `v2.js`: a 502 / 503 / 504 now reads "The server did not answer. It may be restarting after an update; nothing was
+charged. Try again in a minute." everywhere in the console (was "The server refused the request (502)").
+
+**Phone** (`lib/ui/vocal/vocal_tools.dart` `VocalSfxPage`, `lib/api.dart` `vocalSfxImprove` / `vocalSfxPlay` /
+`vocalHistoryStar`): the same two tabs; Improve the words, add-to chips, length, how closely to follow, loop, takes; takes
+kept with a star; a partly made run said; game sounds heard without keeping, numbered versions, Keep.
+
+**Tests**: NEW `server/tests/test_v0999_162_sound_effects.py` (follow + takes kept, a run that breaks half way, the
+background job + stop, ElevenLabs missing said, Improve keeps her sound, game sounds heard / set / kept with a star, Shape it,
+a kept sound never dropped, the files, a Chromium walk at light / dark 1440 and 390 + the not-connected page);
+`test/vocal_phone_test.dart` 34/34 (Flutter 3.24.5 here).
+
+NOT VERIFIED: a real ElevenLabs sound or a real Improve the words call on her server; her phone.
+## v0.999.163 BOOKS INBOX — invoices and bills come into the books by themselves (owner: "INVOICES AND BILLS --- TO BE AUTO FETCHED VIA EMAIL, DIFFERENT SOFTWARES --- NOT TO BE MANUALLY FED HERE --- THUS THE SYSTEM WILL BE AUTOMATED AND AI WILL READ AND ACCUMULATE DATA ACCORDINGLY")
+
+Built as 0.999.161 / 0.999.162; main's CLEAN-UP, PREMIUM and SOUND EFFECTS, PREMIUM took those numbers, all kept.
 
 `server/app/fin/desks/books_feed.py`, table `fin_books_inbox` (one row per document that came in: source, the mail / record it came
 from, sender, file name + sha, the fields read, the checks, confidence, status, the books document it became). Settings on the
@@ -10627,7 +10673,7 @@ Composio state, shop, auto-post, her tax numbers, books key make / close, turn o
 desk block says whether the Inbox is on and never asks her to type an invoice that will come in by itself. Roles: viewer reads it;
 accountant posts / sets aside / checks now; owner and admin change its settings and the key.
 
-Tests `server/tests/test_v0999_162_books_inbox.py` (10, incl. a Chromium walk): read + posted + never twice, doubtful waits with the
+Tests `server/tests/test_v0999_163_books_inbox.py` (10, incl. a Chromium walk): read + posted + never twice, doubtful waits with the
 reason (total / number not on the document, not an invoice with no AI spent), changed amount on the same number, sale by her tax
 number + auto-post off, approval rules still apply, no-AI rules read, her mail read once by the worker, Hoola's address + books key +
 file download, shop orders, desk + roles.
