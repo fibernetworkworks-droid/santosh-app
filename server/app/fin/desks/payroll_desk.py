@@ -39,7 +39,8 @@ ACTIONS = ("desk", "inputs", "input_rows", "input_match", "input_drop", "missing
            "post_journal", "pay_file", "paid_check", "payslip_pdf", "payslip_drafts", "starting_list", "apply_starting_list",
            "check_rule", "rules", "import_old", "desk_settings", "api_key", "api_stop", "mail_attach", "mail_detach", "sheet_read",
            "software_read", "mailboxes")
-FIELDS = ("hours", "overtime_hours", "overtime", "bonus", "commission", "other_pay", "unpaid_days", "leave_days")
+FIELDS = ("hours", "overtime_hours", "overtime", "bonus", "commission", "other_pay", "unpaid_days", "leave_days",
+          "days_present", "late_days", "night_hours", "pieces", "sales")          # v0.999.171 attendance + piece / sales pay
 MONEY = ("overtime", "bonus", "commission", "other_pay")
 DEFAULT_DESK = {"max_hours": {"monthly": 260, "fortnightly": 130, "weekly": 65}, "overtime_x": 1.5, "standard_hours": 160,
                 "approve_limit": 0, "mail": [], "sheet": {}, "software": [], "hook_hash": ""}
@@ -49,11 +50,15 @@ SOFTWARE = {"deputy": "Deputy", "bamboohr": "BambooHR", "factorial": "Factorial"
 FILE_EXT = (".csv", ".xlsx", ".xls", ".tsv")
 NEVER_KEPT = "Account numbers you type here are used for this one file and never kept."
 # what the role on these books may do here (the Books & Accounts team, books_ent)
-READ = {"desk", "mailboxes", "inputs", "missing", "changes", "rules", "starting_list", "payslip_pdf", "people", "payslip", "payments", "filings"}
+from . import payroll_flow as PF                                       # noqa: E402  v0.999.171 every size
+
+READ = {"desk", "mailboxes", "inputs", "missing", "changes", "rules", "starting_list", "payslip_pdf", "people", "payslip", "payments",
+        "filings"} | PF.READ
 PREP = READ | {"upload", "input_rows", "input_match", "input_drop", "prepare", "employee", "sheet_read", "software_read", "paid_check",
-               "pay_file", "payslip_drafts", "contractors"}
-CAN = {"owner": None, "admin": None, "accountant": PREP, "approver": READ | {"approve", "unapprove", "pay_file", "paid_check", "done"},
-       "auditor": READ, "viewer": READ - {"payslip_pdf", "payslip"}}
+               "pay_file", "payslip_drafts", "contractors"} | PF.PREP
+CAN = {"owner": None, "admin": None, "accountant": PREP,
+       "approver": READ | {"approve", "unapprove", "pay_file", "paid_check", "done", "check_run"},
+       "auditor": READ, "viewer": READ - {"payslip_pdf", "payslip", "report_pdf"}}
 ROLE_SAY = {"accountant": "Preparer", "approver": "Approver", "auditor": "Auditor", "viewer": "Viewer", "admin": "Admin", "owner": "Owner"}
 
 
@@ -130,6 +135,9 @@ ALIASES = {"name": ("name", "employee", "employee name", "staff", "person", "wor
            "hours": ("hours", "hours worked", "regular hours", "total hours", "time", "worked"),
            "overtime_hours": ("overtime hours", "ot hours", "ot", "extra hours"),
            "overtime": ("overtime pay", "overtime amount"), "bonus": ("bonus", "incentive"), "commission": ("commission",),
+           "days_present": ("days present", "present days", "present", "days worked", "paid days"),
+           "late_days": ("late days", "late marks", "late"), "night_hours": ("night hours", "night shift hours"),
+           "pieces": ("pieces", "units", "pieces made", "units made", "quantity"), "sales": ("sales", "sales amount", "revenue"),
            "other_pay": ("other pay", "allowance", "arrears"),
            "unpaid_days": ("unpaid days", "lop", "loss of pay", "unpaid leave", "absent days", "absent"),
            "leave_days": ("leave days", "paid leave", "holiday", "leave", "vacation")}
@@ -165,6 +173,10 @@ def rows_of_table(table: list[list[Any]]) -> list[dict[str, Any]]:
         for f in FIELDS:
             if f in cols and g(f) not in (None, ""):
                 row[f] = g(f)
+        for i, hname in enumerate(table[0]):                     # v0.999.171 her own input words (a column a pay part reads)
+            k = PF.FX.snake(hname)
+            if k and i not in cols.values() and k not in row and i < len(r) and r[i] not in (None, "") and _num(r[i]) is not None:
+                row[k] = r[i]
         out.append(row)
     return out
 
@@ -215,7 +227,7 @@ def _check(c: dict[str, Any], key: str, row: dict[str, Any], taken: dict[tuple[s
     why: list[str] = []
     pid, near = _match(people, row.get("name", ""))
     vals: dict[str, float] = {}
-    for f in FIELDS:
+    for f in FIELDS + tuple(desk_cfg(c).get("input_words") or ()):
         if f in row and row[f] not in (None, ""):
             v = _num(row[f])
             if v is None:
@@ -270,8 +282,9 @@ def take_rows(tenant: str, ws: str, rows: list[dict[str, Any]], source: str, per
                 for f in i.get("values") or {}:
                     taken[(i["pid"], f)] = i.get("file") or i["source"]
         live = {**cfg}
+        words = tuple(desk_cfg(cfg).get("input_words") or ())
         for r in rows:
-            r = {k: v for k, v in (r or {}).items() if k in ("name", "date") + FIELDS}
+            r = {k: v for k, v in (r or {}).items() if k in ("name", "date") + FIELDS + words}
             sha = _rowsha(source, ref, r)
             if sha in seen:
                 got["already"] += 1
@@ -351,6 +364,9 @@ def extras_for(c: dict[str, Any], key: str, cur: str = "USD") -> dict[str, dict[
             x[f] = round(x.get(f, 0) + float(v), 4)
     for pid, x in out.items():
         p = people[pid]
+        if "overtime_hours" in PF.used_names(c, {**p, "id": pid}):   # v0.999.171 a pay part prices the overtime hours itself
+            x["_oh"] = x.get("overtime_hours", 0)
+            continue
         oh = x.pop("overtime_hours", 0)
         x.pop("leave_days", None)                               # paid leave is paid: nothing changes in the pay
         if oh:
@@ -507,6 +523,7 @@ def approve(tenant: str, ws: str, a: dict[str, Any], actor: str) -> dict[str, An
         return {"period": key, "status": fl["status"], "says": "Already approved."}
     if str(a.get("hash") or "") != _hash(r) or fl.get("hash") != _hash(r):
         raise PayrollError("The payroll changed after you looked at it. Look at it again, then approve.")
+    PF.chain_ok(tenant, ws, c, key, actor)                       # v0.999.171 prepare -> check -> approve by size
     lim = float(desk_cfg(c).get("approve_limit") or 0)
     if lim and r["totals"]["net"] > lim and _who(fl.get("prepared_by")) == _who(actor):
         raise PayrollError(f"Net pay is over your limit of {lim:,.2f}: someone other than the person who prepared it approves it.")
@@ -575,8 +592,26 @@ def pay_file(tenant: str, ws: str, a: dict[str, Any]) -> dict[str, Any]:
             wr.writerow([p["name"], q.get("payee_ref", ""), f"{p['net']:.2f}", r["currency"], ref])
         return {"name": f"payroll-{key}.csv", "mime": "text/csv", "text": buf.getvalue(), "count": len(pay),
                 "total": round(sum(p["net"] for p, _ in pay), 2), "says": PY.NEVER_PAYS}
+    if fmt == "in_bulk":                                           # v0.999.171 India bulk NEFT / RTGS upload: account + IFSC typed for this file
+        acc = a.get("accounts") or {}
+        bad = []
+        buf = io.StringIO()
+        wr = csv.writer(buf)
+        wr.writerow(["Beneficiary Name", "Account Number", "IFSC", "Amount", "Narration"])
+        for p, q in pay:
+            x = acc.get(p["id"]) or {}
+            no, ifsc = re.sub(r"\s", "", str(x.get("account") or "")), str(x.get("ifsc") or "").strip().upper()
+            if not re.fullmatch(r"\d{9,18}", no) or not re.fullmatch(r"[A-Z]{4}0[A-Z0-9]{6}", ifsc):
+                bad.append(p["name"])
+                continue
+            wr.writerow([p["name"][:35], no, ifsc, f"{p['net']:.2f}", f"Salary {key}"[:30]])
+        if bad:
+            raise PayrollError("accounts: an account number (9-18 digits) and IFSC for " + ", ".join(bad[:6]) + ". " + NEVER_KEPT)
+        return {"name": f"payroll-{key}-bulk.csv", "mime": "text/csv", "text": buf.getvalue(), "count": len(pay),
+                "total": round(sum(p["net"] for p, _ in pay), 2), "says": PY.NEVER_PAYS + " " + NEVER_KEPT +
+                " Columns differ by bank: if yours asks for another order, ask in the chat."}
     if fmt != "pain001":
-        raise PayrollError("format: csv | pain001.")
+        raise PayrollError("format: csv | in_bulk | pain001.")
     acc = a.get("accounts") or {}
     debtor = a.get("from") or {}
     iban = lambda v: re.sub(r"\s", "", str(v or "")).upper()        # noqa: E731
@@ -1236,11 +1271,19 @@ def desk(tenant: str, ws: str) -> dict[str, Any]:
             "awaiting_paid": [k for k, v in flow.items() if v.get("status") == "approved"],
             "sources": {"mail": desk_cfg(c).get("mail") or [], "sheet": desk_cfg(c).get("sheet") or {},
                         "software": desk_cfg(c).get("software") or [], "api_on": bool(desk_cfg(c).get("hook_hash"))},
-            "approve_limit": desk_cfg(c).get("approve_limit") or 0}
+            "approve_limit": desk_cfg(c).get("approve_limit") or 0,
+            # v0.999.171 every size
+            "size": PF.size_of(c), "size_info": PF.SIZES.get(PF.size_of(c)) or {}, "sizes": PF.SIZES,
+            "attendance": (c.get("desk") or {}).get("attendance", ""), "steps": PF.next_steps(tenant, ws),
+            "report": {k: (f.get("report") or {}).get(k) for k in ("line", "flags", "cash_needed", "net_change_pct", "hash")} if f.get("report") else None,
+            "chain": PF.size_info(c)["chain"], "checked_by": f.get("checked_by", ""), "match": PF.gate(c),
+            "trend": PF.history_report(tenant, ws, 6)}
 
 
 # ---------------------------------------------------------------- door
 def run(tenant: str, action: str, ws: str, a: dict[str, Any], actor: str = "owner") -> dict[str, Any]:
+    if action in PF.ACTIONS:
+        return PF.run(tenant, action, ws, a, actor)
     if action == "desk":
         return desk(tenant, ws)
     if action == "inputs":

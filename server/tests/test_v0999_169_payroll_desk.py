@@ -55,7 +55,7 @@ def test_hire_chat_block_and_wiring(pr):
     from app.agent.tools import FAMILY_OF
     assert FAMILY_OF["payroll_worldwide"] in pr.FAMILIES
     for f in ("callconv.py", "convs.py"):
-        assert '"books", "payroll")' in (root / "server/app" / f).read_text()
+        assert '"books", "payroll"' in (root / "server/app" / f).read_text()
     from app.main import APP_VERSION, app
     r = TestClient(app).get("/console/payroll")
     assert r.status_code == 200 and "Content-Security-Policy" in r.headers and "payrolldesk.js" in r.text
@@ -276,12 +276,14 @@ def test_payroll_desk_in_a_real_browser(pr_server, tmp_path):
         pg.on("pageerror", lambda e: errors.append(str(e)))
         pg.goto(base + "/console/payroll")
         if vp["width"] == 1440:
-            pg.wait_for_selector("form[data-form=setup]", timeout=20000)
-            pg.fill("#pfSN", "Lumen Studio")
-            pg.fill("#pfSC", "GB")
-            pg.fill("#pfSK", "GBP")
-            pg.click("form[data-form=setup] button[type=submit]")
-            pg.click("[data-setupok]", timeout=15000)
+            pg.wait_for_selector(".pz-size", timeout=20000)          # v0.999.171 the first page: how many people, then the business
+            pg.click(".pz-size[data-size=small]")
+            pg.fill("#pzN", "Lumen Studio")
+            pg.fill("#pzC", "GB")
+            pg.fill("#pzK", "GBP")
+            pg.click("#pzGo")
+            pg.wait_for_selector(".pz-steps", timeout=20000)
+            pg.goto(base + "/console/payroll#/settings")
             pg.wait_for_selector("[data-startlist=GB]", timeout=20000)
             pg.click("[data-startlist=GB]")
             pg.wait_for_selector("form[data-form=check]", timeout=20000)
@@ -306,7 +308,7 @@ def test_payroll_desk_in_a_real_browser(pr_server, tmp_path):
             pg.wait_for_function("() => document.querySelector('#mdPage').innerText.includes('Nobody Here')", timeout=20000)
             assert "no one called Nobody Here" in pg.inner_text("#mdPage")
             pg.goto(base + "/console/payroll#/run")
-            pg.click("[data-prepare]", timeout=20000)
+            pg.click("[data-preview]", timeout=20000)               # v0.999.171 "Run the preview" makes the report
             pg.wait_for_selector("[data-approve]", timeout=20000)
             assert "bonus 250" in pg.inner_text("#mdPage")
             if shots:
