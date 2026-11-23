@@ -55,7 +55,8 @@ CREATE_TOOLS = [
          "takes": {"type": "integer"}, "engine": {"type": "string"}, "loop": {"type": "boolean"},
          "lines": {"type": "array", "items": {"type": "object"}}, "cast": {"type": "object"},
          "reactions": {"type": "boolean"}, "music": {"type": "string", "enum": ["", "soft"]},
-         "face": {"type": "string"}, "shape": {"type": "string"}},
+         "face": {"type": "string"}, "shape": {"type": "string"},
+         "kind": {"type": "string", "enum": ["presenter", "explainer", "reel", "product", "lesson"]}},
          "required": ["action"]}},
 ]
 CREATE_LABELS = {"create_studio": "Creating in Create Studio"}
@@ -181,9 +182,11 @@ async def _talking_video(ctx: Ctx, a: dict[str, Any]) -> dict[str, Any]:
     if not brief and base:
         brief = base.get("ask") or ""
     lang = str(a.get("language") or base.get("lang") or "en")
+    kind = str(a.get("kind") or base.get("kind") or "")
+    shape = str(a.get("shape") or S.KIND_SHAPE.get(kind) or base.get("shape") or "talking_head")
     try:
         p = await asyncio.to_thread(
-            S.draft, ctx.tenant_id, brief, shape=str(a.get("shape") or base.get("shape") or "talking_head"),
+            S.draft, ctx.tenant_id, brief, shape=shape, kind=kind,
             lang=lang, seconds=int(a.get("seconds") or 30), avatar_id=str(a.get("face") or base.get("avatar_id") or ""),
             brand=str(base.get("brand") or (S._load(ctx.tenant_id).get("brand") or {}).get("name", "")),
             voice=str(a.get("voice") or base.get("voice") or ""), engine=str(a.get("engine") or base.get("engine") or ""),

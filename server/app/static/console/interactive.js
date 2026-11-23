@@ -21,10 +21,12 @@ window.HoolaInteractive = function (ctx) {
     set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private window */ } }};
   const scrub = t => String(t ?? '').replace(/\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_(?:API_)?(?:KEY|TOKEN|SECRET)\b/g, 'its key');
   const toast = (m, bad) => ctx.toast(scrub(m), bad);
-  const SET = Object.assign({lang: 'hi', face: '', voice: '', engine: '', shape: 'talking_head'}, store.get('hx.set', {}));
-  const C = {conv: '', title: '', rows: [], items: [], ask: '', files: [], sending: false, waitUntil: 0, t: 0};
+  const SET = Object.assign({lang: 'auto', face: '', voice: '', engine: '', shape: 'talking_head', kind: 'presenter', len: 30}, store.get('hx.set', {}));
+  if (SET.lang === 'hi' && !store.get('hx.langv2', false)) { SET.lang = 'auto'; store.set('hx.langv2', true); store.set('hx.set', SET); }   // v0.999.171 the old India default becomes Auto
+  const C = {conv: '', title: '', rows: [], items: [], ask: '', files: [], sending: false, waitUntil: 0, t: 0, gen: 0};
   const UI = {slim: store.get('hx.slim', false), nav: false, etab: 'video', ptab: 'Videos', scene: 0, tool: 'Look', V: null, L: null,
-    live: '', liveOut: [], newKey: null, newHook: null, pub: null, broll: {prompt: '', seconds: 6, aspect: '16:9', q: null}, jobs: {}};
+    live: '', liveOut: [], newKey: null, newHook: null, pub: null, broll: {prompt: '', seconds: 6, aspect: '16:9', q: null}, jobs: {},
+    me: '', credits: null, recent: [], est: null, ideaG: 'business', pv: {id: '', scene: 0, tab: 'sketch', play: false, t: 0}, audio: null};
   const URLS = new Map();
   const q = encodeURIComponent;
   const $ = s => ROOT && ROOT.querySelector(s);
@@ -64,7 +66,8 @@ window.HoolaInteractive = function (ctx) {
   const engine = id => (D?.engines?.engines || []).find(e => e.id === id);
   const face = id => (D?.avatars || []).find(a => a.id === id);
   const voiceName = id => { const v = UI.V && [...UI.V.mine, ...UI.V.library].find(x => x.id === id); return v ? v.name : (id ? 'Chosen voice' : 'Hoola picks'); };
-  const langName = c => (UI.L || []).find(l => l.code === c)?.name || ({hi: 'Hindi', en: 'English', mr: 'Marathi'}[c] || c || 'Hindi');
+  const LN0 = {en: 'English', es: 'Spanish', fr: 'French', ar: 'Arabic', pt: 'Portuguese', de: 'German', ja: 'Japanese', ko: 'Korean', it: 'Italian', tr: 'Turkish', nl: 'Dutch', sw: 'Swahili', id: 'Indonesian', hi: 'Hindi', zh: 'Chinese (Mandarin)', auto: 'Auto'};
+  const langName = c => (UI.L || []).find(l => l.code === c)?.name || LN0[c] || c || 'Auto';
   const defEngine = () => SET.engine || D?.engines?.defaults?.video || 'hoola';
   const status = p => ({ready: ['ok', 'Ready'], making: ['work', 'Making it'], failed: ['bad', 'Could not make it']}[p.status]
     || ((p.scenes || []).some(s => s.needs) ? ['warn', 'Waiting for your numbers'] : ['', 'Draft']));
@@ -90,7 +93,7 @@ window.HoolaInteractive = function (ctx) {
       toast(e.message, true); }
   }
   async function voicesLoad() { if (UI.V) return; try { UI.V = await api('GET', `${X}/voices`); } catch { UI.V = {mine: [], library: []}; } }
-  async function langsLoad() { if (UI.L) return; try { UI.L = (await api('GET', `${X}/langs`)).langs; } catch { UI.L = [{code: 'hi', name: 'Hindi'}, {code: 'en', name: 'English'}]; } }
+  async function langsLoad() { if (UI.L) return; try { UI.L = (await api('GET', `${X}/langs`)).langs; } catch { UI.L = Object.entries(LN0).filter(([c]) => c !== 'auto').map(([code, name]) => ({code, name})); } }
 
   // ------------------------------------------------------------------ shell ---
   function cssHref() { const s = document.querySelector('script[src*="/interactive.js"]')?.getAttribute('src') || ''; return `/static/console/interactive2.css${s.includes('?') ? s.slice(s.indexOf('?')) : ''}`; }
@@ -106,8 +109,8 @@ window.HoolaInteractive = function (ctx) {
     ROOT.addEventListener('keydown', e => { if (e.target.id === 'hxAsk' && e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); chatSend(); }
       if (e.key === 'Escape' && UI.nav) { UI.nav = false; side(); } });
   }
-  async function open() { mount(); await load(); go(PAGE, ARG); voicesLoad().then(() => { if (PAGE === 'chat') refreshBar(); }); langsLoad(); }
-  function leave() { clearTimeout(C.t); Object.values(UI.jobs).forEach(clearTimeout); UI.jobs = {}; window.HoolaMenu?.close(); if (ROOT) { ROOT.querySelectorAll('audio,video').forEach(m => m.pause?.()); ROOT.hidden = true; } }
+  async function open() { mount(); await load(); go(PAGE, ARG); voicesLoad().then(() => { if (PAGE === 'chat') refreshBar(); }); langsLoad().then(() => { if (PAGE === 'chat' && $('.hx-hero')) draw(); }); meLoad(); recentLoad(); estimate(); }
+  function leave() { clearTimeout(C.t); pvStop(); UI.audio?.pause(); Object.values(UI.jobs).forEach(clearTimeout); UI.jobs = {}; window.HoolaMenu?.close(); if (ROOT) { ROOT.querySelectorAll('audio,video').forEach(m => m.pause?.()); ROOT.hidden = true; } }
   function creditCard() {
     const u = D?.usage || {};
     return `<div class="hx-cred"><div class="r"><span>This month</span><b class="hx-num">${num(u.videos || 0)} video${u.videos === 1 ? '' : 's'}</b></div>
@@ -120,15 +123,18 @@ window.HoolaInteractive = function (ctx) {
     $('#hxSide').innerHTML = `<div class="hx-brand"><span class="hx-mark" aria-hidden="true">${markSvg()}</span><b>Hoola</b><span class="hx-badge">Interactive</span><span class="hx-grow"></span>
         <button type="button" class="hx-ib" data-a="slim" aria-label="${UI.slim ? 'Open the sidebar' : 'Close the sidebar'}">${ic('side', 18)}</button></div>
       <button type="button" class="hx-nv" data-a="back">${ic('back')}<span>Back to chat</span></button>
-      <button type="button" class="hx-newchat" data-a="newchat">${ic('plus')}<span>New interactive chat</span></button>
+      <button type="button" class="hx-newchat" data-a="newchat">${ic('plus')}<span>New video</span></button>
       ${NAV.map(([g, rows]) => `<span class="hx-gh">${g}</span>${rows.map(row).join('')}`).join('')}
+      ${UI.recent?.length && !(UI.slim && !UI.nav) ? `<span class="hx-gh">Recent chats</span>${UI.recent.map(c => `<button type="button" class="hx-nv hx-rc" data-a="openchat" data-id="${esc(c.id)}"${PAGE === 'chat' && C.conv === c.id ? ' aria-current="true"' : ''}><span>${esc(c.title || 'Interactive chat')}</span></button>`).join('')}
+        <button type="button" class="hx-nv hx-rc dim" data-a="chats"><span>All chats</span></button>` : ''}
       <span class="hx-grow"></span>${creditCard()}`;
   }
   function crumb() {
     const p = PAGE === 'studio' && ARG ? ['Studio', (D.projects || []).find(x => x.id === ARG)?.title || 'Video'] : PAGE === 'chat' ? [C.title && C.title !== 'Interactive chat' ? C.title : 'Interactive chat'] : [TITLE[PAGE] || ''];
     $('#hxCrumb').innerHTML = `<span>Interactive ·${p.length > 1 ? ' ' + esc(p[0]) + ' ·' : ''}</span><h1 class="hx-h">${esc(p[p.length - 1])}</h1>`;
     const t = $('#hxTopR');
-    t.innerHTML = PAGE === 'chat' ? `<button type="button" class="hx-ib" data-a="chats" aria-label="Earlier chats" title="Earlier chats">${ic('clock', 18)}</button>
+    t.innerHTML = PAGE === 'chat' ? `${UI.credits != null ? `<button type="button" class="hx-credp hx-num" data-a="credits" title="Your credits">${ic('spark', 14)}${num(UI.credits)} credits</button>` : ''}
+      <button type="button" class="hx-ib" data-a="chats" aria-label="Earlier chats" title="Earlier chats">${ic('clock', 18)}</button>
       <button type="button" class="hx-ib" data-a="newchat" aria-label="New chat" title="New chat">${ic('plus', 18)}</button>`
       : PAGE === 'studio' && !ARG ? `<button type="button" class="hx-btn s dark" data-a="go" data-p="chat">${ic('plus', 14)}<span>New video</span></button>` : '';
   }
@@ -141,100 +147,343 @@ window.HoolaInteractive = function (ctx) {
   }
   function draw() { $('#hxView').innerHTML = V[PAGE](); AFTER[PAGE]?.(); fillMedia(); }
 
-  // ------------------------------------------------------------------ the chat ---
-  const settingsNote = () => `[Interactive settings: language ${SET.lang || 'auto'}; face ${SET.face || 'none'}; voice ${SET.voice || 'auto'}; engine ${defEngine()}; shape ${SET.shape}]`;
-  const IDEAS = ['A Diwali offer video for my shop, 20% off till 3 November, in Hindi', 'Welcome new students to my coaching class in Marathi',
-    'Introduce my new product in 30 seconds with its price', 'A short reel: our shop timings changed to 9 am to 9 pm'];
+  // ------------------------------------------------------------------ the chat (v0.999.171: design claude.ai/artifact/5wm914F3jEgnNNfNr3rXPn) ---
+  // The home: the kind of video, one box with every pick and the price before anything is planned, start from something
+  // she has, ideas from around the world, her videos. The chat: her words, then a plan card (scene thumbnails, face,
+  // voice she can hear for free, language, engine, the itemised price, Make), and beside it a sketch / the script / the
+  // subtitles of that plan. Making is always her tap on the card's price.
+  const KINDS = [['presenter', 'Talking presenter', 'P', 'Describe your video, or paste a script. Any language.'],
+    ['explainer', 'Explainer', 'E', 'What should people understand after watching?'],
+    ['reel', 'Social reel', 'R', 'A short reel: what is new, and who is it for?'],
+    ['product', 'Product video', '$', 'Your product, its price, and why people love it.'],
+    ['lesson', 'Lesson', 'L', 'The topic, who is learning, and how long it should be.'],
+    ['translate', 'Translate a video', 'T', '']];
+  const KIND_NAME = Object.fromEntries(KINDS.map(k => [k[0], k[1]]));
+  const shapeOf = k => k === 'reel' ? 'reel' : k === 'product' ? 'product' : 'talking_head';
+  const aspectOf = k => k === 'reel' ? '9:16' : '16:9';
+  const LENS = [15, 30, 45, 60, 90];
+  const IDEA_G = {business: 'For a business', teach: 'Teaching', personal: 'Personal', nonprofit: 'Nonprofits'};
+  const IDEAS = {
+    business: [['Welcome new guests to my café in Lisbon, friendly, with English subtitles', 'pt', 'presenter'],
+      ['Spring sale: 20% off all plants until 30 April, as a 15-second reel', 'es', 'reel'],
+      ['Our clinic has new opening hours from Monday, 8 am to 6 pm', 'ar', 'presenter'],
+      ['Introduce my new skincare serum in 30 seconds, with its price', 'en', 'product']],
+    teach: [['Lesson 1 of my photography course: light and shadow, in 90 seconds', 'fr', 'lesson'],
+      ['Explain photosynthesis to 12-year-olds in three simple scenes', 'de', 'explainer'],
+      ['Welcome my new students and explain how the class works this term', 'ja', 'presenter'],
+      ['Turn my training notes into a short video for new staff', 'ko', 'lesson']],
+    personal: [['A birthday message for my grandmother, warm and short', 'it', 'presenter'],
+      ['Introduce myself for a job application in 45 seconds', 'en', 'presenter'],
+      ['Invite our friends to our wedding, with the date and the place', 'tr', 'reel'],
+      ['A thank-you video for my running club', 'nl', 'presenter']],
+    nonprofit: [['Thank our donors and show what their gifts paid for this year', 'sw', 'explainer'],
+      ['Ask volunteers to join our beach clean-up on Saturday', 'id', 'reel'],
+      ['Explain how to apply for our scholarship, step by step', 'hi', 'explainer'],
+      ['Our year in numbers, from the report I attach', 'pt', 'explainer']]};
+  const SUGGEST = ['Make it shorter', 'More energetic', 'Add a call to action at the end', 'Make a vertical version for social media', 'Use a calmer voice'];
+  const MORE_LANGS = ['en', 'es', 'fr', 'ar', 'zh', 'pt', 'hi', 'de', 'ja'];
+  const kindNow = () => KIND_NAME[SET.kind] && SET.kind !== 'translate' ? SET.kind : 'presenter';
+  const settingsNote = () => `[Interactive settings: kind ${kindNow()}; language ${SET.lang || 'auto'}; face ${SET.face || 'none'}; voice ${SET.voice || 'auto'}; engine ${defEngine()}; shape ${shapeOf(kindNow())}; length ${SET.len || 30} s]`;
+  const greet = () => { const h = new Date().getHours(); return (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + (UI.me ? `, ${UI.me}` : ''); };
+  const brandColor = () => /^#[0-9a-f]{6}$/i.test(D?.brand?.color || '') ? D.brand.color : '#2F4B5C';
+  const lenOf = p => p?.video?.duration || (p?.scenes || []).reduce((n, s) => n + Math.max(2, (s.say || '').split(/\s+/).filter(Boolean).length / 2.6) + .35, 0) + 1.2;
+  const clock = s => { s = Math.max(0, Math.round(+s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+  const lookText = lk => !lk ? '' : lk.kind === 'title' ? lk.text : lk.kind === 'big_number' ? `${lk.value || ''} ${lk.label || ''}` : lk.kind === 'price' ? `${lk.new || ''}${lk.old ? ' · was ' + lk.old : ''}`
+    : lk.kind === 'lower_third' ? `${lk.title || ''}${lk.sub ? ' · ' + lk.sub : ''}` : lk.kind === 'bar_chart' ? (lk.bars || []).map(b => `${b.label} ${b.value}`).join(' · ') : '';
+  const sceneTimes = p => { let t = 0; return (p.scenes || []).map(s => { const d = Math.max(2, (s.say || '').split(/\s+/).filter(Boolean).length / 2.6) + .35; const r = [t, t + d]; t += d; return r; }); };
+
   async function openChat(fresh) {
-    try { const c = await api(fresh ? 'POST' : 'GET', fresh ? `${C0}/chat/new` : `${C0}/chat`); C.conv = c.id; C.title = c.title; }
+    const gen = ++C.gen;
+    try { const c = await api(fresh ? 'POST' : 'GET', fresh ? `${C0}/chat/new` : `${C0}/chat`);
+      if (gen !== C.gen) return;                    // she started another chat meanwhile: that one wins
+      C.conv = c.id; C.title = c.title; }
     catch (e) { toast(e.message, true); }
   }
   async function chatLoad() {
-    if (!C.conv) return;
-    try { C.rows = (await api('GET', `/api/conversations/${q(C.conv)}/messages?limit=200`)).messages || []; } catch { return; }
-    try { C.items = (await api('GET', `${C0}/chat/${q(C.conv)}/items`)).items || []; } catch { /* next time */ }
+    const conv = C.conv; if (!conv) return;
+    let rows, items;
+    try { rows = (await api('GET', `/api/conversations/${q(conv)}/messages?limit=200`)).messages || []; } catch { return; }
+    try { items = (await api('GET', `${C0}/chat/${q(conv)}/items`)).items || []; } catch { items = null; }
+    if (conv !== C.conv) return;                     // a slower load of the chat she just left never paints over this one
+    C.rows = rows; if (items) C.items = items;
+  }
+  async function recentLoad() { try { UI.recent = ((await api('GET', `${C0}/chats`)).chats || []).slice(0, 4); if (ROOT && !ROOT.hidden) side(); } catch { UI.recent = []; } }
+  async function meLoad() {
+    try { const m = await api('GET', '/api/console/me'); const o = String(m.owner || ''); UI.me = o && o !== 'Hoola user' ? o.split(' ')[0] : ''; } catch { UI.me = ''; }
+    try { const w = await api('GET', '/api/credits'); UI.credits = w && w.on && !w.exempt ? (w.unlocked ? w.paid_left : w.free_left) : null; } catch { UI.credits = null; }
+    if (PAGE === 'chat' && ROOT && !ROOT.hidden) { crumb(); if ($('.hx-hero')) { const h = $('#hxGreet'); if (h) h.textContent = `${greet()}. What should your video say?`; } }
+  }
+  let estT = 0;
+  function estimate() {
+    clearTimeout(estT);
+    estT = setTimeout(async () => {
+      try { UI.est = await api('GET', `${X}/estimate?engine=${q(defEngine())}&seconds=${SET.len || 30}&voice=${q(SET.voice || '')}`); }
+      catch { UI.est = null; }
+      const el = $('#hxEst'); if (el) el.textContent = UI.est ? `About ${cr(UI.est.credits)}` : '';
+    }, 250);
   }
   const fresh = () => !C.rows.some(r => r.role === 'user') && !C.items.length;
   function chatPoll() {
     clearTimeout(C.t);
     const tick = async () => {
       if (PAGE !== 'chat' || !ROOT || ROOT.hidden) return;
-      const n = C.rows.length, m = C.items.map(i => i.id + i.status).join();
+      const n = C.rows.length, m = C.items.map(i => i.id + i.status + i.updated).join();
       await chatLoad();
-      if (C.rows.length !== n || C.items.map(i => i.id + i.status).join() !== m) { if ($('.hx-hero') && !fresh()) draw(); else paintChat(); }
+      if (C.rows.length !== n || C.items.map(i => i.id + i.status + i.updated).join() !== m) { if ($('.hx-hero') && !fresh()) draw(); else paintChat(); }
       const waiting = Date.now() < C.waitUntil && C.rows[C.rows.length - 1]?.role === 'user';
       C.t = setTimeout(tick, waiting || C.items.some(i => i.status === 'making') ? 2000 : 8000);
     };
     C.t = setTimeout(tick, 1500);
   }
-  function chips() {
-    const e = engine(defEngine()), f = face(SET.face);
-    return `<button type="button" class="hx-chip s" data-a="pick" data-k="face" aria-haspopup="menu">${f ? avImg(f, 'xs') : ic('user', 14)}<span>${esc(f ? f.name : 'No face')}</span></button>
+  function chips(home = true) {
+    const e = engine(defEngine()), f = face(SET.face), k = kindNow();
+    const add = `<button type="button" class="hx-chip s" data-a="attach" aria-haspopup="menu" aria-label="Add a file or a web page">${ic('plus', 14)}</button>`;
+    if (!home) return add;                          // in a chat the plan card holds every pick; the box stays one line
+    return `${add}
+      <button type="button" class="hx-chip s" data-a="pick" data-k="face" aria-haspopup="menu">${f ? avImg(f, 'xs') : ic('user', 14)}<span>${esc(f ? f.name : 'No face')}</span></button>
       <button type="button" class="hx-chip s" data-a="pick" data-k="voice" aria-haspopup="menu">${ic('mic', 14)}<span>${esc(voiceName(SET.voice))}</span></button>
-      <button type="button" class="hx-chip s" data-a="pick" data-k="engine" aria-haspopup="menu">${ic('bolt', 14)}<span>${esc(e ? e.label : 'Hoola standard')}</span></button>
-      <button type="button" class="hx-chip s" data-a="pick" data-k="lang" aria-haspopup="menu">${ic('globe', 14)}<span>${esc(langName(SET.lang))}</span></button>
-      <button type="button" class="hx-chip s" data-a="pick" data-k="shape" aria-haspopup="menu"><span>${esc(SHAPE[SET.shape] || 'Talking person')}</span></button>`;
+      <button type="button" class="hx-chip s" data-a="pick" data-k="lang" aria-haspopup="menu">${ic('globe', 14)}<span>${esc(SET.lang && SET.lang !== 'auto' ? langName(SET.lang) : 'Auto · matches what you write')}</span></button>
+      <button type="button" class="hx-chip s" data-a="pick" data-k="len" aria-haspopup="menu">${ic('film', 14)}<span>${aspectOf(k)} · ${SET.len || 30} s</span></button>
+      <button type="button" class="hx-chip s" data-a="pick" data-k="engine" aria-haspopup="menu">${ic('bolt', 14)}<span>${esc(e ? e.label : 'Hoola standard')}</span></button>`;
   }
-  function composer() {
-    return `<div class="hx-comp" id="hxComp"><div class="hx-box"><label class="hx-sr" for="hxAsk">Say what the video should say</label>
-      <textarea id="hxAsk" rows="2" placeholder="Say what the video should say, in any language">${esc(C.ask)}</textarea>
-      <div class="hx-boxrow"><div class="hx-chips" id="hxChips">${chips()}</div><span class="hx-grow"></span>
-        <button type="button" class="hx-send${C.ask.trim() ? ' on' : ''}" data-a="send" aria-label="Send">${ic('up', 18)}</button></div></div>
-      <p class="hx-foot">Hoola plans the scenes and shows the price. <b>Nothing is made until you tap Make.</b></p></div>`;
+  function tray() {
+    return C.files.length ? `<div class="hx-tray">${C.files.map((f, i) => `<span class="hx-file">${f.up ? '<span class="hx-spin" aria-hidden="true"></span>' : ic('folder', 14)}<span>${esc(f.name)}</span>
+      <button type="button" class="hx-ib s" data-a="unfile" data-n="${i}" aria-label="Remove ${esc(f.name)}">${ic('x', 13)}</button></span>`).join('')}</div>` : '';
   }
-  function refreshBar() { const c = $('#hxChips'); if (c) { c.innerHTML = chips(); fillMedia(); } }
-  function vidsRail() {
-    const vids = (D.projects || []).filter(p => p.video).slice(0, 12);
-    return vids.length ? vids.map(p => `<button type="button" class="hx-vcard" data-a="openp" data-id="${esc(p.id)}"><span class="hx-thumb">${ic('play', 18)}</span>
-      <span class="hx-ct"><b>${esc(p.title)}</b><small>${esc(langName(p.lang))} · ${esc(p.video.engine_label || 'Hoola standard')} · ${esc(ago(p.video.made))}</small></span></button>`).join('')
-      : `<p class="hx-mut hx-sm">Your finished videos appear here.</p>`;
+  function composer(home) {
+    const ph = home ? (KINDS.find(k => k[0] === kindNow())?.[3] || KINDS[0][3]) : 'Change anything: a line, the tone, the length, the face';
+    return `<div class="hx-comp${home ? ' home' : ''}" id="hxComp"><div class="hx-box"><label class="hx-sr" for="hxAsk">${home ? 'Describe your video' : 'Change the plan'}</label>
+      <div id="hxTray">${tray()}</div>
+      <textarea id="hxAsk" rows="${home ? 3 : 1}" placeholder="${esc(ph)}">${esc(C.ask)}</textarea>
+      <div class="hx-boxrow"><div class="hx-chips" id="hxChips">${chips(home)}</div><span class="hx-grow"></span>
+        ${home ? `<span class="hx-est hx-num" id="hxEst">${UI.est ? `About ${cr(UI.est.credits)}` : ''}</span>` : ''}
+        <button type="button" class="hx-send${C.ask.trim() ? ' on' : ''}" data-a="send" aria-label="${home ? 'Plan the video' : 'Send'}">${ic('up', 18)}</button></div></div>
+      ${home ? '' : '<p class="hx-foot">Hoola changes the plan. <b>Nothing is made until you tap Make.</b></p>'}</div>`;
   }
-  function planCard(it) {
-    const e = engine(it.engine) || engine('hoola'), f = face(it.avatar_id), qn = it.quote || {}, pr = it.problems || [];
-    const total = (it.scenes || []).reduce((n, s) => n + Math.max(2, (s.say || '').split(/\s+/).filter(Boolean).length / 2.6) + .35, 0);
-    const making = it.status === 'making', ready = it.status === 'ready';
-    return `<div class="hx-plan" data-id="${esc(it.id)}"><div class="hx-planh">${avImg(f)}<span class="hx-ct"><b>${esc(it.title)}</b>
-        <small>${(it.scenes || []).length} scenes · about ${secs(total)} · ${esc(langName(it.lang))}</small></span>${chip(it)}</div>
-      ${ready ? `<video class="hx-player" controls playsinline preload="metadata" data-vid="${esc(it.id)}"></video>` : `<ol class="hx-scenes">${(it.scenes || []).slice(0, 7).map(s => `<li><span class="hx-serifp">${esc(s.say)}</span>${s.look?.kind && s.look.kind !== 'none' ? `<small>${esc(LOOK[s.look.kind] || '')}${s.needs ? ' · needs your numbers' : ''}</small>` : ''}</li>`).join('')}</ol>`}
-      <div class="hx-facts"><span>${ic('user', 14)}${esc(f ? f.name : 'No face')}</span><span>${ic('mic', 14)}${esc(voiceName(it.voice))}</span><span>${ic('bolt', 14)}${esc(e ? e.label : '')}</span></div>
-      ${pr.length && !ready ? `<ul class="hx-why">${pr.map(w => `<li>${esc(scrub(w))}</li>`).join('')}</ul>` : ''}
+  function refreshBar() { const c = $('#hxChips'); if (c) { c.innerHTML = chips(!!$('#hxComp.home')); fillMedia(); } estimate(); }
+  function vthumb(p) {
+    const f = face(p.avatar_id), tall = p.aspect === '9:16';
+    return `<span class="hx-vth${tall ? ' tall' : ''}" style="--brand:${esc(brandColor())}"><i class="l1"></i><i class="l2"></i>
+      ${f ? `<span class="hx-vthf">${avImg(f, 'xs')}</span>` : ''}<span class="hx-vtht hx-num">${clock(lenOf(p))}</span></span>`;
+  }
+  function vstate(p) {
+    return p.status === 'ready' ? ['ok', `Ready · ${langName(p.lang)}`] : p.status === 'making' ? ['work', 'Making it now'] : p.status === 'failed' ? ['bad', 'Could not be made'] : ['', 'Plan · not made yet'];
+  }
+  function vidsGrid() {
+    const ps = (D.projects || []).slice(0, 8);
+    return ps.length ? `<div class="hx-vgrid">${ps.map(p => { const [c, t] = vstate(p);
+      return `<button type="button" class="hx-vc" data-a="openv" data-id="${esc(p.id)}">${vthumb(p)}<b>${esc(p.title)}</b><span class="hx-st ${c}">${esc(t)}</span></button>`; }).join('')}</div>`
+      : `<p class="hx-mut hx-sm">Your videos appear here: plans you have not made yet, the ones being made, and the finished ones.</p>`;
+  }
+  function home() {
+    const g = UI.ideaG || 'business';
+    return `<div class="hx-hero"><div class="hx-herob">
+        <h2 class="hx-serif" id="hxGreet">${esc(greet())}. What should your video say?</h2>
+        <p class="hx-mut">Write it in any language. Hoola writes the script, plans the scenes and shows the price. Nothing is made until you tap Make.</p>
+        <div class="hx-kinds" role="radiogroup" aria-label="Kind of video">${KINDS.map(([k, n, m]) => `<button type="button" role="radio" aria-checked="${kindNow() === k && SET.kind !== 'translate'}" class="hx-kind k-${k}" data-a="kind" data-val="${k}"><span class="hx-km" aria-hidden="true">${esc(m)}</span>${esc(n)}</button>`).join('')}</div>
+        ${composer(true)}
+        <p class="hx-foot c">The plan and a short voice sample are free. Credits are used only when you tap <b>Make the video</b>.</p></div>
+      <section class="hx-sec" aria-labelledby="hxSt"><b class="hx-t" id="hxSt">Or start from something you have</b><div class="hx-starts">
+        <button type="button" class="hx-start" data-a="from" data-val="doc"><span class="hx-sic">${ic('folder', 18)}</span><span><b>A document</b>A PDF or Word file into an explainer</span></button>
+        <button type="button" class="hx-start" data-a="from" data-val="web"><span class="hx-sic">${ic('globe', 18)}</span><span><b>A web page</b>Your product page into a video</span></button>
+        <button type="button" class="hx-start" data-a="from" data-val="slides"><span class="hx-sic">${ic('film', 18)}</span><span><b>Slides</b>A deck into a narrated lesson</span></button>
+        <button type="button" class="hx-start" data-a="from" data-val="video"><span class="hx-sic">${ic('mic', 18)}</span><span><b>A video</b>Into another language, in the same voice</span></button></div></section>
+      <section class="hx-sec" aria-labelledby="hxId"><div class="hx-sech"><b class="hx-t" id="hxId">Ideas</b>
+        <div class="hx-gtabs" role="tablist" aria-label="Idea groups">${Object.entries(IDEA_G).map(([k, n]) => `<button type="button" role="tab" aria-selected="${g === k}" data-a="ideag" data-val="${k}">${esc(n)}</button>`).join('')}</div></div>
+        <div class="hx-ideas">${IDEAS[g].map(([t, l, k], i) => `<button type="button" class="hx-idea" data-a="idea" data-n="${i}"><span>${esc(t)}</span>
+          <span class="hx-tags"><span>${esc(langName(l))}</span><span>${esc(KIND_NAME[k])}</span></span></button>`).join('')}</div></section>
+      <section class="hx-sec" aria-labelledby="hxYv"><div class="hx-sech"><b class="hx-t" id="hxYv">Your videos</b><span class="hx-grow"></span>
+        ${(D.projects || []).length > 8 ? '<button type="button" class="hx-lnk" data-a="go" data-p="projects">See all</button>' : ''}</div>${vidsGrid()}</section></div>`;
+  }
+
+  // ---- the plan card
+  function sceneGrid(it) {
+    const f = face(it.avatar_id), on = UI.pv.id === it.id ? UI.pv.scene : -1;
+    return `<div class="hx-scg">${(it.scenes || []).map((s, i) => { const lk = s.look?.kind && s.look.kind !== 'none';
+      return `<button type="button" class="hx-sct${i === on ? ' on' : ''}" data-a="pvscene" data-id="${esc(it.id)}" data-n="${i}" aria-label="Scene ${i + 1}">
+        <span class="hx-scth" style="--brand:${esc(brandColor())}"><small class="hx-num">${i + 1} · ${clock(sceneTimes(it)[i][0])}</small><i></i>${f && (it.face_layout !== 'full' || i === 0) ? `<span class="hx-scf">${avImg(f, 'xs')}</span>` : ''}</span>
+        <b>${esc(lk ? (LOOK[s.look.kind] || 'Scene') : (f ? 'Presenter' : 'Words'))}</b><span class="hx-scl">${esc(s.say)}</span>${s.needs ? `<em>${esc(s.needs)}</em>` : ''}</button>`; }).join('')}</div>`;
+  }
+  function priceBox(qn) {
+    if (!qn) return '';
+    return `<div class="hx-pbox hx-num"><div><span>Voice, about ${secs(qn.seconds)}</span><span>${qn.voice_credits ? cr(qn.voice_credits) : 'Included'}</span></div>
+      <div><span>${esc(qn.label)}${qn.face_credits ? ', the talking face' : ''}</span><span>${qn.face_credits ? cr(qn.face_credits) : 'Included'}</span></div>
+      <div><span>Scenes, titles and subtitles</span><span>Included</span></div>
+      <div class="t"><span>Total</span><span>${cr(qn.credits)}${qn.usd ? ` <small>≈ US$${(+qn.usd).toFixed(2)}</small>` : ''}</span></div></div>`;
+  }
+  function planCard(it, newest) {
+    const e = engine(it.engine) || engine('hoola'), f = face(it.avatar_id), qn = it.quote || null, pr = it.problems || [];
+    const making = it.status === 'making', ready = it.status === 'ready', failed = it.status === 'failed';
+    const meta = [KIND_NAME[it.kind] || SHAPE[it.shape] || 'Video', `${(it.scenes || []).length} scenes`, it.aspect || '16:9', clock(lenOf(it)), langName(it.lang)].join(' · ');
+    const head = `<div class="hx-planh"><span class="hx-ct"><b>${esc(it.title)}</b><small>${esc(meta)}</small></span>${ready ? '' : `<span class="hx-pstate ${making ? 'work' : failed ? 'bad' : ''}">${making ? 'Making it' : failed ? 'Not made' : 'Plan · nothing made yet'}</span>`}</div>`;
+    if (ready) return `<article class="hx-plan" data-id="${esc(it.id)}" aria-label="Finished video">${head}
+      <div class="hx-vwrap"><video class="hx-player" controls playsinline preload="metadata" data-vid="${esc(it.id)}"></video><span class="hx-aimark">Made with AI</span></div>
+      <div class="hx-acts"><span class="hx-mut hx-sm hx-num">${esc(it.video?.engine_label || e?.label || '')}${it.video?.credits ? ' · used ' + cr(it.video.credits) : ''}</span><span class="hx-grow"></span>
+        <button type="button" class="hx-btn dark" data-a="dlv" data-id="${esc(it.id)}">${ic('dl', 14)}Download MP4</button>
+        <button type="button" class="hx-btn" data-a="openp" data-id="${esc(it.id)}">Open in Studio</button></div>
+      <div class="hx-next"><b class="hx-sm">Next with this video</b><div class="hx-nextg">
+        <button type="button" class="hx-nx" data-a="morelang" data-id="${esc(it.id)}"><b>More languages</b><span>Same face and voice, in any of 140</span></button>
+        <button type="button" class="hx-nx" data-a="say" data-t="Make a 9:16 reel version of this video, about 15 seconds, for Instagram and TikTok."><b>Reel cut</b><span>A vertical version for social media</span></button>
+        <button type="button" class="hx-nx" data-a="openp" data-id="${esc(it.id)}"><b>Change a line</b><span>Edit the script in the Studio, make it again</span></button>
+        <button type="button" class="hx-nx" data-a="tplsave" data-id="${esc(it.id)}"><b>Save as a template</b><span>Reuse it with new names and numbers</span></button></div></div>
+      ${newest ? `<div class="hx-mk"><span class="hx-mut hx-sm">Make it in:</span>${MORE_LANGS.filter(c => c !== it.lang).slice(0, 5).map(c => `<button type="button" class="hx-chip s" data-a="say" data-t="Make the same video in ${esc(langName(c))}, keeping every name and number.">${esc(langName(c))}</button>`).join('')}
+        <button type="button" class="hx-chip s" data-a="morelang" data-id="${esc(it.id)}">${ic('plus', 13)}Choose</button></div>` : ''}</article>`;
+    return `<article class="hx-plan" data-id="${esc(it.id)}" aria-label="Video plan">${head}
+      ${sceneGrid(it)}
+      <div class="hx-prow"><span class="k">Face</span>${avImg(f, 'xs')}<span class="v">${esc(f ? f.name : 'No face')}<small>${f ? 'Consent on record' : 'Scenes and voice only'}</small></span>
+        ${f ? `<div class="hx-seg" role="radiogroup" aria-label="Where the face appears"><button type="button" role="radio" aria-checked="${it.face_layout !== 'full'}" data-a="flay" data-id="${esc(it.id)}" data-val="corner">In a corner</button><button type="button" role="radio" aria-checked="${it.face_layout === 'full'}" data-a="flay" data-id="${esc(it.id)}" data-val="full">Full frame</button></div>` : ''}
+        <button type="button" class="hx-btn s" data-a="ipick" data-k="face" data-id="${esc(it.id)}"${making ? ' disabled' : ''}>Change</button></div>
+      <div class="hx-prow"><span class="k">Voice</span><button type="button" class="hx-hear" data-a="hear" data-id="${esc(it.id)}" aria-label="Hear a short sample, free">${ic('play', 12)}</button>
+        <span class="v">${esc(voiceName(it.voice))}<small>Hear a short sample, free</small></span>
+        <button type="button" class="hx-btn s" data-a="ipick" data-k="voice" data-id="${esc(it.id)}"${making ? ' disabled' : ''}>Change</button></div>
+      <div class="hx-prow"><span class="k">Language</span><span class="v">${esc(langName(it.lang))}<small>Spoken, with subtitles in the same language</small></span>
+        <button type="button" class="hx-btn s" data-a="morelang" data-id="${esc(it.id)}">${ic('plus', 13)}Another language</button></div>
+      <div class="hx-prow"><span class="k">Engine</span><span class="v">${esc(e ? e.label : 'Hoola standard')}<small>${esc(e?.what || '')}</small></span>
+        <button type="button" class="hx-btn s" data-a="cmp" data-id="${esc(it.id)}"${making ? ' disabled' : ''}>Compare engines</button></div>
+      ${priceBox(qn)}
+      ${pr.length ? `<ul class="hx-why">${pr.map(w => `<li>${esc(scrub(w))}</li>`).join('')}</ul>` : ''}
+      ${failed && it.error ? `<p class="hx-why">${esc(scrub(it.error))}</p>` : ''}
       <div id="hxJob-${esc(it.id)}">${making ? '<p class="hx-mut hx-sm">Making it…</p>' : ''}</div>
-      ${ready ? `<div class="hx-acts"><button type="button" class="hx-btn s" data-a="dlv" data-id="${esc(it.id)}">${ic('dl', 14)}Download</button>
-          <button type="button" class="hx-btn s" data-a="tr" data-id="${esc(it.id)}">${ic('globe', 14)}Translate</button>
-          <button type="button" class="hx-btn s" data-a="dup" data-id="${esc(it.id)}">${ic('copy', 14)}Make a version</button></div>
-          <p class="hx-hint">Made with AI: said in the video file too.</p>`
-        : `<div class="hx-acts"><span class="hx-price hx-num">${esc(qn.line || '')}</span><span class="hx-grow"></span>
-          <button type="button" class="hx-btn s" data-a="openp" data-id="${esc(it.id)}">Change</button>
-          ${making ? `<button type="button" class="hx-btn s danger" data-a="stop" data-id="${esc(it.id)}">${ic('stop', 14)}Stop</button>`
-            : `<button type="button" class="hx-btn s dark" data-a="make" data-id="${esc(it.id)}" data-k="${esc(qn.key || '')}"${pr.length ? ' disabled' : ''}>Make the video</button>`}</div>`}</div>`;
+      ${making ? '' : `<div class="hx-acts big">
+        <button type="button" class="hx-btn dark l" data-a="make" data-id="${esc(it.id)}" data-k="${esc(qn?.key || '')}"${pr.length ? ' disabled' : ''}>${failed ? 'Try again' : 'Make the video'}${qn ? ' · ' + cr(qn.credits) : ''}</button>
+        <button type="button" class="hx-btn l" data-a="openp" data-id="${esc(it.id)}">Open in Studio</button><span class="hx-grow"></span>
+        <span class="hx-mut hx-sm hx-pnote">If the face engine fails, its credits are not used. The plan stays.</span></div>`}</article>
+      ${newest && !making ? `<div class="hx-sugg">${SUGGEST.map(t => `<button type="button" class="hx-chip s" data-a="say" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div>` : ''}`;
   }
   function thread() {
     const items = [...C.items].reverse();
     const out = [];
     let it = 0;
     const rows = C.rows.filter(r => r.role === 'user' || r.role === 'assistant');
+    const last = items[items.length - 1]?.id;
+    const mark = `<span class="hx-mark s" aria-hidden="true">${markSvg()}</span>`;
     rows.forEach(r => {
-      while (it < items.length && Date.parse(items[it].created) <= Date.parse(r.at)) out.push(planCard(items[it++]));
-      out.push(r.role === 'user' ? `<div class="hx-me">${esc(strip(r.text))}</div>` : `<div class="hx-ho">${esc(r.text).replace(/\n/g, '<br>')}</div>`);
+      while (it < items.length && Date.parse(items[it].created) <= Date.parse(r.at)) { const x = items[it++]; out.push(`<div class="hx-turn">${mark}<div class="hx-tb">${planCard(x, x.id === last)}</div></div>`); }
+      out.push(r.role === 'user' ? `<div class="hx-me">${esc(strip(r.text))}</div>` : `<div class="hx-turn">${mark}<div class="hx-tb"><div class="hx-ho">${esc(r.text).replace(/\n/g, '<br>')}</div></div></div>`);
     });
-    while (it < items.length) out.push(planCard(items[it++]));
-    if (C.sending || (Date.now() < C.waitUntil && rows[rows.length - 1]?.role === 'user')) out.push(`<div class="hx-working"><span class="hx-mark s">${markSvg()}</span><span>Planning the video…</span></div>`);
+    while (it < items.length) { const x = items[it++]; out.push(`<div class="hx-turn">${mark}<div class="hx-tb">${planCard(x, x.id === last)}</div></div>`); }
+    if (C.sending || (Date.now() < C.waitUntil && rows[rows.length - 1]?.role === 'user')) out.push(`<div class="hx-working"><span class="hx-mark s">${markSvg()}</span><span>Writing the script and planning the scenes…</span></div>`);
     return out.join('');
   }
-  function paintChat() { const t = $('#hxThread'); if (!t) return; const log = $('#hxLog'), atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
-    t.innerHTML = thread(); fillMedia(); if (atEnd) log.scrollTop = log.scrollHeight; C.items.filter(i => i.status === 'making').forEach(i => watchJob(i.id)); }
+
+  // ---- the preview beside the chat: a sketch, the script, the subtitles of one plan
+  const pvItem = () => C.items.find(i => i.id === UI.pv.id) || C.items[0];
+  function srt(p, vtt) {
+    const T = sceneTimes(p), fmt = s => { const ms = Math.round(s * 1000), h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, ss = Math.floor(ms / 1000) % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}${vtt ? '.' : ','}${String(ms % 1000).padStart(3, '0')}`; };
+    const body = (p.scenes || []).map((s, i) => `${vtt ? '' : (i + 1) + '\n'}${fmt(T[i][0])} --> ${fmt(T[i][1])}\n${s.say}`).join('\n\n');
+    return vtt ? `WEBVTT\n\n${body}\n` : `${body}\n`;
+  }
+  function sketch(p) {
+    const n = Math.min(UI.pv.scene, (p.scenes || []).length - 1), sc = p.scenes[n] || {}, f = face(p.avatar_id), full = p.face_layout === 'full';
+    const T = sceneTimes(p), total = T.length ? T[T.length - 1][1] : 1, at = T[n] ? T[n][0] : 0;
+    return `<div class="hx-preview ${p.aspect === '9:16' ? 'tall' : p.aspect === '1:1' ? 'sq' : ''}" style="--brand:${esc(brandColor())}">
+        ${f && full ? `<span class="hx-pvfull">${avImg(f, 'xl')}</span>` : ''}
+        <div class="hx-pvlook">${lookText(sc.look) ? `<b>${esc(lookText(sc.look))}</b>` : n === 0 ? `<b>${esc(p.title)}</b>` : ''}</div>
+        ${f && !full ? `<span class="hx-pvface">${avImg(f, 'l')}</span>` : ''}<p class="hx-pvcap">${esc(sc.say || '')}</p></div>
+      <div class="hx-pvbar"><button type="button" class="hx-pplay" data-a="pvplay" aria-label="${UI.pv.play ? 'Pause the sketch' : 'Play the sketch'}">${ic(UI.pv.play ? 'stop' : 'play', 14)}</button>
+        <span class="hx-track"><i style="width:${Math.round(100 * at / total)}%"></i></span><span class="hx-mut hx-sm hx-num">${clock(at)} / ${clock(total)}</span></div>
+      <p class="hx-mut hx-sm">A free sketch with the real scenes and timing. Your talking face and the voice are made when you tap Make.</p>`;
+  }
+  function pvPane() {
+    const p = pvItem();
+    if (!p) return `<div class="hx-pvempty"><span class="hx-mark l" aria-hidden="true">${markSvg()}</span><b>Your plan appears here</b><span class="hx-mut hx-sm">A sketch of every scene, the script and the subtitles, before anything is made.</span></div>`;
+    const tab = UI.pv.tab;
+    const body = p.status === 'ready' && tab === 'sketch' ? `<div class="hx-vwrap"><video class="hx-player" controls playsinline preload="metadata" data-vid="${esc(p.id)}"></video><span class="hx-aimark">Made with AI</span></div>`
+      : tab === 'sketch' ? sketch(p)
+      : tab === 'script' ? `<p class="hx-mut hx-sm">Change any line here; the plan updates and the price follows.${p.status === 'ready' ? ' Make it again for a new version.' : ''}</p>
+          <ol class="hx-pvscript">${(p.scenes || []).map((s, i) => `<li><span class="hx-mut hx-sm hx-num">Scene ${i + 1} · ${clock(sceneTimes(p)[i][0])}</span>
+            <textarea class="hx-in hx-serifp" rows="2" data-isc="${i}" data-id="${esc(p.id)}" aria-label="Scene ${i + 1} words"${p.status === 'making' ? ' disabled' : ''}>${esc(s.say)}</textarea></li>`).join('')}</ol>`
+      : `<pre class="hx-srt">${esc(srt(p))}</pre><div class="hx-acts"><button type="button" class="hx-btn s" data-a="subdl" data-val="srt">${ic('dl', 13)}Download .srt</button>
+          <button type="button" class="hx-btn s" data-a="subdl" data-val="vtt">${ic('dl', 13)}Download .vtt</button></div>
+          <p class="hx-mut hx-sm">${p.status === 'ready' ? 'Timed from the plan; the finished video follows the same scenes.' : 'Timed from the plan. The finished video follows the same scenes.'}</p>`;
+    return `<div class="hx-pvh"><div class="hx-tabs" role="tablist" aria-label="Preview">${[['sketch', p.status === 'ready' ? 'Video' : 'Sketch'], ['script', 'Script'], ['subs', 'Subtitles']].map(([k, n]) => `<button type="button" role="tab" aria-selected="${tab === k}" data-a="pvtab" data-val="${k}">${n}</button>`).join('')}</div>
+      <span class="hx-grow"></span>${C.items.length > 1 ? `<button type="button" class="hx-btn s" data-a="pvwhich" aria-haspopup="menu">${esc((p.title || '').slice(0, 22))}${ic('down', 13)}</button>` : ''}</div>
+      <div class="hx-pvb">${body}</div>`;
+  }
+  function paintPv() { const a = $('#hxPv'); if (!a) return; a.innerHTML = pvPane(); fillMedia(); }
+  function paintChat() {
+    const t = $('#hxThread'); if (!t) return; const log = $('#hxLog'), atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
+    t.innerHTML = thread(); fillMedia(); if (atEnd) log.scrollTop = log.scrollHeight;
+    if (!C.items.some(i => i.id === UI.pv.id)) { UI.pv.id = C.items[0]?.id || ''; UI.pv.scene = 0; }
+    if (!$('#hxPv textarea:focus')) paintPv();
+    C.items.filter(i => i.status === 'making').forEach(i => watchJob(i.id));
+  }
+  function pvStop() { clearTimeout(UI.pv.t); UI.pv.play = false; }
+  function pvPlay() {
+    const p = pvItem(); if (!p) return;
+    if (UI.pv.play) { pvStop(); return paintPv(); }
+    UI.pv.play = true; if (UI.pv.scene >= p.scenes.length - 1) UI.pv.scene = 0;
+    const step = () => {
+      if (!UI.pv.play || PAGE !== 'chat') return;
+      paintPv(); const T = sceneTimes(p)[UI.pv.scene]; const d = T ? (T[1] - T[0]) * 1000 : 2500;
+      UI.pv.t = setTimeout(() => { if (UI.pv.scene < p.scenes.length - 1) { UI.pv.scene++; step(); } else { pvStop(); paintPv(); } }, d);
+    };
+    step();
+  }
+  async function saveItem(id, body) {
+    try { const p = await api('PUT', `${S}/project?id=${q(id)}`, body); const i = (D.projects || []).findIndex(x => x.id === id); if (i >= 0) D.projects[i] = p;
+      await chatLoad(); paintChat(); }
+    catch (e) { toast(e.message, true); }
+  }
+  let iscT = 0;
+  function saveLine(id, n, text) {
+    const p = C.items.find(x => x.id === id); if (!p) return;
+    p.scenes = p.scenes.map((s, i) => i === n ? {...s, say: text} : s);
+    clearTimeout(iscT); iscT = setTimeout(() => saveItem(id, {scenes: p.scenes}), 700);
+  }
+  async function hear(id) {
+    const p = C.items.find(x => x.id === id), text = (p?.scenes?.[0]?.say || p?.title || '').split(/(?<=[.!?。！？])\s/)[0].slice(0, 160);
+    if (!text) return;
+    try { const r = await api('POST', '/api/vocal/hear', {text, voice: p.voice || '', lang: p.lang || ''}, {raw: true});
+      if (!r.ok) { let m = 'The sample could not be made.'; try { m = (await r.json()).detail || m; } catch { /* keep */ } throw new Error(m); }
+      UI.audio?.pause(); UI.audio = new Audio(URL.createObjectURL(await r.blob())); UI.audio.play().catch(() => {}); }
+    catch (e) { toast(e.message, true); }
+  }
+  async function compare(el, id) {
+    let r; try { r = await api('GET', `${X}/compare?id=${q(id)}`); } catch (e) { return toast(e.message, true); }
+    menu(el, [{header: `Price for this ${secs(r.seconds)} video`}, ...r.engines.map(e => ({label: e.label, sub: e.ready ? `${cr(e.credits)} · ${e.what}` : `Not connected · ${e.what}`,
+      disabled: !e.ready, checked: r.chosen === e.id, run: () => saveItem(id, {engine: e.id})})), {sep: true}, {label: 'Set a default engine', icon: 'bolt', run: () => go('engines')}], {width: 340});
+  }
+  async function addFiles(list, kind, ask) {
+    if (!C.conv) await openChat(); if (!C.conv) return;
+    for (const file of list) {
+      if (file.size > 30 * 1024 * 1024) { toast(`${file.name} is larger than 30 MB.`, true); continue; }
+      const row = {name: file.name, up: true}; C.files.push(row); const tr = $('#hxTray'); if (tr) tr.innerHTML = tray();
+      try { const fd = new FormData(); fd.append('file', file, file.name); const r = await api('POST', `/api/conversations/${q(C.conv)}/files`, undefined, {form: fd}); row.id = r.file_id; row.up = false; }
+      catch (e) { C.files.splice(C.files.indexOf(row), 1); toast(e.message, true); }
+      const t2 = $('#hxTray'); if (t2) t2.innerHTML = tray();
+    }
+    if (kind) { SET.kind = kind; store.set('hx.set', SET); }
+    if (ask && !C.ask.trim()) { C.ask = ask; const t = $('#hxAsk'); if (t) t.value = ask; }
+    if ($('.hx-hero')) draw(); $('.hx-send')?.classList.toggle('on', !!C.ask.trim()); $('#hxAsk')?.focus();
+  }
+  function pickFiles(accept, kind, ask) {
+    const i = document.createElement('input'); i.type = 'file'; i.multiple = true; i.accept = accept || '';
+    i.onchange = () => { if (i.files?.length) addFiles([...i.files], kind, ask); }; i.click();
+  }
+  function fromWeb() {
+    const u = (prompt('Paste the address of the web page') || '').trim(); if (!u) return;
+    if (!/^https?:\/\/\S+\.\S+/i.test(u)) return toast('Paste a full web address that starts with https://', true);
+    SET.kind = 'product'; store.set('hx.set', SET); C.ask = `Make a product video from this page: ${u}`; draw(); $('#hxAsk')?.focus(); $('.hx-send')?.classList.add('on');
+  }
+  function toDubbing() { window.__hvPage = 'dub'; leave(); return ctx.go ? ctx.go('vocal') : back?.(); }
   async function chatSend(textIn) {
     const text = String(textIn ?? $('#hxAsk')?.value ?? C.ask).trim();
-    if (!text) { $('#hxAsk')?.focus(); toast('Say what the video should say first.'); return; }
+    if (C.files.some(f => f.up)) return toast('Wait for the files to finish uploading.');
+    if (!text && !C.files.length) { $('#hxAsk')?.focus(); toast('Say what the video should say first.'); return; }
     if (!C.conv) await openChat(); if (!C.conv) return;
-    C.sending = true; C.ask = ''; const ta = $('#hxAsk'); if (ta) ta.value = '';
-    C.rows.push({role: 'user', text, at: new Date().toISOString()});
+    const files = textIn == null ? C.files.filter(f => f.id) : [];
+    const said = text || 'Make a video from the file I attached.';
+    C.sending = true; if (textIn == null) { C.ask = ''; C.files = []; } const ta = $('#hxAsk'); if (ta && textIn == null) ta.value = '';
+    C.rows.push({role: 'user', text: said + (files.length ? `\n(${files.map(f => f.name).join(', ')})` : ''), at: new Date().toISOString()});
+    pvStop();
     if ($('.hx-hero')) draw(); else paintChat();
     try {
-      await api('POST', `/api/conversations/${q(C.conv)}/messages`, {text: `${text}\n\n${settingsNote()}`, client_id: 'ix' + Date.now().toString(36)});
+      await api('POST', `/api/conversations/${q(C.conv)}/messages`, {text: `${said}\n\n${settingsNote()}`, files: files.map(f => f.id), client_id: 'ix' + Date.now().toString(36)});
       C.waitUntil = Date.now() + 180000;
-    } catch (e) { toast(e.message, true); C.ask = text; }
-    C.sending = false; await chatLoad(); paintChat(); chatPoll();
+    } catch (e) { toast(e.message, true); if (textIn == null) C.ask = text; }
+    C.sending = false; await chatLoad(); paintChat(); chatPoll(); recentLoad();
   }
 
   // ------------------------------------------------------------------ the make job ---
@@ -247,12 +496,17 @@ window.HoolaInteractive = function (ctx) {
   }
   function jobHTML(j) {
     if (!j || !j.steps) return '';
-    return `<ol class="hx-steps">${j.steps.filter(s => s.k !== 'done' && (s.k !== 'face' || (j.engine && j.engine !== 'hoola'))).map(s => {
-      const done = s.at != null && s.k !== j.current, now = s.k === j.current && !j.done;
-      return `<li class="${done ? 'ok' : now ? 'now' : ''}">${done ? ic('check', 14) : now ? '<span class="hx-spin" aria-hidden="true"></span>' : '<span class="hx-dot"></span>'}
+    const steps = j.steps.filter(s => s.k !== 'done' && (s.k !== 'face' || (j.engine && j.engine !== 'hoola')));
+    const done = steps.filter(s => s.at != null && s.k !== j.current).length, pct = j.done ? 100 : Math.round(100 * (done + .5) / Math.max(1, steps.length));
+    return `<div class="hx-jobh"><span class="hx-ct"><b>${j.done ? (j.status === 'ready' ? 'Ready' : j.status === 'failed' ? 'Not made' : 'Stopped') : 'Making the video'}</b>
+        <small class="hx-num">Working for ${clock(j.elapsed)}${j.credits ? ' · ' + cr(j.credits) : ''}</small></span><span class="hx-grow"></span>
+        ${j.done ? '' : `<button type="button" class="hx-btn s danger" data-a="stop" data-id="${esc(j.pid)}">${ic('stop', 14)}Stop</button>`}</div>
+      <div class="hx-pbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>
+      <ol class="hx-steps">${steps.map(s => {
+      const ok = s.at != null && s.k !== j.current, now = s.k === j.current && !j.done;
+      return `<li class="${ok ? 'ok' : now ? 'now' : ''}">${ok ? ic('check', 14) : now ? '<span class="hx-spin" aria-hidden="true"></span>' : '<span class="hx-dot"></span>'}
         <span>${esc(s.label)}</span>${s.detail ? `<small>${esc(scrub(s.detail))}</small>` : ''}</li>`; }).join('')}</ol>
-      <div class="hx-acts"><span class="hx-mut hx-sm hx-num">${secs(j.elapsed)}${j.credits ? ' · ' + cr(j.credits) : ''}</span><span class="hx-grow"></span>
-      ${j.done ? '' : `<button type="button" class="hx-btn s danger" data-a="stop" data-id="${esc(j.pid)}">${ic('stop', 14)}Stop</button>`}</div>
+      ${j.done ? '' : '<p class="hx-mut hx-sm">You can close this page. The video keeps being made, and it appears here when it is ready.</p>'}
       ${j.error && j.status === 'failed' ? `<p class="hx-why">${esc(scrub(j.error))}</p>` : ''}`;
   }
   function watchJob(id) {
@@ -275,13 +529,9 @@ window.HoolaInteractive = function (ctx) {
   // ------------------------------------------------------------------ pages ---
   const V = {
     chat() {
-      if (fresh()) return `<div class="hx-hero"><div class="hx-herob"><span class="hx-mark l" aria-hidden="true">${markSvg()}</span>
-          <h2 class="hx-serif">What should your video say?</h2>
-          <p class="hx-mut">Any language. Your face, your voice, the engine you choose, and the price before anything is made.</p>
-          ${composer()}<div class="hx-ideas">${IDEAS.map((t, i) => `<button type="button" class="hx-chip" data-a="idea" data-n="${i}">${esc(t)}</button>`).join('')}</div></div>
-          <section class="hx-railw" aria-label="Your videos"><b class="hx-t">Your videos</b><div class="hx-rail">${vidsRail()}</div></section></div>`;
-      return `<div class="hx-split"><div class="hx-chat"><div class="hx-log" id="hxLog"><div id="hxThread">${thread()}</div></div>${composer()}</div>
-        <aside class="hx-stage hx-side2" aria-label="Your videos"><div class="hx-stageb"><b class="hx-t">Your videos</b>${vidsRail()}</div></aside></div>`;
+      if (fresh()) return home();
+      return `<div class="hx-split hx-ixchat"><div class="hx-chat"><div class="hx-log" id="hxLog"><div id="hxThread">${thread()}</div></div>${composer(false)}</div>
+        <aside class="hx-stage hx-pv" id="hxPv" aria-label="Preview">${pvPane()}</aside></div>`;
     },
     studio() {
       if (!ARG) {
@@ -498,7 +748,7 @@ window.HoolaInteractive = function (ctx) {
       <label class="hx-fld"><span class="hx-lab">Title</span><input class="hx-in" data-f="title" value="${esc(p.title)}" maxlength="80"></label>`;
   }
   const ENTER = {
-    chat() { (C.conv ? Promise.resolve() : openChat()).then(chatLoad).then(() => { if (PAGE !== 'chat') return; if ($('.hx-hero') && !fresh()) draw(); else paintChat(); chatPoll(); }); },
+    chat() { (C.conv ? Promise.resolve() : openChat()).then(chatLoad).then(() => { if (PAGE !== 'chat') return; if ($('.hx-hero') && !fresh()) draw(); else paintChat(); chatPoll(); }); estimate(); },
     voices() { voicesLoad().then(() => { if (PAGE === 'voices') draw(); }); },
     studio() { if (ARG) { const p = (D.projects || []).find(x => x.id === ARG); if (p?.status === 'making') watchJob(ARG); studioQuote(); } },
     engines() { if (UI.etab === 'broll') brQuote(); },
@@ -522,8 +772,9 @@ window.HoolaInteractive = function (ctx) {
 
   // ------------------------------------------------------------------ menus ---
   function menu(el, items, opts) { if (window.HoolaMenu) HoolaMenu.open(el, items, {align: 'start', ...(opts || {})}); }
-  function pickMenu(el, k, onPick) {
+  function pickMenu(el, k, onPick, item) {
     const cbs = v => () => onPick(v);
+    if (k === 'len') return menu(el, [{header: kindNow() === 'reel' ? 'Vertical 9:16, for social media' : 'Wide 16:9 (a reel is vertical)'}, ...LENS.map(n => ({label: n < 60 ? `${n} seconds` : `${n / 60 === 1 ? '1 minute' : '1.5 minutes'}`, checked: (SET.len || 30) === n, run: () => setPick('len', n)}))]);
     if (k === 'face') return menu(el, [{label: 'No face', checked: !SET.face, run: cbs('')}, ...(D.avatars || []).map(a => ({label: a.name, sub: 'Consent on record', checked: SET.face === a.id, run: cbs(a.id)})),
       {sep: true}, {label: 'Add a face', icon: 'plus', run: () => go('avatars')}]);
     if (k === 'voice') { const Vv = UI.V || {mine: [], library: []};
@@ -531,7 +782,7 @@ window.HoolaInteractive = function (ctx) {
         ...Vv.mine.map(v => ({label: v.name, sub: 'Your own', disabled: !v.ready, run: cbs(v.id)})), {header: 'Ready-made'},
         ...Vv.library.slice(0, 120).map(v => ({label: v.name, sub: [v.gender, v.tier === 'premium' ? 'Premium' : ''].filter(Boolean).join(' · '), disabled: !v.ready, run: cbs(v.id)}))], {width: 300}); }
     if (k === 'engine') return menu(el, (D.engines?.engines || []).filter(e => e.job === 'video').map(e => ({label: e.label, sub: e.ready ? e.price : scrub(e.status), disabled: !e.ready, checked: defEngine() === e.id, run: cbs(e.id)})), {width: 300});
-    if (k === 'lang') return menu(el, [{search: 'Find a language', empty: 'No language matches'}, ...(UI.L || []).map(l => ({label: l.native && l.native !== l.name ? `${l.name} · ${l.native}` : l.name, sub: l.region, run: cbs(l.code)}))], {width: 280});
+    if (k === 'lang') return menu(el, [{search: 'Find a language', empty: 'No language matches'}, ...(item ? [] : [{label: 'Auto', sub: 'Matches the language you write in', checked: !SET.lang || SET.lang === 'auto', run: cbs('auto')}]), ...(UI.L || []).map(l => ({label: l.native && l.native !== l.name ? `${l.name} · ${l.native}` : l.name, sub: l.region, run: cbs(l.code)}))], {width: 280});
     if (k === 'shape') return menu(el, Object.entries(SHAPE).map(([s, n]) => ({label: n, checked: SET.shape === s, run: cbs(s)})));
   }
   function setPick(k, v) { SET[k] = v; store.set('hx.set', SET); if (PAGE === 'chat') refreshBar(); else draw(); }
@@ -546,11 +797,42 @@ window.HoolaInteractive = function (ctx) {
       case 'slim': UI.slim = !UI.slim; store.set('hx.slim', UI.slim); return side();
       case 'navon': UI.nav = true; return side();
       case 'navoff': UI.nav = false; return side();
-      case 'newchat': C.conv = ''; C.rows = []; C.items = []; await openChat(true); return go('chat');
+      case 'newchat': clearTimeout(C.t); C.conv = ''; C.rows = []; C.items = []; C.files = []; C.ask = ''; UI.pv.id = ''; pvStop(); await openChat(true); recentLoad(); return go('chat');
+      case 'openchat': clearTimeout(C.t); C.gen++; C.conv = id; C.rows = []; C.items = []; UI.pv.id = ''; pvStop(); await chatLoad(); return go('chat');
+      case 'credits': leave(); location.assign('/console/?v=credits'); return;
+      case 'kind': if (b.dataset.val === 'translate') return toDubbing();
+        SET.kind = b.dataset.val; SET.shape = shapeOf(SET.kind); if (SET.kind === 'reel' && (SET.len || 30) > 30) SET.len = 15; store.set('hx.set', SET); estimate(); return draw();
+      case 'ideag': UI.ideaG = b.dataset.val; return draw();
+      case 'from': { const v = b.dataset.val;
+        if (v === 'doc') return pickFiles('.pdf,.doc,.docx,.txt,.md,.rtf,.odt', 'explainer', 'Make an explainer video from this document.');
+        if (v === 'slides') return pickFiles('.pptx,.ppt,.pdf,.key,.odp', 'lesson', 'Turn these slides into a narrated lesson.');
+        if (v === 'web') return fromWeb();
+        return toDubbing(); }
+      case 'attach': return menu(b, [{label: 'A file', sub: 'PDF, Word, slides, a photo, notes', icon: 'plus', run: () => pickFiles('', '', '')},
+        {label: 'A web page', sub: 'Hoola reads the page you give', icon: 'globe', run: fromWeb}]);
+      case 'unfile': { C.files.splice(+b.dataset.n, 1); const t = $('#hxTray'); if (t) t.innerHTML = tray(); return; }
+      case 'openv': { const p = (D.projects || []).find(x => x.id === id); if (!p) return;
+        if (p.chat) { clearTimeout(C.t); C.gen++; C.conv = p.chat; C.rows = []; C.items = []; await chatLoad(); UI.pv = {...UI.pv, id: p.id, scene: 0, tab: 'sketch'}; return go('chat'); }
+        UI.scene = 0; return go('studio', id); }
+      case 'say': return chatSend(b.dataset.t);
+      case 'morelang': return menu(b, [{search: 'Make it in', empty: 'No language matches'}, ...(UI.L || []).map(l => ({label: l.native && l.native !== l.name ? `${l.name} · ${l.native}` : l.name, sub: l.region,
+        run: () => chatSend(`Make the same video in ${l.name}, keeping every name and number.`)}))], {width: 300});
+      case 'ipick': { const k = b.dataset.k; return pickMenu(b, k, v => saveItem(id, {[k === 'face' ? 'avatar_id' : k]: v}), id); }
+      case 'flay': return saveItem(id, {face_layout: b.dataset.val});
+      case 'hear': return hear(id);
+      case 'cmp': return compare(b, id);
+      case 'pvtab': UI.pv.tab = b.dataset.val; pvStop(); return paintPv();
+      case 'pvscene': pvStop(); UI.pv.id = id; UI.pv.scene = +b.dataset.n; UI.pv.tab = 'sketch'; $$('.hx-sct.on').forEach(x => x.classList.remove('on')); b.classList.add('on'); return paintPv();
+      case 'pvplay': return pvPlay();
+      case 'pvwhich': return menu(b, C.items.map(i => ({label: i.title, sub: vstate(i)[1], checked: pvItem()?.id === i.id, run: () => { pvStop(); UI.pv.id = i.id; UI.pv.scene = 0; paintChat(); }})), {align: 'end', width: 300});
+      case 'subdl': { const p = pvItem(); if (!p) return; const vtt = b.dataset.val === 'vtt';
+        const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([srt(p, vtt)], {type: vtt ? 'text/vtt' : 'application/x-subrip'}));
+        link.download = `${(p.title || 'subtitles').replace(/[^\w .-]+/g, '_').slice(0, 60)}.${vtt ? 'vtt' : 'srt'}`; document.body.appendChild(link); link.click(); link.remove(); return; }
       case 'chats': { let list = []; try { list = (await api('GET', `${C0}/chats`)).chats || []; } catch (er) { return toast(er.message, true); }
-        return menu(b, list.length ? list.map(c => ({label: c.title, sub: ago(c.at), run: async () => { C.conv = c.id; C.title = c.title; C.rows = []; C.items = []; await chatLoad(); go('chat'); }})) : [{note: 'No earlier chats yet.'}], {align: 'end', width: 300}); }
+        return menu(b, list.length ? list.map(c => ({label: c.title, sub: ago(c.at), run: async () => { clearTimeout(C.t); C.gen++; C.conv = c.id; C.title = c.title; C.rows = []; C.items = []; await chatLoad(); go('chat'); }})) : [{note: 'No earlier chats yet.'}], {align: 'end', width: 300}); }
       case 'send': return chatSend();
-      case 'idea': { C.ask = IDEAS[+b.dataset.n]; const t = $('#hxAsk'); if (t) { t.value = C.ask; t.focus(); } $('.hx-send')?.classList.add('on'); return; }
+      case 'idea': { const [t, l, k] = IDEAS[UI.ideaG || 'business'][+b.dataset.n]; C.ask = t; SET.lang = l; SET.kind = k; SET.shape = shapeOf(k); store.set('hx.set', SET);
+        draw(); const ta = $('#hxAsk'); if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } return; }
       case 'pick': return pickMenu(b, b.dataset.k, v => setPick(b.dataset.k, v));
       case 'make': return make(id, b.dataset.k);
       case 'stop': try { await api('POST', `${S}/stop`, {id}); toast('Stopping at the next step.'); } catch (er) { toast(er.message, true); } return;
@@ -569,7 +851,7 @@ window.HoolaInteractive = function (ctx) {
       case 'lookpick': { const p = cur(); return menu(b, Object.entries(LOOK).map(([k, n]) => ({label: n, checked: (p.scenes[UI.scene]?.look?.kind || 'none') === k, run: () => {
         const sc = p.scenes.map((s, i) => i === UI.scene ? {...s, look: {kind: k, ...(k === 'bar_chart' ? {bars: [{label: '', value: ''}, {label: '', value: ''}]} : {})}} : s); save({scenes: sc}); }}))); }
       case 'ppick': { const k = b.dataset.k, p = cur(); const map = {avatar_id: 'face', voice: 'voice', lang: 'lang'};
-        return pickMenu(b, map[k], v => save({[k]: v})); }
+        return pickMenu(b, map[k], v => save({[k]: v}), true); }
       case 'layout': return save({face_layout: b.dataset.val});
       case 'pshape': return save({shape: b.dataset.val});
       case 'peng': return;
@@ -592,7 +874,7 @@ window.HoolaInteractive = function (ctx) {
       case 'livenew': UI.live = 'new'; UI.liveOut = []; return draw();
       case 'liveopen': UI.live = id; UI.liveOut = []; UI.pub = null; return draw();
       case 'liveback': UI.live = ''; return draw();
-      case 'lpick': { const k = b.dataset.k; return pickMenu(b, k, v => { const i = $(`#hxLiveF [name="${k}"]`); if (i) i.value = v; b.querySelector('span').textContent = k === 'lang' ? langName(v) : voiceName(v); }); }
+      case 'lpick': { const k = b.dataset.k; return pickMenu(b, k, v => { const i = $(`#hxLiveF [name="${k}"]`); if (i) i.value = v; b.querySelector('span').textContent = k === 'lang' ? langName(v) : voiceName(v); }, true); }
       case 'livesave': return liveSave();
       case 'livedel': if (!confirm('Remove this agent? If it is on your website it stops answering there.')) return; try { await api('DELETE', `${X}/live?id=${q(id)}`); UI.live = ''; await load(); draw(); } catch (er) { toast(er.message, true); } return;
       case 'liveask': return liveAsk();
@@ -624,6 +906,7 @@ window.HoolaInteractive = function (ctx) {
   }
   function onInput(e) {
     const t = e.target;
+    if (t.dataset.isc != null) { saveLine(t.dataset.id, +t.dataset.isc, t.value); return; }
     if (t.id === 'hxAsk') { C.ask = t.value; t.style.height = 'auto'; t.style.height = Math.min(180, t.scrollHeight) + 'px'; $('.hx-send')?.classList.toggle('on', !!t.value.trim()); return; }
     const p = PAGE === 'studio' && cur(); if (!p) return;
     if (t.dataset.sc != null) { const sc = p.scenes.map((s, i) => i === +t.dataset.sc ? {...s, say: t.value} : s); p.scenes = sc; saveSoon({scenes: sc}); const c = $('.hx-pvcap'); if (c && +t.dataset.sc === UI.scene) c.textContent = t.value; return; }

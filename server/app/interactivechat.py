@@ -23,7 +23,7 @@ log = logging.getLogger("santosh.interactivechat")
 
 KIND = "interactive"
 _OF: dict[str, bool] = {}
-FAMILIES = ["create", "file"]
+FAMILIES = ["create", "file", "webfetch"]   # v0.999.171 + webfetch: "start from a web page"
 GREETING = ("Tell me what the video should say, in any language: an offer, a welcome, a lesson, a product. I write the "
             "scenes, pick your face and voice, and show you the price before anything is made.")
 
@@ -66,10 +66,15 @@ def current(tenant: str) -> dict[str, Any]:
 
 
 def new_chat(tenant: str) -> dict[str, Any]:
+    try:                          # v0.999.171 a chat that holds a plan is not untouched, even with no words of hers
+        from .interactive import studio as S
+        planned = {p.get("chat") for p in S._load(tenant).get("projects") or [] if p.get("chat")}
+    except Exception:   # noqa: BLE001
+        planned = set()
     with session() as s:          # her newest untouched Interactive chat first: no pile of empty ones
         for c in s.scalars(_q(tenant).order_by(Conversation.created_at.desc()).limit(3)).all():
             n = s.scalar(select(func.count(Message.id)).where(Message.conversation_id == c.id, Message.role == "user"))
-            if not n:
+            if not n and c.id not in planned:
                 return {"id": c.id, "title": c.title or "Interactive chat", "new": False}
         c = Conversation(tenant_id=tenant, kind=KIND, title="Interactive chat")
         s.add(c)
@@ -111,10 +116,13 @@ RULES = (
     "You are Hoola's video maker, talking in the Hoola Interactive page's own chat. She makes talking videos here: a "
     "person (her face, a consented face or an AI-made one) speaks her words in any language, with titles, prices and "
     "numbers drawn as scenes. Her picks ride her message as an '[Interactive settings: ...]' note: use them EXACTLY "
-    "(language, face, voice, engine, shape) unless her words in this message ask for something else. To plan a video "
+    "(language, kind, face, voice, engine, shape, length) unless her words in this message ask for something else. "
+    "Language 'auto' = the language her words are written in, or the one she names for the video (she may write in one "
+    "language and ask for the video in another); pass it as a language code. Kind presenter|explainer|reel|product|lesson "
+    "is passed as kind=; length N s = seconds=N. To plan a video "
     "call create_studio action=talking_video ONCE with brief = what the video is about in her words (keep every price, "
     "date, number and name she gave exactly), language, face = an avatar id below or empty, voice = a voice id below or "
-    "empty, engine = an engine id below or empty (her default), shape talking_head|product|reel, seconds 10-90. It makes "
+    "empty, engine = an engine id below or empty (her default), shape talking_head|product|reel, kind presenter|explainer|reel|product|lesson, seconds 10-90. It makes "
     "a DRAFT with scenes and a price card in this chat; it never makes the video - making it is HER tap on the card. A "
     "change she asks for (another voice, shorter, another language, another engine) = call it again with id = the draft "
     "id and the change; the earlier draft stays. Never invent a price, discount, date or count she did not write: a scene "

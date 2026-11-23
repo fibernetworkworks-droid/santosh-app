@@ -251,7 +251,18 @@ def _her_words(p: dict[str, Any]) -> str:
     return " ".join([p.get("ask", "")] + [str(x) for x in p.get("facts", [])])
 
 
-_SYSTEM = """You write short business videos for an Indian small-business owner. Hoola speaks every line in her avatar's
+# v0.999.171 the kind of video she picked on the Interactive home (presenter / explainer / reel / product / lesson)
+KINDS = {
+    "presenter": "Talking presenter: one person speaks to camera, warm and direct; few looks, mostly her words.",
+    "explainer": "Explainer: teach ONE idea in clear steps; a look on most scenes (titles, numbers, a bar chart) so it reads without sound.",
+    "reel": "Social reel: a hook in the first line, short punchy lines, the offer or news early, a call to action at the end.",
+    "product": "Product video: the product, what it does for the viewer, its price only if she gave it, where to buy.",
+    "lesson": "Lesson: welcome, what they will learn, the steps in order, a short recap; calm and clear, a little slower.",
+}
+KIND_SHAPE = {"reel": "reel", "product": "product"}
+
+
+_SYSTEM = """You write short videos for businesses, teachers and people anywhere in the world. Hoola speaks every line in her avatar's
 voice and draws each scene with a look. Write the film as scenes: ONE short spoken line per scene (8-22 words, natural,
 in the language asked; for Hindi use Roman script unless the user wrote Devanagari), 3-7 scenes, about 2.6 words a second.
 Looks: none | title {text} | big_number {value, label} | price {new, old, label} | bar_chart {bars:[{label, value}], unit}
@@ -269,7 +280,7 @@ def _brain(system: str, prompt: str) -> dict[str, Any]:
 def draft(tenant: str, ask: str, shape: str = "talking_head", lang: str = "en", aspect: str = "",
           seconds: int = 30, avatar_id: str = "", brand: str = "",
           think: Callable[[str, str], dict[str, Any]] | None = None, voice: str = "", engine: str = "",
-          chat: str = "") -> dict[str, Any]:
+          chat: str = "", kind: str = "") -> dict[str, Any]:
     ask = re.sub(r"\s+", " ", str(ask or "").strip())
     if len(ask) < 6:
         raise StudioError("Say in one line what the video should be about.")
@@ -277,7 +288,9 @@ def draft(tenant: str, ask: str, shape: str = "talking_head", lang: str = "en", 
     shape = shape if shape in SHAPES else "talking_head"
     lang = lang_of(lang)
     seconds = max(10, min(90, int(seconds or 30)))
+    kind = kind if kind in KINDS else ""
     prompt = (f"Her words: {ask}\nVideo kind: {shape}\nLanguage: {lang_label(lang)}\nLength: about {seconds} seconds"
+              + (f"\nStyle: {KINDS[kind]}" if kind else "")
               + (f"\nBusiness name: {brand}" if brand else ""))
     out = (think or _brain)(_SYSTEM, prompt)
     scenes_in = out.get("scenes") if isinstance(out, dict) else None
@@ -302,7 +315,7 @@ def draft(tenant: str, ask: str, shape: str = "talking_head", lang: str = "en", 
          "scenes": scenes, "items": items, "closing": str(out.get("closing") or "").strip()[:80],
          "status": "draft", "error": "", "video": None, "created": _now_iso(), "updated": _now_iso(),
          "voice": str(voice or "")[:60], "engine": _engine_or_default(tenant, engine), "face_layout": "corner",
-         "chat": str(chat or "")[:64]}
+         "chat": str(chat or "")[:64], "kind": kind or {"reel": "reel", "product": "product"}.get(shape, "presenter")}
     with _LOCK:
         d = _load(tenant)
         d["projects"].insert(0, p)

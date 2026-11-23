@@ -378,7 +378,7 @@ def empty_trash(tenant: str) -> int:
 
 
 # ------------------------------------------------------------------ translate ---
-_TR_SYSTEM = """You translate the lines of a short business video for an Indian small-business owner. Translate each
+_TR_SYSTEM = """You translate the lines of a short business video for a business or person anywhere in the world. Translate each
 line into the target language the way a local shopkeeper would say it aloud (Roman script unless the source line is in
 another script). Keep every number, price, percentage, date, phone number and proper name EXACTLY as written. Follow
 the glossary: a KEEP word stays exactly as written; an AS word must be written the given way. Return ONLY JSON:

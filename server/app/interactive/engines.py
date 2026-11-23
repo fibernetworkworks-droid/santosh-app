@@ -141,7 +141,7 @@ def view(tenant: str = "") -> dict[str, Any]:
                      "langs": e["langs"], "price": price, "usd_min": hi, "status": st, "ready": st == "Ready",
                      "keys": e["keys"], "default": defaults.get(e["job"]) == e["id"], "face": bool(e.get("face"))})
     return {"engines": rows, "defaults": defaults,
-            "notes": {"video": "Indian languages work on every face engine: the face follows your Vocal voice.",
+            "notes": {"video": "Every language works on every face engine: the face follows your Vocal voice.",
                       "live": "The listening and the voice stay Hoola's; only the face is rented.",
                       "broll": "A shot without a person; never your face."}}
 
