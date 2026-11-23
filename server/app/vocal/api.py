@@ -261,6 +261,26 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
     def rules_import(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         return run(V.rules_import, tenant, b.get("text"))
 
+    @r.put("/rule")
+    def rule_update(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return run(V.rule_update, tenant, str(b.get("id") or ""), b.get("word"), b.get("say"), lang=str(b.get("lang") or ""), ipa=b.get("ipa"))
+
+    @r.post("/rules/check")
+    def rules_check(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """An import read before anything is added: each line New, Replaces yours, or left out with its reason."""
+        return run(V.rules_check, tenant, b.get("text"))
+
+    @r.get("/rules/export")
+    def rules_export(tenant: str = Depends(current_tenant)):
+        on()
+        return Response(V.rules_csv(tenant), media_type="text/csv; charset=utf-8", headers=_attach("hoola-dictionary.csv"))
+
+    @r.post("/hear")
+    async def hear(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """A short free sample of a word or a sentence, read the way her dictionary says."""
+        return Response(await arun(V.hear, tenant, b.get("text"), str(b.get("voice") or ""), str(b.get("lang") or "")),
+                        media_type="audio/wav", headers={"Cache-Control": "private, no-store"})
+
     @r.delete("/rule")
     def rule_remove(id: str, tenant: str = Depends(current_tenant)):
         return run(V.rule_remove, tenant, id)
@@ -580,6 +600,17 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
     @r.post("/join")
     def join(b: dict = Body(...), tenant: str = Depends(current_tenant)):
         return run(V.join_takes, tenant, b.get("ids"), b.get("title"), b.get("format") or "wav", b.get("gap"))
+
+    @r.post("/history/bulk")
+    def history_bulk(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """Keep, unkeep or remove several sounds (`ids`, `action`)."""
+        return run(V.history_bulk, tenant, b.get("ids"), str(b.get("action") or ""))
+
+    @r.post("/history/zip")
+    def history_zip(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """Several sounds as one ZIP, each in the format she picked."""
+        data, name = run(V.history_zip, tenant, b.get("ids"), str(b.get("format") or ""))
+        return Response(data, media_type="application/zip", headers=_attach(name))
 
     @r.post("/history/star")
     def history_star(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):

@@ -481,7 +481,7 @@ class _HoolaVocalState extends State<HoolaVocal> {
           _q.text = t;
           _focusNode.requestFocus();
         }),
-      VocalPage.dictionary => VocalDictionaryPage(key: k, store: store),
+      VocalPage.dictionary => VocalDictionaryPage(key: k, store: store, player: _player),
       VocalPage.settings => VocalSettingsPage(key: k, store: store, settings: vs, onDictionary: () => _go(VocalPage.dictionary)),
     };
   }

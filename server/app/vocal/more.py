@@ -493,13 +493,13 @@ def stream_run(job: dict[str, Any]) -> Iterator[bytes]:
 # ---------------------------------------------------------------- keep my sounds for N days
 def sweep(tenant: str, now: datetime | None = None) -> dict[str, int]:
     """Delete what she made more than keep_days ago (sounds, dubs and the videos she uploaded for them). Her voices,
-    dictionary, Studio projects (their chapter sound goes) and settings are kept. 0 days = keep forever."""
+    dictionary, starred sounds, Studio projects (their chapter sound goes) and settings are kept. 0 days = keep forever."""
     days = int((V.settings_get(tenant) or {}).get("keep_days") or 0)
     if days <= 0:
         return {"sounds": 0, "dubs": 0}
     cut = (now or datetime.now(timezone.utc)) - timedelta(days=days)
     d = V._load(tenant)
-    old = [h["id"] for h in d["history"] if V._ts(h.get("made")) and V._ts(h.get("made")) < cut.timestamp()]
+    old = [h["id"] for h in d["history"] if not h.get("star") and V._ts(h.get("made")) and V._ts(h.get("made")) < cut.timestamp()]   # a kept (starred) sound stays
     for hid in old:
         try:
             V.history_remove(tenant, hid)

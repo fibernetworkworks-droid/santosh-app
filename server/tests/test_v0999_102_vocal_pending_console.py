@@ -139,9 +139,8 @@ def test_the_pending_pieces_in_a_real_browser(arena_server):  # noqa: F811
     # Settings: keep my sounds, an app key and a webhook secret shown once
     page_to(pg, "settings")
     pg.wait_for_function("() => document.querySelector('#hvView').textContent.includes('No app keys yet')")
-    pg.locator("#hvView [data-a='defkeep']").click()
-    pg.locator(".hmenu .mi", has_text="30 days").click()
-    pg.wait_for_function("() => document.querySelector('#hvView [data-a=defkeep]').textContent.includes('30 days')")
+    pg.locator("#hvView [data-a='keepset'][data-val='30']").click()            # v0.999.163: Keep my sounds as four cards
+    pg.wait_for_function("() => document.querySelector('#hvView [data-a=keepset][data-val=\"30\"]').getAttribute('aria-checked') === 'true'")
     assert st["puts"][-1] == {"keep_days": 30}
     pg.locator("#hvKeyN").fill("Shop site")
     pg.locator("#hvView form[data-f='appkey'] button").click()
