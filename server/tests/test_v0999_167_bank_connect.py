@@ -1,4 +1,4 @@
-"""v0.999.166 BANK CONNECT: a business's bank accounts come into Books & Accounts the way that works in her country -
+"""v0.999.167 BANK CONNECT: a business's bank accounts come into Books & Accounts the way that works in her country -
 a bank connection through a licensed open-banking partner (she signs in at her own bank, read-only), bank files
 (MT940 / CAMT.053 / OFX / QIF by mail or the books address), her bank's statement mail, or an upload - and every route
 lands bank lines in the same place for matching. No bank password ever; no live partner call (fake transport)."""

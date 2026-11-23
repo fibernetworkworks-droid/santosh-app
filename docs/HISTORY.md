@@ -10752,3 +10752,43 @@ export, hear cached + daily cap, starred never swept, a Chromium walk at light /
 3.24.5 here).
 
 NOT VERIFIED: a real Gemini / ElevenLabs sample from Hear it on her server; her phone.
+
+
+## v0.999.167 BANK CONNECT - bank accounts connected the way that works in her country (owner: "ANOTHER MAIN ATTACHMENT IN BANK AND MATCHING IS A BANK ATTACHMENT FOR ACCOUNT STATEMENT FETCHING --- AS WE ARE DEVELOPING IT FOR WORLD WHAT IS GENERALIZE WAY OF CONNECTING THIS" -> "GO BUILD")
+
+Plan decision D4 (docs/FINANCE_GLOBAL_PLAN.md) built: no single worldwide bank API exists, so one bank-account layer with four
+routes chosen by the business's country, all landing bank lines in ONE place (`fin.spine.import_rows`, new: the shared row import
+`import_statement` now uses), so matching and reconciliation never care where a line came from.
+
+1. **Bank connection** - `server/app/fin/sources/openbanking.py`: one interface (start -> consent page at HER bank, status,
+   fetch, revoke), three partners written from their public API references: Setu Account Aggregator (India; her mobile = the
+   AA handle, consent 12 months, data sessions), GoCardless Bank Account Data (UK + EU/EEA; bank search, end-user agreement 90 days,
+   requisition), Plaid (US + Canada; Hosted Link, public token exchange, transactions/sync with cursor, Plaid's + = money out).
+   Basiq / Belvo / Lean / Mono / Stitch named for their regions as "not built yet". A partner is offered only when its keys are in
+   the VPS .env (SETU_AA_* / GOCARDLESS_* / PLAID_*) AND its name is in OPEN_BANKING_ACK (the owner read and signed its terms).
+   Hoola holds no bank licence, never sees a bank password, read-only scopes only; Plaid's access token sealed.
+   Table `fin_bank_link` (consent, accounts, expiry, cursor, last sync, error). The way back = public
+   GET /api/books/bank/back?s=<one-time key> -> the page tells the desk (BroadcastChannel hoola-bank) and closes. Worker: every
+   active connection read hourly (books_feed_jobs), a pending one failed after a day, a consent ending within 7 days said ONCE in
+   her updates chat.
+2. **Bank files** - MT940 / CAMT.053 / OFX / QIF recognised by their own format in her attached business email, or sent to
+   POST /api/books/bank-file with her books key ({account, name, base64 | text}).
+3. **Statement mail** - she names the sender (address or @domain) and the account; a PDF password (the one printed in the bank's
+   mail, never her banking password) is sealed and used only to open that bank's statements; works even with the invoice inbox off.
+   A statement never reaches the invoice reader.
+4. **Upload** - as before.
+
+`server/app/fin/desks/books_bank.py` (routes, overview, connect, refresh, back, disconnect, sync_now, sender_add / remove,
+take_file, from_api_file, tick); books_feed mail reader hands statement files to it first; desk parts bank_feed / bank_banks
+(everyone), bank_sync / bank_refresh (owner, admin, accountant), bank_connect / bank_disconnect / bank_sender_* / bank_mail
+(owner, admin); the chat block names the connections. Console: Bank & matching > Bank accounts card (accounts with where their
+lines come from, connections with status / days left / Check now / Renew / Disconnect, statement senders) + #/bank/connect with
+the four routes. FIXED: a wide bank-lines table made the whole desk scroll sideways on a phone (its hidden labels escaped the
+scroll box).
+
+**Tests**: NEW `server/tests/test_v0999_167_bank_connect.py` (9: country routes, GoCardless / Plaid / Setu end to end on a fake
+transport, statement mail + bank files + the invoice reader untouched, the bank-file address + roles, expiry said once, a Chromium
+walk incl. phone width).
+
+NOT VERIFIED: no partner has answered a live call from this server (request shapes from their public references); no partner
+contract signed; a PDF statement layout other than the Indian bank pattern bahi/bank.py reads.
