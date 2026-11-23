@@ -362,7 +362,7 @@ function go(v, arg) {
   if (v === 'computer') { location.assign('/console/computer' + (arg ? '#/' + encodeURIComponent(arg) : '')); return; }
   if (v === 'webdev') { location.assign('/console/web' + (arg ? '#/site/' + encodeURIComponent(arg) : '')); return; }   // v0.649 Web Studio = its own app
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Voice call', main:'· Account', bana: APPD ? '· Docs and files' : '· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Lab', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk', telecallerdesk:'· Telecaller', supportdesk:'· Customer Support', credits:'· Credits', cred:'· Hoola Cred', wallet:'· Hoola Wallet', deptdesk:'· Department desk', accountsdesk:'· GST & Accounts', moneydesk:'· Money Safety', booksdesk:'· Books & Accounts'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Voice call', main:'· Account', bana: APPD ? '· Docs and files' : '· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Lab', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk', telecallerdesk:'· Telecaller', supportdesk:'· Customer Support', credits:'· Credits', cred:'· Hoola Cred', wallet:'· Hoola Wallet', deptdesk:'· Department desk', accountsdesk:'· GST & Accounts', moneydesk:'· Money Safety', booksdesk:'· Books & Accounts', payrolldesk:'· Payroll'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
@@ -395,6 +395,7 @@ function go(v, arg) {
   if (v === 'supportdesk') { location.assign('/console/support'); return; }   // v0.999.81 CUSTOMER SUPPORT: its own section
   if (v === 'moneydesk') { location.assign('/console/money'); return; }   // v0.999.156 MONEY SAFETY DESK: its own section
   if (v === 'booksdesk') { location.assign('/console/books'); return; }   // v0.999.158 BOOKS DESK: its own section
+  if (v === 'payrolldesk') { location.assign('/console/payroll'); return; }   // v0.999.169 PAYROLL DESK: its own section
   if (v === 'telecallerdesk') { location.assign('/console/telecaller'); return; }   // v0.999.67 AI TELECALLER: its own section   // v0.999.52 LEAD DESK: its own section (chat beside the screens); ?full=1 keeps the old page
   if (v === 'leadsdesk') EMP?.leads($('#leadsdesk'));   // v0.686.0 Leads Desk (the Lead Generation employee)
   if (v === 'deptdesk') DDK?.open($('#deptdesk'), arg);

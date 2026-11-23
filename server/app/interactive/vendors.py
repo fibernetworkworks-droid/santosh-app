@@ -1,4 +1,4 @@
-"""v0.999.169 HOOLA INTERACTIVE REBUILD - the outside engines, each from its vendor's own spec read on 23 Nov 2026
+"""v0.999.170 HOOLA INTERACTIVE REBUILD - the outside engines, each from its vendor's own spec read on 23 Nov 2026
 (docs/research/interactive/03_vendor_shapes.md). One network seam: `_http` (tests replace exactly it).
 
 Video makers (her photo + the spoken track -> a talking MP4 URL or bytes):

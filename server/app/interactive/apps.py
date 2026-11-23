@@ -1,4 +1,4 @@
-"""v0.999.169 HOOLA INTERACTIVE REBUILD - "For your own apps": app keys + signed webhooks (the Vocal apps pattern, R5).
+"""v0.999.170 HOOLA INTERACTIVE REBUILD - "For your own apps": app keys + signed webhooks (the Vocal apps pattern, R5).
 
 - App keys `hi_live_...` for her own programs. The whole key is shown ONCE; Hoola keeps its SHA-256 and the last 4
   characters. Up to 5 keys; removing one stops it at once. Everything an app makes uses HER credits and runs under the

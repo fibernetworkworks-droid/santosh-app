@@ -36,7 +36,7 @@ CREATE_TOOLS = [
         "lines [{speaker, text}] + cast {speaker: voice id}, language, reactions true = short listener sounds between long lines, "
         "music 'soft' = a quiet music bed under it (free); action=sound: a sound effect from words, prompt, "
         "seconds 0-30, loop, takes 1-4. Each take appears in the chat by itself; never say it is ready. "
-        "In the Hoola Interactive page's own chat only (v0.999.169): action=talking_video plans a talking video as a DRAFT "
+        "In the Hoola Interactive page's own chat only (v0.999.170): action=talking_video plans a talking video as a DRAFT "
         "with a price card - brief (her words, every number kept), language, face (avatar id), voice (voice id), engine "
         "(engine id), shape talking_head|product|reel, seconds 10-90, id = an earlier draft to change. It never makes the "
         "video: making it is her tap on the card."),
@@ -160,7 +160,7 @@ async def _image(ctx: Ctx, a: dict[str, Any]) -> dict[str, Any]:
 
 
 async def _talking_video(ctx: Ctx, a: dict[str, Any]) -> dict[str, Any]:
-    """v0.999.169 HOOLA INTERACTIVE REBUILD: a talking video planned as a DRAFT in the Interactive chat, with its price card.
+    """v0.999.170 HOOLA INTERACTIVE REBUILD: a talking video planned as a DRAFT in the Interactive chat, with its price card.
     The model never makes it: the card's Make button is her tap (POST /api/interactive/studio/make with the price key)."""
     import asyncio
     try:

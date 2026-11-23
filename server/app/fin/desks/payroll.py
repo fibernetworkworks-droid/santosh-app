@@ -138,7 +138,7 @@ def _contrib(c: Any, i: int) -> dict[str, Any]:
     for k in ("employee_pct", "employer_pct"):
         if c.get(k) is not None:
             out[k] = _num(c[k], f"contributions[{i}].{k}")
-    for k in ("from", "upto", "cap_employee", "cap_employer"):
+    for k in ("from", "upto", "cap_employee", "cap_employer", "only_upto"):
         if c.get(k) is not None:
             out[k] = _num(c[k], f"contributions[{i}].{k}")
     if c.get("slabs"):   # a fixed amount by pay band, e.g. a professional tax: [{upto, employee, employer}]
@@ -209,13 +209,23 @@ def save_settings(tenant: str, ws: str, a: dict[str, Any]) -> dict[str, Any]:
 
     def ch(cfg):
         cfg.update(new)
-        return {k: v for k, v in cfg.items() if k not in ("employees", "runs", "done")}
+        meta = cfg.get("rules_meta") or {}       # v0.999.169 a rule she gives herself replaces the starting-list one
+        for k in list(meta):
+            if ("contributions" in new and k.startswith("contribution:")) or ("income_tax" in new and k == "income_tax"):
+                meta.pop(k)
+        if not a.get("_keep_meta"):
+            cfg["rules_meta"] = meta
+        return {k: v for k, v in cfg.items() if k not in ("employees", "runs", "done", "inputs", "flow", "desk")}
     out = _save(tenant, ws, ch)
     return {"workspace": ws, "payroll": out, "says": "Your rules are used exactly as you gave them; Hoola does not check them against the law."}
 
 
 def _rules(w: dict[str, Any]) -> dict[str, Any]:
     c = _cfg(w)
+    open_ = [k for k, m in (c.get("rules_meta") or {}).items() if m.get("status") != "checked"]
+    if open_:       # v0.999.169 a rule that came from a country starting list is used only once a person checked it
+        raise PayrollError("These rules came from Hoola's starting list and nobody has checked them yet: " + ", ".join(k.split(":", 1)[-1] if k != "income_tax" else "Income tax" for k in open_[:8]) +
+                           ". Check each one against its official page (Payroll > Settings > Country rules), then run.")
     if not c.get("contributions") and not c.get("income_tax"):
         cc = str(c.get("country") or (w.get("countries") or [""])[0] or "").upper()
         hint = P.peek(cc, "payroll.system") if cc else None
@@ -247,8 +257,13 @@ def employee(tenant: str, ws: str, a: dict[str, Any]) -> dict[str, Any]:
             if len(kinds) > 1:
                 raise PayrollError("pay: give one of annual, per_period, hourly.")
             if kinds:
+                new = _m(a[kinds[0]], cur, kinds[0])
+                if p.get("pay_minor") is not None and (p.get("pay_kind"), p.get("pay_minor")) != (kinds[0], new):
+                    p.setdefault("pay_history", []).append({"on": str(a.get("from") or date.today().isoformat())[:10],
+                                                            "kind": p.get("pay_kind"), "was": p.get("pay_minor"), "now": new})
+                    p["pay_history"] = p["pay_history"][-24:]
                 p["pay_kind"] = kinds[0]
-                p["pay_minor"] = _m(a[kinds[0]], cur, kinds[0])
+                p["pay_minor"] = new
             if not p.get("pay_kind"):
                 raise PayrollError("pay: annual (salary a year), per_period (pay each period) or hourly (rate an hour).")
             for k in ("hours", "pre_tax_pct"):
@@ -258,6 +273,9 @@ def employee(tenant: str, ws: str, a: dict[str, Any]) -> dict[str, Any]:
                 p["allowance"] = _num(a["allowance"], "allowance")
             if a.get("tax_id"):
                 p["tax_id"] = _mask(a["tax_id"])
+            for k, n in (("lang", 8), ("email", 120), ("payee_ref", 60), ("role", 80)):   # v0.999.169 payslip language, her payee reference
+                if a.get(k) is not None:
+                    p[k] = str(a[k]).strip()[:n]
             if a.get("start"):
                 p["start"] = str(a["start"])[:10]
             p.pop("left", None)
@@ -311,6 +329,11 @@ def _gross(p: dict[str, Any], ppy: int, x: dict[str, Any], cur: str) -> tuple[in
         hrs = Decimal(str(x.get("hours", p.get("hours", 0))))
         base = int((Decimal(pay) * hrs).quantize(Decimal(1), ROUND_HALF_UP))
         how = [f"{hrs} hours x {_u(pay, cur)} = {_u(base, cur)}"]
+    if x.get("_prorate") and kind != "hourly":     # v0.999.169 joined or left inside the period: calendar days worked
+        w_, n_ = x["_prorate"]
+        cut = base - int((Decimal(base) * w_ / n_).quantize(Decimal(1), ROUND_HALF_UP))
+        base -= cut
+        how.append(f"{w_} of {n_} days in the period: -{_u(cut, cur)}")
     if x.get("unpaid_days"):
         days = Decimal(str(_num(x["unpaid_days"], "unpaid_days")))
         per = Decimal(str(_num(x.get("working_days", 21 if ppy == 12 else 5 * 52 // ppy), "working_days", 1)))
@@ -327,6 +350,8 @@ def _gross(p: dict[str, Any], ppy: int, x: dict[str, Any], cur: str) -> tuple[in
 
 
 def _contribution(c: dict[str, Any], gross: int, taxable: int, cur: str) -> tuple[int, int, str]:
+    if c.get("only_upto") is not None and gross > to_minor(c["only_upto"], cur):   # v0.999.169 applies only up to a pay level
+        return 0, 0, f"not due: pay is above {c['only_upto']}"
     if c.get("slabs"):
         g = _u(gross, cur)
         for s in c["slabs"]:
@@ -399,7 +424,13 @@ def run_payroll(tenant: str, ws: str, a: dict[str, Any]) -> dict[str, Any]:
     for pid, p in sorted((rules.get("employees") or {}).items()):
         if p.get("left") and p["left"] < start or p.get("start") and p["start"] > end:
             continue
-        r = pay_one(rules, p, extras.get(pid) or extras.get(p.get("name")) or {}, cur)
+        x = dict(extras.get(pid) or extras.get(p.get("name")) or {})
+        d0, d1 = date.fromisoformat(start), date.fromisoformat(end)
+        a0 = max(d0, date.fromisoformat(p["start"])) if p.get("start") else d0
+        a1 = min(d1, date.fromisoformat(p["left"])) if p.get("left") else d1
+        if (a0, a1) != (d0, d1):
+            x["_prorate"] = ((a1 - a0).days + 1, (d1 - d0).days + 1)
+        r = pay_one(rules, p, x, cur)
         for k in T:
             T[k] += r[k]
         for c in r["contributions"]:
@@ -599,10 +630,15 @@ def run(tenant: str, action: str, a: dict[str, Any], actor: str = "owner") -> di
     ws = str(a.get("workspace") or "")
     if not ws:
         raise PayrollError("workspace: the finance workspace this payroll belongs to.")
+    from . import payroll_desk as PD
+    if action in PD.ACTIONS:
+        out = PD.run(tenant, action, ws, a, actor)
+        out.setdefault("not_advice", L.NOT_ADVICE)
+        return out
     f = {"settings": save_settings, "employee": employee, "people": people, "run": run_payroll, "close": close,
          "payslip": payslip, "payments": payments, "filings": filings, "done": mark_done, "contractors": contractors}
     if action not in f:
-        raise PayrollError("action: " + ", ".join(ACTIONS))
+        raise PayrollError("action: " + ", ".join(ACTIONS + PD.ACTIONS))
     out = f[action](tenant, ws, a)
     out.setdefault("not_advice", L.NOT_ADVICE)
     return out

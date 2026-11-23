@@ -7,7 +7,7 @@
   "en",
   "es"
  ],
- "version": 3,
+ "version": 4,
  "official_hosts": [
   "consumerfinance.gov",
   "ftc.gov",
@@ -224,6 +224,52 @@
     "value": "Federal + state withholding; FICA; Form W-2 / 1099",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
+   },
+   "starting_list": {
+    "value": {
+     "frequency": "fortnightly",
+     "contributions": [
+      {
+       "name": "Social Security",
+       "employee_pct": 6.2,
+       "employer_pct": 6.2,
+       "upto": 6773,
+       "base": "gross",
+       "note": "the yearly wage base spread per pay period"
+      },
+      {
+       "name": "Medicare",
+       "employee_pct": 1.45,
+       "employer_pct": 1.45,
+       "base": "gross"
+      }
+     ],
+     "income_tax": {
+      "method": "none",
+      "note": "federal and state withholding needs each person's W-4 and the IRS tables - put your own figures here"
+     },
+     "filings": [
+      {
+       "name": "Federal tax deposit",
+       "every": "monthly",
+       "due_day": 15
+      },
+      {
+       "name": "Form 941",
+       "every": "quarterly",
+       "due_offset_days": 31
+      },
+      {
+       "name": "Form W-2",
+       "every": "yearly",
+       "month": 12,
+       "due_offset_days": 31
+      }
+     ]
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use",
+    "where_to_check": "https://www.irs.gov/publications/p15"
    }
   },
   "consumer_credit": {

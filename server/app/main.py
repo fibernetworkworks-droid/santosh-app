@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.168"   # v0.999.168 VOCAL CHECK (built as 0.999.167; their BANK CONNECT took 0.999.167, both kept; owner: "NOW CHECK IS EVERY TOOL IN VOCAL FUCTIONAL OR NOT --- END TO END --- MEANS IS IT WIRED PROPERLY OR NOT TO RESPECED LLM"): every console and phone call has its server route; every request checked against ElevenLabs and Google pages read 23 Nov 2026; NEW python -m app.vocal.check + vps-ops vocal_check / vocal_check_paid = each Vocal tool through the server function its button uses, the smallest real request, LIVE / DEAD / NOT CONNECTED with the engine words, a throwaway account wiped after; FIXED own-voice dub subtitles from the language target signed WebVTT link (the old transcript route is the legacy API), signed downloads follow redirects. Previous: v0.999.167 BANK CONNECT (owner: "ANOTHER MAIN ATTACHMENT IN BANK AND MATCHING IS A BANK ATTACHMENT FOR ACCOUNT STATEMENT FETCHING --- AS WE ARE DEVELOPING IT FOR WORLD WHAT IS GENERALIZE WAY OF CONNECTING THIS" -> "GO BUILD"): Books & Accounts > Bank & matching gets Bank accounts - four routes chosen by her country, all landing bank lines in one place (fin.spine.import_rows) for matching: (1) a bank connection through a LICENSED open-banking partner behind one interface (fin/sources/openbanking.py: India Account Aggregator through Setu, UK + EU GoCardless Bank Account Data, US + Canada Plaid Hosted Link; Basiq / Belvo / Lean / Mono / Stitch named for later) - she signs in at her own bank, read-only, consent with expiry, new lines every hour, renew said once a week before it ends, Disconnect; a partner offered only when its keys are in the VPS .env AND OPEN_BANKING_ACK names it; (2) bank files (MT940 / CAMT.053 / OFX / QIF) by her business email or POST /api/books/bank-file with her books key; (3) her bank's statement email from a sender she names, a PDF password sealed and used only for that bank; (4) upload; statements never reach the invoice reader; table fin_bank_link; desk parts bank_* (owner / admin connect, accountant syncs); FIXED a wide bank table scrolling the whole page on a phone; NOT VERIFIED with a live partner call; previous head v0.999.166 YOUR SOUNDS, DICTIONARY, SETTINGS, PREMIUM; older stories live in git history.; older stories live in git history.
+APP_VERSION = "0.999.170"   # v0.999.170 HOOLA INTERACTIVE REBUILD (built as 0.999.169; their PAYROLL DESK took 0.999.169, both kept; owner: "NOW OUR PLAN FOR REBUILDING IT PROPERLY ::: 1) REDESIGN WORK AS WE DONE FOR VOCAL 2) WIRING THE EXISTING BACKEND TO EVERY TOOL PERFECTLY 3) BEST INTERACTIVE GENEARTOR AND IT API ATTACHMENT HERE LETS USER CHOOSE THE PERFECT INTERACTIVE LLM AGENT FROM HEYGEN TO GEMINI OMNI ETC" -> the design canvas claude.ai/artifact/38Ejw9Eekn9y8u8H8nEwGp -> "GO BUILD"; contract docs/HOOLA_INTERACTIVE_REBUILD.md): Hoola Interactive rebuilt on the Vocal frame (interactive.js + interactive2.css, sidebar Make / Faces and voices / Live / Assets) with the Interactive chat as the home (interactivechat.py, kind interactive; create_studio action=talking_video plans a DRAFT with its price card, making is her tap); every video speaks in a Vocal voice (interactive/voice.py over vocal._say, 140 languages, her dictionary; frames.do_avatar_film voicer= / voice_out=); face engines she chooses (interactive/engines.py + vendors.py from each vendor spec read 23 Nov 2026: Kling AI Avatar / Pro, OmniHuman 1.5, InfiniteTalk, Wan via kie.ai, Runway avatars, HeyGen v3, Hedra Character-3), the talking person over the scenes or the whole frame, a paid face only with her tap on the exact quote, the AI mark in the MP4; live agents (interactive/live.py: facts-only answers checked by code, a Vocal voice, a face pass from Simli / Anam / LiveAvatar LITE / Tavus / the GPU lab, minute cap a day, her website by one line static/interactive/agent.js answering only on her listed sites); B-roll shots without people (Gemini Omni); app keys hi_live_ + signed webhooks (interactive/apps.py, /api/interactive/v1/*); routes /api/interactive/x/*; FIXED frames voice files on a relative path (ffmpeg could never open them); NOT VERIFIED: no vendor answered a live call (no keys here), the rented faces in the browser need their SDKs (pass made, face not drawn yet), phone keeps the redesigned page in its web view (no native screens); previous head v0.999.169 PAYROLL DESK; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2018,6 +2018,16 @@ def books_desk_page():
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/payroll")
+@app.get("/console/payroll/")
+def payroll_desk_page():
+    """v0.999.169 PAYROLL DESK: the Payroll employee's own section - its chat beside the desk's screens (Today, People, Inputs,
+    Run payroll, Payslips & pay, Dates & filings, Settings). Same sign-in + strict CSP."""
+    return FileResponse(STATIC / "console" / "payrolldesk.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/money")
 @app.get("/console/money/")
 def money_desk_page():
@@ -2556,6 +2566,8 @@ from . import moneychat as _moneychat_mod                        # noqa: E402  v
 _moneychat_mod.mount(app, current_tenant, require_key)          # /api/money/*
 from . import bookschat as _bookschat_mod                        # noqa: E402  v0.999.158 BOOKS DESK
 _bookschat_mod.mount(app, current_tenant, require_key)          # /api/books/*
+from . import payrollchat as _payrollchat_mod                    # noqa: E402  v0.999.169 PAYROLL DESK
+_payrollchat_mod.mount(app, current_tenant, require_key)        # /api/payroll/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through
@@ -5905,7 +5917,7 @@ from .interactive.console import make_router as _interactive_studio_router  # no
 app.include_router(_interactive_studio_router(require_key, current_tenant))   # v0.747 HOOLA INTERACTIVE: the console video studio
 from .interactive.console import make_hub_router as _interactive_hub_router  # noqa: E402
 app.include_router(_interactive_hub_router(require_key, current_tenant))   # v0.772 HOOLA INTERACTIVE: the twelve pages (brand, templates, translate, trash...)
-from .interactive import routes2 as _interactive_x                                # noqa: E402  v0.999.169 HOOLA INTERACTIVE REBUILD
+from .interactive import routes2 as _interactive_x                                # noqa: E402  v0.999.170 HOOLA INTERACTIVE REBUILD
 app.include_router(_interactive_x.make_router(require_key, current_tenant))     # /api/interactive/x/* engines, price, voices, live, apps
 app.include_router(_interactive_x.make_public_router())                        # /api/interactive/v1/* (app key) + /pub/* (her website)
 from . import interactivechat as _interactivechat_mod                         # noqa: E402

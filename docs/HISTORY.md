@@ -10850,3 +10850,123 @@ sweep, and the settings read (the overview carries settings).
 The Vocal suites stay green.
 
 NOT VERIFIED until `vocal_check` runs on her server.
+
+
+## v0.999.169 PAYROLL DESK (built as 0.999.168; their VOCAL CHECK took 0.999.168, both kept)
+
+Owner: "WE WILL WORK ON NEXT AI EMPLOYEE SAME WAY A PAYROLL" -> design claude.ai/artifact/M5ukAtPfTjN89y7NzqT8pt -> "GO".
+
+What existed: two engines that never talked - Payroll Worldwide (F5, `fin/desks/payroll.py`, any country on her own rules) and the
+older India payroll (`payroll/service.py`, PF / ESIC / PT / TDS written in code). No desk, no chat, every input typed by hand.
+
+Built (steps 1-5 of the design):
+- Step 1 the desk + chat: `/console/payroll` (`static/console/payrolldesk.html/.js/.css`) with Today, People, Inputs, Run payroll,
+  Payslips & pay, Dates & filings, Settings; Payroll chat = Conversation kind `payroll` (`app/payrollchat.py`), out of her chat
+  lists (convs / callconv), its turns get the `<payroll_desk>` block + the payrollwide family in view (agent/santosh.py). Routes
+  /api/payroll/{chat,chat/new,chat/{id}/ok,desk,do/{part},payslip,in,workspace}. employees.js + phone hoola_employees.dart open it.
+- Step 2 inputs by themselves (`fin/desks/payroll_desk.py`): her Google Sheet (read every 30 min), a payroll email she attaches
+  (CSV / Excel attachments), time / HR software through Connectors (READ tools only: Deputy, BambooHR, Factorial, Keka, Personio,
+  HiBob, When I Work, Homebase, Clockify, Harvest, Toggl, Zoho People), upload, POST /api/payroll/in with a `py_` key (hash kept).
+  Each row checked in code: one of her people (a close name = "did you mean"), date inside the period, hours under her limit
+  (260 / 130 / 65 by frequency, hers to change), not negative, never counted twice (same row = skipped; same field for the same
+  person from another file = waits). She matches or drops a waiting row. Overtime hours become pay by her multiplier (1.5) and
+  standard hours (160). Worker slot payroll_desk_jobs every 30 min.
+- Engine additions (`fin/desks/payroll.py`): a joiner / leaver inside the period is paid for the calendar days worked (salaried);
+  pay changes keep a history; a contribution can apply only up to a pay level (`only_upto`, e.g. ESI); payslip language, email,
+  her bank payee reference and job on each person; the run refuses while any starting-list rule is unchecked.
+- Run + approval: prepare = people + checked inputs; the change list against the run before (new, joined, leaves, pay changed,
+  overtime hours, bonus, unpaid days); approval = her tap on the hash of the run she saw; above her limit the approver must not be
+  the person who prepared it; approval locks the period and posts the wage journal to Books (Dr 6300 wages, 6310 employer costs;
+  Cr 2210 wages payable, 2220 taxes and contributions payable, 2230 pay deductions payable; accounts added when missing; a payroll
+  in another currency than the books is not posted and says why).
+- Pay: her bank's CSV (names, payee references, amounts) or ISO 20022 pain.001.001.09 (SALA) with IBANs typed for that file only -
+  never stored, kept out of the audit log; Paid only when Bank & matching has one line for the whole net or a line per person
+  (amount + first name); payslip PDFs in en / hi / mr / es / fr / de / pt (Devanagari font for hi / mr; other languages English and
+  said on the slip); "Put payslip emails in my Drafts" saves one draft per person in her mailbox - she sends them.
+- Step 3 country rules: `payroll.starting_list` in the packs for IN (EPF 12/12 to 15,000; ESI 0.75 / 3.25 only up to 21,000;
+  Maharashtra PT slabs; new-regime TDS bands with the 87A rebate NOT applied - said), GB, US, SG, AU, AE - all status verify, each
+  with where to check. Applying a list marks every rule "check this" (rules_meta); the run is refused until each is checked with
+  its source, date and who. India's older-payroll people move over by her tap (import_old); their old runs stay there.
+- Step 5 team: the Books & Accounts team works here; accountant = preparer, approver approves, auditor / viewer read (viewer cannot
+  open payslips); team changed in Books & Accounts.
+- Tool `payroll_worldwide` gains desk, inputs, input_rows, missing, changes, prepare, rules, starting_list, apply_starting_list;
+  approving, the payment file, payslip emails and checking a rule stay her taps on the desk.
+
+Tests: server/tests/test_v0999_169_payroll_desk.py (6 incl. a Chromium walk at 1440 and 390). Pins moved: test_fin_f7
+(payroll_worldwide -> payrolldesk), test_v0999_158 (chat-list kinds). hinglish_baseline: payroll_desk.py 20 (the Hindi / Marathi
+payslip words). NOT VERIFIED: on her server, with a real sheet / mailbox / HR program, or a real payroll; every starting-list rate
+is from memory and marked so.
+
+## v0.999.170 HOOLA INTERACTIVE REBUILD (built as 0.999.169; their PAYROLL DESK took 0.999.169, both kept)
+
+Owner: "NOW OUR PLAN FOR REBUILDING IT PROPERLY ::: 1) REDESIGN WORK AS WE DONE FOR VOCAL 2) WIRING THE EXISTING BACKEND
+TO EVERY TOOL PERFECTLY 3) BEST INTERACTIVE GENEARTOR AND IT API ATTACHMENT HERE LETS USER CHOOSE THE PERFECT INTERACTIVE
+LLM AGENT FROM HEYGEN TO GEMINI OMNI ETC" -> the plan docs/HOOLA_INTERACTIVE_REBUILD.md + the design canvas
+claude.ai/artifact/38Ejw9Eekn9y8u8H8nEwGp (7 boards) -> "GO BUILD". Research: docs/research/interactive/01-03.
+
+**1. The look (R1).**
+- `static/console/interactive.js` is rewritten on the Vocal frame and `interactive2.css` is its own stylesheet: Vocal's
+  frame CSS scoped to `#hxRoot`, plus the Interactive parts. The old `#hiRoot` rules in v2.css are no longer used.
+- The sidebar has four groups: Make (Interactive chat, Studio, Templates, Apps), Faces and voices (Avatars, Voices),
+  Live (Live agents) and Assets (Projects, Brand, Engines, Developers, Settings).
+- **The home is the Interactive chat** (`interactivechat.py`, a Conversation of kind `interactive`, kept out of chat
+  lists).
+  - Her picks ride each message as `[Interactive settings: ...]`: face, voice, engine, language, shape.
+  - The model calls `create_studio action=talking_video`, which makes a DRAFT with scenes and a price card in the chat.
+  - **Make** is her tap: POST /api/interactive/x/make with the quote key.
+- **Studio:** script on the left, a sketch of the selected scene in her brand colour, the scene strip, and tool tabs
+  (Look / Face / Voice / Engine / Video) with the price and Make.
+- Every other page is redrawn: Templates, Apps, Avatars, Voices, Live, Projects, Brand, Engines, Developers, Settings.
+
+**2. Wiring (R2).**
+- Every video speaks in a Vocal voice. `interactive/voice.py` calls `vocal.service._say` (Gemini, ElevenLabs, her own
+  voices, the GPU lab) with her Vocal dictionary.
+- `frames.do_avatar_film` takes `voicer=` and `voice_out=`.
+- Projects can use any of the 140 Vocal languages, not only the first ten.
+- Apps open the real tools:
+  - Vocal's Dialogue / Clean-up / Your voice / Dubbing pages, via `window.__hvPage` read in `vocal.js open()`;
+  - Create's Cinema / Image / Music;
+  - B-roll, Batch and Many names on this page.
+
+**3. Engines (R3).**
+- `interactive/engines.py` holds one row per engine: what it does, quality, languages, the published price, the key it
+  needs, and whether it is connected (read from the server).
+- She sets a default per job (video / live / B-roll).
+- `vendors.py` calls each vendor in the shape its spec gives:
+  - kie.ai (Kling AI Avatar / Pro, OmniHuman 1.5, InfiniteTalk, Wan S2V) through Cinema's client;
+  - Runway (`/v1/avatars` then `/v1/avatar_videos`);
+  - HeyGen v3 (`/v3/assets` then `/v3/videos` type image, `heygen-avatar-6`);
+  - Hedra (`/v3/files` then `/v3/models/hedra-character-3`);
+  - Gemini Omni for B-roll (`/v1beta/interactions`).
+- **A face engine makes her photo talk from the same timed voice track.**
+  - The talking person sits over the HyperFrames scenes (vidkit `combine`, picture-in-picture), or fills the whole frame.
+  - A paid face starts only with her tap on that exact quote (`quote` / `check_quote`); its cost goes into her credits
+    (`W.note`).
+  - The AI mark is written into the MP4's metadata.
+
+**4. Live agents (R4).** `interactive/live.py`:
+- **The brain.** Her facts only. A number in an answer that is not in her facts or in the question is never said: the
+  answer becomes "I don't know".
+- **Voice and faces.** A Vocal voice speaks the answer. Simli, Anam, HeyGen LiveAvatar LITE and Tavus get a short pass;
+  the GPU lab gets its ticket.
+- **Limits.** A minute cap a day per agent, and 20 questions per visitor per 10 minutes.
+- **Her website.** `publish` gives a pass (shown once) for the sites she lists. `static/interactive/agent.js` is a one-line
+  widget that says it is an AI, answers in words and voice, and works only on those sites; the `/pub/*` routes send CORS
+  headers.
+
+**5. Developers (R5).** `interactive/apps.py`:
+- `hi_live_` app keys (only a fingerprint is kept, 120 calls an hour);
+- signed webhooks `video.ready` / `video.failed`, using Vocal's private-address guard;
+- `/api/interactive/v1/*`: engines, avatars, videos (draft + price, make with the quote key, status, file).
+
+**Fixed:** `frames._root()` was relative, but ffmpeg and ffprobe run in the file's own folder, so a voice file could never
+be opened. That path had never run before, because the GPU lab was always off.
+
+**Tests:** test_v0999_169_interactive_rebuild.py (17), plus the updated test_v0772 page pin and the stamp count (45).
+
+**NOT VERIFIED:**
+- No vendor answered a live call: there are no keys here.
+- The rented faces are not drawn in the browser yet. The pass is made, but their SDKs are not added and the console CSP
+  allows only its own scripts.
+- No native phone screens: no Flutter on the build machine. The phone opens the redesigned page in its web view.
+- Nothing has been checked on her server.

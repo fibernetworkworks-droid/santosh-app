@@ -1,4 +1,4 @@
-"""v0.999.169 HOOLA INTERACTIVE REBUILD (owner: "GO BUILD" on the design canvas; contract docs/HOOLA_INTERACTIVE_REBUILD.md):
+"""v0.999.170 HOOLA INTERACTIVE REBUILD (owner: "GO BUILD" on the design canvas; contract docs/HOOLA_INTERACTIVE_REBUILD.md):
 the video speaks in a Vocal voice, a face engine she chooses makes her photo talk (price card first, her tap), the
 Engines page reads what is really connected, live agents answer only from her facts (on her website too, with a minute
 cap), B-roll shots without people, app keys + signed webhooks, the Interactive chat plans drafts, and the vendors are
@@ -346,7 +346,7 @@ def test_interactive_chat_is_its_own_and_plans_drafts(ix, monkeypatch):
     assert r["status"] == "draft" and "nothing is made" in r["note"]
     assert IC.chat_items("default", c["id"])[0]["quote"]["line"]
     from app import callconv
-    assert '"books", "interactive")' in Path(callconv.__file__).read_text("utf-8")
+    assert '"payroll", "interactive")' in Path(callconv.__file__).read_text("utf-8")
 
 
 def test_console_page_is_the_new_frame():

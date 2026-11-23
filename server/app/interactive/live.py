@@ -1,4 +1,4 @@
-"""v0.999.169 HOOLA INTERACTIVE REBUILD - live agents (R4) and B-roll shots (R3).
+"""v0.999.170 HOOLA INTERACTIVE REBUILD - live agents (R4) and B-roll shots (R3).
 
 A LIVE AGENT = a brain (her facts, in her words) + Hoola's voice (a Vocal voice, any language) + a face engine she picks
 (Simli, Anam, HeyGen LiveAvatar, Tavus, the GPU lab, or voice only). The brain answers ONLY from her facts; a number in

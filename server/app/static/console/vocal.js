@@ -292,7 +292,7 @@ window.HoolaVocal = function (ctx) {
   }
   const barHTML = () => `<div class="hv-bar" id="hvBar" hidden><span class="hv-tile s">${ic('speech', 14)}</span><b id="hvNow"></b><audio id="hvAudio" controls preload="none"></audio>
     <button type="button" class="hv-ib" data-a="closebar" aria-label="Close the player">${ic('x')}</button></div>`;
-  async function open() { mount(); await load(); const pg = window.__hvPage; window.__hvPage = ''; go(pg && V[pg] ? pg : PAGE, pg ? '' : ARG); }   // v0.999.169 Interactive's Apps open a Vocal page
+  async function open() { mount(); await load(); const pg = window.__hvPage; window.__hvPage = ''; go(pg && V[pg] ? pg : PAGE, pg ? '' : ARG); }   // v0.999.170 Interactive's Apps open a Vocal page
   function leave() { if (ROOT) { $('#hvAudio')?.pause(); window.HoolaMenu?.close(); ROOT.hidden = true; } clearTimeout(chatPoll.t); clearTimeout(dubPoll.t); Object.values(REC).forEach(r => r.mr.stop()); }
   function creditCard() {
     const u = D.usage || {}, used = +u.credits_used || +u.credits || 0, left = u.credits_left;

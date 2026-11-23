@@ -6,7 +6,7 @@
  "languages": [
   "en"
  ],
- "version": 2,
+ "version": 3,
  "official_hosts": [
   "accc.gov.au",
   "afca.org.au",
@@ -218,6 +218,44 @@
     "value": "Your state's rental bond authority",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "payroll": {
+   "starting_list": {
+    "value": {
+     "frequency": "fortnightly",
+     "contributions": [
+      {
+       "name": "Superannuation guarantee",
+       "employer_pct": 12,
+       "base": "gross"
+      }
+     ],
+     "income_tax": {
+      "method": "none",
+      "note": "PAYG withholding uses the ATO tax tables - put your own figures here"
+     },
+     "filings": [
+      {
+       "name": "Single Touch Payroll",
+       "every": "per_run",
+       "due_offset_days": 0
+      },
+      {
+       "name": "Super contributions",
+       "every": "quarterly",
+       "due_offset_days": 28
+      },
+      {
+       "name": "PAYG withheld (BAS)",
+       "every": "quarterly",
+       "due_offset_days": 28
+      }
+     ]
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use",
+    "where_to_check": "https://www.ato.gov.au/businesses-and-organisations/hiring-and-paying-your-workers"
    }
   }
  }

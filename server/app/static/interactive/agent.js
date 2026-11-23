@@ -1,4 +1,4 @@
-/* v0.999.169 HOOLA INTERACTIVE - her live agent on her own website: one line,
+/* v0.999.170 HOOLA INTERACTIVE - her live agent on her own website: one line,
    <script src="https://<hoola>/static/interactive/agent.js" data-agent="ia_pub_..." defer></script>
    A small round button opens a panel; the visitor types (or speaks, where the browser can hear), the agent answers in
    words and in its Hoola voice, only from the facts she wrote. It says it is an AI before the first question. Nothing

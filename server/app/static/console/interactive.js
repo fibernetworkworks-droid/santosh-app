@@ -1,4 +1,4 @@
-/* v0.999.169 HOOLA INTERACTIVE, REBUILT (owner: "GO BUILD" on the design canvas claude.ai/artifact/38Ejw9Eekn9y8u8H8nEwGp;
+/* v0.999.170 HOOLA INTERACTIVE, REBUILT (owner: "GO BUILD" on the design canvas claude.ai/artifact/38Ejw9Eekn9y8u8H8nEwGp;
    the build contract is docs/HOOLA_INTERACTIVE_REBUILD.md). Hoola Interactive now sits on the Create Studio / Hoola Vocal
    frame: a 248 px sidebar with the real Hoola mark and four groups (Make, Faces and voices, Live, Assets) plus the
    credits card, a 52 px top bar with the crumb "Interactive · <page>", and the Interactive chat as the home.

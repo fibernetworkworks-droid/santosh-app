@@ -42,11 +42,11 @@ MAX_VIDEOS = 40
 MAX_AVATARS = 12
 PHOTO_EXT = (".png", ".jpg", ".jpeg", ".webp")
 NUMBER_LOOKS = ("big_number", "price", "bar_chart")
-LAYOUTS = ("corner", "full")       # v0.999.169 a face engine's talking person: in a corner over the scenes, or the whole frame
+LAYOUTS = ("corner", "full")       # v0.999.170 a face engine's talking person: in a corner over the scenes, or the whole frame
 
 
 def lang_of(code: Any) -> str:
-    """v0.999.169 any language a Vocal voice speaks (140), not only the first ten; an unknown code stays English."""
+    """v0.999.170 any language a Vocal voice speaks (140), not only the first ten; an unknown code stays English."""
     c = str(code or "")
     if c in LANGS:
         return c
@@ -476,7 +476,7 @@ def _spoken(p: dict[str, Any]) -> str:
 
 
 def quote_for(tenant: str, p: dict[str, Any], silent: bool = False) -> dict[str, Any]:
-    """v0.999.169 the price card of one make: the face engine x the spoken length, plus the voice."""
+    """v0.999.170 the price card of one make: the face engine x the spoken length, plus the voice."""
     from . import engines as EN
     from . import voice as VO
     text = _spoken(p)

@@ -1,4 +1,4 @@
-"""v0.999.169 HOOLA INTERACTIVE REBUILD - the voice of every Interactive video is a Hoola Vocal voice.
+"""v0.999.170 HOOLA INTERACTIVE REBUILD - the voice of every Interactive video is a Hoola Vocal voice.
 
 Before this, a video could speak only through the GPU voice lab, so with the lab off every video was captions only. Now:
 

@@ -7,7 +7,7 @@
   "en",
   "cy"
  ],
- "version": 3,
+ "version": 4,
  "official_hosts": [
   "gov.uk",
   "fca.org.uk",
@@ -239,6 +239,75 @@
     "value": "Employer National Insurance - verify rate and threshold",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
+   },
+   "starting_list": {
+    "value": {
+     "frequency": "monthly",
+     "contributions": [
+      {
+       "name": "Employee National Insurance",
+       "employee_pct": 8,
+       "from": 1048,
+       "upto": 4189,
+       "base": "gross"
+      },
+      {
+       "name": "Employee National Insurance above the upper limit",
+       "employee_pct": 2,
+       "from": 4189,
+       "base": "gross"
+      },
+      {
+       "name": "Employer National Insurance",
+       "employer_pct": 15,
+       "from": 417,
+       "base": "gross"
+      },
+      {
+       "name": "Workplace pension",
+       "employee_pct": 5,
+       "employer_pct": 3,
+       "from": 520,
+       "upto": 4189,
+       "base": "gross",
+       "note": "qualifying earnings; your scheme may differ"
+      }
+     ],
+     "income_tax": {
+      "method": "annualised",
+      "allowance": 12570,
+      "bands": [
+       {
+        "upto": 37700,
+        "pct": 20
+       },
+       {
+        "upto": 112570,
+        "pct": 40
+       },
+       {
+        "upto": null,
+        "pct": 45
+       }
+      ],
+      "note": "tax codes, Scottish rates and the allowance taper are not applied - check this"
+     },
+     "filings": [
+      {
+       "name": "Full Payment Submission (RTI)",
+       "every": "per_run",
+       "due_offset_days": 0
+      },
+      {
+       "name": "PAYE and National Insurance paid over",
+       "every": "monthly",
+       "due_day": 22
+      }
+     ]
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use",
+    "where_to_check": "https://www.gov.uk/guidance/rates-and-thresholds-for-employers"
    }
   },
   "consumer_credit": {

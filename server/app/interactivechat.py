@@ -1,4 +1,4 @@
-"""v0.999.169 HOOLA INTERACTIVE REBUILD - the Hoola Interactive home is a chat, the twin of the Interactive chat (owner, on the
+"""v0.999.170 HOOLA INTERACTIVE REBUILD - the Hoola Interactive home is a chat, the twin of the Interactive chat (owner, on the
 design canvas claude.ai/artifact/38Ejw9Eekn9y8u8H8nEwGp: "GO BUILD"; contract docs/HOOLA_INTERACTIVE_REBUILD.md).
 
 - An Interactive chat = a Conversation with kind 'interactive', kept out of every Hoola chat list (callconv.not_call,

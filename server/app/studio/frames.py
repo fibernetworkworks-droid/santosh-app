@@ -68,7 +68,7 @@ def _root() -> Path:
     st = get_settings()
     r = Path((st.frames_root or "").strip() or (Path("data") / "frames")).expanduser()
     r.mkdir(parents=True, exist_ok=True)
-    return r.resolve()          # v0.999.169: ffmpeg / ffprobe run with cwd = the file's folder, so a relative path broke them
+    return r.resolve()          # v0.999.170: ffmpeg / ffprobe run with cwd = the file's folder, so a relative path broke them
 
 
 def _env() -> dict[str, str]:
@@ -413,7 +413,7 @@ def do_avatar_film(tenant: str, spec: dict, files: list[dict[str, Any]] | None =
     `files` come from the tool layer owner-checked (name = the spec's asset name, e.g.
     assets/avatar.jpg; path = the stored file); the worker adds the voice track it made.
 
-    v0.999.169 HOOLA INTERACTIVE REBUILD: `voicer(sentence, lang) -> wav bytes` speaks each line (Hoola Interactive passes
+    v0.999.170 HOOLA INTERACTIVE REBUILD: `voicer(sentence, lang) -> wav bytes` speaks each line (Hoola Interactive passes
     a Vocal voice: Gemini / ElevenLabs / her own voices); without one the GPU lab speaks, as before. `voice_out` (a path)
     receives a copy of the whole timed voice track, so a talking-face engine can be driven by exactly the same audio.
     """

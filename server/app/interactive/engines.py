@@ -1,4 +1,4 @@
-"""v0.999.169 HOOLA INTERACTIVE REBUILD - the engines she chooses (contract docs/HOOLA_INTERACTIVE_REBUILD.md part 3).
+"""v0.999.170 HOOLA INTERACTIVE REBUILD - the engines she chooses (contract docs/HOOLA_INTERACTIVE_REBUILD.md part 3).
 
 The brain and the voice stay Hoola's; only the FACE is chosen. Three jobs:
 

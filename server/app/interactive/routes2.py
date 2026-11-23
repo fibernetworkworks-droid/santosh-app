@@ -1,4 +1,4 @@
-"""v0.999.169 HOOLA INTERACTIVE REBUILD - the new doors of the rebuilt page (contract docs/HOOLA_INTERACTIVE_REBUILD.md).
+"""v0.999.170 HOOLA INTERACTIVE REBUILD - the new doors of the rebuilt page (contract docs/HOOLA_INTERACTIVE_REBUILD.md).
 
     /api/interactive/x/*      the console page (her key): engines, defaults, voices, languages, the price card,
                               B-roll shots, live agents (session pass, ask, publish), app keys + webhooks

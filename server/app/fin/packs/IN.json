@@ -7,7 +7,7 @@
   "en",
   "hi"
  ],
- "version": 3,
+ "version": 4,
  "official_hosts": [
   "rbi.org.in",
   "sebi.gov.in",
@@ -216,6 +216,110 @@
     "value": "TDS on salary (Form 16), EPF, ESI, professional tax by state",
     "status": "verify",
     "note": "from research / memory - verify on the official page before use"
+   },
+   "starting_list": {
+    "value": {
+     "frequency": "monthly",
+     "contributions": [
+      {
+       "name": "Provident Fund (EPF)",
+       "employee_pct": 12,
+       "employer_pct": 12,
+       "upto": 15000,
+       "base": "gross",
+       "note": "on basic + DA up to the wage ceiling; Hoola uses the pay you give"
+      },
+      {
+       "name": "Employees' State Insurance (ESI)",
+       "employee_pct": 0.75,
+       "employer_pct": 3.25,
+       "only_upto": 21000,
+       "base": "gross",
+       "note": "only for people whose gross is up to the ceiling"
+      },
+      {
+       "name": "Professional Tax (Maharashtra)",
+       "slabs": [
+        {
+         "upto": 7500,
+         "employee": 0,
+         "employer": 0
+        },
+        {
+         "upto": 10000,
+         "employee": 175,
+         "employer": 0
+        },
+        {
+         "upto": null,
+         "employee": 200,
+         "employer": 0
+        }
+       ],
+       "note": "state by state; February is higher in Maharashtra"
+      }
+     ],
+     "income_tax": {
+      "method": "annualised",
+      "allowance": 75000,
+      "bands": [
+       {
+        "upto": 400000,
+        "pct": 0
+       },
+       {
+        "upto": 800000,
+        "pct": 5
+       },
+       {
+        "upto": 1200000,
+        "pct": 10
+       },
+       {
+        "upto": 1600000,
+        "pct": 15
+       },
+       {
+        "upto": 2000000,
+        "pct": 20
+       },
+       {
+        "upto": 2400000,
+        "pct": 25
+       },
+       {
+        "upto": null,
+        "pct": 30
+       }
+      ],
+      "note": "new regime; the rebate under section 87A and the 4% cess are not applied - check this"
+     },
+     "filings": [
+      {
+       "name": "PF ECR and payment",
+       "every": "monthly",
+       "due_day": 15
+      },
+      {
+       "name": "ESI contribution",
+       "every": "monthly",
+       "due_day": 15
+      },
+      {
+       "name": "TDS on salary paid over",
+       "every": "monthly",
+       "due_day": 7
+      },
+      {
+       "name": "Form 24Q (TDS return)",
+       "every": "quarterly",
+       "due_offset_days": 31
+      }
+     ]
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use",
+    "where_to_check": "https://www.epfindia.gov.in , https://www.esic.gov.in , https://www.incometax.gov.in , your state's professional tax page"
    }
   },
   "consumer_credit": {
