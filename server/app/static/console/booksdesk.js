@@ -301,6 +301,10 @@
       ${done ? `<section class="card tight"><div class="bk-bar"><h2 class="md-h2" style="margin:0">Decided</h2></div><div style="overflow-x:auto"><table class="tb"><tbody>${done}</tbody></table></div></section>` : ''}`;
   }
 
+  function connected(m) { if (!m || m.type !== 'connector-done') return; toast(m.ok ? `${m.name || 'The program'} is connected - tick it to let Hoola read it.` : 'It was not connected.', !m.ok); ST.inbox = null; if (ST.tab === 'inbox') showPage(true); }
+  try { new BroadcastChannel('hoola-connect').onmessage = e => connected(e.data); } catch {}
+  window.addEventListener('storage', e => { if (e.key === 'hoola.connect.done' && e.newValue) { try { connected(JSON.parse(e.newValue)); } catch {} } });
+
   /* --- Inbox (v0.999.163: invoices and bills that came in by themselves) */
   const INST = {posted: ['ok', 'Posted'], waiting: ['v', 'Waits for an approver'], draft: ['warn', 'Needs your look'], failed: ['warn', 'Could not be read'],
     duplicate: ['', 'Already in your books'], not_invoice: ['', 'Not an invoice'], dropped: ['', 'Set aside']};
@@ -331,8 +335,15 @@
     const needs = I.items.filter(x => x.status === 'draft' || x.status === 'failed');
     const rest = I.items.filter(x => !(x.status === 'draft' || x.status === 'failed')).slice(0, 60);
     const tbl = (rows, act) => `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>Document</th><th class="num">Total</th><th></th><th></th></tr></thead><tbody>${rows.map(x => inRow(x, act)).join('')}</tbody></table></div>`;
-    const soft = (src.software || []).map(x => { const ready = x.state === 'ready';
-      return `<label class="bk-chk"><input type="checkbox" data-insw="${esc(x.key)}"${x.on ? ' checked' : ''}${ready || x.on ? '' : ' disabled'}${admin ? '' : ' disabled'}> ${esc(x.name)} <span class="mut">${ready ? 'connected' : 'connect it in Connectors first'}</span></label>`; }).join('');
+    const SSTATE = {ready: ['ok', 'Connected'], pending: ['warn', 'Finish signing in'], needs_link: ['', 'Not connected'], needs_key: ['', 'Needs its key'],
+      needs_setup: ['', 'Not available yet'], not_configured: ['', 'Apps are off on this server']};
+    const soft = (src.software || []).map(x => { const ready = x.state === 'ready'; const [k, tx] = SSTATE[x.state] || ['', x.state];
+      const act = ready ? '' : (x.state === 'needs_link' || x.state === 'pending') && admin ? `<button class="btn soft sm" type="button" data-inconn="${esc(x.key)}" data-name="${esc(x.name)}">Connect</button>`
+        : x.state === 'needs_key' && admin ? `<a class="btn soft sm" href="/console/?v=connectors" target="_blank" rel="noopener">Add its key</a>` : '';
+      return `<div class="bk-sw"><label class="bk-chk"><input type="checkbox" data-insw="${esc(x.key)}"${x.on && ready ? ' checked' : ''}${ready && admin ? '' : ' disabled'}> <span>${esc(x.name)}</span></label>
+        <span class="pill ${k}">${esc(tx)}</span>${act}</div>`; }).join('');
+    const softNote = (src.software || []).some(x => x.state === 'not_configured') ? '<p class="mut" style="margin:4px 0">Programs connect through Composio, which is not set up on this server yet (COMPOSIO_API_KEY).</p>'
+      : (src.software || []).some(x => x.state === 'needs_setup') ? '<p class="mut" style="margin:4px 0">"Not available yet" = that program has no ready sign-in on Hoola yet; Newtika switches it on once.</p>' : '';
     const key = ST.inKey ? `<div class="md-alert">${svg(IC.warn)}<div><div class="t">Copy your books key now</div><div class="s">Address: ${esc(location.origin + ST.inKey.url)} · Header: Authorization: Bearer <code>${esc(ST.inKey.key)}</code>. Hoola keeps only a fingerprint; it is not shown again.</div></div></div>` : '';
     return `${head('Inbox', 'Invoices and bills that came in by themselves - read by Hoola, checked, and posted when every check passed.')}
       <div class="bk-4">${kpi('Posted by Hoola', String(c.posted || 0))}${kpi('Waiting for an approver', String(c.waiting || 0))}${kpi('Need your look', String((c.draft || 0) + (c.failed || 0)), (c.draft || c.failed) ? 'bad' : '')}${kpi('Copies and non-invoices skipped', String((c.duplicate || 0) + (c.not_invoice || 0)))}</div>
@@ -343,7 +354,7 @@
         <label class="bk-chk"><input type="checkbox" id="inMail"${st.mail ? ' checked' : ''}${admin ? '' : ' disabled'}> Your mail ${src.mail && src.mail.length ? `<span class="mut">(${esc(src.mail.join(', '))})</span>` : '<span class="mut">- connect a mail account first</span>'}</label>
         <div class="md-field"><label for="inAcc">Only these mail accounts (leave empty for all)</label><input class="in" id="inAcc" value="${esc((st.accounts || []).join(', '))}"${admin ? '' : ' disabled'}></div>
         <p class="mut" style="margin:8px 0">Hoola's own address: ${src.hoola_address ? `<b>${esc(src.hoola_address)}</b> - set your billing programs to send invoices here, or forward a bill.` : 'not set up on this server yet.'}</p>
-        <div class="bk-soft">${soft}</div>
+        <h3 class="bk-h3">Your programs <span class="mut">- tick the ones Hoola should read</span></h3><div class="bk-soft">${soft}</div>${softNote}
         <label class="bk-chk"><input type="checkbox" id="inShop"${st.shop ? ' checked' : ''}${admin ? '' : ' disabled'}> Your Hoola website shop's confirmed orders</label>
         <label class="bk-chk"><input type="checkbox" id="inAuto"${st.auto_post ? ' checked' : ''}${admin ? '' : ' disabled'}> Post by itself when every check passes (otherwise each one waits for your tap)</label>
         <div class="md-field"><label for="inTax">Your tax numbers (GSTIN, VAT ...), so Hoola can tell your sales from your bills</label><input class="in" id="inTax" value="${esc((st.tax_ids || []).join(', '))}"${admin ? '' : ' disabled'}></div>
@@ -611,6 +622,17 @@
       if (ds.infile) { const r = await fetch(`/api/books/inbox/${enc(ds.infile)}/file?workspace=${enc(ws().id)}`, {headers: {Authorization: 'Bearer ' + TOKEN}});
         if (!r.ok) { toast('The file is not kept.', true); return; } const b = await r.blob(); const a = document.createElement('a'); a.href = URL.createObjectURL(b);
         a.download = ds.name || 'document'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); return; }
+      if (ds.inconn) {
+        const w = window.open('', 'hoola-connect', 'popup,width=560,height=760');
+        try { const r = await api('POST', `/api/composio/apps/${enc(ds.inconn)}/connect`);
+          if (r.status === 'open_link' && r.url) { if (w && !w.closed) w.location.href = r.url; else window.open(r.url, 'hoola-connect', 'popup,width=560,height=760');
+            toast(`Sign in to ${ds.name} in the new window. This page updates by itself.`); }
+          else { if (w) w.close(); if (r.status === 'ready') { toast(`${ds.name} is connected.`); ST.inbox = null; await refreshDesk(true); }
+            else if (r.status === 'needs_key') { toast(`${ds.name} connects with its own key - add it on the Connectors page.`); window.open('/console/?v=connectors', '_blank'); }
+            else toast(r.say || `${ds.name} is not available yet.`, true); }
+        } catch (err) { if (w) w.close(); throw err; }
+        return;
+      }
       if (ds.inkey) { t.disabled = true; const r = await books('inbox_key'); ST.inKey = r; ST.inbox = null; await refreshDesk(true); return; }
       if (ds.inkeystop) { t.disabled = true; await books('inbox_key_stop'); ST.inKey = null; ST.inbox = null; toast('The books address is closed.'); await refreshDesk(true); return; }
       if (ds.insave) {

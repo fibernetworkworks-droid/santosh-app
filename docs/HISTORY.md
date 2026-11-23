@@ -10680,3 +10680,13 @@ file download, shop orders, desk + roles.
 
 NOT VERIFIED: a real Gmail / Outlook mailbox, a real Composio program's list tools (their names and answers differ per program -
 picked by name at run time), a real AI read of real invoices, on her server.
+
+## v0.999.164 BOOKS INBOX CONNECT (owner, her screenshot: "THIS ARE CONNECTIONS WE NEED TO PROVIDE TO THIS EMPLOYEE BUT IS ALL CONNECTORS ARE DISABLE IS ALL THIS ARE IN CONNECTOR SECTION CHECK")
+
+Yes - the Inbox's 15 programs are the Connectors section's own Composio apps (QuickBooks, Zoho Books and Razorpay are featured there).
+The Inbox drew every program not already connected as a disabled box with "connect it in Connectors first". Now each row shows
+`composio.status` in words - Connected / Finish signing in / Not connected / Needs its key / Not available yet (no ready sign-in on
+Hoola: Newtika switches it on once) / Apps are off on this server (no COMPOSIO_API_KEY) - with Connect in place (POST
+/api/composio/apps/{k}/connect, the same sign-in window, the Inbox listens on the 'hoola-connect' channel and redraws) or Add its key
+(opens Connectors). Only a connected program can be ticked. Browser test covers the states. NOT VERIFIED: which of the 15 her live
+Composio catalogue has (a slug it does not know shows "Not available yet").

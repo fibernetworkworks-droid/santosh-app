@@ -587,7 +587,7 @@ def sources(tenant: str, ws: str) -> dict[str, Any]:
         hoola = ""
     soft = []
     for kit, label in SOFTWARE.items():
-        state = "not set up"
+        state = "not_configured"
         try:
             from ...bazar import composio as C
             from ...db import session
@@ -595,7 +595,7 @@ def sources(tenant: str, ws: str) -> dict[str, Any]:
                 with session() as s:
                     state = C.status(s, tenant, kit)
         except Exception:   # noqa: BLE001
-            state = "not set up"
+            state = "not_configured"
         soft.append({"key": kit, "name": label, "state": state, "on": kit in (st.get("software") or [])})
     return {"mail": mail, "hoola_address": hoola, "software": soft, "api_on": st.get("api_on", False)}
 

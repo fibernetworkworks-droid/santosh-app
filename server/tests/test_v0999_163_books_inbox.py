@@ -217,7 +217,7 @@ def test_shop_orders_become_sales_invoices(F):
 def test_desk_has_the_inbox(F):
     from pathlib import Path
     js = (Path(__file__).resolve().parents[1] / "app/static/console/booksdesk.js").read_text()
-    for k in ("['inbox', 'Inbox']", "pInbox", "data-inscan", "data-inpost", "data-indrop", "data-inkey", "inbox_needs"):
+    for k in ("['inbox', 'Inbox']", "pInbox", "data-inscan", "data-inpost", "data-indrop", "data-inkey", "inbox_needs", "data-inconn", "/api/composio/apps/", "hoola-connect"):
         assert k in js, k
     from app.fin.desks import books_ent as E
     assert E.allowed("viewer", "inbox") and not E.allowed("viewer", "inbox_post") and not E.allowed("accountant", "inbox_key")
@@ -266,6 +266,15 @@ def test_inbox_in_a_real_browser(bk_server, monkeypatch):
     pg.click("[data-inpost]")
     pg.wait_for_function("() => document.querySelector('#toast').innerText.includes('Posted')", timeout=10000)
     pg.wait_for_function("() => !document.querySelector('[data-inpost]')", timeout=10000)
+    states = {"quickbooks": "ready", "xero": "needs_link", "zoho_books": "needs_link", "stripe": "needs_key", "wave": "needs_setup"}
+    monkeypatch.setattr(Fd, "sources", lambda t, w: {"mail": ["me@lumen.example"], "hoola_address": "", "api_on": False,
+                                                     "software": [{"key": k, "name": Fd.SOFTWARE[k], "state": v, "on": False} for k, v in states.items()]})
+    pg.click("#sdRefresh")
+    pg.wait_for_selector("[data-inconn='xero']", timeout=10000)
+    assert pg.is_enabled("[data-insw='quickbooks']") and not pg.is_enabled("[data-insw='xero']")
+    assert pg.locator("[data-inconn]").count() == 2 and "Not available yet" in pg.inner_text("#mdPage")
+    if shots:
+        pg.locator(".bk-soft").screenshot(path=f"{shots}/books-inbox-programs.png")
     pg.goto(base + "/console/books#/today")
     pg.wait_for_selector("#mdPage .bk-4", timeout=10000)
     assert not errors, errors
