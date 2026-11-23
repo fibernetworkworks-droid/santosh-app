@@ -1018,7 +1018,7 @@ async def lead_desk_jobs() -> None:
 
 
 async def books_feed_jobs() -> None:
-    """v0.999.161 BOOKS INBOX: invoices and bills from her mail (5 min), her programs (hourly), her shop."""
+    """v0.999.162 BOOKS INBOX: invoices and bills from her mail (5 min), her programs (hourly), her shop."""
     from .fin.desks import books_feed as _bf
     await _bf.tick()
 

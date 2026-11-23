@@ -192,7 +192,7 @@ _BOOKS_TASKS: set = set()
 
 
 def _to_books(tenant: str, sender: str, subject: str, body: str, raw: bytes, msg: dict[str, Any], mid: str) -> None:
-    """v0.999.161 an invoice or a bill mailed to Hoola's own address goes into her Books inbox (when she turned it on)."""
+    """v0.999.162 an invoice or a bill mailed to Hoola's own address goes into her Books inbox (when she turned it on)."""
     try:
         import asyncio
         from .fin.desks import books_feed as F

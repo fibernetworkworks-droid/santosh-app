@@ -39,7 +39,7 @@ ROLE_NAMES = {"owner": "Owner", "admin": "Admin", "accountant": "Accountant", "a
 POSTING = ("issue", "journal", "apply_match", "post_bank", "depreciation", "revalue")
 READ = ("chart", "documents", "matches", "reconcile", "ageing", "reports", "close_check", "inventory",
         "requests", "by_cost_centre", "consolidate", "controls_read", "team", "inbox")
-INBOX_WORK = {"inbox_post", "inbox_drop", "inbox_scan"}          # v0.999.161 the books inbox
+INBOX_WORK = {"inbox_post", "inbox_drop", "inbox_scan"}          # v0.999.162 the books inbox
 INBOX_SET = {"inbox_settings", "inbox_key", "inbox_key_stop"}
 PREPARE = ("invoice", "bill", "receipt", "asset")
 CAN = {

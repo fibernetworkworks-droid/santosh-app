@@ -301,7 +301,7 @@
       ${done ? `<section class="card tight"><div class="bk-bar"><h2 class="md-h2" style="margin:0">Decided</h2></div><div style="overflow-x:auto"><table class="tb"><tbody>${done}</tbody></table></div></section>` : ''}`;
   }
 
-  /* --- Inbox (v0.999.161: invoices and bills that came in by themselves) */
+  /* --- Inbox (v0.999.162: invoices and bills that came in by themselves) */
   const INST = {posted: ['ok', 'Posted'], waiting: ['v', 'Waits for an approver'], draft: ['warn', 'Needs your look'], failed: ['warn', 'Could not be read'],
     duplicate: ['', 'Already in your books'], not_invoice: ['', 'Not an invoice'], dropped: ['', 'Set aside']};
   const INSRC = {email: 'Your mail', hoola_mail: "Hoola's address", software: 'Your program', api: 'Your program', shop: 'Your shop'};

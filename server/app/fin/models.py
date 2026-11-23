@@ -312,7 +312,7 @@ class FinBooksRequest(Base):
 
 
 class FinBooksInbox(Base):
-    """v0.999.161 one invoice / bill that came in by itself - her mail, Hoola's own address, another program, her shop -
+    """v0.999.162 one invoice / bill that came in by itself - her mail, Hoola's own address, another program, her shop -
     read by Hoola, checked in code, and the books document it became (or why not)."""
     __tablename__ = "fin_books_inbox"
     id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("fbi"))
