@@ -428,6 +428,23 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- SAVE THE STATE (23 Nov 2026, owner: "FINE SAVE THE STATE FOR VOCAL NOW" after the Vocal redesign + the Vocal check): branch
+  `stable-2026-11-23-vocal-v168` = commit d6249aebe1 = v0.999.168, pubspec 0.999.168+1163 - cut at the LIVE commit (public
+  healthz 0.999.168). The Hoola Vocal line: every page redesigned premium on console + phone (Speech v0.999.133, Dialogue .142,
+  Studio .147, Dubbing .150, Voice library .154 + whole library .155, Your voice .157, Voice changer .159, Clean-up .161, Sound
+  effects .162, Your sounds / Dictionary / Settings .166) and VOCAL CHECK .168 (every button has its route, every ElevenLabs /
+  Gemini request checked against their pages of 23 Nov 2026, own-voice dub subtitles from the signed WebVTT link, signed
+  downloads follow redirects, NEW `python -m app.vocal.check` + vps-ops `vocal_check` / `vocal_check_paid`).
+  **RE-VERIFIED IN THIS EXACT COMMIT** (git archive, run there): APP_VERSION 0.999.168, **151 server tests green** (routines +
+  the 19 Vocal suites incl. Chromium walks of every page at light / dark 1440 and 390) and **36/36 phone Vocal tests** (Flutter
+  3.24.5).
+  **NOT VERIFIED / CAVEATS:** `vocal_check` has not been run on her server yet, so no tool is proven live with her real keys
+  (Gemini / ElevenLabs); Google now documents prebuilt and two-voice speech through its Interactions API while Hoola still uses
+  generateContent for those (prebuilt is live on her calls; the natural two-voice take is open until the check runs); copying a
+  voice needs a real person's spoken consent and is never checked automatically; changing single lines of an own-voice dub is
+  ElevenLabs Enterprise-only (the page says so). APK release `v0.999.168-b3553`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.999.168-b3553/app-release.apk
+  Roll back exactly like the ones below, with `stable-2026-11-23-vocal-v168` as the branch.
 - SAVE THE STATE (13 Nov 2026, later, owner: "PERFECT SAVE THE STATE" after her v0.880-v0.883 call + PC tests): branch
   `stable-2026-11-13-pc-v883` = commit 4102ab852 = v0.883.0, pubspec 0.883.0+882 - cut at the LIVE commit (public healthz
   0.883.0, chat_brain glm:openrouter:qwen/qwen3.8-27b). On top of the v0.879 save: v0.880 TEZ CALL (PC hand-off 4 s, warm call
