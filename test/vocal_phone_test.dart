@@ -987,17 +987,18 @@ void main() {
       ..['app_key'] = {'id': 'k2', 'name': 'Shop app', 'last4': 'Zz99', 'key': 'hv_live_FULLKEY123',
         'note': 'Copy this key now. It is shown only once; Hoola keeps only a fingerprint of it.'};
     final (app, store) = await _pageWith(t, d, (s, p) => VocalSettingsPage(store: s, settings: vocalDesignSettings(), embedded: false));
-    // keep my sounds
-    expect(find.text('Your voices and dictionary are always kept.'), findsOneWidget);
-    await t.tap(find.bySemanticsLabel('Keep my sounds: Forever'));
-    await _settle(t);
-    for (final o in ['Forever', '7 days', '30 days', '90 days']) {
-      expect(find.text(o), findsWidgets, reason: o);
+    // keep my sounds: four cards, the one in use ticked, and how many are kept on this server
+    for (final o in ['Never', '90 days', '30 days', '7 days']) {
+      expect(find.bySemanticsLabel('Keep my sounds: $o'), findsOneWidget, reason: o);
     }
-    await t.tap(find.text('30 days').last);
+    expect(t.getSemantics(find.bySemanticsLabel('Keep my sounds: Never')).hasFlag(SemanticsFlag.isChecked), isTrue);
+    expect(find.text('Kept on this server · 4 of 300 sounds'), findsOneWidget);
+    await t.ensureVisible(find.bySemanticsLabel('Keep my sounds: 30 days'));
+    await t.tap(find.bySemanticsLabel('Keep my sounds: 30 days'));
     await _settle(t);
     expect(_sent('settings'), {'keep_days': 30});
-    expect(find.bySemanticsLabel('Keep my sounds: 30 days'), findsOneWidget);
+    expect(t.getSemantics(find.bySemanticsLabel('Keep my sounds: 30 days')).hasFlag(SemanticsFlag.isChecked), isTrue);
+    expect(find.text('Sounds older than 30 days will be deleted. Starred sounds stay.'), findsOneWidget);
     // for your own apps
     expect(find.text('Shop site'), findsOneWidget);
     expect(find.text('Ends in Ab12 · 5 calls'), findsOneWidget);
@@ -1200,6 +1201,100 @@ void main() {
     _sem?.dispose();
     _sem = null;
   });
+
+  testWidgets('Your sounds: kept count, Select ticks several, Keep all stars them, Remove asks first; the Kept chip', (t) async {
+    _phone(t);
+    final (app, store) = await _page(t, (s, p) => VocalSoundsPage(store: s, player: p, onAsk: (_) {}));
+    expect(find.text('Kept on this server · 4 of 300'), findsOneWidget);
+    expect(find.text('The newest 300 are kept. Starred sounds are never removed by the limit.'), findsOneWidget);
+    await t.tap(find.bySemanticsLabel('Select'));
+    await _settle(t);
+    expect(find.text('0 selected'), findsOneWidget);
+    expect(t.getSemantics(find.bySemanticsLabel('Keep all')).hasFlag(SemanticsFlag.isEnabled), isFalse);
+    await t.tap(find.bySemanticsLabel('Karibu Mkate Bora'));
+    await t.pump();
+    await t.tap(find.bySemanticsLabel('Shop door bell'));
+    await t.pump();
+    expect(find.text('2 selected'), findsOneWidget);
+    expect(find.text('0:15 of sound'), findsOneWidget);
+    await t.tap(find.bySemanticsLabel('Keep all'));
+    await _settle(t);
+    expect(_sent('history_bulk'), {'ids': ['h1', 'h4'], 'action': 'keep'});
+    expect(find.text('2 sounds kept. They stay whatever the limit.'), findsOneWidget);
+    await t.tap(find.bySemanticsLabel('Stop selecting'));
+    await _settle(t);
+    expect(find.text('Kept on this server · 4 of 300 · 2 with a star'), findsOneWidget);
+    await t.ensureVisible(find.text('Kept'));
+    await t.pump();
+    await t.tap(find.text('Kept'));
+    await t.pump();
+    expect(find.text('Karibu Mkate Bora'), findsOneWidget);
+    expect(find.text('Tech Talk ep. 3 intro'), findsNothing);
+    await t.ensureVisible(find.text('All'));
+    await t.pump();
+    await t.tap(find.text('All'));
+    await t.pump();
+    await t.longPress(find.text('Tech Talk ep. 3 intro'));
+    await _settle(t);
+    expect(find.text('1 selected'), findsOneWidget);
+    await t.tap(find.bySemanticsLabel('Remove 1'));
+    await _settle(t);
+    expect(find.text('Remove this sound?'), findsOneWidget);
+    await t.tap(find.text('Remove').last);
+    await _settle(t);
+    expect(_sent('history_bulk'), {'ids': ['h3'], 'action': 'remove'});
+    expect(find.text('Tech Talk ep. 3 intro'), findsNothing);
+    expect(t.takeException(), isNull);
+    await _done(t, app, store);
+  });
+
+  testWidgets('Dictionary: change a word, hear it, test a sentence, import a list checked line by line', (t) async {
+    _phone(t);
+    final d = vocalData()
+      ..['rules_check'] = {'rows': [
+        {'line': 1, 'word': 'Nashik', 'say': 'Naa-shik', 'ipa': '', 'lang': '', 'state': 'new'},
+        {'line': 2, 'word': '', 'say': 'x', 'ipa': '', 'lang': '', 'state': 'bad', 'why': 'Needs a word'},
+      ], 'new': 1, 'replace': 0, 'bad': 1, 'room': 199};
+    (d['overview'] as Map)['rule_uses'] = {'pr1': 3};
+    final (app, store) = await _pageWith(t, d, (s, p) => VocalDictionaryPage(store: s, player: p, embedded: false));
+    expect(find.text('/mɪˈt̪ʰaːs/ · Every language · in 3 sounds'), findsOneWidget);
+    expect(find.text('1 of 200'), findsOneWidget);
+    await t.ensureVisible(find.bySemanticsLabel('Hear Mithas'));
+    await t.tap(find.bySemanticsLabel('Hear Mithas'));
+    await t.pump();
+    expect(_sent('hear'), {'text': 'Mithas', 'lang': ''});
+    await t.tap(find.bySemanticsLabel('Change Mithas'));
+    await _settle(t);
+    expect(find.text('Change a word'), findsOneWidget);
+    await t.enterText(find.byType(TextField).at(1), 'Mee-thaas');
+    await t.pump();
+    await t.tap(find.bySemanticsLabel('Save the change'));
+    await _settle(t);
+    expect(_sent('rule_update'), {'id': 'pr1', 'word': 'Mithas', 'say': 'Mee-thaas', 'ipa': 'mɪˈt̪ʰaːs', 'lang': ''});
+    expect(find.text('Add a word'), findsOneWidget);
+    await t.enterText(find.byType(TextField).at(3), 'Aaj hi aaiye Mithas Sweets.');
+    await t.pump();
+    expect(find.text('1 word will be read your way: Mithas as Mee-thaas.'), findsOneWidget);
+    await t.ensureVisible(find.bySemanticsLabel('Hear it · free'));
+    await t.tap(find.bySemanticsLabel('Hear it · free'));
+    await t.pump();
+    expect(_sent('hear')['text'], 'Aaj hi aaiye Mithas Sweets.');
+    await t.ensureVisible(find.bySemanticsLabel('Import a list'));
+    await t.tap(find.bySemanticsLabel('Import a list'));
+    await _settle(t);
+    await t.enterText(find.byType(TextField).last, 'Nashik,Naa-shik\n,x');
+    await t.pump();
+    await t.tap(find.bySemanticsLabel('Check the list'));
+    await _settle(t);
+    expect(find.text('1 new · 0 replace yours · 1 left out'), findsOneWidget);
+    expect(find.text('Line 2: — · Left out: Needs a word'), findsOneWidget);
+    await t.tap(find.bySemanticsLabel('Add 1 word'));
+    await _settle(t);
+    expect(_sent('rules_import'), {'text': 'Nashik,Naa-shik,,'});
+    expect(t.takeException(), isNull);
+    await _done(t, app, store);
+  });
+
 }
 
 String _source(String path) => File(path).readAsStringSync();

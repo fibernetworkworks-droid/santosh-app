@@ -1337,6 +1337,182 @@ def rule_remove(tenant: str, rid: str) -> dict[str, Any]:
         _store(tenant, d)
     return {"removed": rid}
 
+# ------------------------------------------------------------------ your sounds, dictionary (v0.999.163) ---
+HEAR_MAX = 200                 # characters in one free sample (a word, a sentence)
+HEAR_PER_DAY = 60              # free samples a day for one account (a sample heard again is free and not counted)
+_HEAR: dict[str, tuple[str, int]] = {}
+
+
+def history_bulk(tenant: str, ids: Any, action: str) -> dict[str, Any]:
+    """Keep, unkeep or remove several sounds in one tap. Ids that are not hers are left alone and named."""
+    want = [str(i) for i in (ids if isinstance(ids, list) else []) if re.fullmatch(r"vo_[0-9a-f]{12}", str(i))][:300]
+    if not want:
+        raise VocalError("Choose at least one sound.")
+    if action not in ("keep", "unkeep", "remove"):
+        raise VocalError("Keep, unkeep or remove.")
+    if action == "remove":
+        done, missing = [], []
+        for hid in want:
+            try:
+                history_remove(tenant, hid)
+                done.append(hid)
+            except VocalError:
+                missing.append(hid)
+        return {"done": done, "missing": missing}
+    with _LOCK:
+        d = _load(tenant)
+        rows = {h["id"]: h for h in d["history"]}
+        done = [hid for hid in want if hid in rows]
+        for hid in done:
+            if action == "keep":
+                rows[hid]["star"] = True
+            else:
+                rows[hid].pop("star", None)
+        _store(tenant, d)
+    return {"done": done, "missing": [h for h in want if h not in done]}
+
+
+def history_zip(tenant: str, ids: Any, fmt: str = "") -> tuple[bytes, str]:
+    """Several sounds as one ZIP, each in the format she picked (as it is when it cannot be converted)."""
+    import zipfile
+    want = [str(i) for i in (ids if isinstance(ids, list) else str(ids or "").split(",")) if str(i).strip()][:100]
+    if not want:
+        raise VocalError("Choose at least one sound.")
+    fmt = (fmt or "").lower().strip(". ")
+    if fmt and fmt not in FORMAT_IDS:
+        raise VocalError("Download as MP3, WAV, OGG or M4A.")
+    buf, used = io.BytesIO(), set()
+    n = 0
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for hid in want:
+            try:
+                f, h = audio_file(tenant, hid)
+                if fmt and h.get("ext") not in ("srt", "vtt", "mp4"):
+                    f, h = audio_file(tenant, hid, fmt)
+            except VocalError:
+                continue
+            base = re.sub(r"[^\w .#-]+", "_", (h.get("title") or "sound"))[:60].strip() or "sound"
+            if h.get("take"):
+                base += f" take {h['take']}"
+            name, k = f"{base}.{h.get('ext', 'wav')}", 2
+            while name in used:
+                name, k = f"{base} ({k}).{h.get('ext', 'wav')}", k + 1
+            used.add(name)
+            z.write(f, name)
+            n += 1
+        z.writestr("README.txt", "Made with Hoola Vocal. Every file carries an AI mark.\n")
+    if not n:
+        raise VocalError("None of those sounds were found.")
+    return buf.getvalue(), f"hoola-sounds-{n}.zip"
+
+
+def rule_update(tenant: str, rid: str, word: Any, say: Any, lang: str = "", ipa: Any = "") -> dict[str, Any]:
+    """Change one word in place (its place in the list stays)."""
+    word, say, ipa = _clean(word, 60), _clean(say, 120), _ipa(ipa)
+    if not word or not (say or ipa):
+        raise VocalError("Give the word as written and how it should be said (a respelling or its IPA).")
+    code = L.code_of(lang) if lang else ""
+    code = code if code and code != "auto" else ""
+    with _LOCK:
+        d = _load(tenant)
+        r = next((x for x in d["rules"] if x["id"] == rid), None)
+        if not r:
+            raise VocalError("That word was not found.")
+        if any(x["id"] != rid and x["word"].lower() == word.lower() and x.get("lang", "") == code for x in d["rules"]):
+            raise VocalError(f"“{word}” is already in your dictionary for that language.")
+        r.update({"word": word, "say": say, "ipa": ipa, "lang": code})
+        _store(tenant, d)
+    return r
+
+
+def rules_check(tenant: str, text: Any) -> dict[str, Any]:
+    """Read an import before anything is added: each line New, Replaces yours, or left out with its reason."""
+    import csv
+    body = str(text or "")[:200000]
+    rows = list(csv.reader(io.StringIO(body)))
+    if rows and [c.strip().lower() for c in rows[0][:2]] == ["word", "say"]:
+        rows = rows[1:]
+    have = {(r["word"].lower(), r.get("lang", "")) for r in _load(tenant)["rules"]}
+    out, seen = [], set()
+    for i, cells in enumerate(rows, 1):
+        cells = [c.strip() for c in cells]
+        if not any(cells):
+            continue
+        word = cells[0] if cells else ""
+        say = cells[1] if len(cells) > 1 else ""
+        ipa = cells[2] if len(cells) > 2 else ""
+        lang = cells[3] if len(cells) > 3 else ""
+        code = L.code_of(lang) if lang else ""
+        row = {"line": i, "word": _clean(word, 60), "say": _clean(say, 120), "ipa": _ipa(ipa), "lang": "" if code == "auto" else code}
+        if not row["word"]:
+            row.update(state="bad", why="Needs a word")
+        elif not (row["say"] or row["ipa"]):
+            row.update(state="bad", why="Needs how to say it")
+        elif lang and code in ("", "auto"):
+            row.update(state="bad", why=f"Unknown language: {lang[:20]}")
+        elif (row["word"].lower(), row["lang"]) in seen:
+            row.update(state="bad", why="Twice in this list")
+        else:
+            row["state"] = "replace" if (row["word"].lower(), row["lang"]) in have else "new"
+            seen.add((row["word"].lower(), row["lang"]))
+        out.append(row)
+    if not out:
+        raise VocalError("Paste lines like: Hoola,Hoo-la,ˈhuːlə,en")
+    n = {k: sum(1 for r in out if r["state"] == k) for k in ("new", "replace", "bad")}
+    room = MAX_RULES - len(have) + n["replace"]
+    return {"rows": out, **n, "room": max(0, room)}
+
+
+def rules_csv(tenant: str) -> bytes:
+    import csv
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["word", "say", "ipa", "lang"])
+    for r in _load(tenant)["rules"]:
+        w.writerow([r["word"], r.get("say", ""), r.get("ipa", ""), r.get("lang", "")])
+    return ("﻿" + buf.getvalue()).encode("utf-8")
+
+
+def rule_uses(d: dict[str, Any]) -> dict[str, int]:
+    """How many of her sounds have each dictionary word in their words."""
+    texts = [str(h.get("text") or "") for h in d["history"] if h.get("text")]
+    out = {}
+    for r in d["rules"]:
+        rx = re.compile(rf"(?<!\w){re.escape(str(r.get('word') or ''))}(?!\w)", re.I)
+        out[r["id"]] = sum(1 for t in texts if rx.search(t))
+    return out
+
+
+async def hear(tenant: str, text: Any, voice: str = "", lang: str = "") -> bytes:
+    """A short free sample: her words (a word or a sentence) read the way her dictionary says, in her voice or her
+    default voice. Kept so hearing it again is free; at most HEAR_PER_DAY new samples a day."""
+    t = _clean(text, HEAR_MAX + 1)
+    if len(t) < 1:
+        raise VocalError("Write a word or a sentence to hear.")
+    if len(t) > HEAR_MAX:
+        raise VocalError(f"A sample is up to {HEAR_MAX} characters.")
+    d = _load(tenant)
+    vid = voice or (d.get("settings") or {}).get("voice") or (builtin()[0]["id"] if builtin() else "")
+    v = _voice(d, vid)
+    code = _lang(lang or (d.get("settings") or {}).get("lang") or "auto", t)
+    code = code if code and code != "auto" else "en"
+    spoken, _n = apply_rules(t, d["rules"], code)
+    hint = ipa_hint(t, d["rules"], code)
+    key = hashlib.sha1(f"{v['id']}|{code}|{spoken}|{hint}".encode()).hexdigest()[:16]
+    f = _home(tenant) / "pending" / f"hear_{key}.wav"
+    if f.is_file() and f.stat().st_size > 100:
+        return f.read_bytes()
+    day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    seen_day, used = _HEAR.get(tenant, ("", 0))
+    used = used if seen_day == day else 0
+    if used >= HEAR_PER_DAY:
+        raise VocalError(f"That is {HEAR_PER_DAY} free samples today. Samples you have heard before still play.")
+    need_credits(tenant)
+    data = await _say(tenant, v, spoken, code, "friendly", 1.0, hint=hint)
+    _HEAR[tenant] = (day, used + 1)
+    f.write_bytes(data)
+    return data
+
 
 # ------------------------------------------------------------------ effects, clean-up, changer, music ---
 # ------------------------------------------------------------------ sound effects (v0.999.162) ---
@@ -3139,7 +3315,7 @@ def usage(d: dict[str, Any]) -> dict[str, Any]:
     return {"month": month, "made": len(rows), "characters": sum(int(h.get("chars") or 0) for h in rows),
             "minutes": round(sum(float(h.get("seconds") or 0) for h in rows) / 60, 1), "by_kind": by,
             "credits": sum(int(h.get("credits") or 0) for h in rows), "credits_used": sum(int(h.get("credits") or 0) for h in rows),
-            "kept": len(d["history"]), "kept_max": MAX_HISTORY}
+            "kept": len(d["history"]), "kept_max": MAX_HISTORY, "starred": sum(1 for h in d["history"] if h.get("star"))}
 
 
 def engines() -> dict[str, bool]:
@@ -3205,7 +3381,7 @@ def overview(tenant: str) -> dict[str, Any]:
     except Exception:   # noqa: BLE001
         pass
     return {"voices": lib + mine, "hoola_voices": len(lib), "my_voices": len(mine),
-            "rules": d["rules"], "history": d["history"], "projects": d["projects"], "usage": use,
+            "rules": d["rules"], "rule_uses": rule_uses(d), "history": d["history"], "projects": d["projects"], "usage": use,
             "favs": [x for x in (d.get("favs") or []) if isinstance(x, str)], "sample_lines": PREVIEW,
             "voices_loading": catalog_loading(),
             "langs": lang_rows(counts), "styles": STYLES, "feelings": FEELINGS, "sfx": sfx_presets(),
@@ -3216,7 +3392,7 @@ def overview(tenant: str) -> dict[str, Any]:
                            "Every file carries an AI mark.",
                            "The price shows before every job; nothing paid runs without your tap.",
                            "A language with no engine is said plainly, never read in another language."],
-            "limits": {"characters": MAX_TOTAL, "lines": MAX_LINES, "speakers": MAX_SPEAKERS, "voices": MAX_VOICES,
+            "limits": {"characters": MAX_TOTAL, "rules": MAX_RULES, "lines": MAX_LINES, "speakers": MAX_SPEAKERS, "voices": MAX_VOICES,
                        "sample_mb": 20, "history": MAX_HISTORY, "takes": MAX_TAKES, "chapter": MAX_CHAPTER,
                        "dub_speakers": MAX_SPEAKERS, "dub_langs_matched": DUB_MATCHED_LANGS, "dub_langs_own": 6},
             "status": {"engines": engines(), "connected": con}}

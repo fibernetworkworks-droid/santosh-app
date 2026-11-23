@@ -2178,6 +2178,29 @@ class Api {
   Future<Map<String, dynamic>> vocalSfxImprove(String prompt) => _vocal('POST', '/sfx/improve', body: {'prompt': prompt}, timeout: const Duration(seconds: 60));
   Future<List<int>?> vocalSfxPlay(String preset, int seed) => _vocalBytes(_u('/api/vocal/sfx/play', {'preset': preset, 'seed': '$seed'}));
   Future<Map<String, dynamic>> vocalHistoryStar(String id, bool on) => _vocal('POST', '/history/star', body: {'id': id, 'on': on});
+  /// v0.999.163: keep, stop keeping or remove several sounds in one tap ({done, missing}).
+  Future<Map<String, dynamic>> vocalHistoryBulk(List<String> ids, String action) =>
+      _vocal('POST', '/history/bulk', body: {'ids': ids, 'action': action});
+  /// Change one dictionary word in place.
+  Future<Map<String, dynamic>> vocalRuleUpdate(String id, String word, String say, {String ipa = '', String lang = ''}) =>
+      _vocal('PUT', '/rule', body: {'id': id, 'word': word, 'say': say, 'ipa': ipa, 'lang': lang});
+  /// An import read before anything is added: {rows: [{line, word, say, state new|replace|bad, why}], new, replace, bad, room}.
+  Future<Map<String, dynamic>> vocalRulesCheck(String text) => _vocal('POST', '/rules/check', body: {'text': text});
+  /// A short free sample of a word or a sentence, read the way her dictionary says (WAV bytes).
+  Future<List<int>?> vocalHear(String text, {String voice = '', String lang = ''}) async {
+    final req = http.Request('POST', _u('/api/vocal/hear'))
+      ..headers.addAll({..._headers, 'Content-Type': 'application/json'})
+      ..body = jsonEncode({'text': text, 'voice': voice, 'lang': lang});
+    final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 90)));
+    if (res.statusCode >= 400) {
+      var msg = 'Server error ${res.statusCode}';
+      try {
+        msg = (jsonDecode(utf8.decode(res.bodyBytes)) as Map)['detail']?.toString() ?? msg;
+      } catch (_) {}
+      throw ApiException(res.statusCode, msg);
+    }
+    return res.bodyBytes.isEmpty ? null : res.bodyBytes;
+  }
   Future<Map<String, dynamic>> vocalCleanup(Map<String, dynamic> body) =>
       _vocal('POST', '/cleanup', body: body, timeout: const Duration(seconds: 600));
   Future<Map<String, dynamic>> vocalCleanupListen(Map<String, dynamic> body) =>

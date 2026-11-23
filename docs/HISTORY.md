@@ -10705,3 +10705,50 @@ off`); `detach_mail` stops reading it but leaves it connected. The mail sign-in 
 desk attaches that address at once. Desk parts inbox_mail_attach / inbox_mail_detach (owner and admin). Tests: her personal mail not
 attached is never read, one email = one business, detach / attach, the card in a real browser (attached row, connect buttons, IMAP
 form, attach an existing one). NOT VERIFIED: a real Gmail / Outlook / IMAP sign-in started from the desk popup.
+
+## v0.999.166 YOUR SOUNDS, DICTIONARY, SETTINGS, PREMIUM (built as 0.999.163; their BOOKS INBOX / INBOX CONNECT / BUSINESS EMAIL took 0.999.163-0.999.165, all kept)
+
+Owner: "NOW LETS WORK ON YOUR SOUNDS , DISNORY AND SETTINGS --- MAKE IT ADVANCE , PREIMUM AND PERFECT AS PREVIOUS WORK DOES"
+-> design canvas claude.ai/artifact/VDXqUd7zx9TMxwTjVcXiJz (6 boards) -> "GO BUILD".
+
+**Server** (`server/app/vocal/service.py`, `api.py`, `more.py`):
+- `history_bulk` (POST `/history/bulk`): keep with a star / stop keeping / remove up to 300 sounds in one tap; ids that are not
+  hers are named, never touched.
+- `history_zip` (POST `/history/zip`): several sounds as one ZIP, each in the format she picked.
+- `rule_update` (PUT `/rule`): change one dictionary word in place.
+- `rules_check` (POST `/rules/check`): an import read before anything is added - each line New, Replaces yours, or left out
+  with its reason (no word, no way to say it, unknown language, twice in the list) + how many still fit.
+- `rules_csv` (GET `/rules/export`): her dictionary as a CSV.
+- `rule_uses`: how many of her sounds use each word (in the overview).
+- `hear` (POST `/hear`): a short free sample of a word or a sentence read her dictionary's way in her default voice; cached;
+  at most 60 new samples a day.
+- Overview `usage.starred`, `limits.rules`.
+- `more.sweep` never removes a starred sound.
+
+**Console** (`vocal.js` `sdPage` / `dictPage` / `setPage`, `vocal2.css` block "v0.999.163"):
+- Your sounds = a list by day with kinds and counts (Speech, Dialogue, Studio, Dubs, Sound effects, Clean-ups, Voice changes,
+  Music, Kept), search, sort, the kept meter, and the chosen sound's panel: waveform, its words, engine / length / file /
+  credits, Download as MP3 / WAV / OGG / M4A, Use it again, the AI mark, Remove.
+- Select = tick several, Select all shown, Keep all, Download as a ZIP, Remove N.
+- Dictionary = Add / Change a word with IPA keys and Hear it; Test a sentence with her words marked and named, Hear it in her
+  voice; every word with Hear / Change / Remove and how many sounds use it; Find a word; a language filter; Import a list
+  (paste or drop a CSV) checked line by line before Add; Export CSV.
+- Settings = one page with a section list: Defaults, Engines, What things cost, This month, Keep my sounds (Never / 90 / 30 /
+  7 days cards + kept on this server), For your own apps, The rules Hoola keeps.
+- Fixed in the walk: three class names already used by older rules (`.hv-sd`, `.hv-dl`, `.hv-dr`) were renamed; the test
+  sentence's highlight now draws the text itself so the marks always sit on the words.
+
+**Phone** (`lib/ui/vocal/vocal_sounds.dart`, `vocal_tools.dart`, `lib/api.dart` `vocalHistoryBulk` / `vocalRuleUpdate` /
+`vocalRulesCheck` / `vocalHear`):
+- Your sounds: kinds incl. Clean-ups and Kept, search, the kept count, a star on kept sounds, Keep with a star / Stop keeping
+  in More, Select (or hold a sound) with Select all shown / Keep all / Remove N (asks first).
+- Dictionary: change a word, IPA keys, Hear it, test a sentence, Hear / Change / Remove per word with how many sounds use it,
+  Import a list checked before Add.
+- Settings: sections in the canvas order, Keep my sounds as four cards + kept on this server.
+
+**Tests**: NEW `server/tests/test_v0999_163_sounds_dict_settings.py` (bulk keep / remove, ZIP, rule change, import check,
+export, hear cached + daily cap, starred never swept, a Chromium walk at light / dark 1440 and 390);
+`test_v0999_102_vocal_pending_console.py` keep step moved to the keep cards; `test/vocal_phone_test.dart` 36/36 (Flutter
+3.24.5 here).
+
+NOT VERIFIED: a real Gemini / ElevenLabs sample from Hear it on her server; her phone.

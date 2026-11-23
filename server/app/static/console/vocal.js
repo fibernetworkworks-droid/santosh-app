@@ -44,8 +44,8 @@ window.HoolaVocal = function (ctx) {
     dubSel: null, dubHear: 'dub', dubRead: false, dubUndo: null, dubDl: {what: 'video', on: {}}, dubKeep: [],
     chg: {file: null, voice: '', denoise: true, secs: 0, out: null, view: '', start: 0, end: 0, close: 75, feel: 50, hear: 'after', cmp: ['', '', ''], cmpOut: null, cmpPick: '', rm: true, filt: '', fileFor: ''},
     cl: {file: null, denoise: true, noise: 'medium', voice: true, level: true, target: 'podcast', silence: false, gap: 1, people: false, music: false, secs: 0, out: null, heard: null, listening: false, kind: '', job: null, view: '', hear: 'after', filt: '', fileFor: ''},
-    fx: {prompt: '', seconds: 0, loop: false, takes: 4, follow: 3, out: [], sel: '', tab: 'words', view: '', idea: 'Nature', job: null, shp: null, partial: null, imp: null, improving: false, pad: '', seed: 1, filt: '', q: ''}, seed: 1, snd: {tab: 'All', q: ''}, side: {tab: 'All', q: ''},
-    dict: {imp: false, text: '', lang: ''}, apps: null, newKey: null, newHook: null, appName: '', hookUrl: '', kept: store.get('hv.kept', []), nav: false, slim: !!store.get('hv.slim', false),
+    fx: {prompt: '', seconds: 0, loop: false, takes: 4, follow: 3, out: [], sel: '', tab: 'words', view: '', idea: 'Nature', job: null, shp: null, partial: null, imp: null, improving: false, pad: '', seed: 1, filt: '', q: ''}, seed: 1, snd: {tab: 'All', q: ''}, side: {tab: 'All', q: ''}, lib: {kind: 'all', q: '', sort: 'new', sel: '', pick: false, chosen: []}, setSec: 'defaults',
+    dict: {imp: false, text: '', lang: '', q: '', lf: '', edit: '', w: '', say: '', ipa: '', test: '', check: null}, apps: null, newKey: null, newHook: null, appName: '', hookUrl: '', kept: store.get('hv.kept', []), nav: false, slim: !!store.get('hv.slim', false),
     cw: Math.max(380, +store.get('hv.chatw', 640) || 640), cmode: store.get('hv.chatmode', 'balanced'), peek: false, recent: null, queue: []};
 
   const SP = {mode: store.get('hv.spmode', 'whole') === 'lines' ? 'lines' : 'whole', more: !!store.get('hv.spmore', false), sel: 0,
@@ -698,6 +698,9 @@ window.HoolaVocal = function (ctx) {
       $$('[data-drop="cl"]').forEach(el => { el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('over'); }); el.addEventListener('dragleave', () => el.classList.remove('over'));
         el.addEventListener('drop', e => { e.preventDefault(); el.classList.remove('over'); const f = e.dataTransfer?.files?.[0]; if (f) clFile(f, 0); }); }); },
     sfx() { fxPrice(); if (UI.fx.job && !UI.fx.poll) fxPoll(); },
+    dict() { if (!UI.dict.imp) { const ta = $('#hvDT'), hi = $('.hv-dthi'); if (ta && hi) ta.addEventListener('scroll', () => { hi.scrollTop = ta.scrollTop; }); return; }
+      $$('[data-drop="dimp"]').forEach(el => { el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('over'); }); el.addEventListener('dragleave', () => el.classList.remove('over'));
+        el.addEventListener('drop', e => { e.preventDefault(); el.classList.remove('over'); const f = e.dataTransfer?.files?.[0]; if (f) f.text().then(t => { UI.dict.text = t.slice(0, 200000); UI.dict.check = null; draw(); }); }); }); },
     dub() { topTools(); dubPosters();
       if (!ARG) { if (UI.dubNew.file) price('dub', {job: UI.dubNew.mode === 'own' ? 'dub_own' : 'dub_matched', seconds: UI.dubNew.secs || 60, langs: UI.dubNew.langs.length || 1});
         $$('[data-drop="dub"]').forEach(el => { el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('over'); }); el.addEventListener('dragleave', () => el.classList.remove('over'));
@@ -1334,51 +1337,11 @@ window.HoolaVocal = function (ctx) {
       return fxMain();
     },
 
-    sounds() {
-      return `<div class="hv-doc hv-soundsp"><div class="hv-doch"><div><b class="hv-t">Everything you have made</b><p class="hv-mut">The newest ${num(D.limits?.history || 300)} are kept. Download any of them in the format you need.</p></div></div>
-        <div class="hv-stage flat">${stageSounds(UI.snd, 'snd')}</div></div>`;
-    },
+    sounds() { return sdPage(); },
 
-    dict() {
-      return `<div class="hv-doc"><div class="hv-doch"><div><b class="hv-t">Pronunciation dictionary</b><p class="hv-mut">How your names, places and product words must be said. Hoola applies these before any voice reads your words.</p></div><span class="hv-grow"></span>
-          <button type="button" class="hv-btn" data-a="dictimp">${ic('upload', 14)}Import a list</button></div>
-        ${UI.dict.imp ? `<form class="hv-card hv-form tight" data-f="ruleimp"><label class="hv-lab" for="hvDImp">One word a line: word, say it as, sounds (IPA, optional), language (optional)</label>
-            <textarea id="hvDImp" class="hv-in" rows="5" data-m="UI.dict.text" placeholder="Mithas,Mi-thaas,mɪˈt̪ʰaːs,hi&#10;Nashik,Naa-shik">${esc(UI.dict.text)}</textarea>
-            <div class="hv-acts"><button class="hv-btn dark">Add these words</button><button type="button" class="hv-btn" data-a="dictimp">Cancel</button></div></form>` : ''}
-        <form class="hv-card hv-dform" data-f="rule"><div class="hv-fld"><label class="hv-lab" for="hvRWord">Word</label><input id="hvRWord" class="hv-in" maxlength="60" required placeholder="Mithas"></div>
-          <div class="hv-fld"><label class="hv-lab" for="hvRSay">Say it as</label><input id="hvRSay" class="hv-in" maxlength="120" required placeholder="Mi-thaas"></div>
-          <div class="hv-fld"><label class="hv-lab" for="hvRIpa">Sounds (IPA)</label><input id="hvRIpa" class="hv-in" maxlength="120" placeholder="mɪˈt̪ʰaːs"></div>
-          ${dd('Languages', 'pickrlang', 'UI.dict.lang', UI.dict.lang ? short(UI.dict.lang) : 'All')}<button class="hv-btn dark">${ic('plus', 14)}Add a word</button></form>
-        ${D.rules.length ? `<div class="hv-card hv-tablew"><table class="hv-table"><thead><tr><th>Word</th><th>Say it as</th><th>Sounds (IPA)</th><th>Languages</th><th><span class="hv-sr">Remove</span></th></tr></thead><tbody>${D.rules.map(r => `<tr><td><b>${esc(r.word)}</b></td><td>${esc(r.say)}</td>
-            <td class="hv-ipa">${esc(r.ipa || '')}</td><td>${r.lang ? esc(short(r.lang)) : 'All'}</td><td class="r"><button type="button" class="hv-btn s danger" data-a="rmrule" data-id="${esc(r.id)}">Remove</button></td></tr>`).join('')}</tbody></table></div>`
-          : empty('No words yet', 'Add your shop name, your town, a product: anything a voice says wrongly.')}
-        <p class="hv-mut hv-sm">A word matches whole, in any letter case. Your sounds keep the words as you wrote them.</p></div>`;
-    },
+    dict() { return dictPage(); },
 
-    settings() {
-      const u = D.usage || {};
-      const state = e => e.state === 'ready' ? ['ok', 'Ready'] : e.state === 'off' ? ['', 'Off'] : ['warn', 'Not connected'];
-      const DF = defs();
-      const drows = [['Language', 'defl', DF.lang ? langLabel(DF.lang) : 'Auto, from my words'], ['Download as', 'deff', fmtOf(DF.fmt || D.formats[0].id).name], ['Takes', 'deft', String(DF.takes || 2)], ['Voice', 'defv', DF.voice ? vname(DF.voice) : 'Hoola Auto']];
-      return `<div class="hv-doc"><div class="hv-sgrid2">
-        <section class="hv-card hv-sec" aria-label="Engines"><b class="hv-t">Engines</b><span class="hv-mut hv-sm">Hoola Auto picks the engine for each job. You can pin one.</span>
-          ${(D.engines || []).map(e => { const [k, t] = state(e); return `<div class="hv-eng"><span class="hv-dot ${k}"></span><span class="hv-vt"><b>${esc(ENG[e.id] || e.name || e.id)}</b><span class="hv-mut hv-sm">${esc(e.does || '')}${e.langs ? ' · ' + esc(e.langs) : ''}</span></span><span class="hv-st ${k}">${t}</span></div>`; }).join('') || '<p class="hv-mut">No engine list from the server.</p>'}
-          <button type="button" class="hv-dd" data-a="pickengine" data-k="S.engine" data-def="1" aria-haspopup="menu"><span>Use: ${esc(engName(S.engine))}</span>${ic('down', 14)}</button>
-          <button type="button" class="hv-lnk" data-a="go" data-p="langs">${ic('globe', 14)}What works in each of ${num(D.langs.length)} languages</button></section>
-        <section class="hv-card hv-sec" aria-label="What things cost"><b class="hv-t">What things cost</b>
-          <table class="hv-table plain"><tbody>${(D.prices || []).map(p => `<tr><td>${esc(p.name || p.label || p.job)}</td><td class="r hv-num">${p.credits ? `${cr(p.credits)}` : 'Free'}</td></tr>`).join('') || '<tr><td>The price shows before every job.</td></tr>'}</tbody></table>
-          <span class="hv-mut hv-sm">You always see the price before you tap. ${typeof u.credits_left === 'number' ? `${cr(u.credits_left)} left this month.` : ''}</span></section>
-        <section class="hv-card hv-sec" aria-label="Defaults"><b class="hv-t">Defaults</b>${drows.map(([n, a, v]) => `<div class="hv-def"><span>${n}</span><button type="button" class="hv-dd s" data-a="${a}" aria-haspopup="menu"><span>${esc(v)}</span>${ic('down', 12)}</button></div>`).join('')}
-          <span class="hv-mut hv-sm">Every page starts from these, on every device.</span></section>
-        <section class="hv-card hv-sec" aria-label="Keep my sounds"><b class="hv-t">Keep my sounds</b>
-          <div class="hv-def"><span>Delete what I make after</span><button type="button" class="hv-dd s" data-a="defkeep" aria-haspopup="menu"><span>${esc(KEEP[+(D.settings?.keep_days || 0)] || 'Never')}</span>${ic('down', 12)}</button></div>
-          <span class="hv-mut hv-sm">Sounds, dubs and the videos you gave for them go after that time. Your voices and your dictionary are always kept.</span></section>
-        ${appsSec()}
-        <section class="hv-card hv-sec" aria-label="This month"><b class="hv-t">This month${u.month ? ' · ' + esc(u.month) : ''}</b>
-          ${[['Characters spoken', num(u.characters)], ['Minutes of sound', String(u.minutes || 0)], ['Things made', num(u.made)], ['Credits used', num(u.credits_used || u.credits || 0)], ['Kept on this server', `${num(u.kept)} of ${num(u.kept_max || 300)}`]]
-            .map(([a, b]) => `<div class="hv-def"><span class="hv-mut">${a}</span><b class="hv-num">${esc(b)}</b></div>`).join('')}</section>
-        <section class="hv-card hv-sec" aria-label="The rules Hoola keeps"><b class="hv-t">The rules Hoola keeps</b><ul class="hv-checks">${[...(D.rules_kept || []), 'The AI mark goes in every file (always on).'].map(t => `<li class="ok">${ic('check', 14)}${esc(t)}</li>`).join('')}</ul></section></div></div>`;
-    },
+    settings() { return setPage(); },
 
     langs() {
       return `<div class="hv-doc"><div class="hv-doch"><div><b class="hv-t">Every language</b><p class="hv-mut">What works where, across ${num(D.langs.length)} languages and accents. A language with no engine is never read in another language instead.</p></div><span class="hv-grow"></span>
@@ -2562,6 +2525,212 @@ window.HoolaVocal = function (ctx) {
   async function fxGameUrl(dl) { const f = UI.fx, p = f.pad || fxPads()[0]?.[0]; return blobUrl(`${A}/sfx/play?preset=${q(p)}&seed=${+f.seed || 1}${dl ? '&download=1' : ''}`); }
   function fxPrice() { if (PAGE === 'sfx' && UI.fx.tab !== 'game' && !UI.fx.view && !UI.fx.job && ready('eleven')) price('fx', {job: 'sfx', seconds: +UI.fx.seconds || 5, takes: +UI.fx.takes || 4}, r => r.credits != null ? `${UI.fx.seconds ? '' : 'Priced for 5 seconds a take · '}Sounds from words run on ElevenLabs · nothing is spent until you press Make` : esc(scrub(r.line || ''))); }
 
+  // ------------------------------------------------------------------ Your sounds, Dictionary, Settings (v0.999.163, design canvas claude.ai/artifact/VDXqUd7zx9TMxwTjVcXiJz)
+  // Your sounds: kinds with counts, search, sort, by day, the chosen sound on the right (player, its words, details,
+  // download as, use it again), select several (keep all, a ZIP, remove). Dictionary: add or change a word (IPA letters,
+  // hear it), test a sentence, your words with how many of your sounds use each, import checked first, export CSV.
+  // Settings: one page with a section list (defaults, engines, what things cost, this month, keep my sounds, your apps,
+  // the rules Hoola keeps).
+  const SD_KINDS = [['all', 'All', () => true], ['tts', 'Speech', h => h.kind === 'tts'], ['dlg', 'Dialogue', h => h.kind === 'dialogue' || h.kind === 'podcast'],
+    ['studio', 'Studio', h => h.kind === 'chapter' || h.kind === 'book'], ['dub', 'Dubs', h => h.kind === 'dub'], ['sfx', 'Sound effects', h => h.kind === 'sfx'],
+    ['clean', 'Clean-ups', h => h.kind === 'cleanup' || h.kind === 'isolate'], ['change', 'Voice changes', h => h.kind === 'change'], ['music', 'Music', h => h.kind === 'music'],
+    ['kept', 'Kept', h => !!h.star || kept(h.id)]];
+  const SD_TILE = {tts: ['SP', 0], dialogue: ['DL', 3], podcast: ['DL', 3], chapter: ['ST', 1], book: ['ST', 1], dub: ['DB', 2], sfx: ['FX', 4], cleanup: ['CL', 1], isolate: ['CL', 1], change: ['VC', 0], music: ['MU', 5]};
+  const SD_SORT = [['new', 'Newest first'], ['old', 'Oldest first'], ['long', 'Longest first'], ['kept', 'Kept first']];
+  const sdTile = (h, l = '') => { const [t, n] = SD_TILE[h.kind] || ['SN', 5]; return `<span class="hv-sdt t${n}${l ? ' ' + l : ''}" aria-hidden="true">${t}</span>`; };
+  const sdLen = v => !v ? '' : +v < 10 ? `${(+v).toFixed(1)} s` : secs(v);
+  const sdKept = h => !!h.star || kept(h.id);
+  function sdSub(h) {
+    if (h.kind === 'sfx') return [h.preset ? 'Game sound' : h.shaped_from ? 'Shaped' : 'From words', h.take ? `take ${h.take}` : '', h.loop ? 'loops' : ''].filter(Boolean).join(' · ');
+    if (h.kind === 'cleanup') return (h.done || []).join(' · ') || h.voice_name || 'Clean-up';
+    return [h.voice_name, h.lang ? short(h.lang) : '', h.style ? styleName(h.style) : '', h.take ? `take ${h.take}` : ''].filter(Boolean).join(' · ') || KIND[h.kind] || 'Sound';
+  }
+  function sdList() {
+    const f = UI.lib, k = SD_KINDS.find(x => x[0] === f.kind) || SD_KINDS[0], lo = (f.q || '').trim().toLowerCase();
+    let list = D.history.filter(h => k[2](h) && (!lo || [h.title, h.text, h.voice_name, KIND[h.kind], h.lang ? short(h.lang) : ''].join(' ').toLowerCase().includes(lo)));
+    if (f.sort === 'old') list = list.slice().reverse();
+    else if (f.sort === 'long') list = list.slice().sort((a, b) => (+b.seconds || 0) - (+a.seconds || 0));
+    else if (f.sort === 'kept') list = list.slice().sort((a, b) => sdKept(b) - sdKept(a));
+    return list;
+  }
+  function sdDay(h) { const t = atOf(h.made) * 1000; if (!t) return 'Earlier'; const d0 = new Date(); d0.setHours(0, 0, 0, 0);
+    const d = Math.round((d0 - new Date(t).setHours(0, 0, 0, 0)) / 864e5);
+    return d <= 0 ? 'Today' : d === 1 ? 'Yesterday' : d < 7 ? 'Earlier this week' : d < 31 ? 'Earlier this month' : 'Older'; }
+  function sdRows() {
+    const f = UI.lib, list = sdList(), pick = f.pick, chosen = new Set(f.chosen);
+    if (!list.length) return `<p class="hv-mut hv-sm">${f.q || f.kind !== 'all' ? 'Nothing matches.' : 'Nothing yet. What you make appears here.'}</p>`;
+    const sorted = f.sort === 'new' || f.sort === 'old';
+    const groups = []; for (const h of list.slice(0, 300)) { const g = sorted ? sdDay(h) : SD_SORT.find(x => x[0] === f.sort)[1]; let x = groups.find(y => y.h === g); if (!x) groups.push(x = {h: g, rows: []}); x.rows.push(h); }
+    const row = h => { const on = f.sel === h.id, ck = chosen.has(h.id);
+      return `<div class="hv-sdr${on && !pick ? ' on' : ''}${ck ? ' ck' : ''}">${pick ? `<label class="hv-sdck"><input type="checkbox" data-a="sdtick" data-id="${esc(h.id)}"${ck ? ' checked' : ''}><span class="hv-sr">Select ${esc(h.title || 'this sound')}</span></label>` : playBtn(h.id, `Play ${h.title || 'the sound'}`, 11, ' l')}
+        ${sdTile(h)}<button type="button" class="hv-sdn" data-a="${pick ? 'sdtick' : 'sdsel'}" data-id="${esc(h.id)}"${pick ? ` aria-pressed="${ck}"` : ''}><span class="hv-rh"><b class="hv-ell">${esc(h.title || KIND[h.kind] || 'Sound')}</b>${sdKept(h) ? `<span class="hv-fxkept">${ic('starf', 12)}<span class="hv-sr">Kept</span></span>` : ''}</span>
+          <span class="hv-mut hv-sm hv-ell">${esc(sdSub(h))}</span></button>
+        <span class="hv-chgw s" aria-hidden="true">${chgBars(null, h.id, 44)}</span><span class="hv-num hv-mut hv-sm">${sdLen(h.seconds)}</span>
+        ${pick ? '<span></span>' : `<button type="button" class="hv-ib s" data-a="sndmenu" data-id="${esc(h.id)}" aria-label="More for ${esc(h.title || 'this sound')}">${ic('more')}</button>`}</div>`; };
+    return groups.map(g => `<div class="hv-fld"><span class="hv-lab">${esc(g.h)}</span><div class="hv-card hv-sdlist">${g.rows.map(row).join('')}</div></div>`).join('');
+  }
+  const SD_USE = {
+    tts: [['again', 'Make it again'], ['dub', 'Dub it'], ['clean', 'Clean it']], dialogue: [['dialogue', 'Open in Dialogue'], ['dub', 'Dub it'], ['clean', 'Clean it']],
+    podcast: [['dialogue', 'Open in Dialogue'], ['dub', 'Dub it']], sfx: [['more', 'More like this'], ['shape', 'Shape it']], dub: [['dubs', 'Open Dubbing']],
+    cleanup: [['cleanopen', 'Hear before and after'], ['clean', 'Clean it again']], chapter: [['studio', 'Open in Studio']], book: [['studio', 'Open in Studio']],
+    change: [['changer', 'Open in Voice changer'], ['clean', 'Clean it']], music: [['clean', 'Clean it']]};
+  function sdPanel() {
+    const h = D.history.find(x => x.id === UI.lib.sel) || sdList()[0];
+    if (!h) return `<aside class="hv-sdp" aria-label="The chosen sound">${empty('Nothing chosen', 'Tap a sound to see it here.')}</aside>`;
+    UI.lib.sel = h.id;
+    const facts = [['Voice', h.voice_name && !['Sound from words', 'Made by code', 'Shaped'].includes(h.voice_name) ? h.voice_name : ''], ['Language', h.lang ? langLabel(h.lang) : ''],
+      ['Engine', h.engine ? engName(h.engine) : ''], ['Words', h.chars ? `${num(String(h.text || '').split(/\s+/).filter(Boolean).length)} · ${num(h.chars)} characters` : ''],
+      ['Length', sdLen(h.seconds)], ['File', (h.ext || '').toUpperCase()], ['Credits', h.credits ? num(h.credits) : h.engine === 'server' ? 'Free' : '']].filter(x => x[1]);
+    const fmts = h.ext === 'mp4' || h.ext === 'srt' || h.ext === 'vtt' ? [] : D.formats;
+    const uses = (SD_USE[h.kind] || []).filter(([k]) => k !== 'dub' || canDub(h));
+    return `<aside class="hv-sdp" aria-label="The chosen sound"><div class="hv-rh">${sdTile(h, 'l')}<span class="hv-vt hv-grow"><b class="hv-ell">${esc(h.title || KIND[h.kind] || 'Sound')}</b>
+        <span class="hv-mut hv-sm">${esc(KIND[h.kind] || 'Sound')} · ${esc(ago(h.made))}</span></span>
+        <button type="button" class="hv-ib${sdKept(h) ? ' kept' : ''}" data-a="sdstar" data-id="${esc(h.id)}" aria-pressed="${sdKept(h)}" aria-label="${sdKept(h) ? 'Kept: tap to unkeep' : 'Keep this sound'}">${ic(sdKept(h) ? 'starf' : 'star', 18)}</button></div>
+      <div class="hv-card hv-rh hv-sdpl">${playBtn(h.id, `Play ${h.title || 'the sound'}`, 14, ' l acc')}<span class="hv-chgw hv-grow acc" aria-hidden="true">${chgBars(null, h.id + 'big', 56)}</span></div>
+      ${h.text ? `<blockquote class="hv-sdq">${esc(String(h.text).slice(0, 400))}${String(h.text).length > 400 ? '…' : ''}</blockquote>` : ''}
+      <dl class="hv-sddl">${facts.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
+      ${fmts.length ? `<div class="hv-fld"><span class="hv-lab">Download as</span><div class="hv-sdfmt">${fmts.map(f => `<button type="button" class="hv-btn" data-a="sddl" data-id="${esc(h.id)}" data-val="${esc(f.id)}"><b>${esc(f.name)}</b><span class="hv-mut">${esc(f.note.replace(/^(Small, )?for /i, ''))}</span></button>`).join('')}</div></div>`
+        : `<button type="button" class="hv-btn" data-a="dlmenu" data-id="${esc(h.id)}" aria-haspopup="menu">${ic('dl', 14)}Download</button>`}
+      ${uses.length ? `<div class="hv-fld"><span class="hv-lab">Use it again</span><div class="hv-chips">${uses.map(([k, l]) => `<button type="button" class="hv-chip" data-a="sduse" data-id="${esc(h.id)}" data-val="${k}">${esc(l)}</button>`).join('')}</div></div>` : ''}
+      <div class="hv-rh hv-sdfoot"><span class="hv-mut hv-sm hv-grow">Made by AI · the mark is in the file</span><button type="button" class="hv-lnk danger" data-a="sdrm" data-id="${esc(h.id)}">Remove</button></div></aside>`;
+  }
+  function sdPage() {
+    const f = UI.lib, u = D.usage || {}, keptN = D.history.filter(sdKept).length, max = +(u.kept_max || D.limits?.history || 300), n = D.history.length;
+    const counts = SD_KINDS.map(([k, l, fn]) => [k, l, D.history.filter(fn).length]).filter(([k, , c]) => k === 'all' || k === 'kept' || c);
+    const chosen = D.history.filter(h => f.chosen.includes(h.id)), secsSum = chosen.reduce((a, h) => a + (+h.seconds || 0), 0);
+    const head = f.pick ? `<div class="hv-sdtop pick"><button type="button" class="hv-ib" data-a="sdpick" aria-label="Stop selecting">${ic('x', 18)}</button>
+        <span class="hv-vt"><b>${num(chosen.length)} selected</b><span class="hv-mut hv-sm">${chosen.length ? `${sdLen(secsSum)} of sound` : 'Tick the sounds you want'}</span></span><span class="hv-grow"></span>
+        <button type="button" class="hv-btn" data-a="sdall">${chosen.length === Math.min(sdList().length, 300) && chosen.length ? 'Clear' : 'Select all shown'}</button>
+        <button type="button" class="hv-btn" data-a="sdbulk" data-val="keep"${chosen.length ? '' : ' disabled aria-describedby="hvSdW"'}>Keep all</button>
+        <button type="button" class="hv-btn" data-a="sdzip" aria-haspopup="menu"${chosen.length ? '' : ' disabled aria-describedby="hvSdW"'}>${ic('dl', 14)}Download as a ZIP</button>
+        <button type="button" class="hv-btn danger fill" data-a="sdbulk" data-val="remove"${chosen.length ? '' : ' disabled aria-describedby="hvSdW"'}>Remove ${chosen.length || ''}</button>
+        ${chosen.length ? '' : '<span class="hv-sr" id="hvSdW">Tick at least one sound first.</span>'}</div>`
+      : `<div class="hv-sdtop"><span class="hv-vt"><b class="hv-chgt">Your sounds</b><span class="hv-mut hv-sm">Everything you have made in Hoola Vocal</span></span><span class="hv-grow"></span>
+        <div class="hv-sdmeter" role="img" aria-label="${num(n)} of ${num(max)} sounds kept on this server"><span class="hv-rh hv-sm"><span class="hv-grow">Kept on this server</span><span class="hv-num">${num(n)} of ${num(max)}</span></span><span class="hv-sdbar"><i style="width:${Math.min(100, n / max * 100).toFixed(1)}%"></i></span></div>
+        <button type="button" class="hv-btn" data-a="sdpick"${n ? '' : ' disabled aria-describedby="hvSdE"'}>Select</button>${n ? '' : '<span class="hv-sr" id="hvSdE">Nothing made yet.</span>'}</div>`;
+    return `<div class="hv-doc hv-sdpg">${head}
+      <div class="hv-sdgrid"><section class="hv-sdl" aria-label="Your sounds">
+        <div class="hv-rh hv-wrap">${search('hvSdQ', 'UI.lib.q', 'Search words, voices, languages', f.q || '')}<span class="hv-grow"></span>
+          <span class="hv-mut hv-sm">Sort</span><button type="button" class="hv-dd s" data-a="sdsort" aria-haspopup="menu"><span>${esc(SD_SORT.find(x => x[0] === f.sort)[1])}</span>${ic('down', 12)}</button></div>
+        <div class="hv-chips" role="tablist" aria-label="Kinds">${counts.map(([k, l, c]) => `<button type="button" class="hv-chip" role="tab" aria-selected="${f.kind === k}" aria-checked="${f.kind === k}" data-a="sdkind" data-val="${k}">${esc(l)}<span class="hv-num hv-cnt2">${num(c)}</span></button>`).join('')}</div>
+        <div data-sdrows>${sdRows()}</div>
+        <p class="hv-mut hv-sm">The newest ${num(max)} are kept${keptN ? `; ${plural(keptN, 'kept sound')} ${keptN === 1 ? 'stays' : 'stay'} whatever the limit` : ''}. Starred sounds are never removed by the limit.</p></section>
+        ${f.pick ? '' : sdPanel()}</div></div>`;
+  }
+
+  // ---- Dictionary
+  const IPA_KEYS = ['ə', 'ɪ', 'ʊ', 'ɛ', 'ɔ', 'aː', 'iː', 'uː', 'ʃ', 'ʒ', 'θ', 'ð', 'ŋ', 'ʈ', 'ɖ', 'ɳ', 'ɾ', 'ʰ', 'ː', 'ˈ'];
+  function dictHi(t) {
+    const ws = D.rules.map(r => String(r.word || '')).filter(Boolean);
+    if (!ws.length) return esc(t);
+    const re = new RegExp(`(^|[^\\p{L}\\p{N}])(${ws.map(w => reEsc(esc(w))).join('|')})(?=$|[^\\p{L}\\p{N}])`, 'giu');
+    return esc(t).replace(re, (m, a, w) => `${a}<mark class="hv-dw">${w}</mark>`);
+  }
+  function dictFound(t) {
+    const lo = String(t || '');
+    return D.rules.filter(r => r.word && new RegExp(`(^|[^\\p{L}\\p{N}])${reEsc(String(r.word))}($|[^\\p{L}\\p{N}])`, 'iu').test(lo));
+  }
+  function dictTestLine() {
+    const hit = dictFound(UI.dict.test);
+    return hit.length ? `${plural(hit.length, 'word')} will be read your way: ${hit.slice(0, 6).map(r => `<b>${esc(r.word)}</b> as ${esc(r.say || '/' + r.ipa + '/')}`).join(', ')}.`
+      : UI.dict.test.trim() ? 'None of your words are in this sentence.' : 'Type a sentence with your words in it.';
+  }
+  function dictForm() {
+    const x = UI.dict, ed = x.edit && D.rules.find(r => r.id === x.edit);
+    const g = gate(!x.w.trim() ? 'Write the word as it is written.' : !(x.say.trim() || x.ipa.trim()) ? 'Say how it is said, or give its IPA.' : '');
+    return `<div class="hv-card hv-dk"><div class="hv-rh"><b>${ed ? `Change “${esc(ed.word)}”` : 'Add a word'}</b><span class="hv-grow"></span>${ed ? '<button type="button" class="hv-lnk" data-a="dcancel">Cancel</button>' : ''}</div>
+      <div class="hv-dk2"><div class="hv-fld"><label class="hv-lab" for="hvDW">Word as written</label><input id="hvDW" class="hv-in" maxlength="60" data-m="UI.dict.w" value="${esc(x.w)}" placeholder="Mithas" autocomplete="off"></div>
+        <div class="hv-fld"><label class="hv-lab" for="hvDS">Say it as</label><input id="hvDS" class="hv-in" maxlength="120" data-m="UI.dict.say" value="${esc(x.say)}" placeholder="Mi-thaas" autocomplete="off"></div></div>
+      <div class="hv-fld"><label class="hv-lab" for="hvDI">Sounds (IPA, optional)</label><input id="hvDI" class="hv-in hv-ipa" maxlength="120" data-m="UI.dict.ipa" value="${esc(x.ipa)}" placeholder="mɪˈt̪ʰaːs" autocomplete="off"></div>
+      <div class="hv-ipak" role="group" aria-label="IPA letters">${IPA_KEYS.map(c => `<button type="button" class="hv-ipab" data-a="dipa" data-val="${esc(c)}" aria-label="Add ${esc(c)}">${esc(c)}</button>`).join('')}</div>
+      <div class="hv-rh hv-wrap"><span class="hv-mut hv-sm">Languages</span>${`<button type="button" class="hv-dd s" data-a="pickrlang" aria-haspopup="menu"><span>${x.lang ? esc(short(x.lang)) : 'All languages'}</span>${ic('down', 12)}</button>`}
+        <span class="hv-grow"></span><button type="button" class="hv-btn" data-a="dhear" data-val="form">${ic('play', 11)}Hear it</button>
+        <button type="button" class="hv-btn dark" data-a="dwsave"${g.a}>${ed ? 'Save' : 'Add'}</button></div>${g.l}
+      <span class="hv-mut hv-sm">Hear it reads “say it as” in your default voice. A short sample is free and keeps nothing.</span></div>`;
+  }
+  function dictPage() {
+    const x = UI.dict;
+    if (x.imp) return dictImport();
+    const uses = D.rule_uses || {}, lo = (x.q || '').trim().toLowerCase();
+    const langs = [...new Set(D.rules.map(r => r.lang || ''))];
+    const lchips = [['', 'All'], ...langs.filter(Boolean).map(c => [c, short(c)]), ...(langs.includes('') && langs.length > 1 ? [['-', 'Every language']] : [])];
+    const shown = D.rules.filter(r => (!x.lf ? true : x.lf === '-' ? !r.lang : (r.lang || '') === x.lf) && (!lo || [r.word, r.say, r.ipa].join(' ').toLowerCase().includes(lo)));
+    return `<div class="hv-doc hv-dict"><div class="hv-sdtop"><span class="hv-vt"><b class="hv-chgt">Dictionary</b><span class="hv-mut hv-sm">How your names, places and products are said, by every voice</span></span><span class="hv-grow"></span>
+        <button type="button" class="hv-btn" data-a="dictimp">${ic('upload', 14)}Import a list</button><button type="button" class="hv-btn" data-a="dexport"${D.rules.length ? '' : ' disabled aria-describedby="hvDxW"'}>${ic('dl', 14)}Export CSV</button>${D.rules.length ? '' : '<span class="hv-sr" id="hvDxW">Add a word first.</span>'}</div>
+      <div class="hv-dgrid"><section class="hv-dleft" aria-label="Add a word and test it">${dictForm()}
+        <div class="hv-card hv-dt"><b>Test a sentence</b>
+          <div class="hv-dtw"><div class="hv-dthi" aria-hidden="true">${dictHi(x.test)}\n</div><textarea id="hvDT" class="hv-dtta" rows="2" maxlength="200" data-m="UI.dict.test" placeholder="Aaj hi aaiye Mithas Sweets, Nashik mein." aria-label="A sentence to test">${esc(x.test)}</textarea></div>
+          <span class="hv-sm" data-dtline>${dictTestLine()}</span>
+          <div class="hv-rh"><button type="button" class="hv-cta s" data-a="dhear" data-val="test">${ic('play', 11)}Hear it in ${esc(vname(defs().voice || S.voice))}</button><span class="hv-mut hv-sm">a short sample · free</span></div></div></section>
+      <section class="hv-dright" aria-label="Your words"><div class="hv-rh hv-wrap"><b>Your words</b><span class="hv-num hv-mut hv-sm">${num(D.rules.length)} of ${num(D.limits?.rules || 200)}</span><span class="hv-grow"></span>
+          ${search('hvDQ', 'UI.dict.q', 'Find a word', x.q || '')}
+          ${lchips.length > 2 ? `<div class="hv-seg" role="radiogroup" aria-label="Language">${lchips.map(([c, l]) => `<button type="button" role="radio" aria-checked="${(x.lf || '') === c}" data-a="dlf" data-val="${esc(c)}">${esc(l)}</button>`).join('')}</div>` : ''}</div>
+        ${D.rules.length ? `<div class="hv-card hv-dtab" data-dlist><div class="hv-dtr h" aria-hidden="true"><span>Word</span><span>Say it as</span><span>Sounds (IPA)</span><span>Language</span><span>In your sounds</span><span></span></div>
+          ${shown.map(r => { const n = +uses[r.id] || 0; return `<div class="hv-dtr${x.edit === r.id ? ' on' : ''}"><b>${esc(r.word)}</b><span>${esc(r.say || '–')}</span><span class="hv-ipa">${esc(r.ipa || '–')}</span>
+            <span><span class="hv-tag">${r.lang ? esc(short(r.lang)) : 'All'}</span></span><span class="hv-mut hv-sm">${n ? `in ${plural(n, 'sound')}` : 'not used yet'}</span>
+            <span class="hv-dta"><button type="button" class="hv-ib s o" data-a="dhear" data-val="word" data-id="${esc(r.id)}" aria-label="Hear ${esc(r.word)}">${ic('play', 11)}</button>
+              <button type="button" class="hv-ib s o" data-a="dedit" data-id="${esc(r.id)}" aria-label="Change ${esc(r.word)}">${ic('edit', 14)}</button>
+              <button type="button" class="hv-ib s o danger" data-a="rmrule" data-id="${esc(r.id)}" aria-label="Remove ${esc(r.word)}">${ic('x', 14)}</button></span></div>`; }).join('') || '<p class="hv-mut hv-sm hv-pad">Nothing matches.</p>'}</div>`
+          : empty('No words yet', 'Add your shop name, your town, a product: anything a voice says wrongly.')}
+        <p class="hv-mut hv-sm">A word matches whole, in any letter case. Your sounds keep the words as you wrote them; only the voice reads them your way.</p></section></div></div>`;
+  }
+  function dictImport() {
+    const x = UI.dict, c = x.check;
+    const ST = {new: ['New', 'ok'], replace: ['Replaces yours', 'warn'], bad: ['', 'bad']};
+    return `<div class="hv-doc hv-dict"><div class="hv-sdtop"><button type="button" class="hv-btn" data-a="dictimp">${ic('back', 14)}<span>Dictionary</span></button><b class="hv-chgt">Import a list</b></div>
+      <div class="hv-digrid"><div class="hv-dleft"><div class="hv-cldrop" data-drop="dimp"><b>Drop a CSV or a text file</b><span class="hv-mut hv-sm">From a spreadsheet, another voice tool, or your own list</span>
+          <button type="button" class="hv-cta s" data-a="dimpfile">${ic('upload', 14)}<span>Choose a file</span></button></div>
+        <div class="hv-fld"><label class="hv-lab" for="hvDImp">Or paste, one word a line: word, say it as, IPA, language</label>
+          <textarea id="hvDImp" class="hv-in hv-ipa" rows="8" data-m="UI.dict.text" placeholder="Mithas,Mi-thaas,mɪˈt̪ʰaːs,hi&#10;Nashik,Naa-shik">${esc(x.text)}</textarea></div>
+        <button type="button" class="hv-btn dark" data-a="dcheck"${x.text.trim() ? '' : ' disabled aria-describedby="hvDcW"'}>Check the list</button>${x.text.trim() ? '' : '<p class="hv-why" id="hvDcW">Paste or choose a list first.</p>'}</div>
+      <div class="hv-dright">${c ? `<div class="hv-rh"><b>Check before adding</b><span class="hv-mut hv-sm">${plural(c.rows.length, 'line')} read · nothing added yet</span></div>
+          <div class="hv-card hv-dtab">${c.rows.map(r => { const [t, k] = ST[r.state]; return `<div class="hv-dir ${k}"><span class="hv-num hv-mut hv-sm">${r.line}</span><b>${esc(r.word || '–')}</b>
+            <span class="hv-sm">${esc([r.say, r.ipa ? '/' + r.ipa + '/' : '', r.lang ? short(r.lang) : 'all languages'].filter(Boolean).join(' · '))}</span><span class="hv-dis">${esc(t || r.why)}</span></div>`; }).join('')}</div>
+          <div class="hv-rh hv-wrap"><button type="button" class="hv-cta s" data-a="dimport"${c.new + c.replace ? '' : ' disabled aria-describedby="hvDiW"'}><span>${dImpLabel(c)}</span></button>
+            <span class="hv-mut hv-sm" id="hvDiW">${c.bad ? `${plural(c.bad, 'line')} ${c.bad === 1 ? 'is' : 'are'} left out, each with its reason` : 'Every line can be added'}${c.new > c.room ? ` · only ${num(c.room)} more fit (up to ${num(D.limits?.rules || 200)} words)` : ''}</span></div>`
+        : `<div class="hv-card hv-dhow"><b>How it works</b><span class="hv-sm">Hoola reads your list first and shows every line: new, replaces one of yours, or left out with its reason. Nothing is added until you tap Add.</span>
+          <span class="hv-mut hv-sm">Columns: word, say it as, IPA (optional), language code or name (optional). A first line naming the columns is skipped.</span></div>`}</div></div></div>`;
+  }
+  const dImpLabel = c => [c.new ? `Add ${plural(c.new, 'word')}` : '', c.replace ? `replace ${num(c.replace)}` : ''].filter(Boolean).join(', ').replace(/^./, m => m.toUpperCase()) || 'Nothing to add';
+
+  // ---- Settings
+  const SET_SECS = [['defaults', 'Defaults'], ['engines', 'Engines'], ['cost', 'What things cost'], ['month', 'This month'], ['keep', 'Keep my sounds'], ['apps', 'For your apps'], ['rules', 'The rules Hoola keeps']];
+  function setPage() {
+    const u = D.usage || {}, DF = defs();
+    const state = e => e.state === 'ready' ? ['ok', 'Ready'] : e.state === 'off' ? ['', 'Off'] : ['warn', 'Not connected'];
+    const drows = [['Language', 'What your words are read in when you do not say', 'defl', DF.lang ? langLabel(DF.lang) : 'Auto, from my words'],
+      ['Voice', 'The voice every page starts with', 'defv', DF.voice ? vname(DF.voice) : 'Hoola Auto'], ['Takes', 'How many versions to make', 'deft', String(DF.takes || 2)],
+      ['Download as', 'The file type for downloads', 'deff', `${fmtOf(DF.fmt || D.formats[0].id).name} · ${fmtOf(DF.fmt || D.formats[0].id).note.toLowerCase()}`]];
+    const by = u.by_kind || {}, kinds = Object.entries(by).sort((a, b) => b[1] - a[1]), top = Math.max(1, ...kinds.map(k => k[1]));
+    const KC = {tts: 0, dialogue: 3, podcast: 3, sfx: 4, cleanup: 1, dub: 2, chapter: 5, book: 5, change: 0, music: 5};
+    const left = typeof u.credits_left === 'number' ? u.credits_left : null, total = left != null ? left + (+u.credits_used || 0) : 0;
+    const keepNow = +(D.settings?.keep_days || 0), n = D.history.length, max = +(u.kept_max || 300), stars = +(u.starred ?? D.history.filter(h => h.star).length);
+    const sec = (id, title, sub, body) => `<section class="hv-ss" id="hvSet-${id}" aria-labelledby="hvSetT-${id}"><div class="hv-ssh"><b id="hvSetT-${id}">${title}</b>${sub ? `<span class="hv-mut hv-sm">${sub}</span>` : ''}</div>${body}</section>`;
+    return `<div class="hv-doc hv-set"><div class="hv-sdtop"><span class="hv-vt"><b class="hv-chgt">Settings</b><span class="hv-mut hv-sm">How Hoola Vocal works for you, on every device</span></span></div>
+      <div class="hv-setgrid"><nav class="hv-setnav" aria-label="Settings sections">${SET_SECS.map(([k, l]) => `<button type="button" data-a="setgo" data-val="${k}" aria-current="${UI.setSec === k ? 'true' : 'false'}"><span class="hv-dot${UI.setSec === k ? ' on' : ''}"></span>${l}</button>`).join('')}
+          <button type="button" data-a="go" data-p="langs">${ic('globe', 14)}Every language</button></nav>
+      <div class="hv-setb">
+        ${sec('defaults', 'Defaults', 'Every page starts from these. You can change them for one sound any time.', `<div class="hv-card hv-srows">${drows.map(([t, s, a, v]) => `<div class="hv-srow"><span class="hv-vt hv-grow"><b>${t}</b><span class="hv-mut hv-sm">${s}</span></span><button type="button" class="hv-dd" data-a="${a}" aria-haspopup="menu"><span>${esc(v)}</span>${ic('down', 14)}</button></div>`).join('')}
+          <div class="hv-srow"><span class="hv-vt hv-grow"><b>Engine</b><span class="hv-mut hv-sm">Who makes the sound</span></span><button type="button" class="hv-dd" data-a="pickengine" data-k="S.engine" data-def="1" aria-haspopup="menu"><span>${esc(engName(S.engine))}</span>${ic('down', 14)}</button></div></div>`)}
+        ${sec('engines', 'Engines', 'Hoola Auto picks the engine for each job.', `<div class="hv-sengs">${(D.engines || []).map(e => { const [k, t] = state(e); return `<article class="hv-card hv-seng"><div class="hv-rh"><b class="hv-grow">${esc(ENG[e.id] || e.name || e.id)}</b><span class="hv-st ${k}">${t}</span></div>
+            <span class="hv-sm">${esc(e.does || '')}</span><span class="hv-mut hv-sm">${esc(e.state === 'ready' ? (e.langs || '') : scrub(e.why || 'Not set up on this server'))}</span></article>`; }).join('') || '<p class="hv-mut">No engine list from the server.</p>'}</div>`)}
+        ${sec('cost', 'What things cost', 'The price shows on the button before you tap. Nothing paid runs without your tap.', `<div class="hv-card hv-scost">${(D.prices || []).map(p => `<div class="hv-srow"><span class="hv-grow">${esc(p.name || p.label || p.job)}</span><span class="hv-mut hv-sm">${esc(p.engine ? engName(p.engine) : '')}</span><b class="hv-num">${p.credits ? cr(p.credits) : 'Free'}</b></div>`).join('') || '<div class="hv-srow">The price shows before every job.</div>'}</div>`)}
+        ${sec('month', `This month${u.month ? ' · ' + esc(monthName(u.month)) : ''}`, 'Counted from what you made here.', `<div class="hv-sstats">${[['Things made', num(u.made || 0)], ['Minutes of sound', String(u.minutes || 0)], ['Characters spoken', num(u.characters || 0)], ['Credits used', num(u.credits_used || u.credits || 0)]].map(([t, v]) => `<div class="hv-card hv-sstat"><span class="hv-mut hv-sm">${t}</span><b class="hv-num">${esc(v)}</b></div>`).join('')}</div>
+          ${kinds.length ? `<div class="hv-card hv-sbars"><b class="hv-sm">What you made, by kind</b>${kinds.map(([k, c]) => `<div class="hv-sbar"><span class="hv-sm">${esc(KIND[k] || k)}</span><span class="hv-sbt"><i class="t${KC[k] ?? 5}" style="width:${(c / top * 100).toFixed(1)}%"></i></span><span class="hv-num hv-sm">${num(c)}</span></div>`).join('')}</div>` : ''}
+          ${left != null ? `<div class="hv-card hv-rh hv-scr"><span class="hv-vt hv-grow"><span class="hv-rh hv-sm"><b class="hv-grow">Credits left this month</b><span class="hv-num">${num(left)}${total ? ` of ${num(total)}` : ''}</span></span><span class="hv-sdbar ok"><i style="width:${total ? Math.min(100, left / total * 100).toFixed(1) : 0}%"></i></span></span>
+            <a class="hv-btn" href="${esc(D.credits_page || '/console/?v=credits')}">Get credits</a></div>` : ''}`)}
+        ${sec('keep', 'Keep my sounds', 'What stays on this server, and for how long.', `<div class="hv-skeep" role="radiogroup" aria-label="Delete what I make after">${[0, 90, 30, 7].map(v => `<button type="button" role="radio" aria-checked="${keepNow === v}" data-a="keepset" data-val="${v}"><b>${KEEP[v]}</b><span class="hv-mut hv-sm">${v ? 'Then removed by Hoola' : 'Kept until you remove them'}</span></button>`).join('')}</div>
+          <div class="hv-card hv-skept"><span class="hv-rh hv-sm"><b class="hv-grow">Kept on this server</b><span class="hv-num">${num(n)} of ${num(max)} sounds · ${num(stars)} kept with a star</span></span><span class="hv-sdbar"><i style="width:${Math.min(100, n / max * 100).toFixed(1)}%"></i></span>
+            <span class="hv-mut hv-sm">Past ${num(max)}, the oldest sound without a star goes first. Your voices, your dictionary and starred sounds always stay. Sounds, dubs and the videos you gave for them go after the time you choose here.</span></div>`)}
+        <div class="hv-ss" id="hvSet-apps">${appsSec()}</div>
+        ${sec('rules', 'The rules Hoola keeps', 'These are always on. They cannot be turned off.', `<div class="hv-card hv-srules">${[...(D.rules_kept || []), 'The AI mark goes in every file.'].filter((t, i, a) => a.indexOf(t) === i).map(t => `<div class="hv-srow"><span class="hv-sok">${ic('check', 12)}</span><span>${esc(t)}</span></div>`).join('')}</div>`)}
+      </div></div></div>`;
+  }
+  const monthName = m => { const d = new Date(`${m}-01T00:00:00`); return isNaN(d) ? m : d.toLocaleDateString(undefined, {month: 'long', year: 'numeric'}); };
+  function hearBlob(text, voiceId) {
+    return api('POST', `${A}/hear`, {text, voice: voiceId || defs().voice || S.voice || '', lang: UI.dict.lang || ''}, {raw: true}).then(r => r.blob()).then(b => URL.createObjectURL(b));
+  }
+
   // ------------------------------------------------------------------ recording in the page ---
   const REC = {};
   async function recStart(k) {
@@ -2920,6 +3089,59 @@ window.HoolaVocal = function (ctx) {
           ...(h.text ? {prompt: h.text, seconds: +h.length || 0, loop: !!h.loop, follow: h.follow != null ? Math.round(h.follow * 10) : UI.fx.follow} : {})});
         draw(); const vw = $('#hvView'); if (vw) vw.scrollTop = 0; fxPrice();
         return toast(h.text ? 'Your words are back in the box. Make more like this, or shape a take.' : 'Shape it on the right.'); }
+      case 'sdkind': UI.lib.kind = d.val; return draw();
+      case 'sdsort': return choose(b, {title: 'Sort', cur: UI.lib.sort, list: SD_SORT.map(([v, label]) => ({v, label})), onPick: v => { UI.lib.sort = v; draw(); }});
+      case 'sdsel': UI.lib.sel = id; return draw();
+      case 'sdpick': Object.assign(UI.lib, {pick: !UI.lib.pick, chosen: []}); return draw();
+      case 'sdtick': { const c = UI.lib.chosen, i = c.indexOf(id); if (i >= 0) c.splice(i, 1); else c.push(id); return draw(); }
+      case 'sdall': { const ids = sdList().slice(0, 300).map(h => h.id); UI.lib.chosen = UI.lib.chosen.length === ids.length ? [] : ids; return draw(); }
+      case 'sdstar': { const h = D.history.find(x => x.id === id); if (!h) return; const on = !sdKept(h);
+        if (!on && kept(id)) keep(id);
+        return api('POST', `${A}/history/star`, {id, on}).then(() => { if (on) h.star = true; else delete h.star; toast(on ? 'Kept. It stays whatever the limit.' : 'No longer kept.'); draw(); }, e => toast(e.message, true)); }
+      case 'sddl': return download(id, d.val);
+      case 'sdrm': return removeSound(id);
+      case 'sdbulk': { const ids = UI.lib.chosen.slice(); if (!ids.length) return;
+        if (d.val === 'remove' && !confirm(`Remove ${plural(ids.length, 'sound')}? They go from this server and from your chats. This cannot be undone.`)) return;
+        return act(() => api('POST', `${A}/history/bulk`, {ids, action: d.val}), r => { const n = (r?.done || []).length;
+          if (d.val === 'remove') { UI.lib.chosen = []; UI.lib.pick = false; URLS.forEach((u, k) => { if (ids.some(x => k.includes(`id=${q(x)}`))) URLS.delete(k); }); }
+          toast(d.val === 'remove' ? `${plural(n, 'sound')} removed.` : `${plural(n, 'sound')} kept.`); side(); draw(); }, b, d.val === 'remove' ? 'Removing…' : 'Keeping…'); }
+      case 'sdzip': { const ids = UI.lib.chosen.slice(); if (!ids.length) return;
+        return menu(b, [{header: 'Download as'}, ...D.formats.map(f => ({label: f.name, sub: f.note, run: () => {
+          b.disabled = true; api('POST', `${A}/history/zip`, {ids, format: f.id}, {raw: true}).then(r => r.blob()).then(bl => { const a = document.createElement('a'); a.href = URL.createObjectURL(bl);
+            a.download = `hoola-sounds-${ids.length}.zip`; document.body.appendChild(a); a.click(); a.remove(); toast(`${plural(ids.length, 'sound')} in one ZIP.`); })
+            .catch(e => toast(e.message, true)).finally(() => { if (b.isConnected) b.disabled = false; }); }}))], {width: 240}); }
+      case 'sduse': { const h = D.history.find(x => x.id === id); if (!h) return; const k = d.val;
+        if (k === 'again') { S.text = h.text || ''; if (h.voice) S.voice = h.voice; if (h.lang) S.lang = h.lang; return go('speech'); }
+        if (k === 'dub') return dubIt(b, id);
+        if (k === 'clean') { Object.assign(UI.cl, {file: {name: h.title || 'Sound', secs: h.seconds || 0, sound: h.id}, secs: h.seconds || 0, heard: null, out: null, kind: '', fileFor: '', view: '', job: null}); go('cleanup'); return clListen(); }
+        if (k === 'cleanopen') { Object.assign(UI.cl, {out: h, view: '', hear: 'after', fileFor: h.id, file: {name: h.title || 'Clean-up', secs: h.src_secs || 0, from: h.src ? h.id : ''}, job: null}); return go('cleanup'); }
+        if (k === 'more') { Object.assign(UI.fx, {tab: 'words', view: '', prompt: h.text || h.title || '', seconds: +h.length || 0, loop: !!h.loop, out: [], sel: '', shp: null}); return go('sfx'); }
+        if (k === 'shape') { Object.assign(UI.fx, {tab: 'words', view: '', out: [h], sel: h.id, shp: null}); return go('sfx'); }
+        return go({dialogue: 'dialogue', dubs: 'dub', studio: 'studio', changer: 'changer'}[k] || 'sounds'); }
+      case 'dipa': { const el = $('#hvDI'); const v = UI.dict.ipa || ''; const at = el ? el.selectionStart ?? v.length : v.length;
+        UI.dict.ipa = v.slice(0, at) + d.val + v.slice(at); if (el) { el.value = UI.dict.ipa; el.focus(); el.setSelectionRange(at + d.val.length, at + d.val.length); } return; }
+      case 'dcancel': Object.assign(UI.dict, {edit: '', w: '', say: '', ipa: '', lang: ''}); return draw();
+      case 'dedit': { const r = D.rules.find(x => x.id === id); if (!r) return; Object.assign(UI.dict, {edit: id, w: r.word, say: r.say || '', ipa: r.ipa || '', lang: r.lang || ''}); draw(); return $('#hvDS')?.focus(); }
+      case 'dwsave': { const x = UI.dict, body = {word: x.w.trim(), say: x.say.trim(), ipa: x.ipa.trim(), lang: x.lang};
+        return act(() => x.edit ? api('PUT', `${A}/rule`, {...body, id: x.edit}) : api('POST', `${A}/rule`, body),
+          () => { toast(x.edit ? 'Saved.' : `“${body.word}” added. Every voice reads it your way now.`); Object.assign(UI.dict, {edit: '', w: '', say: '', ipa: ''}); draw(); }, b, 'Saving…'); }
+      case 'dhear': { const x = UI.dict, r = id && D.rules.find(z => z.id === id);
+        const text = d.val === 'test' ? x.test.trim() : d.val === 'word' ? (r?.word || '') : (x.say.trim() || x.w.trim());
+        if (!text) return toast(d.val === 'test' ? 'Type a sentence first.' : 'Write the word first.', true);
+        b.disabled = true; return hearBlob(text).then(u => { if (b.isConnected) b.disabled = false; return play('hear:' + text, u, d.val === 'test' ? 'Your sentence' : `“${d.val === 'word' ? r.word : text}”`); })
+          .catch(e => { if (b.isConnected) b.disabled = false; toast(e.message, true); }); }
+      case 'dlf': UI.dict.lf = d.val; return draw();
+      case 'dexport': return saveFile(`${A}/rules/export`, 'hoola-dictionary.csv');
+      case 'dimpfile': return pickFiles('.csv,.txt,text/csv,text/plain', false).then(fs => fs[0] && fs[0].text().then(t => { UI.dict.text = t.slice(0, 200000); UI.dict.check = null; draw(); }));
+      case 'dcheck': return act(() => api('POST', `${A}/rules/check`, {text: UI.dict.text}), r => { UI.dict.check = r; draw(); }, b, 'Checking…');
+      case 'dimport': { const c = UI.dict.check; if (!c) return;
+        const csvq = v => /[",\n]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : v;
+        const text = c.rows.filter(r => r.state !== 'bad').map(r => [r.word, r.say, r.ipa, r.lang].map(csvq).join(',')).join('\n');
+        return act(() => api('POST', `${A}/rules/import`, {text}), r => { toast(`${plural(r?.added || 0, 'word')} added.`); Object.assign(UI.dict, {imp: false, text: '', check: null}); draw(); }, b, 'Adding…'); }
+      case 'setgo': { UI.setSec = d.val; $$('.hv-setnav [data-a="setgo"]').forEach(x => { const on = x.dataset.val === d.val; x.setAttribute('aria-current', String(on)); x.querySelector('.hv-dot')?.classList.toggle('on', on); });
+        return $(`#hvSet-${d.val}`)?.scrollIntoView({behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start'}); }
+      case 'keepset': { const v = +d.val;
+        return api('PUT', `${A}/settings`, {keep_days: v}).then(r => { D.settings = r?.settings || r; toast(v ? `Sounds older than ${KEEP[v]} will be deleted. Starred sounds stay.` : 'Your sounds are kept until you remove them.'); draw(); }).catch(e => toast(e.message, true)); }
       case 'pickcast': return cpOpen(+d.n);
       case 'castopen': return cpOpen(0);
       case 'cpclose': return cpClose();
@@ -3301,6 +3523,11 @@ window.HoolaVocal = function (ctx) {
       if (k === 'start' && s.start > (s.end || tot) - 0.05) s.start = Math.max(0, (s.end || tot) - 0.05);
       if (k === 'end' && (s.end || tot) < s.start + 0.05) s.end = Math.min(tot, s.start + 0.05);
       fxShpPaint(); }
+    if (t.id === 'hvSdQ' || t.id === 'hvDQ') { clearTimeout(onInput.sq); const id = t.id; onInput.sq = setTimeout(() => { const a = t.selectionStart; draw(); const n = $('#' + id); if (n) { n.focus(); try { n.setSelectionRange(a, a); } catch { /* */ } } }, 250); }
+    if (t.id === 'hvDT') { const hi = $('.hv-dthi'); if (hi) hi.innerHTML = dictHi(t.value) + '\n'; const ln = $('[data-dtline]'); if (ln) ln.innerHTML = dictTestLine(); }
+    if (t.id === 'hvDW' || t.id === 'hvDS' || t.id === 'hvDI') { const sv = $('[data-a="dwsave"]'); const ok = UI.dict.w.trim() && (UI.dict.say.trim() || UI.dict.ipa.trim());
+      if (sv && !!ok === sv.disabled) { const id = t.id, a = t.selectionStart; draw(); const n = $('#' + id); if (n) { n.focus(); try { n.setSelectionRange(a, a); } catch { /* */ } } } }
+    if (t.id === 'hvDImp') { const cb = $('[data-a="dcheck"]'); if (cb && !!t.value.trim() === cb.disabled) { const a = t.selectionStart; UI.dict.check = null; draw(); const n = $('#hvDImp'); if (n) { n.focus(); try { n.setSelectionRange(a, a); } catch { /* */ } } } }
     if (t.id === 'hvFxQ') { clearTimeout(onInput.fq); onInput.fq = setTimeout(() => { const a = t.selectionStart; draw(); const n = $('#hvFxQ'); if (n) { n.focus(); try { n.setSelectionRange(a, a); } catch { /* */ } } }, 250); }
     if (t.dataset?.dl != null) { const n = +t.dataset.dl, ln = $(`#hvDlLen${n}`), s2 = dlSecs(t.value); if (ln) ln.textContent = s2 ? secs(s2) : ''; const sm = $('#hvDlSum'); if (sm) sm.textContent = dlSum(); const hi = t.closest('.hv-dlw')?.querySelector('.hv-dlhi'); if (hi) hi.innerHTML = hiHTML(t.value); dlMark(n); }
     if (t.dataset?.m?.startsWith('UI.dlg.lines') && t.tagName === 'TEXTAREA') { const b = $('[data-qbtn="dlg"]'); const has = UI.dlg.lines.some(l => (l.text || '').trim());

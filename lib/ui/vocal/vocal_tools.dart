@@ -867,9 +867,13 @@ class _VocalSfxPageState extends State<VocalSfxPage> {
 }
 
 // ================================================================================================ Dictionary
+// v0.999.163 (canvas claude.ai/artifact/VDXqUd7zx9TMxwTjVcXiJz): add or change a word with Hear it before saving and IPA
+// keys, test a sentence (the words read her way are marked and named), every word with Hear / Change / Remove and how
+// many of her sounds use it, find a word, a language filter, and Import a list checked line by line before anything is added.
 class VocalDictionaryPage extends StatefulWidget {
-  const VocalDictionaryPage({super.key, required this.store, this.embedded = true});
+  const VocalDictionaryPage({super.key, required this.store, this.player, this.embedded = true});
   final VocalStore store;
+  final VocalPlayer? player;
   final bool embedded;
   @override
   State<VocalDictionaryPage> createState() => _VocalDictionaryPageState();
@@ -879,14 +883,23 @@ class _VocalDictionaryPageState extends State<VocalDictionaryPage> {
   final _word = TextEditingController();
   final _say = TextEditingController();
   final _ipa = TextEditingController();
+  final _test = TextEditingController();
   String _lang = '';
+  String _edit = '';
+  String _q = '';
+  String _lf = '';
   bool _busy = false;
+  VocalPlayer? _own;
+  final _formKey = GlobalKey();
   VocalStore get store => widget.store;
+  VocalPlayer get _player => widget.player ?? (_own ??= VocalPlayer(store.app));
+
+  static const _ipaKeys = ['ə', 'ɪ', 'ʊ', 'ɛ', 'ɔ', 'aː', 'iː', 'uː', 'ʃ', 'ʒ', 'θ', 'ð', 'ŋ', 't̪', 'd̪', 'ɳ', 'ɾ', 'ʰ', 'ː', 'ˈ'];
 
   @override
   void initState() {
     super.initState();
-    for (final t in [_word, _say]) {
+    for (final t in [_word, _say, _ipa, _test]) {
       t.addListener(() {
         if (mounted) setState(() {});
       });
@@ -898,28 +911,52 @@ class _VocalDictionaryPageState extends State<VocalDictionaryPage> {
     _word.dispose();
     _say.dispose();
     _ipa.dispose();
+    _test.dispose();
+    _own?.dispose();
     super.dispose();
   }
 
   List<Map<String, dynamic>> get _rules => crList(store.ov['rules']);
+  Map<String, dynamic> get _uses => crMap(store.ov['rule_uses']);
+  int get _max {
+    final n = crInt(crMap(store.ov['limits'])['rules']);
+    return n > 0 ? n : 200;
+  }
 
-  Future<void> _add() async {
-    final w = _word.text.trim(), s = _say.text.trim();
-    if (w.isEmpty || s.isEmpty) return;
+  bool get _ready => _word.text.trim().isNotEmpty && (_say.text.trim().isNotEmpty || _ipa.text.trim().isNotEmpty);
+
+  /// The words of hers this text has in it (whole words, any letter case).
+  List<Map<String, dynamic>> _found(String text) => [
+        for (final r in _rules)
+          if (crS(r['word']).isNotEmpty &&
+              RegExp('(^|[^\\p{L}\\p{N}])${RegExp.escape(crS(r['word']))}(\$|[^\\p{L}\\p{N}])', caseSensitive: false, unicode: true).hasMatch(text))
+            r,
+      ];
+
+  Future<void> _save() async {
+    final w = _word.text.trim(), s = _say.text.trim(), i = _ipa.text.trim();
+    if (!_ready) return;
     setState(() => _busy = true);
     try {
       if (VocalStore.debug) {
-        store.ov = {...store.ov, 'rules': [{'id': 'pr_new', 'word': w, 'say': s, 'ipa': _ipa.text.trim(), 'lang': _lang}, ..._rules]};
+        if (_edit.isNotEmpty) {
+          VocalStore.debugAnswer('rule_update', {'id': _edit, 'word': w, 'say': s, 'ipa': i, 'lang': _lang});
+          store.ov = {...store.ov, 'rules': [for (final r in _rules) crS(r['id']) == _edit ? {...r, 'word': w, 'say': s, 'ipa': i, 'lang': _lang} : r]};
+        } else {
+          store.ov = {...store.ov, 'rules': [{'id': 'pr_new', 'word': w, 'say': s, 'ipa': i, 'lang': _lang}, ..._rules]};
+        }
         store.tell();
       } else {
-        await store.app.api!.vocalRule(w, s, ipa: _ipa.text.trim(), lang: _lang);
+        if (_edit.isNotEmpty) {
+          await store.app.api!.vocalRuleUpdate(_edit, w, s, ipa: i, lang: _lang);
+        } else {
+          await store.app.api!.vocalRule(w, s, ipa: i, lang: _lang);
+        }
         await store.load();
       }
       if (mounted) {
-        crToast(context, '$w is in your dictionary.');
-        _word.clear();
-        _say.clear();
-        _ipa.clear();
+        crToast(context, _edit.isNotEmpty ? '“$w” changed. Every voice reads it your way now.' : '$w is in your dictionary.');
+        _clear();
       }
     } catch (e) {
       if (mounted) vocalError(context, store, e);
@@ -927,7 +964,33 @@ class _VocalDictionaryPageState extends State<VocalDictionaryPage> {
     if (mounted) setState(() => _busy = false);
   }
 
+  void _clear() {
+    _word.clear();
+    _say.clear();
+    _ipa.clear();
+    setState(() {
+      _edit = '';
+      _lang = '';
+    });
+  }
+
+  void _change(Map<String, dynamic> r) {
+    _word.text = crS(r['word']);
+    _say.text = crS(r['say']);
+    _ipa.text = crS(r['ipa']);
+    setState(() {
+      _edit = crS(r['id']);
+      _lang = crS(r['lang']);
+    });
+    final fc = _formKey.currentContext;
+    if (fc != null) Scrollable.ensureVisible(fc, duration: const Duration(milliseconds: 200));
+  }
+
   Future<void> _remove(Map<String, dynamic> r) async {
+    final n = crInt(_uses[crS(r['id'])]);
+    final ok = await vocalConfirm(context, 'Remove “${crS(r['word'])}”?',
+        n > 0 ? 'It is in $n of your sounds. Those stay as they are; new sounds read it the usual way.' : 'New sounds read it the usual way.', 'Remove');
+    if (ok != true || !mounted) return;
     try {
       if (!VocalStore.debug) {
         await store.app.api!.vocalRuleDelete(crS(r['id']));
@@ -936,30 +999,37 @@ class _VocalDictionaryPageState extends State<VocalDictionaryPage> {
         store.ov = {...store.ov, 'rules': _rules.where((x) => crS(x['id']) != crS(r['id'])).toList()};
         store.tell();
       }
+      if (_edit == crS(r['id'])) _clear();
+    } catch (e) {
+      if (mounted) vocalError(context, store, e);
+    }
+  }
+
+  /// A short free sample: a word, the respelling being written, or her sentence.
+  Future<void> _hear(String text) async {
+    final t = text.trim();
+    if (t.isEmpty) {
+      crToast(context, 'Write the word first.');
+      return;
+    }
+    if (VocalStore.debug) {
+      VocalStore.debugAnswer('hear', {'text': t, 'lang': _lang});
+      return;
+    }
+    try {
+      await _player.toggle(context, 'hear_${t.hashCode.toUnsigned(32)}', () => store.app.api!.vocalHear(t, lang: _lang), ext: 'wav');
     } catch (e) {
       if (mounted) vocalError(context, store, e);
     }
   }
 
   Future<void> _import() async {
-    final ctl = TextEditingController();
-    final text = await showDialog<String>(
+    final text = await showModalBottomSheet<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Import a list'),
-        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('One word a line: word, how to say it, its sounds (IPA, optional), language (optional).',
-              style: HoolaType.small(HoolaColors.of(ctx))),
-          const SizedBox(height: 8),
-          TextField(controller: ctl, minLines: 4, maxLines: 10, decoration: const InputDecoration(hintText: 'Nashik,Naa-shik,ˈnaːʃɪk,hi')),
-        ]),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(ctl.text.trim()), child: const Text('Import')),
-        ],
-      ),
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => CrHueScope(hue: CrHue.voice, child: _DictImportSheet(store: store)),
     );
-    ctl.dispose();
     if (text == null || text.isEmpty || !mounted) return;
     try {
       if (!VocalStore.debug) {
@@ -967,6 +1037,8 @@ class _VocalDictionaryPageState extends State<VocalDictionaryPage> {
         await store.load();
         final n = crInt(r['added'] ?? r['count']);
         if (mounted) crToast(context, n > 0 ? '$n word${n == 1 ? '' : 's'} added.' : 'The list was read.');
+      } else {
+        VocalStore.debugAnswer('rules_import', {'text': text});
       }
     } catch (e) {
       if (mounted) vocalError(context, store, e);
@@ -979,6 +1051,20 @@ class _VocalDictionaryPageState extends State<VocalDictionaryPage> {
     if (v != null && mounted) setState(() => _lang = v == 'auto' ? '' : v);
   }
 
+  Widget _field(HoolaColors c, TextEditingController t, String hint, int max, {bool mono = false}) => TextField(
+        controller: t,
+        maxLength: max,
+        style: mono ? HoolaType.body(c).copyWith(fontFamily: 'monospace') : HoolaType.body(c),
+        decoration: vocalInput(c, hint),
+        buildCounter: (_, {required int currentLength, required bool isFocused, required int? maxLength}) => null,
+      );
+
+  void _key(String k) {
+    final v = _ipa.value, sel = v.selection.isValid ? v.selection : TextSelection.collapsed(offset: v.text.length);
+    final text = v.text.replaceRange(sel.start, sel.end, k);
+    _ipa.value = TextEditingValue(text: text, selection: TextSelection.collapsed(offset: sel.start + k.length));
+  }
+
   @override
   Widget build(BuildContext context) {
     final body = ListenableBuilder(
@@ -986,23 +1072,50 @@ class _VocalDictionaryPageState extends State<VocalDictionaryPage> {
       builder: (context, _) {
         final c = HoolaColors.of(context);
         final rules = _rules;
+        final langs = <String>{for (final r in rules) crS(r['lang'])}.toList();
+        final q = _q.trim().toLowerCase();
+        final shown = [
+          for (final r in rules)
+            if ((_lf.isEmpty || (_lf == '*' ? crS(r['lang']).isEmpty : crS(r['lang']) == _lf)) &&
+                (q.isEmpty || '${crS(r['word'])} ${crS(r['say'])}'.toLowerCase().contains(q)))
+              r,
+        ];
+        final hits = _found(_test.text);
+        final small = HoolaType.small(c).copyWith(fontSize: 12);
         return ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 24), children: [
-          Text('How a word is said in every take: names, places, your brand. Used on every engine.',
-              style: HoolaType.small(c).copyWith(fontSize: 14, color: c.ink2)),
+          Text('How your names, places and products are said, by every voice.', style: HoolaType.small(c).copyWith(fontSize: 14, color: c.ink2)),
           const SizedBox(height: 12),
           VocalBox(
+            key: _formKey,
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              const VocalLabel('Add a word'),
-              TextField(controller: _word, maxLength: 60, style: HoolaType.body(c), decoration: vocalInput(c, 'Word, as written: Mithas'),
-                  buildCounter: (_, {required int currentLength, required bool isFocused, required int? maxLength}) => null),
+              VocalLabel(_edit.isNotEmpty ? 'Change a word' : 'Add a word'),
+              _field(c, _word, 'Word, as written: Mithas', 60),
               const SizedBox(height: 8),
-              TextField(controller: _say, maxLength: 120, style: HoolaType.body(c), decoration: vocalInput(c, 'Say it as: Mi-thaas'),
-                  buildCounter: (_, {required int currentLength, required bool isFocused, required int? maxLength}) => null),
+              _field(c, _say, 'Say it as: Mi-thaas', 120),
               const SizedBox(height: 8),
-              TextField(controller: _ipa, maxLength: 120, style: HoolaType.body(c), decoration: vocalInput(c, 'Sounds in IPA (optional): mɪˈt̪ʰaːs'),
-                  buildCounter: (_, {required int currentLength, required bool isFocused, required int? maxLength}) => null),
-              const SizedBox(height: 4),
+              _field(c, _ipa, 'Sounds in IPA (optional): mɪˈt̪ʰaːs', 120, mono: true),
+              const SizedBox(height: 6),
+              Wrap(spacing: 4, runSpacing: 4, children: [
+                for (final k in _ipaKeys)
+                  Semantics(
+                    button: true,
+                    label: 'Add the sound $k',
+                    excludeSemantics: true,
+                    onTap: () => _key(k),
+                    child: InkWell(
+                      onTap: () => _key(k),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(8)),
+                        child: Text(k, style: HoolaType.body(c).copyWith(fontFamily: 'monospace', fontSize: 14)),
+                      ),
+                    ),
+                  ),
+              ]),
+              const SizedBox(height: 8),
               Row(children: [
                 Expanded(
                   child: Align(
@@ -1010,43 +1123,204 @@ class _VocalDictionaryPageState extends State<VocalDictionaryPage> {
                     child: VocalChip(label: _lang.isEmpty ? 'Every language' : store.langNative(_lang), menu: true, onTap: _pickLang),
                   ),
                 ),
-                const SizedBox(width: 8),
-                SizedBox(width: 120, child: VocalPill(label: 'Add', busy: _busy,
-                    onTap: _word.text.trim().isEmpty || _say.text.trim().isEmpty ? null : _add)),
+                VocalChip(label: 'Hear it', onTap: _word.text.trim().isEmpty ? null : () => _hear(_say.text.trim().isEmpty ? _word.text : _say.text)),
               ]),
+              const SizedBox(height: 8),
+              Row(children: [
+                if (_edit.isNotEmpty) ...[
+                  Expanded(child: VocalChip(label: 'Cancel', onTap: _clear)),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(child: VocalPill(label: _edit.isNotEmpty ? 'Save the change' : 'Add', busy: _busy, onTap: _ready ? _save : null)),
+              ]),
+              if (!_ready)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(_word.text.trim().isEmpty ? 'Write the word as it is written.' : 'Write how to say it, or its sounds.',
+                      style: small.copyWith(color: c.warn)),
+                ),
             ]),
           ),
-          const SizedBox(height: 8),
-          Align(alignment: Alignment.centerLeft, child: VocalChip(label: 'Import a list', onTap: _import)),
           const SizedBox(height: 12),
-          VocalLabel('Your words', note: rules.isEmpty ? '' : '${rules.length}'),
+          VocalBox(
+            fill: c.sunk,
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              const VocalLabel('Test a sentence'),
+              TextField(controller: _test, minLines: 2, maxLines: 4, maxLength: 200, style: HoolaType.body(c),
+                  decoration: vocalInput(c, 'Aaj hi aaiye Mithas Sweets, Nashik mein.'),
+                  buildCounter: (_, {required int currentLength, required bool isFocused, required int? maxLength}) => null),
+              const SizedBox(height: 6),
+              Text(_test.text.trim().isEmpty
+                  ? 'Write a sentence with your words in it.'
+                  : hits.isEmpty
+                      ? 'No word from your dictionary is in it.'
+                      : '${hits.length} word${hits.length == 1 ? '' : 's'} will be read your way: '
+                          '${hits.map((r) => '${crS(r['word'])} as ${crS(r['say']).isEmpty ? '/${crS(r['ipa'])}/' : crS(r['say'])}').join(', ')}.',
+                  style: small),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: VocalChip(label: 'Hear it · free', onTap: _test.text.trim().isEmpty ? null : () => _hear(_test.text)),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: VocalLabel('Your words', note: '${rules.length} of $_max')),
+          ]),
+          Row(children: [
+            VocalChip(label: 'Import a list', onTap: _import),
+          ]),
+          const SizedBox(height: 8),
+          if (rules.length > 6)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: TextField(
+                style: HoolaType.body(c),
+                decoration: vocalInput(c, 'Find a word').copyWith(prefixIcon: Icon(Icons.search_rounded, size: 20, color: c.ink3)),
+                onChanged: (v) => setState(() => _q = v),
+              ),
+            ),
+          if (langs.length > 1)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(children: [
+                for (final l in ['', ...langs.map((x) => x.isEmpty ? '*' : x)])
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: VocalChip(label: l.isEmpty ? 'All' : l == '*' ? 'Every language' : store.langNative(l), on: _lf == l,
+                        onTap: () => setState(() => _lf = l)),
+                  ),
+              ]),
+            ),
           if (rules.isEmpty)
-            Text('None yet.', style: HoolaType.small(c))
+            Text('None yet. Add a name your voices say wrong, and every voice reads it your way.', style: HoolaType.small(c))
+          else if (shown.isEmpty)
+            Text('No word matches.', style: HoolaType.small(c))
           else
-            for (final r in rules)
+            for (final r in shown)
               Container(
                 padding: const EdgeInsets.fromLTRB(4, 4, 0, 4),
-                decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.line))),
+                decoration: BoxDecoration(
+                    color: _edit == crS(r['id']) ? c.accentSoft : null, border: Border(bottom: BorderSide(color: c.line))),
                 child: Row(children: [
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text.rich(TextSpan(children: [
                         TextSpan(text: crS(r['word']), style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w600)),
-                        TextSpan(text: '  →  ${crS(r['say'])}', style: HoolaType.body(c)),
+                        if (crS(r['say']).isNotEmpty) TextSpan(text: '  →  ${crS(r['say'])}', style: HoolaType.body(c)),
                       ])),
                       Text([
                         if (crS(r['ipa']).isNotEmpty) '/${crS(r['ipa'])}/',
                         crS(r['lang']).isEmpty ? 'Every language' : store.langNative(crS(r['lang'])),
-                      ].join(' · '), style: HoolaType.small(c).copyWith(fontSize: 12)),
+                        if (_uses.containsKey(crS(r['id'])))
+                          crInt(_uses[crS(r['id'])]) > 0 ? 'in ${crInt(_uses[crS(r['id'])])} sound${crInt(_uses[crS(r['id'])]) == 1 ? '' : 's'}' : 'not used yet',
+                      ].join(' · '), style: small),
                     ]),
                   ),
+                  VocalIconButton(label: 'Hear ${crS(r['word'])}', icon: Icons.play_arrow_rounded, onTap: () => _hear(crS(r['word']))),
+                  VocalIconButton(label: 'Change ${crS(r['word'])}', icon: Icons.edit_outlined, onTap: () => _change(r)),
                   VocalIconButton(label: 'Remove ${crS(r['word'])}', glyph: CrGlyph.trash, onTap: () => _remove(r)),
                 ]),
               ),
+          const SizedBox(height: 10),
+          Text('A word matches whole, in any letter case. Your sounds keep the words as you wrote them; only the voice reads them your way.',
+              style: small),
         ]);
       },
     );
     return vocalFrame(context, embedded: widget.embedded, title: 'Dictionary', body: body);
+  }
+}
+
+/// Import a list: paste lines, Check them (New / Replaces yours / Left out, with why), then Add the good ones.
+class _DictImportSheet extends StatefulWidget {
+  const _DictImportSheet({required this.store});
+  final VocalStore store;
+  @override
+  State<_DictImportSheet> createState() => _DictImportSheetState();
+}
+
+class _DictImportSheetState extends State<_DictImportSheet> {
+  final _ctl = TextEditingController();
+  Map<String, dynamic>? _check;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctl.addListener(() {
+      if (mounted) setState(() => _check = null);
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _go() async {
+    setState(() => _busy = true);
+    try {
+      final r = VocalStore.debug ? VocalStore.debugAnswer('rules_check', {'text': _ctl.text}) : await widget.store.app.api!.vocalRulesCheck(_ctl.text);
+      if (mounted) setState(() => _check = r);
+    } catch (e) {
+      if (mounted) vocalError(context, widget.store, e);
+    }
+    if (mounted) setState(() => _busy = false);
+  }
+
+  String _good() {
+    String q(String v) => RegExp(r'[",\n]').hasMatch(v) ? '"${v.replaceAll('"', '""')}"' : v;
+    return [
+      for (final r in crList(_check?['rows']))
+        if (crS(r['state']) != 'bad') [crS(r['word']), crS(r['say']), crS(r['ipa']), crS(r['lang'])].map(q).join(','),
+    ].join('\n');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    final ck = _check;
+    final small = HoolaType.small(c).copyWith(fontSize: 12);
+    final ok = ck == null ? 0 : crInt(ck['new']) + crInt(ck['replace']);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + MediaQuery.of(context).viewInsets.bottom),
+      child: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text('Import a list', style: HoolaType.title(c)),
+          const SizedBox(height: 4),
+          Text('One word a line: word, how to say it, its sounds (IPA, optional), language (optional). Nothing is added until you see the check.',
+              style: small),
+          const SizedBox(height: 8),
+          TextField(controller: _ctl, minLines: 4, maxLines: 8, style: HoolaType.body(c), decoration: vocalInput(c, 'Nashik,Naa-shik,ˈnaːʃɪk,hi')),
+          const SizedBox(height: 8),
+          if (ck != null) ...[
+            Text('${crInt(ck['new'])} new · ${crInt(ck['replace'])} replace yours · ${crInt(ck['bad'])} left out', style: HoolaType.body(c)),
+            const SizedBox(height: 4),
+            for (final r in crList(ck['rows']).take(40))
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Text(
+                  'Line ${crInt(r['line'])}: ${crS(r['word']).isEmpty ? '—' : crS(r['word'])} · '
+                  '${switch (crS(r['state'])) { 'new' => 'New', 'replace' => 'Replaces yours', _ => 'Left out: ${crS(r['why'])}' }}',
+                  style: small.copyWith(color: crS(r['state']) == 'bad' ? c.bad : c.ink2),
+                ),
+              ),
+            if (ok > crInt(ck['room']) && crInt(ck['room']) >= 0)
+              Text('Only ${crInt(ck['room'])} more fit in your dictionary.', style: small.copyWith(color: c.warn)),
+            const SizedBox(height: 8),
+          ],
+          ck == null
+              ? VocalPill(label: 'Check the list', busy: _busy, onTap: _ctl.text.trim().isEmpty ? null : _go)
+              : VocalPill(label: ok == 0 ? 'Nothing to add' : 'Add $ok word${ok == 1 ? '' : 's'}',
+                  onTap: ok == 0 ? null : () => Navigator.of(context).pop(_good())),
+        ]),
+      ),
+    );
   }
 }
 
@@ -1075,15 +1349,18 @@ class _VocalSettingsPageState extends State<VocalSettingsPage> {
   }
 
   // ---------------------------------------------------------------- how long her sounds are kept
-  static const Map<int, String> _keeps = {0: 'Forever', 7: '7 days', 30: '30 days', 90: '90 days'};
+  // v0.999.163: four cards (Never / 90 / 30 / 7 days) and how many are kept on this server; starred sounds always stay.
+  static const List<(int, String, String)> _keeps = [
+    (0, 'Never', 'Kept until you remove them'),
+    (90, '90 days', 'Then removed by Hoola'),
+    (30, '30 days', 'Then removed by Hoola'),
+    (7, '7 days', 'Then removed by Hoola'),
+  ];
 
   int get _keepDays => crInt(crMap(store.ov['settings'])['keep_days']);
 
-  Future<void> _keep() async {
-    final v = await crPick(context, 'Keep my sounds', _keeps.values.toList(), _keeps[_keepDays] ?? 'Forever',
-        notes: const {'Forever': 'Nothing is deleted by itself', '7 days': 'Older sounds are deleted each day'});
-    if (v == null || !mounted) return;
-    final days = _keeps.entries.firstWhere((e) => e.value == v, orElse: () => const MapEntry(0, 'Forever')).key;
+  Future<void> _keep(int days) async {
+    if (days == _keepDays) return;
     try {
       Map<String, dynamic> saved;
       if (VocalStore.debug) {
@@ -1092,12 +1369,75 @@ class _VocalSettingsPageState extends State<VocalSettingsPage> {
       } else {
         saved = await store.app.api!.vocalSettingsSave({'keep_days': days});
       }
-      store.ov = {...store.ov, 'settings': saved.isEmpty ? {...crMap(store.ov['settings']), 'keep_days': days} : saved};
+      final st = crMap(saved['settings']).isNotEmpty ? crMap(saved['settings']) : saved;
+      store.ov = {...store.ov, 'settings': st.isEmpty ? {...crMap(store.ov['settings']), 'keep_days': days} : st};
       store.tell();
-      if (mounted) crToast(context, days == 0 ? 'Your sounds are kept until you delete them.' : 'Sounds older than $days days are deleted.');
+      if (mounted) {
+        crToast(context, days == 0 ? 'Your sounds are kept until you remove them.' : 'Sounds older than $days days will be deleted. Starred sounds stay.');
+      }
     } catch (e) {
       if (mounted) vocalError(context, store, e);
     }
+  }
+
+  Widget _keepSection(HoolaColors c) {
+    final small = HoolaType.small(c).copyWith(fontSize: 12);
+    final n = store.history.length, stars = store.history.where((h) => h['star'] == true).length;
+    final u = crMap(store.ov['usage']), l = crMap(store.ov['limits']);
+    final max = crInt(u['kept_max']) > 0 ? crInt(u['kept_max']) : (crInt(l['history']) > 0 ? crInt(l['history']) : 300);
+    Widget card((int, String, String) k) {
+      final on = k.$1 == _keepDays;
+      return Semantics(
+        container: true,
+        button: true,
+        selected: on,
+        checked: on,
+        label: 'Keep my sounds: ${k.$2}',
+        excludeSemantics: true,
+        onTap: () => _keep(k.$1),
+        child: InkWell(
+          onTap: () => _keep(k.$1),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            decoration: BoxDecoration(
+              color: on ? c.accentSoft : c.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: on ? c.accent : c.line, width: on ? 2 : 1),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(k.$2, style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 2),
+              Text(k.$3, style: small),
+            ]),
+          ),
+        ),
+      );
+    }
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Text('What stays on this server, and for how long.', style: HoolaType.small(c).copyWith(fontSize: 13, color: c.ink2)),
+      const SizedBox(height: 8),
+      Row(children: [Expanded(child: card(_keeps[0])), const SizedBox(width: 8), Expanded(child: card(_keeps[1]))]),
+      const SizedBox(height: 8),
+      Row(children: [Expanded(child: card(_keeps[2])), const SizedBox(width: 8), Expanded(child: card(_keeps[3]))]),
+      const SizedBox(height: 8),
+      VocalBox(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text('Kept on this server · $n of $max sounds${stars > 0 ? ' · $stars kept with a star' : ''}',
+              style: HoolaType.body(c).copyWith(fontSize: 13, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(value: (n / max).clamp(0, 1).toDouble(), minHeight: 5, backgroundColor: c.sunk, color: c.accent),
+          ),
+          const SizedBox(height: 6),
+          Text('Past $max, the oldest sound without a star goes first. Your voices, your dictionary and starred sounds always stay.',
+              style: small),
+        ]),
+      ),
+    ]);
   }
 
   // ---------------------------------------------------------------- for her own apps
@@ -1375,6 +1715,18 @@ class _VocalSettingsPageState extends State<VocalSettingsPage> {
         final c = HoolaColors.of(context);
         final prices = crList(store.ov['prices']);
         return ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 24), children: [
+          Text('How Hoola Vocal works for you, on every device.', style: HoolaType.small(c).copyWith(fontSize: 14, color: c.ink2)),
+          const SizedBox(height: 14),
+          const VocalLabel('Defaults'),
+          Text('Every page starts from these. You can change them for one sound any time.', style: HoolaType.small(c).copyWith(fontSize: 13, color: c.ink2)),
+          const SizedBox(height: 8),
+          VocalRows([
+            ('Language', vs.lang == 'auto' ? 'Auto, from my words' : store.langNative(vs.lang), _lang),
+            ('Voice', vs.voiceName(store), null),
+            ('Takes', '${vs.takes}', _takes),
+            ('Engine', _engineName(vs.engine), _engine),
+          ]),
+          const SizedBox(height: 18),
           const VocalLabel('Engines'),
           Text('Hoola Auto picks the engine for each job. You can pin one.', style: HoolaType.small(c).copyWith(fontSize: 13, color: c.ink2)),
           const SizedBox(height: 8),
@@ -1399,8 +1751,6 @@ class _VocalSettingsPageState extends State<VocalSettingsPage> {
               if (store.engines.isEmpty) Text('No engine is listed by this server.', style: HoolaType.small(c)),
             ]),
           ),
-          const SizedBox(height: 8),
-          VocalRows([('Use', _engineName(vs.engine), _engine)]),
           const SizedBox(height: 18),
           const VocalLabel('What things cost'),
           if (prices.isEmpty)
@@ -1413,17 +1763,11 @@ class _VocalSettingsPageState extends State<VocalSettingsPage> {
           const SizedBox(height: 6),
           Text('You always see the price before you tap.', style: HoolaType.small(c).copyWith(fontSize: 12)),
           const SizedBox(height: 18),
-          const VocalLabel('Defaults'),
-          VocalRows([
-            ('Language', vs.lang == 'auto' ? 'Auto, from my words' : store.langNative(vs.lang), _lang),
-            ('Takes', '${vs.takes}', _takes),
-            ('Voice', vs.voiceName(store), null),
-          ]),
+          const VocalLabel('This month'),
+          VocalCredits(store: store),
           const SizedBox(height: 18),
           const VocalLabel('Keep my sounds'),
-          VocalRows([('Keep my sounds', _keeps[_keepDays] ?? '$_keepDays days', _keep)]),
-          const SizedBox(height: 6),
-          Text('Your voices and dictionary are always kept.', style: HoolaType.small(c).copyWith(fontSize: 12)),
+          _keepSection(c),
           const SizedBox(height: 18),
           const VocalLabel('For your own apps'),
           _appsSection(c),
@@ -1431,7 +1775,7 @@ class _VocalSettingsPageState extends State<VocalSettingsPage> {
           const VocalLabel('Pronunciation'),
           VocalRows([('Dictionary', '${crList(store.ov['rules']).length} words', widget.onDictionary)]),
           const SizedBox(height: 18),
-          const VocalLabel('Always on'),
+          const VocalLabel('The rules Hoola keeps'),
           for (final r in (store.ov['rules_kept'] is List ? (store.ov['rules_kept'] as List).map(crS).toList()
               : const ['Every file carries an AI mark.', 'The price shows before every job; nothing paid runs without your tap.']))
             Padding(
@@ -1442,8 +1786,6 @@ class _VocalSettingsPageState extends State<VocalSettingsPage> {
                 Expanded(child: Text(r, style: HoolaType.small(c).copyWith(color: c.ink2))),
               ]),
             ),
-          const SizedBox(height: 12),
-          VocalCredits(store: store),
         ]);
       },
     );
