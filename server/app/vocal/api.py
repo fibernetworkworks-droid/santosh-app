@@ -273,13 +273,52 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
                        takes=b.get("takes") or 4, chat=str(b.get("chat") or ""))
         return run(V.sfx, tenant, str(b.get("preset") or ""), b.get("seed"))
 
+    def _cl_path(tenant: str, b: dict) -> str:
+        """The recording to clean: a file she uploaded, or one of the sounds she made here (`sound` = its id)."""
+        if b.get("sound"):
+            f, _h = run(V.audio_file, tenant, str(b.get("sound")), "")
+            return str(f)
+        return upload(tenant, b.get("file_id"))
+
+    def _cl_kw(b: dict) -> dict:
+        return dict(denoise=b.get("denoise") is not False, voice=b.get("voice") is not False, silence=bool(b.get("silence")),
+                    level=b.get("level") is not False, people=bool(b.get("people")), music=bool(b.get("music")),
+                    noise=str(b.get("noise") or "medium"), target=str(b.get("target") or "podcast"), gap=b.get("gap") or 1.0)
+
     @r.post("/cleanup")
     def cleanup(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """Clean a recording. `wait: false` = start it in the background and read its steps from /cleanup/job;
+        `source_of` = clean again from her recording kept beside an earlier clean-up."""
         on()
-        return run(V.cleanup, tenant, upload(tenant, b.get("file_id")), name=str(b.get("name") or ""),
-                   denoise=b.get("denoise") is not False, voice=b.get("voice") is not False,
-                   silence=bool(b.get("silence")), level=b.get("level") is not False,
-                   people=bool(b.get("people")), music=bool(b.get("music")))
+        src = str(b.get("source_of") or "")
+        path = "" if src else _cl_path(tenant, b)
+        if b.get("wait") is False:
+            return run(V.cleanup_start, tenant, path, name=str(b.get("name") or ""), source_of=src, **_cl_kw(b))
+        return run(V.cleanup, tenant, path, name=str(b.get("name") or ""), source_of=src, **_cl_kw(b))
+
+    @r.post("/cleanup/listen")
+    def cleanup_listen(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """What Hoola hears in a recording before anything is done (free, on this server)."""
+        if b.get("source_of"):
+            f, h = run(V.source_file, tenant, str(b.get("source_of")))
+            return run(V.cleanup_listen, tenant, str(f))
+        return run(V.cleanup_listen, tenant, _cl_path(tenant, b))
+
+    @r.get("/cleanup/job")
+    def cleanup_job(id: str, tenant: str = Depends(current_tenant)):
+        return run(V.cleanup_job, tenant, id)
+
+    @r.post("/cleanup/stop")
+    def cleanup_stop(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return run(V.cleanup_stop, tenant, str(b.get("id") or ""))
+
+    @r.get("/cleanup/source")
+    def cleanup_source(id: str, tenant: str = Depends(current_tenant)):
+        import mimetypes
+        f, h = run(V.source_file, tenant, id)
+        ext = h.get("src_ext", "wav")
+        return FileResponse(f, media_type=MIME.get(ext) or mimetypes.guess_type(f"x.{ext}")[0] or "application/octet-stream",
+                            headers={"Cache-Control": "private, no-store"})
 
     @r.post("/change")
     def change(b: dict = Body(default={}), tenant: str = Depends(current_tenant)):

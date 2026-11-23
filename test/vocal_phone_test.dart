@@ -1118,6 +1118,41 @@ void main() {
       expect(RegExp(r'[₹$]\s?\d').hasMatch(s.replaceAll(RegExp(r'\.\$\d|\$\{|\$[a-z_]'), '')), isFalse, reason: '${f.path}: prices are credits only');
     }
   });
+
+  testWidgets('Clean-up: a clean-up opens with what was done, before and after, clean again stronger', (t) async {
+    _phone(t);
+    final data = vocalData();
+    final ov = Map<String, dynamic>.from(data['overview'] as Map);
+    final row = {'id': 'c1', 'kind': 'cleanup', 'title': 'Market interview', 'voice_name': 'Noise · light · Podcast loudness', 'seconds': 118,
+      'made': 1700000400, 'ext': 'mp3', 'engine': 'server', 'src': 'cl_aaaaaaaaaaaa', 'src_ext': 'wav', 'src_secs': 134,
+      'before': {'seconds': 134, 'lufs': -27.2, 'peak': -0.2, 'background': -41.3, 'clips': 3, 'pauses': 7, 'longest': 3.4,
+        'found': {'noise': true, 'quiet': true, 'loud': false, 'clips': true, 'pauses': true}},
+      'after': {'seconds': 118, 'lufs': -16.1, 'peak': -1.5, 'background': -63.0, 'clips': 0, 'pauses': 0},
+      'fixes': {'denoise': true, 'noise': 'light', 'voice': true, 'level': true, 'target': 'podcast', 'silence': true, 'gap': 1, 'people': false, 'music': false}};
+    ov['history'] = [row, ...(ov['history'] as List)];
+    data['overview'] = ov;
+    data['cleanup'] = {'heard': row['before'], 'made': {...row, 'id': 'c2', 'fixes': {...(row['fixes'] as Map), 'noise': 'strong'}}};
+    final (app, store) = await _pageWith(t, data, (s, p) => VocalCleanupPage(store: s, player: p, embedded: false));
+    expect(find.text('Hoola listens first, tells you what is wrong, and fixes only that.'), findsOneWidget);
+    expect(find.text('Lift the voice out · not connected on this server'), findsOneWidget);
+    await t.scrollUntilVisible(find.bySemanticsLabel('Open Market interview'), 200, scrollable: find.byType(Scrollable).first);
+    await t.tap(find.bySemanticsLabel('Open Market interview'));
+    await _settle(t);
+    expect(find.textContaining('Loudness -27 LUFS → -16 LUFS', skipOffstage: false), findsOneWidget);
+    expect(find.textContaining('7 pauses shortened', skipOffstage: false), findsOneWidget);
+    expect(find.text('Background noise', skipOffstage: false), findsOneWidget);
+    expect(find.text('Loud words hit the top 3 times', skipOffstage: false), findsOneWidget);
+    await t.scrollUntilVisible(find.text('Clean again, stronger'), 200, scrollable: find.byType(Scrollable).first);
+    await t.tap(find.text('Clean again, stronger'));
+    await _settle(t);
+    expect(find.text('Clean again', skipOffstage: false), findsOneWidget);           // the new one is strong already
+    expect(t.takeException(), isNull);
+    await t.pumpWidget(const SizedBox.shrink());
+    store.dispose();
+    app.dispose();
+    _sem?.dispose();
+    _sem = null;
+  });
 }
 
 String _source(String path) => File(path).readAsStringSync();

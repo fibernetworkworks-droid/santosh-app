@@ -103,7 +103,7 @@ def test_the_files_carry_the_design():
     for k in ("chgMain", "chgCompare", "chgList", "chgNot", "chgPick", "chgPlay", "chgTrim", "chgPeaks", "Say it your way",
               "Hear the difference", "How close to", "Keep my feeling", "Only this part is changed", "Try it in other voices",
               "Into another voice", "Your changes", "Say it once. Hear it in another voice.", "Cannot be used here",
-              "/change/source", "source_of", "voices: vs"):
+              "'cleanup' : 'change'}/source", "source_of", "voices: vs"):
         assert k in JS, k
     for k in ("v0.999.159 Voice changer", ".hv-chggrid", ".hv-chgwave", ".hv-chgsel", ".hv-chglane", ".hv-chgslots", ".hv-chglist", ".hv-chgnots"):
         assert k in CSS, k

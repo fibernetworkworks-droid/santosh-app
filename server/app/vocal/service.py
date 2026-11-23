@@ -1389,45 +1389,290 @@ def sfx_text(tenant: str, prompt: Any, seconds: Any = 0, loop: bool = False, tak
     return {"items": items, "credits": q["credits"] * len(items)}
 
 
-def cleanup(tenant: str, path: str, name: str = "", denoise: bool = True, voice: bool = True, silence: bool = False,
-            level: bool = True, people: bool = False, music: bool = False) -> dict[str, Any]:
-    """Clean a recording. ffmpeg filters on this server (free); `people` / `music` = ElevenLabs voice isolation first."""
+# ------------------------------------------------------------------ clean-up (v0.999.160) ---
+CL_NOISE = ("light", "medium", "strong")
+CL_TARGETS = {"podcast": ("podcast", -16.0, "Podcast"), "reels": ("social", -14.0, "Reels and YouTube"),
+              "audiobook": ("audiobook", -19.0, "Audiobook"), "broadcast": ("broadcast", -23.0, "Radio and TV")}
+CL_GAPS = (0.5, 1.0, 2.0)
+CL_LISTEN_MAX = 20 * 60      # the readings are taken on the first 20 minutes of a longer recording
+CL_SRC_DAYS = 30             # her own recording is kept beside its clean-up this long (Before, Clean again)
+_CL_JOBS: dict[str, dict[str, Any]] = {}
+_CL_LOCK = threading.Lock()
+
+
+def _cl_pcm(path: str, rate: int = 16000):
+    """Mono 16 kHz samples (float, -1..1) of the first CL_LISTEN_MAX seconds, decoded by ffmpeg."""
+    import numpy as np
+    r = subprocess.run(["ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "error", "-i", path, "-vn", "-t", str(CL_LISTEN_MAX),
+                        "-ac", "1", "-ar", str(rate), "-f", "s16le", "pipe:1"], capture_output=True, timeout=600)
+    if r.returncode or len(r.stdout) < 2 * rate // 10:
+        raise VocalError("That recording could not be read. Try a WAV, MP3, M4A or a video file.")
+    return np.frombuffer(r.stdout[: len(r.stdout) // 2 * 2], dtype="<i2").astype("float32") / 32768.0
+
+
+def cleanup_measure(path: str) -> dict[str, Any]:
+    """What Hoola hears in a recording, all measured on this server: loudness and loudest peak (ffmpeg loudnorm),
+    the background level (the quiet 10 % of 50 ms windows), words that hit the top (runs at -1 dBFS or above), long
+    pauses (quieter than the background + 10 dB for 1 s or more, inside the speech)."""
+    import numpy as np
     from ..audedit import ops
     if not ops.ffmpeg_ok():
         raise VocalError("ffmpeg is not installed on this server, so recordings cannot be cleaned here.")
-    src = path
-    tmp = None
-    if people or music:
-        if not EL.ready():
-            raise VocalError("Removing people and music needs an ElevenLabs key on the server. The other clean-ups are free here.")
-        need_credits(tenant)
-        data = Path(path).read_bytes()
-        secs = _seconds_of(path)
-        try:
-            out = EL.isolate(data, Path(path).name, secs)
-        except EL.ElevenError as e:
-            raise VocalError(str(e)) from None
-        kind = _sound_kind(out) or "mp3"
-        tmp = tempfile.NamedTemporaryFile(suffix=f".{kind}", delete=False)
-        tmp.write(out)
-        tmp.close()
-        src = tmp.name
-    steps = [s for s, on in (({"op": "denoise"}, denoise), ({"op": "enhance_voice"}, voice),
-                             ({"op": "remove_silence"}, silence), ({"op": "normalize"}, level)) if on]
-    if not steps and not (people or music):
-        raise VocalError("Choose at least one thing to do.")
+    secs = _seconds_of(path)
     try:
-        r = ops.edit(src, steps or [{"op": "normalize"}], fmt="mp3")
-    except Exception as e:
-        raise VocalError(f"That recording could not be cleaned: {str(e)[:140]}") from None
-    finally:
-        if tmp:
-            Path(tmp.name).unlink(missing_ok=True)
-    what = [s["op"].replace("_", " ") for s in steps] + (["people removed"] if people else []) + (["music removed"] if music else [])
-    return _keep(tenant, r["bytes"], "mp3", {"kind": "cleanup", "title": _clean(name, 60) or "Cleaned recording", "text": "",
-                                             "voice": "", "voice_name": ", ".join(what), "lang": "", "chars": 0,
-                                             "seconds": round(float(r.get("est_seconds") or 0), 1),
-                                             "engine": "eleven" if (people or music) else "server"})
+        ld = ops.loudness(path)
+    except Exception:       # noqa: BLE001 - a silent or odd file still gets the other readings
+        ld = {}
+    x = _cl_pcm(path)
+    win = 800                                       # 50 ms at 16 kHz
+    n = len(x) // win
+    frames = x[: n * win].reshape(n, win) if n else x.reshape(1, -1)
+    rms = np.sqrt(np.mean(frames.astype("float64") ** 2, axis=1))
+    db = 20 * np.log10(np.maximum(rms, 1e-7))
+    live = db[db > -90]
+    bg = float(np.percentile(live, 10)) if live.size else -90.0
+    thr = min(-30.0, max(-50.0, bg + 10))
+    quiet = db < thr
+    pauses: list[float] = []
+    loud = np.nonzero(~quiet)[0]
+    if loud.size:
+        run = 0
+        for q in quiet[loud[0]: loud[-1] + 1]:      # inside the speech only, not the silence before or after
+            if q:
+                run += 1
+            else:
+                if run * 0.05 >= 1.0:
+                    pauses.append(run * 0.05)
+                run = 0
+    hotw = np.nonzero((np.abs(frames) >= 10 ** (-1 / 20)).any(axis=1))[0]
+    edges = int(1 + np.count_nonzero(np.diff(hotw) > 5)) if hotw.size else 0     # hits 250 ms apart = separate words
+    tp = ld.get("true_peak_db")
+    lufs = ld.get("lufs")
+    return {"seconds": round(secs, 2), "lufs": lufs, "peak": tp, "background": round(bg, 1),
+            "clips": edges if (tp is not None and tp > -1.0) else 0,
+            "pauses": len(pauses), "longest": round(max(pauses), 1) if pauses else 0.0,
+            "partial": secs > CL_LISTEN_MAX + 1}
+
+
+def cleanup_heard(m: dict[str, Any]) -> dict[str, Any]:
+    """The readings turned into what is wrong (found) and the settings Hoola would pick."""
+    bg, lufs, peak = m.get("background", -90), m.get("lufs"), m.get("peak")
+    noise = "strong" if bg > -42 else "medium" if bg > -50 else "light" if bg > -58 else ""
+    found = {"noise": bool(noise), "quiet": lufs is not None and lufs < -20, "loud": lufs is not None and lufs > -12,
+             "clips": int(m.get("clips") or 0) > 0 or (peak is not None and peak > -1.0), "pauses": int(m.get("pauses") or 0) > 0}
+    return {"found": found, "pick": {"noise": noise or "light", "denoise": bool(noise), "level": found["quiet"] or found["loud"] or found["clips"],
+                                     "silence": float(m.get("longest") or 0) >= 2.0}}
+
+
+def cleanup_listen(tenant: str, path: str) -> dict[str, Any]:
+    m = cleanup_measure(path)
+    return {**m, **cleanup_heard(m)}
+
+
+def _cl_opts(o: dict[str, Any]) -> dict[str, Any]:
+    noise = str(o.get("noise") or "medium").lower()
+    if noise not in CL_NOISE:
+        raise VocalError("How much noise to remove: light, medium or strong.")
+    target = str(o.get("target") or "podcast").lower()
+    if target not in CL_TARGETS:
+        raise VocalError("Where it will be heard: podcast, reels, audiobook or broadcast.")
+    try:
+        gap = float(o.get("gap") or 1.0)
+    except (TypeError, ValueError):
+        gap = 1.0
+    if gap not in CL_GAPS:
+        raise VocalError("Shorten pauses longer than 0.5, 1 or 2 seconds.")
+    out = {"denoise": o.get("denoise") is not False, "noise": noise, "voice": o.get("voice") is not False,
+           "silence": bool(o.get("silence")), "gap": gap, "level": o.get("level") is not False, "target": target,
+           "people": bool(o.get("people")), "music": bool(o.get("music"))}
+    if not any(out[k] for k in ("denoise", "voice", "silence", "level", "people", "music")):
+        raise VocalError("Choose at least one thing to do.")
+    return out
+
+
+def cleanup_plan(o: dict[str, Any]) -> list[dict[str, Any]]:
+    """The steps a clean-up will take, in order (the page shows each as it is done)."""
+    steps = [{"id": "listen", "t": "Listening to your recording", "sub": "Loudness, peaks, background and pauses measured"}]
+    if o["people"] or o["music"]:
+        steps.append({"id": "lift", "t": "Lifting the voice out",
+                      "sub": " and ".join(x for x, on in (("street sounds and other people removed", o["people"]), ("music removed", o["music"])) if on) + " · ElevenLabs"})
+    if o["denoise"]:
+        steps.append({"id": "denoise", "t": "Removing background noise", "sub": o["noise"].capitalize()})
+    if o["voice"]:
+        steps.append({"id": "voice", "t": "Making the voice clearer", "sub": ""})
+    if o["silence"]:
+        steps.append({"id": "silence", "t": "Shortening long pauses", "sub": f"Longer than {o['gap']:g} s"})
+    if o["level"]:
+        name, lufs, label = CL_TARGETS[o["target"]]
+        steps.append({"id": "level", "t": "Evening out the loudness", "sub": f"For {label.lower()}, {lufs:g} LUFS"})
+    steps.append({"id": "check", "t": "Checking the result", "sub": "The same readings, after"})
+    return [{**s, "state": "wait", "secs": None} for s in steps]
+
+
+class _ClStopped(Exception):
+    pass
+
+
+def _cleanup_do(tenant: str, path: str, o: dict[str, Any], name: str = "", source_of: str = "",
+                tick=None, stopped=lambda: False) -> dict[str, Any]:
+    """Run a clean-up step by step on this server (one ffmpeg pass a step, lossless in between; lifting the voice out
+    = ElevenLabs first), measure before and after, keep the result + her recording for CL_SRC_DAYS days."""
+    from ..audedit import ops
+    if not ops.ffmpeg_ok():
+        raise VocalError("ffmpeg is not installed on this server, so recordings cannot be cleaned here.")
+    if (o["people"] or o["music"]) and not EL.ready():
+        raise VocalError("Removing people and music needs an ElevenLabs key on the server. The other clean-ups are free here.")
+    home = _home(tenant)
+    if source_of:
+        f, old = source_file(tenant, source_of)
+        path, sid, sext = str(f), old["src"], old.get("src_ext", "wav")
+        name = name or old.get("title") or ""
+    else:
+        sid, sext = _id("cl"), (Path(path).suffix.lstrip(".").lower() or "wav")[:5]
+    plan = cleanup_plan(o)
+    t0 = [time.time()]
+
+    def step(i: int, state: str):
+        if state == "now":
+            t0[0] = time.time()
+            if stopped():
+                raise _ClStopped
+        plan[i]["state"] = state
+        if state == "done":
+            plan[i]["secs"] = round(time.time() - t0[0], 1)
+        if tick:
+            tick(plan)
+
+    with tempfile.TemporaryDirectory(prefix="vocal_clean_") as td:
+        cur = path
+        i = 0
+        step(i, "now")
+        before = cleanup_measure(path)
+        before.update(cleanup_heard(before))
+        step(i, "done")
+        credits = 0
+        for s in plan[1:]:
+            i += 1
+            step(i, "now")
+            sid_ = s["id"]
+            if sid_ == "lift":
+                need_credits(tenant)
+                try:
+                    out = EL.isolate(Path(cur).read_bytes(), Path(cur).name, before["seconds"] or _seconds_of(cur))
+                except EL.ElevenError as e:
+                    raise VocalError(str(e)) from None
+                credits = EN.quote("isolate", seconds=before["seconds"] or 60, engine="eleven")["credits"]
+                nxt = Path(td) / f"lift.{_sound_kind(out) or 'mp3'}"
+                nxt.write_bytes(out)
+                cur = str(nxt)
+            elif sid_ == "check":
+                pass
+            else:
+                op = {"denoise": {"op": "denoise", "strength": o["noise"]}, "voice": {"op": "enhance_voice"},
+                      "silence": {"op": "remove_silence", "min_silence": o["gap"]},
+                      "level": {"op": "normalize", "target": CL_TARGETS[o["target"]][0]}}[sid_]
+                try:
+                    r = ops.edit(cur, [op], fmt="wav")
+                except Exception as e:    # noqa: BLE001
+                    raise VocalError(f"That recording could not be cleaned: {str(e)[:140]}") from None
+                nxt = Path(td) / f"{i}_{sid_}.wav"
+                nxt.write_bytes(r["bytes"])
+                cur = str(nxt)
+            if sid_ == "check":
+                after = cleanup_measure(cur)
+                fin = ops.convert(cur, fmt="mp3")
+            step(i, "done")
+        (home / "sources").mkdir(parents=True, exist_ok=True)
+        srcf = home / "sources" / f"{sid}.{sext}"
+        if not srcf.is_file():
+            shutil.copyfile(path, srcf)
+    until = datetime.fromtimestamp(time.time() + CL_SRC_DAYS * 86400, timezone.utc).isoformat(timespec="seconds")
+    what = [x for x, on in (("Street sounds lifted out", o["people"]), ("Taken out of music", o["music"]),
+                            (f"Noise · {o['noise']}", o["denoise"]), ("Clearer voice", o["voice"]),
+                            (f"Pauses over {o['gap']:g} s", o["silence"]),
+                            (f"{CL_TARGETS[o['target']][2]} loudness", o["level"])) if on]
+    return _keep(tenant, fin["bytes"], "mp3", {
+        "kind": "cleanup", "title": _clean(Path(name).stem if "." in name[-6:] else name, 60) or "Cleaned recording",
+        "text": "", "voice": "", "voice_name": " · ".join(what), "lang": "", "chars": 0,
+        "seconds": after.get("seconds") or round(float(fin.get("est_seconds") or 0), 1),
+        "engine": "eleven" if (o["people"] or o["music"]) else "server", "credits": credits,
+        "src": sid, "src_ext": sext, "src_secs": before["seconds"], "src_until": until,
+        "before": before, "after": after, "fixes": o, "done": what,
+        "steps": [{"t": s["t"], "secs": s["secs"]} for s in plan]})
+
+
+def cleanup(tenant: str, path: str, name: str = "", denoise: bool = True, voice: bool = True, silence: bool = False,
+            level: bool = True, people: bool = False, music: bool = False, noise: str = "medium", target: str = "podcast",
+            gap: Any = 1.0, source_of: str = "") -> dict[str, Any]:
+    """Clean a recording and wait for it (the chat, the phone and the API). ffmpeg on this server (free); `people` /
+    `music` = ElevenLabs voice isolation first."""
+    o = _cl_opts({"denoise": denoise, "voice": voice, "silence": silence, "level": level, "people": people, "music": music,
+                  "noise": noise, "target": target, "gap": gap})
+    return _cleanup_do(tenant, path, o, name=name, source_of=source_of)
+
+
+def cleanup_start(tenant: str, path: str = "", name: str = "", source_of: str = "", **opts: Any) -> dict[str, Any]:
+    """Start a clean-up in the background; the page reads its steps with cleanup_job and can stop it between steps."""
+    o = _cl_opts(opts)
+    if (o["people"] or o["music"]) and not EL.ready():
+        raise VocalError("Removing people and music needs an ElevenLabs key on the server. The other clean-ups are free here.")
+    if o["people"] or o["music"]:
+        need_credits(tenant)
+    if source_of:
+        source_file(tenant, source_of)          # said now, not after the thread starts
+    jid = _id("cj")
+    job = {"id": jid, "tenant": tenant, "status": "working", "steps": cleanup_plan(o), "started": time.time(),
+           "stop": False, "result": None, "error": "", "name": name}
+    with _CL_LOCK:
+        for k in [k for k, j in _CL_JOBS.items() if time.time() - j["started"] > 3600 and j["status"] != "working"]:
+            _CL_JOBS.pop(k, None)
+        _CL_JOBS[jid] = job
+
+    def tick(plan):
+        job["steps"] = [dict(s) for s in plan]
+
+    def work():
+        try:
+            job["result"] = _cleanup_do(tenant, path, o, name=name, source_of=source_of, tick=tick, stopped=lambda: job["stop"])
+            job["status"] = "done"
+        except _ClStopped:
+            job["status"] = "stopped"
+        except VocalNoCredits:
+            job["status"], job["error"] = "failed", "No credits left for lifting the voice out. The free clean-ups still work."
+        except VocalError as e:
+            job["status"], job["error"] = "failed", str(e)
+        except Exception as e:      # noqa: BLE001
+            log.warning("vocal clean-up failed: %s", e)
+            job["status"], job["error"] = "failed", "That recording could not be cleaned."
+    ctx = contextvars.copy_context()
+    threading.Thread(target=ctx.run, args=(work,), daemon=True, name=f"vocal-clean-{jid}").start()
+    return cleanup_job(tenant, jid)
+
+
+def cleanup_job(tenant: str, jid: str) -> dict[str, Any]:
+    j = _CL_JOBS.get(str(jid or ""))
+    if not j or j["tenant"] != tenant:
+        raise VocalError("That clean-up is no longer running here (the server may have restarted). Your recording is safe: clean it again.")
+    return {"id": j["id"], "status": j["status"], "steps": j["steps"], "seconds": round(time.time() - j["started"], 1),
+            "result": j["result"], "error": j["error"], "name": j["name"]}
+
+
+def cleanup_stop(tenant: str, jid: str) -> dict[str, Any]:
+    j = _CL_JOBS.get(str(jid or ""))
+    if not j or j["tenant"] != tenant:
+        raise VocalError("That clean-up is no longer running here.")
+    j["stop"] = True
+    return cleanup_job(tenant, jid)
+
+
+def source_file(tenant: str, hid: str) -> tuple[Path, dict[str, Any]]:
+    """Her own recording kept beside a change or a clean-up."""
+    h = next((x for x in _load(tenant)["history"] if x["id"] == hid), None)
+    src = str((h or {}).get("src") or "")
+    f = _home(tenant) / "sources" / f"{src}.{(h or {}).get('src_ext', 'wav')}"
+    if not h or h.get("kind") not in ("change", "cleanup") or not re.fullmatch(r"c[sl]_[0-9a-f]{12}", src) or not f.is_file():
+        raise VocalError("Your own recording for this is no longer kept.")
+    return f, h
 
 
 def _seconds_of(path: str) -> float:
@@ -1541,10 +1786,8 @@ def _chg_prepare(path: str, start: Any, end: Any) -> tuple[bytes, str, float, li
 
 def change_source(tenant: str, hid: str) -> tuple[Path, dict[str, Any]]:
     """Her own recording kept beside a change (the part she marked, as it was sent)."""
-    h = next((x for x in _load(tenant)["history"] if x["id"] == hid), None)
-    src = str((h or {}).get("src") or "")
-    f = _home(tenant) / "sources" / f"{src}.{(h or {}).get('src_ext', 'wav')}"
-    if not h or h.get("kind") != "change" or not re.fullmatch(r"cs_[0-9a-f]{12}", src) or not f.is_file():
+    f, h = source_file(tenant, hid)
+    if h.get("kind") != "change":
         raise VocalError("Your own recording for this change is no longer kept.")
     return f, h
 
