@@ -10627,6 +10627,84 @@ a kept sound never dropped, the files, a Chromium walk at light / dark 1440 and 
 `test/vocal_phone_test.dart` 34/34 (Flutter 3.24.5 here).
 
 NOT VERIFIED: a real ElevenLabs sound or a real Improve the words call on her server; her phone.
+## v0.999.163 BOOKS INBOX — invoices and bills come into the books by themselves (owner: "INVOICES AND BILLS --- TO BE AUTO FETCHED VIA EMAIL, DIFFERENT SOFTWARES --- NOT TO BE MANUALLY FED HERE --- THUS THE SYSTEM WILL BE AUTOMATED AND AI WILL READ AND ACCUMULATE DATA ACCORDINGLY")
+
+Built as 0.999.161 / 0.999.162; main's CLEAN-UP, PREMIUM and SOUND EFFECTS, PREMIUM took those numbers, all kept.
+
+`server/app/fin/desks/books_feed.py`, table `fin_books_inbox` (one row per document that came in: source, the mail / record it came
+from, sender, file name + sha, the fields read, the checks, confidence, status, the books document it became). Settings on the
+workspace (`settings.books_feed`): on, auto_post (default on), min_conf 0.9, mail + accounts, software toolkits, shop, tax_ids,
+hook_hash (only the fingerprint of her books key).
+
+Sources:
+- **Her mail** (`mail_tick`, worker every 5 min): `mailbox.service.check(account="all", since=watermark)`, mails with a document
+  attachment (pdf / pictures / txt / html / xml / json / csv / docx / xlsx) or invoice words in the subject; an invoice written in the
+  mail body is read too. First run reads 30 days back. A mail is read once (`_mail_seen`).
+- **Hoola's own address** (`agentmail.inbound` -> `_to_books` -> `from_hoola_mail`): any program that can email an invoice, or her
+  forwards.
+- **Her programs** (`software_tick`, hourly): toolkits she ticked (QuickBooks, Xero, Zoho Books, Zoho Invoice, FreshBooks, Stripe,
+  Razorpay, Shopify, Square, PayPal, Wave, Sage, NetSuite, MYOB, Chargebee) through her own Composio connection; only tools whose slug
+  lists / queries invoices, bills, charges or orders AND that `composio.is_read` calls read-only; every call counted by `take_call`;
+  each record read like a document.
+- **Any other system**: `POST /api/books/in` with `Authorization: Bearer bk_...` (made on the desk, shown once, only sha256 kept,
+  closing it stops the old key) - `{documents: [...]}` (fields given, no reading), `{files: [{name, base64}]}`, `{text}`.
+- **Her Hoola website shop**: confirmed / packed / shipped / delivered orders become sales invoices (order number, buyer, lines).
+
+Reading: the file's own text (docread), OCR for pictures and scanned PDFs, then ONE AI call (`_ai_json`: cheap brain, else Claude via
+the door) returning fields as JSON; the document's words are data. No AI on the server = simple rules, confidence capped at 0.6, never
+posted alone. Quotations, estimates, purchase orders, statements and newsletters are skipped without an AI call where the words show it.
+
+Checks in code (`check`): the total and the document number must be PRINTED in the document's text (the AI cannot invent them), net +
+tax = total, the lines add up (else booked as one line), a real date not in the future, a currency code, a foreign currency waits for
+her exchange rate, a credit note waits. Sale vs bill from her business name and her tax numbers (setup answers + Inbox settings). The
+same file (sha) or the same mail attachment is never read twice; the same party + number already in the books = "Already in your
+books", and the same number with a DIFFERENT amount waits for her with both amounts named (found by the browser test - it was a silent
+copy before).
+
+Booking: `books.create_doc` (draft, source email / hoola_mail / software / api / shop, the printed number kept), then when auto-post is
+on and every check passed with confidence >= min_conf, `books.run("issue")` with the maker `Hoola (automatic) <hoola-auto>` - so her
+approval controls still apply (above her limit it waits for an approver, and the owner may approve it because she is not the maker).
+Otherwise it waits in the Inbox with the reason; Post (`inbox_post`, accountant and up) or Set aside (`inbox_drop`: removes the draft,
+never a posted one). One line in her updates chat after a run that brought something in. Hoola never pays a bill or sends an invoice.
+
+Desk: a new **Inbox** tab (count of what needs her) - off: how it works + Turn on; on: Posted / Waiting / Need your look / skipped,
+Needs your look (File, Post, Set aside, the reasons), Came in, Where they come from (mail accounts, Hoola's address, programs with their
+Composio state, shop, auto-post, her tax numbers, books key make / close, turn off), Check now. Today shows it in Needs you. The chat's
+desk block says whether the Inbox is on and never asks her to type an invoice that will come in by itself. Roles: viewer reads it;
+accountant posts / sets aside / checks now; owner and admin change its settings and the key.
+
+Tests `server/tests/test_v0999_163_books_inbox.py` (10, incl. a Chromium walk): read + posted + never twice, doubtful waits with the
+reason (total / number not on the document, not an invoice with no AI spent), changed amount on the same number, sale by her tax
+number + auto-post off, approval rules still apply, no-AI rules read, her mail read once by the worker, Hoola's address + books key +
+file download, shop orders, desk + roles.
+
+NOT VERIFIED: a real Gmail / Outlook mailbox, a real Composio program's list tools (their names and answers differ per program -
+picked by name at run time), a real AI read of real invoices, on her server.
+
+## v0.999.164 BOOKS INBOX CONNECT (owner, her screenshot: "THIS ARE CONNECTIONS WE NEED TO PROVIDE TO THIS EMPLOYEE BUT IS ALL CONNECTORS ARE DISABLE IS ALL THIS ARE IN CONNECTOR SECTION CHECK")
+
+Yes - the Inbox's 15 programs are the Connectors section's own Composio apps (QuickBooks, Zoho Books and Razorpay are featured there).
+The Inbox drew every program not already connected as a disabled box with "connect it in Connectors first". Now each row shows
+`composio.status` in words - Connected / Finish signing in / Not connected / Needs its key / Not available yet (no ready sign-in on
+Hoola: Newtika switches it on once) / Apps are off on this server (no COMPOSIO_API_KEY) - with Connect in place (POST
+/api/composio/apps/{k}/connect, the same sign-in window, the Inbox listens on the 'hoola-connect' channel and redraws) or Add its key
+(opens Connectors). Only a connected program can be ticked. Browser test covers the states. NOT VERIFIED: which of the 15 her live
+Composio catalogue has (a slug it does not know shows "Not available yet").
+
+## v0.999.165 BOOKS BUSINESS EMAIL (owner: "ALSO BUSINESS EMAIL WHERE USER WILL RECEIVE THE BILLS, INVOICES ETC -- IS MUST BE ATTACHED BY USER DIFFERENTLY IN THIS EMPLOYEE SETTINGS SECTION")
+
+The Books Inbox read EVERY mailbox she had connected (her personal Gmails too). Now the Inbox's "Where they come from" opens with
+a **Business email for bills and invoices** card: the emails attached to these books (Reading bills / Sign-in problem / No longer
+connected, Detach), and - for the owner - Connect Gmail / Google Workspace, Connect Outlook / Microsoft 365 (the existing
+/api/mail/accounts/link sign-in), Another email (address + app password + optional IMAP server -> /api/mail/accounts/imap; typed only
+on the desk, sealed, never shown again), or "use an email already in Hoola". `books_feed._pick_ws` now reads a mail only for the
+business it is attached to; `attach_mail` refuses an email not connected to Hoola or already attached to another of her businesses,
+re-reads its last 30 days once, and for a mailbox connected just for bills turns its "new mail" chat news off (`sync.set_watch_mode
+off`); `detach_mail` stops reading it but leaves it connected. The mail sign-in page, when opened as a popup, posts
+{type: mail-linked, ok, address} on BroadcastChannel 'hoola-mail' (+ localStorage) and closes instead of jumping to the phone app; the
+desk attaches that address at once. Desk parts inbox_mail_attach / inbox_mail_detach (owner and admin). Tests: her personal mail not
+attached is never read, one email = one business, detach / attach, the card in a real browser (attached row, connect buttons, IMAP
+form, attach an existing one). NOT VERIFIED: a real Gmail / Outlook / IMAP sign-in started from the desk popup.
 
 ## v0.999.166 YOUR SOUNDS, DICTIONARY, SETTINGS, PREMIUM (built as 0.999.163; their BOOKS INBOX / INBOX CONNECT / BUSINESS EMAIL took 0.999.163-0.999.165, all kept)
 

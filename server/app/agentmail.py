@@ -181,10 +181,39 @@ def inbound(raw: bytes, to: str, sig: str) -> dict[str, Any]:
         mid = row.id
     log.info("agent mail %s for tenant %s from %s (%d bytes, %d files)", mid, tenant, sender[:60], len(raw), len(files))
     _tell(tenant, sender, subject, files)
+    _to_books(tenant, sender, subject, body, raw, msg, mid)
     run_rules(tenant, {"id": mid, "from": msg.get("from") or sender, "from_email": sender, "subject": subject,
                        "snippet": body[:300], "has_attachment": bool(files), "bulk": False, "unread": True},
               source="Hoola's own inbox")
     return {"ok": True, "id": mid}
+
+
+_BOOKS_TASKS: set = set()
+
+
+def _to_books(tenant: str, sender: str, subject: str, body: str, raw: bytes, msg: dict[str, Any], mid: str) -> None:
+    """v0.999.163 an invoice or a bill mailed to Hoola's own address goes into her Books inbox (when she turned it on)."""
+    try:
+        import asyncio
+        from .fin.desks import books_feed as F
+        from .mailbox import mime
+        files = []
+        for att in (msg.get("attachments") or [])[:5]:
+            try:
+                name, _t, data = mime.get_attachment(raw, str(att.get("id")))
+                if data:
+                    files.append((name or "attachment", data))
+            except Exception:   # noqa: BLE001
+                continue
+        coro = F.from_hoola_mail(tenant, sender, subject, body, files, mid)
+        try:
+            t = asyncio.get_running_loop().create_task(coro)
+            _BOOKS_TASKS.add(t)
+            t.add_done_callback(_BOOKS_TASKS.discard)
+        except RuntimeError:
+            asyncio.run(coro)
+    except Exception:   # noqa: BLE001
+        log.exception("agent mail to books")
 
 
 def _tell(tenant: str, sender: str, subject: str, files: list[dict[str, Any]]) -> None:

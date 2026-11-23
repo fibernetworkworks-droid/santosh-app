@@ -40,7 +40,7 @@
     warn: '<path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h0"/>'};
   window.HoolaQuality?.use(api);
 
-  const TABS = [['today', 'Today'], ['docs', 'Sales & bills'], ['bank', 'Bank & matching'], ['owed', 'Owed & owing'],
+  const TABS = [['today', 'Today'], ['inbox', 'Inbox'], ['docs', 'Sales & bills'], ['bank', 'Bank & matching'], ['owed', 'Owed & owing'],
     ['close', 'Reports & month-end'], ['settings', 'Settings & exports']];
   const TRUST = {Learning: 'Reads, drafts and proposes. Every posting waits for your tap.',
     Partner: 'Also keeps drafts and matches up to date on its own. Posting still waits for you.',
@@ -204,11 +204,11 @@
   }
   function paintTabs() {
     const n = (ST.d && ST.d.numbers) || {};
-    const tabs = (ctl().on || (ST.d && ST.d.pending)) ? [...TABS.slice(0, 5), ['approvals', 'Approvals'], TABS[5]] : TABS;
+    const tabs = (ctl().on || (ST.d && ST.d.pending)) ? [...TABS.slice(0, 6), ['approvals', 'Approvals'], TABS[6]] : TABS;
     $('#sdTabs').innerHTML = tabs.map(([k, name]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${k === ST.tab}"${!ws() && k !== 'settings' ? ' disabled' : ''}>${esc(name)}${
-      k === 'bank' && n.bank_to_confirm ? `<span class="n">${esc(n.bank_to_confirm)}</span>` : k === 'approvals' && ST.d.pending ? `<span class="n">${esc(ST.d.pending)}</span>` : ''}</button>`).join('');
+      k === 'bank' && n.bank_to_confirm ? `<span class="n">${esc(n.bank_to_confirm)}</span>` : k === 'approvals' && ST.d.pending ? `<span class="n">${esc(ST.d.pending)}</span>` : k === 'inbox' && n.inbox_needs ? `<span class="n">${esc(n.inbox_needs)}</span>` : ''}</button>`).join('');
   }
-  function clearCache() { ST.docs = ST.matches = ST.recon = ST.chart = ST.ar = ST.ap = ST.ck = ST.rep = ST.reqs = ST.team = ST.ccr = ST.group = null; }
+  function clearCache() { ST.docs = ST.matches = ST.recon = ST.chart = ST.ar = ST.ap = ST.ck = ST.rep = ST.reqs = ST.team = ST.ccr = ST.group = ST.inbox = null; }
   async function refreshDesk(repaint) {
     try { ST.d = await api('GET', deskUrl()); } catch { return; }
     stateLine(); paintTabs();
@@ -218,7 +218,7 @@
   /* ---------------------------------------------------------------- pages */
   function showPage(keep) {
     const box = $('#mdPage'); if (!box) return;
-    const fn = {today: pToday, docs: pDocs, bank: pBank, owed: pOwed, close: pClose, settings: pSettings, approvals: pApprovals}[ST.tab] || pToday;
+    const fn = {today: pToday, docs: pDocs, bank: pBank, owed: pOwed, close: pClose, settings: pSettings, approvals: pApprovals, inbox: pInbox}[ST.tab] || pToday;
     box.innerHTML = fn();
     starters();
     if (!keep) $('#sdDesk').scrollTop = 0;
@@ -242,12 +242,14 @@
         ST.ck = ck; ST.rep = rep; ST.ccr = ccr;
       } else if (t === 'settings' && (!ST.chart || !ST.team)) {
         const [ch, tm] = await Promise.all([books('chart'), books('team').catch(() => ({team: []}))]); ST.chart = ch; ST.team = tm.team || [];
+      } else if (t === 'inbox' && !ST.inbox) {
+        ST.inbox = await books('inbox');
       } else if (t === 'approvals' && !ST.reqs) {
         const [p, d] = await Promise.all([books('requests', {status: 'pending'}), books('requests', {status: ''})]);
         ST.reqs = {pending: p.requests || [], all: (d.requests || []).filter(x => x.status !== 'pending').slice(0, 30)};
       } else return;
     } catch (e) { toast(e.message, true); return; }
-    if (ST.tab === t) { $('#mdPage').innerHTML = ({docs: pDocs, bank: pBank, owed: pOwed, close: pClose, settings: pSettings, approvals: pApprovals})[t](); }
+    if (ST.tab === t) { $('#mdPage').innerHTML = ({docs: pDocs, bank: pBank, owed: pOwed, close: pClose, settings: pSettings, approvals: pApprovals, inbox: pInbox})[t](); }
   }
   const monthEnd = p => { const [y, m] = p.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10); };
   const loading = '<section class="card"><p class="mut" style="margin:0">Reading your books…</p></section>';
@@ -261,6 +263,8 @@
     const needs = [];
     if (n.bank_to_confirm) needs.push([`${n.bank_to_confirm} bank line${n.bank_to_confirm > 1 ? 's' : ''} to confirm`, n.bank_sure ? `Hoola found a sure match for ${n.bank_sure}` : 'Pick an invoice, a bill or an account', 'v', 'Matches ready', 'bank', 'Review']);
     if (od.length) needs.push([`${od.length} invoice${od.length > 1 ? 's' : ''} overdue`, od.slice(0, 2).map(x => `${x.party} ${money(x.open, x.currency)}`).join(' · '), 'warn', `Up to ${Math.max(...od.map(x => x.days))} days late`, 'owed', 'See who']);
+    if (n.inbox_needs) needs.push([`${n.inbox_needs} incoming document${n.inbox_needs > 1 ? 's' : ''} to look at`, 'Invoices or bills Hoola could not post by itself', 'warn', 'Inbox', 'inbox', 'Look']);
+    else if (n.inbox_on === false) needs.push(['Let invoices and bills come in by themselves', 'From your mail, your programs and your shop - no typing', 'v', 'Inbox', 'inbox', 'Set up']);
     if (n.drafts) needs.push([`${n.drafts} draft${n.drafts > 1 ? 's' : ''} to check`, 'Invoices or bills not posted yet', '', 'Draft', 'docs', 'Check']);
     if (ck.of && !ck.locked) needs.push([`${ck.period} can be closed`, `${ck.done} of ${ck.of} checks done`, ck.ready ? 'ok' : 'warn', ck.ready ? 'Ready' : `${ck.of - ck.done} open`, 'close', 'Close it']);
     const rows = needs.map(([t, s, k, p, go, b]) => `<tr><td><b>${esc(t)}</b><div class="mut" style="font-size:13px">${esc(s)}</div></td><td><span class="pill ${k}">${esc(p)}</span></td><td style="text-align:right"><button class="btn soft sm" type="button" data-go="${go}">${esc(b)}</button></td></tr>`).join('');
@@ -295,6 +299,101 @@
       <section class="card tight"><div class="bk-bar"><h2 class="md-h2" style="margin:0">Waiting</h2></div>
         ${rows ? `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>Posting</th><th class="num">Amount</th><th></th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="mut" style="margin:0 0 12px">Nothing is waiting.</p>'}</section>
       ${done ? `<section class="card tight"><div class="bk-bar"><h2 class="md-h2" style="margin:0">Decided</h2></div><div style="overflow-x:auto"><table class="tb"><tbody>${done}</tbody></table></div></section>` : ''}`;
+  }
+
+  function connected(m) { if (!m || m.type !== 'connector-done') return; toast(m.ok ? `${m.name || 'The program'} is connected - tick it to let Hoola read it.` : 'It was not connected.', !m.ok); ST.inbox = null; if (ST.tab === 'inbox') showPage(true); }
+  try { new BroadcastChannel('hoola-connect').onmessage = e => connected(e.data); } catch {}
+  window.addEventListener('storage', e => { if (e.key === 'hoola.connect.done' && e.newValue) { try { connected(JSON.parse(e.newValue)); } catch {} } });
+
+  /* --- Inbox (v0.999.163: invoices and bills that came in by themselves) */
+  const INST = {posted: ['ok', 'Posted'], waiting: ['v', 'Waits for an approver'], draft: ['warn', 'Needs your look'], failed: ['warn', 'Could not be read'],
+    duplicate: ['', 'Already in your books'], not_invoice: ['', 'Not an invoice'], dropped: ['', 'Set aside']};
+  const INSRC = {email: 'Business email', hoola_mail: "Hoola's address", software: 'Your program', api: 'Your program', shop: 'Your shop'};
+  function inRow(x, act) {
+    const [k, tx] = INST[x.status] || ['', x.status];
+    const what = x.party || x.subject || x.file || 'A document';
+    const why = (x.status === 'draft' || x.status === 'failed') ? x.note : '';
+    const btn = act ? `<div class="bk-pick">${x.file ? `<button class="btn soft sm" type="button" data-infile="${esc(x.id)}" data-name="${esc(x.file)}">File</button>` : ''}
+      ${x.status === 'draft' && x.doc_id && can('inbox_post') ? `<button class="btn sm" type="button" data-inpost="${esc(x.id)}" title="Posts the draft Hoola made from it - check it in Sales & bills first">Post</button>` : ''}
+      ${can('inbox_drop') ? `<button class="btn soft sm" type="button" data-indrop="${esc(x.id)}">Set aside</button>` : ''}</div>` : (x.file ? `<button class="btn soft sm" type="button" data-infile="${esc(x.id)}" data-name="${esc(x.file)}">File</button>` : '');
+    return `<tr><td><b>${esc(what)}</b>${x.number ? ` <span class="mut">${esc(x.number)}</span>` : ''}<div class="mut" style="font-size:12.5px">${esc(INSRC[x.source] || x.source)}${x.sender ? ' · ' + esc(x.sender) : ''} · ${esc((x.at || '').slice(0, 16).replace('T', ' '))}${x.kind ? ' · ' + (x.kind === 'sales' ? 'sale' : 'bill') : ''}</div>${why ? `<div class="mut" style="font-size:12.5px">${esc(why)}</div>` : ''}</td>
+      <td class="num nw">${x.total ? esc(money(x.total, x.currency || cur())) : '-'}</td><td><span class="pill ${k}">${esc(tx)}</span></td><td style="text-align:right">${btn}</td></tr>`;
+  }
+  /* v0.999.165 the business email(s) where her bills and invoices arrive - attached to this employee only */
+  const MKIND = {gmail: 'Gmail', outlook: 'Outlook', imap: 'Email', google: 'Gmail', env: 'Email'};
+  function mailCard(m, admin) {
+    const owner = role() === 'owner';
+    const rows = m.attached.map(x => `<div class="bk-sw"><span class="bk-ml">${esc(x.address)}</span><span class="mut">${esc(MKIND[x.kind] || '')}</span>
+      <span class="pill ${!x.connected ? 'warn' : x.status === 'ok' ? 'ok' : 'warn'}">${!x.connected ? 'No longer connected' : x.status === 'ok' ? 'Reading bills' : 'Sign-in problem'}</span>
+      ${admin ? `<button class="btn soft sm" type="button" data-indetach="${esc(x.address)}">Detach</button>` : ''}</div>${x.error ? `<p class="mut" style="margin:2px 0 6px">${esc(x.error)}</p>` : ''}`).join('');
+    const free = m.others.filter(x => !x.elsewhere);
+    const add = !admin ? '' : !owner ? '<p class="mut">The owner connects a new business email.</p>' : `
+      <div class="bk-pick bk-wrap" style="margin-top:8px"><button class="btn soft" type="button" data-inlink="google">Connect Gmail / Google Workspace</button>
+        <button class="btn soft" type="button" data-inlink="microsoft">Connect Outlook / Microsoft 365</button>
+        <button class="btn soft" type="button" data-inimapopen="1">Another email (Zoho, GoDaddy, Hostinger, your domain ...)</button></div>
+      ${ST.inImap ? `<form class="bk-imap" data-form="inimap"><div class="bk-4" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+        <div class="md-field"><label for="inImA">Business email</label><input class="in" id="inImA" type="email" required placeholder="accounts@yourbusiness.com"></div>
+        <div class="md-field"><label for="inImP">App password</label><input class="in" id="inImP" type="password" required autocomplete="new-password"></div>
+        <div class="md-field"><label for="inImH">Mail server (IMAP, if Hoola cannot find it)</label><input class="in" id="inImH" placeholder="imap.yourhost.com"></div></div>
+        <p class="mut" style="margin:4px 0 8px">Use an app password made in your email's security settings, not your login password. It is typed only here, kept sealed and never shown again.</p>
+        <div class="bk-pick"><button class="btn" type="submit">Connect and attach</button><button class="btn soft" type="button" data-inimapopen="0">Cancel</button></div></form>` : ''}
+      ${free.length ? `<div class="bk-pick bk-wrap" style="margin-top:8px"><label class="mut" for="inUse">Or use an email already in Hoola</label><select class="in sm" id="inUse">${free.map(x => `<option value="${esc(x.address)}">${esc(x.address)}</option>`).join('')}</select>
+        <button class="btn soft sm" type="button" data-inuse="1">Attach</button></div>` : ''}`;
+    return `<h3 class="bk-h3">Business email for bills and invoices</h3>
+      <p class="mut" style="margin:0 0 6px">Attach the email where your suppliers send bills and your programs send invoices. Only the emails attached here are read for these books - never your other mail.</p>
+      ${rows || '<p class="mut" style="margin:4px 0">No business email attached yet.</p>'}${add}`;
+  }
+  function mailLinked(d) {
+    if (!d || d.type !== 'mail-linked') return;
+    if (!d.ok || !d.address) { toast('The email was not connected.', true); return; }
+    books('inbox_mail_attach', {address: d.address, quiet: true}).then(r => { toast(r.says); ST.inbox = null; if (ST.tab === 'inbox') showPage(true); })
+      .catch(e => toast(e.message, true));
+  }
+  try { new BroadcastChannel('hoola-mail').onmessage = e => mailLinked(e.data); } catch {}
+  window.addEventListener('storage', e => { if (e.key === 'hoola.mail.linked' && e.newValue) { try { mailLinked(JSON.parse(e.newValue)); } catch {} } });
+
+  function pInbox() {
+    if (!ST.inbox) return head('Inbox') + loading;
+    const I = ST.inbox, st = I.settings || {}, src = I.sources || {}, c = I.counts || {};
+    const admin = can('inbox_settings');
+    if (!st.on) return `${head('Inbox', 'Invoices and bills come into your books by themselves - you do not type them in.')}
+      <section class="card"><h2 class="md-h2">How it works</h2><ul class="bk-list">
+        <li><b>Your business email.</b> Attach the email where your bills and invoices arrive (Gmail, Outlook or any other). Hoola reads every invoice or bill that comes in - PDF, photo or the mail itself - and never your other mail.</li>
+        <li><b>Hoola's own address.</b> Any program that can email an invoice sends it there${src.hoola_address ? `: <b>${esc(src.hoola_address)}</b>` : ''}. Or forward a bill to it.</li>
+        <li><b>Your programs.</b> QuickBooks, Xero, Zoho Books, Stripe, Razorpay, Shopify and others connected in Connectors are read on their own.</li>
+        <li><b>Any other system.</b> Your ERP or billing software can send documents to your books address.</li>
+        <li><b>Your Hoola website shop.</b> Confirmed orders become sales invoices.</li></ul>
+        <p class="mut">Hoola reads each one, checks the total and the number are really on it, and posts it when every check passes. Anything doubtful waits here for you. Your approval rules still apply. Hoola never pays a bill or sends an invoice.</p>
+        ${admin ? '<button class="btn" type="button" data-inon="1">Turn on the inbox</button>' : '<p class="mut">The owner or an admin turns it on.</p>'}</section>`;
+    const needs = I.items.filter(x => x.status === 'draft' || x.status === 'failed');
+    const rest = I.items.filter(x => !(x.status === 'draft' || x.status === 'failed')).slice(0, 60);
+    const tbl = (rows, act) => `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>Document</th><th class="num">Total</th><th></th><th></th></tr></thead><tbody>${rows.map(x => inRow(x, act)).join('')}</tbody></table></div>`;
+    const SSTATE = {ready: ['ok', 'Connected'], pending: ['warn', 'Finish signing in'], needs_link: ['', 'Not connected'], needs_key: ['', 'Needs its key'],
+      needs_setup: ['', 'Not available yet'], not_configured: ['', 'Apps are off on this server']};
+    const soft = (src.software || []).map(x => { const ready = x.state === 'ready'; const [k, tx] = SSTATE[x.state] || ['', x.state];
+      const act = ready ? '' : (x.state === 'needs_link' || x.state === 'pending') && admin ? `<button class="btn soft sm" type="button" data-inconn="${esc(x.key)}" data-name="${esc(x.name)}">Connect</button>`
+        : x.state === 'needs_key' && admin ? `<a class="btn soft sm" href="/console/?v=connectors" target="_blank" rel="noopener">Add its key</a>` : '';
+      return `<div class="bk-sw"><label class="bk-chk"><input type="checkbox" data-insw="${esc(x.key)}"${x.on && ready ? ' checked' : ''}${ready && admin ? '' : ' disabled'}> <span>${esc(x.name)}</span></label>
+        <span class="pill ${k}">${esc(tx)}</span>${act}</div>`; }).join('');
+    const softNote = (src.software || []).some(x => x.state === 'not_configured') ? '<p class="mut" style="margin:4px 0">Programs connect through Composio, which is not set up on this server yet (COMPOSIO_API_KEY).</p>'
+      : (src.software || []).some(x => x.state === 'needs_setup') ? '<p class="mut" style="margin:4px 0">"Not available yet" = that program has no ready sign-in on Hoola yet; Newtika switches it on once.</p>' : '';
+    const key = ST.inKey ? `<div class="md-alert">${svg(IC.warn)}<div><div class="t">Copy your books key now</div><div class="s">Address: ${esc(location.origin + ST.inKey.url)} · Header: Authorization: Bearer <code>${esc(ST.inKey.key)}</code>. Hoola keeps only a fingerprint; it is not shown again.</div></div></div>` : '';
+    return `${head('Inbox', 'Invoices and bills that came in by themselves - read by Hoola, checked, and posted when every check passed.')}
+      <div class="bk-4">${kpi('Posted by Hoola', String(c.posted || 0))}${kpi('Waiting for an approver', String(c.waiting || 0))}${kpi('Need your look', String((c.draft || 0) + (c.failed || 0)), (c.draft || c.failed) ? 'bad' : '')}${kpi('Copies and non-invoices skipped', String((c.duplicate || 0) + (c.not_invoice || 0)))}</div>
+      <section class="card tight"><div class="bk-bar"><h2 class="md-h2" style="margin:0">Needs your look</h2>${can('inbox_scan') ? '<button class="btn soft sm" type="button" data-inscan="1">Check now</button>' : ''}</div>
+        ${needs.length ? tbl(needs, true) : '<p class="mut" style="margin:0 0 12px">Nothing needs you. New invoices and bills are posted as they come in.</p>'}</section>
+      ${rest.length ? `<section class="card tight"><div class="bk-bar"><h2 class="md-h2" style="margin:0">Came in</h2></div>${tbl(rest, false)}</section>` : ''}
+      <section class="card"><h2 class="md-h2">Where they come from</h2>${key}
+        ${mailCard(I.business_mail || {attached: [], others: []}, admin)}
+        <p class="mut" style="margin:8px 0">Hoola's own address: ${src.hoola_address ? `<b>${esc(src.hoola_address)}</b> - set your billing programs to send invoices here, or forward a bill.` : 'not set up on this server yet.'}</p>
+        <h3 class="bk-h3">Your programs <span class="mut">- tick the ones Hoola should read</span></h3><div class="bk-soft">${soft}</div>${softNote}
+        <label class="bk-chk"><input type="checkbox" id="inShop"${st.shop ? ' checked' : ''}${admin ? '' : ' disabled'}> Your Hoola website shop's confirmed orders</label>
+        <label class="bk-chk"><input type="checkbox" id="inAuto"${st.auto_post ? ' checked' : ''}${admin ? '' : ' disabled'}> Post by itself when every check passes (otherwise each one waits for your tap)</label>
+        <div class="md-field"><label for="inTax">Your tax numbers (GSTIN, VAT ...), so Hoola can tell your sales from your bills</label><input class="in" id="inTax" value="${esc((st.tax_ids || []).join(', '))}"${admin ? '' : ' disabled'}></div>
+        ${admin ? `<div class="bk-pick" style="margin-top:10px"><button class="btn" type="button" data-insave="1">Save</button>
+          <button class="btn soft" type="button" data-inkey="1">${st.api_on ? 'Make a new books key' : 'Make a books key for other systems'}</button>
+          ${st.api_on ? '<button class="btn soft" type="button" data-inkeystop="1">Close the books address</button>' : ''}
+          <button class="btn soft" type="button" data-inon="0">Turn the inbox off</button></div>` : ''}</section>`;
   }
 
   /* --- Sales & bills */
@@ -548,6 +647,43 @@
       }
       if (ds.approve) { t.disabled = true; const r = await books('approve', {request: ds.approve}); toast(r.says || 'Approved.'); ST.reqs = null; clearCache(); await refreshDesk(true); return; }
       if (ds.reject) { const why = prompt('Why is it rejected? The person who made it sees this.'); if (!why) return; await books('reject', {request: ds.reject, reason: why}); toast('Rejected.'); ST.reqs = null; await refreshDesk(true); return; }
+      if (ds.inon !== undefined) { t.disabled = true; await books('inbox_settings', {on: ds.inon === '1'}); ST.inbox = null; toast(ds.inon === '1' ? 'The inbox is on. Hoola checks your mail every few minutes.' : 'The inbox is off.'); await refreshDesk(true); return; }
+      if (ds.inscan) { t.disabled = true; t.textContent = 'Checking…'; const r = await books('inbox_scan'); ST.inbox = null; clearCache(); toast(r.read ? `${r.read} new document${r.read === 1 ? '' : 's'} read.` : 'Nothing new.'); await refreshDesk(true); return; }
+      if (ds.inpost) { t.disabled = true; const r = await books('inbox_post', {item: ds.inpost}); toast(r.status === 'waiting' ? 'Sent for approval.' : 'Posted to the books.'); clearCache(); await refreshDesk(true); return; }
+      if (ds.indrop) { t.disabled = true; await books('inbox_drop', {item: ds.indrop}); toast('Set aside. Hoola will not read that file again.'); clearCache(); await refreshDesk(true); return; }
+      if (ds.infile) { const r = await fetch(`/api/books/inbox/${enc(ds.infile)}/file?workspace=${enc(ws().id)}`, {headers: {Authorization: 'Bearer ' + TOKEN}});
+        if (!r.ok) { toast('The file is not kept.', true); return; } const b = await r.blob(); const a = document.createElement('a'); a.href = URL.createObjectURL(b);
+        a.download = ds.name || 'document'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); return; }
+      if (ds.inlink) {
+        const w = window.open('', 'hoola-mail', 'popup,width=560,height=760');
+        try { const r = await api('GET', `/api/mail/accounts/link?provider=${enc(ds.inlink)}`); if (w && !w.closed) w.location.href = r.url; else window.open(r.url, 'hoola-mail', 'popup,width=560,height=760');
+          toast('Sign in to your business email in the new window. It is attached here when you finish.'); }
+        catch (err) { if (w) w.close(); throw err; }
+        return;
+      }
+      if (ds.inimapopen !== undefined) { ST.inImap = ds.inimapopen === '1'; showPage(true); return; }
+      if (ds.inuse) { t.disabled = true; const r = await books('inbox_mail_attach', {address: $('#inUse').value}); toast(r.says); ST.inbox = null; showPage(true); return; }
+      if (ds.indetach) { t.disabled = true; const r = await books('inbox_mail_detach', {address: ds.indetach}); toast(r.says); ST.inbox = null; showPage(true); return; }
+      if (ds.inconn) {
+        const w = window.open('', 'hoola-connect', 'popup,width=560,height=760');
+        try { const r = await api('POST', `/api/composio/apps/${enc(ds.inconn)}/connect`);
+          if (r.status === 'open_link' && r.url) { if (w && !w.closed) w.location.href = r.url; else window.open(r.url, 'hoola-connect', 'popup,width=560,height=760');
+            toast(`Sign in to ${ds.name} in the new window. This page updates by itself.`); }
+          else { if (w) w.close(); if (r.status === 'ready') { toast(`${ds.name} is connected.`); ST.inbox = null; await refreshDesk(true); }
+            else if (r.status === 'needs_key') { toast(`${ds.name} connects with its own key - add it on the Connectors page.`); window.open('/console/?v=connectors', '_blank'); }
+            else toast(r.say || `${ds.name} is not available yet.`, true); }
+        } catch (err) { if (w) w.close(); throw err; }
+        return;
+      }
+      if (ds.inkey) { t.disabled = true; const r = await books('inbox_key'); ST.inKey = r; ST.inbox = null; await refreshDesk(true); return; }
+      if (ds.inkeystop) { t.disabled = true; await books('inbox_key_stop'); ST.inKey = null; ST.inbox = null; toast('The books address is closed.'); await refreshDesk(true); return; }
+      if (ds.insave) {
+        t.disabled = true;
+        const soft = [...document.querySelectorAll('[data-insw]')].filter(x => x.checked).map(x => x.dataset.insw);
+        const tax = ($('#inTax').value || '').split(',').map(x => x.trim()).filter(Boolean);
+        await books('inbox_settings', {shop: $('#inShop').checked, auto_post: $('#inAuto').checked, software: soft, tax_ids: tax});
+        ST.inbox = null; toast('Saved.'); await refreshDesk(true); return;
+      }
       if (ds.unteam) { t.disabled = true; await books('team_remove', {member: ds.unteam}); ST.team = null; toast('Removed from these books.'); await refreshDesk(true); return; }
       if (ds.remind) { send(`Draft a polite payment reminder to ${ds.remind} for what is overdue. I will send it myself.`); return; }
       if (ds.export) {
@@ -583,6 +719,13 @@
     const kind = f.dataset.form, fd = new FormData(f), v = k => S(fd.get(k)).trim();
     const btn = e.submitter || f.querySelector('button[type=submit]'); if (btn) btn.disabled = true;
     try {
+      if (kind === 'inimap') {
+        const addr = $('#inImA').value.trim();
+        await api('POST', '/api/mail/accounts/imap', {address: addr, password: $('#inImP').value, imap_host: $('#inImH').value.trim()});
+        $('#inImP').value = '';
+        const r = await books('inbox_mail_attach', {address: addr, quiet: true});
+        ST.inImap = false; ST.inbox = null; toast(r.says); showPage(true); return;
+      }
       if (kind === 'doc') {
         const lines = []; for (let i = 0; i < ST.lines; i++) if (v('d' + i) && v('p' + i)) lines.push({description: v('d' + i), qty: v('q' + i) || 1, price: v('p' + i), tax_pct: v('t' + i) || 0});
         const a = {party: v('party'), issue: v('issue'), due: v('due') || v('issue'), currency: v('currency').toUpperCase(), lines, issue_now: btn && btn.value === 'issue',
