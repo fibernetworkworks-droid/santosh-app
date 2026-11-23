@@ -61,6 +61,8 @@ on:
           - rea_setup
           - hf_setup
           - studio_apis
+          - vocal_check
+          - vocal_check_paid
           - wb_check
           - apisetu_check
           - fin_proof
@@ -638,6 +640,14 @@ jobs:
                 echo 'echo "== studio keys in $CORE/.env (names only)"; for k in GEMINI_API_KEY OPENROUTER_API_KEY ANTHROPIC_API_KEY SYNC_API_KEY FAL_KEY ARK_API_KEY; do if grep -qE "^$k=.+" $CORE/.env 2>/dev/null; then echo "  set      $k"; else echo "  missing  $k"; fi; done'
                 echo 'echo "== ffmpeg"; command -v ffmpeg >/dev/null && ffmpeg -version 2>&1 | head -1 || echo "ffmpeg missing: sudo apt install -y ffmpeg"'
                 echo 'echo "== live check (free calls only)"; cd $CORE && timeout 90 .venv/bin/python -m app.studio.apis 2>&1 | tail -30' ;;
+              vocal_check|vocal_check_paid)
+                # v0.999.167 is every Hoola Vocal tool wired to its engine, end to end? Each tool through the same server
+                # function its button uses, the smallest real request, on a throwaway account wiped at the end (python -m
+                # app.vocal.check). vocal_check = free + tiny calls (about a cent); vocal_check_paid adds voice design and
+                # both kinds of dubbing (a few cents, a few minutes). Keys are never printed.
+                PAID=""; [ "$JOB" = "vocal_check_paid" ] && PAID="--paid"
+                echo 'echo "== vocal keys in $CORE/.env (names only)"; for k in GEMINI_API_KEY ELEVENLABS_API_KEY; do if grep -qE "^$k=.+" $CORE/.env 2>/dev/null; then echo "  set      $k"; else echo "  missing  $k"; fi; done'
+                echo "echo '== every Vocal tool, live'; cd \$CORE && timeout 840 .venv/bin/python -m app.vocal.check $PAID 2>&1 | tail -60" ;;
               tool_card)
                 # v0.331 does Hoola pick the RIGHT tool? The free router card on both sets, then ONE real model call per
                 # ask on the held-out FRESH set (26 asks, about Rs 70, ~5 min). Nothing is executed: only the first tool

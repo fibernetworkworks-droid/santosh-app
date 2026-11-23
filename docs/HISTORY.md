@@ -10752,3 +10752,62 @@ export, hear cached + daily cap, starred never swept, a Chromium walk at light /
 3.24.5 here).
 
 NOT VERIFIED: a real Gemini / ElevenLabs sample from Hear it on her server; her phone.
+
+## v0.999.167 VOCAL CHECK
+
+Owner: "NOW CHECK IS EVERY TOOL IN VOCAL FUCTIONAL OR NOT --- END TO END --- MEANS IS IT WIRED PROPERLY OR NOT TO RESPECED LLM".
+
+**Layer 1, buttons to routes:** every call the console (`vocal.js`) and the phone (`lib/api.dart`) make has its server route
+in `vocal/api.py` / `vocalchat.py`. None is missing. The routes no page calls are the public app doors (`/v1/*`), the
+sweep, and the settings read (the overview carries settings).
+
+**Layer 2, routes to engines:**
+- **Gemini:** Speech, Dialogue, Studio, preview and Hear it (prebuilt voices via `create.service`; designed / cloned /
+  remixed voices via `gvoice.speak_custom`). Also Your voice (design / clone / remix through `v1beta/voices`), the
+  natural two-voice take (`gvoice.speak_two`), and the script writer and Improve the words (`_gem_json`).
+- **ElevenLabs:** Premium speech and streaming, Premium dialogue, the voice changer, voice out of music, sound effects from
+  words, own-voice dubbing, and the shared library.
+- **Hoola server:** game sounds, clean-up, formats and joining.
+- **GPU lab:** own voices when Google cloning is not available.
+- **Vocal chat:** the Vocal chat's brain reaches speech / dialogue / sound through `create_studio` -> `agent/create_tools._vocal`,
+  which calls the same functions.
+
+**Layer 3, request shapes against the engines' own pages (read 23 Nov 2026):**
+- **ElevenLabs:** these requests match the pages: text-to-speech + stream, voice changer (field `audio`, model
+  `eleven_multilingual_sts_v2`, settings as a JSON string), audio isolation, sound generation (`eleven_text_to_sound_v3`,
+  0.5-30 s, prompt_influence 0-1), text-to-dialogue (`eleven_v3`), v2 voices, shared voices + add, the dubbing project API
+  (create project `dubbing_v2`, create / get language target, target transcript, update segment, regenerate), and the
+  `xi-api-key` header. `eleven_v4` exists. Changing single lines of an own-voice dub is Enterprise-only; the page
+  already says so.
+- **Gemini:** these requests match the pages: `gemini-3.8-flash-tts`, voice design / replication / remixing on
+  `POST v1beta/voices`, the voice list, delete, the Interactions request for custom voices (audio read from
+  `output_audio.data` or `steps[].content[].data`), and `x-goog-api-key`. Google's guide now shows prebuilt and
+  multi-speaker speech through the Interactions API. Hoola still uses `generateContent` (`response_modalities` AUDIO,
+  `multi_speaker_voice_config`) for those two. The prebuilt path is already live on her calls; the natural two-voice take
+  is settled by the live check below, not by a blind rewrite.
+
+**Fixed:**
+- Own-voice dub subtitles now come from the language target's `outputs.subtitles` (a signed WebVTT link,
+  `_vtt_to_srt`). The old `GET /v1/dubbing/{id}/transcript/{lang}` belongs to the legacy dubbing API and takes a legacy
+  dubbing id, so it is only a fallback now.
+- `eleven.fetch` (signed links) follows redirects.
+
+**NEW `server/app/vocal/check.py`** (`python -m app.vocal.check [--paid] [--json]`, vps-ops `vocal_check` /
+`vocal_check_paid`):
+- Each tool goes through the server function its button uses, with the smallest real request.
+- It runs on a throwaway account `__vocalcheck__` that is wiped at the end.
+- Results: LIVE only when real sound / text came back and was read as such. DEAD carries the engine's own words. NOT
+  CONNECTED means no key on the server. NOT CHECKED is clone, which needs a real person's spoken consent. SKIPPED is a
+  paid check without `--paid`.
+- `--paid` adds voice design (+ a designed voice speaking, then removed) and both kinds of dubbing.
+
+**Tests:** NEW `server/tests/test_v0999_167_vocal_check.py` (5):
+- every tool LIVE against fake engines in their documented shapes, reaching the engines' own endpoints;
+- a refusing engine reported DEAD with its words;
+- no keys = NOT CONNECTED;
+- the table, with the account wiped;
+- own-voice dub subtitles from the signed WebVTT link.
+
+The Vocal suites stay green.
+
+NOT VERIFIED until `vocal_check` runs on her server.

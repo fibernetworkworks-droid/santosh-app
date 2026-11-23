@@ -2954,6 +2954,22 @@ def _dub_matched(tenant: str, r: dict[str, Any], path: str) -> None:
                 clips=any(cdir.glob("*.wav")))
 
 
+def _vtt_to_srt(vtt: str) -> str:
+    """WebVTT -> SRT: the header and notes dropped, cues numbered, '.' -> ',' in the times."""
+    blocks = re.split(r"\n\s*\n", vtt.replace("\r\n", "\n").strip())
+    out, n = [], 0
+    for b in blocks:
+        lines = [x for x in b.split("\n") if x.strip()]
+        i = next((k for k, x in enumerate(lines) if "-->" in x), -1)
+        if i < 0:
+            continue
+        n += 1
+        t = re.sub(r"(\d{2}:\d{2}:\d{2})\.(\d{3})", r"\1,\2", lines[i])
+        t = re.sub(r"(^|\s)(\d{2}:\d{2})[.,](\d{3})", r"\g<1>00:\2,\3", t).split(" align")[0].split(" line:")[0].split(" position:")[0]
+        out.append(f"{n}\n{t.strip()}\n" + "\n".join(lines[i + 1:]))
+    return "\n\n".join(out) + ("\n" if out else "")
+
+
 def _srt_to_vtt(srt: str) -> str:
     body = re.sub(r"(\d{2}:\d{2}:\d{2}),(\d{3})", r"\1.\2", srt.replace("\r\n", "\n").strip())
     return "WEBVTT\n\n" + body + "\n"
@@ -2996,12 +3012,22 @@ def _dub_own(tenant: str, r: dict[str, Any], path: str) -> None:
                              "voice_name": "Their own voices", "lang": x["code"], "chars": 0, "seconds": r["seconds"],
                              "engine": "eleven", "dub": r["id"], "credits": per})
                 x.update(status="ready", video_id=row["id"])
-                try:                                   # her subtitles: ElevenLabs' own transcript of the dubbed language
-                    srt = EL.dub_transcript(pid, x["code"], "srt")
+                try:                                   # her subtitles: ElevenLabs' own subtitles of the dubbed language
+                    # v0.999.167: the language target's outputs.subtitles = a signed WebVTT link (dubbing project API,
+                    # read 23 Nov 2026); the old /v1/dubbing/{id}/transcript route belongs to the legacy API and takes a
+                    # legacy dubbing id, so it is only tried when no link came back.
+                    sub = (info.get("outputs") or {}).get("subtitles") or ""
+                    sub = sub.get("url") if isinstance(sub, dict) else sub
+                    if sub:
+                        vtt = EL.fetch(sub).decode("utf-8", "replace")
+                        srt = _vtt_to_srt(vtt)
+                    else:
+                        srt = EL.dub_transcript(pid, x["code"], "srt")
+                        vtt = _srt_to_vtt(srt)
                     if "-->" not in srt:
                         raise EL.ElevenError("no subtitle lines came back")
                     (home / f"{r['id']}_{x['code']}.srt").write_text(srt, "utf-8")
-                    (home / f"{r['id']}_{x['code']}.vtt").write_text(_srt_to_vtt(srt), "utf-8")
+                    (home / f"{r['id']}_{x['code']}.vtt").write_text(vtt if vtt.lstrip().startswith("WEBVTT") else _srt_to_vtt(srt), "utf-8")
                     x["subtitles"] = ["srt", "vtt"]
                 except Exception as e:   # noqa: BLE001
                     x["subtitles"] = []

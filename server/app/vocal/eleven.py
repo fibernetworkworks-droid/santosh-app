@@ -353,8 +353,9 @@ def dialogue(inputs: list[dict], model_id: str = "eleven_v3") -> bytes:
 
 
 def fetch(url: str) -> bytes:
-    """A signed output URL from ElevenLabs (no key sent: the URL carries its own signature)."""
-    r = _http("GET", url)
+    """A signed output URL from ElevenLabs (no key sent: the URL carries its own signature). A signed storage link may
+    answer with a redirect first, so redirects are followed (v0.999.167)."""
+    r = _http("GET", url, follow_redirects=True)
     if r.status_code >= 400:
         raise ElevenError("The dubbed sound could not be downloaded; it will be read again.")
     return r.content
