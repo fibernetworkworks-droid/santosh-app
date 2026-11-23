@@ -5905,6 +5905,11 @@ from .interactive.console import make_router as _interactive_studio_router  # no
 app.include_router(_interactive_studio_router(require_key, current_tenant))   # v0.747 HOOLA INTERACTIVE: the console video studio
 from .interactive.console import make_hub_router as _interactive_hub_router  # noqa: E402
 app.include_router(_interactive_hub_router(require_key, current_tenant))   # v0.772 HOOLA INTERACTIVE: the twelve pages (brand, templates, translate, trash...)
+from .interactive import routes2 as _interactive_x                                # noqa: E402  v0.999.169 HOOLA INTERACTIVE REBUILD
+app.include_router(_interactive_x.make_router(require_key, current_tenant))     # /api/interactive/x/* engines, price, voices, live, apps
+app.include_router(_interactive_x.make_public_router())                        # /api/interactive/v1/* (app key) + /pub/* (her website)
+from . import interactivechat as _interactivechat_mod                         # noqa: E402
+_interactivechat_mod.mount(app, current_tenant, require_key)                  # /api/interactive/chat*
 from .vocal.api import make_router as _vocal_router  # noqa: E402
 app.include_router(_vocal_router(require_key, current_tenant))   # v0.787 HOOLA VOCAL: the voice studio (speech, dialogue, readings, her voices, effects)
 from .vocal.api import make_public_router as _vocal_public  # noqa: E402

@@ -35,9 +35,13 @@ CREATE_TOOLS = [
         "language code or name or 'auto', style, speed 0.7-1.3, takes 1-4, engine auto|gemini|eleven; action=dialogue: "
         "lines [{speaker, text}] + cast {speaker: voice id}, language, reactions true = short listener sounds between long lines, "
         "music 'soft' = a quiet music bed under it (free); action=sound: a sound effect from words, prompt, "
-        "seconds 0-30, loop, takes 1-4. Each take appears in the chat by itself; never say it is ready."),
+        "seconds 0-30, loop, takes 1-4. Each take appears in the chat by itself; never say it is ready. "
+        "In the Hoola Interactive page's own chat only (v0.999.169): action=talking_video plans a talking video as a DRAFT "
+        "with a price card - brief (her words, every number kept), language, face (avatar id), voice (voice id), engine "
+        "(engine id), shape talking_head|product|reel, seconds 10-90, id = an earlier draft to change. It never makes the "
+        "video: making it is her tap on the card."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["song", "voice", "dub", "voices", "image", "song_edit", "dialogue", "sound"]},
+         "action": {"type": "string", "enum": ["song", "voice", "dub", "voices", "image", "song_edit", "dialogue", "sound", "talking_video"]},
          "versions": {"type": "integer"}, "keep_out": {"type": "string"}, "id": {"type": "string"},
          "steps": {"type": "array", "items": {"type": "object"}},
          "brief": {"type": "string"}, "genre": {"type": "string"}, "language": {"type": "string"},
@@ -50,7 +54,8 @@ CREATE_TOOLS = [
          "file_ids": {"type": "array", "items": {"type": "string"}},
          "takes": {"type": "integer"}, "engine": {"type": "string"}, "loop": {"type": "boolean"},
          "lines": {"type": "array", "items": {"type": "object"}}, "cast": {"type": "object"},
-         "reactions": {"type": "boolean"}, "music": {"type": "string", "enum": ["", "soft"]}},
+         "reactions": {"type": "boolean"}, "music": {"type": "string", "enum": ["", "soft"]},
+         "face": {"type": "string"}, "shape": {"type": "string"}},
          "required": ["action"]}},
 ]
 CREATE_LABELS = {"create_studio": "Creating in Create Studio"}
@@ -85,6 +90,8 @@ async def create_studio(ctx: Ctx, action, **a: Any):
         return await _song_job(ctx, a)
     if action in ("voice", "dialogue", "sound") and _in_vocal(ctx):
         return await _vocal(ctx, action, a)
+    if action == "talking_video":
+        return await _talking_video(ctx, a)
     try:
         if action == "song":
             r = await cs.song(a.get("brief") or "", a.get("genre") or "", a.get("language") or "Auto",
@@ -150,6 +157,49 @@ async def _image(ctx: Ctx, a: dict[str, Any]) -> dict[str, Any]:
     return {"status": "making", "job": j["id"], "count": count, "aspect": aspect, "about_inr": each * count,
             "note": (f"{count} picture{'s are' if count > 1 else ' is'} being made now (about 15 seconds each). The set "
                      "appears in this chat by itself. Say that in one short line; do not say they are ready.")}
+
+
+async def _talking_video(ctx: Ctx, a: dict[str, Any]) -> dict[str, Any]:
+    """v0.999.169 HOOLA INTERACTIVE REBUILD: a talking video planned as a DRAFT in the Interactive chat, with its price card.
+    The model never makes it: the card's Make button is her tap (POST /api/interactive/studio/make with the price key)."""
+    import asyncio
+    try:
+        from .. import interactivechat
+        if not interactivechat.is_interactive(ctx.conversation_id):
+            raise ToolError("Talking videos are planned in the Hoola Interactive page's chat. Open Interactive and ask there.")
+    except ImportError:
+        raise ToolError("Hoola Interactive is not available on this server.") from None
+    from ..interactive import studio as S
+    brief = " ".join(str(a.get("brief") or a.get("text") or a.get("prompt") or "").split())
+    old = str(a.get("id") or "")
+    base: dict[str, Any] = {}
+    if old:
+        try:
+            base = S.project(ctx.tenant_id, old)
+        except S.StudioError:
+            base = {}
+    if not brief and base:
+        brief = base.get("ask") or ""
+    lang = str(a.get("language") or base.get("lang") or "en")
+    try:
+        p = await asyncio.to_thread(
+            S.draft, ctx.tenant_id, brief, shape=str(a.get("shape") or base.get("shape") or "talking_head"),
+            lang=lang, seconds=int(a.get("seconds") or 30), avatar_id=str(a.get("face") or base.get("avatar_id") or ""),
+            brand=str(base.get("brand") or (S._load(ctx.tenant_id).get("brand") or {}).get("name", "")),
+            voice=str(a.get("voice") or base.get("voice") or ""), engine=str(a.get("engine") or base.get("engine") or ""),
+            chat=ctx.conversation_id)
+    except S.StudioError as e:
+        raise ToolError(str(e)) from None
+    if p.get("avatar_id"):
+        faces = {x["id"] for x in S._load(ctx.tenant_id).get("avatars") or []}
+        if p["avatar_id"] not in faces:
+            S.save(ctx.tenant_id, p["id"], {"avatar_id": ""})
+    q = S.quote_for(ctx.tenant_id, S.project(ctx.tenant_id, p["id"]))
+    bus.publish(ctx.conversation_id, "interactive_draft", {"id": p["id"], "title": p["title"]})
+    return {"status": "draft", "id": p["id"], "title": p["title"], "scenes": len(p["scenes"]), "engine": p.get("engine"),
+            "price": q["line"], "needs": S.problems(S.project(ctx.tenant_id, p["id"])),
+            "note": "The draft and its price card are in the chat now. Say in one line what you planned and that "
+                    "nothing is made until she taps Make on the card. Do not say the video is ready."}
 
 
 def _in_vocal(ctx: Ctx) -> bool:

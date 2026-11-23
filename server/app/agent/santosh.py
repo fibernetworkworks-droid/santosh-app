@@ -1586,6 +1586,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_vocc.block, tenant_id, conversation_id)
     except Exception:
         log.exception("vocal chat block failed")
+    try:   # v0.999.169 HOOLA INTERACTIVE REBUILD: a turn in the Interactive page's chat knows its rules, faces, engines + drafts
+        from .. import interactivechat as _ixc
+        if _ixc.is_interactive(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_ixc.block, tenant_id, conversation_id)
+    except Exception:
+        log.exception("interactive chat block failed")
     try:   # v0.999.43 ACCOUNTS DESK: a turn in the Accounts desk's own chat (or a call started from it) knows the desk
         from .. import accountschat as _accc
         if _accc.is_accounts(conversation_id):
@@ -2328,6 +2334,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "vocal chat"
     except Exception:
         log.exception("vocal chat admission failed")
+    try:   # v0.999.169 HOOLA INTERACTIVE REBUILD: the create + file tools in view in the Interactive page's chat
+        from .. import interactivechat as _ixc
+        if adm is not None and _ixc.is_interactive(conversation_id):
+            adm.admit_families(_ixc.FAMILIES)
+            for f in _ixc.FAMILIES:
+                adm.why[f] = "interactive chat"
+    except Exception:
+        log.exception("interactive chat admission failed")
     try:   # v0.999.43 ACCOUNTS DESK: the accounts desk tool in view in the Accounts chat
         from .. import accountschat as _accc
         if adm is not None and _accc.is_accounts(conversation_id):

@@ -169,12 +169,13 @@ def test_the_hub_routes_are_locked_switched_and_tenant_scoped(hub, monkeypatch):
 
 
 def test_the_page_is_wired_and_says_what_is_not_built():
+    # v0.999.169 HOOLA INTERACTIVE REBUILD: the page moved to the Vocal frame (interactive2.css, scoped #hxRoot) and every
+    # control is wired to a real Hoola function or says which key it needs (test_v0999_169_interactive_rebuild.py).
     root = Path(__file__).resolve().parents[1] / "app" / "static" / "console"
-    js, html, css = (root / "interactive.js").read_text(), (root / "v2.html").read_text(), (root / "v2.css").read_text()
-    for page in ("home", "avatars", "voices", "studio", "templates", "brand", "translate", "live", "apps", "projects", "developers", "settings"):
-        assert f"['{page}'," in js and f"    {page}()" in js, page             # twelve rail items, twelve drawn pages
-    assert html.count('rel="stylesheet" href="/static/console/v2.css') == 1 and "interactive.css" not in html and ":is(#hiRoot,#hvRoot) .hi-rail" in css   # one stylesheet, the console rule
-    assert "/api/interactive/hub" in js and "Not connected on this server yet" in js
-    assert "sample" not in js.lower()                                       # no sample data ships in the real page
+    js, html = (root / "interactive.js").read_text(), (root / "v2.html").read_text()
+    for page in ("chat", "avatars", "voices", "studio", "templates", "brand", "live", "apps", "projects", "developers", "settings"):
+        assert f"    {page}()" in js, page
+    assert "interactive2.css" in html and "/api/interactive/hub" in js and "/api/interactive/x" in js
+    assert "Not connected yet" not in js
     main = (root.parents[1] / "main.py").read_text()
     assert "make_hub_router" in main

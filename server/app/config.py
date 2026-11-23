@@ -736,6 +736,16 @@ class Settings(BaseSettings):
     seekh_keep_media: bool = True          # v0.785 the learner keeps its own copy of an uploaded video (the chat lane is swept after 24 h)
     seekh_media_max_mb: int = 1024         # v0.785 kept videos per owner; over it the oldest copies go (the learned steps stay)
     interactive_page: bool = True          # v0.747 HOOLA INTERACTIVE: the console's video studio (one line -> scenes -> HyperFrames MP4)
+    # v0.999.169 HOOLA INTERACTIVE REBUILD: the face engines she chooses. Keys in the VPS .env ONLY, never in chat or the
+    # repo; an empty key = that engine says "Add <KEY>" on the Engines page. KIE_API_KEY (Kling / OmniHuman /
+    # InfiniteTalk / Wan) and GEMINI_API_KEY (B-roll shots) are the existing ones.
+    runway_api_key: str = ""
+    heygen_api_key: str = ""
+    hedra_api_key: str = ""
+    simli_api_key: str = ""
+    anam_api_key: str = ""
+    tavus_api_key: str = ""
+    interactive_credit_margin: float = 1.0   # credits = the engine's published price x this (1.0 = at cost; the margin is hers)
     hoola_api_enabled: bool = False       # v0.877 HOOLA AGENT API: companies call Hoola's tools with a Hoola key (/api/hoola-api/v1); OFF until the owner flips it
     hoola_api_prices: str = ""             # v0.877 optional JSON {"tool": micro_inr} overriding the catalogue's default per-call prices
     vocal_page: bool = True                # v0.787 HOOLA VOCAL: the console voice studio (speech, dialogue, readings, her voices, effects)

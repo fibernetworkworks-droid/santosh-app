@@ -117,7 +117,7 @@ def test_console_stamps_0_4_8_5():
     # v0.799 DESK ROOM: 29 -> 30. deptdesk.js joined the console page (the department desks).
     # v0.804: + improve.css + improve.js (HOOLA PROMPTING: the Improve button) = 33.
     # v0.807 BAHI: 33 -> 34. bahi.js joined the console page (the GST & Accounts desk).
-    assert s.count(f"v={APP_VERSION}") == 44, f"expected 44 stamps at {APP_VERSION}, got {s.count(f'v={APP_VERSION}')}"   # v0.970 +1: appdesign.css; v0.999.14 +2: chatkit.css + chatkit.js; v0.999.26 +1: credits.js; v0.999.61 +2: wallet.css + wallet.js; v0.999.90 +1: vocal2.css
+    assert s.count(f"v={APP_VERSION}") == 45, f"expected 45 stamps at {APP_VERSION}, got {s.count(f'v={APP_VERSION}')}"   # v0.999.169 +1: interactive2.css; v0.970 +1: appdesign.css; v0.999.14 +2: chatkit.css + chatkit.js; v0.999.26 +1: credits.js; v0.999.61 +2: wallet.css + wallet.js; v0.999.90 +1: vocal2.css
     assert 'v=0.482.0' not in s and 'v=0.473.0' not in s
     assert f'console/skills.js?v={APP_VERSION}' in s and 'id="v-skills"' in s
 

@@ -69,7 +69,8 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
     async def make(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         on()
         b = dict(body or {})
-        return wrap(S.make, tenant, str(b.get("id") or ""), silent=bool(b.get("silent")), code=409)
+        return wrap(S.make, tenant, str(b.get("id") or ""), silent=bool(b.get("silent")),
+                    quote_key=str(b.get("quote_key") or ""), code=409)
 
     @r.get("/progress")
     async def progress(id: str = "", tenant: str = Depends(current_tenant)):
