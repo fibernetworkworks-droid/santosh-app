@@ -64,7 +64,7 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
 
     @r.get("/estimate")
     def estimate(engine: str = "", seconds: int = 30, voice: str = "", tenant: str = Depends(current_tenant)):
-        """v0.999.171 the price shown under the home box BEFORE anything is planned: her engine x the length she picked,
+        """v0.999.172 the price shown under the home box BEFORE anything is planned: her engine x the length she picked,
         plus the voice for about that many spoken characters. Nothing is spent."""
         _on()
         secs = max(10, min(90, int(seconds or 30)))
@@ -74,7 +74,7 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
 
     @r.get("/compare")
     def compare(id: str = "", tenant: str = Depends(current_tenant)):
-        """v0.999.171 every video engine priced for THIS draft (same length, same voice), for the Compare engines menu."""
+        """v0.999.172 every video engine priced for THIS draft (same length, same voice), for the Compare engines menu."""
         _on()
         p = _wrap(S.project, tenant, id)
         base = _wrap(S.quote_for, tenant, p)

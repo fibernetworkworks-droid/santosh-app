@@ -23,7 +23,7 @@ log = logging.getLogger("santosh.interactivechat")
 
 KIND = "interactive"
 _OF: dict[str, bool] = {}
-FAMILIES = ["create", "file", "webfetch"]   # v0.999.171 + webfetch: "start from a web page"
+FAMILIES = ["create", "file", "webfetch"]   # v0.999.172 + webfetch: "start from a web page"
 GREETING = ("Tell me what the video should say, in any language: an offer, a welcome, a lesson, a product. I write the "
             "scenes, pick your face and voice, and show you the price before anything is made.")
 
@@ -66,7 +66,7 @@ def current(tenant: str) -> dict[str, Any]:
 
 
 def new_chat(tenant: str) -> dict[str, Any]:
-    try:                          # v0.999.171 a chat that holds a plan is not untouched, even with no words of hers
+    try:                          # v0.999.172 a chat that holds a plan is not untouched, even with no words of hers
         from .interactive import studio as S
         planned = {p.get("chat") for p in S._load(tenant).get("projects") or [] if p.get("chat")}
     except Exception:   # noqa: BLE001

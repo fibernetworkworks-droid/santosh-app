@@ -251,7 +251,7 @@ def _her_words(p: dict[str, Any]) -> str:
     return " ".join([p.get("ask", "")] + [str(x) for x in p.get("facts", [])])
 
 
-# v0.999.171 the kind of video she picked on the Interactive home (presenter / explainer / reel / product / lesson)
+# v0.999.172 the kind of video she picked on the Interactive home (presenter / explainer / reel / product / lesson)
 KINDS = {
     "presenter": "Talking presenter: one person speaks to camera, warm and direct; few looks, mostly her words.",
     "explainer": "Explainer: teach ONE idea in clear steps; a look on most scenes (titles, numbers, a bar chart) so it reads without sound.",

@@ -11022,3 +11022,37 @@ Built on the v0.999.169 Payroll desk (nothing replaced).
 - NOT VERIFIED: her server; a real AI read of a PDF / photo; a real payroll / HR program through Connectors (tool names guessed by
   pattern); a real attendance machine export (formats vary); 10,000 people in one business (settings JSON); bank formats other than
   the generic CSV, India bulk and pain.001.
+
+
+## v0.999.172 THE INTERACTIVE CHAT, REDESIGNED (built as 0.999.171; their PAYROLL FOR EVERY SIZE took 0.999.171, both kept)
+
+Owner: "NOW MAKE THE INTERACTIVE CHAT SECTION MORE ADVANCE, PRIMIUM, USER FREANDLY AND PERFECT SHOW ME THE DESIGN HERE FURST
+--- ALSO WE ARE DEVLOPING IT FOR WORLD NOT JUST FOR INDIA" -> design canvas claude.ai/artifact/5wm914F3jEgnNNfNr3rXPn (6 boards)
+-> "GO BUILD".
+
+- Home (`interactive.js` home()): greeting with her first name (/api/console/me), the kind of video as a radio row
+  (presenter, explainer, reel, product, lesson; "Translate a video" opens Vocal's Dub page), one box with + (a file or a
+  web page), face, voice, language (Auto by default: a browser that kept the old Hindi default is moved to Auto once,
+  `hx.langv2`), shape and length (15-90 s), engine, and "About N credits" from GET /api/interactive/x/estimate before
+  anything is planned. Start from: a document (-> explainer), a web page (-> product video; `webfetch` now admitted in the
+  Interactive chat), slides (-> lesson), a video (-> Vocal dubbing). Ideas in four groups (business, teaching, personal,
+  nonprofits) from around the world, each tagged with its language and kind; a tap fills the box, the language and the kind.
+  Her videos as thumbnails with Ready / Making / Plan, opening their own chat.
+- The settings note now carries kind + length; `create_studio action=talking_video` takes `kind`; `studio.draft(kind=)`
+  adds a style line per kind (`studio.KINDS`) and stores `kind`; the script writer and the translator are written for
+  businesses and people anywhere in the world (no "Indian small-business owner").
+- Plan card: title + kind / scenes / shape / length / language, scene thumbnails in the brand colour (tap = the sketch on
+  that scene), rows for face (corner or full frame), voice (a free short sample through /api/vocal/hear), language
+  (+ another language = a chat ask, so the new draft lands in the chat), engine (Compare engines = every video engine
+  priced for this draft, GET /api/interactive/x/compare); the itemised price (voice, face, included parts, total ≈ US$);
+  Make · N credits; suggestions under the newest plan. The job: a progress bar, working time, Stop. Finished: the player
+  with "Made with AI", Download MP4, Open in Studio, more languages, reel cut, change a line, save as a template.
+- Beside the chat: Sketch (plays scene by scene with the real timing), Script (each line editable, saved to the draft),
+  Subtitles (.srt / .vtt from the plan's timing). Under 900 px it stacks below the chat. In a chat the box is one line
+  with + only (the plan card holds every pick).
+- FIXED: "New video" reused a chat that already held a plan (it only counted her messages) - `interactivechat.new_chat`
+  now skips a chat with a draft; a slower load of the chat she just left could paint over the new one (`C.gen`,
+  `chatLoad` checks the chat it loaded).
+- Tests `test_v0999_172_interactive_chat.py` (5, incl. a Chromium walk at 1440 and 390 px).
+- NOT VERIFIED on her server or phone; no "English beside each line" check in the Script tab (shown in the design, not
+  built: it would need a translation call per draft).

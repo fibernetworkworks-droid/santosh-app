@@ -22,7 +22,7 @@ window.HoolaInteractive = function (ctx) {
   const scrub = t => String(t ?? '').replace(/\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_(?:API_)?(?:KEY|TOKEN|SECRET)\b/g, 'its key');
   const toast = (m, bad) => ctx.toast(scrub(m), bad);
   const SET = Object.assign({lang: 'auto', face: '', voice: '', engine: '', shape: 'talking_head', kind: 'presenter', len: 30}, store.get('hx.set', {}));
-  if (SET.lang === 'hi' && !store.get('hx.langv2', false)) { SET.lang = 'auto'; store.set('hx.langv2', true); store.set('hx.set', SET); }   // v0.999.171 the old India default becomes Auto
+  if (SET.lang === 'hi' && !store.get('hx.langv2', false)) { SET.lang = 'auto'; store.set('hx.langv2', true); store.set('hx.set', SET); }   // v0.999.172 the old India default becomes Auto
   const C = {conv: '', title: '', rows: [], items: [], ask: '', files: [], sending: false, waitUntil: 0, t: 0, gen: 0};
   const UI = {slim: store.get('hx.slim', false), nav: false, etab: 'video', ptab: 'Videos', scene: 0, tool: 'Look', V: null, L: null,
     live: '', liveOut: [], newKey: null, newHook: null, pub: null, broll: {prompt: '', seconds: 6, aspect: '16:9', q: null}, jobs: {},
@@ -147,7 +147,7 @@ window.HoolaInteractive = function (ctx) {
   }
   function draw() { $('#hxView').innerHTML = V[PAGE](); AFTER[PAGE]?.(); fillMedia(); }
 
-  // ------------------------------------------------------------------ the chat (v0.999.171: design claude.ai/artifact/5wm914F3jEgnNNfNr3rXPn) ---
+  // ------------------------------------------------------------------ the chat (v0.999.172: design claude.ai/artifact/5wm914F3jEgnNNfNr3rXPn) ---
   // The home: the kind of video, one box with every pick and the price before anything is planned, start from something
   // she has, ideas from around the world, her videos. The chat: her words, then a plan card (scene thumbnails, face,
   // voice she can hear for free, language, engine, the itemised price, Make), and beside it a sketch / the script / the
