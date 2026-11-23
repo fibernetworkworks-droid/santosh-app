@@ -1,4 +1,4 @@
-"""v0.999.167 VOCAL CHECK - the live check of every Vocal tool, run against fake engines that answer in each engine's
+"""v0.999.168 VOCAL CHECK (built as 0.999.167) - the live check of every Vocal tool, run against fake engines that answer in each engine's
 documented shape (ElevenLabs API reference + Google's voices / interactions pages, read 23 Nov 2026): every tool reaches
 its engine through the same server function its button uses and comes back as real sound; a tool whose engine refuses
 is reported DEAD with the engine's own words; nothing is left behind. Also the own-voice dub's subtitles now come from

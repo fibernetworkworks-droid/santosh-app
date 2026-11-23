@@ -130,14 +130,18 @@ def ws_of_key(tok: str) -> tuple[str, str] | None:
     return None
 
 
-def _on_workspaces() -> list[tuple[str, str, dict[str, Any]]]:
+def _on_workspaces(bank: bool = False) -> list[tuple[str, str, dict[str, Any]]]:
+    """Businesses whose inbox is on. bank=True also takes those whose inbox is off but whose bank statements come by mail
+    (v0.999.166): their attached business email is read for statements only."""
     db, M = _db()
     out = []
     with db.session() as s:
         for w in s.query(M.FinWorkspace).filter(M.FinWorkspace.status == "active").all():
-            f = (json.loads(w.settings or "{}")).get("books_feed") or {}
-            if f.get("on"):
-                out.append((w.tenant_id, w.id, {**DEFAULT, **f}))
+            st = json.loads(w.settings or "{}")
+            f = st.get("books_feed") or {}
+            bf = st.get("bank_feed") or {}
+            if f.get("on") or (bank and f.get("accounts") and bf.get("email", True) and bf.get("senders")):
+                out.append((w.tenant_id, w.id, {**DEFAULT, **f, "mail": True if bank and not f.get("on") else f.get("mail", True)}))
     return out
 
 
@@ -689,9 +693,14 @@ async def mail_tick(tenant: str, mine: list[tuple[str, dict[str, Any]]]) -> int:
             full = await asyncio.to_thread(MS.read, tenant, m["id"], False, False)
         except Exception:   # noqa: BLE001
             continue
-        files = [a for a in (full.get("attachments") or []) if str(a.get("name") or a.get("filename") or "").lower().endswith(DOC_EXT)]
+        from . import books_bank as BB
+        files = [a for a in (full.get("attachments") or [])
+                 if str(a.get("name") or a.get("filename") or "").lower().endswith(DOC_EXT + BB.FILE_EXT)]
         sender, subj = str(full.get("from_email") or "")[:200], str(full.get("subject") or "")[:300]
+        inbox_on = bool(dict(mine).get(ws, {}).get("on"))
         if not files:
+            if not inbox_on:
+                continue
             body = str(full.get("body") or "")
             if _looks_like(m) and len(body) > 80:            # an invoice written in the mail itself (many billing programs)
                 r = await ingest(tenant, ws, "email", f"{m['id']}#body", "", None, body, None, sender, subj)
@@ -701,6 +710,13 @@ async def mail_tick(tenant: str, mine: list[tuple[str, dict[str, Any]]]) -> int:
             try:
                 nm, _t, data = await asyncio.to_thread(MS.attachment, tenant, m["id"], str(a.get("id")))
             except Exception:   # noqa: BLE001
+                continue
+            try:      # v0.999.166 her bank's statement or a bank file goes into the bank lines, never the invoice reader
+                got = BB.take_file(tenant, ws, sender, nm or "file", data, f"{m['id']}#{a.get('id')}")
+            except BB.BankFeedError as e:
+                log.info("books bank file %s: %s", m["id"], e)
+                got = {"skipped": str(e)}
+            if got is not None or not inbox_on:
                 continue
             r = await ingest(tenant, ws, "email", f"{m['id']}#{a.get('id')}", nm or "file", data, "", None, sender, subj)
             made += 0 if "skipped" in r else 1
@@ -848,7 +864,7 @@ async def tick() -> int:
         return 0
     _last["run"] = t
     by_tenant: dict[str, list[tuple[str, dict[str, Any]]]] = {}
-    for tenant, ws, st in _on_workspaces():
+    for tenant, ws, st in _on_workspaces(bank=True):
         by_tenant.setdefault(tenant, []).append((ws, st))
     made = 0
     for tenant, mine in by_tenant.items():
@@ -857,6 +873,8 @@ async def tick() -> int:
         if mail_ws:
             made += await mail_tick(tenant, mail_ws)
         for ws, st in mine:
+            if not st.get("on"):
+                continue
             if st.get("software") and t - _last.get(f"sw:{ws}", 0) >= 3600:
                 _last[f"sw:{ws}"] = t
                 made += await software_tick(tenant, ws, list(st["software"]))

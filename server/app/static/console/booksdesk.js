@@ -227,12 +227,19 @@
   async function load() {           // a page draws first, then fills from the engine once
     if (!ws()) return;
     const t = ST.tab;
+    if (t === 'bank' && ST.arg === 'connect') {               // v0.999.166 the bank-connection page needs only the bank accounts
+      if (ST.bankfeed) return;
+      try { ST.bankfeed = await books('bank_feed'); } catch (e) { toast(e.message, true); return; }
+      if (ST.tab === 'bank' && ST.arg === 'connect') $('#mdPage').innerHTML = pBank();
+      return;
+    }
     if (ST.arg && (t === 'docs' || t === 'bank')) return;     // a form page (new invoice, receipt, import) needs nothing loaded
     try {
       if (t === 'docs' && !ST.docs) { ST.docs = (await books('documents')).documents || []; }
       else if (t === 'bank' && !ST.matches) {
-        const [m, r, ch, dc] = await Promise.all([books('matches'), books('reconcile', {period: thisMonth()}), ST.chart ? ST.chart : books('chart'), ST.docs ? {documents: ST.docs} : books('documents')]);
-        ST.matches = m; ST.recon = r; ST.chart = ch; ST.docs = dc.documents || [];
+        const [m, r, ch, dc, bf] = await Promise.all([books('matches'), books('reconcile', {period: thisMonth()}), ST.chart ? ST.chart : books('chart'), ST.docs ? {documents: ST.docs} : books('documents'),
+          ST.bankfeed ? ST.bankfeed : books('bank_feed').catch(() => null)]);
+        ST.matches = m; ST.recon = r; ST.chart = ch; ST.docs = dc.documents || []; ST.bankfeed = bf;
       } else if (t === 'owed' && !ST.ar) {
         const [ar, ap] = await Promise.all([books('ageing', {kind: 'receivables', as_of: today()}), books('ageing', {kind: 'payables', as_of: today()})]);
         ST.ar = ar; ST.ap = ap;
@@ -452,8 +459,78 @@
   }
 
   /* --- Bank & matching */
+  /* --- v0.999.166 bank accounts: a bank connection through a licensed partner, bank files, statement mail, upload */
+  const BKSRC = {'Bank connection': 'ok', 'Bank file': '', 'Statement mail': '', 'Upload': ''};
+  const LSTATE = {active: ['ok', 'Connected'], pending: ['warn', 'Waiting for you at the bank'], expired: ['bad', 'Ended - renew it'], failed: ['bad', 'Not connected'], revoked: ['', 'Disconnected']};
+  function bankCard(B) {
+    if (!B) return '';
+    const admin = can('bank_connect');
+    const acc = (B.accounts || []).map(a => `<tr><td><b>${esc(a.name)}</b> <span class="mut">${esc(a.number_masked || '')}</span></td>
+      <td>${(a.sources || []).map(x => `<span class="pill ${BKSRC[x] || ''}">${esc(x)}</span>`).join(' ') || '<span class="mut">-</span>'}</td>
+      <td class="num">${esc(a.txns)}</td><td class="nw">${esc(a.last_day || '-')}</td></tr>`).join('');
+    const links = (B.links || []).map(l => { const [c, t] = LSTATE[l.status] || ['', l.status];
+      return `<div class="bk-sw bk-wrap"><span><b>${esc(l.institution || l.partner_name)}</b> <span class="mut">${esc(l.partner_name)}${l.accounts.length ? ' · ' + esc(l.accounts.map(a => (a.name || '') + ' ' + (a.masked || '')).join(', ')) : ''}</span></span>
+        <span class="pill ${c}">${esc(t)}</span>${l.days_left != null && l.status === 'active' ? `<span class="mut">${esc(l.days_left)} days left</span>` : ''}
+        ${l.last_sync ? `<span class="mut">read ${esc(String(l.last_sync).slice(0, 16).replace('T', ' '))}</span>` : ''}
+        ${can('bank_refresh') && l.status !== 'revoked' ? `<button class="btn soft sm" type="button" data-bkrefresh="${esc(l.id)}">Check now</button>` : ''}
+        ${admin && l.renew ? `<button class="btn sm" type="button" data-go="bank/connect">Renew</button>` : ''}
+        ${admin ? `<button class="btn soft sm" type="button" data-bkdisc="${esc(l.id)}">Disconnect</button>` : ''}</div>${l.error ? `<p class="mut" style="margin:2px 0 6px">${esc(l.error)}</p>` : ''}`; }).join('');
+    const snd = (B.senders || []).map(x => `<div class="bk-sw"><span class="bk-ml">${esc(x.match)}</span><span class="mut">into ${esc(x.account)}${x.password ? ' · PDF password saved' : ''}</span>
+      ${admin ? `<button class="btn soft sm" type="button" data-bkunsend="${esc(x.match)}">Remove</button>` : ''}</div>`).join('');
+    return `<section class="card"><div class="bk-bar"><h2 class="md-h2" style="margin:0">Bank accounts</h2><span class="bk-pick">
+        ${can('bank_sync') && (B.links || []).some(l => l.status === 'active') ? '<button class="btn soft sm" type="button" data-bksync="1">Get new lines</button>' : ''}
+        ${admin ? '<button class="btn sm" type="button" data-go="bank/connect">Connect a bank account</button>' : ''}</span></div>
+      ${acc ? `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>Account</th><th>Lines come from</th><th class="num">Lines</th><th>Newest</th></tr></thead><tbody>${acc}</tbody></table></div>`
+        : '<p class="mut" style="margin:0 0 8px">No bank account yet. Connect one so bank lines come in by themselves.</p>'}
+      ${links ? `<h3 class="bk-h3">Bank connections</h3>${links}` : ''}${snd ? `<h3 class="bk-h3">Statements by email</h3>${snd}` : ''}</section>`;
+  }
+  function connectPage() {
+    const B = ST.bankfeed;
+    const back = '<a class="md-back" href="#/bank">← Bank &amp; matching</a>';
+    if (!B) return back + head('Connect a bank account') + loading;
+    const R = B.routes || {}, admin = can('bank_connect');
+    const conns = (R.connection || []).map(c => {
+      const cc = esc(c.country || '');
+      if (c.state !== 'ready') return `<div class="bk-route"><b>${cc || 'Your country'}</b>${c.name ? ' · ' + esc(c.name) : ''}<p class="mut" style="margin:4px 0 0">${esc(c.why)}</p></div>`;
+      const banks = (ST.bkBanks && ST.bkBanks.cc === c.country) ? ST.bkBanks.list : null;
+      return `<form class="bk-route" data-form="bkconnect" data-cc="${cc}"><b>${cc} · ${esc(c.name)}</b>
+        <p class="mut" style="margin:4px 0 8px">You sign in at your own bank's page and approve read-only access. Hoola never sees your bank password and can never move money.</p>
+        <div class="bk-4" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+        ${c.needs === 'mobile' ? `<div class="md-field"><label for="bkMob_${cc}">Mobile number your bank account uses</label><input class="in" id="bkMob_${cc}" name="mobile" inputmode="numeric" maxlength="14" required placeholder="10 digits"></div>` : ''}
+        ${c.needs === 'bank' ? `<div class="md-field"><label for="bkQ_${cc}">Find your bank</label><div class="bk-pick"><input class="in" id="bkQ_${cc}" placeholder="Bank name"><button class="btn soft sm" type="button" data-bkfind="${cc}">Search</button></div></div>
+          <div class="md-field"><label for="bkBank_${cc}">Your bank</label><select class="in" id="bkBank_${cc}" name="bank" required>${banks ? banks.map(b => `<option value="${esc(b.id)}">${esc(b.name)}</option>`).join('') : '<option value="">Search first</option>'}</select></div>` : ''}
+        <div class="md-field"><label for="bkName_${cc}">Name for this account in the books (optional)</label><input class="in" id="bkName_${cc}" name="account" placeholder="Main current account"></div></div>
+        ${admin ? '<div class="md-acts"><span></span><button class="btn" type="submit">Continue at my bank</button></div>' : '<p class="mut">The owner or an admin connects a bank.</p>'}</form>`; }).join('');
+    const origin = location.origin;
+    const emails = (R.files && R.files.emails) || [];
+    return `${back}${head('Connect a bank account', 'Choose the way that works for your bank. Every way lands the bank lines in the same place, ready for matching.')}
+      <section class="card"><h2 class="md-h2">1. Bank connection <span class="pill ok">Best</span></h2>
+        <p class="mut" style="margin:0 0 8px">New bank lines come in every hour by themselves. Works where your country has open banking.</p>${conns}</section>
+      <section class="card"><h2 class="md-h2">2. Bank files</h2>
+        <p class="mut" style="margin:0 0 6px">Many banks and accounting programs send a daily MT940, CAMT.053, OFX or QIF file. Hoola reads it the moment it arrives.</p>
+        <ul class="bk-list"><li><b>By email:</b> have the file sent to ${emails.length ? emails.map(x => `<b>${esc(x)}</b>`).join(', ') : 'your business email (attach it in the Inbox first)'} - Hoola knows a bank file by its format.</li>
+        <li><b>From a program:</b> send it to <code>${esc(origin)}/api/books/bank-file</code> with your books key ${R.files && R.files.key_on ? '(already made in Inbox &gt; Other systems)' : '(make it in Inbox &gt; Other systems)'} as JSON <code>{"account": "...", "name": "statement.sta", "base64": "..."}</code>.</li></ul></section>
+      <section class="card"><h2 class="md-h2">3. Your bank's statement email</h2>
+        <p class="mut" style="margin:0 0 8px">Your bank emails a monthly statement (PDF or CSV) to your business email. Tell Hoola who sends it and which account it is for.</p>
+        ${admin ? `<form data-form="bksender"><div class="bk-4" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+          <div class="md-field"><label for="bkSnd">Statements come from</label><input class="in" id="bkSnd" name="match" required placeholder="estatement@yourbank.com or @yourbank.com"></div>
+          <div class="md-field"><label for="bkSndA">Bank account</label><input class="in" id="bkSndA" name="account" required placeholder="Main current account"></div>
+          <div class="md-field"><label for="bkSndP">PDF password (if the statement has one)</label><input class="in" id="bkSndP" name="password" type="password" autocomplete="new-password"></div></div>
+          <p class="mut" style="margin:4px 0 8px">The PDF password is the one printed in your bank's mail (often a date of birth or part of an ID) - not your banking password. It is typed only here, kept sealed and used only to open that bank's statements.</p>
+          <div class="md-acts"><span class="mut">${emails.length ? 'Read from ' + esc(emails.join(', ')) : 'Attach your business email in the Inbox first.'}</span><button class="btn" type="submit">Save</button></div></form>` : ''}</section>
+      <section class="card"><h2 class="md-h2">4. Upload a statement</h2><p class="mut" style="margin:0 0 8px">Works for every bank in every country.</p>
+        <button class="btn soft" type="button" data-go="bank/import">Upload a statement</button></section>`;
+  }
+  function bankLinked(d) {
+    if (!d || d.type !== 'bank-linked') return;
+    toast(d.ok ? 'Your bank is connected.' : 'The bank did not confirm yet. Press Check now in a minute.', !d.ok);
+    ST.bankfeed = null; ST.matches = null; if (ST.tab === 'bank') { if (ST.arg === 'connect') location.hash = '#/bank'; showPage(true); }
+  }
+  try { new BroadcastChannel('hoola-bank').onmessage = e => bankLinked(e.data); } catch {}
+
   function pBank() {
     if (ST.arg === 'import') return importForm();
+    if (ST.arg === 'connect') return connectPage();
     if (!ST.matches) return head('Bank & matching') + loading;
     const accts = (ST.chart && ST.chart.accounts) || [];
     const opts = sel => accts.map(a => `<option value="${esc(a.code)}"${a.code === sel ? ' selected' : ''}>${esc(a.code)} ${esc(a.name)}</option>`).join('');
@@ -471,6 +548,7 @@
     }).join('');
     const r = ST.recon || {};
     return `${head('Bank & matching', 'Hoola matches each bank line to an invoice, a bill or an account and tells you why. Nothing is posted until you confirm.')}
+      ${bankCard(ST.bankfeed)}
       <section class="card tight"><div class="bk-bar"><h2 class="md-h2" style="margin:0">Bank lines to confirm</h2><button class="btn soft sm" type="button" data-go="bank/import">Import a statement</button></div>
         ${rows ? `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>Date</th><th>On the statement</th><th class="num">Amount</th><th>Hoola thinks</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
           : '<p class="mut" style="margin:0 0 12px">Every bank line is in the books. Import a new statement when you have one.</p>'}
@@ -675,6 +753,17 @@
         } catch (err) { if (w) w.close(); throw err; }
         return;
       }
+      if (ds.bkfind) { const cc = ds.bkfind; t.disabled = true;
+        const r = await books('bank_banks', {country: cc, q: $('#bkQ_' + CSS.escape(cc)).value});
+        if (r.why) toast(r.why, true); ST.bkBanks = {cc, list: r.banks || []}; keepForm(() => showPage(true));
+        const sel = $('#bkBank_' + CSS.escape(cc)); if (sel && sel.options.length) sel.selectedIndex = 0;   // the old empty choice is gone
+        if (!(r.banks || []).length) toast('No bank found by that name.', true); return; }
+      if (ds.bkrefresh) { t.disabled = true; const r = await books('bank_refresh', {link: ds.bkrefresh});
+        toast(r.status === 'active' ? `${r.added || 0} new bank line${r.added === 1 ? '' : 's'}.` : (r.error || 'Still waiting for the bank.')); ST.bankfeed = null; ST.matches = null; showPage(true); return; }
+      if (ds.bksync) { t.disabled = true; const r = await books('bank_sync'); toast(r.says); ST.bankfeed = null; ST.matches = null; showPage(true); return; }
+      if (ds.bkdisc) { if (!confirm('Disconnect this bank? Lines already in the books stay.')) return; t.disabled = true;
+        const r = await books('bank_disconnect', {link: ds.bkdisc}); toast(r.says); ST.bankfeed = null; showPage(true); return; }
+      if (ds.bkunsend) { t.disabled = true; const r = await books('bank_sender_remove', {match: ds.bkunsend}); toast(r.says); ST.bankfeed = null; showPage(true); return; }
       if (ds.inkey) { t.disabled = true; const r = await books('inbox_key'); ST.inKey = r; ST.inbox = null; await refreshDesk(true); return; }
       if (ds.inkeystop) { t.disabled = true; await books('inbox_key_stop'); ST.inKey = null; ST.inbox = null; toast('The books address is closed.'); await refreshDesk(true); return; }
       if (ds.insave) {
@@ -719,6 +808,19 @@
     const kind = f.dataset.form, fd = new FormData(f), v = k => S(fd.get(k)).trim();
     const btn = e.submitter || f.querySelector('button[type=submit]'); if (btn) btn.disabled = true;
     try {
+      if (kind === 'bkconnect') {
+        const w = window.open('', 'hoola-bank', 'popup,width=560,height=760');
+        try { const r = await books('bank_connect', {country: f.dataset.cc, bank: v('bank'), mobile: v('mobile'), account: v('account'),
+          bank_name: (f.querySelector('select[name=bank]') || {}).selectedOptions ? (f.querySelector('select[name=bank]').selectedOptions[0] || {}).text || '' : ''});
+          if (w && !w.closed) w.location.href = r.url; else window.open(r.url, 'hoola-bank', 'popup,width=560,height=760');
+          toast(r.says); ST.bankfeed = null; }
+        catch (err) { if (w) w.close(); throw err; }
+        if (btn) btn.disabled = false; return;
+      }
+      if (kind === 'bksender') {
+        const r = await books('bank_sender_add', {match: v('match'), account: v('account'), password: S(fd.get('password'))});
+        f.reset(); toast(r.says); ST.bankfeed = r.bank; showPage(true); return;
+      }
       if (kind === 'inimap') {
         const addr = $('#inImA').value.trim();
         await api('POST', '/api/mail/accounts/imap', {address: addr, password: $('#inImP').value, imap_host: $('#inImH').value.trim()});

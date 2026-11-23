@@ -1,4 +1,4 @@
-"""v0.999.167 VOCAL CHECK - is every Hoola Vocal tool really wired to its engine, end to end?
+"""v0.999.168 VOCAL CHECK (built as 0.999.167) - is every Hoola Vocal tool really wired to its engine, end to end?
 
 Each tool is driven through the SAME server function its button uses (service.tts, dialogue, sfx_text, change, cleanup,
 hear, design_preview, dub_start ...), on a throwaway account `__vocalcheck__` that is wiped at the end, with the smallest

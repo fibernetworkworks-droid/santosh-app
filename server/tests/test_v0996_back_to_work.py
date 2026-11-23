@@ -139,5 +139,5 @@ def test_the_timeline_says_working_and_since_when(env):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.167"
-    assert "0.999.167+1162" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.168"
+    assert "0.999.168+1163" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

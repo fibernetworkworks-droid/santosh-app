@@ -51,3 +51,7 @@
 .bk-ml{flex:1;min-width:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bk-imap{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--soft)}
 .bk-wrap{flex-wrap:wrap;justify-content:flex-start;align-items:center}
+/* v0.999.166 a wide table scrolls inside its card on a phone, never the page */
+#mdPage > * { min-width: 0; }
+#mdPage .card > div[style*="overflow-x"] { max-width: 100%; position: relative; }   /* its hidden labels stay inside it */
+.bk-route{display:block;border:1px solid var(--line,#e6e6e6);border-radius:12px;padding:14px 16px;margin:8px 0}

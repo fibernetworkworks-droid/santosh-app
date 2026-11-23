@@ -1276,6 +1276,18 @@ class Settings(BaseSettings):
     app_redirect_scheme: str = "santosh"    # deep link back into the phone app after sign-in
     hoola_signup: str = "open"              # who can make a NEW Hoola with Google sign-in: open (anyone) | invite
     hoola_signup_allow: str = ""            # invite mode: comma list of emails and/or @domain.com allowed to sign up
+    # v0.999.166 bank connection (open banking) through LICENSED partners only - keys here (VPS .env), never in the app or chat.
+    # A partner is offered only when its keys are set AND its name is in OPEN_BANKING_ACK (she read and signed its terms).
+    open_banking_ack: str = ""              # comma list: setu_aa, gocardless, plaid
+    setu_aa_base: str = "https://fiu-sandbox.setu.co"     # Setu Account Aggregator (India); production: https://fiu.setu.co
+    setu_aa_client_id: str = ""
+    setu_aa_client_secret: str = ""
+    setu_aa_product_instance: str = ""
+    gocardless_secret_id: str = ""          # GoCardless Bank Account Data (UK + EU/EEA), read only
+    gocardless_secret_key: str = ""
+    plaid_client_id: str = ""               # Plaid (US + Canada)
+    plaid_secret: str = ""
+    plaid_env: str = "sandbox"              # sandbox | production
     gstinapi_api_key: str = ""              # v0.765 gstinapi.in (gak_...) - PAID per lookup (Rs 0.40-0.80), ONE server key, VPS .env only
     gstin_daily_calls: int = 50             # v0.765 most paid GSTIN lookups a day for ALL users together (0 = switched off)
     # v0.807 BAHI (GST & Accounts employee, docs/ACCOUNTS_EMPLOYEE_PLAN.md): the WhiteBooks GSP. Keys ONLY in the VPS .env, never

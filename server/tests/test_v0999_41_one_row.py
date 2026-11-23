@@ -18,7 +18,7 @@ ST = Path(__file__).resolve().parents[1] / "app" / "static" / "console"
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.167"
+    assert APP_VERSION == "0.999.168"
 
 
 def test_one_row_in_the_code():

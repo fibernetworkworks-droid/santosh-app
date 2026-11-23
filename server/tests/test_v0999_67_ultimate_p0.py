@@ -259,7 +259,7 @@ def test_routes_and_wiring(env, dirs):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.167"
+    assert APP_VERSION == "0.999.168"
 
 
 def test_card_saved_after_every_task_and_a_restart_is_named(dirs, monkeypatch):
