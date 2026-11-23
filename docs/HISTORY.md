@@ -10498,3 +10498,37 @@ cleanup + price per voice, the files, a Chromium walk at light / dark 1440 and 3
 
 NOT VERIFIED: a real ElevenLabs voice change with voice_settings (its page names the field but not the keys; stability /
 similarity_boost are its standard voice settings), on her server or phone.
+
+
+## v0.999.160 BOOKS ENTERPRISE (built as 0.999.159; their VOICE CHANGER, PREMIUM took 0.999.159, both kept)
+
+Owner: "HOW BIG ENTERPRISE WILL USE IT" -> the gap list -> "MAKE IT ENTERPRISE READY".
+
+- Team (`fin/desks/books_ent.py`, table `fin_books_member`): people on one business's books by email with a role - admin,
+  accountant, approver, auditor, viewer (the owner = the workspace's tenant). They open the owner's books with their own Hoola
+  sign-in (matched by user id, else by their account email the first time); `books_ent.access` resolves owner + role,
+  `CAN` is the permission matrix, `bookschat.do` / `POST /api/books/do/{part}` checks it before every desk action and runs the
+  engine on the OWNER's books with "Name <user id>" as the actor. A member opens the desk without hiring anything.
+- Controls (workspace settings `books_ent`): with the switch on, every posting (issue, journal, apply_match, post_bank,
+  depreciation, revalue) over her limit becomes a request (`fin_books_request`, bound to its arguments' hash, one per posting)
+  that a second person approves - never the maker (the owner's own tool / API postings count as hers); over her two-approver
+  limit it needs two different people; depreciation / revaluation (no amount before they run) always wait; approving runs it
+  once through `books._exec`; reject needs a reason. `books.run` is the one gate (tool, API, desk) and strips any "_" argument
+  so nothing can claim an approval. Turning it on needs an approver; removing the last approver turns it off.
+- Cost centres: a list per business (or free text), on invoices / bills (`fin_invoice.cost_centre`), journal lines and bank
+  postings (`fin_line.dim`); `by_cost_centre` = profit by cost centre.
+- Group accounts (`consolidate`): two or more of her businesses in one currency with HER average (P&L) and closing (balance
+  sheet) rates - a currency with no rate is refused; documents marked as with another of her businesses (`fin_invoice.ic_ws`)
+  are taken out both ways; mismatches named; the translation + elimination difference shown as its own line.
+- Scale: `propose_matches` indexed by document number and amount (was every bank line x every open document); `limit` lines
+  back with the full count. FOUND + FIXED: the engine read bank lines through the spine's list API, capped at 5,000 rows - on a
+  big business matching, reconciliation and the close check silently missed older lines and an old line could not be confirmed;
+  `_bank_lines` / `_bank_line` now read the table directly. Measured here: 50,000 lines vs 10,000 open invoices in ~1 s.
+- Desk: Approvals tab (waiting + decided, Approve / Reject), Settings > Team + Controls (limits, cost centres), cost centre on
+  invoices / bills / bank postings, "with another of your businesses" on documents, Reports > Profit by cost centre + Group
+  accounts, the business picker lists books shared with her with her role, buttons follow her role.
+- Tests: NEW `test_v0999_159_books_enterprise.py` (8 incl. a Chromium walk: team + controls, the owner's own invoice cannot be
+  approved by her, an accountant's journal approved, a reject with its reason, cost centres, group accounts).
+
+NOT BUILT (need her decision or a partner): single sign-on (SAML / OIDC), bank feeds, a live push to SAP / Oracle / NetSuite
+(the Enterprise desk can write SAP / Salesforce on her tap but is not joined to these books). NOT VERIFIED on her server.

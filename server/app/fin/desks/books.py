@@ -176,7 +176,7 @@ def _post(s, M, tenant, ws, day, period, lines, memo, source, source_ref, actor)
     for l in lines:
         s.add(M.FinLine(tenant_id=tenant, workspace_id=ws, journal_id=j.id, code=str(l["code"]), debit_minor=int(l.get("debit_minor") or 0),
                         credit_minor=int(l.get("credit_minor") or 0), party=str(l.get("party") or "")[:120],
-                        txn_id=str(l.get("txn_id") or "")))
+                        txn_id=str(l.get("txn_id") or ""), dim=str(l.get("dim") or "")[:80]))
     return j.id
 
 
@@ -185,9 +185,32 @@ def journal_entry(tenant: str, ws: str, a: dict[str, Any], actor: str) -> dict[s
     ensure_coa(tenant, ws)
     cur = _book_cur(w)
     lines = [{"code": str(l.get("code")), "debit_minor": _m(l.get("debit"), cur), "credit_minor": _m(l.get("credit"), cur),
-              "party": l.get("party", "")} for l in a.get("lines") or []]
+              "party": l.get("party", ""), "dim": _cc(tenant, ws, l.get("cost_centre"))} for l in a.get("lines") or []]
     jid = post(tenant, ws, a.get("day") or date.today().isoformat(), lines, a.get("memo", ""), "manual", "", actor)
     return {"journal": jid, "lines": len(lines)}
+
+
+def _cc(tenant: str, ws: str, v: Any) -> str:
+    """A cost centre: free text, or one of the business's list when it has one (v0.999.159)."""
+    v = str(v or "").strip()[:80]
+    if not v:
+        return ""
+    from . import books_ent as E
+    known = E.controls(tenant, ws).get("cost_centres") or []
+    if known and v not in known:
+        raise BooksError(f"cost_centre: one of {', '.join(known)}.")
+    return v
+
+
+def _ic(tenant: str, ws: str, v: Any) -> str:
+    """The other company of the same group this document is with (v0.999.159): one of her own businesses, never this one."""
+    v = str(v or "").strip()
+    if not v:
+        return ""
+    if v == ws:
+        raise BooksError("intercompany: another of your businesses, not this one.")
+    _ws(tenant, v)
+    return v
 
 
 # ---- invoices and bills -------------------------------------------------------------------------------------------------------
@@ -269,6 +292,7 @@ def create_doc(tenant: str, ws: str, kind: str, a: dict[str, Any], actor: str, s
                          net_minor=net, tax_minor=tax, total_minor=net + tax, rate=rate, carried_rate=rate, rate_date=rd, rate_source=src,
                          code=str(a.get("code") or ("4000" if kind == "sales" else "6000")), lines=json.dumps(lines),
                          supply=json.dumps(_supply(a.get("supply"))),
+                         cost_centre=_cc(tenant, ws, a.get("cost_centre")), ic_ws=_ic(tenant, ws, a.get("intercompany")),
                          status="draft", source=source)
         s.add(d)
         s.commit()
@@ -294,11 +318,11 @@ def issue_doc(tenant: str, ws: str, doc_id: str, actor: str) -> dict[str, Any]:
         net, tax = f(d.net_minor), f(d.tax_minor)
         if d.kind == "sales":
             lines = [{"code": _code_of(s, M, tenant, ws, "ar"), "debit_minor": net + tax, "party": d.party},
-                     {"code": d.code, "credit_minor": net}]
+                     {"code": d.code, "credit_minor": net, "dim": d.cost_centre or ""}]
             if tax:
                 lines.append({"code": _code_of(s, M, tenant, ws, "tax_out"), "credit_minor": tax})
         else:
-            lines = [{"code": d.code, "debit_minor": net}, {"code": _code_of(s, M, tenant, ws, "ap"), "credit_minor": net + tax, "party": d.party}]
+            lines = [{"code": d.code, "debit_minor": net, "dim": d.cost_centre or ""}, {"code": _code_of(s, M, tenant, ws, "ap"), "credit_minor": net + tax, "party": d.party}]
             if tax:
                 lines.append({"code": _code_of(s, M, tenant, ws, "tax_in"), "debit_minor": tax})
         d.number = d.number or _next_number(s, M, tenant, ws, d.kind, d.issue)
@@ -320,7 +344,7 @@ def docs(tenant: str, ws: str, kind: str = "", status: str = "") -> list[dict[st
             q = q.filter(M.FinInvoice.status == status)
         return [{"id": d.id, "kind": d.kind, "number": d.number, "party": d.party, "issue": d.issue, "due": d.due, "currency": d.currency,
                  "total": _u(d.total_minor, d.currency), "open": _u(d.total_minor - d.paid_minor, d.currency), "status": d.status,
-                 "source": d.source} for d in q.order_by(M.FinInvoice.issue).all()]
+                 "source": d.source, "cost_centre": d.cost_centre or "", "intercompany": d.ic_ws or ""} for d in q.order_by(M.FinInvoice.issue).all()]
 
 
 _TOTAL = re.compile(r"(?:grand\s+)?total(?:\s+(?:due|amount|to pay))?\W{0,6}[^\d\n]{0,6}(\d[\d,]*(?:[.,]\d{2})?)", re.I)
@@ -373,9 +397,29 @@ def read_receipt(tenant: str, ws: str, text: str, actor: str) -> dict[str, Any]:
 
 # ---- bank lines: cash application and posting ------------------------------------------------------------------------------
 
-def _bank_lines(tenant: str, ws: str, account: str = "") -> list[dict[str, Any]]:
-    from .. import spine as SP
-    return SP.txns(tenant, ws, account_id=account, limit=20000)
+def _bank_lines(tenant: str, ws: str, account: str = "", since: str = "", until: str = "") -> list[dict[str, Any]]:
+    """Every bank line of the business (v0.999.159: read here with no cap - the spine's list API stops at 5,000 rows, so
+    matching, reconciliation and the close check silently missed older lines on a big business)."""
+    db, M = _db()
+    with db.session() as s:
+        q = s.query(M.FinTxn.id, M.FinTxn.day, M.FinTxn.amount_minor, M.FinTxn.narration).filter(
+            M.FinTxn.tenant_id == tenant, M.FinTxn.workspace_id == ws)
+        if account:
+            q = q.filter(M.FinTxn.account_id == account)
+        if since:
+            q = q.filter(M.FinTxn.day >= since)
+        if until:
+            q = q.filter(M.FinTxn.day <= until)
+        return [{"id": i, "day": d, "amount_minor": a, "narration": n or ""} for i, d, a, n in q.order_by(M.FinTxn.day.desc(), M.FinTxn.id).all()]
+
+
+def _bank_line(tenant: str, ws: str, txn_id: str) -> dict[str, Any] | None:
+    db, M = _db()
+    with db.session() as s:
+        t = s.get(M.FinTxn, txn_id)
+        if t is None or t.tenant_id != tenant or t.workspace_id != ws:
+            return None
+        return {"id": t.id, "day": t.day, "amount_minor": t.amount_minor, "narration": t.narration or ""}
 
 
 def _linked(s, M, tenant: str, ws: str) -> set[str]:
@@ -383,9 +427,11 @@ def _linked(s, M, tenant: str, ws: str) -> set[str]:
                                                             M.FinLine.txn_id != "").all()}
 
 
-def propose_matches(tenant: str, ws: str, account: str = "") -> dict[str, Any]:
+def propose_matches(tenant: str, ws: str, account: str = "", limit: int = 500) -> dict[str, Any]:
     """Each unposted bank line against open documents. Confidence by rule, with the reason; a line that fits more than one
-    document equally is listed as unsure and never auto-applied."""
+    document equally is listed as unsure and never auto-applied.
+    v0.999.159: indexed (document number, amount) so 200,000 bank lines against 50,000 open documents stay seconds, not hours;
+    `limit` lines come back with the full count."""
     w = _ws(tenant, ws)
     book = _book_cur(w)
     db, M = _db()
@@ -396,26 +442,43 @@ def propose_matches(tenant: str, ws: str, account: str = "") -> dict[str, Any]:
         od = [{"id": d.id, "kind": d.kind, "number": d.number, "party": d.party.lower(), "currency": d.currency,
                "left": d.total_minor - d.paid_minor, "book_left": int(round((d.total_minor - d.paid_minor) * d.carried_rate))
                if d.currency != book else d.total_minor - d.paid_minor} for d in open_docs]
+    by_num = {d["number"].lower(): d for d in od if d["number"]}
+    by_amt: dict[tuple[str, int], list] = defaultdict(list)
+    foreign: dict[str, list] = defaultdict(list)
+    for d in od:
+        by_amt[(d["kind"], d["book_left"])].append(d)
+        if d["currency"] != book:
+            foreign[d["kind"]].append(d)
+    num_re = re.compile(r"(?:inv|bill)-\d{4}-\d{4,}", re.I)
+    words = lambda d: [x for x in d["party"].split() if len(x) > 3]   # noqa: E731
     from .household import category
-    out = []
+    out, total = [], 0
     for t in _bank_lines(tenant, ws, account):
         if t["id"] in done:
             continue
+        total += 1
+        if len(out) >= limit:
+            continue
         amt, nar = t["amount_minor"], t["narration"].lower()
         want = "sales" if amt > 0 else "purchase"
-        cands = []
-        for d in od:
-            if d["kind"] != want:
-                continue
-            same = d["book_left"] == abs(amt)
-            if d["number"] and d["number"].lower() in nar:
+        cands, seen = [], set()
+        for m in num_re.findall(nar):
+            d = by_num.get(m.lower())
+            if d and d["kind"] == want and d["id"] not in seen:
                 cands.append((0.97, d, f"invoice number {d['number']} is in the bank line"))
-            elif same and d["party"] and any(x in nar for x in d["party"].split() if len(x) > 3):
+                seen.add(d["id"])
+        for d in by_amt.get((want, abs(amt)), []):
+            if d["id"] in seen:
+                continue
+            seen.add(d["id"])
+            if d["party"] and any(x in nar for x in words(d)):
                 cands.append((0.9, d, f"same amount and the name {d['party']}"))
-            elif same:
+            else:
                 cands.append((0.6, d, "same amount only"))
-            elif d["currency"] != book and d["party"] and any(x in nar for x in d["party"].split() if len(x) > 3) \
+        for d in foreign.get(want, []):
+            if d["id"] not in seen and d["party"] and any(x in nar for x in words(d)) \
                     and abs(abs(amt) - d["book_left"]) <= 0.1 * d["book_left"]:
+                seen.add(d["id"])
                 cands.append((0.8, d, f"the name {d['party']}; the amount differs by the exchange rate"))
         cands.sort(key=lambda c: -c[0])
         if cands and (len(cands) == 1 or cands[0][0] > cands[1][0]):
@@ -430,14 +493,15 @@ def propose_matches(tenant: str, ws: str, account: str = "") -> dict[str, Any]:
             cat = category(t["narration"], amt)
             out.append({"txn": t["id"], "day": t["day"], "amount": _u(amt, book), "narration": t["narration"][:80], "doc": None,
                         "propose_account": PROPOSE.get(cat, "9999"), "why": f"no document; looks like {cat.replace('_', ' ')}", "sure": False})
-    return {"currency": book, "lines": out, "says": "Nothing is posted until you confirm. Unsure lines need your choice."}
+    return {"currency": book, "lines": out, "total": total, "more": max(0, total - len(out)),
+            "says": "Nothing is posted until you confirm. Unsure lines need your choice."}
 
 
 def apply_match(tenant: str, ws: str, txn_id: str, doc_id: str, actor: str) -> dict[str, Any]:
     """Her confirm: the bank line pays (part of) the document; any exchange difference goes to the FX account."""
     w = _ws(tenant, ws)
     book = _book_cur(w)
-    t = next((x for x in _bank_lines(tenant, ws) if x["id"] == txn_id), None)
+    t = _bank_line(tenant, ws, txn_id)
     if not t:
         raise BooksError("No such bank line.")
     db, M = _db()
@@ -483,9 +547,9 @@ def apply_match(tenant: str, ws: str, txn_id: str, doc_id: str, actor: str) -> d
                 "fx_gain": _u(gain, book) if fx else 0.0}
 
 
-def post_bank_line(tenant: str, ws: str, txn_id: str, code: str, actor: str) -> dict[str, Any]:
+def post_bank_line(tenant: str, ws: str, txn_id: str, code: str, actor: str, cost_centre: str = "") -> dict[str, Any]:
     """A bank line with no document, posted to the account she picked."""
-    t = next((x for x in _bank_lines(tenant, ws) if x["id"] == txn_id), None)
+    t = _bank_line(tenant, ws, txn_id)
     if not t:
         raise BooksError("No such bank line.")
     ensure_coa(tenant, ws)
@@ -493,8 +557,9 @@ def post_bank_line(tenant: str, ws: str, txn_id: str, code: str, actor: str) -> 
     with db.session() as s:
         bank = _code_of(s, M, tenant, ws, "bank")
         a = abs(t["amount_minor"])
-        lines = ([{"code": bank, "debit_minor": a, "txn_id": txn_id}, {"code": str(code), "credit_minor": a}] if t["amount_minor"] > 0 else
-                 [{"code": str(code), "debit_minor": a}, {"code": bank, "credit_minor": a, "txn_id": txn_id}])
+        dim = _cc(tenant, ws, cost_centre)
+        lines = ([{"code": bank, "debit_minor": a, "txn_id": txn_id}, {"code": str(code), "credit_minor": a, "dim": dim}] if t["amount_minor"] > 0 else
+                 [{"code": str(code), "debit_minor": a, "dim": dim}, {"code": bank, "credit_minor": a, "txn_id": txn_id}])
         jid = post(tenant, ws, t["day"], lines, t["narration"][:200], "bank", f"txn:{txn_id}", actor, session=s)
         s.commit()
         return {"journal": jid, "account": code}
@@ -513,12 +578,12 @@ def reconcile(tenant: str, ws: str, period: str, statement_balance: Any = None) 
         book_only = [{"journal": j.id, "day": j.day, "memo": j.memo, "amount": _u(l.debit_minor - l.credit_minor, book)}
                      for l, j in rows if not l.txn_id and j.period == period]
         book_bal = sum(l.debit_minor - l.credit_minor for l, j in rows if j.day[:7] <= period)
-    lines = [t for t in _bank_lines(tenant, ws) if t["day"][:7] == period]
+    lines = _bank_lines(tenant, ws, since=f"{period}-01", until=f"{period}-31")
     bank_only = [{"txn": t["id"], "day": t["day"], "amount": _u(t["amount_minor"], book), "narration": t["narration"][:80]}
                  for t in lines if t["id"] not in linked]
     matched = len(lines) - len(bank_only)
     stmt = _m(statement_balance, book) if statement_balance not in (None, "") else \
-        sum(t["amount_minor"] for t in _bank_lines(tenant, ws) if t["day"][:7] <= period)
+        sum(t["amount_minor"] for t in _bank_lines(tenant, ws, until=f"{period}-31"))
     diff = stmt - book_bal
     explained = sum(_m(x["amount"], book) for x in bank_only) - sum(_m(x["amount"], book) for x in book_only)
     return {"period": period, "currency": book, "bank_lines": len(lines), "matched": matched, "bank_only": bank_only, "book_only": book_only,
@@ -743,7 +808,7 @@ def close_checklist(tenant: str, ws: str, period: str) -> dict[str, Any]:
             M.FinJournal.tenant_id == tenant, M.FinJournal.workspace_id == ws, M.FinJournal.source_ref == f"reval:{d.id}:{period}").first()
             and d.issue[:7] <= period]
         sus = _code_of(s, M, tenant, ws, "suspense")
-    unposted = [t for t in _bank_lines(tenant, ws) if t["day"][:7] == period and t["id"] not in linked]
+    unposted = [t for t in _bank_lines(tenant, ws, since=f"{period}-01", until=f"{period}-31") if t["id"] not in linked]
     bal = balances(tenant, ws, upto=f"{period}-31")
     items = [
         {"item": "Every bank line of the month is in the books", "ok": not unposted, "count": len(unposted)},
@@ -824,6 +889,19 @@ ACTIONS = ("chart", "add_account", "journal", "invoice", "bill", "issue", "docum
 
 
 def run(tenant: str, action: str, a: dict[str, Any], actor: str = "owner") -> dict[str, Any]:
+    """The one door (tool, routes, desk). v0.999.159: with the business's controls on, a posting goes to a second person
+    (books_ent) instead of the books; only books_ent.approve runs it, through _exec."""
+    a = {k: v for k, v in (a or {}).items() if not str(k).startswith("_")}     # nothing from outside may claim an approval
+    ws = str(a.get("workspace") or "")
+    if ws and action != "inventory":
+        from . import books_ent as E
+        held = E.hold(tenant, ws, action, a, actor)
+        if held is not None:
+            return held
+    return _exec(tenant, action, a, actor)
+
+
+def _exec(tenant: str, action: str, a: dict[str, Any], actor: str = "owner") -> dict[str, Any]:
     if action == "inventory":
         return inventory_cost(a)
     ws = str(a.get("workspace") or "")
@@ -838,9 +916,9 @@ def run(tenant: str, action: str, a: dict[str, Any], actor: str = "owner") -> di
          "issue": lambda: issue_doc(tenant, ws, str(a.get("doc") or ""), actor),
          "documents": lambda: {"documents": docs(tenant, ws, str(a.get("kind") or ""), str(a.get("status") or ""))},
          "receipt": lambda: read_receipt(tenant, ws, str(a.get("text") or ""), actor),
-         "matches": lambda: propose_matches(tenant, ws, str(a.get("account") or "")),
+         "matches": lambda: propose_matches(tenant, ws, str(a.get("account") or ""), int(a.get("limit") or 500)),
          "apply_match": lambda: apply_match(tenant, ws, str(a.get("txn") or ""), str(a.get("doc") or ""), actor),
-         "post_bank": lambda: post_bank_line(tenant, ws, str(a.get("txn") or ""), str(a.get("code") or ""), actor),
+         "post_bank": lambda: post_bank_line(tenant, ws, str(a.get("txn") or ""), str(a.get("code") or ""), actor, str(a.get("cost_centre") or "")),
          "reconcile": lambda: reconcile(tenant, ws, p, a.get("statement_balance")),
          "ageing": lambda: ageing(tenant, ws, "purchase" if a.get("kind") == "payables" else "sales", str(a.get("as_of") or date.today())),
          "asset": lambda: asset_add(tenant, ws, a),

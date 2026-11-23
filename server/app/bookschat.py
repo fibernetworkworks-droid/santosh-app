@@ -68,18 +68,26 @@ def _hire():
 
 
 def businesses(tenant: str) -> list[dict[str, Any]]:
+    """Her own businesses (she is the owner) and, v0.999.159, the ones other people put her on with a role."""
     from .fin import profile as PR
-    return [{"id": w["id"], "name": w["name"] or "My business", "size": w["size"], "currency": w["currency"],
-             "countries": w["countries"]} for w in PR.workspaces(tenant) if w["size"] in SIZES]
-
-
-def workspace(tenant: str) -> dict[str, Any] | None:
-    """The business she picked on this desk, else her first business workspace."""
-    bs = businesses(tenant)
+    from .fin.desks import books_ent as E
+    own = [{"id": w["id"], "name": w["name"] or "My business", "size": w["size"], "currency": w["currency"],
+            "countries": w["countries"], "role": "owner"} for w in PR.workspaces(tenant) if w["size"] in SIZES]
     try:
-        want = str(_hire().settings(tenant, KEY).get("workspace") or "")
+        return own + E.shared_with(tenant)
     except Exception:   # noqa: BLE001
-        want = ""
+        log.exception("shared books read failed")
+        return own
+
+
+def workspace(tenant: str, want: str = "") -> dict[str, Any] | None:
+    """The business asked for (if she may open it), else the one she picked on this desk, else her first."""
+    bs = businesses(tenant)
+    if not want:
+        try:
+            want = str(_hire().settings(tenant, KEY).get("workspace") or "")
+        except Exception:   # noqa: BLE001
+            want = ""
     for b in bs:
         if b["id"] == want:
             return b
@@ -89,7 +97,10 @@ def workspace(tenant: str) -> dict[str, Any] | None:
 def pick(tenant: str, ws: str) -> dict[str, Any]:
     if not any(b["id"] == ws for b in businesses(tenant)):
         raise BooksDeskError("No such business.")
-    _hire().save_settings(tenant, KEY, workspace=ws)
+    try:
+        _hire().save_settings(tenant, KEY, workspace=ws)
+    except Exception:   # noqa: BLE001  a team member who never hired the employee: the page keeps the pick itself
+        pass
     forget(tenant)
     return {"workspace": ws}
 
@@ -116,8 +127,9 @@ def numbers(tenant: str, ws: str) -> dict[str, Any]:
     out["you_owe"], out["overdue_you_owe"] = ap["total"], late(ap)
     p = BK.reports(tenant, ws, t.replace(day=1).isoformat(), t.isoformat())["profit_and_loss"]
     out["month"] = {"income": p["income"], "expenses": p["expenses"], "profit": p["profit"], "from": p["from"]}
-    m = BK.propose_matches(tenant, ws)["lines"]
-    out["bank_to_confirm"] = len(m)
+    pm = BK.propose_matches(tenant, ws)
+    m = pm["lines"]
+    out["bank_to_confirm"] = pm["total"]
     out["bank_sure"] = sum(1 for x in m if x.get("sure"))
     docs = BK.docs(tenant, ws)
     out["drafts"] = sum(1 for d in docs if d["status"] == "draft")
@@ -134,22 +146,81 @@ def numbers(tenant: str, ws: str) -> dict[str, Any]:
     return out
 
 
-def summary(tenant: str) -> dict[str, Any]:
+def summary(tenant: str, want: str = "") -> dict[str, Any]:
+    from .fin.desks import books_ent as E
     h = _hire()
     st = h.status(tenant, KEY)
+    shared = []
     if st not in ("hired", "paused"):
-        return {"hired": False, "status": st, "say": "Books & Accounts is not hired. Hire it from AI Employees."}
-    with session() as s:
-        trust = h._view(h._row(s, tenant, KEY)).get("trust") or ""    # noqa: SLF001
-    out: dict[str, Any] = {"hired": True, "status": st,
-                           "trust": {"seekh": "Learning", "saathi": "Partner", "bharosa": "Trusted"}.get(trust, "Learning"),
-                           "businesses": businesses(tenant), "workspace": workspace(tenant)}
-    if out["workspace"]:
         try:
-            out["numbers"] = numbers(tenant, out["workspace"]["id"])
+            shared = E.shared_with(tenant)
+        except Exception:   # noqa: BLE001
+            shared = []
+        if not shared:          # a person put on someone's books opens them without hiring anything
+            return {"hired": False, "status": st, "say": "Books & Accounts is not hired. Hire it from AI Employees."}
+        trust = ""
+    else:
+        with session() as s:
+            trust = h._view(h._row(s, tenant, KEY)).get("trust") or ""    # noqa: SLF001
+    out: dict[str, Any] = {"hired": True, "status": st if st in ("hired", "paused") else "member",
+                           "trust": {"seekh": "Learning", "saathi": "Partner", "bharosa": "Trusted"}.get(trust, "Learning"),
+                           "businesses": businesses(tenant), "workspace": workspace(tenant, want), "roles": E.ROLE_NAMES}
+    w = out["workspace"]
+    if w:
+        try:
+            acc = E.access(tenant, w["id"])
+            out["role"] = acc["role"]
+            out["can"] = sorted(E.CAN.get(acc["role"], set()))
+            c = E.controls(acc["owner"], w["id"])
+            out["controls"] = {"on": bool(c.get("on")), "limit": c.get("limit") or 0, "dual": c.get("dual"),
+                               "cost_centres": c.get("cost_centres") or []}
+            out["pending"] = len(E.requests(acc["owner"], w["id"]))
+            out["numbers"] = numbers(acc["owner"], w["id"])
         except Exception as e:   # noqa: BLE001
             log.exception("books numbers failed")
             out["numbers_error"] = str(e)[:200]
+    return out
+
+
+def do(caller: str, part: str, a: dict[str, Any]) -> dict[str, Any]:
+    """Every desk action: who she is on this business, whether her role may do it, then the engine (whose own gate sends a
+    posting to a second person when the controls are on). The engine runs on the OWNER's books with her name as the actor."""
+    from .fin.desks import books as BK
+    from .fin.desks import books_ent as E
+    a = {k: v for k, v in (a or {}).items() if not str(k).startswith("_")}
+    ws = str(a.get("workspace") or "")
+    acc = E.access(caller, ws)
+    role, owner = acc["role"], acc["owner"]
+    if not E.allowed(role, part):
+        raise E.EntError(f"Your role ({E.ROLE_NAMES.get(role, role)}) cannot do this on these books.")
+    me = f"{acc['name']} <{caller}>"
+    if part == "requests":
+        return {"requests": E.requests(owner, ws, str(a.get("status") if "status" in a else "pending"))}
+    if part == "approve":
+        return E.approve(owner, ws, str(a.get("request") or ""), caller, acc["name"])
+    if part == "reject":
+        return E.reject(owner, ws, str(a.get("request") or ""), caller, acc["name"], str(a.get("reason") or ""))
+    if part == "team":
+        return {"team": E.team(owner, ws), "you": role}
+    if part == "team_add":
+        if str(a.get("role")) == "admin" and role != "owner":
+            raise E.EntError("Only the owner adds an admin.")
+        return E.team_add(owner, ws, str(a.get("email") or ""), str(a.get("role") or ""), str(a.get("name") or ""), me)
+    if part == "team_remove":
+        return E.team_remove(owner, ws, str(a.get("member") or ""), me)
+    if part == "controls_read":
+        return E.controls(owner, ws)
+    if part == "controls":
+        return E.set_controls(owner, ws, a, me)
+    if part == "by_cost_centre":
+        return E.by_cost_centre(owner, ws, str(a.get("since") or "0000-01-01"), str(a.get("upto") or date.today()))
+    if part == "consolidate":
+        return E.consolidate(caller, a.get("businesses") or [], str(a.get("currency") or ""), a.get("rates") or {},
+                             str(a.get("since") or "0000-01-01"), str(a.get("upto") or date.today()))
+    from .fin import core
+    out = core.run_tool(owner, me, "books_accounts", part, a, lambda: BK.run(owner, part, a, me))
+    forget(owner)
+    forget(caller)
     return out
 
 
@@ -242,7 +313,12 @@ def block(tenant: str) -> str:
                    f"\nBank lines to confirm: {n.get('bank_to_confirm', 0)}. Drafts: {n.get('drafts', 0)}. Overdue: {od or 'none'}."
                    f"\nLast month {(n.get('close') or {}).get('period')}: "
                    f"{'locked' if (n.get('close') or {}).get('locked') else str((n.get('close') or {}).get('done')) + ' of ' + str((n.get('close') or {}).get('of')) + ' checks done'}."
-                   f"</books_desk>")
+                   + (f"\nApprovals are ON: a posting over {(d.get('controls') or {}).get('limit') or 0} {cur} waits for a second person "
+                      f"(the tool answers queued); tell her it waits, never that it is posted. Waiting now: {d.get('pending', 0)}."
+                      if (d.get("controls") or {}).get("on") else "")
+                   + (f"\nShe is the {d.get('role')} on these books (someone else owns them): the tool works only on her own businesses, "
+                      "so explain from these figures and send her to the desk for changes." if d.get("role") not in (None, "owner") else "")
+                   + "</books_desk>")
     except Exception:   # noqa: BLE001
         log.exception("books block failed")
         txt = f"\n\n<books_desk>{RULES}The desk could not be read just now.</books_desk>"
@@ -277,9 +353,20 @@ def mount(app, current_tenant, require_key) -> None:
         return {"ok": True}
 
     @router.get("/api/books/desk", dependencies=dep)
-    def books_desk(tenant: str = Depends(current_tenant)):
+    def books_desk(workspace: str = "", tenant: str = Depends(current_tenant)):
         forget(tenant)
-        return summary(tenant)
+        return summary(tenant, workspace)
+
+    @router.post("/api/books/do/{part}", dependencies=dep)
+    def books_do(part: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+        from .fin import laws as L
+        from .fin.desks.safety import SafetyError
+        try:
+            return do(tenant, part, body or {})
+        except L.Refused as e:
+            raise HTTPException(403, str(e))
+        except (SafetyError, ValueError) as e:
+            raise HTTPException(400, str(e))
 
     @router.put("/api/books/workspace", dependencies=dep)
     def books_workspace(body: dict, tenant: str = Depends(current_tenant)):
