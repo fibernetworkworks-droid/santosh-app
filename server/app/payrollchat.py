@@ -117,7 +117,7 @@ def summary(tenant: str, want: str = "") -> dict[str, Any]:
         try:
             acc = E.access(tenant, w["id"])
             out["role"] = acc["role"]
-            out["can"] = sorted(PD.CAN.get(acc["role"]) or set(PD.ACTIONS) | {"settings", "employee", "people", "payslip", "payments",
+            out["can"] = sorted(PD.CAN.get(acc["role"]) or set(PD.ACTIONS) | set(PD.PF.ACTIONS) | {"check_run", "settings", "employee", "people", "payslip", "payments",
                                                                                 "filings", "done", "contractors", "team"})
             out["desk"] = PD.desk(acc["owner"], w["id"])
         except Exception as e:   # noqa: BLE001
@@ -148,7 +148,7 @@ def do(caller: str, part: str, a: dict[str, Any]) -> dict[str, Any]:
         out = PD.take_file(owner, ws, str(a.get("name") or "file.csv"), data, "", "upload", me)
     else:
         from .fin import core
-        seen = {k: v for k, v in a.items() if k not in ("accounts", "from")}   # account numbers never reach the audit log
+        seen = {k: v for k, v in a.items() if k not in ("accounts", "from", "data_b64")}   # account numbers / files never reach the audit log
         out = core.run_tool(owner, me, "payroll_worldwide", part, seen, lambda: PY.run(owner, part, a, me))
     forget(owner)
     forget(caller)
@@ -217,7 +217,8 @@ def new_chat(tenant: str) -> dict[str, Any]:
 RULES = ("You are her Payroll employee, talking in the desk's own chat (or a voice call started from it). Use the " + TOOL +
          " tool with workspace set to the business below: desk, people, inputs, missing, changes, rules, filings, payslip, payments "
          "to read; employee adds or changes a person; input_rows puts the rows of a timesheet she gave (each row is checked); "
-         "prepare works out the period's payroll as a draft. Every figure you say comes from the tool - never estimate one. Her pay "
+         "prepare works out the period's payroll as a draft; preview = 'run the payroll preview' (prepared, checked, reported - say its "
+         "line); parts / part_save / policy_save / match_test are her pay rules and the same-as-before test. Every figure you say comes from the tool - never estimate one. Her pay "
          "rules are hers: a country's starting rule is used only after a person checked it on the desk. You never approve a payroll, "
          "pay anyone, send payslips or file a return: approving, the payment file and payslip emails are her taps on the Payroll "
          "desk, filing is hers. Never ask for or keep a bank account number. Plain English, short. Not payroll or employment advice. ")
@@ -245,6 +246,10 @@ def block(tenant: str) -> str:
                    f"\nRules to check: {', '.join(k.get('rules_to_check') or []) or 'none'}. "
                    + ("Pay rules are not set yet: she sets them in Payroll > Settings (a country starting list or her own). " if not k.get("rules_set") else "")
                    + f"Filings due soon: {'; '.join(f['filing'] + ' ' + f['due'] for f in k.get('filings_soon') or []) or 'none'}."
+                   + f"\nSize: {(k.get('size_info') or {}).get('name') or 'not set'}; approval: {' then '.join(k.get('chain') or ['approve'])}. "
+                     f"Same-as-before test: {(k.get('match') or {}).get('say', '')}. "
+                     f"Steps: {'; '.join(s['name'] + ' ' + ('done' if s['done'] else s['say']) for s in k.get('steps') or [])}."
+                   + (f"\nLatest preview: {(k.get('report') or {}).get('line')}" if (k.get('report') or {}).get('line') else "")
                    + "\nPay inputs come in by themselves from her sheet, her payroll email, her time / HR software and her own system "
                      "(Payroll > Inputs): never ask her to type in hours that will come in by themselves."
                    + (f"\nShe is the {d.get('role')} on this business (someone else owns it): explain from these figures and send her "

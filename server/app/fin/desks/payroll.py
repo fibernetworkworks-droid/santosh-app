@@ -44,7 +44,7 @@ NEVER_PAYS = "Hoola never pays anyone: this is the list for your bank or payroll
 NEVER_FILES = "Hoola does not file: you (or your payroll adviser) file on the official service; Hoola keeps the figures and the dates."
 NOT_CONFIRMED = " (not confirmed - check this)"
 PPY = {"monthly": 12, "fortnightly": 26, "weekly": 52}
-MAX_PEOPLE = 500
+MAX_PEOPLE = 10000                 # v0.999.171 every size: up to 10,000 people in one business (more = one business per company)
 
 
 # ---- plumbing --------------------------------------------------------------------------------------------------------------
@@ -273,9 +273,18 @@ def employee(tenant: str, ws: str, a: dict[str, Any]) -> dict[str, Any]:
                 p["allowance"] = _num(a["allowance"], "allowance")
             if a.get("tax_id"):
                 p["tax_id"] = _mask(a["tax_id"])
-            for k, n in (("lang", 8), ("email", 120), ("payee_ref", 60), ("role", 80)):   # v0.999.169 payslip language, her payee reference
+            for k, n in (("lang", 8), ("email", 120), ("payee_ref", 60), ("role", 80), ("code", 40), ("department", 80),
+                         ("location", 80), ("company", 80), ("cost_centre", 60), ("phone", 30), ("group", 60)):   # v0.999.169 / v0.999.171
                 if a.get(k) is not None:
-                    p[k] = str(a[k]).strip()[:n]
+                    v = str(a[k]).strip()[:n]
+                    if k == "payee_ref" and p.get("payee_ref") and v != p["payee_ref"]:
+                        p["payee_changed_on"] = date.today().isoformat()      # v0.999.171 a changed bank payee is flagged in the preview
+                    p[k] = v
+            if a.get("parts") is not None:                                     # v0.999.171 this person's own pay parts
+                from . import payroll_flow as PF
+                p["parts"] = PF.clean_parts(a["parts"], person=True)
+            if a.get("numbers") is not None:
+                p["numbers"] = {PF_snake(k): float(v) for k, v in dict(a["numbers"]).items() if _isnum(v)}
             if a.get("start"):
                 p["start"] = str(a["start"])[:10]
             p.pop("left", None)
@@ -285,6 +294,19 @@ def employee(tenant: str, ws: str, a: dict[str, Any]) -> dict[str, Any]:
         return {"id": pid, **p}
     out = _save(tenant, ws, ch)
     return {"employee": _show(out, cur), "says": "Her tax id is kept masked. Bank details are never kept here."}
+
+
+def PF_snake(k: Any) -> str:
+    from .payroll_formula import snake
+    return snake(k)[:40]
+
+
+def _isnum(v: Any) -> bool:
+    try:
+        float(v)
+        return not isinstance(v, bool)
+    except (TypeError, ValueError):
+        return False
 
 
 def _show(p: dict[str, Any], cur: str) -> dict[str, Any]:
@@ -329,6 +351,7 @@ def _gross(p: dict[str, Any], ppy: int, x: dict[str, Any], cur: str) -> tuple[in
         hrs = Decimal(str(x.get("hours", p.get("hours", 0))))
         base = int((Decimal(pay) * hrs).quantize(Decimal(1), ROUND_HALF_UP))
         how = [f"{hrs} hours x {_u(pay, cur)} = {_u(base, cur)}"]
+    x["_period_pay"] = base                                        # v0.999.171 the full period's pay, for pay parts
     if x.get("_prorate") and kind != "hourly":     # v0.999.169 joined or left inside the period: calendar days worked
         w_, n_ = x["_prorate"]
         cut = base - int((Decimal(base) * w_ / n_).quantize(Decimal(1), ROUND_HALF_UP))
@@ -340,9 +363,10 @@ def _gross(p: dict[str, Any], ppy: int, x: dict[str, Any], cur: str) -> tuple[in
         cut = int((Decimal(base) * days / per).quantize(Decimal(1), ROUND_HALF_UP))
         base -= cut
         how.append(f"less {days} unpaid of {per} working days: -{_u(cut, cur)}")
+    x["_basic"] = base                                             # v0.999.171 after days not worked
     extra = 0
     for k in ("overtime", "bonus", "commission", "other_pay"):
-        if x.get(k):
+        if x.get(k) and k not in (x.get("_used") or ()):          # v0.999.171 a pay part that names it decides it instead
             v = _m(x[k], cur, k)
             extra += v
             how.append(f"{k} {_u(v, cur)}")
@@ -372,9 +396,14 @@ def _contribution(c: dict[str, Any], gross: int, taxable: int, cur: str) -> tupl
 
 def pay_one(rules: dict[str, Any], p: dict[str, Any], x: dict[str, Any], cur: str) -> dict[str, Any]:
     ppy = PPY[rules.get("frequency") or "monthly"]
+    x = dict(x)
+    x["_used"] = _used_names(rules, p)
     gross, how = _gross(p, ppy, x, cur)
-    pre = _pct(gross, p.get("pre_tax_pct", 0)) if p.get("pre_tax_pct") else 0
-    taxable = gross - pre
+    from . import payroll_flow as PF                                 # v0.999.171 pay as building blocks
+    parts, add_gross, add_untaxed, add_pre, deduct, employer = PF.work_parts(rules, p, x, gross, ppy, cur)
+    gross += add_gross + add_untaxed
+    pre = (_pct(gross, p.get("pre_tax_pct", 0)) if p.get("pre_tax_pct") else 0) + add_pre
+    taxable = gross - pre - add_untaxed
     t = rules.get("income_tax") or {"method": "none"}
     allow = to_minor(p["allowance"] if p.get("allowance") is not None else t.get("allowance", 0), cur)
     if t["method"] == "annualised":
@@ -398,9 +427,17 @@ def pay_one(rules: dict[str, Any], p: dict[str, Any], x: dict[str, Any], cur: st
         er_all += er
         cons.append({"name": c["name"], "employee": _u(ee, cur), "employer": _u(er, cur), "how": chow,
                      "_ee": ee, "_er": er})
-    net = gross - pre - tax - ee_all
-    return {"gross": gross, "pre_tax": pre, "taxable": taxable, "tax": tax, "ee": ee_all, "er": er_all, "net": net,
-            "cost": gross + er_all, "how": how, "tax_how": tax_how, "tax_slices": slices, "contributions": cons}
+    net = gross - pre - tax - ee_all - deduct
+    rnd = PF.round_net(rules, net, cur)
+    return {"gross": gross, "pre_tax": pre, "taxable": taxable, "tax": tax, "ee": ee_all, "er": er_all + employer,
+            "deductions": deduct, "rounding": rnd, "net": net + rnd,
+            "cost": gross + er_all + employer, "how": how, "tax_how": tax_how, "tax_slices": slices, "contributions": cons,
+            "parts": parts}
+
+
+def _used_names(rules: dict[str, Any], p: dict[str, Any]) -> set[str]:
+    from . import payroll_flow as PF
+    return PF.used_names(rules, p)
 
 
 def run_payroll(tenant: str, ws: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -416,12 +453,33 @@ def run_payroll(tenant: str, ws: str, a: dict[str, Any]) -> dict[str, Any]:
             raise PayrollError(f"period: the first day YYYY-MM-DD of the {freq} period.")
         end = (date.fromisoformat(start) + timedelta(days=(7 if freq == "weekly" else 14) - 1)).isoformat()
     runs = rules.get("runs") or {}
-    if (runs.get(key) or {}).get("closed"):
+    if (runs.get(key) or {}).get("closed") and not a.get("_dry"):
         raise PayrollError(f"{key} is closed: a closed payroll is never recalculated. Run the next period, or put a correction in it.")
-    extras = a.get("extras") or {}
-    rows, T = [], {"gross": 0, "pre_tax": 0, "tax": 0, "ee": 0, "er": 0, "net": 0, "cost": 0}
+    rec = compute(rules, key, start, end, a.get("extras") or {}, cur, only=a.get("_only"))
+    if a.get("_dry"):
+        return rec
+
+    def ch(cfg):
+        rs = cfg.setdefault("runs", {})
+        rs[key] = rec
+        keep = 60 if len(rec["people"]) <= 1000 else 24
+        for old in sorted(rs)[:-keep]:
+            rs.pop(old)
+        return rec
+    _save(tenant, ws, ch)
+    return {**rec, "says": f"Draft payroll for {key} on your rules (source: {rec['source'] or 'not given'}). Close it when it is right. "
+                           + NEVER_PAYS}
+
+
+def compute(rules: dict[str, Any], key: str, start: str, end: str, extras: dict[str, Any], cur: str,
+            only: Any = None) -> dict[str, Any]:
+    """One period worked out from her people, rules and inputs - nothing saved (a run saves it, the same-as-before test does not)."""
+    from . import payroll_flow as PF
+    rows, T = [], {"gross": 0, "pre_tax": 0, "tax": 0, "ee": 0, "er": 0, "deductions": 0, "net": 0, "cost": 0}
     by_con: dict[str, list[int]] = {}
     for pid, p in sorted((rules.get("employees") or {}).items()):
+        if only is not None and pid not in only:
+            continue
         if p.get("left") and p["left"] < start or p.get("start") and p["start"] > end:
             continue
         x = dict(extras.get(pid) or extras.get(p.get("name")) or {})
@@ -429,7 +487,8 @@ def run_payroll(tenant: str, ws: str, a: dict[str, Any]) -> dict[str, Any]:
         a0 = max(d0, date.fromisoformat(p["start"])) if p.get("start") else d0
         a1 = min(d1, date.fromisoformat(p["left"])) if p.get("left") else d1
         if (a0, a1) != (d0, d1):
-            x["_prorate"] = ((a1 - a0).days + 1, (d1 - d0).days + 1)
+            x["_prorate"] = PF.days_worked(rules, d0, d1, a0, a1)
+        x.setdefault("working_days", PF.period_days(rules, d0, d1))
         r = pay_one(rules, p, x, cur)
         for k in T:
             T[k] += r[k]
@@ -438,23 +497,17 @@ def run_payroll(tenant: str, ws: str, a: dict[str, Any]) -> dict[str, Any]:
             v[0] += c.pop("_ee")
             v[1] += c.pop("_er")
         rows.append({"id": pid, "name": p["name"], **{k: _u(r[k], cur) for k in T}, "pay_how": r["how"], "tax_how": r["tax_how"],
-                     "tax_slices": r["tax_slices"], "contributions": r["contributions"]})
+                     "tax_slices": r["tax_slices"], "contributions": r["contributions"],
+                     "parts": [{**q, "amount": _u(q["amount"], cur)} for q in r["parts"]],
+                     **({"rounding": _u(r["rounding"], cur)} if r["rounding"] else {}),
+                     **{k: p[k] for k in ("department", "location", "company", "cost_centre", "code") if p.get(k)}})
     if not rows:
         raise PayrollError("No one to pay in this period: add people with employee first.")
     rec = {"period": key, "start": start, "end": end, "currency": cur, "people": rows, "closed": False,
            "totals": {k: _u(v, cur) for k, v in T.items()},
            "to_authorities": {"income tax": _u(T["tax"], cur), **{n: _u(v[0] + v[1], cur) for n, v in by_con.items()}},
            "source": rules.get("source", ""), "made": date.today().isoformat()}
-
-    def ch(cfg):
-        rs = cfg.setdefault("runs", {})
-        rs[key] = rec
-        for old in sorted(rs)[:-60]:
-            rs.pop(old)
-        return rec
-    _save(tenant, ws, ch)
-    return {**rec, "says": f"Draft payroll for {key} on your rules (source: {rec['source'] or 'not given'}). Close it when it is right. "
-                           + NEVER_PAYS}
+    return rec
 
 
 def _run_of(w: dict[str, Any], period: Any) -> dict[str, Any]:
@@ -631,7 +684,7 @@ def run(tenant: str, action: str, a: dict[str, Any], actor: str = "owner") -> di
     if not ws:
         raise PayrollError("workspace: the finance workspace this payroll belongs to.")
     from . import payroll_desk as PD
-    if action in PD.ACTIONS:
+    if action in PD.ACTIONS or action in PD.PF.ACTIONS:
         out = PD.run(tenant, action, ws, a, actor)
         out.setdefault("not_advice", L.NOT_ADVICE)
         return out

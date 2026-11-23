@@ -10970,3 +10970,55 @@ be opened. That path had never run before, because the GPU lab was always off.
   allows only its own scripts.
 - No native phone screens: no Flutter on the build machine. The phone opens the redesigned page in its web view.
 - Nothing has been checked on her server.
+
+
+## v0.999.171 PAYROLL FOR EVERY SIZE
+
+Owner: "WHEN USER HIRE A PAYROLL AI EMPLOYEE :: 1ST PAGE IS PEOPLE ( VERY SMALL , SMALL , MEDIUM , LARGE , BIG ) WITH SHOWING RANG OF
+PEPOLE --- THEN LANDS ON DASHBOARD --- IN PEOPLE SECTION USER WILL ATTACH THE EMPLOYEE ... A CONNECTOR TO SAP OR A PDF OR A RAZORPAY
+PAYROLL ETC -- ALSO ATTACH A ATTENDANCE SOFTWARE ... RUN THE PAYROL PREVIEW FOR THIS MONTH AND AI WILL SEND IT TO USER WITH PERFECT
+REPORT FOR APPROVAL ... WE WANT A PERFECT GENERALIZE AI PAYROLL SYTEM" -> design claude.ai/artifact/R6gYtFbfoHf1FHDs5AzEG4 -> "GO".
+Built on the v0.999.169 Payroll desk (nothing replaced).
+
+- Part 1 size: `payroll_flow.SIZES` very_small 1-10 / small 11-50 / medium 51-500 / large 501-5,000 / big 5,000+; `setup_size`
+  (countries, frequency incl. mixed, attendance); each size = the ways in shown first, the chain (`["approve"]` or
+  `["check","approve"]`), split (preparer / checker / approver differ when the Books team has people), report depth. The desk opens
+  on the size page until a size is set (no business yet = the business made on the same page). `next_steps` = the dashboard steps
+  from the real state (size, people, attendance, past pay, rules checked, same as before, preview).
+- Part 2 linking: `people_file` (CSV / XLSX: PALIAS columns; Basic + other number columns = the person's own pay parts, deduction
+  words -> deduction, statutory columns (PF / ESI / PT / TDS / NI / CPF ...) left to the country rules; problems per line: no name,
+  pay not a number, unreadable date, the same code / email / payee / name twice; matches an existing person by code / name / email
+  = update with pay history); PDF / photo / pasted text -> `books_feed.text_of` + ONE AI call (AI_PEOPLE / AI_HISTORY) -> proposals,
+  `import_apply` only with her ticked lines; every import applied on its hash. `people_sheet` + `people_sheet_read` and
+  `people_software_read` (Composio EMPLOYEE / PEOPLE / WORKER / STAFF list tools, read only) apply ready lines by themselves and leave
+  problem lines waiting. `sources` shows each program's real state (connected / can_connect / not_offered / off). `attendance_file`:
+  punch exports (code / name, date, in / out or one time a row) -> per period days_present, hours, late_days (policy shift start +
+  grace), optional overtime_hours; a summary file goes straight in. `history_file` -> `history[period][person]` (gross, net, inputs,
+  part columns), up to 36 months.
+- Part 3 building blocks: `payroll_formula.py` (ast allow-list, Decimal, `a ? b : c`, min / max / round / floor / ceil / abs /
+  clamp, division by zero = 0 with a note, unknown word refused); parts {name, kind earning | untaxed | pre_tax | deduction |
+  employer, formula, applies_to, prorate} company-wide (`part_save` checks words) or per person; `payroll.pay_one` works them out
+  (words: basic, period_pay, day_pay, hour_pay, paid_ratio, inputs, earlier parts, person numbers); a money input a part names is
+  not also added on its own; `policy_save` days calendar / working / thirty, week_days, round_net, standard_hours, jump_pct,
+  minimum_pay, shift_start, grace_min, day_hours, overtime_from_punches. `propose_parts` = AI proposals only. `match_test` works out
+  a paid month dry (`payroll.compute`, nothing saved) and compares gross, net and same-named parts to the cent; `match_accept` (owner,
+  reason); `gate` blocks the preview until matched / accepted and again after any rule change (`rules_sig`).
+- Part 4 preview: `preview` = gate + `payroll_desk.prepare` + flags (payee changed in 30 days, jump over her %, 0 days present but
+  paid, below her minimum, net <= 0, one payee / email twice) + changes + by department / location / cost centre / company (by size)
+  + cash needed (net + all dues) by pay day + dues; saved on the flow, its line said in the Payroll chat (a message = her phone push);
+  `report`, `report_pdf`.
+- Part 5: `check_run` (hash, not the preparer when there is a team) and `chain_ok` inside `payroll_desk.approve`; pay file
+  `in_bulk` (India bulk NEFT: account 9-18 digits + IFSC, typed for that file only); `history_report` (months from runs + past pay).
+- Part 6: `group_view` every business with payroll people, its latest period, totals per currency (never converted). MAX_PEOPLE 500
+  -> 10,000; runs kept 24 instead of 60 above 1,000 people.
+- Desk (payrolldesk.js): size page, Dashboard, People (ways in, imports with ticks, past pay), Attendance & inputs (machine file),
+  Pay rules (parts, habits, propose, same as before), Run payroll (the report, check / approve), Reports, All businesses; India bulk
+  file on Payslips & pay. Chat tool `payroll_worldwide` gains sources, people_text, import_view, history, parts, part_save,
+  policy_save, propose_parts, match_test, preview, report, history_report, group_view (using an import, accepting, checking and
+  approving stay her taps).
+- FIXED: v0.999.169 named the payroll worker timer `_pr_last`, the CA practice job's dict of timers; `practice_jobs` raised
+  "'float' object is not subscriptable" on every tick since. Now `_payroll_last`; a test keeps them apart.
+- Tests: test_v0999_171_payroll_sizes.py (7 incl. a Chromium walk at 1440 / 390); the v0.999.169 walk moved to the size page.
+- NOT VERIFIED: her server; a real AI read of a PDF / photo; a real payroll / HR program through Connectors (tool names guessed by
+  pattern); a real attendance machine export (formats vary); 10,000 people in one business (settings JSON); bank formats other than
+  the generic CSV, India bulk and pain.001.

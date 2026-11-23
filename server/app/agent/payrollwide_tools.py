@@ -9,8 +9,12 @@ from typing import Any
 from .tools import Ctx, ToolError
 
 _ACTIONS = ["settings", "employee", "people", "run", "close", "payslip", "payments", "filings", "done", "contractors",
-            "desk", "inputs", "input_rows", "missing", "changes", "prepare", "rules", "starting_list", "apply_starting_list"]
-_CHANGES = {"settings", "employee", "run", "close", "done", "input_rows", "prepare", "apply_starting_list"}
+            "desk", "inputs", "input_rows", "missing", "changes", "prepare", "rules", "starting_list", "apply_starting_list",
+            "sources", "people_text", "import_view", "history", "parts", "part_save", "policy_save", "propose_parts", "match_test",
+            "preview", "report", "history_report", "group_view"]
+_CHANGES = {"settings", "employee", "run", "close", "done", "input_rows", "prepare", "apply_starting_list", "people_text", "part_save",
+            "policy_save", "match_test", "preview"}
+# v0.999.171 using an import (her tick on each line read by AI), accepting a test difference, checking and approving stay HER taps
 # v0.999.169 approving a run, the payment file, payslip emails and checking a country rule are HER taps on the Payroll desk
 
 PAYROLLWIDE_TOOLS = [
@@ -33,7 +37,16 @@ PAYROLLWIDE_TOOLS = [
         "the run from her people + checked inputs, with changes from the last run; changes (period); rules (her country rules and "
         "which still need a check); starting_list (country) / apply_starting_list (country): the country's starting list, every rule "
         "marked 'check this' and not used until a person checks it on the desk. Approving a run, the payment file, payslip emails "
-        "and checking a rule are HER taps on the Payroll desk - never say they are done."),
+        "and checking a rule are HER taps on the Payroll desk - never say they are done. "
+        "v0.999.171 every size: sources (where her people can come from and which programs are connected); people_text (text = pasted "
+        "lines -> proposed people she ticks on the People page); import_view (import); history (past pay); parts (her pay parts, habits "
+        "and the words a formula may use); part_save {name, kind earning|untaxed|pre_tax|deduction|employer, formula, applies_to all | "
+        "department:X | location:X | company:X | people:id1,id2, new_words} - a formula uses numbers, + - * / ( ), min, max, round, "
+        "`a ? b : c` and known words only; policy_save {days calendar|working|thirty, week_days, round_net, shift_start HH:MM, "
+        "grace_min, day_hours, jump_pct, minimum_pay, overtime_from_punches}; propose_parts (text = her payslip / policy -> proposals, "
+        "nothing saved); match_test (period YYYY-MM she already paid -> every person must match to the cent); preview (period) = "
+        "'run the payroll preview': prepares, checks and reports (flags, changes, cash needed, by department) and tells her in this "
+        "chat - say its line; report (period); history_report; group_view (every business). Checking and approving are her taps."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": _ACTIONS}, "workspace": {"type": "string"}, "country": {"type": "string"},
          "frequency": {"type": "string"}, "source": {"type": "string"},
@@ -46,7 +59,13 @@ PAYROLLWIDE_TOOLS = [
          "filing": {"type": "string"}, "for": {"type": "string"}, "on": {"type": "string"}, "reference": {"type": "string"},
          "rows": {"type": "array", "items": {"type": "object"}}, "contractors": {"type": "array", "items": {"type": "string"}},
          "threshold": {"type": "number"}, "tax_ids": {"type": "object"}, "basis": {"type": "string"},
-         "status": {"type": "string"}, "source_name": {"type": "string"}, "file": {"type": "string"}},
+         "status": {"type": "string"}, "source_name": {"type": "string"}, "file": {"type": "string"},
+         "text": {"type": "string"}, "import": {"type": "string"}, "kind": {"type": "string"}, "formula": {"type": "string"},
+         "applies_to": {"type": "string"}, "new_words": {"type": "array", "items": {"type": "string"}}, "days": {"type": "string"},
+         "week_days": {"type": "integer"}, "round_net": {"type": "integer"}, "shift_start": {"type": "string"},
+         "grace_min": {"type": "number"}, "day_hours": {"type": "number"}, "jump_pct": {"type": "number"},
+         "minimum_pay": {"type": "number"}, "overtime_from_punches": {"type": "boolean"}, "months": {"type": "integer"},
+         "tell": {"type": "boolean"}},
          "required": ["action"]}},
 ]
 PAYROLLWIDE_LABELS = {"payroll_worldwide": "Working out the payroll"}

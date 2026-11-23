@@ -1025,15 +1025,15 @@ async def books_feed_jobs() -> None:
     await asyncio.to_thread(_bb.tick)
 
 
-_pr_last = 0.0
+_payroll_last = 0.0
 
 
 async def payroll_desk_jobs() -> None:
     """v0.999.169 PAYROLL DESK: pay inputs from her payroll email, sheet and programs, and the Paid check, every 30 minutes."""
-    global _pr_last
-    if time.time() - _pr_last < 1800:
+    global _payroll_last
+    if time.time() - _payroll_last < 1800:
         return
-    _pr_last = time.time()
+    _payroll_last = time.time()
     from .fin.desks import payroll_desk as _pd
     await _pd.tick()
 
