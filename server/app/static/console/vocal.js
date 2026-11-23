@@ -44,7 +44,7 @@ window.HoolaVocal = function (ctx) {
     dubSel: null, dubHear: 'dub', dubRead: false, dubUndo: null, dubDl: {what: 'video', on: {}}, dubKeep: [],
     chg: {file: null, voice: '', denoise: true, secs: 0, out: null, view: '', start: 0, end: 0, close: 75, feel: 50, hear: 'after', cmp: ['', '', ''], cmpOut: null, cmpPick: '', rm: true, filt: '', fileFor: ''},
     cl: {file: null, denoise: true, noise: 'medium', voice: true, level: true, target: 'podcast', silence: false, gap: 1, people: false, music: false, secs: 0, out: null, heard: null, listening: false, kind: '', job: null, view: '', hear: 'after', filt: '', fileFor: ''},
-    fx: {prompt: '', seconds: 0, loop: false, takes: 4, out: []}, seed: 1, snd: {tab: 'All', q: ''}, side: {tab: 'All', q: ''},
+    fx: {prompt: '', seconds: 0, loop: false, takes: 4, follow: 3, out: [], sel: '', tab: 'words', view: '', idea: 'Nature', job: null, shp: null, partial: null, imp: null, improving: false, pad: '', seed: 1, filt: '', q: ''}, seed: 1, snd: {tab: 'All', q: ''}, side: {tab: 'All', q: ''},
     dict: {imp: false, text: '', lang: ''}, apps: null, newKey: null, newHook: null, appName: '', hookUrl: '', kept: store.get('hv.kept', []), nav: false, slim: !!store.get('hv.slim', false),
     cw: Math.max(380, +store.get('hv.chatw', 640) || 640), cmode: store.get('hv.chatmode', 'balanced'), peek: false, recent: null, queue: []};
 
@@ -84,7 +84,7 @@ window.HoolaVocal = function (ctx) {
     dl: 'M12 4v12M7 11l5 5 5-5M5 20h14', mic: 'M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M12 17v4',
     check: 'M5 12.5l4.5 4.5L19 7.5', warn: 'M12 7v6M12 17h.01', redo: 'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7', trash: 'M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13',
     copy: 'M9 9h10v10H9zM5 15V5h10', globe: 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM3.5 12h17M12 3.5c2.5 2.6 3.6 5.4 3.6 8.5s-1.1 5.9-3.6 8.5c-2.5-2.6-3.6-5.4-3.6-8.5s1.1-5.9 3.6-8.5z'};
-  const FILLED = {play: '<path d="M8 5v14l11-7z"/>', pause: '<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>', stopf: '<rect x="7" y="7" width="10" height="10" rx="2"/>',
+  const FILLED = {play: '<path d="M8 5v14l11-7z"/>', starf: '<path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/>', pause: '<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>', stopf: '<rect x="7" y="7" width="10" height="10" rx="2"/>',
     more: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>'};
   const ic = (n, s = 16) => FILLED[n] ? `<svg class="hv-i f" width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true">${FILLED[n]}</svg>`
     : `<svg class="hv-i" width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true"><path d="${P[n] || ''}"/></svg>`;
@@ -697,7 +697,7 @@ window.HoolaVocal = function (ctx) {
     cleanup() { clPrice();
       $$('[data-drop="cl"]').forEach(el => { el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('over'); }); el.addEventListener('dragleave', () => el.classList.remove('over'));
         el.addEventListener('drop', e => { e.preventDefault(); el.classList.remove('over'); const f = e.dataTransfer?.files?.[0]; if (f) clFile(f, 0); }); }); },
-    sfx() { price('fx', {job: 'sfx', seconds: UI.fx.seconds || 5, takes: UI.fx.takes}); },
+    sfx() { fxPrice(); if (UI.fx.job && !UI.fx.poll) fxPoll(); },
     dub() { topTools(); dubPosters();
       if (!ARG) { if (UI.dubNew.file) price('dub', {job: UI.dubNew.mode === 'own' ? 'dub_own' : 'dub_matched', seconds: UI.dubNew.secs || 60, langs: UI.dubNew.langs.length || 1});
         $$('[data-drop="dub"]').forEach(el => { el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('over'); }); el.addEventListener('dragleave', () => el.classList.remove('over'));
@@ -1328,18 +1328,10 @@ window.HoolaVocal = function (ctx) {
     },
 
     sfx() {
-      const f = UI.fx, w = ready('eleven') ? '' : whyNot('eleven'), g = gate(paid(w || (f.prompt.trim().length < 3 ? 'Describe the sound first.' : '')));
-      return `<div class="hv-split hv-tool">${panel('Sound effects', `<form class="hv-form" data-f="sfx"><b class="hv-t">Sound effects</b>${w ? warnNote('Sounds from words run on ElevenLabs only. ' + w) : ''}
-          <div class="hv-fld"><label class="hv-lab" for="hvFx">Describe the sound</label><textarea id="hvFx" class="hv-in" rows="3" maxlength="450" data-m="UI.fx.prompt" placeholder="A temple bell, far away, soft echo">${esc(f.prompt)}</textarea></div>
-          <div class="hv-row2">${dd('Length', 'picklen', 'UI.fx.seconds', f.seconds ? `${f.seconds} seconds` : 'Auto')}
-            <div class="hv-fld"><span class="hv-lab">Loop</span><button type="button" class="hv-chip${f.loop ? ' on' : ''}" data-a="fxloop" aria-pressed="${f.loop}">Loops smoothly</button></div></div>
-          <div class="hv-fld"><span class="hv-lab">Takes</span>${seg('UI.fx.takes', [[1, '1'], [2, '2'], [3, '3'], [4, '4']], f.takes, null, 'Takes')}</div>
-          <button class="hv-cta" data-qbtn="fx" data-label="Make ${f.takes} take${f.takes > 1 ? 's' : ''}"${g.a}><span>Make ${f.takes} take${f.takes > 1 ? 's' : ''}</span></button>${g.l}<p class="hv-hint c" data-qline="fx"></p>
-          <div class="hv-fld"><span class="hv-lab">Quick game sounds</span><span class="hv-mut hv-sm">Coin, jump, click and more, made on Hoola’s own server. The same choice always gives the same sound.</span>
-            <div class="hv-pads">${(D.sfx || []).map(p => `<button type="button" class="hv-chip" data-a="preset" data-val="${esc(p)}">${ic('fx', 12)}${esc(String(p).replace(/_/g, ' '))}</button>`).join('') || '<span class="hv-mut hv-sm">No quick sounds on this server.</span>'}</div></div></form>`)}
-        ${stage('Takes', `<b>Takes</b><span class="hv-mut hv-sm">${f.out.length ? esc(f.prompt.slice(0, 60)) : ''}</span>`, f.out.length ? `<div class="hv-list">${f.out.map((t, i) => `<article class="hv-card hv-mv">${playBtn(t.id, `Play version ${i + 1}`, 12)}
-            <span class="hv-vt"><b>Version ${i + 1}</b><span class="hv-mut hv-sm hv-num">${t.seconds ? secs(t.seconds) : ''}</span></span><button type="button" class="hv-btn" data-a="dlmenu" data-id="${esc(t.id)}" aria-haspopup="menu">Download${ic('down', 12)}</button></article>`).join('')}</div>`
-          : empty('No sounds yet', 'Describe a sound on the left, or tap a quick game sound.'))}</div>`;
+      if (UI.fx.job) return fxWork();
+      if (UI.fx.view === 'list') return fxList();
+      if (UI.fx.tab === 'game') return fxGame();
+      return fxMain();
     },
 
     sounds() {
@@ -2360,6 +2352,216 @@ window.HoolaVocal = function (ctx) {
     price('cl', {job: 'isolate', seconds: UI.cl.secs || 60}, r => r.credits != null ? `${UI.cl.secs ? secs(UI.cl.secs) + ' of sound' : 'Priced for a minute'} · lifting the voice out · the rest is free` : esc(scrub(r.line || '')));
   }
 
+  // ------------------------------------------------------------------ Sound effects (v0.999.162, design canvas claude.ai/artifact/2vU7LhKsPWKeT58GXAwRdK)
+  // From words: describe it (Improve the words, add-to chips), length, how closely to follow the words, loop, takes; the
+  // takes are made in the background and land one by one (Stop after this take); keep, download, make more like these;
+  // Shape it on this server for free (trim, fades, volume, speed, backwards, smooth loop). Game sounds: made by code here,
+  // free, listened to without keeping, numbered versions, the whole set as a ZIP. Your sound effects: by day, filters.
+  const FX_IDEAS = {
+    'Nature': [['Rain', 'Heavy rain on a tin roof, thunder far away'], ['Forest morning', 'Birds waking up in a quiet forest, a stream nearby'], ['Ocean', 'Waves rolling onto a sandy beach, calm wind'],
+      ['Fire', 'A crackling campfire, small pops, close up'], ['Wind', 'Cold wind through a narrow mountain pass'], ['Night', 'Crickets and frogs by a pond on a warm night']],
+    'City': [['Busy street', 'A busy city street, horns and people talking'], ['Train station', 'A train arriving at a station, brakes and an announcement chime'], ['Café', 'A small café, cups, quiet talk, an espresso machine'],
+      ['Market', 'An open-air market, sellers calling out, coins'], ['Metro door', 'A metro door closing with a two-note chime'], ['Traffic at night', 'Light traffic at night after rain, tyres on a wet road']],
+    'Home': [['Door', 'A wooden door creaking open slowly'], ['Kettle', 'A kettle coming to the boil and clicking off'], ['Kitchen', 'Chopping vegetables on a wooden board'],
+      ['Clock', 'An old wall clock ticking in a quiet room'], ['Keys', 'A bunch of keys dropped on a table'], ['Pouring', 'Water poured into a glass, ice cubes']],
+    'Animals': [['Dog', 'A small dog barking twice, friendly'], ['Cat', 'A cat purring close up'], ['Cows', 'Cow bells in a field, slow'],
+      ['Rooster', 'A rooster at dawn, far away'], ['Horse', 'A horse trotting on a cobbled road'], ['Bees', 'Bees buzzing around flowers in the sun']],
+    'Film': [['Whoosh', 'A fast whoosh passing left to right'], ['Impact', 'A deep cinematic hit with a long low rumble'], ['Riser', 'A tension riser building for five seconds'],
+      ['Heartbeat', 'A slow heartbeat, muffled, getting faster'], ['Footsteps', 'Footsteps on gravel walking away'], ['Sword', 'A sword pulled from its sheath, metallic ring']],
+    'Transitions': [['Swish', 'A soft swish for a slide change'], ['Pop', 'A small bright pop, for a title appearing'], ['Glitch', 'A short digital glitch, two stutters'],
+      ['Reverse cymbal', 'A reversed cymbal rising into a cut'], ['Page turn', 'A paper page turning, close'], ['Camera shutter', 'A camera shutter click with a short wind']],
+    'Phone and app': [['Notification', 'A gentle two-note notification chime'], ['Success', 'A bright short success sound'], ['Error', 'A soft low error buzz, not harsh'],
+      ['Message sent', 'A quick upward swoosh for a sent message'], ['Tap', 'A soft wooden tap for a button'], ['Payment done', 'A warm coin chime for a payment']],
+    'Celebrations': [['Fireworks', 'Fireworks far away, crackling and booming'], ['Applause', 'A crowd clapping and cheering in a hall'], ['Temple bell', 'A temple bell rung once, soft echo'],
+      ['Drums', 'Festival drums in the street, energetic'], ['Party popper', 'A party popper and paper falling'], ['Countdown', 'A crowd counting down from three and cheering']]};
+  const FX_ADDS = [['Far away', 'far away'], ['Close up', 'close up'], ['Echo', 'with an echo'], ['Indoors', 'indoors'], ['Outdoors', 'outdoors'], ['Builds up', 'building up slowly'], ['Slow', 'slow']];
+  const FX_LENS = [[0, 'Auto'], [1, '1 s'], [3, '3 s'], [5, '5 s'], [10, '10 s'], [30, '30 s']];
+  const FX_PADS = [['coin', 'Coin', 'C'], ['jump', 'Jump', 'J'], ['powerup', 'Power-up', 'P'], ['laser', 'Laser', 'L'], ['explosion', 'Explosion', 'X'],
+    ['hit', 'Hit', 'H'], ['hurt', 'Hurt', 'U'], ['blip', 'Blip', 'B'], ['click', 'Click', 'K'], ['select', 'Select', 'S']];
+  const fxPads = () => { const on = new Set(D.sfx || []); return FX_PADS.filter(p => on.has(p[0])).concat((D.sfx || []).filter(p => !FX_PADS.some(x => x[0] === p)).map(p => [p, p.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase()), p[0].toUpperCase()])); };
+  const fxHist = () => D.history.filter(h => h.kind === 'sfx');
+  const fxLen = v => !v ? '' : +v < 10 ? `${(+v).toFixed(1)} s` : secs(v);
+  const fxFollow = v => v <= 2 ? 'Loose' : v <= 6 ? 'Balanced' : 'Close';
+  const fxHas = w => new RegExp(`(^|[\\s,])${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[\\s,.])`, 'i').test(UI.fx.prompt);
+  const fxBody = () => ({prompt: UI.fx.prompt.trim(), seconds: +UI.fx.seconds, loop: !!UI.fx.loop, takes: +UI.fx.takes, follow: +UI.fx.follow / 10, wait: false});
+  const fxTakesLabel = n => `Make ${plural(n, 'take')}`;
+  const fxCur = () => UI.fx.out.map(t => D.history.find(x => x.id === t.id) || t);
+  function fxTop(sub) {
+    const tab = UI.fx.view === 'list' ? '' : UI.fx.tab;
+    return `<div class="hv-chgtop hv-fxtop"><span class="hv-vt"><b class="hv-chgt">${UI.fx.view === 'list' ? 'Your sound effects' : 'Sound effects'}</b><span class="hv-mut hv-sm">${esc(sub)}</span></span>
+      ${UI.fx.view === 'list' ? '' : `<div class="hv-seg" role="tablist" aria-label="How to make it">${[['words', 'From words'], ['game', 'Game sounds · free']].map(([k, l]) =>
+        `<button type="button" role="tab" aria-selected="${tab === k}" aria-checked="${tab === k}" data-a="fxtab" data-val="${k}">${l}</button>`).join('')}</div>`}
+      <span class="hv-grow"></span>
+      ${UI.fx.view === 'list' ? `<button type="button" class="hv-btn" data-a="fxview" data-val="">${ic('back', 14)}<span>Sound effects</span></button>`
+        : `<button type="button" class="hv-btn" data-a="fxview" data-val="list">Your sound effects <span class="hv-num hv-mut">${num(fxHist().length)}</span></button>`}</div>`;
+  }
+  function fxForm() {
+    const f = UI.fx, w = ready('eleven') ? '' : whyNot('eleven'), n = +f.takes || 4;
+    const g = gate(w ? 'Sounds from words are not on this server yet.' : broke() ? NO_CR : f.prompt.trim().length < 3 ? 'Describe the sound first.' : '');
+    return `<section class="hv-chgl hv-fxleft" aria-label="Describe the sound">
+      ${w ? `<div class="hv-card hv-fxnot"><span class="hv-badge warn">Not connected</span><b>Sounds from words are not on this server yet</b>
+        <span class="hv-sm">${esc(scrub(whyNot('eleven')))} Nothing was charged. Game sounds always work: they are made on Hoola’s own server.</span>
+        <div class="hv-acts"><button type="button" class="hv-cta s" data-a="fxtab" data-val="game"><span>Open game sounds</span></button></div></div>` : ''}
+      <div class="hv-card hv-fxbox"><label class="hv-lab" for="hvFx">Describe the sound</label>
+        <textarea id="hvFx" class="hv-fxta" rows="3" maxlength="450" data-m="UI.fx.prompt" placeholder="A temple bell rung once, far away, with a soft echo">${esc(f.prompt)}</textarea>
+        <div class="hv-rh"><button type="button" class="hv-btn s" data-a="fximprove"${f.improving ? ' disabled aria-describedby="hvFxImpW"' : ''}>${ic('wand', 13)}<span>${f.improving ? 'Improving…' : 'Improve the words'}</span></button>${f.improving ? '<span class="hv-sr" id="hvFxImpW">Hoola is rewriting your words; yours stay until you choose.</span>' : ''}
+          <span class="hv-grow"></span><span class="hv-num hv-mut hv-sm" id="hvFxN">${num(f.prompt.length)} / 450</span></div>
+        ${f.imp ? `<div class="hv-fximp" role="status"><span class="hv-lab">Hoola suggests${f.imp.why ? ` · ${esc(f.imp.why)}` : ''}</span><p class="hv-fxq">${esc(f.imp.text)}</p>
+          <div class="hv-acts"><button type="button" class="hv-btn s dark" data-a="fximpuse">Use these words</button><button type="button" class="hv-btn s" data-a="fximpno">Keep mine</button></div></div>` : ''}</div>
+      <div class="hv-fld"><span class="hv-lab" id="hvFxAdd">Add to the words</span><div class="hv-chips" role="group" aria-labelledby="hvFxAdd">${FX_ADDS.map(([l, wd]) =>
+        `<button type="button" class="hv-chip" aria-pressed="${fxHas(wd)}" data-a="fxadd" data-val="${esc(wd)}">${esc(l)}</button>`).join('')}</div></div>
+      <div class="hv-card hv-fxset">
+        <div class="hv-fxrow"><span class="hv-fxk">Length</span>${seg('UI.fx.seconds', FX_LENS, +f.seconds, null, 'Length')}</div>
+        <div class="hv-fxrow col"><div class="hv-rh"><label class="hv-fxk w" for="hvFxF">How closely to follow your words</label><span class="hv-sm hv-acc" data-show-follow>${fxFollow(+f.follow)}</span></div>
+          <input id="hvFxF" type="range" min="0" max="10" step="1" value="${+f.follow}" data-m="UI.fx.follow" data-t="num" data-follow="1">
+          <span class="hv-ends hv-sm hv-mut"><span>Free, more surprising</span><span>Exactly what I wrote</span></span></div>
+        <label class="hv-fxrow"><span class="hv-vt hv-grow"><span class="hv-fxk w">Loops smoothly</span><span class="hv-mut hv-sm">The end runs into the start, for rain, a fan or a crowd behind a video</span></span>
+          <input type="checkbox" class="hv-fxsw" role="switch" data-m="UI.fx.loop" data-t="bool" data-redraw="1"${f.loop ? ' checked' : ''}></label>
+        <div class="hv-fxrow"><span class="hv-fxk">Takes</span>${seg('UI.fx.takes', [[1, '1'], [2, '2'], [3, '3'], [4, '4']], n, null, 'Takes')}<span class="hv-mut hv-sm">Different every time</span></div></div>
+      <div class="hv-chgcta"><button type="button" class="hv-cta" data-a="fxmake" data-qbtn="fx" data-label="${fxTakesLabel(n)}"${g.a}><span>${fxTakesLabel(n)}</span></button>${g.l}
+        <p class="hv-hint c" data-qline="fx">Sounds from words run on ElevenLabs · nothing is spent until you press Make</p></div></section>`;
+  }
+  function fxIdeas() {
+    const k = FX_IDEAS[UI.fx.idea] ? UI.fx.idea : 'Nature';
+    return `<section class="hv-chgr hv-fxr" aria-label="Ideas">
+      <div class="hv-fxhero"><span class="hv-fxfig" aria-hidden="true">${chgBars(null, 'hero', 28)}</span><h2 class="hv-yvtitle">Describe any sound. Hoola makes it.</h2>
+        <p class="hv-yvlead">Say what it is, where it is and how it moves. You get up to four takes to choose from.</p></div>
+      <div class="hv-rh"><b>Ideas to start from</b></div>
+      <div class="hv-chips" role="tablist" aria-label="Kinds of sound">${Object.keys(FX_IDEAS).map(x => `<button type="button" class="hv-chip" role="tab" aria-selected="${x === k}" aria-checked="${x === k}" data-a="fxidea" data-val="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+      <div class="hv-fxideas">${FX_IDEAS[k].map(([t, d], i) => `<button type="button" class="hv-card hv-fxidea t${i}" data-a="fxuse" data-val="${esc(d)}"><span class="hv-fxit" aria-hidden="true">${chgBars(null, t, 7)}</span>
+        <span class="hv-vt"><b class="hv-sm">${esc(t)}</b><span class="hv-fxq s">${esc(d)}</span></span></button>`).join('')}</div>
+      <button type="button" class="hv-fxgame" data-a="fxtab" data-val="game"><span class="hv-chips">${fxPads().slice(0, 5).map(p => `<span class="hv-tag">${esc(p[1])}</span>`).join('')}</span>
+        <span class="hv-sm hv-grow">Making a game? ${num(fxPads().length)} quick game sounds, free, made on Hoola’s own server.</span><span class="hv-lnk">Open game sounds</span></button></section>`;
+  }
+  function fxTakes() {
+    const f = UI.fx, takes = fxCur(), sel = takes.find(t => t.id === f.sel) || takes[0], first = takes[0] || {};
+    const sub = [first.text ? `“${first.text.slice(0, 70)}${first.text.length > 70 ? '…' : ''}”` : first.title || '', first.length ? `${first.length} s` : 'Auto length', first.loop ? 'loops' : '', first.made ? ago(first.made) : ''].filter(Boolean).join(' · ');
+    const card = t => { const on = sel && t.id === sel.id;
+      return `<article class="hv-card hv-fxtake${on ? ' on' : ''}" data-take="${esc(t.id)}"><div class="hv-rh">
+          <span class="hv-fxl t${'ABCD'.indexOf(t.take || 'A')}">${esc(t.take || (t.preset ? '#' : 'S'))}</span>
+          <button type="button" class="hv-vt hv-grow hv-fxpick" data-a="fxsel" data-id="${esc(t.id)}" aria-pressed="${!!on}"><b class="hv-sm">${t.take ? `Take ${esc(t.take)}` : esc(t.title || 'Sound')}</b><span class="hv-num hv-mut hv-sm">${fxLen(t.seconds)}${t.shaped ? ' · shaped' : ''}</span></button>
+          <button type="button" class="hv-ib s${t.star ? ' kept' : ''}" data-a="fxstar" data-id="${esc(t.id)}" aria-pressed="${!!t.star}" aria-label="${t.star ? 'Kept in Your sound effects: tap to unkeep' : 'Keep this take'}">${ic(t.star ? 'starf' : 'star', 16)}</button>
+          <button type="button" class="hv-ib s" data-a="dlmenu" data-id="${esc(t.id)}" aria-haspopup="menu" aria-label="Download ${esc(t.take ? 'take ' + t.take : t.title || 'this sound')}">${ic('dl', 16)}</button></div>
+        <div class="hv-rh">${playBtn(t.id, `Play ${t.take ? 'take ' + t.take : t.title || 'the sound'}`, 13, on ? ' l acc' : ' l')}<span class="hv-chgw hv-grow${on ? ' acc' : ''}" aria-hidden="true">${chgBars(null, t.id, 60)}</span></div></article>`; };
+    const pf = f.partial;
+    return `<section class="hv-chgr hv-fxr" aria-label="Takes">
+      <div class="hv-rh"><b>${takes.length === 1 ? 'Your sound' : `${num(takes.length)} takes`}</b><span class="hv-mut hv-sm hv-ell hv-grow">${esc(sub)}</span>
+        ${first.text && ready('eleven') ? `<button type="button" class="hv-btn s" data-a="fxmore">Make ${num(+f.takes || 4)} more like ${takes.length > 1 ? 'these' : 'this'}</button>` : ''}</div>
+      ${pf ? `<div class="hv-card hv-fxpart" role="status"><b class="hv-sm">${num(pf.made)} of ${num(pf.asked)} takes were made</b><span class="hv-sm">${esc(scrub(pf.error || ''))} You were charged only for the ${plural(pf.made, 'take')} that landed.</span>
+        <div class="hv-acts"><button type="button" class="hv-btn s dark" data-a="fxrest" data-n="${pf.asked - pf.made}">Make ${num(pf.asked - pf.made)} more</button><button type="button" class="hv-btn s" data-a="fxpartno">Keep these</button></div></div>` : ''}
+      <div class="hv-fxtakes">${takes.map(card).join('')}</div>
+      ${sel ? fxShape(sel) : ''}</section>`;
+  }
+  function fxShape(t) {
+    const f = UI.fx, s = f.shp && f.shp.for === t.id ? f.shp : (f.shp = {for: t.id, start: 0, end: +t.seconds || 0, fade_in: 0, fade_out: 0, gain: 0, speed: 1, reverse: false, loop: false});
+    const tot = +t.seconds || 0, ok = ready('server'), a = tot ? s.start / tot * 100 : 0, b = tot ? (s.end || tot) / tot * 100 : 100;
+    const made = D.history.filter(h => h.shaped_from === t.id).slice(0, 3);
+    const sl = (k, label, min, max, step, show) => `<div class="hv-fxsl"><span class="hv-rh hv-sm"><label class="hv-grow" for="hvFxS${k}">${label}</label><span class="hv-num" data-show-shp="${k}">${show(s[k])}</span></span>
+      <input id="hvFxS${k}" type="range" min="${min}" max="${max}" step="${step}" value="${s[k]}" data-shp="${k}"${ok ? '' : ' disabled aria-describedby="hvFxShW"'}></div>`;
+    const fx1 = v => `${(+v).toFixed(1)} s`;
+    return `<div class="hv-card hv-fxshape"><div class="hv-rh"><b>Shape ${t.take ? 'take ' + esc(t.take) : esc(t.title || 'this sound')}</b><span class="hv-badge ok">Free on Hoola’s server</span><span class="hv-grow"></span>
+        <span class="hv-num hv-mut hv-sm" data-shp-range>${fx1(s.start)} – ${fx1(s.end || tot)} · ${fx1((s.end || tot) - s.start)}</span></div>
+      ${ok ? '' : `<p class="hv-why" id="hvFxShW">${esc(scrub(whyNot('server')))} Shaping needs it.</p>`}
+      <div class="hv-fxtrim" aria-hidden="true" style="--a:${a.toFixed(2)}%;--b:${b.toFixed(2)}%"><span class="hv-chgw">${chgBars(null, t.id, 110)}</span><span class="hv-fxcut l"></span><span class="hv-fxcut r"></span><span class="hv-fxh l"></span><span class="hv-fxh r"></span></div>
+      <div class="hv-fxsls">${sl('start', 'Start', 0, tot, 0.05, fx1)}${sl('end', 'End', 0, tot, 0.05, v => fx1(v || tot))}
+        ${sl('fade_in', 'Fade in', 0, 3, 0.1, fx1)}${sl('fade_out', 'Fade out', 0, 3, 0.1, fx1)}
+        ${sl('gain', 'Volume', -12, 12, 1, v => `${+v > 0 ? '+' : ''}${(+v).toFixed(0)} dB`)}${sl('speed', 'Speed and pitch', 0.5, 2, 0.05, v => `${(+v).toFixed(2)}x`)}</div>
+      <div class="hv-rh hv-wrap"><button type="button" class="hv-chip" aria-pressed="${!!s.reverse}" data-a="fxshp" data-val="reverse"${ok ? '' : ' disabled aria-describedby="hvFxShW"'}>Play backwards</button>
+        <button type="button" class="hv-chip" aria-pressed="${!!s.loop}" data-a="fxshp" data-val="loop"${ok ? '' : ' disabled aria-describedby="hvFxShW"'}>Smooth loop</button><span class="hv-grow"></span>
+        <button type="button" class="hv-btn s" data-a="fxshpreset">Undo all</button>
+        <button type="button" class="hv-btn s acc" data-a="fxshpsave" data-id="${esc(t.id)}"${ok ? '' : ' disabled aria-describedby="hvFxShW"'}>Save as a new sound</button></div>
+      ${s.loop ? '<span class="hv-mut hv-sm">A smooth loop lays the end over the start, so fades are left out.</span>' : ''}
+      ${made.length ? `<div class="hv-fxmade"><span class="hv-lab">Shaped from this take</span>${made.map(x => `<div class="hv-chgrow">${playBtn(x.id, `Play ${x.title || 'the shaped sound'}`, 11, ' s')}
+        <span class="hv-sm hv-ell hv-grow">${esc((x.shaped || []).join(' · ') || x.title || '')}</span><span class="hv-num hv-mut hv-sm">${fxLen(x.seconds)}</span>
+        <button type="button" class="hv-ib s" data-a="dlmenu" data-id="${esc(x.id)}" aria-haspopup="menu" aria-label="Download the shaped sound">${ic('dl', 14)}</button></div>`).join('')}</div>` : ''}</div>`;
+  }
+  function fxMain() {
+    return `<div class="hv-doc hv-chg hv-fx">${fxTop('Describe a sound, or tap a game sound.')}<div class="hv-chggrid hv-fxgrid">${fxForm()}${UI.fx.out.length ? fxTakes() : fxIdeas()}</div></div>`;
+  }
+  function fxWorkInner() {
+    const j = UI.fx.job, ST = {wait: 'Waiting', now: 'Making…', done: 'Ready', failed: 'Not made', skipped: 'Stopped'};
+    return `<div class="hv-fxslots">${(j.slots || []).map(s => `<article class="hv-card hv-fxslot ${s.status}"><div class="hv-rh"><span class="hv-fxl t${'ABCD'.indexOf(s.l)}">${esc(s.l)}</span><b class="hv-sm hv-grow">Take ${esc(s.l)}</b>
+        <span class="hv-sm hv-fxst">${s.status === 'now' ? '<span class="hv-spin" aria-hidden="true"></span>' : ''}${ST[s.status] || ''}${s.status === 'done' && s.item?.seconds ? ` · ${fxLen(s.item.seconds)}` : ''}</span></div>
+      <div class="hv-rh">${s.status === 'done' && s.item ? playBtn(s.item.id, `Play take ${s.l}`, 12, ' s') : ''}<span class="hv-chgw hv-grow" aria-hidden="true">${chgBars(null, s.status === 'done' ? s.item?.id : 'wait' + s.l, 70)}</span></div></article>`).join('')}</div>`;
+  }
+  function fxWork() {
+    const j = UI.fx.job, o = j.opts || {};
+    return `<div class="hv-doc hv-chg hv-fx hv-clwork">${fxTop('Making the takes')}
+      <div class="hv-clworkb"><div class="hv-rh"><h2 class="hv-yvtitle">Making your sound</h2><span class="hv-num hv-mut" data-fxclock>${secs(j.seconds || 0)}</span><span class="hv-grow"></span>
+        <button type="button" class="hv-btn" data-a="fxstop"${j.stop ? ' disabled aria-describedby="hvFxStopW"' : ''}>${j.stop ? 'Stopping after this take…' : 'Stop after this take'}</button>${j.stop ? '<span class="hv-sr" id="hvFxStopW">The take being made now is kept; the rest are not made.</span>' : ''}</div>
+        <div class="hv-fxsum"><span class="hv-fxq">“${esc(o.prompt || '')}”</span> <span class="hv-mut hv-sm">· ${esc([o.seconds ? `${o.seconds} s` : 'Auto length', o.loop ? 'loops smoothly' : '', `follows your words ${fxFollow(Math.round((o.follow ?? 0.3) * 10)).toLowerCase()}`].filter(Boolean).join(' · '))}</span></div>
+        <div data-fxwork>${fxWorkInner()}</div>
+        <p class="hv-mut hv-sm">Each take is ready to play as soon as it lands. Stopping keeps the takes already made, and you pay only for those.</p></div></div>`;
+  }
+  function fxGame() {
+    const f = UI.fx, pads = fxPads(), cur = pads.find(p => p[0] === f.pad) || pads[0];
+    if (!cur) return `<div class="hv-doc hv-chg hv-fx">${fxTop('Free, made on Hoola’s own server')}${empty('No game sounds on this server', 'The sound maker is not part of this server.')}</div>`;
+    const s = +f.seed || 1, lo = Math.max(1, s - 2), seeds = [lo, lo + 1, lo + 2, lo + 3, lo + 4, lo + 5];
+    const kept = fxHist().find(h => h.preset === cur[0] && +h.seed === s);
+    return `<div class="hv-doc hv-chg hv-fx">${fxTop('Made by code on Hoola’s own server, free.')}
+      <div class="hv-fxgg"><section aria-label="Game sounds" class="hv-fxgl"><div class="hv-rh"><h2 class="hv-yvtitle s">Game sounds</h2><span class="hv-grow"></span>
+          <button type="button" class="hv-btn s" data-a="fxset">${ic('dl', 14)}<span>Download the set · ${plural(pads.length, 'WAV file')}</span></button></div>
+        <p class="hv-mut hv-sm">Tap to hear one. Listening is free and keeps nothing. The same number always gives the same sound.</p>
+        <div class="hv-fxpads">${pads.map(([p, l, k]) => `<button type="button" class="hv-card hv-fxpad${p === cur[0] ? ' on' : ''}" data-a="fxpad" data-val="${esc(p)}" aria-pressed="${p === cur[0]}">
+          <span class="hv-rh"><span class="hv-fxl g">${esc(k)}</span><b>${esc(l)}</b></span><span class="hv-chgw" aria-hidden="true">${chgBars(null, p, 26)}</span></button>`).join('')}</div>
+        <p class="hv-note">Need something these cannot do, like a door, a crowd or rain? <button type="button" class="hv-lnk" data-a="fxtab" data-val="words">Describe it under From words</button>.</p></section>
+      <aside class="hv-fxga" aria-label="The chosen sound"><div class="hv-rh"><span class="hv-fxl g l">${esc(cur[2])}</span><span class="hv-vt"><b>${esc(cur[1])} #${s}</b><span class="hv-mut hv-sm" id="hvFxKept">WAV · free${kept ? ' · already kept in Your sound effects' : ''}</span></span></div>
+        <div class="hv-card hv-rh hv-fxgp"><button type="button" class="hv-play l" data-a="fxhear" aria-label="Play ${esc(cur[1])} number ${s}">${ic('play', 14)}</button><span class="hv-chgw hv-grow g" aria-hidden="true">${chgBars(null, cur[0] + s, 44)}</span></div>
+        <span class="hv-lab" id="hvFxVer">Other versions of ${esc(cur[1])}</span>
+        <div class="hv-chips" role="radiogroup" aria-labelledby="hvFxVer">${seeds.map(n => `<button type="button" class="hv-chip hv-num" role="radio" aria-checked="${n === s}" data-a="fxseed" data-val="${n}">#${n}</button>`).join('')}
+          <button type="button" class="hv-lnk" data-a="fxseed" data-val="${s + 1}">Another one</button></div>
+        <div class="hv-fxgacts"><button type="button" class="hv-cta" data-a="fxkeep"${kept ? ' disabled aria-describedby="hvFxKept"' : ''}><span>${kept ? 'Kept in Your sound effects' : `Keep ${esc(cur[1])} #${s}`}</span></button>
+          <button type="button" class="hv-btn" data-a="fxgdl">${ic('dl', 14)}Download WAV</button>
+          <button type="button" class="hv-btn" data-a="fxgshape"${ready('server') ? '' : ' disabled aria-describedby="hvFxGsW"'}>Shape it: trim, fade, speed</button>${ready('server') ? '' : `<p class="hv-why" id="hvFxGsW">${esc(scrub(whyNot('server')))} Shaping needs it.</p>`}</div>
+        <span class="hv-mut hv-sm">A sound lands in Your sound effects when you keep it, or shape it.</span></aside></div></div>`;
+  }
+  function fxList() {
+    const all = fxHist(), fl = UI.fx.filt, qq = (UI.fx.q || '').trim().toLowerCase();
+    const kind = h => h.shaped_from ? 'shaped' : h.engine === 'server' || h.preset ? 'game' : 'words';
+    const list = all.filter(h => (!fl || (fl === 'kept' ? h.star : kind(h) === fl)) && (!qq || `${h.title} ${h.text || ''}`.toLowerCase().includes(qq)));
+    const dayOf = h => { const t = atOf(h.made) * 1000, d0 = new Date(); d0.setHours(0, 0, 0, 0); const d = (d0 - new Date(t).setHours(0, 0, 0, 0)) / 864e5;
+      return d <= 0 ? 'Today' : d === 1 ? 'Yesterday' : d < 7 ? 'Earlier this week' : 'Older'; };
+    const groups = []; for (const h of list) { const g = dayOf(h); let x = groups.find(y => y.h === g); if (!x) groups.push(x = {h: g, rows: []}); x.rows.push(h); }
+    const TAG = {words: ['From words', 'w'], game: ['Game sound', 'g'], shaped: ['Shaped', 's']};
+    const row = h => { const k = kind(h), sub = k === 'game' ? 'Made by code · free' : k === 'shaped' ? (h.shaped || []).join(' · ') : [h.take ? `Take ${h.take}` : '', h.credits ? plural(h.credits, 'credit') : ''].filter(Boolean).join(' · ');
+      return `<div class="hv-fxli">${playBtn(h.id, `Play ${h.title || 'the sound'}`, 11, ' l')}
+        <span class="hv-vt hv-fxlt"><span class="hv-rh"><b class="hv-ell">${esc(h.title || 'Sound')}</b>${h.star ? `<span class="hv-fxkept" title="Kept">${ic('starf', 12)}<span class="hv-sr">Kept</span></span>` : ''}</span><span class="hv-mut hv-sm hv-ell">${esc(sub)}</span></span>
+        <span class="hv-chgw s ${TAG[k][1]}" aria-hidden="true">${chgBars(null, h.id, 50)}</span>
+        <span class="hv-fxtags"><span class="hv-tag ${TAG[k][1]}">${TAG[k][0]}</span>${h.loop ? '<span class="hv-tag">Loop</span>' : ''}</span>
+        <span class="hv-num hv-mut hv-sm">${fxLen(h.seconds)}</span>
+        <span class="hv-fxla"><button type="button" class="hv-btn s" data-a="fxagain" data-id="${esc(h.id)}">${k === 'game' ? 'Other versions' : 'More like this'}</button>
+          <button type="button" class="hv-btn s" data-a="dlmenu" data-id="${esc(h.id)}" aria-haspopup="menu">Download</button>
+          <button type="button" class="hv-ib s" data-a="sndmenu" data-id="${esc(h.id)}" aria-label="More for ${esc(h.title || 'this sound')}">${ic('more')}</button></span></div>`; };
+    return `<div class="hv-doc hv-chg hv-fx">${fxTop(plural(all.length, 'sound effect'))}
+      ${all.length ? `<div class="hv-rh hv-wrap">${search('hvFxQ', 'UI.fx.q', 'Find a sound', UI.fx.q || '')}
+          <div class="hv-seg" role="radiogroup" aria-label="Show">${[['', 'All'], ['words', 'From words'], ['game', 'Game sounds'], ['shaped', 'Shaped'], ['kept', 'Kept']].map(([k, l]) => `<button type="button" role="radio" aria-checked="${fl === k}" data-a="fxfilt" data-val="${k}">${l}</button>`).join('')}</div></div>
+        <div data-fxlist>${groups.map(g => `<div class="hv-fld"><span class="hv-lab">${esc(g.h)}</span><div class="hv-card hv-fxlist">${g.rows.map(row).join('')}</div></div>`).join('') || '<p class="hv-mut hv-sm">Nothing matches.</p>'}</div>`
+        : empty('No sound effects yet', 'Describe a sound, or keep a game sound.', '<button type="button" class="hv-cta s" data-a="fxview" data-val=""><span>Make a sound</span></button>')}</div>`;
+  }
+  function fxPoll() {
+    clearTimeout(UI.fx.poll);
+    UI.fx.poll = setTimeout(async () => { const j = UI.fx.job; if (!j) return;
+      try { const r = await api('GET', `${A}/sfx/job?id=${q(j.id)}`); r.stop = j.stop; UI.fx.job = r;
+        if (r.status !== 'working') { UI.fx.job = null; const items = r.result?.items || r.slots.filter(s => s.item).map(s => s.item);
+          await load(); side();
+          if (items.length) { Object.assign(UI.fx, {out: items, sel: items[0].id, shp: null, partial: r.result?.failed || (r.status === 'stopped' && items.length < (r.slots || []).length) ? {made: items.length, asked: (r.slots || []).length, error: r.status === 'stopped' ? 'You stopped after this take.' : r.error} : null});
+            toast(r.status === 'stopped' ? `Stopped. ${plural(items.length, 'take')} kept.` : `${plural(items.length, 'take')} ready.`); draw(); return play(items[0].id); }
+          toast(r.error || (r.status === 'stopped' ? 'Stopped. Nothing was made or spent.' : 'That sound could not be made.'), r.status !== 'stopped'); return draw(); }
+        if (PAGE === 'sfx') { const w = $('[data-fxwork]'); if (w) w.innerHTML = fxWorkInner(); else draw(); const t = $('[data-fxclock]'); if (t) t.textContent = secs(r.seconds || 0); }
+      } catch (e) { UI.fx.job = null; toast(e.message, true); draw(); return; }
+      fxPoll(); }, 800);
+  }
+  function fxShpPaint() {
+    const s = UI.fx.shp, t = fxCur().find(x => x.id === s?.for); if (!s || !t) return;
+    const tot = +t.seconds || 0, end = s.end || tot, el = $('.hv-fxtrim'), fx1 = v => `${(+v).toFixed(1)} s`;
+    if (el && tot) { el.style.setProperty('--a', `${(s.start / tot * 100).toFixed(2)}%`); el.style.setProperty('--b', `${(end / tot * 100).toFixed(2)}%`); }
+    const r = $('[data-shp-range]'); if (r) r.textContent = `${fx1(s.start)} – ${fx1(end)} · ${fx1(end - s.start)}`;
+    const show = {start: fx1, end: v => fx1(v || tot), fade_in: fx1, fade_out: fx1, gain: v => `${+v > 0 ? '+' : ''}${(+v).toFixed(0)} dB`, speed: v => `${(+v).toFixed(2)}x`};
+    Object.keys(show).forEach(k => { const x = $(`[data-show-shp="${k}"]`); if (x) x.textContent = show[k](s[k]); });
+  }
+  async function fxGameUrl(dl) { const f = UI.fx, p = f.pad || fxPads()[0]?.[0]; return blobUrl(`${A}/sfx/play?preset=${q(p)}&seed=${+f.seed || 1}${dl ? '&download=1' : ''}`); }
+  function fxPrice() { if (PAGE === 'sfx' && UI.fx.tab !== 'game' && !UI.fx.view && !UI.fx.job && ready('eleven')) price('fx', {job: 'sfx', seconds: +UI.fx.seconds || 5, takes: +UI.fx.takes || 4}, r => r.credits != null ? `${UI.fx.seconds ? '' : 'Priced for 5 seconds a take · '}Sounds from words run on ElevenLabs · nothing is spent until you press Make` : esc(scrub(r.line || ''))); }
+
   // ------------------------------------------------------------------ recording in the page ---
   const REC = {};
   async function recStart(k) {
@@ -2669,6 +2871,55 @@ window.HoolaVocal = function (ctx) {
         return menu(b, [{header: 'Clean one of your sounds'}, {search: 'Find a sound', empty: 'Nothing matches'}, ...list.map(h => ({label: h.title || KIND[h.kind] || 'Sound', sub: [KIND[h.kind] || '', h.seconds ? secs(h.seconds) : ''].filter(Boolean).join(' · '),
           run: () => { chgStop(); Object.assign(UI.cl, {file: {name: h.title || 'Sound', secs: h.seconds || 0, sound: h.id}, secs: h.seconds || 0, heard: null, out: null, kind: '', fileFor: '', view: ''}); draw(); clListen(); }}))], {width: 340}); }
       case 'clfilt': UI.cl.filt = d.val || ''; return draw();
+      case 'fxtab': Object.assign(UI.fx, {tab: d.val === 'game' ? 'game' : 'words', view: ''}); if (UI.fx.tab === 'game' && !UI.fx.pad) UI.fx.pad = fxPads()[0]?.[0] || ''; draw(); { const vw = $('#hvView'); if (vw) vw.scrollTop = 0; } return fxPrice();
+      case 'fxview': UI.fx.view = d.val || ''; draw(); { const vw = $('#hvView'); if (vw) vw.scrollTop = 0; } return fxPrice();
+      case 'fxidea': UI.fx.idea = d.val; return draw();
+      case 'fxuse': UI.fx.prompt = d.val; UI.fx.imp = null; draw(); fxPrice(); return $('#hvFx')?.focus();
+      case 'fxadd': { const w = d.val, f = UI.fx;
+        if (fxHas(w)) f.prompt = f.prompt.replace(new RegExp(`\\s*,?\\s*${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=$|[\\s,.])`, 'i'), '').replace(/^\s*,\s*/, '').trim();
+        else { const t = f.prompt.trim().replace(/[.,\s]+$/, ''); f.prompt = (t ? `${t}, ${w}` : w).slice(0, 450); }
+        draw(); return $('#hvFx')?.focus(); }
+      case 'fximprove': { const f = UI.fx; if (f.prompt.trim().length < 3) return toast('Write a few words about the sound first.', true); f.improving = true; f.imp = null; draw();
+        return api('POST', `${A}/sfx/improve`, {prompt: f.prompt}).then(r => { f.imp = r; }, e => toast(e.message, true)).then(() => { f.improving = false; draw(); }); }
+      case 'fximpuse': if (UI.fx.imp) UI.fx.prompt = UI.fx.imp.text; UI.fx.imp = null; return draw();
+      case 'fximpno': UI.fx.imp = null; return draw();
+      case 'fxmake': case 'fxrest': case 'fxmore': { const f = UI.fx;
+        if (d.a === 'fxmore') { const t = fxCur()[0]; if (t?.text) Object.assign(f, {prompt: t.text, seconds: +t.length || 0, loop: !!t.loop, follow: t.follow != null ? Math.round(t.follow * 10) : f.follow}); }
+        const body = {...fxBody(), ...(d.a === 'fxrest' ? {takes: Math.max(1, Math.min(4, +d.n || 1))} : {})};
+        return act(() => api('POST', `${A}/sfx`, body), j => { chgStop(); Object.assign(UI.fx, {job: j, partial: null, imp: null}); draw(); const vw = $('#hvView'); if (vw) vw.scrollTop = 0; fxPoll(); }, b, 'Starting…'); }
+      case 'fxpartno': UI.fx.partial = null; return draw();
+      case 'fxstop': { const j = UI.fx.job; if (!j) return; j.stop = true; b.disabled = true; b.setAttribute('aria-describedby', 'hvFxStopW2'); b.insertAdjacentHTML('afterend', '<span class="hv-sr" id="hvFxStopW2">The take being made now is kept; the rest are not made.</span>'); b.textContent = 'Stopping after this take…';
+        return api('POST', `${A}/sfx/stop`, {id: j.id}).catch(e => toast(e.message, true)); }
+      case 'fxsel': UI.fx.sel = id; return draw();
+      case 'fxstar': { const h = D.history.find(x => x.id === id) || UI.fx.out.find(x => x.id === id); if (!h) return; const on = !h.star;
+        return api('POST', `${A}/history/star`, {id, on}).then(() => { [D.history.find(x => x.id === id), UI.fx.out.find(x => x.id === id)].forEach(x => { if (x) { if (on) x.star = true; else delete x.star; } });
+          toast(on ? 'Kept in Your sound effects.' : 'No longer kept.'); draw(); }, e => toast(e.message, true)); }
+      case 'fxshp': { const s = UI.fx.shp; if (!s) return; s[d.val] = !s[d.val]; return draw(); }
+      case 'fxshpreset': UI.fx.shp = null; return draw();
+      case 'fxshpsave': { const s = UI.fx.shp; if (!s) return;
+        return act(() => api('POST', `${A}/sfx/shape`, {id, start: s.start, end: s.end, fade_in: s.fade_in, fade_out: s.fade_out, gain: s.gain, speed: s.speed, reverse: !!s.reverse, loop: !!s.loop}),
+          async r => { side(); UI.fx.shp = null; draw(); toast('Saved as a new sound in Your sound effects.'); play(r.id); }, b, 'Saving…'); }
+      case 'fxpad': { const f = UI.fx; if (f.pad !== d.val) { f.pad = d.val; f.seed = 1; } draw();
+        const l = fxPads().find(p => p[0] === f.pad)?.[1] || 'Sound'; return fxGameUrl().then(u => play(`fx:${f.pad}:${f.seed}`, u, `${l} #${f.seed}`)).catch(e => toast(e.message, true)); }
+      case 'fxhear': case 'fxseed': { const f = UI.fx; if (d.a === 'fxseed') { f.seed = Math.max(1, Math.min(9999, +d.val || 1)); draw(); }
+        const l = fxPads().find(p => p[0] === f.pad)?.[1] || 'Sound'; return fxGameUrl().then(u => play(`fx:${f.pad}:${f.seed}`, u, `${l} #${f.seed}`)).catch(e => toast(e.message, true)); }
+      case 'fxkeep': { const f = UI.fx;
+        return act(() => api('POST', `${A}/sfx`, {preset: f.pad, seed: +f.seed || 1}).then(r => api('POST', `${A}/history/star`, {id: r.id, on: true})),
+          async () => { side(); draw(); toast('Kept in Your sound effects.'); }, b, 'Keeping…'); }
+      case 'fxgdl': { const f = UI.fx, l = fxPads().find(p => p[0] === f.pad)?.[1] || 'sound';
+        return saveFile(`${A}/sfx/play?preset=${q(f.pad)}&seed=${+f.seed || 1}&download=1`, `${l.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${+f.seed || 1}.wav`); }
+      case 'fxset': return saveFile(`${A}/sfx/set?seed=${+UI.fx.seed || 1}`, `hoola-game-sounds-${+UI.fx.seed || 1}.zip`);
+      case 'fxgshape': { const f = UI.fx;
+        return act(() => api('POST', `${A}/sfx`, {preset: f.pad, seed: +f.seed || 1}),
+          async r => { side(); Object.assign(UI.fx, {out: [r], sel: r.id, shp: null, tab: 'words', partial: null}); draw(); toast('Kept in Your sound effects. Shape it on the right.'); }, b, 'Opening…'); }
+      case 'fxfilt': UI.fx.filt = d.val || ''; return draw();
+      case 'fxagain': { const h = D.history.find(x => x.id === id); if (!h) return;
+        if (h.preset && !h.shaped_from) { Object.assign(UI.fx, {tab: 'game', view: '', pad: h.preset, seed: +h.seed || 1}); draw(); return; }
+        const set = h.job ? D.history.filter(x => x.job === h.job && x.kind === 'sfx') : [h];
+        Object.assign(UI.fx, {tab: 'words', view: '', out: set.length ? set.slice().reverse() : [h], sel: h.id, shp: null, partial: null,
+          ...(h.text ? {prompt: h.text, seconds: +h.length || 0, loop: !!h.loop, follow: h.follow != null ? Math.round(h.follow * 10) : UI.fx.follow} : {})});
+        draw(); const vw = $('#hvView'); if (vw) vw.scrollTop = 0; fxPrice();
+        return toast(h.text ? 'Your words are back in the box. Make more like this, or shape a take.' : 'Shape it on the right.'); }
       case 'pickcast': return cpOpen(+d.n);
       case 'castopen': return cpOpen(0);
       case 'cpclose': return cpClose();
@@ -3040,7 +3291,17 @@ window.HoolaVocal = function (ctx) {
     if (t.id === 'hvVq') { clearTimeout(onInput.t); onInput.t = setTimeout(() => { if (UI.vtab === 'shared') libLoad(); else { const id = t.id, a = t.selectionStart; draw(); const n = $('#' + id); if (n) { n.focus(); try { n.setSelectionRange(a, a); } catch { /* */ } } } }, 300); }
     if (t.dataset?.m === 'S.speed' && PAGE === 'chat') { const s = $('#hvSum'); if (s) s.textContent = summary(); }
     if (t.classList?.contains('hv-lt')) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
-    if (t.id === 'hvFx') { const b = $('[data-qbtn="fx"]'); if (b && ready('eleven') && !broke()) { const ok = UI.fx.prompt.trim().length >= 3; if (ok === b.disabled) { const a = t.selectionStart; draw(); const n = $('#hvFx'); if (n) { n.focus(); n.setSelectionRange(a, a); } } } }
+    if (t.id === 'hvFx') { const n0 = $('#hvFxN'); if (n0) n0.textContent = `${num(UI.fx.prompt.length)} / 450`;
+      $$('[data-a="fxadd"]').forEach(x => x.setAttribute('aria-pressed', String(fxHas(x.dataset.val))));
+      const ok = UI.fx.prompt.trim().length >= 3;
+      const b = $('[data-qbtn="fx"]'); if (b && ready('eleven') && !broke() && ok === b.disabled) { const a = t.selectionStart; draw(); const n = $('#hvFx'); if (n) { n.focus(); n.setSelectionRange(a, a); } } }
+    if (t.dataset?.follow) { const x = $('[data-show-follow]'); if (x) x.textContent = fxFollow(+t.value); }
+    if (t.dataset?.shp && UI.fx.shp) { const s = UI.fx.shp, k = t.dataset.shp; s[k] = +t.value;
+      const tot = +(fxCur().find(x => x.id === s.for)?.seconds || 0);
+      if (k === 'start' && s.start > (s.end || tot) - 0.05) s.start = Math.max(0, (s.end || tot) - 0.05);
+      if (k === 'end' && (s.end || tot) < s.start + 0.05) s.end = Math.min(tot, s.start + 0.05);
+      fxShpPaint(); }
+    if (t.id === 'hvFxQ') { clearTimeout(onInput.fq); onInput.fq = setTimeout(() => { const a = t.selectionStart; draw(); const n = $('#hvFxQ'); if (n) { n.focus(); try { n.setSelectionRange(a, a); } catch { /* */ } } }, 250); }
     if (t.dataset?.dl != null) { const n = +t.dataset.dl, ln = $(`#hvDlLen${n}`), s2 = dlSecs(t.value); if (ln) ln.textContent = s2 ? secs(s2) : ''; const sm = $('#hvDlSum'); if (sm) sm.textContent = dlSum(); const hi = t.closest('.hv-dlw')?.querySelector('.hv-dlhi'); if (hi) hi.innerHTML = hiHTML(t.value); dlMark(n); }
     if (t.dataset?.m?.startsWith('UI.dlg.lines') && t.tagName === 'TEXTAREA') { const b = $('[data-qbtn="dlg"]'); const has = UI.dlg.lines.some(l => (l.text || '').trim());
       if (b && (has === b.disabled) && !speakWhy(UI.dlg.lang, 'auto') && !broke()) { const id = t.id, a = t.selectionStart; draw(); const n = $('#' + id); if (n) { n.focus(); n.setSelectionRange(a, a); } } else dlPrice(); }

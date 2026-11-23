@@ -44,7 +44,7 @@ async function api(method, path, body, {raw = false, form = null, signal} = {}) 
     // v0.310 a 422 lists the field it did not like: say which and why ("seconds: must be 6 or more"), never a bare code
     const bad = data && Array.isArray(data.detail) && data.detail[0];
     const why = bad ? `${(bad.loc || []).filter(x => x !== 'body').join(' ') || 'value'}: ${String(bad.msg || '').replace(/^Input should be /, 'must be ').replace(/^Value error, /, '')}` : '';
-    const msg = (data && (data.detail?.message || (typeof data.detail === 'string' ? data.detail : '') || why || data.message)) || `The server refused the request (${r.status})`;
+    const msg = (data && (data.detail?.message || (typeof data.detail === 'string' ? data.detail : '') || why || data.message)) || ([502, 503, 504].includes(r.status) ? 'The server did not answer. It may be restarting after an update; nothing was charged. Try again in a minute.' : `The server refused the request (${r.status})`);
     if (r.status === 401 && path !== '/api/console/login' && path !== '/api/console/exchange') logout(true);
     throw new ApiError(r.status, msg);
   }
