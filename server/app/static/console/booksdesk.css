@@ -48,3 +48,6 @@
 .bk-sw .bk-chk span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bk-sw .pill{white-space:nowrap}
 .bk-h3{font-size:14.5px;font-weight:600;margin:14px 0 4px}
+.bk-ml{flex:1;min-width:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bk-imap{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--soft)}
+.bk-wrap{flex-wrap:wrap;justify-content:flex-start;align-items:center}

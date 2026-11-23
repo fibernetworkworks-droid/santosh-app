@@ -524,7 +524,8 @@ def listing(tenant: str, ws: str, status: str = "", limit: int = 200) -> dict[st
         for r in rows:
             counts[r.status] = counts.get(r.status, 0) + 1
         shown = [view(r) for r in rows if not status or r.status == status][:limit]
-    return {"items": shown, "counts": counts, "settings": settings(tenant, ws), "sources": sources(tenant, ws)}
+    return {"items": shown, "counts": counts, "settings": settings(tenant, ws), "sources": sources(tenant, ws),
+            "business_mail": business_mail(tenant, ws)}
 
 
 def post(tenant: str, ws: str, inbox_id: str, actor: str) -> dict[str, Any]:
@@ -601,11 +602,59 @@ def sources(tenant: str, ws: str) -> dict[str, Any]:
 
 
 def _pick_ws(tenant: str, mine: list[tuple[str, dict[str, Any]]], account: str) -> str:
+    """v0.999.165 only a business email she ATTACHED to this business's books is read for it (never her other mail)."""
     for ws, st in mine:
-        acc = st.get("accounts") or []
-        if not acc or account.lower() in acc:
+        if account.lower() in (st.get("accounts") or []):
             return ws
     return ""
+
+
+def _boxes(tenant: str) -> list[dict[str, Any]]:
+    try:
+        from ...mailbox import accounts as MA
+        return MA.views(tenant)
+    except Exception:   # noqa: BLE001
+        return []
+
+
+def business_mail(tenant: str, ws: str) -> dict[str, Any]:
+    """The business emails attached to these books (where her bills and invoices arrive) + her other mailboxes she could attach."""
+    st = settings(tenant, ws)
+    mine = [a.lower() for a in st.get("accounts") or []]
+    boxes = {str(b.get("address") or "").lower(): b for b in _boxes(tenant)}
+    taken = {a: w for t, w, f in _on_workspaces() if t == tenant and w != ws for a in (f.get("accounts") or [])}
+    attached = [{"address": a, "kind": (boxes.get(a) or {}).get("kind", ""), "connected": a in boxes,
+                 "status": (boxes.get(a) or {}).get("status", "missing"), "error": (boxes.get(a) or {}).get("error", "")} for a in mine]
+    others = [{"address": a, "kind": b.get("kind", ""), "elsewhere": a in taken} for a, b in boxes.items() if a and a not in mine]
+    return {"attached": attached, "others": others}
+
+
+def attach_mail(tenant: str, ws: str, address: str, quiet: bool = False) -> dict[str, Any]:
+    """Attach one of her connected mailboxes to these books. quiet = a mailbox connected just for bills: no 'new mail' news in her chat."""
+    a = str(address or "").strip().lower()
+    if a not in {str(b.get("address") or "").lower() for b in _boxes(tenant)}:
+        raise FeedError("That email is not connected to Hoola yet - connect it first (Gmail, Outlook or another email).")
+    for t, w, f in _on_workspaces():
+        if t == tenant and w != ws and a in (f.get("accounts") or []):
+            raise FeedError(f"{a} already brings bills into another business's books - detach it there first.")
+    st = settings(tenant, ws)
+    acc = [x for x in (st.get("accounts") or []) if x != a] + [a]
+    out = _save(tenant, ws, {"accounts": acc[:10], "mail": True,
+                             "since": (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()})   # its last 30 days are read once
+    if quiet:
+        try:
+            from ...mailbox import sync as MS
+            MS.set_watch_mode(tenant, "off", a)
+        except Exception:   # noqa: BLE001
+            log.info("books mail quiet %s", a)
+    return {"settings": out, "mail": business_mail(tenant, ws), "says": f"{a} now brings bills and invoices into these books."}
+
+
+def detach_mail(tenant: str, ws: str, address: str) -> dict[str, Any]:
+    a = str(address or "").strip().lower()
+    st = settings(tenant, ws)
+    out = _save(tenant, ws, {"accounts": [x for x in (st.get("accounts") or []) if x != a]})
+    return {"settings": out, "mail": business_mail(tenant, ws), "says": f"{a} is no longer read for these books. It stays connected to Hoola."}
 
 
 def _looks_like(m: dict[str, Any]) -> bool:

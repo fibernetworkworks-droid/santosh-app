@@ -40,7 +40,7 @@ POSTING = ("issue", "journal", "apply_match", "post_bank", "depreciation", "reva
 READ = ("chart", "documents", "matches", "reconcile", "ageing", "reports", "close_check", "inventory",
         "requests", "by_cost_centre", "consolidate", "controls_read", "team", "inbox")
 INBOX_WORK = {"inbox_post", "inbox_drop", "inbox_scan"}          # v0.999.163 the books inbox
-INBOX_SET = {"inbox_settings", "inbox_key", "inbox_key_stop"}
+INBOX_SET = {"inbox_settings", "inbox_key", "inbox_key_stop", "inbox_mail_attach", "inbox_mail_detach"}
 PREPARE = ("invoice", "bill", "receipt", "asset")
 CAN = {
     "owner": set(READ) | set(PREPARE) | set(POSTING) | INBOX_WORK | INBOX_SET | {"export", "close_lock", "add_account", "approve",

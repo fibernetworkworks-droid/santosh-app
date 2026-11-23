@@ -308,7 +308,7 @@
   /* --- Inbox (v0.999.163: invoices and bills that came in by themselves) */
   const INST = {posted: ['ok', 'Posted'], waiting: ['v', 'Waits for an approver'], draft: ['warn', 'Needs your look'], failed: ['warn', 'Could not be read'],
     duplicate: ['', 'Already in your books'], not_invoice: ['', 'Not an invoice'], dropped: ['', 'Set aside']};
-  const INSRC = {email: 'Your mail', hoola_mail: "Hoola's address", software: 'Your program', api: 'Your program', shop: 'Your shop'};
+  const INSRC = {email: 'Business email', hoola_mail: "Hoola's address", software: 'Your program', api: 'Your program', shop: 'Your shop'};
   function inRow(x, act) {
     const [k, tx] = INST[x.status] || ['', x.status];
     const what = x.party || x.subject || x.file || 'A document';
@@ -319,13 +319,46 @@
     return `<tr><td><b>${esc(what)}</b>${x.number ? ` <span class="mut">${esc(x.number)}</span>` : ''}<div class="mut" style="font-size:12.5px">${esc(INSRC[x.source] || x.source)}${x.sender ? ' · ' + esc(x.sender) : ''} · ${esc((x.at || '').slice(0, 16).replace('T', ' '))}${x.kind ? ' · ' + (x.kind === 'sales' ? 'sale' : 'bill') : ''}</div>${why ? `<div class="mut" style="font-size:12.5px">${esc(why)}</div>` : ''}</td>
       <td class="num nw">${x.total ? esc(money(x.total, x.currency || cur())) : '-'}</td><td><span class="pill ${k}">${esc(tx)}</span></td><td style="text-align:right">${btn}</td></tr>`;
   }
+  /* v0.999.165 the business email(s) where her bills and invoices arrive - attached to this employee only */
+  const MKIND = {gmail: 'Gmail', outlook: 'Outlook', imap: 'Email', google: 'Gmail', env: 'Email'};
+  function mailCard(m, admin) {
+    const owner = role() === 'owner';
+    const rows = m.attached.map(x => `<div class="bk-sw"><span class="bk-ml">${esc(x.address)}</span><span class="mut">${esc(MKIND[x.kind] || '')}</span>
+      <span class="pill ${!x.connected ? 'warn' : x.status === 'ok' ? 'ok' : 'warn'}">${!x.connected ? 'No longer connected' : x.status === 'ok' ? 'Reading bills' : 'Sign-in problem'}</span>
+      ${admin ? `<button class="btn soft sm" type="button" data-indetach="${esc(x.address)}">Detach</button>` : ''}</div>${x.error ? `<p class="mut" style="margin:2px 0 6px">${esc(x.error)}</p>` : ''}`).join('');
+    const free = m.others.filter(x => !x.elsewhere);
+    const add = !admin ? '' : !owner ? '<p class="mut">The owner connects a new business email.</p>' : `
+      <div class="bk-pick bk-wrap" style="margin-top:8px"><button class="btn soft" type="button" data-inlink="google">Connect Gmail / Google Workspace</button>
+        <button class="btn soft" type="button" data-inlink="microsoft">Connect Outlook / Microsoft 365</button>
+        <button class="btn soft" type="button" data-inimapopen="1">Another email (Zoho, GoDaddy, Hostinger, your domain ...)</button></div>
+      ${ST.inImap ? `<form class="bk-imap" data-form="inimap"><div class="bk-4" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+        <div class="md-field"><label for="inImA">Business email</label><input class="in" id="inImA" type="email" required placeholder="accounts@yourbusiness.com"></div>
+        <div class="md-field"><label for="inImP">App password</label><input class="in" id="inImP" type="password" required autocomplete="new-password"></div>
+        <div class="md-field"><label for="inImH">Mail server (IMAP, if Hoola cannot find it)</label><input class="in" id="inImH" placeholder="imap.yourhost.com"></div></div>
+        <p class="mut" style="margin:4px 0 8px">Use an app password made in your email's security settings, not your login password. It is typed only here, kept sealed and never shown again.</p>
+        <div class="bk-pick"><button class="btn" type="submit">Connect and attach</button><button class="btn soft" type="button" data-inimapopen="0">Cancel</button></div></form>` : ''}
+      ${free.length ? `<div class="bk-pick bk-wrap" style="margin-top:8px"><label class="mut" for="inUse">Or use an email already in Hoola</label><select class="in sm" id="inUse">${free.map(x => `<option value="${esc(x.address)}">${esc(x.address)}</option>`).join('')}</select>
+        <button class="btn soft sm" type="button" data-inuse="1">Attach</button></div>` : ''}`;
+    return `<h3 class="bk-h3">Business email for bills and invoices</h3>
+      <p class="mut" style="margin:0 0 6px">Attach the email where your suppliers send bills and your programs send invoices. Only the emails attached here are read for these books - never your other mail.</p>
+      ${rows || '<p class="mut" style="margin:4px 0">No business email attached yet.</p>'}${add}`;
+  }
+  function mailLinked(d) {
+    if (!d || d.type !== 'mail-linked') return;
+    if (!d.ok || !d.address) { toast('The email was not connected.', true); return; }
+    books('inbox_mail_attach', {address: d.address, quiet: true}).then(r => { toast(r.says); ST.inbox = null; if (ST.tab === 'inbox') showPage(true); })
+      .catch(e => toast(e.message, true));
+  }
+  try { new BroadcastChannel('hoola-mail').onmessage = e => mailLinked(e.data); } catch {}
+  window.addEventListener('storage', e => { if (e.key === 'hoola.mail.linked' && e.newValue) { try { mailLinked(JSON.parse(e.newValue)); } catch {} } });
+
   function pInbox() {
     if (!ST.inbox) return head('Inbox') + loading;
     const I = ST.inbox, st = I.settings || {}, src = I.sources || {}, c = I.counts || {};
     const admin = can('inbox_settings');
     if (!st.on) return `${head('Inbox', 'Invoices and bills come into your books by themselves - you do not type them in.')}
       <section class="card"><h2 class="md-h2">How it works</h2><ul class="bk-list">
-        <li><b>Your mail.</b> Hoola looks at new mail in the accounts you connected and reads every invoice or bill it finds (PDF, photo or the mail itself).</li>
+        <li><b>Your business email.</b> Attach the email where your bills and invoices arrive (Gmail, Outlook or any other). Hoola reads every invoice or bill that comes in - PDF, photo or the mail itself - and never your other mail.</li>
         <li><b>Hoola's own address.</b> Any program that can email an invoice sends it there${src.hoola_address ? `: <b>${esc(src.hoola_address)}</b>` : ''}. Or forward a bill to it.</li>
         <li><b>Your programs.</b> QuickBooks, Xero, Zoho Books, Stripe, Razorpay, Shopify and others connected in Connectors are read on their own.</li>
         <li><b>Any other system.</b> Your ERP or billing software can send documents to your books address.</li>
@@ -351,8 +384,7 @@
         ${needs.length ? tbl(needs, true) : '<p class="mut" style="margin:0 0 12px">Nothing needs you. New invoices and bills are posted as they come in.</p>'}</section>
       ${rest.length ? `<section class="card tight"><div class="bk-bar"><h2 class="md-h2" style="margin:0">Came in</h2></div>${tbl(rest, false)}</section>` : ''}
       <section class="card"><h2 class="md-h2">Where they come from</h2>${key}
-        <label class="bk-chk"><input type="checkbox" id="inMail"${st.mail ? ' checked' : ''}${admin ? '' : ' disabled'}> Your mail ${src.mail && src.mail.length ? `<span class="mut">(${esc(src.mail.join(', '))})</span>` : '<span class="mut">- connect a mail account first</span>'}</label>
-        <div class="md-field"><label for="inAcc">Only these mail accounts (leave empty for all)</label><input class="in" id="inAcc" value="${esc((st.accounts || []).join(', '))}"${admin ? '' : ' disabled'}></div>
+        ${mailCard(I.business_mail || {attached: [], others: []}, admin)}
         <p class="mut" style="margin:8px 0">Hoola's own address: ${src.hoola_address ? `<b>${esc(src.hoola_address)}</b> - set your billing programs to send invoices here, or forward a bill.` : 'not set up on this server yet.'}</p>
         <h3 class="bk-h3">Your programs <span class="mut">- tick the ones Hoola should read</span></h3><div class="bk-soft">${soft}</div>${softNote}
         <label class="bk-chk"><input type="checkbox" id="inShop"${st.shop ? ' checked' : ''}${admin ? '' : ' disabled'}> Your Hoola website shop's confirmed orders</label>
@@ -622,6 +654,16 @@
       if (ds.infile) { const r = await fetch(`/api/books/inbox/${enc(ds.infile)}/file?workspace=${enc(ws().id)}`, {headers: {Authorization: 'Bearer ' + TOKEN}});
         if (!r.ok) { toast('The file is not kept.', true); return; } const b = await r.blob(); const a = document.createElement('a'); a.href = URL.createObjectURL(b);
         a.download = ds.name || 'document'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); return; }
+      if (ds.inlink) {
+        const w = window.open('', 'hoola-mail', 'popup,width=560,height=760');
+        try { const r = await api('GET', `/api/mail/accounts/link?provider=${enc(ds.inlink)}`); if (w && !w.closed) w.location.href = r.url; else window.open(r.url, 'hoola-mail', 'popup,width=560,height=760');
+          toast('Sign in to your business email in the new window. It is attached here when you finish.'); }
+        catch (err) { if (w) w.close(); throw err; }
+        return;
+      }
+      if (ds.inimapopen !== undefined) { ST.inImap = ds.inimapopen === '1'; showPage(true); return; }
+      if (ds.inuse) { t.disabled = true; const r = await books('inbox_mail_attach', {address: $('#inUse').value}); toast(r.says); ST.inbox = null; showPage(true); return; }
+      if (ds.indetach) { t.disabled = true; const r = await books('inbox_mail_detach', {address: ds.indetach}); toast(r.says); ST.inbox = null; showPage(true); return; }
       if (ds.inconn) {
         const w = window.open('', 'hoola-connect', 'popup,width=560,height=760');
         try { const r = await api('POST', `/api/composio/apps/${enc(ds.inconn)}/connect`);
@@ -638,9 +680,8 @@
       if (ds.insave) {
         t.disabled = true;
         const soft = [...document.querySelectorAll('[data-insw]')].filter(x => x.checked).map(x => x.dataset.insw);
-        const acc = ($('#inAcc').value || '').split(',').map(x => x.trim()).filter(Boolean);
         const tax = ($('#inTax').value || '').split(',').map(x => x.trim()).filter(Boolean);
-        await books('inbox_settings', {mail: $('#inMail').checked, shop: $('#inShop').checked, auto_post: $('#inAuto').checked, software: soft, accounts: acc, tax_ids: tax});
+        await books('inbox_settings', {shop: $('#inShop').checked, auto_post: $('#inAuto').checked, software: soft, tax_ids: tax});
         ST.inbox = null; toast('Saved.'); await refreshDesk(true); return;
       }
       if (ds.unteam) { t.disabled = true; await books('team_remove', {member: ds.unteam}); ST.team = null; toast('Removed from these books.'); await refreshDesk(true); return; }
@@ -678,6 +719,13 @@
     const kind = f.dataset.form, fd = new FormData(f), v = k => S(fd.get(k)).trim();
     const btn = e.submitter || f.querySelector('button[type=submit]'); if (btn) btn.disabled = true;
     try {
+      if (kind === 'inimap') {
+        const addr = $('#inImA').value.trim();
+        await api('POST', '/api/mail/accounts/imap', {address: addr, password: $('#inImP').value, imap_host: $('#inImH').value.trim()});
+        $('#inImP').value = '';
+        const r = await books('inbox_mail_attach', {address: addr, quiet: true});
+        ST.inImap = false; ST.inbox = null; toast(r.says); showPage(true); return;
+      }
       if (kind === 'doc') {
         const lines = []; for (let i = 0; i < ST.lines; i++) if (v('d' + i) && v('p' + i)) lines.push({description: v('d' + i), qty: v('q' + i) || 1, price: v('p' + i), tax_pct: v('t' + i) || 0});
         const a = {party: v('party'), issue: v('issue'), due: v('due') || v('issue'), currency: v('currency').toUpperCase(), lines, issue_now: btn && btn.value === 'issue',

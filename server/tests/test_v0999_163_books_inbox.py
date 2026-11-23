@@ -144,8 +144,14 @@ def test_her_mail_is_read_by_itself(F, monkeypatch):
     from app.mailbox import service as MS
     ws = _setup()
     F.set_settings(T, ws, {"on": True})
+    monkeypatch.setattr(F, "_boxes", lambda t: [{"address": "me@lumen.example", "kind": "gmail", "status": "ok"},
+                                                {"address": "personal@gmail.example", "kind": "gmail", "status": "ok"}])
+    with pytest.raises(F.FeedError):
+        F.attach_mail(T, ws, "nobody@else.example")           # not connected to Hoola
+    F.attach_mail(T, ws, "me@lumen.example")
     mails = [{"id": "gm~1", "account": "me@lumen.example", "subject": "Invoice AP-7781", "snippet": "", "has_attachments": True},
-             {"id": "gm~2", "account": "me@lumen.example", "subject": "Lunch on Friday?", "snippet": "see you", "has_attachments": False}]
+             {"id": "gm~2", "account": "me@lumen.example", "subject": "Lunch on Friday?", "snippet": "see you", "has_attachments": False},
+             {"id": "gm~3", "account": "personal@gmail.example", "subject": "Invoice from my gym", "snippet": "", "has_attachments": True}]
     monkeypatch.setattr(MS, "check", lambda *a, **k: {"emails": mails})
     monkeypatch.setattr(MS, "read", lambda t, ref, *a, **k: {"from_email": "billing@acme.example", "subject": "Invoice AP-7781",
                                                             "attachments": [{"id": "1", "name": "AP-7781.txt"}, {"id": "2", "name": "logo.gif"}]})
@@ -158,6 +164,16 @@ def test_her_mail_is_read_by_itself(F, monkeypatch):
     from app import bookschat as BC
     n = BC.numbers(T, ws)
     assert n.get("inbox_posted") == 1 and n.get("inbox_on") is True
+    # her personal mail (not attached) was never read; the attached one is listed; another business cannot take it
+    assert not F._mail_seen(T, "gm~3") and F._mail_seen(T, "gm~1")
+    m = F.business_mail(T, ws)
+    assert [x["address"] for x in m["attached"]] == ["me@lumen.example"] and m["others"][0]["address"] == "personal@gmail.example"
+    ws2 = _setup(name="Lumen Shop")
+    F.set_settings(T, ws2, {"on": True})
+    with pytest.raises(F.FeedError):
+        F.attach_mail(T, ws2, "me@lumen.example")
+    out = F.detach_mail(T, ws, "me@lumen.example")
+    assert out["mail"]["attached"] == [] and F.attach_mail(T, ws2, "me@lumen.example")["mail"]["attached"][0]["address"] == "me@lumen.example"
 
 
 def test_hoola_address_shop_and_other_systems(F):
@@ -217,7 +233,7 @@ def test_shop_orders_become_sales_invoices(F):
 def test_desk_has_the_inbox(F):
     from pathlib import Path
     js = (Path(__file__).resolve().parents[1] / "app/static/console/booksdesk.js").read_text()
-    for k in ("['inbox', 'Inbox']", "pInbox", "data-inscan", "data-inpost", "data-indrop", "data-inkey", "inbox_needs", "data-inconn", "/api/composio/apps/", "hoola-connect"):
+    for k in ("['inbox', 'Inbox']", "pInbox", "data-inscan", "data-inpost", "data-indrop", "data-inkey", "inbox_needs", "data-inconn", "/api/composio/apps/", "hoola-connect", "mailCard", "data-inlink", "/api/mail/accounts/imap", "inbox_mail_attach", "hoola-mail"):
         assert k in js, k
     from app.fin.desks import books_ent as E
     assert E.allowed("viewer", "inbox") and not E.allowed("viewer", "inbox_post") and not E.allowed("accountant", "inbox_key")
@@ -269,8 +285,21 @@ def test_inbox_in_a_real_browser(bk_server, monkeypatch):
     states = {"quickbooks": "ready", "xero": "needs_link", "zoho_books": "needs_link", "stripe": "needs_key", "wave": "needs_setup"}
     monkeypatch.setattr(Fd, "sources", lambda t, w: {"mail": ["me@lumen.example"], "hoola_address": "", "api_on": False,
                                                      "software": [{"key": k, "name": Fd.SOFTWARE[k], "state": v, "on": False} for k, v in states.items()]})
+    monkeypatch.setattr(Fd, "_boxes", lambda t: [{"address": "bills@lumen.example", "kind": "imap", "status": "ok"},
+                                                 {"address": "me@gmail.example", "kind": "gmail", "status": "ok"}])
+    Fd.attach_mail(T, ws, "bills@lumen.example")
     pg.click("#sdRefresh")
+    pg.wait_for_function("() => document.querySelector('#mdPage').innerText.includes('Reading bills')", timeout=10000)
     pg.wait_for_selector("[data-inconn='xero']", timeout=10000)
+    txt = pg.inner_text("#mdPage")
+    i = txt.find("Business email")
+    assert "bills@lumen.example" in txt and "Reading bills" in txt, txt[i - 50:i + 600] and pg.locator("[data-inlink='google']").count() == 1
+    pg.click("[data-inimapopen='1']")
+    pg.wait_for_selector("form[data-form=inimap] #inImP", timeout=5000)
+    if shots:
+        pg.locator("#mdPage").screenshot(path=f"{shots}/books-inbox-mail.png")
+    pg.click("[data-inuse]")
+    pg.wait_for_function("() => document.querySelector('#mdPage').innerText.includes('me@gmail.example') && document.querySelectorAll('[data-indetach]').length === 2", timeout=10000)
     assert pg.is_enabled("[data-insw='quickbooks']") and not pg.is_enabled("[data-insw='xero']")
     assert pg.locator("[data-inconn]").count() == 2 and "Not available yet" in pg.inner_text("#mdPage")
     if shots:

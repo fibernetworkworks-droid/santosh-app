@@ -10690,3 +10690,18 @@ Hoola: Newtika switches it on once) / Apps are off on this server (no COMPOSIO_A
 /api/composio/apps/{k}/connect, the same sign-in window, the Inbox listens on the 'hoola-connect' channel and redraws) or Add its key
 (opens Connectors). Only a connected program can be ticked. Browser test covers the states. NOT VERIFIED: which of the 15 her live
 Composio catalogue has (a slug it does not know shows "Not available yet").
+
+## v0.999.165 BOOKS BUSINESS EMAIL (owner: "ALSO BUSINESS EMAIL WHERE USER WILL RECEIVE THE BILLS, INVOICES ETC -- IS MUST BE ATTACHED BY USER DIFFERENTLY IN THIS EMPLOYEE SETTINGS SECTION")
+
+The Books Inbox read EVERY mailbox she had connected (her personal Gmails too). Now the Inbox's "Where they come from" opens with
+a **Business email for bills and invoices** card: the emails attached to these books (Reading bills / Sign-in problem / No longer
+connected, Detach), and - for the owner - Connect Gmail / Google Workspace, Connect Outlook / Microsoft 365 (the existing
+/api/mail/accounts/link sign-in), Another email (address + app password + optional IMAP server -> /api/mail/accounts/imap; typed only
+on the desk, sealed, never shown again), or "use an email already in Hoola". `books_feed._pick_ws` now reads a mail only for the
+business it is attached to; `attach_mail` refuses an email not connected to Hoola or already attached to another of her businesses,
+re-reads its last 30 days once, and for a mailbox connected just for bills turns its "new mail" chat news off (`sync.set_watch_mode
+off`); `detach_mail` stops reading it but leaves it connected. The mail sign-in page, when opened as a popup, posts
+{type: mail-linked, ok, address} on BroadcastChannel 'hoola-mail' (+ localStorage) and closes instead of jumping to the phone app; the
+desk attaches that address at once. Desk parts inbox_mail_attach / inbox_mail_detach (owner and admin). Tests: her personal mail not
+attached is never read, one email = one business, detach / attach, the card in a real browser (attached row, connect buttons, IMAP
+form, attach an existing one). NOT VERIFIED: a real Gmail / Outlook / IMAP sign-in started from the desk popup.

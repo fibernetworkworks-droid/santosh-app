@@ -250,6 +250,10 @@ def _inbox(owner: str, ws: str, part: str, a: dict[str, Any], me: str) -> dict[s
         return F.new_api_key(owner, ws)
     if part == "inbox_key_stop":
         return F.stop_api(owner, ws)
+    if part == "inbox_mail_attach":
+        return F.attach_mail(owner, ws, str(a.get("address") or ""), bool(a.get("quiet")))
+    if part == "inbox_mail_detach":
+        return F.detach_mail(owner, ws, str(a.get("address") or ""))
     if part == "inbox_post":
         out = F.post(owner, ws, str(a.get("item") or ""), me)
     elif part == "inbox_drop":

@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.164"   # v0.999.164 BOOKS INBOX CONNECT (owner, her screenshot of the Inbox: "THIS ARE CONNECTIONS WE NEED TO PROVIDE TO THIS EMPLOYEE BUT IS ALL CONNECTORS ARE DISABLE IS ALL THIS ARE IN CONNECTOR SECTION CHECK"): the programs are the Connectors section's own Composio apps, but the Inbox greyed out every one not yet connected; now each shows its real state (Connected / Not connected / Needs its key / Not available yet / Apps are off on this server) with Connect right there (the same /api/composio/apps/{k}/connect sign-in window as Connectors, the Inbox refreshes when it closes) or Add its key (the Connectors page), and only a connected one can be ticked; previous head v0.999.163 BOOKS INBOX; older stories live in git history.
+APP_VERSION = "0.999.165"   # v0.999.165 BOOKS BUSINESS EMAIL (owner: "ALSO BUSINESS EMAIL WHERE USER WILL RECEIVE THE BILLS, INVOICES ETC -- IT MUST BE ATTACHED BY USER DIFFERENTLY IN THIS EMPLOYEE SETTINGS SECTION"): Books & Accounts > Inbox gets its own Business email for bills and invoices - she connects it right there (Gmail / Google Workspace, Outlook / Microsoft 365, or any other email by app password over IMAP: Zoho, GoDaddy, Hostinger, her own domain) or attaches one already in Hoola; ONLY emails attached to that business are read for its books (her other mail never is; was: every connected mailbox), one email serves one business, Detach keeps it connected to Hoola, a mailbox connected for bills does not announce new mail in her chat, its last 30 days are read once; the mail sign-in page closes itself in a browser popup and tells the desk (BroadcastChannel hoola-mail) so the new email is attached at once; books_feed attach_mail / detach_mail / business_mail, desk parts inbox_mail_attach / inbox_mail_detach (owner / admin; connecting a new mailbox = the owner); previous head v0.999.164 BOOKS INBOX CONNECT; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -3168,7 +3168,9 @@ def _mail_linked_page(view: dict | None, error: str = "") -> HTMLResponse:
     return HTMLResponse(f"""<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
 <body style="font-family:system-ui;text-align:center;padding:40px;background:#f3eefb">{msg}
 <p><a href="{deep}" style="display:inline-block;background:#6d3fe0;color:#fff;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:700">Open the app</a></p>
-<script>setTimeout(function(){{location.href={deep!r}}},600);</script></body>""", status_code=400 if error else 200)
+<script>(function(){{var d={{type:'mail-linked',ok:{'false' if error else 'true'},address:{(view or {}).get('address', '')!r}}};
+if(window.opener){{try{{new BroadcastChannel('hoola-mail').postMessage(d)}}catch(e){{}}try{{localStorage.setItem('hoola.mail.linked',JSON.stringify(d))}}catch(e){{}}setTimeout(function(){{window.close()}},900);return}}
+setTimeout(function(){{location.href={deep!r}}},600)}})();</script></body>""", status_code=400 if error else 200)
 
 
 async def _finish_mail_link(request: Request) -> HTMLResponse:
