@@ -153,6 +153,14 @@ def numbers(tenant: str, ws: str) -> dict[str, Any]:
         out["inbox_posted"] = cnt.get("posted", 0)
     except Exception:   # noqa: BLE001
         out["inbox_on"], out["inbox_needs"] = False, 0
+    try:                                     # v0.999.166 bank connections
+        from .fin.desks import books_bank as B
+        bo = B.overview(tenant, ws)
+        out["bank_links"] = sum(1 for l in bo["links"] if l["status"] == "active")
+        out["bank_renew"] = sum(1 for l in bo["links"] if l["renew"])
+        out["bank_senders"] = len(bo["senders"])
+    except Exception:   # noqa: BLE001
+        out["bank_links"] = out["bank_renew"] = out["bank_senders"] = 0
     return out
 
 
@@ -229,6 +237,8 @@ def do(caller: str, part: str, a: dict[str, Any]) -> dict[str, Any]:
                              str(a.get("since") or "0000-01-01"), str(a.get("upto") or date.today()))
     if part.startswith("inbox"):
         return _inbox(owner, ws, part, a, me)
+    if part.startswith("bank_"):
+        return _bank(owner, ws, part, a, me)
     from .fin import core
     out = core.run_tool(owner, me, "books_accounts", part, a, lambda: BK.run(owner, part, a, me))
     forget(owner)
@@ -262,6 +272,37 @@ def _inbox(owner: str, ws: str, part: str, a: dict[str, Any], me: str) -> dict[s
         out = {"read": asyncio.run(F.scan_now(owner, ws))}
     else:
         raise F.FeedError("Unknown inbox action.")
+    forget(owner)
+    return out
+
+
+def _bank(owner: str, ws: str, part: str, a: dict[str, Any], me: str) -> dict[str, Any]:
+    """v0.999.166 the business's bank accounts: a bank connection through a licensed partner, bank files, statement mail."""
+    from .fin.desks import books_bank as B
+    if not ws:
+        raise B.BankFeedError("workspace: which business.")
+    if part == "bank_feed":
+        return B.overview(owner, ws)
+    if part == "bank_banks":
+        return B.banks(owner, ws, str(a.get("country") or ""), str(a.get("q") or ""))
+    if part == "bank_connect":
+        return B.connect(owner, ws, str(a.get("country") or ""), str(a.get("account") or ""), str(a.get("bank") or ""),
+                         str(a.get("mobile") or ""), me, str(a.get("bank_name") or ""))
+    if part == "bank_refresh":
+        out = B.refresh(owner, str(a.get("link") or ""))
+    elif part == "bank_sync":
+        out = B.sync_now(owner, ws)
+    elif part == "bank_disconnect":
+        out = B.disconnect(owner, ws, str(a.get("link") or ""), me)
+    elif part == "bank_sender_add":
+        out = B.sender_add(owner, ws, str(a.get("match") or ""), str(a.get("account") or ""), str(a.get("password") or ""), me)
+    elif part == "bank_sender_remove":
+        out = B.sender_remove(owner, ws, str(a.get("match") or ""))
+    elif part == "bank_mail":
+        B._save(owner, ws, {"email": bool(a.get("on"))})   # noqa: SLF001
+        out = B.overview(owner, ws)
+    else:
+        raise B.BankFeedError("Unknown bank action.")
     forget(owner)
     return out
 
@@ -363,6 +404,10 @@ def block(tenant: str) -> str:
                       "(Books & Accounts > Inbox). Never ask her to type in an invoice that will come in by itself."
                       if n.get("inbox_on") else "\nInbox: off. If she wants invoices and bills to come in by themselves (mail, programs, shop), "
                       "send her to Books & Accounts > Inbox to turn it on.")
+                   + f"\nBank accounts: {n.get('bank_links', 0)} connected to the bank, {n.get('bank_senders', 0)} statement senders"
+                     + (f", {n['bank_renew']} connection(s) to renew" if n.get("bank_renew") else "")
+                     + ". Bank lines come in by themselves through a bank connection (licensed partner, her own bank's page), bank files "
+                     "or her bank's statement mail - set in Books & Accounts > Bank & matching > Bank accounts. Never ask for a bank password."
                    + (f"\nShe is the {d.get('role')} on these books (someone else owns them): the tool works only on her own businesses, "
                       "so explain from these figures and send her to the desk for changes." if d.get("role") not in (None, "owner") else "")
                    + "</books_desk>")
@@ -436,6 +481,49 @@ def mount(app, current_tenant, require_key) -> None:
             raise HTTPException(400, str(e))
         forget(hit[0])
         return out
+
+    @router.post("/api/books/bank-file")
+    async def books_bank_file(request: Request):
+        """v0.999.166 her bank or accounting program sends a statement file here (Authorization: Bearer <her books key>)."""
+        from .fin.desks import books_bank as B
+        from .fin.desks import books_feed as F
+        tok = str(request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
+        hit = F.ws_of_key(tok) if tok.startswith("bk_") else None
+        if not hit:
+            raise HTTPException(401, "Not a books key")
+        raw = await request.body()
+        if len(raw) > 25 * 1024 * 1024:
+            raise HTTPException(413, "Too big")
+        try:
+            body = json.loads(raw or b"{}")
+        except ValueError:
+            raise HTTPException(400, "Send JSON")
+        try:
+            out = B.from_api_file(hit[0], hit[1], body if isinstance(body, dict) else {})
+        except (B.BankFeedError, ValueError) as e:
+            raise HTTPException(400, str(e))
+        forget(hit[0])
+        return out
+
+    @router.get("/api/books/bank/back")
+    def books_bank_back(s: str = ""):
+        """v0.999.166 her bank / the partner sends her back here after she approved (public: the one-time key finds the link)."""
+        import html as _h
+        from fastapi.responses import HTMLResponse
+        from .fin.desks import books_bank as B
+        try:
+            out = B.back(s)
+        except Exception:   # noqa: BLE001
+            log.exception("bank back")
+            out = {"ok": False, "says": "Something went wrong. Go back to Hoola and press Check."}
+        msg = _h.escape(out.get("says") or "")
+        ok = "true" if out.get("ok") else "false"
+        page = ("<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Hoola bank</title>"
+                "<body style='font:16px/1.5 system-ui,sans-serif;max-width:520px;margin:15vh auto;padding:0 16px;background:#fff;color:#1a1a1a'>"
+                f"<h1 style='font-size:22px'>{'Bank connected' if out.get('ok') else 'Not connected yet'}</h1><p>{msg}</p>"
+                f"<script>try{{new BroadcastChannel('hoola-bank').postMessage({{type:'bank-linked',ok:{ok}}})}}catch(e){{}}"
+                "if(window.opener)setTimeout(function(){window.close()},1500)</script></body>")
+        return HTMLResponse(page)
 
     @router.get("/api/books/inbox/{item}/file", dependencies=dep)
     def books_inbox_file(item: str, workspace: str = "", tenant: str = Depends(current_tenant)):

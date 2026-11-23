@@ -208,10 +208,6 @@ def account(tenant: str, workspace_id: str, name: str, currency: str = "", kind:
 
 def import_statement(tenant: str, workspace_id: str, text: str, account_name: str = "Main account", currency: str = "",
                      fmt: str = "", actor: str = "owner") -> dict[str, Any]:
-    from ..db import session
-    from . import evidence as EV
-    from . import laws as L
-    from .models import FinTxn, ensure
     if not (text or "").strip():
         raise SpineError("The statement is empty.")
     f = fmt or detect(text)
@@ -221,10 +217,24 @@ def import_statement(tenant: str, workspace_id: str, text: str, account_name: st
         rows = PARSERS[f](text)
     except ValueError as e:
         raise SpineError(str(e))
+    batch = "imp_" + hashlib.sha256(text.encode("utf-8", "ignore")).hexdigest()[:12]
+    out = import_rows(tenant, workspace_id, rows, account_name, currency, f, batch, actor)
+    return {**out, "format": f}
+
+
+def import_rows(tenant: str, workspace_id: str, rows: list[dict[str, Any]], account_name: str = "Main account", currency: str = "",
+                source: str = "csv", batch: str = "", actor: str = "owner", institution: str = "", number: str = "") -> dict[str, Any]:
+    """v0.999.166 every way a bank line arrives (upload, bank file, statement mail, bank connection) lands here: one account and
+    one dedup key, so the same statement sent twice adds nothing."""
+    from ..db import session
+    from . import evidence as EV
+    from . import laws as L
+    from .models import FinTxn, ensure
     if len(rows) > MAX_ROWS:
         raise SpineError(f"At most {MAX_ROWS} rows in one import.")
-    acc = account(tenant, workspace_id, account_name, currency or next((r.get("currency") for r in rows if r.get("currency")), ""))
-    batch = "imp_" + hashlib.sha256(text.encode("utf-8", "ignore")).hexdigest()[:12]
+    acc = account(tenant, workspace_id, account_name, currency or next((r.get("currency") for r in rows if r.get("currency")), ""),
+                  institution=institution, number=number)
+    batch = batch or ("imp_" + hashlib.sha256(repr(rows[:50]).encode()).hexdigest()[:12])
     ensure()
     added = skipped = bad = 0
     with session() as db:
@@ -244,10 +254,11 @@ def import_statement(tenant: str, workspace_id: str, text: str, account_name: st
                 continue
             seen.add(key)
             db.add(FinTxn(tenant_id=tenant, workspace_id=workspace_id, account_id=acc["id"], day=r["day"], amount_minor=minor,
-                          currency=cur, narration=nar[:240], ref=str(r.get("ref") or "")[:80], source=f, source_ref=batch, dedup=key))
+                          currency=cur, narration=nar[:240], ref=str(r.get("ref") or "")[:80], source=source[:16], source_ref=batch,
+                          dedup=key))
             added += 1
-    EV.record(tenant, workspace_id, actor, "import", f"statement {f}: {added} added, {skipped} already there", {"batch": batch})
-    return {"account": acc, "format": f, "added": added, "already_there": skipped, "unreadable": bad, "batch": batch}
+    EV.record(tenant, workspace_id, actor, "import", f"statement {source}: {added} added, {skipped} already there", {"batch": batch})
+    return {"account": acc, "format": source, "added": added, "already_there": skipped, "unreadable": bad, "batch": batch}
 
 
 def txns(tenant: str, workspace_id: str, account_id: str = "", since: str = "", until: str = "", limit: int = 500) -> list[dict[str, Any]]:

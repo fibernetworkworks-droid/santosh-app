@@ -38,9 +38,11 @@ ROLES = ("admin", "accountant", "approver", "auditor", "viewer")
 ROLE_NAMES = {"owner": "Owner", "admin": "Admin", "accountant": "Accountant", "approver": "Approver", "auditor": "Auditor", "viewer": "Viewer"}
 POSTING = ("issue", "journal", "apply_match", "post_bank", "depreciation", "revalue")
 READ = ("chart", "documents", "matches", "reconcile", "ageing", "reports", "close_check", "inventory",
-        "requests", "by_cost_centre", "consolidate", "controls_read", "team", "inbox")
+        "requests", "by_cost_centre", "consolidate", "controls_read", "team", "inbox", "bank_feed", "bank_banks")
 INBOX_WORK = {"inbox_post", "inbox_drop", "inbox_scan"}          # v0.999.163 the books inbox
-INBOX_SET = {"inbox_settings", "inbox_key", "inbox_key_stop", "inbox_mail_attach", "inbox_mail_detach"}
+INBOX_SET = {"inbox_settings", "inbox_key", "inbox_key_stop", "inbox_mail_attach", "inbox_mail_detach",
+             "bank_connect", "bank_disconnect", "bank_sender_add", "bank_sender_remove", "bank_mail"}   # v0.999.166 bank accounts
+INBOX_WORK |= {"bank_sync", "bank_refresh"}
 PREPARE = ("invoice", "bill", "receipt", "asset")
 CAN = {
     "owner": set(READ) | set(PREPARE) | set(POSTING) | INBOX_WORK | INBOX_SET | {"export", "close_lock", "add_account", "approve",

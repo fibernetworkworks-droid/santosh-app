@@ -1021,6 +1021,8 @@ async def books_feed_jobs() -> None:
     """v0.999.163 BOOKS INBOX: invoices and bills from her mail (5 min), her programs (hourly), her shop."""
     from .fin.desks import books_feed as _bf
     await _bf.tick()
+    from .fin.desks import books_bank as _bb      # v0.999.166 bank connections: new bank lines every hour
+    await asyncio.to_thread(_bb.tick)
 
 
 async def vocal_sweep_jobs() -> None:

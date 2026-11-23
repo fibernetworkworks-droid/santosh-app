@@ -335,7 +335,29 @@ class FinBooksInbox(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
-TABLES = (FinBooksInbox, FinBooksMember, FinBooksRequest, FinCoa, FinJournal, FinLine, FinInvoice, FinAsset, FinPeriod, FinWorkspace, FinEntity, FinBook, FinAccount, FinTxn, FinDoc, FinParty, FinObligation, FinCase, FinDraft, FinEvent)
+class FinBankLink(Base):
+    """v0.999.166 one bank connection of a business through a licensed open-banking partner: the consent she gave at her own
+    bank's page, the accounts it covers and when it runs out. No bank password ever; the partner's access token sealed."""
+    __tablename__ = "fin_bank_link"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("fbl"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    workspace_id: Mapped[str] = mapped_column(String(40), index=True, default="")
+    partner: Mapped[str] = mapped_column(String(20), default="")                   # setu_aa | gocardless | plaid
+    country: Mapped[str] = mapped_column(String(2), default="")
+    institution: Mapped[str] = mapped_column(String(160), default="")
+    ext_ref: Mapped[str] = mapped_column(String(120), index=True, default="")      # consent / requisition / link token at the partner
+    state: Mapped[str] = mapped_column(String(40), index=True, default="")         # our own one-time key for the way back
+    token_sealed: Mapped[str] = mapped_column(Text, default="")                    # partner access token (Plaid), sealed
+    accounts: Mapped[str] = mapped_column(Text, default="[]")                      # [{ext_id, name, masked, currency, account_id}]
+    cursor: Mapped[str] = mapped_column(Text, default="")                          # partner sync cursor
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)  # pending | active | expired | revoked | failed
+    expires_at: Mapped[str] = mapped_column(String(32), default="")
+    last_sync: Mapped[str] = mapped_column(String(32), default="")
+    last_error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+TABLES = (FinBankLink, FinBooksInbox, FinBooksMember, FinBooksRequest, FinCoa, FinJournal, FinLine, FinInvoice, FinAsset, FinPeriod, FinWorkspace, FinEntity, FinBook, FinAccount, FinTxn, FinDoc, FinParty, FinObligation, FinCase, FinDraft, FinEvent)
 _READY: set[int] = set()
 
 
