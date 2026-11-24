@@ -10,7 +10,11 @@ from .base import Ctx, NeedsApproval, ToolError, ToolSpec
 
 # v0.210.0 grew from 3 to 6 confirm-card actions (added: clear / delete_tab / protect)
 TITLES = {"update": "Change these rows?", "delete": "Delete rows?", "share": "Share sheet?",
-          "clear": "Clear values?", "delete_tab": "Delete tab?", "protect": "Lock it?"}
+          "clear": "Clear values?", "delete_tab": "Delete tab?", "protect": "Lock it?",
+          # v0.999.184 SHEETS 100%
+          "delete_chart": "Remove chart?", "hide": "Hide it?", "split": "Split the column?", "trash": "Move to bin?",
+          "delete_cols": "Delete columns?", "dedupe": "Remove duplicates?", "comment": "Post comment?",
+          "access": "Change access?", "unprotect": "Remove lock?"}
 
 
 class SheetsExecutor:

@@ -76,6 +76,9 @@ class SheetsClient:
             if self._client is None:
                 c.close()
         if r.status_code == 403:
+            if "insufficient" in r.text.lower() and "scope" in r.text.lower():
+                raise SheetError("Hoola needs Google Drive access for this. Open Connectors > Google, choose Drive and "
+                                 "press Connect, then ask again.")
             if "has not been used" in r.text or "SERVICE_DISABLED" in r.text:
                 raise SheetError("The Sheets / Drive API is not enabled in the Google Cloud project.")
             if self.kind == "service":
@@ -113,16 +116,20 @@ class SheetsClient:
     def meta(self, sid: str) -> dict[str, Any]:
         res = self._req("GET", f"{SHEETS}/{sid}", params={
             "fields": "spreadsheetId,properties(title,locale,timeZone),spreadsheetUrl,"
-                      "sheets(properties(sheetId,title,index,gridProperties(rowCount,columnCount,frozenRowCount)))"})
+                      "sheets(properties(sheetId,title,index,hidden,tabColorStyle,"
+                      "gridProperties(rowCount,columnCount,frozenRowCount)))"})
         return {"id": res["spreadsheetId"], "title": res["properties"]["title"], "link": res.get("spreadsheetUrl", ""),
                 "tabs": [{"id": s["properties"]["sheetId"], "title": s["properties"]["title"],
                           "rows": s["properties"].get("gridProperties", {}).get("rowCount", 0),
-                          "cols": s["properties"].get("gridProperties", {}).get("columnCount", 0)}
+                          "cols": s["properties"].get("gridProperties", {}).get("columnCount", 0),
+                          "hidden": bool(s["properties"].get("hidden"))}
                          for s in sorted(res.get("sheets", []), key=lambda s: s["properties"].get("index", 0))]}
 
-    def values(self, sid: str, rng: str) -> list[list[Any]]:
+    def values(self, sid: str, rng: str, render: str = "UNFORMATTED_VALUE") -> list[list[Any]]:
+        """render: UNFORMATTED_VALUE (numbers as numbers), FORMULA (what was typed, e.g. =SUM(B2:B9)) or
+        FORMATTED_VALUE (as shown on screen, e.g. 'Rs 1,500.00')."""
         res = self._req("GET", f"{SHEETS}/{sid}/values/{quote(rng, safe='')}", params={
-            "valueRenderOption": "UNFORMATTED_VALUE", "dateTimeRenderOption": "FORMATTED_STRING",
+            "valueRenderOption": render, "dateTimeRenderOption": "FORMATTED_STRING",
             "majorDimension": "ROWS"})
         return res.get("values", [])
 
@@ -168,3 +175,45 @@ class SheetsClient:
         return self._req("POST", f"{DRIVE}/files/{sid}/permissions",
                          params={"sendNotificationEmail": "true", "supportsAllDrives": "true"},
                          json={"type": "user", "role": role, "emailAddress": email})
+
+    # ---------------- v0.999.184 SHEETS 100%: the rest of Sheets + the Drive side of a sheet ----------------
+    def raw_meta(self, sid: str, fields: str) -> dict[str, Any]:
+        """The spreadsheet with only the fields asked (charts, protected ranges, banding, filter views ...)."""
+        return self._req("GET", f"{SHEETS}/{sid}", params={"fields": fields})
+
+    def drive_patch(self, sid: str, body: dict) -> dict:
+        return self._req("PATCH", f"{DRIVE}/files/{sid}", params={"supportsAllDrives": "true", "fields": "id,name,trashed"},
+                         json=body)
+
+    def permissions(self, sid: str) -> list[dict[str, Any]]:
+        res = self._req("GET", f"{DRIVE}/files/{sid}/permissions", params={
+            "supportsAllDrives": "true", "fields": "permissions(id,type,role,emailAddress,displayName,domain,deleted)"})
+        return res.get("permissions", [])
+
+    def permission_delete(self, sid: str, pid: str) -> dict:
+        return self._req("DELETE", f"{DRIVE}/files/{sid}/permissions/{quote(pid, safe='')}",
+                         params={"supportsAllDrives": "true"})
+
+    def permission_update(self, sid: str, pid: str, role: str) -> dict:
+        return self._req("PATCH", f"{DRIVE}/files/{sid}/permissions/{quote(pid, safe='')}",
+                         params={"supportsAllDrives": "true"}, json={"role": role})
+
+    def comments(self, sid: str) -> list[dict[str, Any]]:
+        res = self._req("GET", f"{DRIVE}/files/{sid}/comments", params={
+            "pageSize": "100", "includeDeleted": "false",
+            "fields": "comments(id,content,createdTime,resolved,author(displayName,emailAddress),"
+                      "quotedFileContent(value),replies(id,content,createdTime,action,author(displayName)))"})
+        return res.get("comments", [])
+
+    def comment_add(self, sid: str, text: str, quoted: str = "") -> dict:
+        body: dict[str, Any] = {"content": text}
+        if quoted:
+            body["quotedFileContent"] = {"mimeType": "text/plain", "value": quoted}
+        return self._req("POST", f"{DRIVE}/files/{sid}/comments", params={"fields": "id,content"}, json=body)
+
+    def comment_reply(self, sid: str, cid: str, text: str, resolve: bool = False) -> dict:
+        body: dict[str, Any] = {"content": text}
+        if resolve:
+            body["action"] = "resolve"
+        return self._req("POST", f"{DRIVE}/files/{sid}/comments/{quote(cid, safe='')}/replies",
+                         params={"fields": "id,content,action"}, json=body)

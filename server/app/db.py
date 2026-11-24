@@ -993,6 +993,7 @@ def init_db(url: str | None = None):
     from . import home as _home  # noqa: F401  (v0.479.0 HOOLA SMART HOME the home_audit table - registered
         # HERE on day one AND self-healing via home.ensure_table(), same lesson)
     from . import connhub as _connhub  # noqa: F401  (v0.999.183 Connectors activity + her Pause switch)
+    from .sheets import more as _sheets_more  # noqa: F401  (v0.999.184 SHEETS 100%: the new-row watch table)
     from .agent import eventlog as _harness_eventlog  # noqa: F401  (v0.193.0 HARNESS-3 the event-sourced session
         # log - registered HERE on day one AND self-healing via eventlog.ensure_table(), same lesson)
     from .agent import team as _harness_team  # noqa: F401  (v0.193.0 HARNESS-3 the background agent crews'

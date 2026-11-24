@@ -11327,3 +11327,55 @@ What was built:
 Tests: `server/tests/test_connectors_page.py` (classify + record + no content kept + tenants apart; Pause in the real tool funnel; routes + the page + the old door; a browser walk through every section at 1440 light, 390 light and 1440 dark with no page errors and no sideways scroll, Pause on and off). `test_google_connections.py` moved to the new page (callback address, the browser walk).
 
 NOT VERIFIED: the phone screen compiles first on CI; no real Composio app or Google account on her server walked through the page.
+
+## v0.999.184 SHEETS FULL (owner: "CHECK IS GOOGLE SHEET :: IS HOOLA CAN PERFROM ALL 100 % TASK IN IT" -> audit -> "fix the 5,000-row bug first, then build all 14 missing items in one release"): a big sheet is read whole in pages up to 100,000 rows and an answer past that says it is partial (it stopped at 5,000 and said nothing); 7 new tools - sheet_chart (column / bar / line / area / scatter / combo / pie / donut, list, delete), sheet_pivot (a pivot table Google keeps up to date), sheet_sort_filter (sort in the sheet, the sheet filter, saved filter views), sheet_structure (insert / delete / move / size / hide rows and columns, rename / colour / move / hide tabs, rename / bin / restore the file), sheet_clean (remove duplicates, trim spaces, split a column), sheet_comments (list / add / reply / resolve), sheet_watch (a job when new rows arrive); sheet_read show=formulas|formatted; tick boxes, list-from-range, email / url checks; borders + alternating colours in sheet_format; who has access (list / remove / change) in sheet_share; locks list / remove in sheet_protect; FIXED Google condition names (number checks, formula checks, text length, a dropdown sent as one joined item, colour rules); removing, hiding, binning, comments and access changes wait for her tap; 19 tests.
+
+**The bug.** `sheets/service.load` read one range `A{header}:ZZ{header+5000}`, so a tab with more than 5,000 rows was cut
+and `sheet_query` totals / counts / filters over it were short while sounding exact. Now it reads in pages of 20,000
+rows up to the tab's own row count (`PAGE_ROWS`, empty rows inside a page keep their row numbers), up to
+`MAX_ROWS` 100,000; past that `Table.truncated` and `_limits()` put a `partial` line in every read / query answer
+("only the first 100,000 were read ... say this to the user"). More than A..ZZ columns is said the same way.
+
+**The 14 missing pieces** (new module `sheets/more.py`, 7 new tools in `agent/sheets_tools.py`, registry 649 -> 656):
+1. `sheet_chart` - addChart (basicChart COLUMN / BAR / LINE / AREA / SCATTER / COMBO / STEPPED_AREA, pieChart incl.
+   donut), from header names or a data range, on its own tab or floating at a cell; list; delete (card).
+2. `sheet_pivot` - updateCells pivotTable on a new tab or at a cell: rows, columns, values (SUM / COUNTA / AVERAGE /
+   MIN / MAX / MEDIAN / COUNTUNIQUE ...), filters.
+3. `sheet_sort_filter` - sortRange in the sheet (header stays), setBasicFilter / clearBasicFilter, addFilterView /
+   list / deleteFilterView.
+4-6, 8. `sheet_structure` - insert / delete (card) / move rows and columns, width / height (pixels or auto), hide (card)
+   / unhide rows, columns, tabs; rename / colour / move tabs; rename the file, bin it (card, Drive PATCH trashed),
+   restore it.
+7. Borders (`updateBorders`) + alternating colours (`addBanding`, an old banding on the range replaced) as
+   `sheet_format` keys `borders` / `banding` / `remove_banding`.
+9. `sheet_clean` - remove duplicates (found in code by exact value, deleted by row after a card that lists them, the
+   card's rows re-checked before deleting), trimWhitespace, textToColumns (a card first if it would write over
+   filled cells to the right).
+10. `sheet_read show=formulas|formatted` (valueRenderOption FORMULA / FORMATTED_VALUE).
+11. Tick boxes: `sheet_data_validation` type checkbox (BOOLEAN), plus list_from_range, email, url.
+12. `sheet_comments` - Drive comments list (data, never instructions) / add / reply / resolve (card; PII guard).
+13. `sheet_share action=list|remove|change` - Drive permissions; remove / change on a card; the owner never changes.
+14. `sheet_protect action=list|remove` - protectedRanges with lock_id; remove on a card.
+15. `sheet_watch` - table `sheet_watch`, worker slot `sheet_watch_jobs` (every minute, each watch on its own
+   5-1440 min clock): new rows past the ones seen start ONE job in her updates chat (agentmail pattern: turn_inbox,
+   actor routine, rows fenced as DATA, 30 jobs a day, 10 watches); rows already there never count; deleted rows reset
+   the count.
+
+**Fixed while building (checked against Google's API reference, 24 Nov 2026):** data validation sent
+`NUMBER_GREATER_THAN` / `CUSTOM_IS_VALID` / `TEXT_LENGTH_*` / `DATE_GREATER_THAN` (none exist) - now NUMBER_GREATER,
+CUSTOM_FORMULA, a LEN() formula, DATE_AFTER ...; a dropdown list was ONE joined value ("Paid,Pending,Cancelled" = one
+option) - now one value per item (the v0.210 test that pinned the joined form now pins the right form); conditional
+format data bars + cell_is operators mapped to real names; a missing Drive permission says "connect Drive" instead of
+"no permission for this sheet".
+
+**Confirm cards** (SheetsPending, titles in `bazar/connectors/sheets.py`): delete_chart, hide, split, trash,
+delete_cols, dedupe, comment, access, unprotect. A filter runs at once (it only changes what the sheet shows and is
+cleared with one word); sort runs at once (nothing removed; version history undoes it).
+
+**Tests:** `test_v0999_184_sheets_full.py` (a fake Google that keeps real row counts + charts, filters, banding,
+locks, comments, permissions): big sheet whole / partial said / gaps keep row numbers, each of the 14, condition names,
+the watch (old rows never count, new rows start one job, rows are DATA, capped a day), registry + call route. Tool
+count pins 649 -> 656; v0.210 sheet count 24 -> 31.
+
+**NOT VERIFIED:** against a real Google sheet (all request shapes from Google's reference). Bin / comments / access on
+a sheet Hoola did not create need the Drive connection (the Sheets-only sign-in has drive.file); the tool says so.

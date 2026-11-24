@@ -552,7 +552,7 @@ async def tick() -> None:
         team_jobs, research_jobs, scrape_crawl_jobs, spider_jobs, dhara_jobs, eventlog_jobs, kaan_jobs, aboutme_jobs, applogic_jobs,
         game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs, api_box_jobs, aiapp_ops_jobs, design_asset_jobs,
         hoola_batch_jobs, pipeline_jobs, pipeline_branch_jobs, practice_jobs, lead_desk_jobs, books_feed_jobs, vocal_sweep_jobs,
-        appengine_box_jobs, payroll_desk_jobs,
+        appengine_box_jobs, payroll_desk_jobs, sheet_watch_jobs,
     ):
         await _slot(fn)
     BEAT["slot"] = ""
@@ -1038,6 +1038,19 @@ async def payroll_desk_jobs() -> None:
     _payroll_last = time.time()
     from .fin.desks import payroll_desk as _pd
     await _pd.tick()
+
+
+_sheet_watch_last = 0.0
+
+
+async def sheet_watch_jobs() -> None:
+    """v0.999.184 SHEETS 100%: her sheet watches - new rows start the job she asked for (each watch on its own clock)."""
+    global _sheet_watch_last
+    if time.time() - _sheet_watch_last < 60:
+        return
+    _sheet_watch_last = time.time()
+    from .sheets import more as _sm
+    await asyncio.to_thread(_sm.check_watches)
 
 
 async def vocal_sweep_jobs() -> None:

@@ -555,7 +555,8 @@ def test_data_validation_list(gs):
     sid, reqs = gs.batch_log[-1]
     dv = reqs[0]["setDataValidation"]["rule"]
     assert dv["condition"]["type"] == "ONE_OF_LIST"
-    assert dv["condition"]["values"][0]["userEnteredValue"] == "Paid,Pending,Cancelled"
+    # v0.999.184: Google takes one value per item (the joined form made ONE dropdown option 'Paid,Pending,Cancelled')
+    assert [v["userEnteredValue"] for v in dv["condition"]["values"]] == ["Paid", "Pending", "Cancelled"]
     assert dv["showCustomUi"] is True and dv["strict"] is False
 
 

@@ -3642,3 +3642,9 @@ Task ID: v0.999.183 CONNECTORS PAGE
 Ask: Connectors as a separate premium page (design approved)
 Built: /console/connectors page, activity log, Pause switch, phone Your apps top
 Not verified: phone compiles first on CI
+
+---
+Task ID: v0.999.184 SHEETS FULL
+Ask: Hoola can do 100% of Google Sheets; fix the 5,000-row bug + the 14 gaps
+Built: paged big-sheet reads, 7 new Sheets tools, read formulas, tick boxes, borders, access, locks, condition-name fixes
+Not verified: real Google sheet; Drive-side actions need Drive connected
