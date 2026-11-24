@@ -11189,3 +11189,18 @@ Found while testing: a wrong code raised inside the database session, so the try
 Tests: `server/tests/test_signup_email.py` (11).
 
 NOT VERIFIED: the VPS has no SITE_MAIL_* yet (email sign-in shows "not switched on" until it does); the phone screen compiles first on CI; Google's "unverified app" screen still shows for the Connect Gmail / Drive buttons until Google verifies those permissions.
+
+## v0.999.178 LOGIN, PREMIUM (owner: "MAKE IT MORE PROFESSIONAL AND PERMIUM -- HUMAN NATICE --- SHOW ME DESIGN HERE FIRST" -> design canvas claude.ai/artifact/YRsDWvotU5ni47pEBD71Hu -> "A -- GO"): the console login is direction A - Hoola at work beside you on the left (one real moment: her ask and a card ready for her yes; no avatar, no floating bubbles) and log in or sign up on the right; ink main button, violet only for the mark and links, Literata for the one warm sentence; Open Gmail for a Gmail address, a 30-second wait before a new code, a greeting that shows her name; light and dark from the theme tokens, one column under 900 px. The phone first screen in the same design: language at the top, the mark and one sentence, Google and email at the thumb, six code boxes with autofill, the name step with the greeting. 3 tests incl. a browser walk.
+
+Asked: "LETS WORK ON LOGIN PAGE DESIGN -- MAKE IT MORE PROFESSIONAL AND PERMIUM -- HUMAN NATICE --- SHOW ME DESIGN HERE FIRST". Design canvas claude.ai/artifact/YRsDWvotU5ni47pEBD71Hu showed two web directions (A: Hoola at work beside you; B: quiet and centered) and the three phone steps; the owner answered "A -- GO".
+
+Console (`static/console/v2.html` #login, styles in the `v0.999.178 LOGIN, PREMIUM` block at the end of `v2.css`, behaviour in `v2.js`):
+- Left (over 900 px wide): the Hoola mark, "The work gets done. You stay in charge." in Literata, one sentence on what Hoola does and that nothing goes out without her yes, one real moment (her ask; a card "Ready for your yes" with Send / Not now), and a quiet line of what it works with. The cartoon avatar and the floating Bills / WhatsApp / GST bubbles are gone.
+- Right: Log in or sign up - Continue with Google, or email -> Continue with email (ink button) -> Check your email (back arrow, the full address she typed, the code field, Open Gmail only for a Gmail address, "Send a new code in 0:30" counting down) -> for a new person "What should Hoola call you?" with a live greeting that uses her first name -> Start using Hoola. More ways to sign in (Hoola ID / password, server key) and the Terms + Privacy line under a hairline.
+- Every colour from the console's theme tokens, so light and dark both work; one column with the mark on top under 900 px; no horizontal scroll at 390 px.
+
+Phone (`lib/ui/setup_screen.dart`): the same design on the app's own light / dark colours (`HoolaColors`, `hoolaTheme`) and fonts (Literata, Schibsted Grotesk): language pill top right (a sheet of the app's languages), the real Hoola mark, "Your Hoola, ready when you are.", Continue with Google and Continue with email at the thumb (email opens the field in place), the code step with six boxes over one field (paste and the phone's code autofill fill all six; six digits = it goes), Open Gmail for Gmail, a 30-second resend wait, then the name step with three step bars and the greeting. The API key stays under More ways to sign in.
+
+Tests: `server/tests/test_login_premium.py` (3, incl. a Chromium walk of the whole email sign-up at 1280 and 390 px).
+
+NOT VERIFIED: the phone screen compiles first on CI (no Flutter here); email sign-in on her server still needs SITE_MAIL_* in the VPS .env.

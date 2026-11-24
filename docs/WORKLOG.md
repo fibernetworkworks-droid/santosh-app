@@ -3606,3 +3606,9 @@ Task ID: v0.999.177 SIGN UP LIKE CLAUDE
 Ask: MAKE IT SAME AS OTHER DOES LIKE CLAUDE AND CHAT GPT (two ways to sign up: email and Google)
 Built: emailauth.py + /auth/email/start|verify|name, console + phone Log in or sign up screen, Google sign-in name + email only on new phones, one-time code to the phone, callback error escaped
 Not verified: SITE_MAIL_* not set on her server yet; phone screen compiles first on CI
+
+---
+Task ID: v0.999.178 LOGIN, PREMIUM
+Ask: login page more professional and premium, design first -> A -- GO
+Built: console #login direction A (v2.html / v2.css / v2.js), phone setup_screen.dart in the same design
+Not verified: phone screen compiles first on CI

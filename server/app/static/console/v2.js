@@ -222,6 +222,8 @@ async function lbusy(btn, label, fn) {
 async function lsend() {
   if (!CONFIG.email) throw new Error('Email sign-in is not switched on for this server yet. Use Continue with Google.');
   const r = await api('POST', '/auth/email/start', {email: LMAIL});
+  $('#lgmail').hidden = !/@(gmail|googlemail)\.com$/.test(LMAIL);   // Open Gmail only where it helps
+  lcount();
   $('#lsent').textContent = r.ok ? `We sent a 6-digit code to ${LMAIL}. It works for 10 minutes.` : (r.say || 'We sent a 6-digit code.');
 }
 $('#lform').addEventListener('submit', async e => {
@@ -248,10 +250,18 @@ $('#lform').addEventListener('submit', async e => {
   }
 });
 $('#lback').addEventListener('click', () => lstep(1));
+let LCOUNT = 0;
+function lcount() {   // "Send a new code" waits 30 seconds, counting down, like the big apps
+  const b = $('#lresend'); clearInterval(LCOUNT); let n = 30; b.disabled = true;
+  const tick = () => { b.textContent = n > 0 ? `Send a new code in 0:${String(n).padStart(2, '0')}` : 'Send a new code'; if (n-- <= 0) { clearInterval(LCOUNT); b.disabled = false; } };
+  tick(); LCOUNT = setInterval(tick, 1000);
+}
 $('#lresend').addEventListener('click', async () => {
-  const b = $('#lresend'); b.disabled = true;
   try { await lsend(); toast('A new code is on its way.'); } catch (er) { lerr(er.message); }
-  setTimeout(() => { b.disabled = false; }, 30000);
+});
+$('#lname').addEventListener('input', e => {   // she sees how Hoola will greet her
+  const n = e.target.value.trim().split(/\s+/)[0];
+  $('#lgreet').textContent = n ? `Good to meet you, ${n}.` : 'Good to meet you.';
 });
 $('#lcode').addEventListener('input', e => {   // six digits typed or pasted = go, like the big apps
   const c = e.target.value.replace(/\D/g, '').slice(0, 6); e.target.value = c;
