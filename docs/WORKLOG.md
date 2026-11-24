@@ -3618,3 +3618,9 @@ Task ID: v0.999.179 LOGIN CENTRED
 Ask: the details gone very left fix this
 Built: v2.css .lg-side children in one centred 520 px column; browser walk checks the gap
 Not verified: on her server until deploy
+
+---
+Task ID: v0.999.180 GOOGLE SIGN UP
+Ask: work on Google sign up on the sign up page first
+Built: welcome step after Google (console + phone), login_hint, email_verified check, her name kept
+Not verified: a real Google account on her server; phone compiles first on CI

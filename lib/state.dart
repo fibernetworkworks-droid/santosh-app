@@ -637,11 +637,23 @@ class Santosh extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// GOOGLE SIGN UP: a person new to Hoola who came in with Google - her Google name, for the welcome step.
+  String? googleWelcome;
+
+  /// The welcome name once (the setup screen shows the name step with it), then it is gone.
+  String? takeGoogleWelcome() {
+    final n = googleWelcome;
+    googleWelcome = null;
+    return n;
+  }
+
   /// Save the session token that came back from Sign in with Google (used as the bearer).
   Future<void> applySession(String token, {String? server}) async {
     if (token.startsWith('hc_')) {   // SIGN UP: the Google page sends a one-time code; swap it for the session here
       try {
-        token = await Api(serverUrl, '').exchangeCode(token.substring(3));
+        final r = await Api(serverUrl, '').exchangeCode(token.substring(3));
+        token = '${r['session_token'] ?? ''}';
+        googleWelcome = r['new'] == true ? '${r['name'] ?? ''}' : null;
       } catch (e) {
         error = 'Google sign-in did not finish: $e';
         notifyListeners();

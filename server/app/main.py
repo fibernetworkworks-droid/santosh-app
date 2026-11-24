@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.179"   # v0.999.179 LOGIN CENTRED (owner, her screenshot of the v0.999.178 login on a wide screen: "check the details gone very left fix this"): the left side of the console login (brand, the sentence, the example card, the "works with" line) now sits in one centred 520 px column inside its half, the sentence and the card in the middle of the height; the browser walk checks the gap is the same on both sides. Previous: v0.999.178 LOGIN, PREMIUM (owner; older stories live in git history.
+APP_VERSION = "0.999.180"   # v0.999.180 GOOGLE SIGN UP (owner: "NOW LETS WORK ON GOOGLE SIGN UP IN HOOLA SIGN UP PAGE FIRST"): Continue with Google as a real sign-up like Claude and ChatGPT - a person new to Hoola gets the welcome step with her Google name filled in (console + phone), only new + name ride the one-time code, an email she typed is picked on Google's page (login_hint), a Google account whose email Google has not checked never opens an account, her own Hoola name is never replaced by Google's; 7 tests incl. a browser walk. Previous: v0.999.179 LOGIN CENTRED (owner, her screenshot of the v0.999.178 login on a wide screen; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -1766,12 +1766,12 @@ def _email_login_ready() -> bool:
 
 
 @app.get("/auth/google/start")
-def google_start(app_session: bool = True, web: bool = False, apps: bool = False, phone: bool = False):
+def google_start(app_session: bool = True, web: bool = False, apps: bool = False, phone: bool = False, hint: str = ""):
     """The app opens this; we redirect to Google's consent screen. web=1 = the Hoola Console (v0.142): sign-in with
     name + email only; web=1&apps=1 = the console's "Google apps jodiye" (Gmail, Drive, Calendar, Docs, Sheets)."""
     from . import accounts
     try:
-        return RedirectResponse(accounts.start_google(web=web, apps=apps, phone=phone))
+        return RedirectResponse(accounts.start_google(web=web, apps=apps, phone=phone, hint=hint[:254]))
     except accounts.AuthError as e:
         raise HTTPException(503, str(e))
 
@@ -1851,11 +1851,12 @@ async def google_callback(request: Request):
         return HTMLResponse(f"<h3>Sign-in did not work</h3><p>{_h.escape(str(e)[:300])}</p>", status_code=400)
     if web:   # v0.142 Hoola Console: a one-time code, never the session token, goes into the URL
         apps = "&google=apps" if state.startswith(console.WEB_STATE + "g.") else ""
-        return RedirectResponse("/console/?code=" + console.issue_code(res["session_token"]) + apps, headers=_CONSOLE_NOREF)
+        return RedirectResponse("/console/?code=" + console.issue_code(res["session_token"], res) + apps,
+                                headers=_CONSOLE_NOREF)
     scheme = get_settings().app_redirect_scheme
     import html as _h
     if state.startswith(accounts.APP_STATE):   # SIGN UP: the phone gets a one-time code, never the session itself
-        deep = f"{scheme}://auth?session=hc_{console.issue_code(res['session_token'])}"
+        deep = f"{scheme}://auth?session=hc_{console.issue_code(res['session_token'], res)}"
     else:
         deep = f"{scheme}://auth?session={res['session_token']}"
     # the app registers this scheme; the page also shows the token in case the link doesn't auto-open
@@ -2323,7 +2324,7 @@ class ConsoleCodeIn(BaseModel):
 def console_exchange(body: ConsoleCodeIn):
     from .console import service as console
     try:
-        return {"session_token": console.exchange(body.code)}
+        return console.exchange_full(body.code)
     except console.ConsoleError as e:
         raise HTTPException(e.status, str(e))
 

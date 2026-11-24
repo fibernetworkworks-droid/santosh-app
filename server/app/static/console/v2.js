@@ -195,8 +195,10 @@ async function boot() {
   const u = new URL(location.href), code = u.searchParams.get('code'), err = u.searchParams.get('error'), gApps = u.searchParams.get('google') === 'apps';
   if (code || err) history.replaceState(null, '', '/console/');
   if (code) {
-    try { const r = await api('POST', '/api/console/exchange', {code}); setToken(r.session_token); }
-    catch (e) { return showLogin(e.message); }
+    try {
+      const r = await api('POST', '/api/console/exchange', {code}); setToken(r.session_token);
+      if (r.new && !gApps) return gwelcome(r.name || '');   // GOOGLE SIGN UP: a new person gets the welcome step
+    } catch (e) { return showLogin(e.message); }
   }
   if (err) return showLogin(err);
   if (!TOKEN) return showLogin();
@@ -205,8 +207,14 @@ async function boot() {
 function setToken(t) { TOKEN = t || ''; if (TOKEN) store.set('hoola.console.token', TOKEN); else store.del('hoola.console.token'); }
 $('#gbtn').addEventListener('click', () => {
   if (!CONFIG.google) return lerr('Google sign-in is not switched on for this server yet. Use your email.');
-  $('#gbtn').innerHTML = '<span class="spin"></span> Opening Google…'; location.href = '/auth/google/start?web=1';
+  // GOOGLE SIGN UP: an email she already typed is picked for her on Google's page
+  const h = ($('#lemail').value || '').trim().toLowerCase(), hint = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(h) ? '&hint=' + encodeURIComponent(h) : '';
+  $('#gbtn').innerHTML = '<span class="spin"></span> Opening Google…'; location.href = '/auth/google/start?web=1' + hint;
 });
+function gwelcome(name) {   // GOOGLE SIGN UP: signed up with Google - her Google name filled in, she can change it
+  $('#app').hidden = true; $('#login').hidden = false; lstep(3);
+  $('#lname').value = name; $('#lname').dispatchEvent(new Event('input'));
+}
 /* SIGN UP: log in or sign up like Claude and ChatGPT - email -> a 6-digit code -> (new) your name */
 let LMAIL = '';
 function lerr(t) { const x = $('#lerr'); x.textContent = t || ''; x.hidden = !t; }

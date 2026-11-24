@@ -356,6 +356,11 @@ class _SetupScreenState extends State<SetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final gw = widget.app.takeGoogleWelcome();   // GOOGLE SIGN UP: new with Google -> the name step, her name filled
+    if (gw != null) {
+      _step = 2;
+      _name.text = gw;
+    }
     final b = MediaQuery.platformBrightnessOf(context);
     final c = b == Brightness.dark ? HoolaColors.darkSet : HoolaColors.light;
     return Theme(

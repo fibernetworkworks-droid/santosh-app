@@ -473,8 +473,9 @@ class Api {
   Future<void> emailName(String name) async => _send('POST', '/auth/email/name', body: {'name': name});
 
   /// A one-time code from the Google page -> the session token (never sent inside a link).
-  Future<String> exchangeCode(String code) async =>
-      '${(await _send('POST', '/api/console/exchange', body: {'code': code}) as Map)['session_token'] ?? ''}';
+  /// The one-time code from the Google page -> {session_token, new, name} (GOOGLE SIGN UP: a new person is welcomed).
+  Future<Map<String, dynamic>> exchangeCode(String code) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/console/exchange', body: {'code': code}) as Map);
   /// v0.897 [reuse] = her newest untouched empty chat instead of one more (the console's New chat does the same);
   /// [incognito] = a chat that stays out of her memory.
   Future<String> newConversation({bool reuse = false, bool incognito = false}) async => (await _send('POST', '/api/conversations',

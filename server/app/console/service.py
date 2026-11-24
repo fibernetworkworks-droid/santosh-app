@@ -17,6 +17,7 @@ fingerprint (v0.97, HTTP 428): the console shows them and points to the phone.
 from __future__ import annotations
 
 import hashlib
+import json
 import hmac
 import logging
 import secrets
@@ -68,6 +69,7 @@ class ConsoleCode(Base):
     token_enc: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    info: Mapped[str | None] = mapped_column(Text, nullable=True)   # GOOGLE SIGN UP: {"new", "name"} for the welcome
 
 
 def _utc(dt: datetime | None) -> datetime | None:
@@ -216,11 +218,14 @@ def is_web_state(state: str) -> bool:
     return (state or "").startswith(WEB_STATE)
 
 
-def issue_code(session_token: str) -> str:
+def issue_code(session_token: str, info: dict | None = None) -> str:
     from .. import accounts
     code = secrets.token_urlsafe(24)
+    extra = None
+    if info:   # only whether she is new and the name to greet her with - never the token or the email
+        extra = json.dumps({"new": bool(info.get("new")), "name": str(info.get("name") or "")[:80]})
     with session() as s:
-        s.add(ConsoleCode(code_hash=_sha(code), token_enc=accounts.encrypt(session_token)))
+        s.add(ConsoleCode(code_hash=_sha(code), token_enc=accounts.encrypt(session_token), info=extra))
         for old in s.scalars(select(ConsoleCode).where(ConsoleCode.created_at < now() - timedelta(hours=1))).all():
             s.delete(old)
     STATS["codes"] += 1
@@ -228,6 +233,11 @@ def issue_code(session_token: str) -> str:
 
 
 def exchange(code: str) -> str:
+    return exchange_full(code)["session_token"]
+
+
+def exchange_full(code: str) -> dict[str, Any]:
+    """The one-time code -> the session, plus whether this is a new sign-up (the welcome step) and her name."""
     from .. import accounts
     if not code or len(code) > 100:
         raise ConsoleError("The login code is wrong.", 401)
@@ -237,8 +247,12 @@ def exchange(code: str) -> str:
             raise ConsoleError("The login code has expired. Press 'Continue with Google' again.", 401)
         row.used_at = now()
         tok = accounts.decrypt(row.token_enc)
+        try:
+            extra = json.loads(row.info) if row.info else {}
+        except ValueError:
+            extra = {}
     STATS["exchanged"] += 1
-    return tok
+    return {"session_token": tok, "new": bool(extra.get("new")), "name": str(extra.get("name") or "")}
 
 
 # ---------------------------------------------------------------- what the console shows

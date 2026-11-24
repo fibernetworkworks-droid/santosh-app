@@ -11215,3 +11215,27 @@ Fix (server/app/static/console/v2.css, appended block "v0.999.179"):
 - .lg-pitch and .lg-works take margin-top auto, so the sentence and the card sit in the middle of the height.
 
 Checked at 1000, 1280, 1580 and 1920 px, light and dark: the left and right gaps match within a pixel; under 900 px the left side is still hidden. test_login_premium.py browser walk now asserts the two gaps differ by 3 px at most.
+
+## v0.999.180 GOOGLE SIGN UP (owner: "NOW LETS WORK ON GOOGLE SIGN UP IN HOOLA SIGN UP PAGE FIRST"): Continue with Google as a real sign-up like Claude and ChatGPT - a person new to Hoola gets the welcome step with her Google name filled in (console + phone), only new + name ride the one-time code, an email she typed is picked on Google's page (login_hint), a Google account whose email Google has not checked never opens an account, her own Hoola name is never replaced by Google's; 7 tests incl. a browser walk.
+
+What changed (owner: "NOW LETS WORK ON GOOGLE SIGN UP IN HOOLA SIGN UP PAGE FIRST"):
+
+- A person new to Hoola who presses Continue with Google now gets the welcome step, like Claude and ChatGPT: "What should
+  Hoola call you?" with her Google name already filled in, the greeting under it, "Start using Hoola". Console:
+  `v2.js gwelcome(name)` after `/api/console/exchange` answers `new: true` (not for the "Google apps" connect step).
+  Phone: `Api.exchangeCode` returns the map, `Santosh.googleWelcome` / `takeGoogleWelcome()`, main.dart keeps the first
+  screen up for a new person and `setup_screen.dart` opens its name step with the Google name.
+- The one-time code carries only {new, name} (`ConsoleCode.info`, nullable Text, added on old databases by the column
+  self-heal); never the token or the email; `console.exchange_full`; old codes without info still work.
+- `accounts.finish_google` refuses a Google account whose email Google has not checked (`email_verified` false) - such an
+  account could otherwise open someone's email-code Hoola account; a new person's profile starts with her Google name
+  (`_seed_profile`); an existing person's Hoola name is never replaced by Google's (only an empty name is filled);
+  returns `new`.
+- An email she already typed on the sign-in page rides as `hint` -> Google's `login_hint`, so Google picks that account
+  (sign-in only, checked as an email, never on the apps step).
+
+Tests: test_google_signup.py 7 (hint, unchecked email refused, new person + profile, her name kept, welcome on the code
+only, console + phone code pins, a browser walk at 1280 / 390 through the welcome step into Hoola).
+
+NOT VERIFIED: a real Google account on her server (needs the deploy, and the Google app published out of Testing for
+anyone outside her test users); the phone screen compiles first on CI.

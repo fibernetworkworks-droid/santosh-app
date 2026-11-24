@@ -6,6 +6,7 @@ This is the product foundation. Your single-user instance keeps working via the 
 from __future__ import annotations
 
 import base64
+import re
 import hashlib
 import json
 import logging
@@ -100,7 +101,11 @@ def _redirect_uri() -> str:
 APP_STATE = "ap_"   # the phone app's sign-in (name + email only, a one-time code back, never the session in a link)
 
 
-def start_google(extra_state: str = "", web: bool = False, apps: bool = False, phone: bool = False) -> str:
+_HINT = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,190}\.[^@\s]{2,24}$")
+
+
+def start_google(extra_state: str = "", web: bool = False, apps: bool = False, phone: bool = False,
+                 hint: str = "") -> str:
     """Return the Google consent URL the app should open. web=True = the Hoola Console (v0.142): the callback then
     hands the browser a one-time code instead of the app's deep link. The console's sign-in asks only for name + email
     (no Google review needed for any user); apps=True is its "Google apps jodiye" step (Gmail, Drive, Calendar, Docs,
@@ -124,6 +129,9 @@ def start_google(extra_state: str = "", web: bool = False, apps: bool = False, p
     }
     if signin_only:
         params["prompt"] = "select_account"   # just pick the account; no consent screen for basic profile
+        h = (hint or "").strip().lower()
+        if _HINT.match(h):                    # GOOGLE SIGN UP: the email she typed is picked on Google's page
+            params["login_hint"] = h
     else:
         params["access_type"] = "offline"     # get a refresh token
         params["prompt"] = "consent"          # ensure a refresh token every time
@@ -169,19 +177,24 @@ async def finish_google(code: str, state: str) -> dict:
     email = (info.get("email") or "").lower()
     if not email:
         raise AuthError("No email was found on the Google account.")
+    if info.get("email_verified") is False:   # GOOGLE SIGN UP: an unchecked email must never open someone's account
+        raise AuthError("Google has not checked the email on this account yet. Confirm it with Google, or "
+                        "continue with email instead.")
     expiry = now() + timedelta(seconds=int(tok.get("expires_in", 3600)))
     with session() as s:
         user = s.scalar(select(User).where(User.email == email))
         if not user and not signup_allowed(email):
             raise SignupClosed("Hoola is opening by invite for now. There is no place for this Google account yet; "
                                "ask the Hoola team for an invite.")
+        new = user is None
+        gname = re.sub(r"\s+", " ", str(info.get("name") or "")).strip()[:80]
         if not user:
-            user = User(email=email, name=info.get("name", ""), google_sub=info.get("sub"))
+            user = User(email=email, name=gname, google_sub=info.get("sub"))
             s.add(user)
             s.flush()
-        else:
-            user.name = info.get("name", user.name)
-            user.google_sub = info.get("sub", user.google_sub)
+        else:   # GOOGLE SIGN UP: the name she chose in Hoola stays; Google's only fills an empty one
+            user.name = user.name or gname
+            user.google_sub = info.get("sub") or user.google_sub
         user.last_login = now()
         uid = user.id
         conn = s.scalar(select(OAuthConnection).where(OAuthConnection.user_id == uid, OAuthConnection.provider == "google"))
@@ -195,8 +208,26 @@ async def finish_google(code: str, state: str) -> dict:
         conn.scopes = tok.get("scope") or conn.scopes or " ".join(SIGNIN_SCOPES)
         conn.last_error = None                       # a fresh sign-in clears an old "login expired"
         conn.expiry = expiry
+        name = user.name or ""
+    if new and name:
+        _seed_profile(uid, name)
     sess_token = issue_session(uid)
-    return {"session_token": sess_token, "user_id": uid, "email": email, "name": info.get("name", "")}
+    return {"session_token": sess_token, "user_id": uid, "email": email, "name": name, "new": new}
+
+
+def _seed_profile(uid: str, name: str) -> None:
+    """A new Google sign-up: the profile starts with her Google name (she can change it on the welcome step)."""
+    try:
+        from . import life
+        from .db import Profile
+        tenant = tenant_of_user(uid)
+        life.get_profile(tenant)
+        with session() as s:
+            p = s.get(Profile, tenant)
+            if p is not None and not (p.name or "").strip():
+                p.name = name
+    except Exception:          # noqa: BLE001 - the welcome step asks her name anyway
+        pass
 
 
 # ---------------- sessions ----------------

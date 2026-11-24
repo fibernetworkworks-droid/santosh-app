@@ -193,7 +193,8 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
         }
       }
       await widget.app.applySession(t);
-      if (widget.app.connected && mounted) setState(() => _setup = false);
+      // GOOGLE SIGN UP: a new person stays on the first screen for the welcome step (her name), others go in
+      if (widget.app.connected && mounted) setState(() => _setup = widget.app.googleWelcome != null);
     }, onError: (_) {});
   }
 
