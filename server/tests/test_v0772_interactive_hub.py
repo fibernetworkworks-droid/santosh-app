@@ -49,7 +49,7 @@ def test_a_template_only_ever_takes_her_values(hub):
     assert tpl["variables"] == ["shop", "festival", "item", "price", "last_date"] and not tpl["mine"]
     with pytest.raises(S.StudioError) as e:
         H.template_use(T, "tp_offer", {"shop": "Sharma Traders", "festival": "Diwali", "item": "Cement"})
-    assert "price" in str(e.value) and "last date" in str(e.value)        # the missing blanks are NAMED, never filled in
+    assert "price" in str(e.value) and "last day of the offer" in str(e.value)        # the missing blanks are NAMED (v0.999.174: by their label), never filled in
     p = H.template_use(T, "tp_offer", {"shop": "Sharma Traders", "festival": "Diwali", "item": "Cement",
                                          "price": "Rs 380", "last_date": "10 November"})
     assert "Rs 380" in p["scenes"][1]["say"] and p["scenes"][1]["look"]["new"] == "Rs 380"
