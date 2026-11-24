@@ -11290,3 +11290,20 @@ the nine older service suites now expect "Connectors > Google" in the not-connec
 
 NOT VERIFIED: a real Google account through the new flow on her server; Google's revoke on a real token; the phone
 screen compiles first on CI (no Flutter here).
+
+## v0.999.182 GOOGLE LOGOS (owner: "USE REAL GOOGLE LOGOS"): every Google app on console Connectors > Google and phone Settings > Google shows Google's own product logo (Gmail, Calendar, Drive, Docs, Sheets, Forms, Slides, Photos, YouTube, Business Profile, Search Console) on a white tile instead of a drawn icon; files from Google's gstatic branding set in static/console/google/ and assets/google/; 17 tests incl. a browser walk that checks every logo loads.
+
+Why: the owner saw the Google tab with drawn icons and asked for Google's real logos.
+
+What changed:
+- Google's own product logos (192 px PNG, from www.gstatic.com/images/branding/product/2x/) for Gmail, Calendar, Drive,
+  Docs, Sheets, Forms, Slides, Photos, YouTube, Business Profile, Search Console and the Google G (fallback), kept in
+  `server/app/static/console/google/<key>.png` and `assets/google/<key>.png` (pubspec assets).
+- Console `connectors.js` gTile draws the logo on a white tile with a hairline (dark mode keeps the white tile, as
+  Google asks for its logos); the drawn icon map is gone. Phone `hoola_google.dart` _tile does the same with Image.asset.
+- Chat cards keep their icon (they are about the account, not one app).
+
+Tests: `test_real_google_logos` (every file is a PNG on both surfaces, both screens point at them) and the browser walk
+now waits until every logo has loaded at its real size.
+
+NOT VERIFIED: the phone screen compiles first on CI.

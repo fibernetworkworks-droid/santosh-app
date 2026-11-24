@@ -5013,10 +5013,9 @@ html.human #app .landing .halo{display:none}
 
 /* v0.999.181 GOOGLE CONNECTIONS (connectors.js Google tab): accounts, the everyday apps, the rest */
 .cx-gsec{margin:0 0 26px}
-.cx-gtile{flex:none;width:36px;height:36px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;color:var(--g);background:color-mix(in srgb,var(--g) 13%,transparent)}
+.cx-gtile{flex:none;width:36px;height:36px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;background:#fff;box-shadow:inset 0 0 0 1px var(--line,rgba(0,0,0,.08))}
+.cx-gtile img{display:block;object-fit:contain}
 .cx-gtile.big{width:44px;height:44px;border-radius:12px}
-:root[data-theme="dark"] .cx-gtile{color:color-mix(in srgb,var(--g) 55%,#fff)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .cx-gtile{color:color-mix(in srgb,var(--g) 55%,#fff)}}
 .cx-gav{flex:none;width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:600;color:var(--pri);background:color-mix(in srgb,var(--pri) 14%,transparent)}
 .cx-gav.big{width:44px;height:44px;font-size:18px}
 .cx-glist{border:1px solid var(--hair);border-radius:var(--r2);overflow:hidden;background:var(--surface)}
@@ -5032,6 +5031,7 @@ html.human #app .landing .halo{display:none}
 .cx-gask{list-style:none;margin:0 0 14px;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .cx-gask li{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--ink)}
 .cx-gask .cx-gtile{width:30px;height:30px;border-radius:8px}
+.cx-gask .cx-gtile img,.cx-gmiss .cx-gtile img{width:20px;height:20px}
 .cx-gask.done li .cx-ic{margin-left:auto;color:var(--ok)}
 .cx-gmiss{display:flex;flex-direction:column;gap:8px;margin:0 0 14px}
 .cx-gmiss>div{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--mut)}

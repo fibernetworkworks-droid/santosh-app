@@ -715,15 +715,9 @@ window.HoolaConnectors = function ({api, esc, toast, say}) {
   /* ------------------------------------------------------------------ Google (v0.999.181 GOOGLE CONNECTIONS)
      Every Google app on Hoola's own connection: one tap for the everyday seven, one Connect each for the rest.
      A connect always lands on THIS Hoola account (the server binds it); status is what the server really holds. */
-  const GA = {
-    gmail: ['M3 6h18v12H3z M3 7l9 6 9-6', '#B3261E'], calendar: ['M4 6h16v14H4z M4 10h16 M8 3v4 M16 3v4', '#1A5FC4'],
-    drive: ['M8 4h8l6 10-4 6H6l-4-6z M2 14h20', '#16723A'], docs: ['M6 3h9l4 4v14H6z M9 12h7 M9 16h7 M9 8h3', '#1A5FC4'],
-    sheets: ['M5 3h14v18H5z M5 9h14 M5 15h14 M11 9v12', '#16723A'], forms: ['M5 3h14v18H5z M9 8h7 M9 12h7 M9 16h7', '#6A2AA8'],
-    slides: ['M3 5h18v12H3z M12 17v4 M8 21h8', '#8A5300'], photos: ['M3 5h18v14H3z M3 16l5-5 4 4 3-3 6 6', '#B3261E'],
-    youtube: ['M3 7c0-2 1-3 3-3h12c2 0 3 1 3 3v10c0 2-1 3-3 3H6c-2 0-3-1-3-3z M10 9l5 3-5 3z', '#B3261E'],
-    business: ['M4 9l1-5h14l1 5 M4 9h16v11H4z M9 20v-6h6v6', '#1A5FC4'], searchconsole: ['M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z M21 21l-5-5', '#1A5FC4'],
-  };
-  const gTile = (k, big) => { const [d, c] = GA[k] || GA.drive; return `<span class="cx-gtile${big ? ' big' : ''}" style="--g:${c}" aria-hidden="true"><svg width="${big ? 22 : 19}" height="${big ? 22 : 19}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg></span>`; };
+  // v0.999.182 Google's own product logos (static/console/google/<key>.png), never redrawn
+  const GA = new Set(['gmail', 'calendar', 'drive', 'docs', 'sheets', 'forms', 'slides', 'photos', 'youtube', 'business', 'searchconsole']);
+  const gTile = (k, big) => { const n = GA.has(k) ? k : 'google', z = big ? 30 : 24; return `<span class="cx-gtile${big ? ' big' : ''}" aria-hidden="true"><img src="/static/console/google/${n}.png" width="${z}" height="${z}" alt="" decoding="async"></span>`; };
   const gName = k => (S.google?.apps || []).find(a => a.key === k)?.name || k;
   const gPill = st => st === 'ok' ? `<span class="cx-pill ok"><i></i>Connected</span>` : st === 'expired' ? `<span class="cx-pill warn">Reconnect</span>` : `<span class="cx-pill mute">Not connected</span>`;
   const gInitial = e => esc(String(e || '?').charAt(0).toUpperCase());

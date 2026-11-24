@@ -3630,3 +3630,9 @@ Task ID: v0.999.181 GOOGLE CONNECTIONS
 Ask: check and fix the Gmail / Sheets / Forms / Drive connection across all surfaces, design first
 Built: googlehub.py + Connectors > Google (console) + Settings > Google (phone) + chat cards + the audit fixes
 Not verified: a real Google account on her server; phone compiles first on CI
+
+---
+Task ID: v0.999.182 GOOGLE LOGOS
+Ask: use real Google logos; explain the unverified app screen
+Built: Google's own product logos on the Google tiles (console + phone)
+Not verified: phone compiles first on CI

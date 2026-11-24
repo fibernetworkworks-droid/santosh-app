@@ -21,29 +21,35 @@ Future<void> hoolaOpenGoogle(BuildContext context, Santosh app) => Navigator.of(
 
 const _core = ['gmail', 'calendar', 'drive', 'docs', 'sheets', 'forms', 'slides'];
 
-const Map<String, (IconData, Color, String)> _look = {
-  'gmail': (Icons.mail_outline_rounded, Color(0xFFB3261E), 'Gmail'),
-  'calendar': (Icons.calendar_today_outlined, Color(0xFF1A5FC4), 'Calendar'),
-  'drive': (Icons.folder_outlined, Color(0xFF16723A), 'Drive'),
-  'docs': (Icons.description_outlined, Color(0xFF1A5FC4), 'Docs'),
-  'sheets': (Icons.table_chart_outlined, Color(0xFF16723A), 'Sheets'),
-  'forms': (Icons.checklist_rounded, Color(0xFF6A2AA8), 'Forms'),
-  'slides': (Icons.slideshow_outlined, Color(0xFF8A5300), 'Slides'),
-  'photos': (Icons.photo_outlined, Color(0xFFB3261E), 'Photos'),
-  'youtube': (Icons.smart_display_outlined, Color(0xFFB3261E), 'YouTube'),
-  'business': (Icons.storefront_outlined, Color(0xFF1A5FC4), 'Business Profile'),
-  'searchconsole': (Icons.manage_search_rounded, Color(0xFF1A5FC4), 'Search Console'),
+// v0.999.182 Google's own product logos (assets/google/<key>.png), never redrawn
+const Map<String, String> _look = {
+  'gmail': 'Gmail',
+  'calendar': 'Calendar',
+  'drive': 'Drive',
+  'docs': 'Docs',
+  'sheets': 'Sheets',
+  'forms': 'Forms',
+  'slides': 'Slides',
+  'photos': 'Photos',
+  'youtube': 'YouTube',
+  'business': 'Business Profile',
+  'searchconsole': 'Search Console',
 };
 
-String _name(String k) => _look[k]?.$3 ?? k;
+String _name(String k) => _look[k] ?? k;
 
 Widget _tile(String k, {double size = 40}) {
-  final l = _look[k] ?? _look['drive']!;
+  final logo = _look.containsKey(k) ? k : 'google';
   return Container(
     width: size,
     height: size,
-    decoration: BoxDecoration(color: l.$2.withOpacity(.12), borderRadius: BorderRadius.circular(HoolaRadius.tile)),
-    child: Icon(l.$1, size: size * .5, color: l.$2),
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(HoolaRadius.tile),
+      border: Border.all(color: const Color(0x14000000)),
+    ),
+    child: Image.asset('assets/google/$logo.png', width: size * .62, height: size * .62, fit: BoxFit.contain),
   );
 }
 

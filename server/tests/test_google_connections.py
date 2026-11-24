@@ -4,6 +4,8 @@ state of every account and app, reconnect, disconnect (revoked at Google) and wh
 audit's server fixes."""
 from __future__ import annotations
 
+import os
+
 import json
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -353,6 +355,10 @@ def test_browser_walk_connectors_google(arena_server, monkeypatch):
         assert "asha@gmail.com" in body and "office@biz.com" in body and "Needs reconnecting" in body
         assert "Everyday apps" in body and "More Google apps" in body
         assert p.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
+        p.wait_for_function("[...document.querySelectorAll('.cx-gtile img')].every(i => i.complete && i.naturalWidth === 192)")
+        assert p.evaluate("document.querySelectorAll('.cx-gtile img').length") >= 11   # Google's own logos, all loaded
+        if os.environ.get("HOOLA_SHOTS"):
+            p.screenshot(path=f"{os.environ['HOOLA_SHOTS']}/google_{w}.png", full_page=True)
         p.click("article[data-g-app='calendar']")
         p.wait_for_selector(".cx-drawer .cx-panel")
         panel = p.text_content(".cx-drawer .cx-panel")
@@ -370,3 +376,18 @@ def test_browser_walk_connectors_google(arena_server, monkeypatch):
         p.wait_for_timeout(800)
         assert asked and "ggl_w" in asked[0] and "login_hint" in asked[0]
         ctx.close()
+
+
+def test_real_google_logos():
+    """v0.999.182: every Google app shows Google's own product logo on the console and the phone."""
+    from pathlib import Path
+    from app import googlehub as G
+    root = Path(__file__).resolve().parents[2]
+    for k in [a["key"] for a in G.APPS] + ["google"]:
+        for f in (root / "server/app/static/console/google" / f"{k}.png", root / "assets/google" / f"{k}.png"):
+            assert f.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n", f
+    js = (root / "server/app/static/console/connectors.js").read_text()
+    assert "/static/console/google/${n}.png" in js
+    dart = (root / "lib/ui/shell/hoola_google.dart").read_text()
+    assert "Image.asset('assets/google/$logo.png'" in dart
+    assert "- assets/google/" in (root / "pubspec.yaml").read_text()
