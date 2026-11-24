@@ -24,7 +24,7 @@ window.HoolaInteractive = function (ctx) {
   const SET = Object.assign({lang: 'auto', face: '', voice: '', engine: '', shape: 'talking_head', kind: 'presenter', len: 30}, store.get('hx.set', {}));
   if (SET.lang === 'hi' && !store.get('hx.langv2', false)) { SET.lang = 'auto'; store.set('hx.langv2', true); store.set('hx.set', SET); }   // v0.999.172 the old India default becomes Auto
   const C = {conv: '', title: '', rows: [], items: [], ask: '', files: [], sending: false, waitUntil: 0, t: 0, gen: 0};
-  const UI = {slim: store.get('hx.slim', false), nav: false, etab: 'video', ptab: 'Videos', scene: 0, tool: 'Look', V: null, L: null,
+  const UI = {slim: store.get('hx.slim', false), nav: false, etab: 'video', ptab: 'Videos', scene: 0, tool: 'Scene', lf: 'all', lq: '', ls: store.get('hx.lsort', 'new'), lv: store.get('hx.lview', 'grid'), edv: 'video', edp: false, edt: 0, jp: {}, q: null, cmp: null, V: null, L: null,
     live: '', liveOut: [], newKey: null, newHook: null, pub: null, broll: {prompt: '', seconds: 6, aspect: '16:9', q: null}, jobs: {},
     me: '', credits: null, recent: [], est: null, ideaG: 'business', pv: {id: '', scene: 0, tab: 'sketch', play: false, t: 0}, audio: null};
   const URLS = new Map();
@@ -54,7 +54,10 @@ window.HoolaInteractive = function (ctx) {
     play: '<path d="M8 5.5v13l11-6.5z"/>', stop: '<rect x="7" y="7" width="10" height="10" rx="1.5"/>', check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
     clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/>',
     dl: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>', copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
-    trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13"/>', warn: '<path d="M12 4l9 15.5H3zM12 10v4.5M12 17.2v.1"/>', spark: '<path d="M12 3v6M12 15v6M3 12h6M15 12h6"/>'};
+    trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13"/>', warn: '<path d="M12 4l9 15.5H3zM12 10v4.5M12 17.2v.1"/>', spark: '<path d="M12 3v6M12 15v6M3 12h6M15 12h6"/>',
+    dots: '<circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18.5" cy="12" r="1.3"/>', search: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+    sort: '<path d="M7 5v14M4 16l3 3 3-3M17 19V5M14 8l3-3 3 3"/>', rows: '<path d="M4 6h16M4 12h16M4 18h16"/>', doc: '<path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6"/>',
+    fwd: '<path d="M5 12h14M13 6l6 6-6 6"/>', dn: '<path d="M12 5v14M6 13l6 6 6-6"/>', vol: '<path d="M4 9.5v5h4l5 4v-13l-5 4zM16.5 9a4.5 4.5 0 0 1 0 6M19 6.5a8 8 0 0 1 0 11"/>'};
   const ic = (n, s = 16) => `<svg class="hx-i" width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true">${P[n] || ''}</svg>`;
   const markSvg = () => window.HoolaMark ? HoolaMark.svg() : '<img src="/static/hoola-mark.png" alt="" width="26" height="26">';
   const num = n => (+n || 0).toLocaleString('en-IN');
@@ -106,11 +109,12 @@ window.HoolaInteractive = function (ctx) {
         <div class="hx-crumb" id="hxCrumb"></div><span class="hx-grow"></span><div class="hx-topr" id="hxTopR"></div></header><main class="hx-view" id="hxView"></main></div>`;
     document.body.appendChild(ROOT);
     ROOT.addEventListener('click', onClick); ROOT.addEventListener('input', onInput); ROOT.addEventListener('change', onChange);
+    ROOT.addEventListener('focusin', e => { const n = e.target.dataset?.sc; if (n != null && PAGE === 'studio' && +n !== UI.scene) { edStop(); UI.scene = +n; edPaint(); } });
     ROOT.addEventListener('keydown', e => { if (e.target.id === 'hxAsk' && e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); chatSend(); }
       if (e.key === 'Escape' && UI.nav) { UI.nav = false; side(); } });
   }
   async function open() { mount(); await load(); go(PAGE, ARG); voicesLoad().then(() => { if (PAGE === 'chat') refreshBar(); }); langsLoad().then(() => { if (PAGE === 'chat' && $('.hx-hero')) draw(); }); meLoad(); recentLoad(); estimate(); }
-  function leave() { clearTimeout(C.t); pvStop(); UI.audio?.pause(); Object.values(UI.jobs).forEach(clearTimeout); UI.jobs = {}; window.HoolaMenu?.close(); if (ROOT) { ROOT.querySelectorAll('audio,video').forEach(m => m.pause?.()); ROOT.hidden = true; } }
+  function leave() { clearTimeout(C.t); pvStop(); clearTimeout(UI.edt); UI.edp = false; UI.audio?.pause(); Object.values(UI.jobs).forEach(clearTimeout); UI.jobs = {}; window.HoolaMenu?.close(); if (ROOT) { ROOT.querySelectorAll('audio,video').forEach(m => m.pause?.()); ROOT.hidden = true; } }
   function creditCard() {
     const u = D?.usage || {};
     return `<div class="hx-cred"><div class="r"><span>This month</span><b class="hx-num">${num(u.videos || 0)} video${u.videos === 1 ? '' : 's'}</b></div>
@@ -136,16 +140,21 @@ window.HoolaInteractive = function (ctx) {
     t.innerHTML = PAGE === 'chat' ? `${UI.credits != null ? `<button type="button" class="hx-credp hx-num" data-a="credits" title="Your credits">${ic('spark', 14)}${num(UI.credits)} credits</button>` : ''}
       <button type="button" class="hx-ib" data-a="chats" aria-label="Earlier chats" title="Earlier chats">${ic('clock', 18)}</button>
       <button type="button" class="hx-ib" data-a="newchat" aria-label="New chat" title="New chat">${ic('plus', 18)}</button>`
-      : PAGE === 'studio' && !ARG ? `<button type="button" class="hx-btn s dark" data-a="go" data-p="chat">${ic('plus', 14)}<span>New video</span></button>` : '';
+      : PAGE === 'studio' ? (UI.credits != null ? `<button type="button" class="hx-credp hx-num" data-a="credits" title="Your credits">${ic('spark', 14)}${num(UI.credits)} credits</button>` : '') : '';
   }
   function go(page, arg) {
     window.HoolaMenu?.close();
+    clearTimeout(UI.edt); UI.edp = false; if (page !== 'studio' || arg !== ARG) UI.q = null;
     PAGE = V[page] ? page : 'chat'; ARG = arg || ''; UI.nav = false;
     side(); crumb(); draw();
     const v = $('#hxView'); v.scrollTop = 0; v.classList.remove('hx-enter'); void v.offsetWidth; v.classList.add('hx-enter');
     ENTER[PAGE]?.();
   }
-  function draw() { $('#hxView').innerHTML = V[PAGE](); AFTER[PAGE]?.(); fillMedia(); }
+  function draw() {
+    const keep = $$('#hxView [data-keep]').map(e => [e.dataset.keep, e.scrollTop]);
+    $('#hxView').innerHTML = V[PAGE](); keep.forEach(([k, t]) => { const e = $(`#hxView [data-keep="${CSS.escape(k)}"]`); if (e) e.scrollTop = t; });
+    AFTER[PAGE]?.(); fillMedia();
+  }
 
   // ------------------------------------------------------------------ the chat (v0.999.172: design claude.ai/artifact/5wm914F3jEgnNNfNr3rXPn) ---
   // The home: the kind of video, one box with every pick and the price before anything is planned, start from something
@@ -432,8 +441,8 @@ window.HoolaInteractive = function (ctx) {
     p.scenes = p.scenes.map((s, i) => i === n ? {...s, say: text} : s);
     clearTimeout(iscT); iscT = setTimeout(() => saveItem(id, {scenes: p.scenes}), 700);
   }
-  async function hear(id) {
-    const p = C.items.find(x => x.id === id), text = (p?.scenes?.[0]?.say || p?.title || '').split(/(?<=[.!?。！？])\s/)[0].slice(0, 160);
+  async function hear(id, line) {
+    const p = C.items.find(x => x.id === id) || (D.projects || []).find(x => x.id === id), text = (line || p?.scenes?.[0]?.say || p?.title || '').split(/(?<=[.!?。！？])\s/)[0].slice(0, 160);
     if (!text) return;
     try { const r = await api('POST', '/api/vocal/hear', {text, voice: p.voice || '', lang: p.lang || ''}, {raw: true});
       if (!r.ok) { let m = 'The sample could not be made.'; try { m = (await r.json()).detail || m; } catch { /* keep */ } throw new Error(m); }
@@ -497,7 +506,7 @@ window.HoolaInteractive = function (ctx) {
   function jobHTML(j) {
     if (!j || !j.steps) return '';
     const steps = j.steps.filter(s => s.k !== 'done' && (s.k !== 'face' || (j.engine && j.engine !== 'hoola')));
-    const done = steps.filter(s => s.at != null && s.k !== j.current).length, pct = j.done ? 100 : Math.round(100 * (done + .5) / Math.max(1, steps.length));
+    const pct = jobPct(j);
     return `<div class="hx-jobh"><span class="hx-ct"><b>${j.done ? (j.status === 'ready' ? 'Ready' : j.status === 'failed' ? 'Not made' : 'Stopped') : 'Making the video'}</b>
         <small class="hx-num">Working for ${clock(j.elapsed)}${j.credits ? ' · ' + cr(j.credits) : ''}</small></span><span class="hx-grow"></span>
         ${j.done ? '' : `<button type="button" class="hx-btn s danger" data-a="stop" data-id="${esc(j.pid)}">${ic('stop', 14)}Stop</button>`}</div>
@@ -514,6 +523,7 @@ window.HoolaInteractive = function (ctx) {
     const tick = async () => {
       let j; try { j = await api('GET', `${S}/progress?id=${q(id)}`); } catch { delete UI.jobs[id]; return; }
       const box = $(`#hxJob-${CSS.escape(id)}`); if (box) box.innerHTML = jobHTML(j);
+      UI.jp[id] = jobPct(j); $$(`[data-jobm="${CSS.escape(id)}"] i`).forEach(i => { i.style.width = UI.jp[id] + '%'; });
       if (j.done) { delete UI.jobs[id]; await load(); if (PAGE === 'chat') { await chatLoad(); paintChat(); } else draw();
         if (j.status === 'ready') toast('Your video is ready.'); else if (j.status === 'failed') toast(j.error || 'The video could not be made.', true); return; }
       UI.jobs[id] = setTimeout(tick, 2000);
@@ -526,6 +536,274 @@ window.HoolaInteractive = function (ctx) {
     catch (e) { toast(e.message, true); }
   }
 
+  // ------------------------------------------------------------------ the Studio (v0.999.173: the library + the editor) ---
+  const LIBF = [['all', 'All'], ['plan', 'Plans'], ['making', 'Making'], ['ready', 'Ready'], ['failed', 'Not made']];
+  const LSORT = {new: 'Newest first', old: 'Oldest first', title: 'Title A to Z'};
+  const TOOLS = ['Scene', 'Face', 'Voice', 'Engine', 'Video'];
+  const libKind = p => p.status === 'ready' ? 'ready' : p.status === 'making' ? 'making' : p.status === 'failed' ? 'failed' : 'plan';
+  const total = p => { const T = sceneTimes(p); return p?.video?.duration || (T.length ? T[T.length - 1][1] + (p.closing ? 2.2 : 1.2) : 0); };
+  const metaOf = p => [KIND_NAME[p.kind] || SHAPE[p.shape] || 'Video', langName(p.lang), clock(total(p))].join(' · ');
+  function jobPct(j) {
+    if (!j || !j.steps) return 4;
+    const steps = j.steps.filter(s => s.k !== 'done' && (s.k !== 'face' || (j.engine && j.engine !== 'hoola')));
+    const done = steps.filter(s => s.at != null && s.k !== j.current).length;
+    return j.done ? 100 : Math.max(4, Math.round(100 * (done + .5) / Math.max(1, steps.length)));
+  }
+  function libRows() {
+    const qy = (UI.lq || '').trim().toLowerCase(), f = UI.lf || 'all', s = UI.ls || 'new';
+    const ps = (D.projects || []).filter(p => (f === 'all' || libKind(p) === f)
+      && (!qy || `${p.title} ${p.ask || ''} ${(p.scenes || []).map(x => x.say).join(' ')}`.toLowerCase().includes(qy)));
+    return ps.sort((a, b) => s === 'title' ? String(a.title).localeCompare(String(b.title))
+      : s === 'old' ? String(a.updated || '').localeCompare(String(b.updated || '')) : String(b.updated || '').localeCompare(String(a.updated || '')));
+  }
+  function libThumb(p) {
+    const k = libKind(p);
+    const f = face(p.avatar_id), sc = (p.scenes || [])[0] || {}, lt = lookText(sc.look) || p.title;
+    return `<span class="hx-lth"><span class="hx-pst k-${esc(p.kind || 'presenter')}${p.aspect === '9:16' ? ' tall' : ''}" style="--brand:${esc(brandColor())}"><b>${esc(lt)}</b>${sc.say ? `<small>${esc(sc.say)}</small>` : ''}
+      ${f ? `<span class="hx-pstf">${avImg(f, 'xs')}</span>` : ''}<span class="hx-vtht hx-num">${clock(total(p))}</span></span>${k === 'ready' ? `<span class="hx-lplay" aria-hidden="true">${ic('play', 16)}</span>` : ''}
+      ${k === 'making' ? `<span class="hx-lbar" data-jobm="${esc(p.id)}"><i style="width:${UI.jp[p.id] || 4}%"></i></span>` : ''}</span>`;
+  }
+  function libCard(p) {
+    return `<article class="hx-lc" data-k="${libKind(p)}">
+      <button type="button" class="hx-lco" data-a="openp" data-id="${esc(p.id)}" aria-label="Open ${esc(p.title)}">${libThumb(p)}</button>
+      <div class="hx-lcb"><button type="button" class="hx-lct" data-a="openp" data-id="${esc(p.id)}" tabindex="-1">${esc(p.title)}</button>
+        <span class="hx-lcm hx-num">${esc(metaOf(p))} · ${(p.scenes || []).length} scenes</span>
+        <div class="hx-lcf">${chip(p)}<span class="hx-mut hx-sm">${esc(ago(p.updated))}</span><span class="hx-grow"></span>
+          <button type="button" class="hx-ib s" data-a="vmenu" data-id="${esc(p.id)}" aria-label="More for ${esc(p.title)}">${ic('dots', 16)}</button></div></div></article>`;
+  }
+  function libRow(p) {
+    return `<div class="hx-lr" role="row"><button type="button" class="hx-lro" data-a="openp" data-id="${esc(p.id)}">${libThumb(p)}
+        <span class="hx-ct"><b>${esc(p.title)}</b><small class="hx-num">${esc(metaOf(p))} · ${(p.scenes || []).length} scenes</small></span></button>
+      <span class="hx-lrs">${chip(p)}</span><span class="hx-mut hx-sm hx-lru">${esc(ago(p.updated))}</span>
+      <button type="button" class="hx-ib s" data-a="vmenu" data-id="${esc(p.id)}" aria-label="More for ${esc(p.title)}">${ic('dots', 16)}</button></div>`;
+  }
+  function libList() {
+    const rows = libRows();
+    if (!rows.length) return `<div class="hx-empty"><b>No videos match</b><span>Try another word, or show every video.</span>
+      <button type="button" class="hx-btn s" data-a="lclear">Show all videos</button></div>`;
+    return UI.lv === 'list' ? `<div class="hx-lrows hx-card" role="table" aria-label="Your videos">${rows.map(libRow).join('')}</div>`
+      : `<div class="hx-lgrid">${rows.map(libCard).join('')}</div>`;
+  }
+  function libEmpty() {
+    const tp = (D.templates || []).length;
+    return `<div class="hx-doc hx-lib"><div class="hx-lempty">
+      <div class="hx-lart" aria-hidden="true" style="--brand:${esc(brandColor())}"><span class="f"><i class="t"></i><i class="t2"></i><i class="c"></i><b class="av"></b></span>
+        <span class="r"><i></i><i></i><i></i><i></i></span></div>
+      <h2 class="hx-serif">Your first video starts with one sentence</h2>
+      <p class="hx-mut">Say what it should say, in any language. Hoola writes the scenes; you check the plan and the price. Nothing is made until you tap Make.</p>
+      <div class="hx-lstarts">
+        <button type="button" class="hx-lst" data-a="newchat"><span class="hx-lsi a">${ic('chat', 18)}</span><b>Describe it</b><span>Write or say what the video is for</span></button>
+        <button type="button" class="hx-lst" data-a="go" data-p="templates"><span class="hx-lsi b">${ic('grid', 18)}</span><b>Start from a template</b><span>${tp ? `${num(tp)} ready-made videos; your words fill the blanks` : 'Ready-made videos; your words fill the blanks'}</span></button>
+        <button type="button" class="hx-lst" data-a="lfrom"><span class="hx-lsi c">${ic('doc', 18)}</span><b>From a document</b><span>A PDF, Word file or slides become an explainer</span></button></div>
+      <ol class="hx-how"><li><span class="n">1</span><span><b>Say it</b>One line, any language</span></li>
+        <li><span class="n">2</span><span><b>Check the plan</b>Scenes, face, voice and the price</span></li>
+        <li><span class="n">3</span><span><b>Make it</b>Your tap; it carries on if you leave</span></li></ol></div></div>`;
+  }
+  function libPage() {
+    const all = D.projects || [];
+    if (!all.length) return libEmpty();
+    const n = k => all.filter(p => k === 'all' || libKind(p) === k).length, u = D.usage || {};
+    const waiting = all.filter(p => libKind(p) === 'plan' && (p.scenes || []).some(s => s.needs)).length;
+    const kpi = (lab, val, sub) => `<div class="hx-kpi"><span>${lab}</span><b class="hx-num">${val}</b><small>${sub}</small></div>`;
+    return `<div class="hx-doc hx-lib"><div class="hx-libh"><div class="hx-growf"><h2 class="hx-serif">Studio</h2>
+        <p class="hx-mut">Every video you planned or made. Open one to change its scenes, face, voice and engine.</p></div>
+        <div class="hx-acts"><button type="button" class="hx-btn" data-a="go" data-p="templates">${ic('grid', 14)}From a template</button>
+          <button type="button" class="hx-btn dark" data-a="newchat">${ic('plus', 14)}New video</button></div></div>
+      <div class="hx-kpis">${kpi('Videos', num(all.length), `${num(n('ready'))} ready to download`)}
+        ${kpi('Plans', num(n('plan')), waiting ? `${num(waiting)} need your numbers` : 'Nothing is spent until you tap')}
+        ${kpi('Made this month', num(u.videos || 0), `${num(u.minutes || 0)} minutes`)}
+        ${kpi('Kept on Hoola', `${num(u.stored || 0)}<small> of ${num(u.kept_max || 0)}</small>`, 'Older videos make room for new ones')}</div>
+      <div class="hx-libbar"><div class="hx-seg hx-lf" role="tablist" aria-label="Show">${LIBF.map(([k, l]) => `<button type="button" role="tab" aria-selected="${(UI.lf || 'all') === k}" aria-checked="${(UI.lf || 'all') === k}" data-a="lf" data-val="${k}">${l}<span class="hx-num">${num(n(k))}</span></button>`).join('')}</div>
+        <span class="hx-grow"></span>
+        <label class="hx-lsearch">${ic('search', 15)}<span class="hx-sr">Find a video</span><input id="hxLq" type="search" placeholder="Find a video" value="${esc(UI.lq || '')}" autocomplete="off"></label>
+        <button type="button" class="hx-btn" data-a="lsort">${ic('sort', 14)}<span>${LSORT[UI.ls || 'new']}</span></button>
+        <div class="hx-seg hx-lv" role="radiogroup" aria-label="View">${[['grid', 'grid', 'Cards'], ['list', 'rows', 'List']].map(([k, i, l]) => `<button type="button" role="radio" aria-checked="${(UI.lv || 'grid') === k}" data-a="lview" data-val="${k}" aria-label="${l}" title="${l}">${ic(i, 15)}</button>`).join('')}</div></div>
+      <div id="hxLibList">${libList()}</div>
+      ${(D.trash || []).length ? `<button type="button" class="hx-lnk hx-ltrash" data-a="ltrash">${ic('trash', 14)}Trash · ${num(D.trash.length)} video${D.trash.length === 1 ? '' : 's'}, kept for 30 days</button>` : ''}</div>`;
+  }
+
+  // the editor
+  function edStage(p) {
+    const n = Math.min(UI.scene, Math.max(0, p.scenes.length - 1)), sc = p.scenes[n] || {say: '', look: {kind: 'none'}}, f = face(p.avatar_id), full = p.face_layout === 'full';
+    const T = sceneTimes(p), tot = total(p), at = T[n] ? T[n][0] : 0, vid = p.status === 'ready' && UI.edv !== 'sketch';
+    const lt = lookText(sc.look) || (n === 0 ? p.title : '');
+    return `<div class="hx-edframe"><div class="hx-preview ${p.aspect === '9:16' ? 'tall' : p.aspect === '1:1' ? 'sq' : ''}" style="--brand:${esc(brandColor())}">
+        ${vid ? `<video class="hx-player" controls playsinline preload="metadata" data-vid="${esc(p.id)}"></video><span class="hx-aimark">Made with AI</span>`
+          : `${f && full ? `<span class="hx-pvfull">${avImg(f, 'xl')}</span>` : ''}
+            <div class="hx-pvlook">${lt ? `<b>${esc(lt)}</b>` : ''}</div>${f && !full ? `<span class="hx-pvface">${avImg(f, 'l')}</span>` : ''}
+            <p class="hx-pvcap">${esc(sc.say || '')}</p>`}</div></div>
+      <div class="hx-edctl">${vid ? `<span class="hx-mut hx-sm">The finished video. Tap a scene below to jump to it.</span>`
+        : `<button type="button" class="hx-pplay" data-a="edplay" aria-label="${UI.edp ? 'Pause the sketch' : 'Play the sketch'}">${ic(UI.edp ? 'stop' : 'play', 14)}</button>
+          <button type="button" class="hx-ib s" data-a="scprev" aria-label="Previous scene"${n ? '' : ' disabled'}>${ic('back', 15)}</button>
+          <button type="button" class="hx-ib s" data-a="scnext" aria-label="Next scene"${n < p.scenes.length - 1 ? '' : ' disabled'}>${ic('fwd', 15)}</button>
+          <span class="hx-sm hx-num"><b>Scene ${n + 1}</b> of ${p.scenes.length} · ${clock(at)} / ${clock(tot)}</span>`}
+        <span class="hx-grow"></span>
+        ${p.status === 'ready' ? `<div class="hx-seg" role="radiogroup" aria-label="Show">${[['video', 'Video'], ['sketch', 'Sketch']].map(([k, l]) => `<button type="button" role="radio" aria-checked="${(UI.edv || 'video') === k}" data-a="edview" data-val="${k}">${l}</button>`).join('')}</div>` : ''}</div>`;
+  }
+  function edTimeline(p) {
+    const T = sceneTimes(p), tot = total(p);
+    return `<div class="hx-tl" role="tablist" aria-label="Scenes on the timeline">${p.scenes.map((s, i) => {
+      const lk = s.look?.kind && s.look.kind !== 'none';
+      return `<button type="button" role="tab" aria-selected="${i === UI.scene}" class="hx-tlb${i === UI.scene ? ' on' : ''}${s.needs ? ' warn' : ''}" data-a="scene" data-n="${i}" style="flex:${(T[i][1] - T[i][0]).toFixed(2)} 1 0" title="Scene ${i + 1} · ${clock(T[i][0])}">
+        <span class="hx-num">${i + 1}</span><small>${esc(lk ? LOOK[s.look.kind] : (s.say || '').slice(0, 40))}</small></button>`; }).join('')}
+      ${p.closing ? `<span class="hx-tlb end" style="flex:2.2 1 0" title="Closing card"><small>${esc(p.closing)}</small></span>` : ''}</div>
+      <div class="hx-tlr hx-num"><span>0:00</span><span>${clock(tot / 2)}</span><span>${clock(tot)}</span></div>`;
+  }
+  function edScenes(p) {
+    const T = sceneTimes(p), dis = p.status === 'making' ? ' disabled' : '', last = p.scenes.length - 1;
+    return `<div class="hx-edsech"><b class="hx-t">Scenes</b><span class="hx-mut hx-sm hx-num" id="hxEdLen">${p.scenes.length} · ${clock(total(p))}</span><span class="hx-grow"></span>
+        <button type="button" class="hx-btn s" data-a="addsc"${dis}>${ic('plus', 14)}Scene</button></div>
+      <ol class="hx-edsc">${p.scenes.map((s, i) => `<li class="hx-scc${i === UI.scene ? ' on' : ''}" data-n="${i}">
+        <div class="hx-scch"><button type="button" class="hx-scnum" data-a="scene" data-n="${i}" aria-label="Show scene ${i + 1}">${i + 1}</button>
+          <span class="hx-mut hx-sm hx-num hx-sct">${clock(T[i][0])} · ${secs(T[i][1] - T[i][0])}</span>
+          ${s.look?.kind && s.look.kind !== 'none' ? `<span class="hx-sclk">${esc(LOOK[s.look.kind])}</span>` : ''}<span class="hx-grow"></span>
+          <span class="hx-scops"><button type="button" class="hx-ib xs" data-a="scmove" data-n="${i}" data-d="-1" aria-label="Move scene ${i + 1} up"${i && !dis ? '' : ' disabled'}>${ic('up', 14)}</button>
+            <button type="button" class="hx-ib xs" data-a="scmove" data-n="${i}" data-d="1" aria-label="Move scene ${i + 1} down"${i < last && !dis ? '' : ' disabled'}>${ic('dn', 14)}</button>
+            <button type="button" class="hx-ib xs" data-a="scdup" data-n="${i}" aria-label="Copy scene ${i + 1}"${dis}>${ic('copy', 14)}</button>
+            <button type="button" class="hx-ib xs" data-a="delsc" data-n="${i}" aria-label="Remove scene ${i + 1}"${last && !dis ? '' : ' disabled'}>${ic('trash', 14)}</button></span></div>
+        <textarea class="hx-in hx-serifp" data-sc="${i}" rows="3" aria-label="Scene ${i + 1} words"${dis}>${esc(s.say)}</textarea>
+        ${s.needs ? `<p class="hx-why">${ic('warn', 14)}<span>${esc(s.needs)}</span></p>` : ''}</li>`).join('')}</ol>
+      <label class="hx-fld hx-edclose"><span class="hx-lab">Closing line</span><input class="hx-in" data-f="closing" value="${esc(p.closing || '')}" maxlength="80" placeholder="Visit us at…"${dis}>
+        <span class="hx-hint">Shown on the last card, after the final scene.</span></label>`;
+  }
+  function edTool(p) {
+    const sc = p.scenes[UI.scene] || {say: '', look: {kind: 'none'}}, lk = sc.look || {kind: 'none'}, f = face(p.avatar_id), e = engine(p.engine);
+    const dis = p.status === 'making' ? ' disabled' : '';
+    if (UI.tool === 'Scene') {
+      const field = (k, l, ph) => `<label class="hx-fld"><span class="hx-lab">${l}</span><input class="hx-in" data-lk="${k}" value="${esc(lk[k] || '')}" maxlength="60" placeholder="${esc(ph || '')}"${dis}></label>`;
+      const extra = {title: field('text', 'Title', 'Grand opening'), big_number: field('value', 'Number', '1,200') + field('label', 'What it is', 'happy customers'),
+        price: `<div class="hx-row2">${field('new', 'Price now', '€19')}${field('old', 'Price before', '€25')}</div>${field('label', 'Item', 'Lunch menu')}`,
+        lower_third: field('title', 'Name', 'Maya Costa') + field('sub', 'Line under it', 'Owner, Café Azul'),
+        bar_chart: `<div class="hx-fld"><span class="hx-lab">Bars</span>${(lk.bars || []).map((b, i) => `<div class="hx-barr"><input class="hx-in" data-bar="${i}" data-bk="label" value="${esc(b.label)}" placeholder="Label" aria-label="Bar ${i + 1} label"${dis}><input class="hx-in" data-bar="${i}" data-bk="value" value="${esc(b.value)}" placeholder="Value" aria-label="Bar ${i + 1} value"${dis}>
+          <button type="button" class="hx-ib xs" data-a="bardel" data-n="${i}" aria-label="Remove bar ${i + 1}"${(lk.bars || []).length > 1 && !dis ? '' : ' disabled'}>${ic('x', 14)}</button></div>`).join('')}
+          ${(lk.bars || []).length < 6 ? `<button type="button" class="hx-btn s" data-a="baradd"${dis}>${ic('plus', 13)}Add a bar</button>` : ''}</div>`}[lk.kind] || '';
+      return `<div class="hx-fld"><span class="hx-lab">What scene ${UI.scene + 1} shows</span><div class="hx-looks" role="radiogroup">${Object.entries(LOOK).map(([k, n]) => `<button type="button" role="radio" aria-checked="${(lk.kind || 'none') === k}" class="hx-lkt" data-a="lookset" data-val="${k}"${dis}>
+          <span class="hx-lka ${k}" aria-hidden="true"><i></i><i></i><i></i></span><span>${esc(n)}</span></button>`).join('')}</div></div>
+        ${extra}<p class="hx-hint">Numbers on screen are yours: a number you did not write is never added.</p>`;
+    }
+    if (UI.tool === 'Face') {
+      const talk = (D.engines?.engines || []).filter(x => x.job === 'video' && x.face && x.ready).map(x => x.label);
+      return `<div class="hx-fld"><span class="hx-lab">Who presents</span><div class="hx-faces" role="radiogroup">
+          <button type="button" role="radio" aria-checked="${!p.avatar_id}" class="hx-fct" data-a="faceset" data-val=""${dis}>${avImg(null, 'm')}<span>No face</span></button>
+          ${(D.avatars || []).map(a => `<button type="button" role="radio" aria-checked="${p.avatar_id === a.id}" class="hx-fct" data-a="faceset" data-val="${esc(a.id)}"${dis}>${avImg(a, 'm')}<span>${esc(a.name)}</span></button>`).join('')}
+          <button type="button" class="hx-fct add" data-a="go" data-p="avatars">${ic('plus', 18)}<span>Add a face</span></button></div></div>
+        ${f ? `<div class="hx-fld"><span class="hx-lab">Where the person sits</span><div class="hx-seg" role="radiogroup">${[['corner', 'In a corner'], ['full', 'The whole frame']].map(([k, n]) => `<button type="button" role="radio" aria-checked="${(p.face_layout || 'corner') === k}" data-a="layout" data-val="${k}"${dis}>${n}</button>`).join('')}</div></div>` : ''}
+        <p class="hx-hint">${f ? (e?.face ? `${esc(e.label)} makes this photo talk.` : `Hoola standard shows the photo still. ${talk.length ? `To make it talk, pick ${esc(talk.join(' or '))} in Engine.` : 'A talking-face engine is not connected yet.'}`) : 'A face is used only with consent: it is you, or the person agreed.'}</p>`;
+    }
+    if (UI.tool === 'Voice') return `<div class="hx-fld"><span class="hx-lab">Voice</span><button type="button" class="hx-dd" data-a="ppick" data-k="voice"${dis}><span>${esc(voiceName(p.voice))}</span>${ic('down', 14)}</button></div>
+      <div class="hx-fld"><span class="hx-lab">Language</span><button type="button" class="hx-dd" data-a="ppick" data-k="lang"${dis}><span>${esc(langName(p.lang))}</span>${ic('down', 14)}</button></div>
+      <button type="button" class="hx-btn" data-a="edhear">${ic('vol', 14)}Hear scene ${UI.scene + 1} in this voice<span class="hx-mut">· free</span></button>
+      <p class="hx-hint">Your Hoola Vocal dictionary applies: names are said your way. <button type="button" class="hx-lnk" data-a="go" data-p="voices">All voices</button></p>`;
+    if (UI.tool === 'Engine') {
+      const r = UI.cmp?.id === p.id ? UI.cmp.r : null;
+      if (!r) return '<p class="hx-mut hx-sm">Pricing every engine for this video…</p>';
+      const bars = n => `<span class="hx-q" aria-label="Quality ${n} of 5">${[0, 1, 2, 3, 4].map(i => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
+      return `<p class="hx-hint">Prices for this exact video, about ${secs(r.seconds)}, in this voice.</p><div class="hx-engs" role="radiogroup">${r.engines.map(x => `<button type="button" role="radio" aria-checked="${r.chosen === x.id}" class="hx-eng${x.ready ? '' : ' off'}" data-a="engset" data-id="${esc(x.id)}"${x.ready && !dis ? '' : ' disabled'}>
+        <span class="hx-ct"><b>${esc(x.label)}</b><small>${esc(x.ready ? x.what : `Not connected · ${scrub(x.status || '')}`)}</small></span>
+        <span class="hx-engr">${bars(x.quality)}<b class="hx-num">${cr(x.credits)}</b></span></button>`).join('')}</div>
+        <button type="button" class="hx-lnk" data-a="go" data-p="engines">Set a default engine</button>`;
+    }
+    return `<div class="hx-fld"><span class="hx-lab">Shape</span><div class="hx-seg" role="radiogroup">${Object.entries(SHAPE).map(([k, n]) => `<button type="button" role="radio" aria-checked="${p.shape === k}" data-a="pshape" data-val="${k}"${dis}>${n}</button>`).join('')}</div></div>
+      ${p.shape !== 'reel' ? `<div class="hx-fld"><span class="hx-lab">Frame</span><div class="hx-seg" role="radiogroup">${[['16:9', 'Wide 16:9'], ['1:1', 'Square 1:1']].map(([k, n]) => `<button type="button" role="radio" aria-checked="${p.aspect === k}" data-a="paspect" data-val="${k}"${dis}>${n}</button>`).join('')}</div></div>` : ''}
+      <label class="hx-fld"><span class="hx-lab">Business name on screen</span><input class="hx-in" data-f="brand" value="${esc(p.brand || '')}" maxlength="40" placeholder="${esc(D.brand?.name || 'Your business')}"${dis}></label>
+      ${p.shape === 'product' ? `<div class="hx-fld"><span class="hx-lab">Products</span><div id="hxItems">${(p.items || []).map((it, i) => `<div class="hx-itrow"><input class="hx-in" data-it="${i}" data-ik="name" value="${esc(it.name)}" placeholder="Name" maxlength="48" aria-label="Product ${i + 1} name"${dis}>
+          <input class="hx-in" data-it="${i}" data-ik="price" value="${esc(it.price)}" placeholder="Price" maxlength="24" aria-label="Product ${i + 1} price"${dis}>
+          <button type="button" class="hx-ib xs" data-a="itdel" data-n="${i}" aria-label="Remove product ${i + 1}"${dis}>${ic('x', 14)}</button></div>`).join('')}</div>
+          ${(p.items || []).length < 8 ? `<button type="button" class="hx-btn s" data-a="itadd"${dis}>${ic('plus', 13)}Add a product</button>` : ''}</div>` : ''}
+      <div class="hx-fld"><span class="hx-lab">Subtitles</span><div class="hx-acts"><button type="button" class="hx-btn s" data-a="subdl" data-val="srt">${ic('dl', 13)}.srt</button>
+        <button type="button" class="hx-btn s" data-a="subdl" data-val="vtt">${ic('dl', 13)}.vtt</button></div><span class="hx-hint">Timed from the scenes.</span></div>`;
+  }
+  function makeBtn(p, big) {
+    if (p.status === 'making') return `<button type="button" class="hx-btn ${big ? 'hx-mkb' : ''} danger" data-a="stop" data-id="${esc(p.id)}">${ic('stop', 14)}<span>Stop</span></button>`;
+    const qn = UI.q?.id === p.id ? UI.q : null, blocked = !qn || (qn.problems || []).length;
+    return `<button type="button" class="hx-btn dark ${big ? 'hx-mkb' : ''}" data-a="make" data-mk="1" data-id="${esc(p.id)}" data-k="${esc(qn?.quote?.key || '')}"${blocked ? ' disabled' : ''}>${ic('play', 14)}<span>${p.status === 'ready' ? 'Make it again' : 'Make the video'}${qn ? ` · ${cr(qn.quote.credits)}` : ''}</span></button>`;
+  }
+  function edMakeBox(p) {
+    const qn = UI.q?.id === p.id ? UI.q : null, pr = qn?.problems || [];
+    return `<div class="hx-edmk"><div id="hxEdPrice">${qn ? priceBox(qn.quote) : '<p class="hx-mut hx-sm">Working out the price…</p>'}</div>
+      ${pr.length ? `<ul class="hx-probs">${pr.map(x => `<li>${ic('warn', 14)}<span>${esc(scrub(x))}</span></li>`).join('')}</ul>` : ''}
+      ${makeBtn(p, true)}<p class="hx-hint">${p.status === 'making' ? 'Making it now. You can leave this page; it carries on.' : 'The price is for this exact video. Nothing is spent until you tap.'}</p></div>`;
+  }
+  function edPage() {
+    const p = cur();
+    if (!p) return `<div class="hx-doc"><div class="hx-empty"><b>This video was not found</b><span>It may be in the trash.</span><button type="button" class="hx-btn" data-a="go" data-p="studio">All videos</button></div></div>`;
+    if (UI.scene >= p.scenes.length) UI.scene = Math.max(0, p.scenes.length - 1);
+    if (!TOOLS.includes(UI.tool)) UI.tool = 'Scene';
+    const dis = p.status === 'making' ? ' disabled' : '';
+    return `<div class="hx-ed"><div class="hx-edh"><button type="button" class="hx-ib" data-a="go" data-p="studio" aria-label="All videos" title="All videos">${ic('back', 18)}</button>
+        <div class="hx-edtt"><label class="hx-sr" for="hxEdTitle">Title</label><input id="hxEdTitle" class="hx-edti" data-f="title" value="${esc(p.title)}" maxlength="80"${dis}>
+          <span class="hx-edmeta">${chip(p)}<span class="hx-num">${esc([KIND_NAME[p.kind] || SHAPE[p.shape] || 'Video', p.aspect, langName(p.lang)].join(' · '))}</span>${p.chat ? `<button type="button" class="hx-lnk" data-a="openchat" data-id="${esc(p.chat)}">Its chat</button>` : ''}</span></div>
+        <span class="hx-grow"></span>
+        ${p.status === 'ready' ? `<button type="button" class="hx-btn" data-a="dlv" data-id="${esc(p.id)}">${ic('dl', 14)}<span>Download</span></button>` : ''}
+        <button type="button" class="hx-ib" data-a="vmenu" data-id="${esc(p.id)}" aria-label="More for this video">${ic('dots', 18)}</button>
+        <span class="hx-edhmk">${makeBtn(p)}</span></div>
+      <div class="hx-edb"><section class="hx-edl" data-keep="edl-${esc(p.id)}" aria-label="Scenes">${edScenes(p)}</section>
+        <section class="hx-edc" aria-label="Preview"><div id="hxEdStage">${edStage(p)}</div><div id="hxEdTl">${edTimeline(p)}</div>
+          <div id="hxJob-${esc(p.id)}" class="hx-edjob"></div>${p.error && p.status === 'failed' ? `<p class="hx-why">${ic('warn', 14)}<span>${esc(scrub(p.error))}</span></p>` : ''}</section>
+        <aside class="hx-edr" data-keep="edr-${esc(p.id)}" aria-label="Settings"><div class="hx-tabs hx-edtabs" role="tablist">${TOOLS.map(t => `<button type="button" role="tab" aria-selected="${UI.tool === t}" data-a="tool" data-val="${t}">${t}</button>`).join('')}</div>
+          <div id="hxEdTool" class="hx-edtool">${edTool(p)}</div>${edMakeBox(p)}</aside></div></div>`;
+  }
+  function edPaint(tool = true) {
+    const p = cur(); if (!p || PAGE !== 'studio') return;
+    const s = $('#hxEdStage'); if (s) { s.innerHTML = edStage(p); fillMedia(); }
+    const t = $('#hxEdTl'); if (t) t.innerHTML = edTimeline(p);
+    $$('.hx-scc').forEach(li => li.classList.toggle('on', +li.dataset.n === UI.scene));
+    if (tool && UI.tool === 'Scene') { const x = $('#hxEdTool'); if (x) x.innerHTML = edTool(p); }
+  }
+  function edTimes(p) {
+    const T = sceneTimes(p);
+    $$('.hx-scc').forEach(li => { const i = +li.dataset.n, el = li.querySelector('.hx-sct'); if (el && T[i]) el.textContent = `${clock(T[i][0])} · ${secs(T[i][1] - T[i][0])}`; });
+    const l = $('#hxEdLen'); if (l) l.textContent = `${p.scenes.length} · ${clock(total(p))}`;
+    const t = $('#hxEdTl'); if (t) t.innerHTML = edTimeline(p);
+  }
+  function edScene(n, show) {
+    const p = cur(); if (!p) return; UI.scene = Math.max(0, Math.min(n, p.scenes.length - 1));
+    const v = $('#hxEdStage video');
+    if (v) { const T = sceneTimes(p)[UI.scene]; try { v.currentTime = T ? T[0] : 0; v.play().catch(() => {}); } catch { /* not loaded */ } $$('.hx-tlb').forEach((b, i) => b.classList.toggle('on', i === UI.scene)); $$('.hx-scc').forEach(li => li.classList.toggle('on', +li.dataset.n === UI.scene)); }
+    else edPaint();
+    if (show) $(`.hx-scc[data-n="${UI.scene}"]`)?.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+  }
+  function edPlay() {
+    if (UI.edp) return edStop();
+    const p = cur(); if (!p || !p.scenes.length) return;
+    UI.edp = true; if (UI.scene >= p.scenes.length - 1) UI.scene = 0; edTick(true);
+  }
+  function edTick(first) {
+    const p = cur(); if (!UI.edp || !p || PAGE !== 'studio') return edStop();
+    if (!first) { if (UI.scene >= p.scenes.length - 1) return edStop(); UI.scene++; }
+    edPaint(); $(`.hx-scc[data-n="${UI.scene}"]`)?.scrollIntoView({block: 'nearest'});
+    const T = sceneTimes(p)[UI.scene]; UI.edt = setTimeout(() => edTick(false), Math.max(1500, (T[1] - T[0]) * 1000));
+  }
+  function edStop() { clearTimeout(UI.edt); if (!UI.edp) return; UI.edp = false; edPaint(false); }
+  async function edCompare() {
+    const id = ARG; if (!id) return;
+    try { const r = await api('GET', `${X}/compare?id=${q(id)}`); UI.cmp = {id, r}; } catch (e) { UI.cmp = {id, r: {engines: [], seconds: 0, chosen: ''}}; toast(e.message, true); }
+    if (PAGE === 'studio' && ARG === id && UI.tool === 'Engine') { const x = $('#hxEdTool'); if (x) x.innerHTML = edTool(cur()); }
+  }
+  function scenesSave(sc, n) { if (n != null) UI.scene = n; return save({scenes: sc}); }
+  async function newVideo() { clearTimeout(C.t); C.gen++; C.conv = ''; C.rows = []; C.items = []; C.files = []; C.ask = ''; UI.pv.id = ''; pvStop(); await openChat(true); recentLoad(); go('chat'); }
+  function trMenu(el, id) {
+    return menu(el, [{search: 'Translate into', empty: 'No language matches'}, ...(UI.L || []).map(l => ({label: l.native && l.native !== l.name ? `${l.name} · ${l.native}` : l.name, sub: l.region, run: async () => {
+      try { const p = await api('POST', `${H}/translate`, {id, lang: l.code}); toast('A translated draft is ready. Check it, then make it.'); await load(); UI.scene = 0; go('studio', p.id); } catch (er) { toast(er.message, true); } }}))], {width: 280});
+  }
+  async function dupP(id) { try { const p = await api('POST', `${H}/duplicate`, {id}); await load(); toast('A copy is ready.'); UI.scene = 0; go('studio', p.id); } catch (er) { toast(er.message, true); } }
+  async function tplSave(id) { try { await api('POST', `${H}/template`, {project: id}); await load(); toast('Saved as a template.'); } catch (er) { toast(er.message, true); } }
+  async function trashP(id) {
+    try { await api('POST', `${H}/trash`, {id}); await load(); toast('Moved to the trash for 30 days.'); if (PAGE === 'studio' && ARG === id) go('studio'); else draw(); }
+    catch (er) { toast(er.message, true); }
+  }
+  function vMenu(el, id) {
+    const p = (D.projects || []).find(x => x.id === id); if (!p) return;
+    return menu(el, [...(PAGE === 'studio' && ARG === id ? [] : [{label: 'Open in the Studio', icon: 'library', run: () => { UI.scene = 0; UI.edv = 'video'; go('studio', id); }}]),
+      ...(p.chat ? [{label: 'Open its chat', icon: 'clip', run: () => openChatId(p.chat)}] : []),
+      ...(p.status === 'ready' ? [{label: 'Download the MP4', run: () => download(id)}] : []),
+      {label: 'Duplicate', icon: 'plus', run: () => dupP(id)},
+      {label: 'Translate into another language', run: () => trMenu(el, id)},
+      {label: 'Save as a template', icon: 'grid', run: () => tplSave(id)},
+      {sep: true}, {label: 'Move to the trash', icon: 'trash', danger: true, disabled: p.status === 'making', run: () => trashP(id)}], {align: 'end', width: 260});
+  }
+  async function openChatId(conv) { clearTimeout(C.t); C.gen++; C.conv = conv; C.rows = []; C.items = []; UI.pv.id = ''; pvStop(); await chatLoad(); go('chat'); }
+
   // ------------------------------------------------------------------ pages ---
   const V = {
     chat() {
@@ -533,44 +811,7 @@ window.HoolaInteractive = function (ctx) {
       return `<div class="hx-split hx-ixchat"><div class="hx-chat"><div class="hx-log" id="hxLog"><div id="hxThread">${thread()}</div></div>${composer(false)}</div>
         <aside class="hx-stage hx-pv" id="hxPv" aria-label="Preview">${pvPane()}</aside></div>`;
     },
-    studio() {
-      if (!ARG) {
-        const ps = (D.projects || []);
-        return `<div class="hx-doc"><div class="hx-doch"><div class="hx-growf"><h2 class="hx-serif">Studio</h2><p class="hx-mut">Every video, scene by scene. Start a new one in the Interactive chat.</p></div></div>
-          ${ps.length ? `<div class="hx-tablew hx-card"><table class="hx-table"><thead><tr><th>Video</th><th>Language</th><th>Engine</th><th>Status</th><th></th></tr></thead><tbody>
-          ${ps.map(p => `<tr><td><button type="button" class="hx-lnk" data-a="openp" data-id="${esc(p.id)}">${esc(p.title)}</button><br><small class="hx-mut">${(p.scenes || []).length} scenes · ${esc(ago(p.updated))}</small></td>
-            <td>${esc(langName(p.lang))}</td><td>${esc(engine(p.engine)?.label || 'Hoola standard')}</td><td>${chip(p)}</td>
-            <td class="r"><button type="button" class="hx-ib s" data-a="trash" data-id="${esc(p.id)}" aria-label="Move to trash">${ic('trash', 15)}</button></td></tr>`).join('')}</tbody></table></div>`
-          : `<div class="hx-empty"><b>No videos yet</b><span>Say what a video should say in the Interactive chat and its scenes appear here.</span>
-            <button type="button" class="hx-btn dark" data-a="go" data-p="chat">Open the chat</button></div>`}</div>`;
-      }
-      const p = (D.projects || []).find(x => x.id === ARG);
-      if (!p) return `<div class="hx-doc"><div class="hx-empty"><b>This video was not found</b><button type="button" class="hx-btn" data-a="go" data-p="studio">All videos</button></div></div>`;
-      const sc = p.scenes[UI.scene] || p.scenes[0] || {say: '', look: {kind: 'none'}}, f = face(p.avatar_id), e = engine(p.engine);
-      const brandC = /^#[0-9a-f]{6}$/i.test(D.brand?.color || '') ? D.brand.color : '#5B45E0';
-      const lk = sc.look || {kind: 'none'};
-      const lookText = lk.kind === 'title' ? lk.text : lk.kind === 'big_number' ? `${lk.value || '—'} ${lk.label || ''}` : lk.kind === 'price' ? `${lk.new || '—'}${lk.old ? ' · was ' + lk.old : ''}` : lk.kind === 'lower_third' ? `${lk.title || ''} · ${lk.sub || ''}` : lk.kind === 'bar_chart' ? (lk.bars || []).map(b => `${b.label} ${b.value}`).join(' · ') : '';
-      return `<div class="hx-split hx-studio"><section class="hx-panel" aria-label="The script"><div class="hx-rh"><b class="hx-t">Script</b><span class="hx-grow"></span>
-          <button type="button" class="hx-btn s" data-a="addsc">${ic('plus', 14)}Scene</button></div>
-          <ol class="hx-script">${p.scenes.map((s, i) => `<li class="${i === UI.scene ? 'on' : ''}"><button type="button" class="hx-scn" data-a="scene" data-n="${i}" aria-label="Scene ${i + 1}">${i + 1}</button>
-            <textarea class="hx-in hx-serifp" data-sc="${i}" rows="2" aria-label="Scene ${i + 1} words">${esc(s.say)}</textarea>
-            ${s.needs ? `<small class="hx-why">${esc(s.needs)}</small>` : ''}</li>`).join('')}</ol>
-          <label class="hx-fld"><span class="hx-lab">Closing line</span><input class="hx-in" data-f="closing" value="${esc(p.closing || '')}" maxlength="80"></label></section>
-        <section class="hx-stage" aria-label="Preview"><div class="hx-stageb"><div class="hx-preview ${p.aspect === '9:16' ? 'tall' : p.aspect === '1:1' ? 'sq' : ''}" style="--brand:${esc(brandC)}">
-            ${p.status === 'ready' ? `<video class="hx-player" controls playsinline preload="metadata" data-vid="${esc(p.id)}"></video>`
-              : `<div class="hx-pvlook">${lookText ? `<b>${esc(lookText)}</b>` : ''}</div>${f ? `<span class="hx-pvface">${avImg(f, 'l')}</span>` : ''}<p class="hx-pvcap">${esc(sc.say)}</p>`}</div>
-          <p class="hx-hint c">${p.status === 'ready' ? 'The finished video. Change a scene and make it again for a new version.' : `Scene ${UI.scene + 1} of ${p.scenes.length} · a sketch of the scene; the real one is drawn when you make it.`}</p>
-          <div class="hx-strip">${p.scenes.map((s, i) => `<button type="button" class="hx-sthumb${i === UI.scene ? ' on' : ''}" data-a="scene" data-n="${i}">${i + 1}<small>${esc((s.say || '').slice(0, 28))}</small></button>`).join('')}</div>
-          <div id="hxJob-${esc(p.id)}"></div>
-          ${p.error && p.status === 'failed' ? `<p class="hx-why">${esc(scrub(p.error))}</p>` : ''}</div></section>
-        <aside class="hx-stage hx-side2" aria-label="Tools"><div class="hx-stageb">
-          <div class="hx-tabs" role="tablist">${['Look', 'Face', 'Voice', 'Engine', 'Video'].map(t => `<button type="button" role="tab" aria-selected="${UI.tool === t}" data-a="tool" data-val="${t}">${t}</button>`).join('')}</div>
-          ${tool(p, sc)}
-          <div class="hx-makebox"><span class="hx-price hx-num" id="hxQuote">Working out the price…</span>
-            ${p.status === 'making' ? `<button type="button" class="hx-cta" data-a="stop" data-id="${esc(p.id)}">${ic('stop', 16)}<span>Stop</span></button>`
-              : `<button type="button" class="hx-cta" data-a="make" data-id="${esc(p.id)}" id="hxMake">${ic('play', 16)}<span>${p.status === 'ready' ? 'Make it again' : 'Make the video'}</span></button>`}
-            <span class="hx-hint">Engine: <b>${esc(e?.label || 'Hoola standard')}</b>. Nothing is spent until you tap.</span></div></div></aside></div>`;
-    },
+    studio() { return ARG ? edPage() : libPage(); },
     templates() {
       const t = D.templates || [];
       return `<div class="hx-doc"><div class="hx-doch"><div class="hx-growf"><h2 class="hx-serif">Templates</h2><p class="hx-mut">Fill the blanks; every changing word is yours. Save any video as a template from Projects.</p></div></div>
@@ -725,32 +966,11 @@ window.HoolaInteractive = function (ctx) {
           <dt>GPU lab</dt><dd>${st.lab ? 'Connected' : 'Off'}</dd></dl></div></div>`;
     },
   };
-  function tool(p, sc) {
-    const e = engine(p.engine), f = face(p.avatar_id);
-    if (UI.tool === 'Look') {
-      const lk = sc.look || {kind: 'none'};
-      const field = (k, l) => `<label class="hx-fld"><span class="hx-lab">${l}</span><input class="hx-in" data-lk="${k}" value="${esc(lk[k] || '')}" maxlength="60"></label>`;
-      const extra = {title: field('text', 'Title'), big_number: field('value', 'Number') + field('label', 'What it is'), price: field('new', 'Price now') + field('old', 'Price before') + field('label', 'Item'),
-        lower_third: field('title', 'Name') + field('sub', 'Line under it'), bar_chart: (lk.bars || []).map((b, i) => `<div class="hx-row2"><input class="hx-in" data-bar="${i}" data-bk="label" value="${esc(b.label)}" aria-label="Bar ${i + 1} label"><input class="hx-in" data-bar="${i}" data-bk="value" value="${esc(b.value)}" aria-label="Bar ${i + 1} number"></div>`).join('')}[lk.kind] || '';
-      return `<div class="hx-fld"><span class="hx-lab">Scene ${UI.scene + 1} look</span><button type="button" class="hx-dd" data-a="lookpick"><span>${esc(LOOK[lk.kind] || 'Just the words')}</span>${ic('down', 14)}</button></div>${extra}
-        <p class="hx-hint">Numbers come only from you: a number you did not write is left for you to fill.</p>
-        <button type="button" class="hx-btn s danger" data-a="delsc"${p.scenes.length < 2 ? ' disabled' : ''}>Remove this scene</button>`;
-    }
-    if (UI.tool === 'Face') return `<div class="hx-fld"><span class="hx-lab">Face</span><button type="button" class="hx-dd" data-a="ppick" data-k="avatar_id"><span>${esc(f ? f.name : 'No face')}</span>${ic('down', 14)}</button></div>
-      ${e?.face ? `<div class="hx-fld"><span class="hx-lab">Where the person sits</span><div class="hx-seg" role="radiogroup">${[['corner', 'Over the scenes'], ['full', 'The whole frame']].map(([k, n]) => `<button type="button" role="radio" aria-checked="${(p.face_layout || 'corner') === k}" data-a="layout" data-val="${k}">${n}</button>`).join('')}</div></div>` : ''}
-      <button type="button" class="hx-lnk" data-a="go" data-p="avatars">Add a face</button>`;
-    if (UI.tool === 'Voice') return `<div class="hx-fld"><span class="hx-lab">Voice</span><button type="button" class="hx-dd" data-a="ppick" data-k="voice"><span>${esc(voiceName(p.voice))}</span>${ic('down', 14)}</button></div>
-      <div class="hx-fld"><span class="hx-lab">Language</span><button type="button" class="hx-dd" data-a="ppick" data-k="lang"><span>${esc(langName(p.lang))}</span>${ic('down', 14)}</button></div>
-      <p class="hx-hint">Your Hoola Vocal dictionary applies: names are said your way.</p>`;
-    if (UI.tool === 'Engine') return `<div class="hx-list">${(D.engines?.engines || []).filter(x => x.job === 'video').map(x => `<label class="hx-opt${x.id === p.engine ? ' on' : ''}${x.ready ? '' : ' off'}"><input type="radio" name="peng" data-a="peng" value="${esc(x.id)}"${x.id === p.engine ? ' checked' : ''}${x.ready ? '' : ' disabled'}>
-      <span class="hx-ct"><b>${esc(x.label)}</b><small>${esc(x.ready ? x.price + ' · ' + x.what : scrub(x.status))}</small></span></label>`).join('')}</div>`;
-    return `<div class="hx-fld"><span class="hx-lab">Shape</span><div class="hx-seg" role="radiogroup">${Object.entries(SHAPE).map(([k, n]) => `<button type="button" role="radio" aria-checked="${p.shape === k}" data-a="pshape" data-val="${k}">${n}</button>`).join('')}</div></div>
-      <label class="hx-fld"><span class="hx-lab">Title</span><input class="hx-in" data-f="title" value="${esc(p.title)}" maxlength="80"></label>`;
-  }
   const ENTER = {
     chat() { (C.conv ? Promise.resolve() : openChat()).then(chatLoad).then(() => { if (PAGE !== 'chat') return; if ($('.hx-hero') && !fresh()) draw(); else paintChat(); chatPoll(); }); estimate(); },
     voices() { voicesLoad().then(() => { if (PAGE === 'voices') draw(); }); },
-    studio() { if (ARG) { const p = (D.projects || []).find(x => x.id === ARG); if (p?.status === 'making') watchJob(ARG); studioQuote(); } },
+    studio() { if (ARG) { const p = cur(); if (!p) return; if (p.status === 'making') watchJob(ARG); studioQuote(); if (UI.tool === 'Engine') edCompare(); }
+      else (D.projects || []).filter(p => p.status === 'making').forEach(p => watchJob(p.id)); },
     engines() { if (UI.etab === 'broll') brQuote(); },
   };
   const AFTER = {};
@@ -758,15 +978,19 @@ window.HoolaInteractive = function (ctx) {
   // ------------------------------------------------------------------ studio edits ---
   const cur = () => (D.projects || []).find(x => x.id === ARG);
   async function save(body, redraw = true) {
-    try { const p = await api('PUT', `${S}/project?id=${q(ARG)}`, body); const i = D.projects.findIndex(x => x.id === ARG); if (i >= 0) D.projects[i] = p; if (redraw) { draw(); } studioQuote(); }
+    try { const p = await api('PUT', `${S}/project?id=${q(ARG)}`, body); const i = D.projects.findIndex(x => x.id === ARG); if (i >= 0) D.projects[i] = p; if (redraw) { draw(); } studioQuote(); if (UI.tool === 'Engine') edCompare(); }
     catch (e) { toast(e.message, true); }
   }
   let saveT = 0;
   function saveSoon(body) { clearTimeout(saveT); saveT = setTimeout(() => save(body, false), 600); }
   async function studioQuote() {
-    if (PAGE !== 'studio' || !ARG) return;
-    try { const r = await api('GET', `${X}/quote?id=${q(ARG)}`); const el = $('#hxQuote'); if (el) el.textContent = r.quote.line; const b = $('#hxMake'); if (b) { b.dataset.k = r.quote.key; b.disabled = !!(r.problems || []).length; if (r.problems?.length) el.textContent = scrub(r.problems.join(' ')); } }
-    catch (e) { const el = $('#hxQuote'); if (el) el.textContent = e.message; }
+    if (PAGE !== 'studio' || !ARG) return; const id = ARG;
+    let r; try { r = await api('GET', `${X}/quote?id=${q(id)}`); }
+    catch (e) { const el = $('#hxEdPrice'); if (el) el.innerHTML = `<p class="hx-why">${esc(e.message)}</p>`; return; }
+    if (PAGE !== 'studio' || ARG !== id) return;
+    UI.q = {id, ...r}; const p = cur(); if (!p) return;
+    const box = $('.hx-edmk'); if (box) box.outerHTML = edMakeBox(p);
+    const h = $('.hx-edhmk'); if (h) h.innerHTML = makeBtn(p);
   }
   async function brQuote() { try { UI.broll.q = await api('GET', `${X}/broll/quote?seconds=${UI.broll.seconds}`); if (PAGE === 'engines') draw(); } catch { /* shown on make */ } }
 
@@ -797,7 +1021,7 @@ window.HoolaInteractive = function (ctx) {
       case 'slim': UI.slim = !UI.slim; store.set('hx.slim', UI.slim); return side();
       case 'navon': UI.nav = true; return side();
       case 'navoff': UI.nav = false; return side();
-      case 'newchat': clearTimeout(C.t); C.conv = ''; C.rows = []; C.items = []; C.files = []; C.ask = ''; UI.pv.id = ''; pvStop(); await openChat(true); recentLoad(); return go('chat');
+      case 'newchat': return newVideo();
       case 'openchat': clearTimeout(C.t); C.gen++; C.conv = id; C.rows = []; C.items = []; UI.pv.id = ''; pvStop(); await chatLoad(); return go('chat');
       case 'credits': leave(); location.assign('/console/?v=credits'); return;
       case 'kind': if (b.dataset.val === 'translate') return toDubbing();
@@ -820,12 +1044,13 @@ window.HoolaInteractive = function (ctx) {
       case 'ipick': { const k = b.dataset.k; return pickMenu(b, k, v => saveItem(id, {[k === 'face' ? 'avatar_id' : k]: v}), id); }
       case 'flay': return saveItem(id, {face_layout: b.dataset.val});
       case 'hear': return hear(id);
+      case 'edhear': { const p = cur(); return p && hear(p.id, p.scenes[UI.scene]?.say); }
       case 'cmp': return compare(b, id);
       case 'pvtab': UI.pv.tab = b.dataset.val; pvStop(); return paintPv();
       case 'pvscene': pvStop(); UI.pv.id = id; UI.pv.scene = +b.dataset.n; UI.pv.tab = 'sketch'; $$('.hx-sct.on').forEach(x => x.classList.remove('on')); b.classList.add('on'); return paintPv();
       case 'pvplay': return pvPlay();
       case 'pvwhich': return menu(b, C.items.map(i => ({label: i.title, sub: vstate(i)[1], checked: pvItem()?.id === i.id, run: () => { pvStop(); UI.pv.id = i.id; UI.pv.scene = 0; paintChat(); }})), {align: 'end', width: 300});
-      case 'subdl': { const p = pvItem(); if (!p) return; const vtt = b.dataset.val === 'vtt';
+      case 'subdl': { const p = PAGE === 'studio' && ARG ? cur() : pvItem(); if (!p) return; const vtt = b.dataset.val === 'vtt';
         const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([srt(p, vtt)], {type: vtt ? 'text/vtt' : 'application/x-subrip'}));
         link.download = `${(p.title || 'subtitles').replace(/[^\w .-]+/g, '_').slice(0, 60)}.${vtt ? 'vtt' : 'srt'}`; document.body.appendChild(link); link.click(); link.remove(); return; }
       case 'chats': { let list = []; try { list = (await api('GET', `${C0}/chats`)).chats || []; } catch (er) { return toast(er.message, true); }
@@ -836,18 +1061,44 @@ window.HoolaInteractive = function (ctx) {
       case 'pick': return pickMenu(b, b.dataset.k, v => setPick(b.dataset.k, v));
       case 'make': return make(id, b.dataset.k);
       case 'stop': try { await api('POST', `${S}/stop`, {id}); toast('Stopping at the next step.'); } catch (er) { toast(er.message, true); } return;
-      case 'openp': UI.scene = 0; return go('studio', id);
+      case 'openp': UI.scene = 0; UI.edv = 'video'; return go('studio', id);
       case 'dlv': return download(id);
-      case 'tr': return menu(b, [{search: 'Translate into', empty: 'No language matches'}, ...(UI.L || []).map(l => ({label: l.name, run: async () => {
-        try { const p = await api('POST', `${H}/translate`, {id, lang: l.code}); toast('A translated draft is ready. Check it, then make it.'); await load(); go('studio', p.id); } catch (er) { toast(er.message, true); } }}))], {width: 260});
-      case 'dup': try { const p = await api('POST', `${H}/duplicate`, {id}); await load(); go('studio', p.id); } catch (er) { toast(er.message, true); } return;
-      case 'trash': try { await api('POST', `${H}/trash`, {id}); await load(); draw(); toast('Moved to the trash for 30 days.'); } catch (er) { toast(er.message, true); } return;
+      case 'tr': return trMenu(b, id);
+      case 'dup': return dupP(id);
+      case 'trash': return trashP(id);
       case 'restore': try { await api('POST', `${H}/restore`, {id}); await load(); draw(); } catch (er) { toast(er.message, true); } return;
       case 'emptytrash': if (!confirm('Remove everything in the trash for good?')) return; try { await api('POST', `${H}/trash/empty`); await load(); draw(); } catch (er) { toast(er.message, true); } return;
-      case 'scene': UI.scene = +b.dataset.n; return draw();
-      case 'tool': UI.tool = b.dataset.val; return draw();
+      case 'scene': return edScene(+b.dataset.n, true);
+      case 'tool': { UI.tool = b.dataset.val; $$('.hx-edtabs [role=tab]').forEach(t => t.setAttribute('aria-selected', String(t.dataset.val === UI.tool)));
+        const x = $('#hxEdTool'), p = cur(); if (x && p) x.innerHTML = edTool(p); else draw(); fillMedia(); if (UI.tool === 'Engine') edCompare(); return; }
       case 'addsc': { const p = cur(); if (!p) return; UI.scene = p.scenes.length; return save({scenes: [...p.scenes, {say: '', look: {kind: 'none'}}]}); }
-      case 'delsc': { const p = cur(); if (!p || p.scenes.length < 2) return; const sc = p.scenes.filter((_, i) => i !== UI.scene); UI.scene = Math.max(0, UI.scene - 1); return save({scenes: sc}); }
+      case 'delsc': { const p = cur(); if (!p || p.scenes.length < 2) return; const n = b.dataset.n != null ? +b.dataset.n : UI.scene;
+        if ((p.scenes[n]?.say || '').trim() && !confirm(`Remove scene ${n + 1}?`)) return;
+        return scenesSave(p.scenes.filter((_, i) => i !== n), Math.max(0, Math.min(UI.scene > n ? UI.scene - 1 : UI.scene, p.scenes.length - 2))); }
+      case 'scmove': { const p = cur(); if (!p) return; const n = +b.dataset.n, to = n + +b.dataset.d; if (to < 0 || to >= p.scenes.length) return;
+        const sc = [...p.scenes]; [sc[n], sc[to]] = [sc[to], sc[n]]; return scenesSave(sc, to); }
+      case 'scdup': { const p = cur(); if (!p) return; const n = +b.dataset.n, sc = [...p.scenes]; sc.splice(n + 1, 0, JSON.parse(JSON.stringify(sc[n]))); return scenesSave(sc, n + 1); }
+      case 'scprev': return edScene(UI.scene - 1, true);
+      case 'scnext': return edScene(UI.scene + 1, true);
+      case 'edplay': return edPlay();
+      case 'edview': UI.edv = b.dataset.val; edStop(); return edPaint(false);
+      case 'lookset': { const p = cur(); if (!p) return; const k = b.dataset.val, old = p.scenes[UI.scene]?.look || {};
+        if ((old.kind || 'none') === k) return;
+        return scenesSave(p.scenes.map((s, i) => i === UI.scene ? {...s, look: {kind: k, ...(k === 'bar_chart' ? {bars: [{label: '', value: ''}, {label: '', value: ''}]} : {})}} : s)); }
+      case 'baradd': { const p = cur(); if (!p) return; return scenesSave(p.scenes.map((s, i) => i === UI.scene ? {...s, look: {...s.look, bars: [...(s.look.bars || []), {label: '', value: ''}]}} : s)); }
+      case 'bardel': { const p = cur(); if (!p) return; return scenesSave(p.scenes.map((s, i) => i === UI.scene ? {...s, look: {...s.look, bars: (s.look.bars || []).filter((_, j) => j !== +b.dataset.n)}} : s)); }
+      case 'faceset': return save({avatar_id: b.dataset.val});
+      case 'engset': if (UI.cmp?.id === ARG) UI.cmp.r.chosen = id; return save({engine: id});
+      case 'paspect': return save({aspect: b.dataset.val});
+      case 'itadd': { const p = cur(); if (!p) return; p.items = [...(p.items || []), {name: '', price: '', note: ''}]; const x = $('#hxEdTool'); if (x) x.innerHTML = edTool(p); $$('#hxItems [data-ik="name"]').pop()?.focus(); return; }
+      case 'itdel': { const p = cur(); if (!p) return; return save({items: (p.items || []).filter((_, i) => i !== +b.dataset.n)}); }
+      case 'vmenu': return vMenu(b, id);
+      case 'lf': UI.lf = b.dataset.val; return draw();
+      case 'lview': UI.lv = b.dataset.val; store.set('hx.lview', UI.lv); return draw();
+      case 'lsort': return menu(b, Object.entries(LSORT).map(([k, l]) => ({label: l, checked: (UI.ls || 'new') === k, run: () => { UI.ls = k; store.set('hx.lsort', k); draw(); }})), {align: 'end'});
+      case 'lclear': UI.lf = 'all'; UI.lq = ''; return draw();
+      case 'ltrash': UI.ptab = 'Trash'; return go('projects');
+      case 'lfrom': await newVideo(); return pickFiles('.pdf,.doc,.docx,.txt,.md,.rtf,.odt,.pptx,.ppt,.key,.odp', 'explainer', 'Make an explainer video from this document.');
       case 'lookpick': { const p = cur(); return menu(b, Object.entries(LOOK).map(([k, n]) => ({label: n, checked: (p.scenes[UI.scene]?.look?.kind || 'none') === k, run: () => {
         const sc = p.scenes.map((s, i) => i === UI.scene ? {...s, look: {kind: k, ...(k === 'bar_chart' ? {bars: [{label: '', value: ''}, {label: '', value: ''}]} : {})}} : s); save({scenes: sc}); }}))); }
       case 'ppick': { const k = b.dataset.k, p = cur(); const map = {avatar_id: 'face', voice: 'voice', lang: 'lang'};
@@ -859,7 +1110,7 @@ window.HoolaInteractive = function (ctx) {
         const values = {}; for (const v of vars) { const x = prompt(`${v.replace(/_/g, ' ')}:`); if (x == null) return; values[v] = x; }
         try { const p = await api('POST', `${H}/template/use`, {id, values, lang: SET.lang, avatar_id: SET.face}); await load(); go('studio', p.id); } catch (er) { toast(er.message, true); } return; }
       case 'tpldel': try { await api('DELETE', `${H}/template?id=${q(id)}`); await load(); draw(); } catch (er) { toast(er.message, true); } return;
-      case 'tplsave': try { await api('POST', `${H}/template`, {project: id}); await load(); toast('Saved as a template.'); } catch (er) { toast(er.message, true); } return;
+      case 'tplsave': return tplSave(id);
       case 'app': { const w = b.dataset.w, pg = b.dataset.p;
         if (w === 'here') return go(pg === 'engines' ? (UI.etab = 'broll', 'engines') : pg);
         if (w === 'vocal') { window.__hvPage = pg; leave(); return ctx.go ? ctx.go('vocal') : back?.(); }
@@ -908,11 +1159,17 @@ window.HoolaInteractive = function (ctx) {
     const t = e.target;
     if (t.dataset.isc != null) { saveLine(t.dataset.id, +t.dataset.isc, t.value); return; }
     if (t.id === 'hxAsk') { C.ask = t.value; t.style.height = 'auto'; t.style.height = Math.min(180, t.scrollHeight) + 'px'; $('.hx-send')?.classList.toggle('on', !!t.value.trim()); return; }
+    if (t.id === 'hxLq') { UI.lq = t.value; const l = $('#hxLibList'); if (l) { l.innerHTML = libList(); fillMedia(); } return; }
     const p = PAGE === 'studio' && cur(); if (!p) return;
-    if (t.dataset.sc != null) { const sc = p.scenes.map((s, i) => i === +t.dataset.sc ? {...s, say: t.value} : s); p.scenes = sc; saveSoon({scenes: sc}); const c = $('.hx-pvcap'); if (c && +t.dataset.sc === UI.scene) c.textContent = t.value; return; }
+    if (t.dataset.sc != null) { const n = +t.dataset.sc, sc = p.scenes.map((s, i) => i === n ? {...s, say: t.value} : s); p.scenes = sc; saveSoon({scenes: sc});
+      if (n === UI.scene) { const c = $('#hxEdStage .hx-pvcap'); if (c) c.textContent = t.value; } edTimes(p); return; }
+    if (t.dataset.it != null) { const items = $$('#hxItems .hx-itrow').map(r => ({name: r.querySelector('[data-ik=name]').value, price: r.querySelector('[data-ik=price]').value, note: ''}));
+      p.items = items; saveSoon({items}); return; }
     if (t.dataset.f) { saveSoon({[t.dataset.f]: t.value}); return; }
-    if (t.dataset.lk) { const sc = p.scenes.map((s, i) => i === UI.scene ? {...s, look: {...s.look, [t.dataset.lk]: t.value}} : s); p.scenes = sc; saveSoon({scenes: sc}); return; }
-    if (t.dataset.bar != null) { const sc = p.scenes.map((s, i) => i !== UI.scene ? s : {...s, look: {...s.look, bars: (s.look.bars || []).map((bb, j) => j === +t.dataset.bar ? {...bb, [t.dataset.bk]: t.value} : bb)}}); p.scenes = sc; saveSoon({scenes: sc}); }
+    if (t.dataset.lk) { const sc = p.scenes.map((s, i) => i === UI.scene ? {...s, look: {...s.look, [t.dataset.lk]: t.value}} : s); p.scenes = sc; saveSoon({scenes: sc});
+      const lb = $('#hxEdStage .hx-pvlook'); if (lb) lb.innerHTML = lookText(sc[UI.scene].look) ? `<b>${esc(lookText(sc[UI.scene].look))}</b>` : ''; return; }
+    if (t.dataset.bar != null) { const sc = p.scenes.map((s, i) => i !== UI.scene ? s : {...s, look: {...s.look, bars: (s.look.bars || []).map((bb, j) => j === +t.dataset.bar ? {...bb, [t.dataset.bk]: t.value} : bb)}}); p.scenes = sc; saveSoon({scenes: sc});
+      const lb = $('#hxEdStage .hx-pvlook'); if (lb) lb.innerHTML = `<b>${esc(lookText(sc[UI.scene].look))}</b>`; }
   }
   function onChange(e) {
     const t = e.target;

@@ -11056,3 +11056,35 @@ Owner: "NOW MAKE THE INTERACTIVE CHAT SECTION MORE ADVANCE, PRIMIUM, USER FREAND
 - Tests `test_v0999_172_interactive_chat.py` (5, incl. a Chromium walk at 1440 and 390 px).
 - NOT VERIFIED on her server or phone; no "English beside each line" check in the Script tab (shown in the design, not
   built: it would need a translation call per draft).
+
+## v0.999.173 THE STUDIO, REDESIGNED (owner, on a screenshot of the empty Studio: "NOW LETS WORK ON INTERACTIVE SECTION STUDIO -- MAKE IT PERFECT ADVACNE, PREIMIUM AND ALSO WIRE IT PROPERLY")
+
+The Interactive Studio (`static/console/interactive.js`, block "the Studio (v0.999.173 ...)", styles at the end of
+`interactive2.css`) rebuilt in two parts.
+
+- **Library** (`libPage`): four counts (videos + ready, plans + how many need her numbers, made this month in minutes,
+  kept on Hoola of the limit); filters All / Plans / Making / Ready / Not made with counts; search over titles, her ask and
+  every scene's words; sort (newest / oldest / title, remembered); cards or rows (remembered). Each video gets a poster
+  drawn from its first scene (the look text or title, the first line, her face, the length, a tint per kind), a play mark
+  when ready, a live progress bar while it is being made (`watchJob` now feeds `[data-jobm]`, `jobPct`), and a menu: open,
+  its chat, download, duplicate, translate (any language), save as a template, move to the trash. Trash link with its
+  count. First visit (`libEmpty`): an illustration, three ways to start (describe it -> a new chat, a template, a document
+  -> a new chat + the file picker) and the 3 steps.
+- **Editor** (`edPage`): the title edited in place, status + kind / frame / language, its chat, Download when ready, the
+  menu, Make (or Stop) in the header. Left: scene cards with time + length, the look tag, move up / down, copy, remove
+  (asks when the scene has words), the closing line. Centre: the stage (sketch, or the finished video with a Video /
+  Sketch switch; a scene tap seeks the video), play / previous / next, a timeline whose blocks are sized by each scene's
+  length plus the closing card, the job. Right: tools Scene (the six looks as picture tiles + their fields, bars added /
+  removed, live on the stage), Face (face tiles, corner / full frame, which engine makes it talk), Voice (voice, language,
+  hear the current scene free via /api/vocal/hear), Engine (every engine priced for this video via /x/compare, pick one),
+  Video (shape, 16:9 / 1:1, business name, products for a product film, subtitles .srt / .vtt); under them the itemised
+  price from /x/quote, what blocks the make, and one Make button carrying the quote key.
+- Wiring: every button the Studio draws has its click case (checked by the test); typing in a scene updates the stage,
+  the times and the timeline without a redraw; focusing a scene selects it; a redraw keeps the scroll of the scene list and
+  the tools; the old `tool()` panel and the Look tab are gone.
+- FIXED: a scene could not be removed (`delsc` existed, no button called it); duplicate / translate / template / download
+  were only on other pages.
+- Tests `test_v0999_173_interactive_studio.py` (3: the editor's saves are real fields on the server, every drawn button
+  has its case, a Chromium walk of the first visit, the library and the editor at 1440 and 390 px).
+- NOT VERIFIED on her server or phone; no scene pictures from the real engine (the posters are drawn from the plan).
+
