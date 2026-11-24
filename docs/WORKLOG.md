@@ -3600,3 +3600,9 @@ Not verified: a real rebuild on her server
 
 Task ID: v0.999.149 INSTITUTION MODE F9
 F9 of docs/FINANCE_GLOBAL_PLAN.md: fin/makerchecker.py, fin/desks/institution.py, agent/institution_tools.py (tool 644), fin/card_f9.py, /api/fin/institution. tests/test_fin_f9.py 5 pass; card PASS on 1,003,160 transactions.
+
+---
+Task ID: v0.999.177 SIGN UP LIKE CLAUDE
+Ask: MAKE IT SAME AS OTHER DOES LIKE CLAUDE AND CHAT GPT (two ways to sign up: email and Google)
+Built: emailauth.py + /auth/email/start|verify|name, console + phone Log in or sign up screen, Google sign-in name + email only on new phones, one-time code to the phone, callback error escaped
+Not verified: SITE_MAIL_* not set on her server yet; phone screen compiles first on CI

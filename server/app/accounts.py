@@ -97,7 +97,10 @@ def _redirect_uri() -> str:
     return get_settings().public_base_url.rstrip("/") + "/auth/google/callback"
 
 
-def start_google(extra_state: str = "", web: bool = False, apps: bool = False) -> str:
+APP_STATE = "ap_"   # the phone app's sign-in (name + email only, a one-time code back, never the session in a link)
+
+
+def start_google(extra_state: str = "", web: bool = False, apps: bool = False, phone: bool = False) -> str:
     """Return the Google consent URL the app should open. web=True = the Hoola Console (v0.142): the callback then
     hands the browser a one-time code instead of the app's deep link. The console's sign-in asks only for name + email
     (no Google review needed for any user); apps=True is its "Google apps jodiye" step (Gmail, Drive, Calendar, Docs,
@@ -105,10 +108,13 @@ def start_google(extra_state: str = "", web: bool = False, apps: bool = False) -
     if not oauth_configured():
         raise AuthError("Google sign-in is not configured on the server.")
     st = get_settings()
-    state = ("cw_" + ("g." if apps else "") if web else "") + secrets.token_urlsafe(24)
+    state = (("cw_" + ("g." if apps else "") if web else APP_STATE if phone else "")) + secrets.token_urlsafe(24)
     with session() as s:
         s.add(OAuthState(state=state))
-    signin_only = web and not apps
+    # Like Claude and ChatGPT: signing in asks Google only for name + email (no "unverified app" screen, no 100-user
+    # cap); Gmail / Drive / Calendar are asked for later, when she connects that feature. Old phone apps (no
+    # phone=1) keep their one big consent so they do not break.
+    signin_only = (web and not apps) or phone
     params = {
         "client_id": st.google_oauth_client_id,
         "redirect_uri": _redirect_uri(),

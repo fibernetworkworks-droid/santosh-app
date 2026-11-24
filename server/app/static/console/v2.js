@@ -184,7 +184,7 @@ document.addEventListener('click', e => {   // v0.970 a start pill goes straight
   go('chat'); msg.value = b.dataset.send; msg.dispatchEvent(new Event('input')); composer.requestSubmit();
 });
 function showLogin(err) {
-  $('#app').hidden = true; $('#login').hidden = false; if (err) { $('#lerr').textContent = err; $('#lerr').hidden = false; }
+  $('#app').hidden = true; $('#login').hidden = false; lstep(1); if (err) lerr(err);
   $('#gbtn').disabled = false;
 }
 async function boot() {
@@ -204,14 +204,64 @@ async function boot() {
 }
 function setToken(t) { TOKEN = t || ''; if (TOKEN) store.set('hoola.console.token', TOKEN); else store.del('hoola.console.token'); }
 $('#gbtn').addEventListener('click', () => {
-  if (!CONFIG.google) { $('#lerr').textContent = 'Google sign-in is unavailable. Use your Hoola ID and password.'; $('#lerr').hidden = false; return; }
+  if (!CONFIG.google) return lerr('Google sign-in is not switched on for this server yet. Use your email.');
   $('#gbtn').innerHTML = '<span class="spin"></span> Opening Google…'; location.href = '/auth/google/start?web=1';
 });
+/* SIGN UP: log in or sign up like Claude and ChatGPT - email -> a 6-digit code -> (new) your name */
+let LMAIL = '';
+function lerr(t) { const x = $('#lerr'); x.textContent = t || ''; x.hidden = !t; }
+function lstep(n) {
+  for (const i of [1, 2, 3]) $('#lstep' + i).hidden = i !== n;
+  $('#lmore').hidden = n !== 1; lerr('');
+  setTimeout(() => ($(n === 1 ? '#lemail' : n === 2 ? '#lcode' : '#lname') || {}).focus?.(), 30);
+}
+async function lbusy(btn, label, fn) {
+  const was = btn.textContent; btn.disabled = true; btn.textContent = label;
+  try { await fn(); } catch (er) { lerr(er.message); } finally { btn.disabled = false; btn.textContent = was; }
+}
+async function lsend() {
+  if (!CONFIG.email) throw new Error('Email sign-in is not switched on for this server yet. Use Continue with Google.');
+  const r = await api('POST', '/auth/email/start', {email: LMAIL});
+  $('#lsent').textContent = r.ok ? `We sent a 6-digit code to ${LMAIL}. It works for 10 minutes.` : (r.say || 'We sent a 6-digit code.');
+}
 $('#lform').addEventListener('submit', async e => {
-  e.preventDefault(); $('#lerr').hidden = true; const btn = $('#lbtn'); btn.disabled = true; btn.textContent = 'Signing in…';
+  e.preventDefault(); lerr('');
+  if (!$('#lstep1').hidden) {
+    const v = $('#lemail').value.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) return lerr('Enter a correct email address.');
+    LMAIL = v;
+    return lbusy($('#ebtn'), 'Sending the code…', async () => { await lsend(); $('#lcode').value = ''; lstep(2); });
+  }
+  if (!$('#lstep2').hidden) {
+    const c = $('#lcode').value.replace(/\D/g, '');
+    if (c.length !== 6) return lerr('Type the 6-digit code from the email.');
+    return lbusy($('#cbtn'), 'Checking…', async () => {
+      const r = await api('POST', '/auth/email/verify', {email: LMAIL, code: c});
+      setToken(r.session_token);
+      if (r.needs_name) return lstep(3);
+      await enter();
+    });
+  }
+  if (!$('#lstep3').hidden) {
+    const n = $('#lname').value.trim(); if (!n) return lerr('Type your name.');
+    return lbusy($('#nbtn'), 'Saving…', async () => { await api('POST', '/auth/email/name', {name: n}); await enter(); });
+  }
+});
+$('#lback').addEventListener('click', () => lstep(1));
+$('#lresend').addEventListener('click', async () => {
+  const b = $('#lresend'); b.disabled = true;
+  try { await lsend(); toast('A new code is on its way.'); } catch (er) { lerr(er.message); }
+  setTimeout(() => { b.disabled = false; }, 30000);
+});
+$('#lcode').addEventListener('input', e => {   // six digits typed or pasted = go, like the big apps
+  const c = e.target.value.replace(/\D/g, '').slice(0, 6); e.target.value = c;
+  if (c.length === 6) $('#lform').requestSubmit();
+});
+$('#lbtn').addEventListener('click', async () => {
+  lerr(''); const btn = $('#lbtn'); btn.disabled = true; btn.textContent = 'Signing in…';
   try { const r = await api('POST', '/api/console/login', {handle: $('#hid').value.trim(), password: $('#hpw').value}); setToken(r.session_token); $('#hpw').value = ''; await enter(); }
-  catch (er) { $('#lerr').textContent = er.message; $('#lerr').hidden = false; }
-  finally { btn.disabled = false; btn.textContent = 'Login'; }
+  catch (er) { lerr(er.message); }
+  finally { btn.disabled = false; btn.textContent = 'Log in with Hoola ID'; }
 });
 $('#kbtn').addEventListener('click', async () => {
   const k = $('#okey').value.trim(); if (!k) return; setToken(k); $('#okey').value = '';

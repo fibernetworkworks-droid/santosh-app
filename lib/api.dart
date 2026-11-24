@@ -457,7 +457,24 @@ class Api {
 
   Future<Map<String, dynamic>> me() async => Map<String, dynamic>.from(await _send('GET', '/api/me'));
   Future<void> disconnect(String provider) async => _send('DELETE', '/api/connections/$provider');
-  Uri googleSignInUrl() => _u('/auth/google/start');
+  // SIGN UP: like Claude and ChatGPT - Google asks only for name + email (phone=1), and the app gets a one-time
+  // code back, never the session itself in a link. Gmail / Drive / Calendar are connected later, from their screens.
+  Uri googleSignInUrl() => _u('/auth/google/start', {'phone': '1'});
+
+  /// Log in or sign up with email: a 6-digit code is emailed (the same answer whether the account exists or not).
+  Future<Map<String, dynamic>> emailStart(String email) async =>
+      Map<String, dynamic>.from(await _send('POST', '/auth/email/start', body: {'email': email}) as Map);
+
+  /// The code is right -> session_token, new, needs_name.
+  Future<Map<String, dynamic>> emailVerify(String email, String code) async =>
+      Map<String, dynamic>.from(await _send('POST', '/auth/email/verify', body: {'email': email, 'code': code}) as Map);
+
+  /// After signing up: "What should Hoola call you?"
+  Future<void> emailName(String name) async => _send('POST', '/auth/email/name', body: {'name': name});
+
+  /// A one-time code from the Google page -> the session token (never sent inside a link).
+  Future<String> exchangeCode(String code) async =>
+      '${(await _send('POST', '/api/console/exchange', body: {'code': code}) as Map)['session_token'] ?? ''}';
   /// v0.897 [reuse] = her newest untouched empty chat instead of one more (the console's New chat does the same);
   /// [incognito] = a chat that stays out of her memory.
   Future<String> newConversation({bool reuse = false, bool incognito = false}) async => (await _send('POST', '/api/conversations',

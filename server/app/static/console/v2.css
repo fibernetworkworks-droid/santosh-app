@@ -151,6 +151,16 @@ mark{background:rgb(var(--acc-rgb) / .32);color:var(--ink);border-radius:3px;pad
 .or::before,.or::after{content:"";height:1px;flex:1;background:var(--line)}
 .lerr{color:var(--bad);font-size:13.5px;font-weight:600;margin:0}
 .lmore summary{cursor:pointer;color:var(--dim);font-size:13px;font-weight:600}
+/* SIGN UP: the Claude / ChatGPT style login card */
+.lcard>div[id^="lstep"]{display:flex;flex-direction:column;gap:14px}
+.lcard>div[hidden]{display:none}
+.lttl{font-family:var(--fd);font-size:22px;font-weight:600;margin:4px 0 0;letter-spacing:-.01em}
+.lgo{height:48px;border-radius:14px;font-size:14.5px}
+.lcodein{font-size:22px;letter-spacing:.35em;text-align:center;font-variant-numeric:tabular-nums}
+.lrow{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.lnk{background:none;border:0;padding:0;color:var(--dim);font-size:13px;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.lnk:hover{color:var(--ink)}
+.lnk:disabled{opacity:.5;cursor:default}
 
 /* ================= APP SHELL ================= */
 #app{position:relative;z-index:1;display:flex;height:100dvh}

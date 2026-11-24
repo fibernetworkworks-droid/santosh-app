@@ -11170,3 +11170,22 @@ The Tax (worldwide) employee gets its own section, built like Payroll / Books & 
 - Tests `test_v0999_176_tax_desk.py` (6 incl. a Chromium walk at 1440 and 390 px); `test_fin_f7.py` updated for the new desk.
   NOT VERIFIED on her server.
 
+## v0.999.177 SIGN UP LIKE CLAUDE (owner: "THERE WILL BE 2 WAY TO SIGN UP TO HOOLA 1ST SELF REGISTRACTION VIA EMAIL AND OTHER IS GOOGLE" -> "MAKE IT SAME AS OTHER DOES LIKE CLAUDE AND CHAT GPT"): one Log in or sign up screen on the console and the phone - Continue with Google (name + email only, no unverified-app screen) or an email and a 6-digit code (no password; emailauth.py: hashed, 10 min, once, 5 tries, 3 codes per 10 min, the same answer for known and unknown addresses, HOOLA_SIGNUP respected, sent through the SITE_MAIL_* service); one account per email whichever way she comes in; a new person is asked her name; the phone gets a one-time code from the Google page instead of the session in a link (old apps unchanged); Google error text escaped on the callback page (it was raw HTML); Hoola ID / password and the server key under More ways to sign in. 11 tests.
+
+Asked: "THERE WILL BE 2 WAY TO SIGN UP TO HOOLA 1ST SELF REGISTRACTION VIA EMAIL AND OTHER IS GOOGLE", then "MAKE IT SAME AS OTHER DOES LIKE CLAUDE AND CHAT GPT".
+
+Before: Hoola had Google sign-in only. The phone's Google sign-in asked for Gmail, Calendar, all of Drive, Docs and Sheets on the first screen, so every new user met Google's "unverified app" screen and the 100-user cap; the session token came back inside the santosh:// link; the console's login card showed Google + Hoola ID / console password; and `/auth/google/callback` put Google's `error` text into the page as raw HTML (confirmed live with a harmless bold tag).
+
+Now, the way Claude and ChatGPT do it:
+- One screen, "Log in or sign up", on the console (`static/console/v2.html` + `v2.js`) and the phone (`lib/ui/setup_screen.dart`): Continue with Google, or an email and Continue with email -> "Check your email" with a 6-digit code (six digits typed or pasted = go) -> for a new person "What should Hoola call you?". Hoola ID / console password and the server key moved under "More ways to sign in". Terms + Privacy line under the card.
+- `server/app/emailauth.py`: `start` (a 6-digit code, only its keyed HMAC kept, 10 minutes, a new code replaces the old one, 3 codes per address per 10 minutes, 12 per network address per hour, the same answer whether the address has an account or not), `verify` (5 wrong tries kill the code, used once, the account found by email or made now under HOOLA_SIGNUP, a session issued), `save_name` (User.name + the profile name). Table `auth_email_codes` (registered in db.init_db, self-heals per engine). Routes `POST /auth/email/start`, `/auth/email/verify`, `/auth/email/name`; `/healthz` and `/api/console/config` carry `email_login` / `email`.
+- The code email goes through the same transactional mail service as the website emails (`SITE_MAIL_*` in the VPS .env: ZeptoMail / Amazon SES / Brevo SMTP). Until it is set the email button says email sign-in is not switched on and Google keeps working.
+- One account per email: Google sign-in and email sign-in with the same address land in the same Hoola.
+- Phone Google sign-in (`/auth/google/start?phone=1`, state `ap_`): name + email only, and the callback sends `santosh://auth?session=hc_<one-time code>`; the app swaps it through `/api/console/exchange` (`state.applySession`). Old phone apps (no `phone=1`) keep the old consent and link, so they do not break.
+- The callback page escapes Google's error text and the email.
+
+Found while testing: a wrong code raised inside the database session, so the try count rolled back and wrong guesses were unlimited; the outcome is now decided inside the session and raised after the commit.
+
+Tests: `server/tests/test_signup_email.py` (11).
+
+NOT VERIFIED: the VPS has no SITE_MAIL_* yet (email sign-in shows "not switched on" until it does); the phone screen compiles first on CI; Google's "unverified app" screen still shows for the Connect Gmail / Drive buttons until Google verifies those permissions.

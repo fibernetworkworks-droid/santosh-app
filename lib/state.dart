@@ -639,6 +639,16 @@ class Santosh extends ChangeNotifier {
 
   /// Save the session token that came back from Sign in with Google (used as the bearer).
   Future<void> applySession(String token, {String? server}) async {
+    if (token.startsWith('hc_')) {   // SIGN UP: the Google page sends a one-time code; swap it for the session here
+      try {
+        token = await Api(serverUrl, '').exchangeCode(token.substring(3));
+      } catch (e) {
+        error = 'Google sign-in did not finish: $e';
+        notifyListeners();
+        return;
+      }
+      if (token.isEmpty) return;
+    }
     await _prefs.setString('key', token);
     await connect(fresh: true);
   }

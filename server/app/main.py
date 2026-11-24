@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.176"   # v0.999.176 TAX DESK (owner: "OK FINE LET CONTINUE THE WORK OF AI EMPLOYEE" -> Tax (worldwide) -> design claude.ai/artifact/Faegn7ZmcGkTQqdkqRtZ1v -> "GO"): the Tax employee gets its own section /console/tax + Tax chat (kind tax, `taxchat.py`, its desk block + the tax tool in view, out of her chat lists): Today (next due, to pay, letters waiting, rates to check, overdue returns not marked filed, coming up), Returns (the VAT / GST return laid out like her country's form from her own books, checks, download for filing as PDF + CSV, "I filed it" = her tap with the reference, which locks the period on the desk), Across borders (US sales by state against her limits, the EU One Stop Shop, each limit / rate with its checked state; withholding + e-invoices in the chat), Letters (a tax letter read: from, amount, reference, what it asks, a draft reply with blanks; the reply-by date goes into her dates only after she confirms it), Personal (money in from her statements, the papers checklist she ticks, an estimate only on her bands, the organiser as CSV), Dates & settings (calendar for this year and next, all dates with where each came from, Add a date, country / scheme / period / due rule / tax number, rates and limits - a rate is used only once a person checked it at that value, a changed rate needs checking again); team roles from Books (owner / accountant / approver change, auditor / viewer read, only owner / approver mark filed); Hoola never files, pays or sends a reply; NOT VERIFIED on her server; previous head v0.999.175 APPS, REDESIGNED (theirs, built at the same time, both kept); older stories live in git history.
+APP_VERSION = "0.999.177"   # v0.999.177 SIGN UP LIKE CLAUDE (owner: "THERE WILL BE 2 WAY TO SIGN UP TO HOOLA 1ST SELF REGISTRACTION VIA EMAIL AND OTHER IS GOOGLE" -> "MAKE IT SAME AS OTHER DOES LIKE CLAUDE AND CHAT GPT"): one Log in or sign up screen on the console and the phone - Continue with Google (name + email only, no unverified-app screen) or an email and a 6-digit code (no password; emailauth.py: hashed, 10 min, once, 5 tries, 3 codes per 10 min, the same answer for known and unknown addresses, HOOLA_SIGNUP respected, sent through the SITE_MAIL_* service); one account per email whichever way she comes in; a new person is asked her name; the phone gets a one-time code from the Google page instead of the session in a link (old apps unchanged); Google error text escaped on the callback page (it was raw HTML); Hoola ID / password and the server key under More ways to sign in. 11 tests. Previous: v0.999.176 TAX DESK (owner; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -367,7 +367,7 @@ def healthz():
         + (["push"] if __import__("app.push", fromlist=["x"]).configured() else [])
     from . import accounts
     _wk = worker.health()          # wave 13: "ok" is false when the worker is stuck (it used to say ok regardless)
-    return {"ok": bool(_wk.get("ok", True)), "worker": _wk, "app": "Hoola", "version": app.version, "google_login": accounts.oauth_configured(),
+    return {"ok": bool(_wk.get("ok", True)), "worker": _wk, "app": "Hoola", "version": app.version, "google_login": accounts.oauth_configured(), "email_login": _email_login_ready(),
             "dry_run": st.wa_dry_run, "model": st.anthropic_model,
             "chat_brain": __import__("app.agent.llm", fromlist=["x"]).describe(),
             "chat_model_reads": _model_reads(),
@@ -1757,13 +1757,21 @@ def cancel_reminder_api(reminder_id: str, tenant: str = Depends(current_tenant))
 
 
 # ---------------- accounts (product: Sign in with Google) ----------------
+def _email_login_ready() -> bool:
+    try:
+        from . import emailauth
+        return emailauth.ready()
+    except Exception:          # noqa: BLE001 - health never fails on this
+        return False
+
+
 @app.get("/auth/google/start")
-def google_start(app_session: bool = True, web: bool = False, apps: bool = False):
+def google_start(app_session: bool = True, web: bool = False, apps: bool = False, phone: bool = False):
     """The app opens this; we redirect to Google's consent screen. web=1 = the Hoola Console (v0.142): sign-in with
     name + email only; web=1&apps=1 = the console's "Google apps jodiye" (Gmail, Drive, Calendar, Docs, Sheets)."""
     from . import accounts
     try:
-        return RedirectResponse(accounts.start_google(web=web, apps=apps))
+        return RedirectResponse(accounts.start_google(web=web, apps=apps, phone=phone))
     except accounts.AuthError as e:
         raise HTTPException(503, str(e))
 
@@ -1830,7 +1838,8 @@ async def google_callback(request: Request):
         if web:   # she pressed Cancel on Google's screen: back to the console, not a bare error page
             msg = "Google sign-in was cancelled." if err == "access_denied" else f"Google sign-in did not work ({err[:40]})."
             return RedirectResponse("/console/?error=" + quote(msg), headers=_CONSOLE_NOREF)
-        return HTMLResponse(f"<h3>Sign-in cancelled</h3><p>{err}</p>", status_code=400)
+        import html as _h   # SIGN UP fix: Google's error text was put into the page as raw HTML
+        return HTMLResponse(f"<h3>Sign-in cancelled</h3><p>{_h.escape(err[:200])}</p>", status_code=400)
     if not code:
         raise HTTPException(400, "Missing code")
     try:
@@ -1838,19 +1847,74 @@ async def google_callback(request: Request):
     except accounts.AuthError as e:
         if web:
             return RedirectResponse("/console/?error=" + quote(str(e)[:160]), headers=_CONSOLE_NOREF)
-        return HTMLResponse(f"<h3>Sign-in did not work</h3><p>{e}</p>", status_code=400)
+        import html as _h
+        return HTMLResponse(f"<h3>Sign-in did not work</h3><p>{_h.escape(str(e)[:300])}</p>", status_code=400)
     if web:   # v0.142 Hoola Console: a one-time code, never the session token, goes into the URL
         apps = "&google=apps" if state.startswith(console.WEB_STATE + "g.") else ""
         return RedirectResponse("/console/?code=" + console.issue_code(res["session_token"]) + apps, headers=_CONSOLE_NOREF)
     scheme = get_settings().app_redirect_scheme
-    deep = f"{scheme}://auth?session={res['session_token']}"
+    import html as _h
+    if state.startswith(accounts.APP_STATE):   # SIGN UP: the phone gets a one-time code, never the session itself
+        deep = f"{scheme}://auth?session=hc_{console.issue_code(res['session_token'])}"
+    else:
+        deep = f"{scheme}://auth?session={res['session_token']}"
     # the app registers this scheme; the page also shows the token in case the link doesn't auto-open
     html = f"""<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
 <body style="font-family:system-ui;text-align:center;padding:40px;background:#f3eefb">
-<h2>Connected to Hoola ✅</h2><p>{res['email']}</p>
+<h2>Connected to Hoola ✅</h2><p>{_h.escape(res['email'])}</p>
 <p><a href="{deep}" style="display:inline-block;background:#6d3fe0;color:#fff;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:700">Open the app</a></p>
 <script>location.href={deep!r};</script></body>"""
     return HTMLResponse(html)
+
+
+# ---------------- SIGN UP: log in or sign up with email (a 6-digit code, no password), like Claude and ChatGPT --------
+class EmailStartIn(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+
+
+class EmailVerifyIn(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    code: str = Field(min_length=4, max_length=20)
+
+
+class EmailNameIn(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+
+
+@app.post("/auth/email/start")
+async def email_start(body: EmailStartIn, request: Request):
+    """Send a 6-digit sign-in code. The same answer whether the email has an account or not."""
+    from . import emailauth as EA
+    try:
+        return await asyncio.to_thread(EA.start, body.email, _client_ip(request))
+    except EA.EmailAuthError as e:
+        raise HTTPException(e.status, str(e))
+
+
+@app.post("/auth/email/verify")
+async def email_verify(body: EmailVerifyIn, request: Request):
+    """The code is right -> her account (made now if new) and a session for this device."""
+    from . import accounts
+    from . import emailauth as EA
+    try:
+        return await asyncio.to_thread(EA.verify, body.email, body.code, _client_ip(request))
+    except EA.EmailAuthError as e:
+        raise HTTPException(e.status, str(e))
+    except accounts.SignupClosed as e:
+        raise HTTPException(403, str(e))
+
+
+@app.post("/auth/email/name", dependencies=[Depends(require_key)])
+def email_name(body: EmailNameIn, request: Request, tenant: str = Depends(current_tenant)):
+    """After signing up: 'What should we call you?'."""
+    from . import accounts
+    from . import emailauth as EA
+    tok = _bearer(request)
+    uid = accounts.tenant_for_session(tok) if tok else None
+    try:
+        return {"name": EA.save_name(tenant, uid, body.name)}
+    except EA.EmailAuthError as e:
+        raise HTTPException(e.status, str(e))
 
 
 class LocationIn(BaseModel):
@@ -2162,6 +2226,7 @@ def console_config():
     from . import accounts
     st = get_settings()
     return {"app": "Hoola", "version": app.version, "google": accounts.oauth_configured(), "password": True,
+            "email": _email_login_ready(),
             "v2": bool(st.console_v2),
             "stream": bool(st.console_v2 or st.console_stream), "sessions": bool(st.console_v2 or st.chat_sessions),
             "panel": bool(st.console_v2 or st.side_panel), "projects": bool(st.console_v2 or st.chat_projects),
