@@ -424,6 +424,10 @@ function go(v, arg) {
   if (v === 'appdev') { location.assign('/console/apps' + (arg ? '#/app/' + encodeURIComponent(arg) : '')); return; }   // v0.693 App Studio = its own app
   if (v === 'prompting') { location.assign('/console/prompting'); return; }   // HOOLA PROMPTING = its own page
   if (v === 'route') { location.assign('/console/route'); return; }   // v0.999.87 HOOLA ROUTE = its own page
+  if (v === 'connectors') {   // v0.999.183 CONNECTORS = its own page (a Google result rides along)
+    const G = window.HOOLA_GCONN, q = G ? '?' + new URLSearchParams(G.ok ? {gconn: 'ok', got: G.got, miss: G.miss} : {gconn: 'err', why: G.why}) : '';
+    location.assign('/console/connectors' + q + (arg ? '#/' + encodeURIComponent(String(arg)) : '')); return;
+  }   // v0.999.183 CONNECTORS = its own page
   if (v === 'flow') { location.assign('/console/flow' + (arg ? '#/t/' + encodeURIComponent(arg) : '')); return; }   // v0.777 Hoola Flow = its own page, like Wispr Flow
   if (v === 'code') { location.assign('/console/code' + (arg ? '#/s/' + encodeURIComponent(arg) : '')); return; }   // v0.768 Hoola Code = its own page with its own sidebar
   if (v === 'design') { location.assign('/console/design' + (arg ? '#/f/' + encodeURIComponent(arg) : '')); return; }   // v0.777 Hoola Design = its own app
@@ -726,7 +730,7 @@ async function enter() {
   // employee's desk link here); only a view the console really has, else the chat stays
   try {
     const P = new URLSearchParams(location.search), want = (P.get('v') || '').replace(/[^a-z_]/g, '');
-    const OWN = ['creative', 'gamedev', 'appdev', 'prompting', 'flow', 'route', 'code', 'design', 'computer', 'webdev'];
+    const OWN = ['creative', 'gamedev', 'appdev', 'prompting', 'flow', 'route', 'connectors', 'code', 'design', 'computer', 'webdev'];
     if (P.get('full') === '1') window.HOOLA_FULL_DESK = true;   // v0.999.38 the full ad editor of the old Social desk
     if (P.get('gconn')) window.HOOLA_GCONN = {ok: P.get('gconn') === 'ok', got: P.get('got') || '', miss: P.get('miss') || '', why: (P.get('why') || '').slice(0, 200)};   // v0.999.181 back from Google
     if (want && (OWN.includes(want) || $('#v-' + want))) { history.replaceState(null, '', '/console/'); go(want, (P.get('a') || '').slice(0, 60) || undefined); }

@@ -959,6 +959,8 @@ def eventlog_jobs() -> None:
         from .agent import eventlog
         from .config import get_settings
         eventlog.forget_old(int(getattr(get_settings(), "event_log_retain_days", 14) or 14))
+        from . import connhub
+        connhub.forget_old()
     except Exception:
         log.exception("event log retention failed")
 

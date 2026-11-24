@@ -178,7 +178,7 @@ def test_callback_goes_back_to_where_she_started(hub, monkeypatch):
     r = c.get("/auth/google/callback", params={"code": "c", "state": _state(hub.start("tA", "core", "web"))},
               follow_redirects=False)
     loc = r.headers["location"]
-    assert r.status_code in (302, 307) and loc.startswith("/console/?v=connectors&a=google&gconn=ok")
+    assert r.status_code in (302, 307) and loc.startswith("/console/connectors?gconn=ok") and loc.endswith("#/google")   # v0.999.183 its own page
     q = parse_qs(urlparse(loc).query)
     assert "gmail" in q["got"][0] and q["miss"] == ["forms"] and "asha" not in loc
     r = c.get("/auth/google/callback", params={"code": "c", "state": _state(hub.start("tA", "core", "phone"))})
@@ -345,34 +345,36 @@ def test_browser_walk_connectors_google(arena_server, monkeypatch):
         p = ctx.new_page()
         errs: list[str] = []
         p.on("pageerror", lambda e: errs.append(str(e)))
+        # v0.999.183 Connectors is its own page: the old address still lands there, the Google result rides along
         p.goto(base + "/console/?v=connectors&a=google&gconn=ok&got=gmail,calendar&miss=forms")
-        p.wait_for_selector(".cx-modal [role=dialog]")
-        dlg = p.text_content(".cx-modal [role=dialog]")
-        assert "Google is connected" in dlg and "Forms: you left it unticked" in dlg
-        p.click(".cx-modal [data-cx='close']")
-        p.wait_for_selector("[data-g-app='gmail']")
-        body = p.text_content(".cx-body")
-        assert "asha@gmail.com" in body and "office@biz.com" in body and "Needs reconnecting" in body
+        p.wait_for_url("**/console/connectors**")
+        p.wait_for_selector(".k-modal [role=dialog]")
+        dlg = p.text_content(".k-modal [role=dialog]")
+        assert "Google is connected" in dlg and "You left Forms unticked" in dlg and "Not allowed" in dlg
+        p.click(".k-modal .k-foot [data-close]")
+        p.wait_for_selector("[data-gconnect='core']")
+        body = p.text_content("#kmain")
+        assert "asha@gmail.com" in body and "office@biz.com" in body and "Reconnect" in body
         assert "Everyday apps" in body and "More Google apps" in body
         assert p.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
-        p.wait_for_function("[...document.querySelectorAll('.cx-gtile img')].every(i => i.complete && i.naturalWidth === 192)")
-        assert p.evaluate("document.querySelectorAll('.cx-gtile img').length") >= 11   # Google's own logos, all loaded
+        p.wait_for_function("[...document.querySelectorAll('#kmain .k-logo img')].every(i => i.complete && i.naturalWidth === 192)")
+        assert p.evaluate("document.querySelectorAll('#kmain .k-logo img').length") >= 11   # Google's own logos, all loaded
         if os.environ.get("HOOLA_SHOTS"):
             p.screenshot(path=f"{os.environ['HOOLA_SHOTS']}/google_{w}.png", full_page=True)
-        p.click("article[data-g-app='calendar']")
-        p.wait_for_selector(".cx-drawer .cx-panel")
-        panel = p.text_content(".cx-drawer .cx-panel")
-        assert "Accounts Hoola uses for Calendar" in panel and "office@biz.com" in panel
-        p.click(".cx-drawer .cx-iconbtn[data-cd='close']")
-        p.wait_for_selector(".cx-drawer", state="detached")
+        p.click("a.k-card[href='#/google/calendar']")
+        p.wait_for_selector(".k-dhead")
+        panel = p.text_content("#kmain")
+        assert "What Hoola does in Calendar" in panel and "office@biz.com" in panel and "After your yes" in panel
+        p.go_back()
+        p.wait_for_selector("[data-gconnect='core']")
         asked = []
         p.route("https://accounts.google.com/**", lambda route: (asked.append(route.request.url), route.abort()))
-        p.click("button[data-g-connect='core']:has-text('Connect everyday apps')") if p.locator(
-            "button:has-text('Connect everyday apps')").count() else p.click("button[data-g-connect='core']")
-        p.wait_for_selector(".cx-modal [data-cx='ok']")
-        assert "Continue to Google" in p.text_content(".cx-modal [data-cx='ok']")
+        p.click("#kmain button[data-gconnect='core']:has-text('Connect everyday apps')") if p.locator(
+            "button:has-text('Connect everyday apps')").count() else p.click("#kmain button[data-gconnect='core']")
+        p.wait_for_selector(".k-modal [data-ok]")
+        assert "Continue with Google" in p.text_content(".k-modal [data-ok]")
         assert not errs, errs          # (after leaving for Google the aborted page has no storage; not ours)
-        p.click(".cx-modal [data-cx='ok']")
+        p.click(".k-modal [data-ok]")
         p.wait_for_timeout(800)
         assert asked and "ggl_w" in asked[0] and "login_hint" in asked[0]
         ctx.close()

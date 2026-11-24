@@ -47,7 +47,7 @@ Widget _tile(String k, {double size = 40}) {
     decoration: BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(HoolaRadius.tile),
-      border: Border.all(color: const Color(0x14000000)),
+      border: Border.all(color: Colors.black.withOpacity(.08)),
     ),
     child: Image.asset('assets/google/$logo.png', width: size * .62, height: size * .62, fit: BoxFit.contain),
   );

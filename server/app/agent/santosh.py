@@ -1402,7 +1402,16 @@ async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict |
         _pack_why = _cw.tool_gate(getattr(ctx, "tenant_id", ""), name)
     except Exception:   # noqa: BLE001
         _pack_why = ""
-    if not _tmode.allowed(name):          # v0.782 TEEN MODE: Plan / Chat never change anything - refused on the server
+    try:   # v0.999.183 CONNECTORS PAGE: her one switch that pauses every connected app
+        from .. import connhub as _ch
+        _paused_why = _ch.gate(getattr(ctx, "tenant_id", ""), name, args or {})
+    except Exception:   # noqa: BLE001
+        _paused_why = ""
+    if _paused_why:
+        async def _paused(_w=_paused_why):
+            raise ToolError(_w)
+        work = _paused()
+    elif not _tmode.allowed(name):          # v0.782 TEEN MODE: Plan / Chat never change anything - refused on the server
         async def _refused(_n=name):
             raise ToolError(_tmode.refusal(_n))
         work = _refused()
@@ -1436,6 +1445,13 @@ async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict |
         _evlog.log_event(_ev_t, _ev_c, "tool_result", {"tool": name, "ok": False,
                                                          "line": f"{type(e).__name__}: {str(e)[:160]}"},
                          _meta.get("turn_id", ""), _meta.get("actor", ""))
+        if not isinstance(e, asyncio.CancelledError):
+            try:   # v0.999.183 the Connectors page's Activity (no content kept)
+                from .. import connhub as _ch
+                _ch.record(_ev_t, _ev_c, name, args or {}, None, False, _meta.get("actor", ""),
+                           "paused" if _paused_why else "")
+            except Exception:   # noqa: BLE001
+                pass
         raise
     from ..scrub import scrub          # v0.91 a service that echoes one of our keys back never shows it to the model
     out = scrub(out)
@@ -1456,6 +1472,12 @@ async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict |
                              int((time.time() - _t0) * 1000), _meta.get("turn_id", ""),
                              _meta.get("actor", ""))
     except Exception:
+        pass
+    try:   # v0.999.183 the Connectors page's Activity (no content kept)
+        from .. import connhub as _ch
+        _ch.record(_ev_t, _ev_c, name, args or {}, out, not (isinstance(out, dict) and out.get("error")),
+                   _meta.get("actor", ""))
+    except Exception:   # noqa: BLE001
         pass
     try:   # v0.963 HOOLA PIPELINE P2: a Box turn keeps every tool result for its facts list (no-op otherwise)
         from ..pipeline import turnbox as _tbox

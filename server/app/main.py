@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.182"   # v0.999.182 GOOGLE LOGOS (owner: "USE REAL GOOGLE LOGOS"): every Google app on console Connectors > Google and phone Settings > Google shows Google's own product logo (Gmail, Calendar, Drive, Docs, Sheets, Forms, Slides, Photos, YouTube, Business Profile, Search Console) on a white tile instead of a drawn icon; files from Google's gstatic branding set in static/console/google/ and assets/google/; 17 tests incl. a browser walk that checks every logo loads. Previous: v0.999.181 GOOGLE CONNECTIONS (owner; older stories live in git history.
+APP_VERSION = "0.999.183"   # v0.999.183 CONNECTORS PAGE (owner: "MAKE THIS CONNECTOR SECTION SEPERATE PAGE ... PREMIUM, ADVANCE" -> design canvas claude.ai/artifact/G51SEVNTHqsK9TD9DKxHfS -> "GO"): Connectors is its own page /console/connectors with its own sidebar (connectorsapp.html/.css/.js): Overview (needs you, numbers, your apps, suggested), Google + one page per Google app (on its own / after your yes / never, accounts, used first, activity, this week), All apps (search, groups, show, sort) + one page per app, Activity, Limits & safety (her Pause switch, always-on rules, spending limits), and connectors.js embedded for Connected / MCP servers / Built in / Public APIs; NEW connhub.py: an activity row each time Hoola uses one of her apps (no content kept) + a Pause switch checked in the tool funnel; /api/connectors/activity|summary|safety; the old console view and the Google callback land on the new page; phone Connect page gets the Your apps top (Google card, needs you, other apps); 4 tests incl. a browser walk. Previous: v0.999.182 GOOGLE LOGOS (owner; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2066,6 +2066,16 @@ def telecaller_desk_page():
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/connectors")
+@app.get("/console/connectors/")
+def connectors_page():
+    """v0.999.183 CONNECTORS PAGE: her connected apps as their own section - Overview, Google, All apps, Connected,
+    MCP servers, Built in, Public APIs, Activity, Limits & safety - with its own sidebar. Same sign-in + strict CSP."""
+    return FileResponse(STATIC / "console" / "connectorsapp.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
+
+
 @app.get("/console/route")
 @app.get("/console/route/")
 def route_page():
@@ -2591,6 +2601,8 @@ async def pc_send(file: UploadFile = File(...), tenant: str = Depends(current_te
 # browser extension paired through the same /api/pc/pair flow) sends a typed ask / a page into her
 # conversation and reads the answer back. NEW surface beside the PC block - no existing PC endpoint,
 # setting or behaviour is touched (the Mera PC freeze stands; the owner's W3 ask named this lane).
+from . import connhub as _connhub                              # noqa: E402  v0.999.183 CONNECTORS PAGE
+_connhub.mount(app, current_tenant, require_key)               # /api/connectors/activity|summary|safety
 from .quicklane import router as quicklane_router               # noqa: E402
 app.include_router(quicklane_router)                            # POST /api/pc/quickask (+ /messages)
 from .pc import trace as _pc_trace                              # noqa: E402  v0.999.67 ULTIMATE PC PLAN P0
@@ -3827,7 +3839,7 @@ def _hub_back(surface: str, got: list[str] | None = None, miss: list[str] | None
     q = ({"gconn": "err", "why": err[:200]} if err else
          {"gconn": "ok", "got": ",".join(got or []), "miss": ",".join(miss or [])})
     if surface == "web":
-        return RedirectResponse("/console/?v=connectors&a=google&" + urlencode(q), headers=_CONSOLE_NOREF)
+        return RedirectResponse("/console/connectors?" + urlencode(q) + "#/google", headers=_CONSOLE_NOREF)
     deep = f"{get_settings().app_redirect_scheme}://google?" + urlencode({"ok": 0 if err else 1, **q})
     msg = (f"<h2>Google is connected to Hoola</h2>" if not err else
            f"<h3>Google was not connected</h3><p>{_h.escape(err)}</p>")

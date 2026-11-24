@@ -2424,6 +2424,9 @@ class Api {
   /// v0.901 the Connect page in one call: her apps, featured, the ten groups with their top apps.
   Future<Map<String, dynamic>> composioHome() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/composio/home', timeout: const Duration(seconds: 60)) as Map);
+  /// The Connect page's numbers: this month's actions by outcome, the week by app, her Pause switch.
+  Future<Map<String, dynamic>> connectorsSummary() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/connectors/summary') as Map);
   Future<Map<String, dynamic>> composioConnect(String toolkit) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/composio/apps/$toolkit/connect', timeout: const Duration(seconds: 40)) as Map);
   /// v0.296 her own key for a key app: straight to Composio through the server, never kept on the phone.

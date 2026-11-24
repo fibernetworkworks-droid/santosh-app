@@ -3636,3 +3636,9 @@ Task ID: v0.999.182 GOOGLE LOGOS
 Ask: use real Google logos; explain the unverified app screen
 Built: Google's own product logos on the Google tiles (console + phone)
 Not verified: phone compiles first on CI
+
+---
+Task ID: v0.999.183 CONNECTORS PAGE
+Ask: Connectors as a separate premium page (design approved)
+Built: /console/connectors page, activity log, Pause switch, phone Your apps top
+Not verified: phone compiles first on CI
