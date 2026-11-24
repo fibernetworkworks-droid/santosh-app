@@ -48,6 +48,7 @@ BUILTIN: list[dict[str, Any]] = [
                 {"say": "{item} is now only {price}.", "look": {"kind": "price", "new": "{price}", "label": "{item}"}},
                 {"say": "The offer runs until {last_date}. Come in today.", "look": {"kind": "lower_third", "title": "{shop}", "sub": "Offer until {last_date}"}}]},
     {"id": "tp_rate", "name": "Rate update", "group": "Updates", "shape": "talking_head", "aspect": "16:9", "closing": "{shop}",
+     "labels": {"item": ("What the rate is for", "e.g. Gold, per ounce"), "rate": ("Today's rate", "with its unit, e.g. $2,341")},
      "scenes": [{"say": "Here is today's rate for {item}.", "look": {"kind": "title", "text": "{item} rate"}},
                 {"say": "The rate for {item} is {rate}.", "look": {"kind": "big_number", "value": "{rate}", "label": "{item}"}}]},
     {"id": "tp_batch", "name": "New batch opening", "group": "Lessons", "shape": "talking_head", "aspect": "16:9", "closing": "{institute}",
@@ -57,14 +58,62 @@ BUILTIN: list[dict[str, Any]] = [
     {"id": "tp_timing", "name": "Timing change", "group": "Updates", "shape": "talking_head", "aspect": "16:9", "closing": "{place}",
      "scenes": [{"say": "The timings of {place} have changed.", "look": {"kind": "title", "text": "New timings"}},
                 {"say": "We are now open {hours}, {days}.", "look": {"kind": "lower_third", "title": "{hours}", "sub": "{days}"}}]},
-    {"id": "tp_thanks", "name": "Thank-you to a customer", "group": "Greetings", "shape": "talking_head", "aspect": "16:9", "closing": "{shop}",
+    {"id": "tp_thanks", "name": "Thank you", "group": "Greetings", "shape": "talking_head", "aspect": "16:9", "closing": "{shop}",
      "scenes": [{"say": "{name}, thank you for trusting {shop}.", "look": {"kind": "title", "text": "Thank you, {name}"}},
                 {"say": "We are always here to serve you.", "look": {"kind": "none"}}]},
-    {"id": "tp_reel", "name": "Quick reel", "group": "Offers", "shape": "reel", "aspect": "9:16", "closing": "{shop}",
+    {"id": "tp_reel", "name": "Quick reel", "group": "Reels", "shape": "reel", "aspect": "9:16", "closing": "{shop}",
      "scenes": [{"say": "{hook}", "look": {"kind": "none"}}, {"say": "{point}", "look": {"kind": "none"}},
                 {"say": "Visit {shop} today.", "look": {"kind": "none"}}]},
 ]
 # The same starters as they are spoken when the video's language is Hindi (Hindi words in Latin script). Same variables.
+BUILTIN += [
+    {"id": "tp_remind", "name": "Appointment reminder", "group": "Reminders", "shape": "talking_head", "aspect": "16:9", "closing": "{place}",
+     "scenes": [{"say": "Hello {name}, this is a reminder of your appointment at {place}.", "look": {"kind": "title", "text": "See you {date}"}},
+                {"say": "We will see you on {date} at {time}.", "look": {"kind": "lower_third", "title": "{date}, {time}", "sub": "{place}"}},
+                {"say": "If you need to change the time, reply to this message.", "look": {"kind": "none"}}]},
+    {"id": "tp_event", "name": "Event invitation", "group": "Events", "shape": "talking_head", "aspect": "16:9", "closing": "{host}",
+     "scenes": [{"say": "You are invited to {event}.", "look": {"kind": "title", "text": "{event}"}},
+                {"say": "Join us on {date} at {place}.", "look": {"kind": "lower_third", "title": "{date}", "sub": "{place}"}},
+                {"say": "{host} would love to see you there.", "look": {"kind": "none"}},
+                {"say": "Let us know if you are coming.", "look": {"kind": "none"}}]},
+]
+# v0.999.174: what each ready-made one is for, and a plain label + a worldwide example for every blank
+TPL_LINES = {
+    "tp_offer": "A special price for a festival or holiday, and the last day of the offer.",
+    "tp_rate": "Today's rate or price for one thing, said clearly with the number on screen.",
+    "tp_batch": "A new class or course starting, with the date and how to book a seat.",
+    "tp_timing": "Tell customers your new hours or days, so nobody arrives to a closed door.",
+    "tp_thanks": "A personal thank-you to one customer by name. Make one for many names at once.",
+    "tp_reel": "A vertical reel: a hook, one point and where to find you. Made for social feeds.",
+    "tp_remind": "A friendly reminder of a booking, with the time, the place and how to change it.",
+    "tp_event": "Invite people to an event: what it is, when, where, and how to say they are coming.",
+}
+BLANK_LABELS: dict[str, tuple[str, str]] = {
+    "festival": ("Festival or holiday", "e.g. Christmas, Eid, Diwali, Lunar New Year"),
+    "shop": ("Your business name", "e.g. Bloom Florist"),
+    "item": ("What it is about", "e.g. Pastel de nata box"),
+    "price": ("Price", "with its currency, e.g. $12, €9, ¥980"),
+    "last_date": ("Last day of the offer", "e.g. 31 December"),
+    "rate": ("The rate", "with its unit, e.g. $2,341 an ounce"),
+    "course": ("Course or class", "e.g. Spanish for beginners"),
+    "institute": ("Your school or institute", "e.g. Lingua House"),
+    "start_date": ("Start date", "e.g. 6 January"),
+    "place": ("The place", "e.g. Riverside Clinic"),
+    "hours": ("Opening hours", "e.g. 9 am to 7 pm"),
+    "days": ("Days", "e.g. Monday to Saturday"),
+    "name": ("Their name", "e.g. Amara"),
+    "hook": ("The first line, to stop the scroll", "e.g. Three things nobody tells you about coffee"),
+    "point": ("The one point", "e.g. Fresh beans taste better for two weeks"),
+    "date": ("Date", "e.g. Thursday 14 March"),
+    "time": ("Time", "e.g. 3:30 pm"),
+    "event": ("The event", "e.g. our open house"),
+    "host": ("Who invites", "e.g. Studio Nord"),
+}
+MAX_BLANKS = 12
+MAX_ROWS = 50
+KEY_RE = re.compile(r"^[a-z][a-z0-9_]{0,23}$")
+
+
 BUILTIN_HI: dict[str, list[dict[str, Any]]] = {
     "tp_offer": [{"say": "Is {festival} par {shop} mein khaas offer.", "look": {"kind": "title", "text": "{festival} offer"}},
                  {"say": "{item} ab sirf {price} mein.", "look": {"kind": "price", "new": "{price}", "label": "{item}"}},
@@ -137,7 +186,7 @@ def _new_project(tenant: str, d: dict[str, Any], *, title: str, scenes: list[dic
     if avatar_id and not any(a["id"] == avatar_id for a in d["avatars"]):
         avatar_id = ""
     p = {"id": "iv_" + uuid.uuid4().hex[:10], "title": _clip(title, 80) or "Untitled", "ask": "", "facts": facts,
-         "shape": shape, "lang": lang if lang in S.LANGS else "en",
+         "shape": shape, "lang": S.lang_of(lang),
          "aspect": "9:16" if shape == "reel" else (aspect if aspect in ("16:9", "1:1") else "16:9"),
          "avatar_id": avatar_id, "brand": _clip(d["brand"].get("name"), 40),
          "scenes": [S.clean_scene(s, her, trust_numbers=True) for s in scenes[:S.MAX_SCENES]],
@@ -169,7 +218,7 @@ def glossary_add(tenant: str, term: str, mode: str = "keep", to: str = "", lang:
         raise S.StudioError("Type the word.")
     if mode not in ("keep", "as"):
         raise S.StudioError("Choose: keep as written, or always translate as.")
-    if mode == "as" and (not to or lang not in S.LANGS):
+    if mode == "as" and (not to or S.lang_of(lang) != lang):
         raise S.StudioError("Say what it becomes, and in which language.")
     with S._LOCK:
         d = _d(tenant)
@@ -191,23 +240,142 @@ def glossary_remove(tenant: str, gid: str) -> list[dict[str, Any]]:
 
 
 # ------------------------------------------------------------------ templates ---
-def _tpl_view(t: dict[str, Any], mine: bool) -> dict[str, Any]:
-    return {**t, "mine": mine, "variables": variables(t["scenes"], t.get("closing", "")), "count": len(t["scenes"])}
+def _seconds(t: dict[str, Any]) -> float:
+    """About how long it plays: 2.6 spoken words a second per scene (a blank counts as two words), plus the closing card."""
+    n = 0.0
+    for s in t["scenes"]:
+        words = len(VAR.sub("w w", str(s.get("say") or "")).split())
+        n += max(2.0, words / 2.6) + .35
+    return round(n + (2.2 if t.get("closing") else 1.2), 1)
+
+
+def _blanks(t: dict[str, Any]) -> list[dict[str, Any]]:
+    labels = t.get("labels") or {}
+    out = []
+    order = variables(t["scenes"]) + [v for v in variables([], t.get("closing", "")) if v not in variables(t["scenes"])]
+    for v in order:
+        where = [i + 1 for i, sc in enumerate(t["scenes"]) if any(v in VAR.findall(x) for x in _strings([sc]))]
+        lab, ex = labels.get(v) or BLANK_LABELS.get(v) or (v.replace("_", " ").capitalize(), "")
+        out.append({"key": v, "label": lab, "example": ex, "where": where, "closing": v in VAR.findall(t.get("closing", ""))})
+    return out
+
+
+def _tpl_view(t: dict[str, Any], mine: bool, used: int = 0) -> dict[str, Any]:
+    return {**t, "mine": mine, "variables": variables(t["scenes"], t.get("closing", "")), "count": len(t["scenes"]),
+            "blanks": _blanks(t), "seconds": _seconds(t), "line": t.get("line") or TPL_LINES.get(t["id"], ""),
+            "lang": t.get("lang") or "en", "used": used}
 
 
 def templates(tenant: str) -> list[dict[str, Any]]:
-    return [_tpl_view(t, True) for t in _d(tenant)["templates"]] + [_tpl_view(t, False) for t in BUILTIN]
+    d = _d(tenant)
+    used: dict[str, int] = {}
+    for p in d["projects"]:
+        if p.get("template"):
+            used[p["template"]] = used.get(p["template"], 0) + 1
+    return ([_tpl_view(t, True, used.get(t["id"], 0)) for t in d["templates"]]
+            + [_tpl_view(t, False, used.get(t["id"], 0)) for t in BUILTIN])
 
 
-def template_save(tenant: str, pid: str, name: str = "") -> dict[str, Any]:
+# ---- a word she marks as a blank: found by code in her video's own words
+_MON = "jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec"
+_SUGGEST = [
+    ("price", re.compile(r"(?:[$\u20ac\u00a3\u00a5\u20b9\u20a9\u20ba\u20a6\u20b1]|R\$|AED|SAR|USD|EUR|GBP|INR|Rs\.?)\s?\d[\d,.]*|\d[\d,.]*\s?(?:[$\u20ac\u00a3\u00a5\u20b9]|USD|EUR|GBP|INR|AED|SAR|yen|euros?|dollars?|rupees?)\b", re.I)),
+    ("percent", re.compile(r"\d[\d.,]*\s?%")),
+    ("time", re.compile(r"\b\d{1,2}(?::\d{2})?\s?(?:am|pm)\b|\b\d{1,2}:\d{2}\b", re.I)),
+    ("date", re.compile(rf"\b\d{{1,2}}(?:st|nd|rd|th)?\s(?:{_MON})[a-z]*\b|\b(?:{_MON})[a-z]*\s\d{{1,2}}(?:st|nd|rd|th)?\b|\b\d{{1,2}}/\d{{1,2}}(?:/\d{{2,4}})?\b", re.I)),
+    ("day", re.compile(r"\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b", re.I)),
+    ("number", re.compile(r"\b\d[\d,.]{1,}\b")),
+]
+
+
+def blank_suggestions(tenant: str, pid: str) -> list[dict[str, Any]]:
+    """Words in HER video that look like they change: prices, percents, times, dates, days, numbers, her business name.
+    Code only - nothing is sent anywhere; she picks which become blanks."""
+    with S._LOCK:
+        d = _d(tenant)
+        p = copy.deepcopy(S._find(d, pid))
+    texts = _strings(p["scenes"], p.get("closing", ""))
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def add(text: str, kind: str) -> None:
+        text = text.strip(" .,;:")
+        if not text or text.lower() in seen or len(out) >= 10:
+            return
+        if any(text.lower() in x["text"].lower() for x in out):
+            return
+        seen.add(text.lower())
+        key = kind if kind not in [x["key"] for x in out] else f"{kind}_{sum(1 for x in out if x['kind'] == kind) + 1}"
+        out.append({"text": text, "key": key, "kind": kind})
+    for name in (p.get("brand"), d["brand"].get("name")):
+        if name and any(name in t for t in texts):
+            add(str(name), "shop")
+    for kind, rx in _SUGGEST:
+        for t in texts:
+            for m in rx.finditer(t):
+                if kind == "number" and any(m.group(0) in x["text"] for x in out):
+                    continue
+                add(m.group(0), kind)
+    return out
+
+
+def _key(v: Any) -> str:
+    k = re.sub(r"[^a-z0-9_]+", "_", str(v or "").strip().lower()).strip("_")[:24]
+    return k if KEY_RE.match(k) else ""
+
+
+def _blank_out(scenes: list[dict[str, Any]], closing: str, blanks: list[Any]) -> tuple[list[dict[str, Any]], str, dict[str, Any]]:
+    """Each {text, key, label} she marked becomes {key} wherever that exact text is in the words. A text that is not there refuses."""
+    scenes = copy.deepcopy(scenes)
+    labels: dict[str, tuple[str, str]] = {}
+    if len(blanks) > MAX_BLANKS:
+        raise S.StudioError(f"A template can have up to {MAX_BLANKS} blanks.")
+    for b in sorted([x for x in blanks if isinstance(x, dict)], key=lambda x: -len(str(x.get("text") or ""))):
+        text, key = _clip(b.get("text"), 60), _key(b.get("key") or b.get("label") or b.get("text"))
+        if not text:
+            continue
+        if not key:
+            raise S.StudioError(f"Give \u201c{text}\u201d a short name, like price or date.")
+        tag = "{" + key + "}"
+        hits = 0
+
+        def sub(v: Any) -> str:
+            nonlocal hits
+            v = str(v or "")
+            hits += v.count(text)
+            return v.replace(text, tag)
+        for sc in scenes:
+            sc["say"] = sub(sc.get("say"))
+            lk = sc.get("look") or {}
+            for k in ALL_KEYS:
+                if lk.get(k):
+                    lk[k] = sub(lk[k])
+            for bar in lk.get("bars") or []:
+                for k in ("label", "value"):
+                    if bar.get(k):
+                        bar[k] = sub(bar[k])
+        if text in closing:
+            hits += 1
+            closing = closing.replace(text, tag)
+        if not hits:
+            raise S.StudioError(f"\u201c{text}\u201d is not in this video's words.")
+        labels[key] = (_clip(b.get("label"), 40) or key.replace("_", " ").capitalize(), _clip(b.get("example"), 60) or f"e.g. {text}")
+    return scenes, closing, labels
+
+
+def template_save(tenant: str, pid: str, name: str = "", blanks: list[Any] | None = None) -> dict[str, Any]:
+    """Her video as a template. The words she marked become blanks; the video itself is not changed."""
     with S._LOCK:
         d = _d(tenant)
         p = S._find(d, pid)
         if len(d["templates"]) >= MAX_TEMPLATES:
             raise S.StudioError(f"You have {MAX_TEMPLATES} templates - remove one first.")
+        scenes, closing, labels = _blank_out([{"say": s["say"], "look": copy.deepcopy(s["look"])} for s in p["scenes"]],
+                                             p.get("closing", ""), list(blanks or []))
         t = {"id": "tp_" + uuid.uuid4().hex[:10], "name": _clip(name, 60) or p["title"], "group": "Mine",
-             "shape": p["shape"], "aspect": p["aspect"], "closing": p.get("closing", ""),
-             "scenes": [{"say": s["say"], "look": copy.deepcopy(s["look"])} for s in p["scenes"]], "created": S._now_iso()}
+             "shape": p["shape"], "aspect": p["aspect"], "closing": closing, "lang": p.get("lang") or "en",
+             "labels": labels, "from": p["title"], "line": f"From \u201c{_clip(p['title'], 60)}\u201d",
+             "scenes": scenes, "created": S._now_iso()}
         d["templates"].insert(0, t)
         S._store(tenant, d)
         return _tpl_view(t, True)
@@ -233,22 +401,84 @@ def _template(d: dict[str, Any], tid: str, lang: str = "") -> dict[str, Any]:
     raise S.StudioError("That template was not found.")
 
 
+def _use_one(tenant: str, d: dict[str, Any], t: dict[str, Any], vals: dict[str, str], lang: str, avatar_id: str,
+             title: str) -> dict[str, Any]:
+    missing = [v for v in variables(t["scenes"], t.get("closing", "")) if not vals.get(v)]
+    if missing:
+        names = {b["key"]: b["label"] for b in _blanks(t)}
+        raise S.StudioError("Fill in: " + ", ".join(names.get(m, m.replace("_", " ")).lower() for m in missing) + ".")
+    closing = VAR.sub(lambda m: vals.get(m.group(1), ""), t.get("closing", ""))
+    return _new_project(tenant, d, title=title or t["name"], scenes=_fill(t["scenes"], vals), shape=t["shape"], lang=lang,
+                        aspect=t["aspect"], closing=closing or d["brand"].get("closing", ""), avatar_id=avatar_id,
+                        facts=list(vals.values()), extra={"template": t["id"]})
+
+
+def _settle(tenant: str, p: dict[str, Any], opts: dict[str, Any]) -> dict[str, Any]:
+    """Her picks on the Use page - frame, voice, engine, where the face sits - through the Studio's own save."""
+    body = {k: opts[k] for k in ("aspect", "voice", "engine", "face_layout") if opts.get(k) not in (None, "")}
+    if opts.get("aspect") == "9:16" and p["shape"] != "reel":
+        body = {**body, "shape": "reel"}
+        body.pop("aspect", None)
+    return S.save(tenant, p["id"], body) if body else p
+
+
 def template_use(tenant: str, tid: str, values: dict[str, Any], lang: str = "en", avatar_id: str = "",
-                 title: str = "") -> dict[str, Any]:
-    """Fill a template from HER values. A variable she left empty refuses by name - nothing is ever filled in for her."""
+                 title: str = "", opts: dict[str, Any] | None = None,
+                 think: Callable[[str, str], dict[str, Any]] | None = None) -> dict[str, Any]:
+    """Fill a template from HER values. A blank she left empty refuses by name - nothing is ever filled in for her.
+    In a language the template is not written in, the filled words are translated (names, prices and dates checked)."""
+    vals = {str(k): _clip(v, 60) for k, v in (values or {}).items()}
     with S._LOCK:
         d = _d(tenant)
-        t = _template(d, tid, lang)
-        vals = {str(k): _clip(v, 60) for k, v in (values or {}).items()}
-        missing = [v for v in variables(t["scenes"], t.get("closing", "")) if not vals.get(v)]
-        if missing:
-            raise S.StudioError("Fill in: " + ", ".join(m.replace("_", " ") for m in missing) + ".")
-        closing = VAR.sub(lambda m: vals.get(m.group(1), ""), t.get("closing", ""))
-        p = _new_project(tenant, d, title=title or t["name"], scenes=_fill(t["scenes"], vals), shape=t["shape"], lang=lang,
-                         aspect=t["aspect"], closing=closing or d["brand"].get("closing", ""), avatar_id=avatar_id,
-                         facts=list(vals.values()), extra={"template": tid})
+        base = next((x for x in d["templates"] + BUILTIN if x["id"] == tid), None)
+        if base is None:
+            raise S.StudioError("That template was not found.")
+        src = base.get("lang") or "en"
+        lang = src if lang in ("", "auto") else lang
+        direct = lang == src or (lang == "hi" and tid in BUILTIN_HI and base in BUILTIN)
+        t = _template(d, tid, lang if direct else src)
+        p = _use_one(tenant, d, t, vals, lang if direct else src, avatar_id, title)
         S._store(tenant, d)
-        return p
+    note = ""
+    if not direct:
+        try:
+            tr = translate(tenant, p["id"], lang, think=think)
+            with S._LOCK:
+                d = _d(tenant)
+                d["projects"] = [x for x in d["projects"] if x["id"] != p["id"]]
+                for x in d["projects"]:
+                    if x["id"] == tr["id"]:
+                        x["template"], x["title"] = tid, _clip(title, 80) or t["name"]
+                        tr = x
+                S._store(tenant, d)
+            p = tr
+        except S.StudioError:
+            note = f"Hoola could not translate it just now, so the draft is in {S.lang_label(src)}. Use Translate in the Studio."
+    p = _settle(tenant, p, opts or {})
+    return {**p, "notice": note} if note else p
+
+
+def template_many(tenant: str, tid: str, rows: list[Any], lang: str = "en", avatar_id: str = "",
+                  opts: dict[str, Any] | None = None, think: Callable[[str, str], dict[str, Any]] | None = None) -> dict[str, Any]:
+    """One draft per row of her sheet. A row with an empty blank is skipped and named, never filled in."""
+    rows = [r for r in (rows or []) if isinstance(r, dict)]
+    if not rows:
+        raise S.StudioError("The sheet has no rows.")
+    if len(rows) > MAX_ROWS:
+        raise S.StudioError(f"Up to {MAX_ROWS} rows at a time.")
+    made: list[str] = []
+    skipped: list[dict[str, Any]] = []
+    for n, row in enumerate(rows, start=1):
+        vals = {_key(k): v for k, v in row.items() if _key(k)}
+        title = str(row.get("title") or "")
+        try:
+            p = template_use(tenant, tid, vals, lang=lang, avatar_id=avatar_id, title=title, opts=opts, think=think)
+            made.append(p["id"])
+        except S.StudioError as e:
+            if "not found" in str(e):
+                raise
+            skipped.append({"row": n, "why": str(e)})
+    return {"made": made, "skipped": skipped}
 
 
 # ------------------------------------------------------------------ batch + names ---
@@ -403,14 +633,14 @@ def _line_flag(src: str, out: str, rules: list[dict[str, Any]], lang: str) -> st
 
 def translate(tenant: str, pid: str, lang: str, think: Callable[[str, str], dict[str, Any]] | None = None) -> dict[str, Any]:
     """A NEW draft of the same video in `lang`. Words by one model call; numbers and glossary rules checked by code."""
-    if lang not in S.LANGS:
+    if not lang or S.lang_of(lang) != lang:
         raise S.StudioError("Choose a language.")
     with S._LOCK:
         d = _d(tenant)
         src = copy.deepcopy(S._find(d, pid))
         rules = [g for g in d["glossary"] if g["mode"] == "keep" or g.get("lang") == lang]
     if src["lang"] == lang:
-        raise S.StudioError(f"This video is already in {S.LANGS[lang]}.")
+        raise S.StudioError(f"This video is already in {S.lang_label(lang)}.")
     slots: list[tuple[int, str]] = []                      # (scene index, key) for every string that is words
     lines: list[str] = []
     for i, s in enumerate(src["scenes"]):
@@ -421,7 +651,7 @@ def translate(tenant: str, pid: str, lang: str, think: Callable[[str, str], dict
                 slots.append((i, k))
                 lines.append(str(s["look"][k]))
     gl = "\n".join(f"KEEP {g['term']}" if g["mode"] == "keep" else f"AS {g['term']} => {g['to']}" for g in rules) or "(none)"
-    prompt = (f"Source language: {S.LANGS.get(src['lang'], src['lang'])}\nTarget language: {S.LANGS[lang]}\nGlossary:\n{gl}\n"
+    prompt = (f"Source language: {S.lang_label(src['lang'])}\nTarget language: {S.lang_label(lang)}\nGlossary:\n{gl}\n"
               "Lines:\n" + "\n".join(f"{n + 1}. {t}" for n, t in enumerate(lines)))
     out = (think or _think)(_TR_SYSTEM, prompt)
     got = out.get("lines") if isinstance(out, dict) else None
@@ -440,7 +670,7 @@ def translate(tenant: str, pid: str, lang: str, think: Callable[[str, str], dict
             notes[i]["flag"] = flag
     with S._LOCK:
         d = _d(tenant)
-        p = _new_project(tenant, d, title=f"{src['title']} ({S.LANGS[lang]})", scenes=scenes, shape=src["shape"], lang=lang,
+        p = _new_project(tenant, d, title=f"{src['title']} ({S.lang_label(lang)})", scenes=scenes, shape=src["shape"], lang=lang,
                          aspect=src["aspect"], closing=src.get("closing", ""), avatar_id=src.get("avatar_id", ""),
                          facts=src.get("facts", []) + [src.get("ask", "")] + _strings(src["scenes"]),
                          extra={"from": pid, "from_lang": src["lang"], "tr": notes, "items": src.get("items", [])})
@@ -466,7 +696,7 @@ def brain_save(tenant: str, body: dict[str, Any]) -> dict[str, Any]:
             row = {"id": "br_" + uuid.uuid4().hex[:8], "created": S._now_iso()}
             d["brains"].insert(0, row)
         row.update(name=name, knows=knows, opening=_clip(body.get("opening"), 160), links=links,
-                   lang=body.get("lang") if body.get("lang") in S.LANGS else "hi", updated=S._now_iso())
+                   lang=body.get("lang") if body.get("lang") and S.lang_of(body.get("lang")) == body.get("lang") else "hi", updated=S._now_iso())
         S._store(tenant, d)
         return row
 
@@ -489,7 +719,7 @@ def usage(tenant: str, d: dict[str, Any] | None = None) -> dict[str, Any]:
     for p in rows:
         by[p["lang"]] = by.get(p["lang"], 0.0) + float(p["video"].get("duration") or 0)
     return {"month": month, "videos": len(rows), "minutes": round(secs / 60, 1),
-            "by_language": [{"lang": S.LANGS.get(k, k), "minutes": round(v / 60, 1)} for k, v in sorted(by.items(), key=lambda kv: -kv[1])],
+            "by_language": [{"lang": S.lang_label(k), "minutes": round(v / 60, 1)} for k, v in sorted(by.items(), key=lambda kv: -kv[1])],
             "recent": [{"title": p["title"], "made": p["video"].get("made"), "seconds": round(float(p["video"].get("duration") or 0))}
                        for p in sorted(rows, key=lambda p: str(p["video"].get("made")), reverse=True)[:8]],
             "stored": len([p for p in d["projects"] if p.get("video")]), "kept_max": S.MAX_VIDEOS}
@@ -520,4 +750,4 @@ def voice_sample(lang: str) -> bytes:
     from . import lab
     line = {"hi": "Namaste, aapke video mein meri awaaz aisi sunai degi.", "mr": "Namaskar, tumchya video madhe mi asa bolto."}.get(
         lang, "Hello, this is how I sound in your videos.")
-    return lab.voice(line, lang=lang if lang in S.LANGS else "en")
+    return lab.voice(line, lang=S.lang_of(lang))

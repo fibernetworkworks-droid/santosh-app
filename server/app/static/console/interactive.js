@@ -111,6 +111,7 @@ window.HoolaInteractive = function (ctx) {
     ROOT.addEventListener('click', onClick); ROOT.addEventListener('input', onInput); ROOT.addEventListener('change', onChange);
     ROOT.addEventListener('focusin', e => { const n = e.target.dataset?.sc; if (n != null && PAGE === 'studio' && +n !== UI.scene) { edStop(); UI.scene = +n; edPaint(); } });
     ROOT.addEventListener('keydown', e => { if (e.target.id === 'hxAsk' && e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); chatSend(); }
+      if (e.key === 'Escape' && UI.dlg) { dlgClose(); return; }
       if (e.key === 'Escape' && UI.nav) { UI.nav = false; side(); } });
   }
   async function open() { mount(); await load(); go(PAGE, ARG); voicesLoad().then(() => { if (PAGE === 'chat') refreshBar(); }); langsLoad().then(() => { if (PAGE === 'chat' && $('.hx-hero')) draw(); }); meLoad(); recentLoad(); estimate(); }
@@ -134,17 +135,18 @@ window.HoolaInteractive = function (ctx) {
       <span class="hx-grow"></span>${creditCard()}`;
   }
   function crumb() {
-    const p = PAGE === 'studio' && ARG ? ['Studio', (D.projects || []).find(x => x.id === ARG)?.title || 'Video'] : PAGE === 'chat' ? [C.title && C.title !== 'Interactive chat' ? C.title : 'Interactive chat'] : [TITLE[PAGE] || ''];
+    const p = PAGE === 'templates' && ARG ? ['Templates', tplOf(ARG)?.name || 'Template'] : PAGE === 'studio' && ARG ? ['Studio', (D.projects || []).find(x => x.id === ARG)?.title || 'Video'] : PAGE === 'chat' ? [C.title && C.title !== 'Interactive chat' ? C.title : 'Interactive chat'] : [TITLE[PAGE] || ''];
     $('#hxCrumb').innerHTML = `<span>Interactive ·${p.length > 1 ? ' ' + esc(p[0]) + ' ·' : ''}</span><h1 class="hx-h">${esc(p[p.length - 1])}</h1>`;
     const t = $('#hxTopR');
     t.innerHTML = PAGE === 'chat' ? `${UI.credits != null ? `<button type="button" class="hx-credp hx-num" data-a="credits" title="Your credits">${ic('spark', 14)}${num(UI.credits)} credits</button>` : ''}
       <button type="button" class="hx-ib" data-a="chats" aria-label="Earlier chats" title="Earlier chats">${ic('clock', 18)}</button>
       <button type="button" class="hx-ib" data-a="newchat" aria-label="New chat" title="New chat">${ic('plus', 18)}</button>`
-      : PAGE === 'studio' ? (UI.credits != null ? `<button type="button" class="hx-credp hx-num" data-a="credits" title="Your credits">${ic('spark', 14)}${num(UI.credits)} credits</button>` : '') : '';
+      : PAGE === 'studio' || PAGE === 'templates' ? (UI.credits != null ? `<button type="button" class="hx-credp hx-num" data-a="credits" title="Your credits">${ic('spark', 14)}${num(UI.credits)} credits</button>` : '') : '';
   }
   function go(page, arg) {
     window.HoolaMenu?.close();
     clearTimeout(UI.edt); UI.edp = false; if (page !== 'studio' || arg !== ARG) UI.q = null;
+    tuStop(); if (UI.dlg && !(UI.dlg.k === 'sheet' && page === 'templates')) { UI.dlg = null; dlgPaint(); }
     PAGE = V[page] ? page : 'chat'; ARG = arg || ''; UI.nav = false;
     side(); crumb(); draw();
     const v = $('#hxView'); v.scrollTop = 0; v.classList.remove('hx-enter'); void v.offsetWidth; v.classList.add('hx-enter');
@@ -787,7 +789,7 @@ window.HoolaInteractive = function (ctx) {
       try { const p = await api('POST', `${H}/translate`, {id, lang: l.code}); toast('A translated draft is ready. Check it, then make it.'); await load(); UI.scene = 0; go('studio', p.id); } catch (er) { toast(er.message, true); } }}))], {width: 280});
   }
   async function dupP(id) { try { const p = await api('POST', `${H}/duplicate`, {id}); await load(); toast('A copy is ready.'); UI.scene = 0; go('studio', p.id); } catch (er) { toast(er.message, true); } }
-  async function tplSave(id) { try { await api('POST', `${H}/template`, {project: id}); await load(); toast('Saved as a template.'); } catch (er) { toast(er.message, true); } }
+  function tplSave(id) { return svOpen(id); }
   async function trashP(id) {
     try { await api('POST', `${H}/trash`, {id}); await load(); toast('Moved to the trash for 30 days.'); if (PAGE === 'studio' && ARG === id) go('studio'); else draw(); }
     catch (er) { toast(er.message, true); }
@@ -804,6 +806,320 @@ window.HoolaInteractive = function (ctx) {
   }
   async function openChatId(conv) { clearTimeout(C.t); C.gen++; C.conv = conv; C.rows = []; C.items = []; UI.pv.id = ''; pvStop(); await chatLoad(); go('chat'); }
 
+  // ------------------------------------------------------------------ templates (v0.999.174: design claude.ai/artifact/JzJ7s7bqJGC983XfwCZbMk) ---
+  // The library (her own templates first, then the ready-made ones as cards with a poster of their first scene, what they
+  // are for and the blanks), the Use page (one field per blank, the live preview filling in as she types, language / face /
+  // voice / engine / frame, the price: the draft is free, the video is priced again in the Studio), the save dialog (tap
+  // the words that change; Hoola marks prices, dates and names by code) and a sheet with one free draft per row.
+  const TGROUP = {Offers: 'Offers & sales', Updates: 'Updates', Reminders: 'Reminders', Lessons: 'Lessons', Greetings: 'Greetings', Events: 'Events', Reels: 'Social reels', Mine: 'Yours'};
+  const TSORT = {used: 'Most used', name: 'Name A to Z', short: 'Shortest first'};
+  const TSHAPE = {any: 'Any shape', wide: 'Landscape', tall: 'Vertical', sq: 'Square'};
+  const HI_TPL = ['tp_offer', 'tp_rate', 'tp_batch', 'tp_timing', 'tp_thanks', 'tp_reel'];   // written in Hindi too
+  const tplOf = id => (D.templates || []).find(t => t.id === id);
+  const shapeKey = t => t.aspect === '9:16' || t.shape === 'reel' ? 'tall' : t.aspect === '1:1' ? 'sq' : 'wide';
+  const shapeName = t => ({tall: 'Vertical', sq: 'Square', wide: 'Landscape'})[shapeKey(t)];
+  const sampleOf = t => Object.fromEntries((t.blanks || []).map(b => [b.key, String(b.example || '').replace(/^e\.g\.\s*/i, '').split(/,\s*/)[0].replace(/^with its \w+,\s*/i, '') || b.label]));
+  const fillStr = (s, v) => String(s || '').replace(/\{([a-z][a-z0-9_]*)\}/g, (m, k) => v[k] || m);
+  const shown = s => { s = String(s || '').replace(/\{[a-z][a-z0-9_]*\}/g, '…'); return s.charAt(0).toUpperCase() + s.slice(1); };   // a poster never shows {braces}
+  const fillLook = (lk, v) => { const o = {...(lk || {kind: 'none'})}; for (const k of ['text', 'label', 'title', 'sub', 'unit', 'value', 'new', 'old']) if (o[k]) o[k] = fillStr(o[k], v);
+    if (o.bars) o.bars = o.bars.map(b => ({label: fillStr(b.label, v), value: fillStr(b.value, v)})); return o; };
+  function fillParts(s, v, tb) {   // her words in the line: a value she typed, a gap she has not filled yet
+    const out = []; let at = 0; const rx = /\{([a-z][a-z0-9_]*)\}/g; let m;
+    while ((m = rx.exec(s || ''))) { if (m.index > at) out.push(esc(s.slice(at, m.index)));
+      const b = (tb || []).find(x => x.key === m[1]), val = v[m[1]];
+      out.push(val ? `<mark class="hx-tv">${esc(val)}</mark>` : `<mark class="hx-tgap">${esc((b?.label || m[1]).toLowerCase())}</mark>`); at = rx.lastIndex; }
+    out.push(esc(String(s || '').slice(at))); return out.join('');
+  }
+  function tplPoster(t, cls) {
+    const v = sampleOf(t), sc = (t.scenes || []).find(s => s.look?.kind && s.look.kind !== 'none') || (t.scenes || [])[0] || {}, lk = fillLook(sc.look, v), g = (t.group || 'Mine').toLowerCase();
+    const body = shapeKey(t) === 'tall' ? `<span class="hx-tph"><b>${esc(fillStr((t.scenes || [])[0]?.say, v))}</b><i></i><i></i></span>`
+      : lk.kind === 'price' ? `<small>${esc(lk.label || '')}</small><span class="hx-tpp">${lk.old ? `<s>${esc(lk.old)}</s>` : ''}<b>${esc(lk.new || '')}</b></span>`
+      : lk.kind === 'big_number' ? `<b class="big">${esc(lk.value || '')}</b><small>${esc(lk.label || '')}</small>`
+      : lk.kind === 'lower_third' ? `<b>${esc(lk.title || '')}</b><small>${esc(lk.sub || '')}</small>`
+      : `<b>${esc(shown(lookText(lk) || fillStr(sc.say, v)))}</b>${t.closing ? `<small>${esc(shown(fillStr(t.closing, v)))}</small>` : ''}`;
+    return `<span class="hx-tpo g-${esc(g)}${cls ? ' ' + cls : ''}${shapeKey(t) === 'tall' ? ' tall' : ''}">${body}
+      <span class="hx-tpg">${esc(TGROUP[t.group] || t.group || 'Yours')}</span><span class="hx-tplen hx-num">${clock(t.seconds)}</span></span>`;
+  }
+  const blankChips = t => (t.blanks || []).map(b => `<span class="hx-tbk">${esc(b.label.toLowerCase())}</span>`).join('');
+  function tplRows() {
+    const qy = (UI.tq || '').trim().toLowerCase(), g = UI.tg || 'all', sh = UI.tsh || 'any', so = UI.tso || 'used';
+    const rows = (D.templates || []).filter(t => (g === 'all' || t.group === g) && (sh === 'any' || shapeKey(t) === sh)
+      && (!qy || `${t.name} ${t.line || ''} ${TGROUP[t.group] || ''} ${(t.scenes || []).map(s => s.say).join(' ')} ${(t.blanks || []).map(b => b.label).join(' ')}`.toLowerCase().includes(qy)));
+    return rows.sort((a, b) => so === 'name' ? a.name.localeCompare(b.name) : so === 'short' ? a.seconds - b.seconds : (b.used || 0) - (a.used || 0));
+  }
+  function tplCard(t) {
+    return `<article class="hx-tc"><button type="button" class="hx-tco" data-a="tpluse" data-id="${esc(t.id)}" aria-label="Use ${esc(t.name)}">${tplPoster(t)}</button>
+      <div class="hx-tcb"><div class="hx-tcn"><b>${esc(t.name)}</b>${t.id === 'tp_remind' || t.id === 'tp_event' ? '<span class="hx-tnew">New</span>' : ''}</div>
+        <p>${esc(t.line || '')}</p><div class="hx-tbks">${blankChips(t)}</div><span class="hx-grow"></span>
+        <div class="hx-tcf"><span class="hx-mut hx-sm hx-num">${t.count} scene${t.count === 1 ? '' : 's'} · ${shapeName(t)}${t.used ? ` · used ${num(t.used)}×` : ''}</span><span class="hx-grow"></span>
+          <button type="button" class="hx-ib s ring" data-a="tplsample" data-id="${esc(t.id)}" aria-label="Watch a sample of ${esc(t.name)}" title="Watch a sample">${ic('play', 13)}</button>
+          <button type="button" class="hx-btn s dark" data-a="tpluse" data-id="${esc(t.id)}">Use</button></div></div></article>`;
+  }
+  function tplMine(t) {
+    return `<article class="hx-tm"><button type="button" class="hx-tmo" data-a="tpluse" data-id="${esc(t.id)}" aria-label="Use ${esc(t.name)}">${tplPoster(t, 'mini')}</button>
+      <div class="hx-ct"><b>${esc(t.name)}</b><small class="hx-num">${esc(t.line || 'Yours')} · ${t.count} scene${t.count === 1 ? '' : 's'}${t.used ? ` · used ${num(t.used)}×` : ''}</small><span class="hx-tbks">${blankChips(t)}</span></div>
+      <button type="button" class="hx-ib s" data-a="tplmenu" data-id="${esc(t.id)}" aria-label="More for ${esc(t.name)}">${ic('dots', 16)}</button>
+      <button type="button" class="hx-btn s dark" data-a="tpluse" data-id="${esc(t.id)}">Use</button></article>`;
+  }
+  function tplEmptyMine() {
+    return `<div class="hx-tempty"><div class="hx-teart" aria-hidden="true"><span class="a"></span><span class="b"><b>Only <mark class="hx-tv">price</mark> this week</b><i></i><i></i><em><u></u><u></u></em></span><span class="c">${ic('plus', 20)}</span></div>
+      <div class="hx-growf"><h3 class="hx-serif">Make a video once. Reuse it every week.</h3>
+        <p class="hx-mut">Turn any of your videos into a template. The words that change, like a price, a date or a name, become blanks you fill in next time.</p>
+        <ol class="hx-how"><li><span class="n">1</span><span>Pick a video you made: an offer, a lesson, a weekly update.</span></li>
+          <li><span class="n">2</span><span>Tap the words that change. They become blanks.</span></li>
+          <li><span class="n">3</span><span>Next time, fill the blanks and the draft is ready in seconds.</span></li></ol>
+        <div class="hx-acts"><button type="button" class="hx-btn dark" data-a="tplfrom">Choose one of my videos</button>
+          <button type="button" class="hx-btn" data-a="ttab" data-val="ready">Browse ready-made</button></div>
+        <span class="hx-mut hx-sm">Up to 40 templates. Only you can see them.</span></div></div>`;
+  }
+  function tplList() {
+    const tab = UI.tt || 'all', rows = tplRows(), mine = rows.filter(t => t.mine), ready = rows.filter(t => !t.mine), all = D.templates || [];
+    if (tab === 'mine' && !all.some(t => t.mine)) return tplEmptyMine();
+    if (!rows.length) return `<div class="hx-empty"><b>No templates match</b><span>Try another word, or show every template.</span><button type="button" class="hx-btn s" data-a="tclear">Show all templates</button></div>`;
+    const nm = all.filter(t => t.mine).length;
+    return `${tab !== 'ready' && mine.length ? `<section class="hx-tsec" aria-labelledby="hxTm"><div class="hx-sech"><b class="hx-t" id="hxTm">Your templates</b><span class="hx-mut hx-sm">${num(nm)} of 40 · made from your own videos</span></div>
+        <div class="hx-tmg">${mine.map(tplMine).join('')}</div></section>` : ''}
+      ${tab !== 'mine' && ready.length ? `<section class="hx-tsec" aria-labelledby="hxTr"><div class="hx-sech"><b class="hx-t" id="hxTr">Ready-made</b><span class="hx-mut hx-sm">Every one speaks in any of 140 languages</span></div>
+        <div class="hx-tgrid">${ready.map(tplCard).join('')}</div></section>` : ''}`;
+  }
+  function tplLib() {
+    const all = D.templates || [], n = k => k === 'all' ? all.length : k === 'mine' ? all.filter(t => t.mine).length : all.filter(t => !t.mine).length;
+    const groups = ['all', ...Object.keys(TGROUP).filter(g => g !== 'Mine' && all.some(t => t.group === g))];
+    return `<div class="hx-doc hx-tlib"><div class="hx-libh"><div class="hx-growf"><h2 class="hx-serif">Templates</h2>
+        <p class="hx-mut">Start from a video that already works. Fill in a few words, and Hoola writes the draft in your language. Making the draft is free; you see the price before the video is made.</p></div>
+        <div class="hx-acts"><button type="button" class="hx-btn" data-a="tplfrom">${ic('plus', 14)}Save a video as a template</button></div></div>
+      <div class="hx-libbar"><label class="hx-lsearch hx-tsearch">${ic('search', 15)}<span class="hx-sr">Search templates</span><input id="hxTq" type="search" placeholder="Search: offer, reminder, lesson, thank you…" value="${esc(UI.tq || '')}" autocomplete="off"></label>
+        <div class="hx-seg" role="tablist" aria-label="Which templates">${[['all', 'All'], ['ready', 'Ready-made'], ['mine', 'Yours']].map(([k, l]) => `<button type="button" role="tab" aria-selected="${(UI.tt || 'all') === k}" aria-checked="${(UI.tt || 'all') === k}" data-a="ttab" data-val="${k}">${l}<span class="hx-num">${num(n(k))}</span></button>`).join('')}</div>
+        <span class="hx-grow"></span>
+        <button type="button" class="hx-btn" data-a="tshape">${esc(TSHAPE[UI.tsh || 'any'])}${ic('down', 13)}</button>
+        <button type="button" class="hx-btn" data-a="tsort">${ic('sort', 14)}<span>${esc(TSORT[UI.tso || 'used'])}</span></button></div>
+      <div class="hx-tchips" role="radiogroup" aria-label="Kind">${groups.map(g => `<button type="button" role="radio" aria-checked="${(UI.tg || 'all') === g}" class="hx-chip s" data-a="tgrp" data-val="${esc(g)}">${esc(g === 'all' ? 'All kinds' : TGROUP[g])}</button>`).join('')}</div>
+      <div id="hxTplList">${tplList()}</div></div>`;
+  }
+
+  // ---- using one
+  function tuState(t) {
+    if (!UI.tu || UI.tu.id !== t.id) UI.tu = {id: t.id, vals: {}, lang: 'auto', face: SET.face || '', voice: SET.voice || '', engine: defEngine(), aspect: t.aspect, layout: 'corner', scene: 0, play: false, sample: false, est: null};
+    return UI.tu;
+  }
+  const tuVals = (t, u) => u.sample ? {...sampleOf(t), ...Object.fromEntries(Object.entries(u.vals).filter(([, x]) => x))} : u.vals;
+  const tuMissing = (t, u) => (t.blanks || []).filter(b => !(u.vals[b.key] || '').trim());
+  const tuShape = (t, u) => t.shape === 'reel' ? '9:16' : u.aspect;
+  const tuProject = (t, u) => { const v = tuVals(t, u); return {scenes: (t.scenes || []).map(s => ({say: fillStr(s.say, v), look: fillLook(s.look, v)})), closing: fillStr(t.closing, v)}; };
+  function tuStage(t, u) {
+    const v = tuVals(t, u), n = Math.min(u.scene, t.scenes.length - 1), sc = t.scenes[n] || {}, lk = fillLook(sc.look, v), f = face(u.face), full = u.layout === 'full', asp = tuShape(t, u);
+    const pp = tuProject(t, u), T = sceneTimes(pp), tot = T.length ? T[T.length - 1][1] : 1, at = T[n] ? T[n][0] : 0;
+    return `<div class="hx-preview ${asp === '9:16' ? 'tall' : asp === '1:1' ? 'sq' : ''}" style="--brand:${esc(brandColor())}">
+        ${f && full ? `<span class="hx-pvfull">${avImg(f, 'xl')}</span>` : ''}
+        <div class="hx-pvlook">${lookText(lk) ? `<b>${esc(shown(lookText(lk)))}</b>` : n === 0 ? `<b>${esc(t.name)}</b>` : ''}</div>
+        ${f && !full ? `<span class="hx-pvface">${avImg(f, 'l')}</span>` : ''}<p class="hx-pvcap">${fillParts(sc.say, v, t.blanks)}</p>
+        <span class="hx-tsn hx-num">Scene ${n + 1} of ${t.scenes.length} · ${clock(at)}</span></div>
+      <div class="hx-pvbar"><button type="button" class="hx-pplay" data-a="tuplay" aria-label="${u.play ? 'Pause the sketch' : 'Play the sketch'}">${ic(u.play ? 'stop' : 'play', 14)}</button>
+        <span class="hx-tseg">${T.map((x, i) => `<button type="button" class="${i === n ? 'on' : i < n ? 'past' : ''}" data-a="tuscene" data-n="${i}" style="flex:${(x[1] - x[0]).toFixed(2)} 1 0" aria-label="Scene ${i + 1}"></button>`).join('')}</span>
+        <span class="hx-mut hx-sm hx-num">${clock(at)} / ${clock(tot)}</span>
+        <button type="button" class="hx-btn s" data-a="tuhear">${ic('vol', 14)}Hear it<span class="hx-mut">· free</span></button></div>`;
+  }
+  function tuScenes(t, u) {
+    const v = tuVals(t, u), pp = tuProject(t, u), T = sceneTimes(pp), n = Math.min(u.scene, t.scenes.length - 1);
+    return `<ol class="hx-tsl">${t.scenes.map((s, i) => { const lk = s.look?.kind && s.look.kind !== 'none';
+      return `<li><button type="button" class="hx-tsr${i === n ? ' on' : ''}" data-a="tuscene" data-n="${i}">
+        <span class="hx-tsm g-${esc((t.group || 'Mine').toLowerCase())}">${esc(shown(lookText(fillLook(s.look, v))) || (i + 1))}</span>
+        <span class="hx-growf"><span class="hx-tsh hx-num"><b>Scene ${i + 1}</b><span>${esc(lk ? LOOK[s.look.kind] : 'Just the words')}</span><span class="hx-grow"></span><span>${secs(T[i][1] - T[i][0])}</span></span>
+          <span class="hx-tsw">${fillParts(s.say, v, t.blanks)}</span></span></button></li>`; }).join('')}</ol>
+      <div class="hx-tclose">${ic('doc', 15)}<span>Closing card: ${t.closing ? `<strong>${fillParts(t.closing, v, t.blanks)}</strong>` : '<strong>your business name</strong>'} with your logo and colour from Brand</span></div>`;
+  }
+  function tuPrice(t, u) {
+    const miss = tuMissing(t, u), e = u.est;
+    return `<div class="hx-tprice"><div class="r"><b>The draft</b><span class="hx-grow"></span><b class="ok">Free</b></div>
+      <div class="r hx-mut"><span>The video, later in the Studio</span><span class="hx-grow"></span><span class="hx-num">${e ? 'about ' + cr(e.credits) : '…'}</span></div>
+      <p class="hx-mut hx-sm">${esc(secs(Math.round(sceneTimes(tuProject(t, u)).slice(-1)[0]?.[1] || t.seconds)))} · ${esc(e?.label || 'Hoola standard')} · ${esc(voiceName(u.voice))}. The exact price is shown again before anything is made.</p>
+      <div class="r"><span class="hx-tmiss">${miss.length ? `Fill in: ${esc(miss.map(b => b.label.toLowerCase()).join(', '))}.` : '<span class="ok">Ready.</span> Opens in the Studio.'}</span>
+        <button type="button" class="hx-btn dark l" data-a="tumake"${miss.length || u.busy ? ' disabled' : ''}>${u.busy ? 'Making the draft…' : 'Make the draft'}</button></div></div>`;
+  }
+  function tplUse(t) {
+    const u = tuState(t), bl = t.blanks || [], filled = bl.length - tuMissing(t, u).length, langNow = u.lang === 'auto' ? `Auto · ${langName(t.lang || 'en')}` : langName(u.lang);
+    const where = b => [b.where.length ? `scene${b.where.length > 1 ? 's' : ''} ${b.where.join(', ').replace(/, (\d+)$/, ' and $1')}` : '', b.closing ? 'closing' : ''].filter(Boolean).join(' and ');
+    const opt = (k, lab, val, mark) => `<button type="button" class="hx-topt" data-a="tupick" data-k="${k}">${mark}<span class="hx-growf"><small>${lab}</small><b>${esc(val)}</b></span>${ic('down', 13)}</button>`;
+    const eng = (D.engines?.engines || []).find(e => e.id === u.engine);
+    return `<div class="hx-tuse"><section class="hx-tform" aria-label="Fill in the blanks">
+        <div class="hx-tfh"><h2 class="hx-t">Fill in the blanks</h2><span class="hx-grow"></span><span class="hx-sm hx-num" id="hxTuN">${filled} of ${bl.length} filled</span></div>
+        <div class="hx-tbar"><i id="hxTuBar" style="width:${bl.length ? Math.round(100 * filled / bl.length) : 100}%"></i></div>
+        <p class="hx-mut hx-sm">Hoola only uses the words you give. Nothing is guessed or filled in for you.</p>
+        <div class="hx-tfl">${bl.map((b, i) => { const v = u.vals[b.key] || '';
+          return `<label class="hx-fld${v ? '' : ' miss'}" data-tf="${esc(b.key)}"><span class="hx-lab"><span class="hx-tdot">${i + 1}</span>${esc(b.label)}<small>${esc(where(b))}</small></span>
+            <input class="hx-in" data-tv="${esc(b.key)}" value="${esc(v)}" placeholder="${esc(b.example || '')}" maxlength="60" autocomplete="off"></label>`; }).join('')}
+          ${bl.length ? '' : '<p class="hx-mut">This template has no blanks. Make the draft and change it in the Studio.</p>'}
+          ${bl.length ? `<button type="button" class="hx-lnk" data-a="tusheet">${ic('rows', 15)}Many people or shops? Fill a sheet and make one draft for each row</button>` : ''}</div>
+        <div class="hx-tfo"><h3 class="hx-t">How it looks and sounds</h3><div class="hx-topts">
+          ${opt('lang', 'Language', langNow, '<span class="hx-tom a">Aa</span>')}
+          ${opt('face', 'Face', face(u.face)?.name || 'No face', face(u.face) ? avImg(face(u.face), 'xs') : '<span class="hx-tom b">—</span>')}
+          ${opt('voice', 'Voice', voiceName(u.voice), `<span class="hx-tom c">${ic('vol', 14)}</span>`)}
+          ${opt('engine', 'Engine', eng?.label || 'Hoola standard', `<span class="hx-tom d">${ic('bolt', 14)}</span>`)}</div>
+          ${face(u.face) ? `<div class="hx-seg" role="radiogroup" aria-label="Where the face sits">${[['corner', 'In a corner'], ['full', 'The whole frame']].map(([k, l]) => `<button type="button" role="radio" aria-checked="${u.layout === k}" data-a="tulayout" data-val="${k}">${l}</button>`).join('')}</div>` : ''}
+          <div class="hx-seg" role="radiogroup" aria-label="Frame">${[['16:9', 'Landscape 16:9'], ['9:16', 'Vertical 9:16'], ['1:1', 'Square 1:1']].map(([k, l]) => `<button type="button" role="radio" aria-checked="${tuShape(t, u) === k}" data-a="tuaspect" data-val="${k}"${t.shape === 'reel' && k !== '9:16' ? ' disabled' : ''}>${l}</button>`).join('')}</div>
+          ${u.lang !== 'auto' && u.lang !== (t.lang || 'en') && !(u.lang === 'hi' && !t.mine && HI_TPL.includes(t.id)) ? `<p class="hx-hint">Hoola translates the words into ${esc(langName(u.lang))}, keeping your names, prices and dates exactly. Lines that change a number are marked for you to check.</p>` : ''}</div>
+        <div id="hxTuPrice">${tuPrice(t, u)}</div></section>
+      <section class="hx-tlive" aria-label="Live preview"><div class="hx-tfh"><h2 class="hx-t">Live preview</h2><span class="hx-grow"></span><span class="hx-mut hx-sm">${u.sample ? 'A sample with example words' : 'Updates as you type'}</span></div>
+        <div id="hxTuStage">${tuStage(t, u)}</div><div id="hxTuScenes">${tuScenes(t, u)}</div>
+        <p class="hx-mut hx-sm">After the draft opens in the Studio you can change any word, scene, face or voice. Nothing is made until you press Make there.</p></section></div>`;
+  }
+  function tuPaint(full) {
+    const t = tplOf(ARG), u = UI.tu; if (!t || !u) return;
+    const set = (sel, html) => { const e = $(sel); if (e) e.innerHTML = html; };
+    set('#hxTuStage', tuStage(t, u)); set('#hxTuScenes', tuScenes(t, u)); set('#hxTuPrice', tuPrice(t, u)); fillMedia();
+    const bl = t.blanks || [], filled = bl.length - tuMissing(t, u).length, nEl = $('#hxTuN'), bar = $('#hxTuBar');
+    if (nEl) nEl.textContent = `${filled} of ${bl.length} filled`; if (bar) bar.style.width = `${bl.length ? Math.round(100 * filled / bl.length) : 100}%`;
+    $$('[data-tf]').forEach(l => l.classList.toggle('miss', !(u.vals[l.dataset.tf] || '').trim()));
+    if (full) draw();
+  }
+  let tuEstT = 0;
+  function tuEstimate() {
+    const t = tplOf(ARG), u = UI.tu; if (!t || !u) return;
+    clearTimeout(tuEstT); tuEstT = setTimeout(async () => {
+      const sec = Math.round(sceneTimes(tuProject(t, u)).slice(-1)[0]?.[1] || t.seconds) + (t.closing ? 2 : 1);
+      try { u.est = await api('GET', `${X}/estimate?engine=${q(u.engine)}&seconds=${sec}&voice=${q(u.voice || '')}`); } catch { u.est = null; }
+      if (PAGE === 'templates' && ARG === t.id) { const e = $('#hxTuPrice'); if (e) e.innerHTML = tuPrice(t, u); }
+    }, 350);
+  }
+  function tuStop() { clearTimeout(UI.tut); if (UI.tu) UI.tu.play = false; }
+  function tuPlay() {
+    const t = tplOf(ARG), u = UI.tu; if (!t || !u) return;
+    if (u.play) { tuStop(); return tuPaint(); }
+    u.play = true; if (u.scene >= t.scenes.length - 1) u.scene = 0;
+    const step = () => {
+      if (!u.play || PAGE !== 'templates' || ARG !== t.id) return;
+      tuPaint(); const T = sceneTimes(tuProject(t, u))[u.scene]; const d = T ? (T[1] - T[0]) * 1000 : 2500;
+      UI.tut = setTimeout(() => { if (u.scene < t.scenes.length - 1) { u.scene++; step(); } else { u.play = false; tuPaint(); } }, d);
+    };
+    step();
+  }
+  async function tuMake() {
+    const t = tplOf(ARG), u = UI.tu; if (!t || !u || tuMissing(t, u).length) return;
+    u.busy = true; tuPaint();
+    try {
+      const p = await api('POST', `${H}/template/use`, {id: t.id, values: u.vals, lang: u.lang, avatar_id: u.face,
+        opts: {aspect: tuShape(t, u), voice: u.voice, engine: u.engine, face_layout: u.layout}});
+      u.busy = false; UI.tu = null; await load(); go('studio', p.id); if (p.notice) toast(p.notice, true); else toast('Draft ready. Nothing is made until you press Make.');
+    } catch (er) { u.busy = false; tuPaint(); toast(er.message, true); }
+  }
+
+  // ---- a dialog: save a video as a template, or fill a sheet
+  function dlgPaint() {
+    let w = $('#hxDlg');
+    if (!UI.dlg) { if (w) w.remove(); return; }
+    if (!w) { w = document.createElement('div'); w.id = 'hxDlg'; w.className = 'hx-dlgw'; ROOT.appendChild(w); }
+    w.innerHTML = `<div class="hx-dlgs" data-a="dlgx" aria-hidden="true"></div>${UI.dlg.k === 'save' ? svBody() : UI.dlg.k === 'pick' ? pickBody() : shBody()}`;
+    const f = w.querySelector('[data-auto]'); if (f && !w.contains(document.activeElement)) f.focus();
+  }
+  function dlgClose() { UI.dlg = null; dlgPaint(); }
+  function pickBody() {
+    const ps = (D.projects || []).filter(p => (p.scenes || []).length);
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><h2 class="hx-serif" id="hxDlgT">Which video?</h2><span class="hx-grow"></span>
+      <button type="button" class="hx-ib" data-a="dlgx" aria-label="Close" data-auto="1">${ic('x', 16)}</button></div>
+      ${ps.length ? `<div class="hx-dlgb"><div class="hx-tpick">${ps.slice(0, 40).map(p => `<button type="button" class="hx-tpr" data-a="svopen" data-id="${esc(p.id)}">${libThumb(p)}<span class="hx-ct"><b>${esc(p.title)}</b><small class="hx-num">${esc(metaOf(p))} · ${(p.scenes || []).length} scenes</small></span></button>`).join('')}</div></div>`
+        : `<div class="hx-dlgb"><p class="hx-mut">You have no videos yet. Make one first, then save it as a template.</p><div class="hx-acts"><button type="button" class="hx-btn dark" data-a="newchat">New video</button></div></div>`}</div>`;
+  }
+  function svMark(s, bl, sg) {   // her words as tappable words; blanks as chips; Hoola's suggestions underlined
+    const spans = []; const marks = [...bl.map(b => ({text: b.text, k: 'b', key: b.label || 'blank'})), ...sg.filter(x => !bl.some(b => b.text === x.text)).map(x => ({text: x.text, k: 's'}))].sort((a, b) => b.text.length - a.text.length);
+    let rest = [{t: String(s || '')}];
+    for (const m of marks) rest = rest.flatMap(x => { if (x.m) return [x]; const parts = x.t.split(m.text); return parts.flatMap((p, i) => i ? [{t: m.text, m}, {t: p}] : [{t: p}]); });
+    for (const x of rest) {
+      if (x.m?.k === 'b') spans.push(`<button type="button" class="hx-svb" data-a="svdrop" data-t="${esc(x.t)}" aria-label="Keep “${esc(x.t)}” as it is">${esc(x.m.key)}</button>`);
+      else if (x.m) spans.push(`<button type="button" class="hx-svs" data-a="svadd" data-t="${esc(x.t)}" title="Make this a blank">${esc(x.t)}</button>`);
+      else spans.push(x.t.split(/(\s+)/).map(w => /^\s*$/.test(w) ? w : (() => { const core = w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ''); if (!core) return esc(w);
+        const i = w.indexOf(core); return `${esc(w.slice(0, i))}<button type="button" class="hx-svw" data-a="svadd" data-w="1" data-t="${esc(core)}">${esc(core)}</button>${esc(w.slice(i + core.length))}`; })()).join(''));
+    }
+    return spans.join('');
+  }
+  function svBody() {
+    const s = UI.dlg, p = (D.projects || []).find(x => x.id === s.id); if (!p) return '';
+    const used = (D.templates || []).filter(t => t.mine).length;
+    return `<div class="hx-dlg w" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><div class="hx-growf"><h2 class="hx-serif" id="hxDlgT">Save as a template</h2>
+        <span class="hx-mut hx-sm">From <b>${esc(p.title)}</b> · ${p.scenes.length} scenes · ${esc(p.aspect === '9:16' ? 'Vertical' : p.aspect === '1:1' ? 'Square' : 'Landscape')} · ${esc(langName(p.lang))}</span></div>
+        <button type="button" class="hx-ib" data-a="dlgx" aria-label="Close">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb"><label class="hx-fld"><span class="hx-lab">Name</span><input class="hx-in" id="hxSvName" value="${esc(s.name)}" maxlength="60" data-auto="1"></label>
+        <div class="hx-fld"><div class="hx-sech"><span class="hx-lab">Words that change each time</span><span class="hx-grow"></span><span class="hx-sm hx-num">${s.blanks.length} blank${s.blanks.length === 1 ? '' : 's'}</span></div>
+          <p class="hx-mut hx-sm">Tap a word to make it a blank; tap the next word too to make the blank longer. Next time you only fill these in. ${s.sugg.length ? 'Underlined: words Hoola thinks change, like prices, dates and names.' : ''}</p>
+          <div class="hx-svs-list" id="hxSvText">${p.scenes.map((sc, i) => `<div class="hx-svr"><span class="hx-sm hx-num">Scene ${i + 1}</span><div class="hx-serifp">${svMark(sc.say, s.blanks, s.sugg)}</div></div>`).join('')}
+            ${p.closing ? `<div class="hx-svr"><span class="hx-sm">Closing</span><div class="hx-serifp">${svMark(p.closing, s.blanks, s.sugg)}</div></div>` : ''}</div></div>
+        ${s.blanks.length ? `<div class="hx-fld"><span class="hx-lab">Name each blank</span><div class="hx-svbl">${s.blanks.map((b, i) => `<div class="hx-svbr"><span class="hx-svq">“${esc(b.text)}”</span><span class="hx-mut hx-sm">becomes</span>
+            <input class="hx-in" data-svk="${i}" value="${esc(b.label)}" maxlength="40" aria-label="Name for “${esc(b.text)}”">
+            <button type="button" class="hx-ib xs" data-a="svdrop" data-t="${esc(b.text)}" aria-label="Keep “${esc(b.text)}” as it is">${ic('x', 14)}</button></div>`).join('')}</div></div>`
+          : '<p class="hx-why">No blanks yet. Every video made from it will say exactly the same words.</p>'}</div>
+      <div class="hx-dlgf"><span class="hx-mut hx-sm hx-grow">${num(used + 1)} of 40 templates · the video itself stays as it is</span>
+        <button type="button" class="hx-btn" data-a="dlgx">Cancel</button><button type="button" class="hx-btn dark" data-a="svsave"${s.busy ? ' disabled' : ''}>Save template</button></div></div>`;
+  }
+  async function svOpen(id) {
+    const p = (D.projects || []).find(x => x.id === id); if (!p) return;
+    UI.dlg = {k: 'save', id, name: p.title, blanks: [], sugg: []}; dlgPaint();
+    try { const r = await api('GET', `${H}/template/suggest?project=${q(id)}`); if (UI.dlg?.id === id) { UI.dlg.sugg = r.words || []; dlgPaint(); } } catch { /* the dialog works without them */ }
+  }
+  const svLabel = (txt, sg) => { const k = (sg || []).find(x => x.text === txt)?.key; return k ? k.replace(/_\d+$/, '').replace(/_/g, ' ') : txt.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().split(' ').slice(0, 3).join(' '); };
+  function svAdd(txt, tapped) {
+    const s = UI.dlg; txt = (txt || '').trim(); if (!s || !txt || s.blanks.some(b => b.text === txt)) return;
+    const p = (D.projects || []).find(x => x.id === s.id), words = p ? [...p.scenes.map(x => x.say), p.closing || ''].join('\n') : '';
+    const last = s.blanks[s.blanks.length - 1];
+    if (tapped && last && Date.now() - (s.at || 0) < 8000) {     // the next word after the last blank: the blank grows
+      const join = [`${last.text} ${txt}`, `${last.text}, ${txt}`].find(j => words.includes(j));
+      if (join) { if (last.auto) last.label = svLabel(join, s.sugg); last.text = join; s.at = Date.now(); return dlgPaint(); }
+    }
+    s.at = tapped ? Date.now() : 0;
+    if (s.blanks.length >= 12) return toast('A template can have up to 12 blanks.', true);
+    let label = svLabel(txt, s.sugg) || 'blank', n = 2; const base = label; while (s.blanks.some(b => b.label === label)) label = `${base} ${n++}`;
+    s.blanks.push({text: txt, label, auto: !(s.sugg || []).some(x => x.text === txt)}); dlgPaint();
+  }
+  async function svSave() {
+    const s = UI.dlg; if (!s) return; s.name = ($('#hxSvName')?.value || '').trim() || s.name;
+    const blanks = s.blanks.map(b => ({text: b.text, key: b.label, label: b.label.charAt(0).toUpperCase() + b.label.slice(1), example: `e.g. ${b.text}`}));
+    s.busy = true; dlgPaint();
+    try { await api('POST', `${H}/template`, {project: s.id, name: s.name, blanks}); dlgClose(); await load(); UI.tt = 'mine'; toast('Saved as a template.'); if (PAGE === 'templates' && !ARG) draw(); else go('templates'); }
+    catch (er) { s.busy = false; dlgPaint(); toast(er.message, true); }
+  }
+  function csvRows(text) {
+    const rows = []; let row = [], f = '', qd = false;
+    for (let i = 0; i < text.length; i++) { const c = text[i];
+      if (qd) { if (c === '"' && text[i + 1] === '"') { f += '"'; i++; } else if (c === '"') qd = false; else f += c; continue; }
+      if (c === '"') qd = true; else if (c === ',' || c === '\t' || c === ';') { row.push(f); f = ''; } else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; } else f += c; }
+    if (f || row.length) { row.push(f); rows.push(row); }
+    return rows.map(r => r.map(x => x.trim())).filter(r => r.some(Boolean));
+  }
+  function sheetParse(t, text) {
+    const rows = csvRows(text || ''); if (rows.length < 2) return {rows: [], cols: [], miss: []};
+    const norm = s => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_+|_+$/g, '');
+    const cols = rows[0].map(h => (t.blanks || []).find(b => norm(b.key) === norm(h) || norm(b.label) === norm(h))?.key || (norm(h) === 'title' ? 'title' : ''));
+    const out = rows.slice(1).map(r => Object.fromEntries(cols.map((k, i) => [k, r[i] || '']).filter(([k]) => k)));
+    return {rows: out, cols, miss: (t.blanks || []).filter(b => !cols.includes(b.key))};
+  }
+  function shBody() {
+    const s = UI.dlg, t = tplOf(s.id); if (!t) return '';
+    const r = sheetParse(t, s.text), head = (t.blanks || []).map(b => b.label).join(', ');
+    return `<div class="hx-dlg w" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><div class="hx-growf"><h2 class="hx-serif" id="hxDlgT">One draft for each row</h2>
+        <span class="hx-mut hx-sm">${esc(t.name)} · up to 50 rows · each draft is free</span></div><button type="button" class="hx-ib" data-a="dlgx" aria-label="Close">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb">${s.done ? `<p><b>${num(s.done.made.length)} draft${s.done.made.length === 1 ? '' : 's'} made.</b> They are in the Studio; nothing is made until you press Make on each.</p>
+          ${s.done.skipped.length ? `<ul class="hx-why">${s.done.skipped.map(x => `<li>Row ${x.row}: ${esc(x.why)}</li>`).join('')}</ul>` : ''}`
+        : `<p class="hx-mut hx-sm">The first row names the columns: <b>${esc(head)}</b>. A column called <b>title</b> names each draft. Copy cells from a spreadsheet, or choose a CSV file.</p>
+          <textarea class="hx-in hx-mono" id="hxShText" rows="8" placeholder="${esc((t.blanks || []).map(b => b.label).join(','))}&#10;${esc(Object.values(sampleOf(t)).join(','))}" data-auto="1">${esc(s.text || '')}</textarea>
+          <div class="hx-acts"><button type="button" class="hx-btn s" data-a="shfile">${ic('doc', 13)}Choose a CSV file</button><input type="file" id="hxShFile" accept=".csv,.tsv,.txt,text/csv" hidden>
+            <span class="hx-sm hx-mut" id="hxShSum">${r.rows.length ? `${num(r.rows.length)} row${r.rows.length === 1 ? '' : 's'}${r.miss.length ? ` · no column for: ${esc(r.miss.map(b => b.label.toLowerCase()).join(', '))}` : ' · every blank has a column'}` : ''}</span></div>`}</div>
+      <div class="hx-dlgf"><span class="hx-grow"></span>${s.done ? `<button type="button" class="hx-btn" data-a="dlgx">Close</button><button type="button" class="hx-btn dark" data-a="shstudio">Open the Studio</button>`
+        : `<button type="button" class="hx-btn" data-a="dlgx">Cancel</button><button type="button" class="hx-btn dark" data-a="shmake"${r.rows.length && r.rows.length <= 50 && !s.busy ? '' : ' disabled'}>${s.busy ? 'Making…' : `Make ${r.rows.length ? num(r.rows.length) + ' ' : ''}draft${r.rows.length === 1 ? '' : 's'} · free`}</button>`}</div></div>`;
+  }
+  async function shMake() {
+    const s = UI.dlg, t = tplOf(s.id), u = UI.tu; if (!t) return;
+    const r = sheetParse(t, s.text); if (!r.rows.length) return;
+    s.busy = true; dlgPaint();
+    try { s.done = await api('POST', `${H}/template/many`, {id: t.id, rows: r.rows, lang: u?.lang || 'auto', avatar_id: u?.face || '',
+        opts: u ? {aspect: tuShape(t, u), voice: u.voice, engine: u.engine, face_layout: u.layout} : {}}); s.busy = false; await load(); dlgPaint(); }
+    catch (er) { s.busy = false; dlgPaint(); toast(er.message, true); }
+  }
+  function tplMenu(el, id) {
+    const t = tplOf(id); if (!t) return;
+    menu(el, [{label: 'Use', icon: 'play', run: () => go('templates', id)},
+      {label: 'Make many from a sheet', icon: 'rows', run: () => { go('templates', id); UI.dlg = {k: 'sheet', id, text: ''}; dlgPaint(); }},
+      {sep: true}, {label: 'Delete template', icon: 'trash', danger: true, run: async () => { if (!confirm(`Delete “${t.name}”? Videos made from it stay.`)) return;
+        try { await api('DELETE', `${H}/template?id=${q(id)}`); await load(); draw(); } catch (er) { toast(er.message, true); } }}]);
+  }
+
   // ------------------------------------------------------------------ pages ---
   const V = {
     chat() {
@@ -812,13 +1128,7 @@ window.HoolaInteractive = function (ctx) {
         <aside class="hx-stage hx-pv" id="hxPv" aria-label="Preview">${pvPane()}</aside></div>`;
     },
     studio() { return ARG ? edPage() : libPage(); },
-    templates() {
-      const t = D.templates || [];
-      return `<div class="hx-doc"><div class="hx-doch"><div class="hx-growf"><h2 class="hx-serif">Templates</h2><p class="hx-mut">Fill the blanks; every changing word is yours. Save any video as a template from Projects.</p></div></div>
-        <div class="hx-grid3">${t.map(x => `<div class="hx-card hx-tpl"><b>${esc(x.name)}</b><small class="hx-mut">${esc(x.group || (x.mine ? 'Yours' : ''))} · ${(x.scenes || []).length} scenes</small>
-          <p class="hx-serifp hx-mut">${esc((x.scenes || [])[0]?.say || '')}</p><div class="hx-acts"><button type="button" class="hx-btn s dark" data-a="tpluse" data-id="${esc(x.id)}">Use it</button>
-          ${x.mine ? `<button type="button" class="hx-ib s" data-a="tpldel" data-id="${esc(x.id)}" aria-label="Remove">${ic('trash', 15)}</button>` : ''}</div></div>`).join('')}</div></div>`;
-    },
+    templates() { const t = ARG && tplOf(ARG); return t ? tplUse(t) : tplLib(); },
     apps() {
       const A = [['Podcast with two hosts', 'A script from your document, two voices talking.', 'vocal', 'dialogue', 'Open in Hoola Vocal'],
         ['Clean up a recording', 'Background noise out, even loudness.', 'vocal', 'cleanup', 'Open in Hoola Vocal'],
@@ -969,6 +1279,7 @@ window.HoolaInteractive = function (ctx) {
   const ENTER = {
     chat() { (C.conv ? Promise.resolve() : openChat()).then(chatLoad).then(() => { if (PAGE !== 'chat') return; if ($('.hx-hero') && !fresh()) draw(); else paintChat(); chatPoll(); }); estimate(); },
     voices() { voicesLoad().then(() => { if (PAGE === 'voices') draw(); }); },
+    templates() { const t = ARG && tplOf(ARG); if (!t) return; const u = tuState(t); tuEstimate(); if (u.sample) { u.scene = 0; tuPlay(); } },
     studio() { if (ARG) { const p = cur(); if (!p) return; if (p.status === 'making') watchJob(ARG); studioQuote(); if (UI.tool === 'Engine') edCompare(); }
       else (D.projects || []).filter(p => p.status === 'making').forEach(p => watchJob(p.id)); },
     engines() { if (UI.etab === 'broll') brQuote(); },
@@ -1106,10 +1417,38 @@ window.HoolaInteractive = function (ctx) {
       case 'layout': return save({face_layout: b.dataset.val});
       case 'pshape': return save({shape: b.dataset.val});
       case 'peng': return;
-      case 'tpluse': { const t = (D.templates || []).find(x => x.id === id); const vars = [...new Set(JSON.stringify(t?.scenes || []).match(/\{([a-z][a-z0-9_]*)\}/g) || [])].map(v => v.slice(1, -1));
-        const values = {}; for (const v of vars) { const x = prompt(`${v.replace(/_/g, ' ')}:`); if (x == null) return; values[v] = x; }
-        try { const p = await api('POST', `${H}/template/use`, {id, values, lang: SET.lang, avatar_id: SET.face}); await load(); go('studio', p.id); } catch (er) { toast(er.message, true); } return; }
-      case 'tpldel': try { await api('DELETE', `${H}/template?id=${q(id)}`); await load(); draw(); } catch (er) { toast(er.message, true); } return;
+      case 'tpluse': { const t = tplOf(id); if (!t) return; if (UI.tu?.id === id) UI.tu.sample = false; return go('templates', id); }
+      case 'tplsample': { const t = tplOf(id); if (!t) return; tuState(t).sample = true; return go('templates', id); }
+      case 'tplmenu': return tplMenu(b, id);
+      case 'tplfrom': UI.dlg = {k: 'pick'}; return dlgPaint();
+      case 'ttab': UI.tt = b.dataset.val; return draw();
+      case 'tgrp': UI.tg = b.dataset.val; return draw();
+      case 'tclear': UI.tq = ''; UI.tg = 'all'; UI.tsh = 'any'; UI.tt = 'all'; return draw();
+      case 'tshape': return menu(b, Object.entries(TSHAPE).map(([k, l]) => ({label: l, checked: (UI.tsh || 'any') === k, run: () => { UI.tsh = k; draw(); }})));
+      case 'tsort': return menu(b, Object.entries(TSORT).map(([k, l]) => ({label: l, checked: (UI.tso || 'used') === k, run: () => { UI.tso = k; draw(); }})), {align: 'end'});
+      case 'tuscene': { if (!UI.tu) return; tuStop(); UI.tu.scene = +b.dataset.n; return tuPaint(); }
+      case 'tuplay': return tuPlay();
+      case 'tuhear': { const t = tplOf(ARG), u = UI.tu; if (!t || !u) return; const v = tuVals(t, u);
+        const say = fillStr(t.scenes[u.scene]?.say, v).replace(/\{([a-z][a-z0-9_]*)\}/g, (m, k) => ((t.blanks || []).find(x => x.key === k)?.label || k).toLowerCase());
+        try { const r = await api('POST', '/api/vocal/hear', {text: say.slice(0, 160), voice: u.voice || '', lang: t.lang || 'en'}, {raw: true});
+          if (!r.ok) { let m = 'The sample could not be made.'; try { m = (await r.json()).detail || m; } catch { /* keep */ } throw new Error(m); }
+          UI.audio?.pause(); UI.audio = new Audio(URL.createObjectURL(await r.blob())); UI.audio.play().catch(() => {}); } catch (er) { toast(er.message, true); } return; }
+      case 'tupick': { const k = b.dataset.k, u = UI.tu; if (!u) return;
+        return pickMenu(b, k, v => { u[k] = v; if (k === 'face' && !v) u.layout = 'corner'; draw(); tuEstimate(); }, k !== 'lang'); }
+      case 'tulayout': if (UI.tu) { UI.tu.layout = b.dataset.val; tuPaint(true); } return;
+      case 'tuaspect': if (UI.tu) { UI.tu.aspect = b.dataset.val; tuPaint(true); } return;
+      case 'tumake': return tuMake();
+      case 'tusheet': UI.dlg = {k: 'sheet', id: ARG, text: ''}; return dlgPaint();
+      case 'dlgx': return dlgClose();
+      case 'svopen': return svOpen(id);
+      case 'svadd': return svAdd(b.dataset.t, !!b.dataset.w);
+      case 'svdrop': if (UI.dlg) { UI.dlg.blanks = UI.dlg.blanks.filter(x => x.text !== b.dataset.t); dlgPaint(); } return;
+      case 'svsave': return svSave();
+      case 'shfile': return $('#hxShFile')?.click();
+      case 'shmake': return shMake();
+      case 'shstudio': dlgClose(); UI.lf = 'plan'; return go('studio');
+      case 'tpldel': { const t = tplOf(id); if (!confirm(`Delete “${t?.name || 'this template'}”? Videos made from it stay.`)) return;
+        try { await api('DELETE', `${H}/template?id=${q(id)}`); await load(); draw(); } catch (er) { toast(er.message, true); } return; }
       case 'tplsave': return tplSave(id);
       case 'app': { const w = b.dataset.w, pg = b.dataset.p;
         if (w === 'here') return go(pg === 'engines' ? (UI.etab = 'broll', 'engines') : pg);
@@ -1159,6 +1498,13 @@ window.HoolaInteractive = function (ctx) {
     const t = e.target;
     if (t.dataset.isc != null) { saveLine(t.dataset.id, +t.dataset.isc, t.value); return; }
     if (t.id === 'hxAsk') { C.ask = t.value; t.style.height = 'auto'; t.style.height = Math.min(180, t.scrollHeight) + 'px'; $('.hx-send')?.classList.toggle('on', !!t.value.trim()); return; }
+    if (t.id === 'hxTq') { UI.tq = t.value; const l = $('#hxTplList'); if (l) { l.innerHTML = tplList(); fillMedia(); } return; }
+    if (t.dataset.tv && UI.tu) { UI.tu.vals[t.dataset.tv] = t.value; tuPaint(); tuEstimate(); return; }
+    if (t.id === 'hxSvName' && UI.dlg) { UI.dlg.name = t.value; return; }
+    if (t.dataset.svk != null && UI.dlg?.blanks) { const bb = UI.dlg.blanks[+t.dataset.svk]; if (bb) { bb.label = t.value; bb.auto = false; $$('#hxSvText .hx-svb').filter(x => x.dataset.t === bb.text).forEach(x => { x.textContent = t.value || 'blank'; }); } return; }
+    if (t.id === 'hxShText' && UI.dlg) { UI.dlg.text = t.value; const tt = tplOf(UI.dlg.id), r = tt && sheetParse(tt, t.value), sm = $('#hxShSum'), mk = $('#hxDlg [data-a=shmake]');
+      if (r && sm) sm.textContent = r.rows.length ? `${num(r.rows.length)} row${r.rows.length === 1 ? '' : 's'}${r.miss.length ? ` · no column for: ${r.miss.map(x => x.label.toLowerCase()).join(', ')}` : ' · every blank has a column'}` : '';
+      if (r && mk) { mk.disabled = !r.rows.length || r.rows.length > 50; mk.textContent = `Make ${r.rows.length ? num(r.rows.length) + ' ' : ''}draft${r.rows.length === 1 ? '' : 's'} · free`; } return; }
     if (t.id === 'hxLq') { UI.lq = t.value; const l = $('#hxLibList'); if (l) { l.innerHTML = libList(); fillMedia(); } return; }
     const p = PAGE === 'studio' && cur(); if (!p) return;
     if (t.dataset.sc != null) { const n = +t.dataset.sc, sc = p.scenes.map((s, i) => i === n ? {...s, say: t.value} : s); p.scenes = sc; saveSoon({scenes: sc});
@@ -1173,6 +1519,8 @@ window.HoolaInteractive = function (ctx) {
   }
   function onChange(e) {
     const t = e.target;
+    if (t.id === 'hxShFile' && UI.dlg) { const f = t.files?.[0]; if (!f) return; if (f.size > 2 * 1024 * 1024) return toast('That file is larger than 2 MB.', true);
+      const rd = new FileReader(); rd.onload = () => { UI.dlg.text = String(rd.result || ''); dlgPaint(); }; rd.readAsText(f); return; }
     if (t.id === 'hxAvFile') { const f = t.files?.[0]; const n = $('#hxAvName'); if (n) n.textContent = f ? f.name : ''; return; }
     if (t.name === 'peng' && PAGE === 'studio') return save({engine: t.value});
     if (t.name === 'face' && t.closest('#hxLiveF')) { const f = new FormData($('#hxLiveF')); UI._draft = Object.fromEntries(f); }

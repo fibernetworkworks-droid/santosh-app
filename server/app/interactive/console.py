@@ -167,7 +167,21 @@ def make_hub_router(require_key: Callable, current_tenant: Callable) -> APIRoute
     async def template_save(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         on()
         b = dict(body or {})
-        return wrap(H.template_save, tenant, str(b.get("project") or ""), str(b.get("name") or ""))
+        return wrap(H.template_save, tenant, str(b.get("project") or ""), str(b.get("name") or ""), list(b.get("blanks") or []))
+
+    @r.get("/template/suggest")
+    async def template_suggest(project: str = "", tenant: str = Depends(current_tenant)):
+        """v0.999.174 words in her video that look like they change, so she can tap them into blanks. Code only."""
+        on()
+        return {"words": wrap(H.blank_suggestions, tenant, project)}
+
+    @r.post("/template/many")
+    async def template_many(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """v0.999.174 one free draft per row of her sheet; a row with an empty blank is skipped and named."""
+        on()
+        b = dict(body or {})
+        return wrap(H.template_many, tenant, str(b.get("id") or ""), list(b.get("rows") or []), lang=str(b.get("lang") or "en"),
+                    avatar_id=str(b.get("avatar_id") or ""), opts=dict(b.get("opts") or {}))
 
     @r.delete("/template")
     async def template_del(id: str = "", tenant: str = Depends(current_tenant)):
@@ -179,7 +193,8 @@ def make_hub_router(require_key: Callable, current_tenant: Callable) -> APIRoute
         on()
         b = dict(body or {})
         return view(wrap(H.template_use, tenant, str(b.get("id") or ""), dict(b.get("values") or {}),
-                         lang=str(b.get("lang") or "en"), avatar_id=str(b.get("avatar_id") or ""), title=str(b.get("title") or "")))
+                         lang=str(b.get("lang") or "en"), avatar_id=str(b.get("avatar_id") or ""), title=str(b.get("title") or ""),
+                         opts=dict(b.get("opts") or {})))
 
     @r.post("/batch")
     async def batch(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):

@@ -11088,3 +11088,34 @@ The Interactive Studio (`static/console/interactive.js`, block "the Studio (v0.9
   has its case, a Chromium walk of the first visit, the library and the editor at 1440 and 390 px).
 - NOT VERIFIED on her server or phone; no scene pictures from the real engine (the posters are drawn from the plan).
 
+
+
+## v0.999.174 TEMPLATES, REDESIGNED (owner: "MAKE IT SAME AS PERVIOUS DESIGN WORK PERFECTLY. ADVANCE AND PREMIUM --- SHOW ME DESIGH HERE FIRST" -> design canvas claude.ai/artifact/JzJ7s7bqJGC983XfwCZbMk -> "PERFECT GO BUILD")
+
+The Interactive Templates page was six plain cards and a browser prompt() per blank. Now:
+
+- **Library** (`interactive.js` templates block, `tplLib`): her own templates first (what each was made from, how often used, its
+  blanks, a menu with Use / Make many from a sheet / Delete), then the ready-made ones as cards: a poster of the first scene filled
+  with example words (a tint per kind, light and dark through color-mix with the page), the kind, the length, what it is for, its
+  blanks, Watch a sample (plays the sketch with example words) and Use. Search, All / Ready-made / Yours, kinds, shape, sort. Yours
+  empty = how it works + Choose one of my videos.
+- **Server** (`interactive/hub.py`): every template carries `blanks` (key, plain label, worldwide example, the scenes it is spoken
+  in, the closing), `seconds`, `line`, `lang`, `used`; two new ready-made ones (Appointment reminder, Event invitation); Quick reel
+  is its own kind (Reels). `template_use` takes `opts` (frame, voice, engine, where the face sits) through the Studio's own save,
+  a missing blank refuses by its label ("Fill in: last day of the offer."), and a language the template is not written in is made
+  by filling then `translate` (one model call; names, prices and dates checked by code; the in-between English draft removed) - if
+  the translation fails the draft stays in the template's language and the answer says so (`notice`). `template_save` takes
+  `blanks` [{text, key, label}]: that exact text becomes {key} everywhere in the words, a text that is not there refuses, up to 12.
+  NEW GET /hub/template/suggest (prices, percents, times, dates, days, numbers and her business name found by code) and POST
+  /hub/template/many (one draft per row, up to 50, a row with a gap skipped and named, never filled in).
+- **Use page**: one field per blank saying where it is spoken, n of m filled, a live preview (the sketch fills in as she types, an
+  empty blank shows as a dashed gap, scenes play, Hear it free through /api/vocal/hear), the scenes with her words highlighted, the
+  closing card; language (Auto = the template's), face, voice, engine, frame; the price box: the draft free, the video about N
+  credits from /x/estimate, Make the draft only when every blank is filled, then the draft opens in the Studio editor.
+- **Save dialog**: tap a word to make it a blank, tap the next word to make it longer, Hoola's suggestions underlined, each blank
+  named; the video itself is not changed.
+- **Sheet dialog**: paste cells or choose a CSV; the first row names the columns by label or key (and title); one free draft per row.
+- FIXED: the hub checked languages against the old 10-language list (`S.LANGS`), so translate, glossary rules and the usage report
+  refused or mislabelled every language past the first ten; now `S.lang_of` / `S.lang_label` (140).
+- Tests `test_v0999_174_interactive_templates.py` (7, incl. a Chromium walk at 1440 and 390 px). NOT VERIFIED on her server or with
+  a real translation model.
