@@ -162,7 +162,9 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
              "बैठक"),
     "sheets": ("sheet", "excel", "spreadsheet", "csv", "row", "column", "pivot"),
     "gdrive": ("google doc", "gdoc", "drive", "google sheet"),      # v0.245 'document' / 'docx' = doc_studio now
-    "drive": ("drive", "folder", "storage", "share the file", "share this file", "share it with", "file share"),   # v0.999.181
+    "drive": ("drive", "folder", "storage", "share the file", "share this file", "share it with", "file share",   # v0.999.181
+              "shared drive", "team drive", "zip", "unzip", "old version", "access request", "asked for access",
+              "who edited", "who changed", "duplicate files"),   # v0.999.186 DRIVE COMPLETE
     "slides": ("slide", "ppt", "presentation", "deck"),
     "forms": ("form", "survey", "respons"),
     "photos": ("google photos", "album", "gallery"),

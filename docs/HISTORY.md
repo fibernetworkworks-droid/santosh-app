@@ -11432,3 +11432,67 @@ Tool count pins 656 -> 661; v0.210 sheet count 31 -> 36.
 **NOT VERIFIED:** against a real Google sheet. Apps Script and BigQuery ask Google for new permissions (her app's
 Google verification may need them added). Connected Sheets needs Google Cloud with BigQuery; which Google account
 types allow it was not confirmed.
+
+## v0.999.186 DRIVE COMPLETE (owner: "NOW LETS WORK ON GOOGLE DRIVE SAME -- FIRST CHECK -- THEN WE WANT 100 % GOOGLE DRIVE HOOLA WORK HANDLING"): FIXED long lists stopping at 100 with no word (now paged up to 1,000 and said), reading stopping at 15,000 characters (now offset=), PDFs at 40 pages, shortcuts that would not open, Google's speed limit told as "no permission" (now waited out), uploads over 5 MB without Google's resumable upload, ownership transfer on personal Gmail (Google asks the new owner to accept); NEW drive_replace (new contents, same link), versions download / copy / put back / remove, drive_bulk (up to 500 files), drive_zip (folder to ZIP, ZIP to folders), drive_convert (to Google, to PDF / Word / ..., text out of scans), drive_new_file, drive_folder (tree, size, colour, duplicates, old, access check), drive_lock, drive_team (shared drives + members), drive_requests (access requests), drive_watch (a job when a file arrives), drive_activity (Drive Activity in Connectors > Google), drive_labels; sharing with expiry, groups, a whole domain, quiet, public comment / edit links; changes since last time from Google's change list; upload from a web link; registry 673; 19 tests.
+
+Owner: "NOW LETS WORK ON GOOGLE DRIVE SAME -- FIRST CHECK -- THEN WE WANT 100 % GOOGLE DRIVE HOOLA WORK HANDLING".
+Check first (what Hoola had: 21 Drive tools - find, list, read, send out, upload, folders, Google Doc, organise, share,
+Trash, storage, details, access, Trash list, delete forever, comments, versions list / keep, shared drives list,
+recent changes, biggest files), then the fixes and the rest. Request shapes from Google's Drive API v3 and Drive
+Activity API v2 reference pages (read 24 Nov 2026). New module `drive/more.py`; 12 new tools (registry 661 -> 673).
+
+**Bugs fixed**
+1. Lists stopped at Google's page of 100 and said nothing - `DriveClient._pages` / `search_more` follow
+   nextPageToken (files, folders, permissions, comments, versions); `drive_find` / `drive_list_folder` take limit up to
+   1,000 and say `more` when there are more.
+2. Reading stopped at 15,000 characters and PDFs at 40 pages - `drive_read_file offset=` (next_offset, total_chars);
+   PDFs read whole (2,000 pages); a scanned PDF / photo is read by Google's own text reader (a temporary Google Doc
+   copy, removed after).
+3. Shortcuts did not open - reading, sending and listing follow a shortcut to its file / folder.
+4. Google's speed limit (403 userRateLimitExceeded / 429 / 5xx) was told as "No permission" - waited and asked again
+   (Retry-After, else 1-2-4-8-16 s, 5 tries), then said plainly; other 403 reasons named (Drive full, domain policy,
+   sharing limit, not a shared-drive member, missing Google permission -> which app to connect).
+5. Uploads over 5 MB went as one multipart request - Google's resumable upload above 5 MB (session + PUT).
+6. Ownership transfer on a personal Gmail account - Google needs the new owner to accept: `pendingOwner` on their
+   writer permission (and the same fallback when Google answers consentRequiredForOwnershipTransfer).
+7. Big Google files (> 10 MB export limit) - Google's long-running `files.download`.
+
+**New**
+- `drive_replace` - new contents for an uploaded file, same file (link, sharing, comments stay; old contents in its
+  history). Card.
+- `drive_revisions` action download / copy / restore / delete (+ list / keep / release). Uploaded-file versions are
+  set to keep-forever before download (Google allows only those); Google Docs versions come out through files.download
+  with revisionId; Google files cannot be put back in place (said; copy instead). Restore and delete: card.
+- `drive_bulk` - up to 500 files by list or filter (folder / kind / name / older than): move, copy, rename (prefix /
+  suffix / find-replace / numbers), star, unstar, describe, restrict / allow copying, lock / unlock, restore, trash
+  (card).
+- `drive_zip` - a folder (sub-folders too, Google files as Office files) as one ZIP to phone / PC / email / Drive (2,000
+  files, 200 MB); a ZIP unpacked into folders (2,000 files, 500 MB, no paths outside, Mac junk skipped).
+- `drive_convert` - to Google (Office / CSV), ocr (scan / photo -> Google Doc text, ocr_language), or save a Google
+  file as pdf / docx / xlsx ...; Word / Excel / PowerPoint -> PDF through Google's converter.
+- `drive_new_file` - empty Doc / Sheet / Slides / Form / Drawing.
+- `drive_folder` - tree, size, colour, duplicates (same bytes or same name), old files, access (anyone can find /
+  anyone with the link / shared with people outside her organisation).
+- `drive_lock` - contentRestrictions readOnly on / off.
+- `drive_team` - shared drives: create (requestId), rename, colour, rules (restrictions), hide / unhide, members,
+  add / role / remove (card), delete when empty (card). `drive_find shared_drive=` searches inside one.
+- `drive_requests` - access requests (accessproposals): list, accept (role, card), deny (card).
+- `drive_watch` - a folder (or all of My Drive) watched through Google's change list; new / changed files start the
+  job she named (worker slot `drive_watch_jobs`, 50 jobs a day, files fenced as DATA).
+- `drive_activity` - Drive Activity API (new "more" app Drive Activity, `drive.activity.readonly`): who created,
+  uploaded, edited, moved, renamed, shared, commented, trashed, restored.
+- `drive_labels` - Workspace labels on a file: list, apply (field values), remove.
+- Sharing: expires_days (1-365, users / groups), groups=true, domain=, notify=false, public role commenter / writer,
+  discoverable. `drive_changes since_last=true` = Google's change list since she last asked (incl. removed / trashed).
+  `drive_find` owner / visibility / created_days / older_days / larger_mb / shared_drive / name_only. Upload from a web
+  link (public internet only) and up to 100 MB; to phone / PC up to 100 MB.
+
+**Connectors > Google:** Drive Activity added (console + phone); Drive's lines say what it now does.
+
+**Tests:** `test_v0999_186_drive_complete.py` 19 on a stand-in for Google that answers every new call. Drive tool
+count 21 -> 33, registry pins 661 -> 673.
+
+**NOT VERIFIED:** against a real Google Drive. Not built (no Google API, or not checked): Drive approvals (Google
+lists a canStartApproval capability but no approvals method), the list of an organisation's labels (Drive Labels
+API not read), who only viewed a file (Google does not give it), spam / block. Shared drives and labels exist only on
+Google Workspace accounts. Drive Activity is a new Google permission (her app's Google verification may need it).

@@ -55,7 +55,7 @@
   try { $('#kmark').innerHTML = window.HoolaMark ? HoolaMark.svg({color: '#FFFFFF'}) : ''; } catch {}
 
   /* ------------------------------------------------------------------ logos */
-  const GKEYS = ['gmail', 'calendar', 'drive', 'docs', 'sheets', 'forms', 'slides', 'photos', 'youtube', 'business', 'searchconsole', 'appsscript', 'bigquery'];
+  const GKEYS = ['gmail', 'calendar', 'drive', 'docs', 'sheets', 'forms', 'slides', 'photos', 'youtube', 'business', 'searchconsole', 'appsscript', 'bigquery', 'driveactivity'];
   const gSrc = k => `/static/console/google/${GKEYS.includes(k) ? k : 'google'}.png`;
   const TINTS = [['#F3ECF8', '#5B2A7A'], ['#FDEEEA', '#9A3412'], ['#E7F6EC', '#1E6B40'], ['#E8EEFB', '#2340A0'], ['#FFF1DD', '#8A5300'], ['#E8F4FB', '#1A5F8B']];
   const tint = name => { let h = 0; for (const c of S(name)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return TINTS[h % TINTS.length]; };
@@ -259,7 +259,7 @@
   const GDO = {
     gmail: ['Reads, searches and sorts your mail · labels and archives · writes drafts · reads attachments', 'Sends a mail · forwards · mail to many people · deletes', 'Reads bank or payment codes from your mail · changes your password · follows instructions written inside an email'],
     calendar: ['Reads your schedule · finds free time', 'Adds, moves or cancels events · replies to invites', 'Shares your calendar with anyone'],
-    drive: ['Finds and reads your files · lists folders', 'Uploads · shares a file · moves files to the bin', 'Makes a file public on its own'],
+    drive: ['Finds and reads your files · lists folders · organises, converts and zips them', 'Shares a file · replaces its contents · puts an old version back · moves files to the bin · answers access requests', 'Makes a file public or deletes it forever on its own'],
     docs: ['Reads documents you name · writes new drafts', 'Shares a document', 'Deletes your documents on its own'],
     sheets: ['Reads the sheets you work on · creates new ones', 'Clears or deletes rows and tabs · shares a sheet', 'Deletes a whole spreadsheet on its own'],
     forms: ['Reads responses · drafts new forms', 'Shares or deletes a form', 'Submits a form as you'],
@@ -270,6 +270,7 @@
     searchconsole: ['Reads your search numbers (read-only)', 'Nothing: Hoola only reads here', 'Changes anything in Search Console'],
     appsscript: ['Reads the programs Hoola saved in your sheets', 'Saves or changes a program in a sheet (the card says what it can do)', 'Runs a program on its own from outside the sheet'],
     bigquery: ['Lists the BigQuery data in your sheets', 'Connects a table or a query to a sheet · removes a connection', 'Changes or deletes anything in BigQuery'],
+    driveactivity: ['Shows who changed, moved, shared or removed your files', 'Nothing: Hoola only reads here', 'Changes anything in your Drive through this'],
   };
   async function gAppView(k) {
     const a = gApps().find(x => x.key === k);
@@ -298,7 +299,8 @@
   const trySay = k => ({gmail: 'Which emails need me today?', calendar: 'What is on my calendar tomorrow?', drive: 'Find my latest invoice in Drive', sheets: 'Make a sheet of this month’s expenses',
     docs: 'Draft a one-page proposal in Google Docs', forms: 'Make a customer feedback form', slides: 'Make five slides about our new offer', youtube: 'How did my last YouTube video do?',
     business: 'How is my Google business listing doing?', photos: 'Show my recent Google Photos albums', searchconsole: 'How is my website doing in Google search?',
-    appsscript: 'Add a menu to my sales sheet that totals the selected rows', bigquery: 'Connect my BigQuery orders table to a new sheet'}[k] || 'What can you do with this app?');
+    appsscript: 'Add a menu to my sales sheet that totals the selected rows', bigquery: 'Connect my BigQuery orders table to a new sheet',
+    driveactivity: 'Who changed files in my Invoices folder this week?'}[k] || 'What can you do with this app?');
 
   /* Google connect: step 1 here, step 2 on Google's own page, step 3 when Google sends her back */
   function gConnect(keys, hint) {

@@ -101,6 +101,10 @@ APPS: list[dict[str, Any]] = [
     {"key": "bigquery", "c": "q", "name": "BigQuery", "group": "more",
      "does": "Puts your BigQuery tables in a sheet (read only).",
      "primary": G + "bigquery.readonly", "ask": lambda: [G + "bigquery.readonly", G + "spreadsheets"], "table": None},
+    # v0.999.186 DRIVE COMPLETE: who did what in her Drive
+    {"key": "driveactivity", "c": "v", "name": "Drive Activity", "group": "more",
+     "does": "Shows who changed, moved, shared or removed your files (read only).",
+     "primary": G + "drive.activity.readonly", "ask": lambda: [G + "drive.activity.readonly", G + "drive"], "table": None},
 ]
 BY_KEY = {a["key"]: a for a in APPS}
 BY_C = {a["c"]: a for a in APPS}

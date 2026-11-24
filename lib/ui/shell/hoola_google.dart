@@ -36,6 +36,7 @@ const Map<String, String> _look = {
   'searchconsole': 'Search Console',
   'appsscript': 'Apps Script',
   'bigquery': 'BigQuery',
+  'driveactivity': 'Drive Activity',
 };
 
 String _name(String k) => _look[k] ?? k;

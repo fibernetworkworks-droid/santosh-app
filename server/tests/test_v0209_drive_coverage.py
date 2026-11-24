@@ -25,7 +25,7 @@ def test_version_pin():
 
 def test_registry_has_21_tools():
     names = [t["name"] for t in dt.DRIVE_TOOLS]
-    assert len(names) == 21 and len(set(names)) == 21
+    assert len(names) == 33 and len(set(names)) == 33     # v0.999.186 DRIVE COMPLETE +12
     for n in NEW:
         assert n in names and n in dt.DRIVE_HANDLERS and n in dt.DRIVE_LABELS
     assert set(dt.DRIVE_HANDLERS) == set(names) and set(dt.DRIVE_LABELS) == set(names)
