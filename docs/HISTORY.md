@@ -11119,3 +11119,35 @@ The Interactive Templates page was six plain cards and a browser prompt() per bl
   refused or mislabelled every language past the first ten; now `S.lang_of` / `S.lang_label` (140).
 - Tests `test_v0999_174_interactive_templates.py` (7, incl. a Chromium walk at 1440 and 390 px). NOT VERIFIED on her server or with
   a real translation model.
+
+## v0.999.175 TAX DESK (owner: "OK FINE LET CONTINUE THE WORK OF AI EMPLOYEE" -> Tax (worldwide) -> design claude.ai/artifact/Faegn7ZmcGkTQqdkqRtZ1v -> "GO")
+
+The Tax (worldwide) employee gets its own section, built like Payroll / Books & Accounts / Money Safety.
+
+- **Chat**: `server/app/taxchat.py` - Conversation kind `tax`, out of every chat list (`convs.py`, `callconv.py`); a turn in it (or a call
+  started from it) gets `<tax_desk>` (business, country, the return to prepare now, next due, letters waiting, rates to check, her
+  role) and the `taxwide` family in view (`agent/santosh.py`). RULES: every figure from the tool; a rate only once checked; a letter's
+  date only once she confirms it; never file, pay or send a reply; never ask for a portal login.
+- **Desk** `/console/tax` (`taxdesk.html/.js/.css` on seodesk.css + moneydesk.css), routes `/api/tax/chat*`, `/desk`, `/do/<part>`,
+  `/download`, `/workspace`. The business = a finance workspace (the same list as Books & Accounts, shared ones with their role).
+  - Today: next due, to pay for the last finished period, letters waiting, rates to check; Needs you (overdue returns not marked filed,
+    letters, rates, lines to look at, a return ready to check); Coming up with where each date came from.
+  - Returns: the F4 return for a period laid out like her country's form, checks (every document in, months not closed in her books,
+    rates checked by a person, the engine's warnings), download for filing as PDF (reportlab) + CSV, "I filed it" = her tap + the
+    reference, which locks the period on the desk (marked once, shown with who and when).
+  - Across borders: US sales by state over the last 12 months against her limits (percent bar, each limit's checked state), the EU One
+    Stop Shop for the period with each country rate's checked state; withholding and e-invoices go to the chat.
+  - Letters: a pasted letter read by the engine (authority, amount, reference, dates, what it asks, a reply draft with blanks); the
+    reply-by date goes into her dates only after "Confirm the date"; Copy, Change it in the chat, I sent it / Open it again.
+  - Personal: money in from her statements by kind, the papers checklist she ticks, an estimate only on bands she gives, the
+    organiser as CSV.
+  - Dates & settings: a month calendar (this year and next, so a January date added in November shows), all dates with their source,
+    Add a date; country, scheme, period, due rule (days after the period end - never guessed), tax number (shown masked); rates and
+    limits by kind with "I checked it" (who + when kept at that value; a changed value needs checking again; a return with an
+    unchecked rate is not worked out).
+- Desk state lives in the workspace settings under `tax_desk` (checked, letters, filed, papers). Roles from Books: owner / accountant /
+  approver change things, auditor / viewer read, only owner / approver mark a return filed.
+- Wiring: employees.js `tax_worldwide: 'taxdesk'`, v2.js title + redirect, phone `hoola_employees.dart` opens `/console/tax`.
+- Tests `test_v0999_175_tax_desk.py` (6 incl. a Chromium walk at 1440 and 390 px); `test_fin_f7.py` updated for the new desk.
+  NOT VERIFIED on her server.
+

@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.174"   # v0.999.174 TEMPLATES, REDESIGNED (owner: "MAKE IT SAME AS PERVIOUS DESIGN WORK PERFECTLY. ADVANCE AND PREMIUM" -> design claude.ai/artifact/JzJ7s7bqJGC983XfwCZbMk -> "PERFECT GO BUILD"): the Interactive Templates library = her own templates first (what each came from, how often used, its blanks, a menu), then the ready-made ones as cards with a poster of the first scene, what it is for, its blanks and its length; search, All / Ready-made / Yours, kinds, shape and sort; two new ready-made templates (Appointment reminder, Event invitation) and a plain label + worldwide example for every blank; the Use page = one field per blank saying where it is spoken, a live preview that fills in as she types (a gap shows until filled, scenes play, hear a line free), language / face / voice / engine / frame, the draft free and the video priced via /x/estimate, Make the draft only when every blank is filled; another language = the filled words translated with names, prices and dates checked (or said plainly when it could not); save a video as a template by tapping the words that change (prices, dates, times, days, numbers and her business name marked by code, /hub/template/suggest), and a sheet makes one free draft per row (/hub/template/many, a row with a gap skipped and named); FIXED translating a template or a video into any language past the first ten (hub used the old 10-language list); NOT VERIFIED on her server; previous head v0.999.173 THE STUDIO, REDESIGNED; older stories live in git history.
+APP_VERSION = "0.999.175"   # v0.999.175 TAX DESK (owner: "OK FINE LET CONTINUE THE WORK OF AI EMPLOYEE" -> Tax (worldwide) -> design claude.ai/artifact/Faegn7ZmcGkTQqdkqRtZ1v -> "GO"): the Tax employee gets its own section /console/tax + Tax chat (kind tax, `taxchat.py`, its desk block + the tax tool in view, out of her chat lists): Today (next due, to pay, letters waiting, rates to check, overdue returns not marked filed, coming up), Returns (the VAT / GST return laid out like her country's form from her own books, checks, download for filing as PDF + CSV, "I filed it" = her tap with the reference, which locks the period on the desk), Across borders (US sales by state against her limits, the EU One Stop Shop, each limit / rate with its checked state; withholding + e-invoices in the chat), Letters (a tax letter read: from, amount, reference, what it asks, a draft reply with blanks; the reply-by date goes into her dates only after she confirms it), Personal (money in from her statements, the papers checklist she ticks, an estimate only on her bands, the organiser as CSV), Dates & settings (calendar for this year and next, all dates with where each came from, Add a date, country / scheme / period / due rule / tax number, rates and limits - a rate is used only once a person checked it at that value, a changed rate needs checking again); team roles from Books (owner / accountant / approver change, auditor / viewer read, only owner / approver mark filed); Hoola never files, pays or sends a reply; NOT VERIFIED on her server; previous head v0.999.174 TEMPLATES, REDESIGNED; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2028,6 +2028,15 @@ def payroll_desk_page():
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/tax")
+@app.get("/console/tax/")
+def tax_desk_page():
+    """v0.999.175 TAX DESK: the Tax employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "taxdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/money")
 @app.get("/console/money/")
 def money_desk_page():
@@ -2568,6 +2577,8 @@ from . import bookschat as _bookschat_mod                        # noqa: E402  v
 _bookschat_mod.mount(app, current_tenant, require_key)          # /api/books/*
 from . import payrollchat as _payrollchat_mod                    # noqa: E402  v0.999.169 PAYROLL DESK
 _payrollchat_mod.mount(app, current_tenant, require_key)        # /api/payroll/*
+from . import taxchat as _taxchat_mod                            # noqa: E402  v0.999.175 TAX DESK
+_taxchat_mod.mount(app, current_tenant, require_key)            # /api/tax/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through
