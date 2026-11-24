@@ -2,12 +2,17 @@
 from __future__ import annotations
 
 import re
+import time
 from typing import Any, Callable
 from urllib.parse import quote
 
 import httpx
 
 SHEETS = "https://sheets.googleapis.com/v4/spreadsheets"
+SCRIPT = "https://script.googleapis.com/v1"
+UPLOAD = "https://www.googleapis.com/upload/drive/v3/files"
+RETRIES = 5          # v0.999.185 tries when Google says "too many requests"
+RETRY_WAIT = 1.0     # first wait in seconds, doubled each try (tests set it to 0)
 DRIVE = "https://www.googleapis.com/drive/v3"
 GSHEET = "application/vnd.google-apps.spreadsheet"
 
@@ -62,12 +67,24 @@ class SheetsClient:
         self._client = client
         self.can_search = can_search
 
-    def _req(self, method: str, url: str, **kw) -> Any:
-        c = self._client or httpx.Client(timeout=40)
+    def _req(self, method: str, url: str, raw: bool = False, extra_headers: dict | None = None, **kw) -> Any:
+        c = self._client or httpx.Client(timeout=60)
         try:
-            for attempt in (0, 1):
-                r = c.request(method, url, headers={"Authorization": f"Bearer {self._token(attempt == 1)}"}, **kw)
-                if r.status_code == 401 and attempt == 0:
+            fresh, busy = False, 0
+            while True:
+                hd = {"Authorization": f"Bearer {self._token(fresh)}", **(extra_headers or {})}
+                r = c.request(method, url, headers=hd, **kw)
+                if r.status_code == 401 and not fresh:
+                    fresh = True
+                    continue
+                # v0.999.185 Google's speed limit (about 60 changes a minute a person): wait and ask again, up to 5 times
+                if r.status_code in (429, 500, 502, 503) and busy < RETRIES:
+                    busy += 1
+                    try:
+                        wait = float(r.headers.get("retry-after") or 0)
+                    except ValueError:
+                        wait = 0.0
+                    time.sleep(min(max(wait, RETRY_WAIT * (2 ** (busy - 1))), 32.0))
                     continue
                 break
         except httpx.HTTPError as e:
@@ -75,9 +92,18 @@ class SheetsClient:
         finally:
             if self._client is None:
                 c.close()
+        if r.status_code == 429:
+            raise SheetError("Google is limiting how fast Hoola can change this sheet (about 60 changes a minute). "
+                             "Hoola waited and tried 5 times; try again in a minute.")
         if r.status_code == 403:
-            if "insufficient" in r.text.lower() and "scope" in r.text.lower():
-                raise SheetError("Hoola needs Google Drive access for this. Open Connectors > Google, choose Drive and "
+            low = r.text.lower()
+            if "has not enabled the apps script api" in low or "apps script api has not been" in low:
+                raise SheetError("Turn on 'Google Apps Script API' once at script.google.com/home/usersettings (signed in as "
+                                 "this Google account), then ask again.")
+            if "insufficient" in low and "scope" in low:
+                need = ("Apps Script" if "script.googleapis.com" in url else "BigQuery" if "bigquery" in low
+                        else "Drive" if "/drive/" in url else "Sheets")
+                raise SheetError(f"Hoola needs Google {need} access for this. Open Connectors > Google, choose {need} and "
                                  "press Connect, then ask again.")
             if "has not been used" in r.text or "SERVICE_DISABLED" in r.text:
                 raise SheetError("The Sheets / Drive API is not enabled in the Google Cloud project.")
@@ -95,6 +121,8 @@ class SheetsClient:
             except Exception:
                 pass
             raise SheetError(f"Google Sheets: {msg}")
+        if raw:
+            return r
         return r.json() if r.content else {}
 
     # ---------------- finding ----------------
@@ -119,6 +147,7 @@ class SheetsClient:
                       "sheets(properties(sheetId,title,index,hidden,tabColorStyle,"
                       "gridProperties(rowCount,columnCount,frozenRowCount)))"})
         return {"id": res["spreadsheetId"], "title": res["properties"]["title"], "link": res.get("spreadsheetUrl", ""),
+                "locale": res["properties"].get("locale", ""), "time_zone": res["properties"].get("timeZone", ""),
                 "tabs": [{"id": s["properties"]["sheetId"], "title": s["properties"]["title"],
                           "rows": s["properties"].get("gridProperties", {}).get("rowCount", 0),
                           "cols": s["properties"].get("gridProperties", {}).get("columnCount", 0),
@@ -217,3 +246,42 @@ class SheetsClient:
             body["action"] = "resolve"
         return self._req("POST", f"{DRIVE}/files/{sid}/comments/{quote(cid, safe='')}/replies",
                          params={"fields": "id,content,action"}, json=body)
+
+    # ---------------- v0.999.185 SHEETS COMPLETE: cells with their look, copies, versions, Apps Script ----------------
+    def grid(self, sid: str, ranges: list[str], fields: str) -> dict[str, Any]:
+        """spreadsheets.get with the cells of these ranges (only the fields asked)."""
+        return self._req("GET", f"{SHEETS}/{sid}", params=[("ranges", r) for r in ranges]
+                         + [("includeGridData", "true"), ("fields", fields)])
+
+    def file_copy(self, sid: str, name: str) -> dict:
+        return self._req("POST", f"{DRIVE}/files/{sid}/copy", params={"supportsAllDrives": "true",
+                                                                      "fields": "id,name,webViewLink"}, json={"name": name})
+
+    def revisions(self, sid: str) -> list[dict[str, Any]]:
+        res = self._req("GET", f"{DRIVE}/files/{sid}/revisions", params={
+            "pageSize": "200", "fields": "revisions(id,modifiedTime,lastModifyingUser(displayName,emailAddress),exportLinks)"})
+        return res.get("revisions", [])
+
+    def download(self, url: str) -> bytes:
+        return self._req("GET", url, raw=True, follow_redirects=True).content
+
+    def upload_as_sheet(self, name: str, data: bytes, mime: str) -> dict:
+        """A file (an .xlsx) uploaded to her Drive as a new Google Sheet."""
+        import json as _json
+        import uuid
+        b = "hoola" + uuid.uuid4().hex
+        head = _json.dumps({"name": name, "mimeType": "application/vnd.google-apps.spreadsheet"}).encode()
+        body = (f"--{b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n".encode() + head
+                + f"\r\n--{b}\r\nContent-Type: {mime}\r\n\r\n".encode() + data + f"\r\n--{b}--".encode())
+        return self._req("POST", UPLOAD, params={"uploadType": "multipart", "fields": "id,name,webViewLink"}, content=body,
+                         extra_headers={"Content-Type": f"multipart/related; boundary={b}"})
+
+    def script_create(self, title: str, parent: str) -> dict:
+        return self._req("POST", f"{SCRIPT}/projects", json={"title": title, "parentId": parent})
+
+    def script_content(self, script_id: str) -> list[dict[str, Any]]:
+        return self._req("GET", f"{SCRIPT}/projects/{quote(script_id, safe='')}/content").get("files", [])
+
+    def script_save(self, script_id: str, files: list[dict]) -> dict:
+        return self._req("PUT", f"{SCRIPT}/projects/{quote(script_id, safe='')}/content",
+                         json={"scriptId": script_id, "files": files})

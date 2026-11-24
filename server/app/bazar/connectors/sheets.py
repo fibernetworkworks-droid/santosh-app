@@ -14,7 +14,11 @@ TITLES = {"update": "Change these rows?", "delete": "Delete rows?", "share": "Sh
           # v0.999.184 SHEETS 100%
           "delete_chart": "Remove chart?", "hide": "Hide it?", "split": "Split the column?", "trash": "Move to bin?",
           "delete_cols": "Delete columns?", "dedupe": "Remove duplicates?", "comment": "Post comment?",
-          "access": "Change access?", "unprotect": "Remove lock?"}
+          "access": "Change access?", "unprotect": "Remove lock?",
+          # v0.999.185 SHEETS COMPLETE
+          "cells": "Paste over these cells?", "pivot_delete": "Remove pivot table?", "table_delete": "Delete table?",
+          "bq_delete": "Remove BigQuery link?", "version_restore": "Put the old version back?",
+          "script_write": "Save this Apps Script?"}
 
 
 class SheetsExecutor:

@@ -21,12 +21,12 @@ NEW = ["sheet_clear", "sheet_copy_tab", "sheet_duplicate_tab", "sheet_delete_tab
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.184"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert APP_VERSION == "0.999.185"    # conscious-bump guard: moves with every release (bump with pubspec)
 
 
 def test_registry_has_24_tools():
     names = [t["name"] for t in st.SHEETS_TOOLS]
-    assert len(names) == 31 and len(set(names)) == 31     # v0.999.184 SHEETS 100%: +7 (chart, pivot, sort/filter, ...)
+    assert len(names) == 36 and len(set(names)) == 36     # v0.999.184 +7, v0.999.185 +5 (cells, table, versions, script, bigquery)
     for n in NEW:
         assert n in names and n in st.SHEETS_HANDLERS and n in st.SHEETS_LABELS
     assert set(st.SHEETS_HANDLERS) == set(names) and set(st.SHEETS_LABELS) == set(names)

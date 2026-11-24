@@ -12,6 +12,7 @@ from typing import Any
 
 from ..bazar.connectors.base import ToolError as BazarError
 from ..events import bus
+from ..sheets import extra as sx
 from ..sheets import more as sm
 from ..sheets import service as ss
 from ..sheets.client import NotConnected, SheetError
@@ -36,11 +37,13 @@ SHEETS_TOOLS = [
     {"name": "sheet_read", "description": (
         "Read rows of a sheet as {column: value} with _row numbers (100 at a time; offset to page). Or give an A1 range "
         "like 'B2:F20' for raw cells. show=formulas gives the formula in each cell (=SUM(B2:B9)), show=formatted the "
-        "text as shown on screen. For questions over the data (filters, totals, top 10) use sheet_query instead."),
+        "text as shown on screen, show=look how the cells look (colours, bold, font, size, number format, alignment, "
+        "notes, links) for a range of up to 1,000 cells. For questions over the data (filters, totals, top 10) use "
+        "sheet_query instead."),
      "input_schema": {"type": "object", "properties": {
          "spreadsheet": SHEET, "tab": TAB, "range": {"type": "string"}, "limit": {"type": "integer"},
          "offset": {"type": "integer"}, "header_row": {"type": "integer", "description": "Row with the column names (default 1)"},
-         "show": {"type": "string", "enum": ["values", "formulas", "formatted"]},
+         "show": {"type": "string", "enum": ["values", "formulas", "formatted", "look"]},
          "spreadsheet_id": {"type": "string", "description": "(old name of spreadsheet)"}}}},
     {"name": "sheet_query", "description": (
         "Ask a question of a sheet, computed exactly by Santosh (not guessed): filter rows (where), sort (sort_by + "
@@ -53,7 +56,8 @@ SHEETS_TOOLS = [
          "header_row": {"type": "integer"}}, "required": ["spreadsheet"]}},
     {"name": "sheet_append", "description": (
         "Add rows at the bottom of a sheet. Give each row as {column name: value} (matched to the header) or as a list "
-        "in column order. Formulas like =SUM(B2:B9) and dates work. add_columns=true adds new header columns when needed."),
+        "in column order. Formulas like =SUM(B2:B9) and dates work. add_columns=true adds new header columns when needed. "
+        "Up to 50,000 rows (sent in parts by itself)."),
      "input_schema": {"type": "object", "properties": {
          "spreadsheet": SHEET, "tab": TAB,
          "rows": {"type": "array", "items": {}, "description": "Rows: objects {column: value} or lists"},
@@ -67,7 +71,7 @@ SHEETS_TOOLS = [
          "header_row": {"type": "integer"}}, "required": ["spreadsheet", "set"]}},
     {"name": "sheet_write_range", "description": (
         "Write a block of cells at an A1 range (e.g. 'E1' or 'Summary!A1'), values as rows of cells. For formulas, "
-        "headers, small tables. Max 2000 cells."),
+        "headers, tables. Up to 200,000 cells (sent in parts by itself)."),
      "input_schema": {"type": "object", "properties": {
          "spreadsheet": SHEET, "tab": TAB, "range": {"type": "string"},
          "values": {"type": "array", "items": {"type": "array", "items": {}}}}, "required": ["spreadsheet", "range", "values"]}},
@@ -172,12 +176,13 @@ SHEETS_TOOLS = [
          "name": {"type": "string"}, "range": {"type": "string"}, "named_id": {"type": "integer"}, "tab": TAB},
       "required": ["spreadsheet", "action"]}},
     {"name": "sheet_conditional_format", "description": (
-        "Add / update / delete a conditional-format rule on a range. rule.type = color_scale (min/mid/max with color + "
+        "Add / update / delete / list conditional-format (colour) rules. action=list shows every rule on a tab with its "
+        "rule_index, range and condition (no range needed). rule.type = color_scale (min/mid/max with color + "
         "type min|number|percent|max), data_bar (single color, highlights > 0), cell_is (operator GREATER_THAN / "
         "LESS_THAN / BETWEEN / EQUAL / ... + values + format), expression (formula like '=B1>1000' + format)."),
      "input_schema": {"type": "object",
                       "properties": {"spreadsheet": SHEET, "tab": TAB,
-         "range": {"type": "string"}, "action": {"type": "string", "enum": ["add", "update", "delete"]},
+         "range": {"type": "string"}, "action": {"type": "string", "enum": ["add", "update", "delete", "list"]},
          "rule_index": {"type": "integer"},
          "rule": {"type": "object",
                   "properties": {"type": {"type": "string",
@@ -230,10 +235,13 @@ SHEETS_TOOLS = [
         "Charts inside a sheet. action=add: type column / bar / line / area / scatter / combo / stepped_area / pie / "
         "donut, from x_column (labels) + y_columns (numbers) by header name, or a data_range like 'A1:C13' (first "
         "column = labels, first row = names); place = 'new_tab' (default) or a cell like 'H2' to float it there. "
-        "action=list: the charts with their chart_id. action=delete: remove one (confirm card)."),
+        "action=list: the charts with their chart_id. action=update (chart_id): change title / type / x_title / y_title "
+        "/ stacked. action=move (chart_id): place = a cell to float it there, width / height in pixels, or no place = "
+        "its own tab. action=delete: remove one (confirm card)."),
      "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET, "tab": TAB,
-         "action": {"type": "string", "enum": ["add", "list", "delete"]},
+         "action": {"type": "string", "enum": ["add", "list", "update", "move", "delete"]},
          "type": {"type": "string", "enum": list(sm.CHART_TYPES)},
+         "width": {"type": "integer"}, "height": {"type": "integer"},
          "x_column": {"type": "string"}, "y_columns": {"type": "array", "items": {"type": "string"}},
          "data_range": {"type": "string"}, "title": {"type": "string"}, "x_title": {"type": "string"},
          "y_title": {"type": "string"}, "place": {"type": "string"}, "stacked": {"type": "boolean"},
@@ -242,23 +250,28 @@ SHEETS_TOOLS = [
         "Build a pivot table inside the sheet (Google keeps it up to date): rows = columns to group by, values = "
         "[{column, function sum|count|average|min|max|median|unique, name}], columns = optional columns across the top, "
         "filters = [{column, values: [...shown only]}], place = 'new_tab' (default) or a cell like 'Summary!A1'. For "
-        "exact numbers in the chat use sheet_query group_by."),
+        "exact numbers in the chat use sheet_query group_by. action=list: the pivot tables and where they sit; "
+        "action=update (place = its top-left cell): change rows / values / columns / filters; action=delete (place): "
+        "remove it (confirm card)."),
      "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET, "tab": TAB,
          "rows": {"type": "array", "items": {"type": "string"}}, "columns": {"type": "array", "items": {"type": "string"}},
          "values": {"type": "array", "items": {"type": "object", "properties": {
              "column": {"type": "string"}, "function": {"type": "string"}, "name": {"type": "string"}}}},
          "filters": {"type": "array", "items": {"type": "object", "properties": {
              "column": {"type": "string"}, "values": {"type": "array", "items": {}}}}},
-         "place": {"type": "string"}, "header_row": {"type": "integer"}}, "required": ["spreadsheet", "rows", "values"]}},
+         "place": {"type": "string"}, "header_row": {"type": "integer"},
+         "action": {"type": "string", "enum": ["add", "list", "update", "delete"]}}, "required": ["spreadsheet"]}},
     {"name": "sheet_sort_filter", "description": (
         "Sort the rows IN the sheet or filter what it shows. action=sort: sort = [{column, descending}] (the header row "
         "stays on top). action=filter: the sheet's own filter for everyone, where = conditions (one per column; != on "
         "text means 'does not contain'); clear_filter shows every row again. action=filter_view: a saved view only for "
-        "whoever opens it, title + where + sort; list_filter_views / delete_filter_view (filter_view_id). Nothing is "
-        "deleted by any of these."),
+        "whoever opens it, title + where + sort; list_filter_views / delete_filter_view (filter_view_id). "
+        "slicer_add (column, title, place = a cell): a filter button for one column that floats on the sheet; "
+        "slicer_list / slicer_delete (slicer_id). Nothing is deleted by any of these."),
      "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET, "tab": TAB,
          "action": {"type": "string", "enum": ["sort", "filter", "clear_filter", "filter_view", "list_filter_views",
-                                               "delete_filter_view"]},
+                                               "delete_filter_view", "slicer_add", "slicer_list", "slicer_delete"]},
+         "column": {"type": "string"}, "place": {"type": "string"}, "slicer_id": {"type": "integer"},
          "sort": {"type": "array", "items": {"type": "object", "properties": {
              "column": {"type": "string"}, "descending": {"type": "boolean"}}}},
          "where": WHERE, "title": {"type": "string"}, "filter_view_id": {"type": "integer"},
@@ -269,12 +282,19 @@ SHEETS_TOOLS = [
         "before), move_cols (columns, to), width (columns, size = pixels or 'auto'), height (rows, size), hide_rows / "
         "hide_cols (confirm card), unhide_rows / unhide_cols. Tabs: rename_tab (new_name), tab_color (color), move_tab "
         "(index, 0 = first), hide_tab (confirm card), unhide_tab. The file: rename_file (new_name), trash_file (to the "
-        "Drive bin; confirm card), restore_file. Columns are header names, letters, or 'C:E'."),
+        "Drive bin; confirm card), restore_file, copy_file (a full copy of the whole spreadsheet, new_name), settings "
+        "(locale like en_IN, time_zone like Asia/Kolkata, recalc on_change / every_minute / every_hour; none = show "
+        "them). Folding: group_rows / group_cols (a +/- button), ungroup_*, collapse_* / expand_*, list_groups. "
+        "Columns are header names, letters, or 'C:E'."),
      "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET, "tab": TAB,
          "action": {"type": "string", "enum": ["insert_rows", "insert_cols", "delete_cols", "move_rows", "move_cols",
                                                "width", "height", "hide_rows", "hide_cols", "unhide_rows", "unhide_cols",
                                                "rename_tab", "tab_color", "move_tab", "hide_tab", "unhide_tab",
-                                               "rename_file", "trash_file", "restore_file"]},
+                                               "rename_file", "trash_file", "restore_file", "copy_file", "settings",
+                                               "group_rows", "group_cols", "ungroup_rows", "ungroup_cols", "collapse_rows",
+                                               "collapse_cols", "expand_rows", "expand_cols", "list_groups"]},
+         "locale": {"type": "string"}, "time_zone": {"type": "string"},
+         "recalc": {"type": "string", "enum": ["on_change", "every_minute", "every_hour"]},
          "rows": {"description": "Row numbers: 5, '5:9' or [5, 9]"},
          "columns": {"description": "Column names / letters, a list, or 'C:E'"},
          "at": {"description": "Row number or column to insert before"}, "count": {"type": "integer"},
@@ -308,6 +328,53 @@ SHEETS_TOOLS = [
      "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET, "tab": TAB,
          "action": {"type": "string", "enum": ["add", "list", "stop"]}, "task": {"type": "string"},
          "every_minutes": {"type": "integer"}, "watch_id": {"type": "string"}, "header_row": {"type": "integer"}}}},
+    # ---- v0.999.185 SHEETS COMPLETE ----
+    {"name": "sheet_cells", "description": (
+        "Copy or cut-and-paste a block of cells inside a spreadsheet (also tab to tab). action=copy / cut, source = "
+        "'A1:D20' (or 'Tab!A1:D20'), to = the top-left cell where it lands, paste = all / values / format / formulas / "
+        "no_borders / validation / conditional, transpose (copy only: rows become columns). A confirm card first when "
+        "it would write over filled cells."),
+     "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET, "tab": TAB,
+         "action": {"type": "string", "enum": ["copy", "cut"]}, "source": {"type": "string"}, "to": {"type": "string"},
+         "paste": {"type": "string", "enum": list(sx.PASTE)}, "transpose": {"type": "boolean"}},
+      "required": ["spreadsheet", "action", "source", "to"]}},
+    {"name": "sheet_table", "description": (
+        "Google's Tables (Format > Convert to table): a named table with a header row, banded rows, a type per column "
+        "and a filter on every header. action=add (name, data_range or the tab's data, types = {column: number / "
+        "currency / percent / date / time / datetime / text / checkbox / dropdown / rating / person / file / place / "
+        "finance}, dropdowns = {column: [choices]}), list, update (table_id or name: new_name / data_range / types / "
+        "dropdowns), delete (the table AND its rows go; confirm card)."),
+     "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET, "tab": TAB,
+         "action": {"type": "string", "enum": ["add", "list", "update", "delete"]}, "name": {"type": "string"},
+         "data_range": {"type": "string"}, "types": {"type": "object"}, "dropdowns": {"type": "object"},
+         "table_id": {"type": "string"}, "new_name": {"type": "string"}, "header_row": {"type": "integer"}},
+      "required": ["spreadsheet"]}},
+    {"name": "sheet_versions", "description": (
+        "Older versions of a sheet (Google Drive keeps them). action=list: when each was saved and by whom. "
+        "action=copy (version_id): that version as a new sheet; the current one is unchanged. action=restore "
+        "(version_id, tab): makes that copy, then after a confirm card puts that tab's old values and formulas back "
+        "(Google lets no app restore a version in place, so colours and formats stay as now)."),
+     "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET, "tab": TAB,
+         "action": {"type": "string", "enum": ["list", "copy", "restore"]}, "version_id": {"type": "string"}},
+      "required": ["spreadsheet"]}},
+    {"name": "sheet_script", "description": (
+        "Apps Script inside a sheet (Extensions > Apps Script). action=read: the code Hoola saved there, or one she made "
+        "by hand when she gives script_id. action=write: save a file of code (code, file name) after a confirm card that "
+        "says what the code can do. Functions named onOpen / onEdit run by themselves; any other function she runs once "
+        "from Extensions > Apps Script (Google does not let an outside app run it). Needs Apps Script connected in "
+        "Connectors > Google and the Apps Script API turned on at script.google.com/home/usersettings."),
+     "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET,
+         "action": {"type": "string", "enum": ["read", "write"]}, "code": {"type": "string"}, "file": {"type": "string"},
+         "script_id": {"type": "string"}}, "required": ["spreadsheet"]}},
+    {"name": "sheet_bigquery", "description": (
+        "BigQuery data connected to a sheet (Connected Sheets). action=connect: project_id (her Google Cloud project that "
+        "pays) + table ('project.dataset.table') or query (a SELECT); a new tab shows it and Google keeps it fresh. "
+        "action=list: each connection and its state; refresh (source_id); delete (source_id, confirm card). Needs "
+        "Google Cloud with BigQuery (or the free BigQuery sandbox) and BigQuery connected in Connectors > Google."),
+     "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET,
+         "action": {"type": "string", "enum": ["list", "connect", "refresh", "delete"]}, "project_id": {"type": "string"},
+         "table": {"type": "string"}, "query": {"type": "string"}, "source_id": {"type": "string"}},
+      "required": ["spreadsheet"]}},
 ]
 
 SHEETS_LABELS = {"sheets_find": "Finding the sheet", "sheet_info": "Checking the sheet",
@@ -333,7 +400,10 @@ SHEETS_LABELS = {"sheets_find": "Finding the sheet", "sheet_info": "Checking the
                  "sheet_chart": "Making a chart", "sheet_pivot": "Building a pivot table",
                  "sheet_sort_filter": "Sorting / filtering the sheet", "sheet_structure": "Changing the sheet's layout",
                  "sheet_clean": "Cleaning the data", "sheet_comments": "Working with comments",
-                 "sheet_watch": "Setting up a sheet watch"}
+                 "sheet_watch": "Setting up a sheet watch",
+                 # v0.999.185 SHEETS COMPLETE
+                 "sheet_cells": "Copying cells", "sheet_table": "Working on a table", "sheet_versions": "Checking older versions",
+                 "sheet_script": "Working on Apps Script", "sheet_bigquery": "Connecting BigQuery"}
 
 
 async def _t(fn, *a, **kw):
@@ -563,8 +633,8 @@ async def sheet_named_range(ctx: Ctx, spreadsheet, action, name=None, range=None
     return out
 
 
-async def sheet_conditional_format(ctx: Ctx, spreadsheet, range, rule=None, tab=None, action="add", rule_index=None, **_):
-    out = await _t(ss.conditional_format, ctx.tenant_id, str(spreadsheet), str(range), rule or {}, tab, action, rule_index)
+async def sheet_conditional_format(ctx: Ctx, spreadsheet, range=None, rule=None, tab=None, action="add", rule_index=None, **_):
+    out = await _t(ss.conditional_format, ctx.tenant_id, str(spreadsheet), range, rule or {}, tab, action, rule_index)
     return out
 
 
@@ -603,30 +673,53 @@ async def _pending_or(ctx: Ctx, fn, *a, **kw):
     return out
 
 
-async def sheet_chart(ctx: Ctx, spreadsheet, action="add", tab=None, type="column", x_column=None, y_columns=None,
-                      data_range=None, title="", x_title="", y_title="", place="", stacked=False, chart_id=None,
-                      header_row=1, **_):
-    return await _pending_or(ctx, sm.chart, ctx.tenant_id, ctx.conversation_id, str(spreadsheet), str(action or "add"),
+async def sheet_chart(ctx: Ctx, spreadsheet, action="add", tab=None, type=None, x_column=None, y_columns=None,
+                      data_range=None, title=None, x_title=None, y_title=None, place="", stacked=None, chart_id=None,
+                      header_row=1, width=None, height=None, **_):
+    act = str(action or "add").lower()
+    if act in ("update", "move"):
+        return await _t(sx.chart_change, ctx.tenant_id, str(spreadsheet), act, None if chart_id is None else int(chart_id),
+                        str(type or ""), title, x_title, y_title, stacked, str(place or ""),
+                        None if width is None else int(width), None if height is None else int(height))
+    return await _pending_or(ctx, sm.chart, ctx.tenant_id, ctx.conversation_id, str(spreadsheet), act,
                              tab, str(type or "column"), x_column, [str(y) for y in (y_columns or [])], data_range,
                              str(title or ""), str(x_title or ""), str(y_title or ""), str(place or ""), bool(stacked),
                              None if chart_id is None else int(chart_id), int(header_row or 1))
 
 
 async def sheet_pivot(ctx: Ctx, spreadsheet, rows=None, values=None, tab=None, columns=None, filters=None, place="",
-                      header_row=1, **_):
+                      header_row=1, action="add", **_):
+    act = str(action or "add").lower()
+    if act == "list":
+        return await _t(sx.pivots_list, ctx.tenant_id, str(spreadsheet))
+    if act in ("update", "delete"):
+        return await _pending_or(ctx, sx.pivot_change, ctx.tenant_id, ctx.conversation_id, str(spreadsheet), act,
+                                 str(place or ""), [str(r) for r in rows or []] or None, list(values or []) or None,
+                                 None if columns is None else [str(x) for x in columns],
+                                 None if filters is None else list(filters), int(header_row or 1))
     return await _t(sm.pivot, ctx.tenant_id, str(spreadsheet), [str(r) for r in rows or []], list(values or []), tab,
                     [str(x) for x in columns or []], list(filters or []), str(place or ""), int(header_row or 1))
 
 
 async def sheet_sort_filter(ctx: Ctx, spreadsheet, action="sort", tab=None, sort=None, where=None, title="",
-                            filter_view_id=None, header_row=1, **_):
+                            filter_view_id=None, header_row=1, column="", place="", slicer_id=None, **_):
+    if str(action or "").lower().startswith("slicer_"):
+        return await _t(sx.slicers, ctx.tenant_id, str(spreadsheet), str(action).lower(), tab, str(column or ""),
+                        str(title or ""), str(place or ""), None if slicer_id is None else int(slicer_id), int(header_row or 1))
     return await _t(sm.sort_filter, ctx.tenant_id, str(spreadsheet), str(action or "sort"), tab, list(sort or []),
                     list(where or []), str(title or ""), None if filter_view_id is None else int(filter_view_id),
                     int(header_row or 1))
 
 
 async def sheet_structure(ctx: Ctx, spreadsheet, action, tab=None, rows=None, columns=None, at=None, count=1, to=None,
-                          size=None, new_name="", color="", index=None, header_row=1, **_):
+                          size=None, new_name="", color="", index=None, header_row=1, locale="", time_zone="", recalc="", **_):
+    act = str(action or "").lower()
+    if act == "copy_file":
+        return await _t(sx.copy_file, ctx.tenant_id, str(spreadsheet), str(new_name or ""))
+    if act == "settings":
+        return await _t(sx.settings, ctx.tenant_id, str(spreadsheet), str(locale or ""), str(time_zone or ""), str(recalc or ""))
+    if act.split("_")[0] in ("group", "ungroup", "collapse", "expand") or act == "list_groups":
+        return await _t(sx.groups, ctx.tenant_id, str(spreadsheet), act, tab, rows, columns, int(header_row or 1))
     return await _pending_or(ctx, sm.structure, ctx.tenant_id, ctx.conversation_id, str(spreadsheet), str(action),
                              tab, rows, columns, at, int(count or 1), to, size, str(new_name or ""), str(color or ""),
                              None if index is None else int(index), int(header_row or 1))
@@ -648,6 +741,33 @@ async def sheet_watch(ctx: Ctx, action="list", spreadsheet="", tab=None, task=""
                     int(every_minutes or 10), str(watch_id or ""), int(header_row or 1))
 
 
+async def sheet_cells(ctx: Ctx, spreadsheet, action="copy", source="", to="", tab=None, paste="all", transpose=False, **_):
+    return await _pending_or(ctx, sx.cells, ctx.tenant_id, ctx.conversation_id, str(spreadsheet), str(action or "copy"),
+                             str(source or ""), str(to or ""), tab, str(paste or "all"), bool(transpose))
+
+
+async def sheet_table(ctx: Ctx, spreadsheet, action="list", tab=None, name="", data_range="", types=None, dropdowns=None,
+                      table_id="", new_name="", header_row=1, **_):
+    return await _pending_or(ctx, sx.tables, ctx.tenant_id, ctx.conversation_id, str(spreadsheet), str(action or "list"),
+                             tab, str(name or ""), str(data_range or ""), dict(types or {}), dict(dropdowns or {}),
+                             str(table_id or ""), str(new_name or ""), int(header_row or 1))
+
+
+async def sheet_versions(ctx: Ctx, spreadsheet, action="list", version_id="", tab=None, **_):
+    return await _pending_or(ctx, sx.versions, ctx.tenant_id, ctx.conversation_id, str(spreadsheet), str(action or "list"),
+                             str(version_id or ""), tab)
+
+
+async def sheet_script(ctx: Ctx, spreadsheet, action="read", code="", file="Code", script_id="", **_):
+    return await _pending_or(ctx, sx.script, ctx.tenant_id, ctx.conversation_id, str(spreadsheet), str(action or "read"),
+                             str(code or ""), str(file or "Code"), str(script_id or ""))
+
+
+async def sheet_bigquery(ctx: Ctx, spreadsheet, action="list", project_id="", table="", query="", source_id="", **_):
+    return await _pending_or(ctx, sx.bigquery, ctx.tenant_id, ctx.conversation_id, str(spreadsheet), str(action or "list"),
+                             str(project_id or ""), str(table or ""), str(query or ""), str(source_id or ""))
+
+
 SHEETS_HANDLERS = {"sheets_find": sheets_find, "sheet_info": sheet_info, "sheet_read": sheet_read,
                    "sheet_query": sheet_query, "sheet_append": sheet_append, "sheet_update": sheet_update,
                    "sheet_write_range": sheet_write_range, "sheet_delete_rows": sheet_delete_rows,
@@ -662,4 +782,7 @@ SHEETS_HANDLERS = {"sheets_find": sheets_find, "sheet_info": sheet_info, "sheet_
                    # v0.999.184 SHEETS 100%
                    "sheet_chart": sheet_chart, "sheet_pivot": sheet_pivot, "sheet_sort_filter": sheet_sort_filter,
                    "sheet_structure": sheet_structure, "sheet_clean": sheet_clean, "sheet_comments": sheet_comments,
-                   "sheet_watch": sheet_watch}
+                   "sheet_watch": sheet_watch,
+                   # v0.999.185 SHEETS COMPLETE
+                   "sheet_cells": sheet_cells, "sheet_table": sheet_table, "sheet_versions": sheet_versions,
+                   "sheet_script": sheet_script, "sheet_bigquery": sheet_bigquery}

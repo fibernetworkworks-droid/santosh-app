@@ -19,6 +19,10 @@ from .accounts import clients, get_client
 from .client import SHEETS, SheetError, SheetsClient, a1_col, col_index, id_from, q_tab
 
 BIG_UPDATE = 20          # editing more rows than this needs a tap
+MAX_WRITE_ROWS = 50_000  # v0.999.185 rows in one add (sent in parts of CHUNK_ROWS)
+CHUNK_ROWS = 2_000
+MAX_WRITE_CELLS = 200_000   # cells in one block write (sent in parts of about CHUNK_CELLS)
+CHUNK_CELLS = 10_000
 MAX_ROWS = 100_000       # v0.999.184 was 5,000 and a bigger sheet was cut WITHOUT a word; now read in pages + said
 PAGE_ROWS = 20_000
 WIDE_COLS = 702          # A..ZZ
@@ -287,15 +291,72 @@ def info(tenant: str, spreadsheet: str) -> dict[str, Any]:
 
 
 RENDER = {"values": "UNFORMATTED_VALUE", "formulas": "FORMULA", "formatted": "FORMATTED_VALUE"}
+LOOK_CELLS = 1000
+
+
+def look(tenant: str, spreadsheet: str, tab: str | None, cell_range: str | None) -> dict[str, Any]:
+    """v0.999.185 how cells LOOK: colours, bold / italic, font, size, number format, alignment, notes, links.
+    Only what differs from a plain cell is listed, so a big plain block stays short."""
+    if not cell_range:
+        raise SheetError("show=look needs a range (such as 'A1:F20'); up to 1,000 cells.")
+    c, meta = resolve(tenant, spreadsheet)
+    t, a1 = _split_tab_range(meta, str(cell_range), tab)
+    g = _a1_to_grid_range(a1, t["id"])
+    if g["endRowIndex"] >= 1048575 or g["endColumnIndex"] >= 16383:
+        raise SheetError("Give a closed range like 'A1:F20' for show=look.")
+    if (g["endRowIndex"] - g["startRowIndex"]) * (g["endColumnIndex"] - g["startColumnIndex"]) > LOOK_CELLS:
+        raise SheetError(f"Up to {LOOK_CELLS:,} cells at a time for show=look.")
+    raw = c.grid(meta["id"], [f"{q_tab(t['title'])}!{a1}"],
+                 "sheets(data(startRow,startColumn,rowData(values(formattedValue,note,hyperlink,effectiveFormat("
+                 "backgroundColorStyle,backgroundColor,numberFormat,horizontalAlignment,verticalAlignment,wrapStrategy,"
+                 "textFormat(bold,italic,underline,strikethrough,fontFamily,fontSize,foregroundColorStyle,foregroundColor))))))")
+    cells = []
+    for d in (raw.get("sheets") or [{}])[0].get("data", []):
+        r0, c0 = d.get("startRow", 0), d.get("startColumn", 0)
+        for ri, row in enumerate(d.get("rowData", [])):
+            for ci, v in enumerate(row.get("values", [])):
+                ef = v.get("effectiveFormat", {})
+                tf = ef.get("textFormat", {})
+                out: dict[str, Any] = {}
+                bg = _hex(ef.get("backgroundColorStyle") or ef.get("backgroundColor"))
+                if bg and bg != "#ffffff":
+                    out["bg_color"] = bg
+                fg = _hex(tf.get("foregroundColorStyle") or tf.get("foregroundColor"))
+                if fg and fg != "#000000":
+                    out["font_color"] = fg
+                for k in ("bold", "italic", "underline", "strikethrough"):
+                    if tf.get(k):
+                        out[k] = True
+                if tf.get("fontFamily") and tf["fontFamily"] != "Arial":
+                    out["font_family"] = tf["fontFamily"]
+                if tf.get("fontSize") and tf["fontSize"] != 10:
+                    out["font_size"] = tf["fontSize"]
+                nf = ef.get("numberFormat") or {}
+                if nf.get("pattern") or (nf.get("type") and nf["type"] not in ("TEXT", "NUMBER")):
+                    out["number_format"] = nf.get("pattern") or nf.get("type")
+                for k, key in (("horizontalAlignment", "horizontal_alignment"), ("verticalAlignment", "vertical_alignment")):
+                    if ef.get(k) and ef[k] not in ("LEFT", "BOTTOM"):
+                        out[key] = ef[k]
+                if ef.get("wrapStrategy") and ef["wrapStrategy"] != "OVERFLOW_CELL":
+                    out["wrap_strategy"] = ef["wrapStrategy"]
+                for k in ("note", "hyperlink"):
+                    if v.get(k):
+                        out[k] = str(v[k])[:300]
+                if out:
+                    cells.append({"cell": f"{a1_col(c0 + ci + 1)}{r0 + ri + 1}", "value": v.get("formattedValue", ""), **out})
+    return {"title": meta["title"], "tab": t["title"], "range": a1, "cells": cells[:LOOK_CELLS],
+            "note": "Only cells that look different from a plain cell are listed (plain = black Arial 10 on white)."}
 
 
 def read(tenant: str, spreadsheet: str, tab: str | None = None, cell_range: str | None = None, limit: int = 100,
          offset: int = 0, header_row: int = 1, show: str = "values") -> dict[str, Any]:
     """show: values (numbers as numbers), formulas (the formula typed in each cell, =SUM(B2:B9)), formatted (as on
     screen, 'Rs 1,500.00')."""
+    if str(show or "").lower() == "look":
+        return look(tenant, spreadsheet, tab, cell_range)
     render = RENDER.get(str(show or "values").lower())
     if not render:
-        raise SheetError("show: values / formulas / formatted")
+        raise SheetError("show: values / formulas / formatted / look")
     c, meta = resolve(tenant, spreadsheet)
     if cell_range:
         rng = cell_range if "!" in cell_range else f"{q_tab(tab_of(meta, tab)['title'])}!{cell_range}"
@@ -384,8 +445,8 @@ def append(tenant: str, spreadsheet: str, rows: list, tab: str | None = None, ad
            header_row: int = 1) -> dict[str, Any]:
     if not rows:
         raise SheetError("What should be added? Give rows.")
-    if len(rows) > 2000:
-        raise SheetError("Up to 2000 rows at a time.")
+    if len(rows) > MAX_WRITE_ROWS:
+        raise SheetError(f"Up to {MAX_WRITE_ROWS:,} rows at a time.")
     c, meta = resolve(tenant, spreadsheet)
     t = load(c, meta, tab, header_row)
     out_rows, added = [], []
@@ -397,10 +458,17 @@ def append(tenant: str, spreadsheet: str, rows: list, tab: str | None = None, ad
         c.update(meta["id"], [{"range": f"{q_tab(t.tab)}!A{header_row}", "values": [t.header]}])
     if not any(str(h).strip() for h in t.header) and rows and isinstance(rows[0], dict):   # empty tab: write header first
         c.update(meta["id"], [{"range": f"{q_tab(t.tab)}!A{header_row}", "values": [list(rows[0].keys())]}])
-    res = c.append(meta["id"], f"{q_tab(t.tab)}!A{header_row}", [[("" if x is None else x) for x in r] for r in out_rows])
-    up = res.get("updates", {})
-    return {"title": meta["title"], "tab": t.tab, "added_rows": up.get("updatedRows", len(out_rows)),
-            "range": up.get("updatedRange", ""), "new_columns": added, "link": meta["link"]}
+    vals = [[("" if x is None else x) for x in r] for r in out_rows]
+    done, ranges = 0, []
+    for i in range(0, len(vals), CHUNK_ROWS):      # v0.999.185 big adds go in parts, in order
+        res = c.append(meta["id"], f"{q_tab(t.tab)}!A{header_row}", vals[i:i + CHUNK_ROWS])
+        up = res.get("updates", {})
+        done += int(up.get("updatedRows", len(vals[i:i + CHUNK_ROWS])))
+        if up.get("updatedRange"):
+            ranges.append(up["updatedRange"])
+    return {"title": meta["title"], "tab": t.tab, "added_rows": done, "range": ranges[0] if len(ranges) == 1 else
+            (f"{ranges[0]} ... {ranges[-1]}" if ranges else ""), "parts": max(1, len(ranges)),
+            "new_columns": added, "link": meta["link"]}
 
 
 def plan_update(tenant: str, spreadsheet: str, set_values: dict, where: list[dict] | None = None,
@@ -434,12 +502,23 @@ def write_range(tenant: str, spreadsheet: str, cell_range: str, values: list[lis
     cells = sum(len(r) for r in values or [])
     if not cells:
         raise SheetError("values is empty")
-    if cells > 2000:
-        raise SheetError("Up to 2000 cells at a time.")
+    if cells > MAX_WRITE_CELLS:
+        raise SheetError(f"Up to {MAX_WRITE_CELLS:,} cells at a time.")
     c, meta = resolve(tenant, spreadsheet)
     rng = cell_range if "!" in cell_range else f"{q_tab(tab_of(meta, tab)['title'])}!{cell_range}"
-    n = do_update(c, meta["id"], [{"range": rng, "values": values}])
-    return {"title": meta["title"], "range": rng, "updated_cells": n, "link": meta["link"]}
+    tabpart, a1 = rng.rsplit("!", 1)
+    m = re.fullmatch(r"\$?([A-Za-z]{1,3})\$?(\d+)(?::.*)?", a1.strip())
+    if cells <= CHUNK_CELLS or not m:
+        n = do_update(c, meta["id"], [{"range": rng, "values": values}])
+        return {"title": meta["title"], "range": rng, "updated_cells": n, "link": meta["link"]}
+    # v0.999.185 a big block goes in parts of whole rows, each starting where the last one ended
+    col, row0 = m.group(1).upper(), int(m.group(2))
+    width = max(len(r) for r in values) or 1
+    per = max(1, CHUNK_CELLS // width)
+    n = 0
+    for i in range(0, len(values), per):
+        n += do_update(c, meta["id"], [{"range": f"{tabpart}!{col}{row0 + i}", "values": values[i:i + per]}])
+    return {"title": meta["title"], "range": rng, "updated_cells": n, "parts": -(-len(values) // per), "link": meta["link"]}
 
 
 def plan_delete(tenant: str, spreadsheet: str, where: list[dict] | None = None, rows: list[int] | None = None,
@@ -874,31 +953,68 @@ def _cf_rule(spec: dict, sheet_id: int) -> dict:
     raise SheetError(f"conditional_format type: color_scale / data_bar / cell_is / expression")
 
 
-def conditional_format(tenant: str, spreadsheet: str, rng: str, rule: dict,
+def _a1_of(g: dict) -> str:
+    """A GridRange back to A1 (whole rows / columns kept open)."""
+    c0, c1 = g.get("startColumnIndex"), g.get("endColumnIndex")
+    r0, r1 = g.get("startRowIndex"), g.get("endRowIndex")
+    a = (a1_col(c0 + 1) if c0 is not None else "A") + (str(r0 + 1) if r0 is not None else "")
+    z = (a1_col(c1) if c1 is not None else "") + (str(r1) if r1 is not None else "")
+    return a + (":" + z if z else "")
+
+
+def _hex(cs: Any) -> str:
+    rgb = (cs or {}).get("rgbColor", cs or {}) if isinstance(cs, dict) else {}
+    if not rgb:
+        return ""
+    return "#" + "".join(f"{round(float(rgb.get(k, 0)) * 255):02x}" for k in ("red", "green", "blue"))
+
+
+def conditional_format(tenant: str, spreadsheet: str, rng: str | None, rule: dict,
                        tab: str | None = None, action: str = "add", rule_index: int | None = None) -> dict[str, Any]:
-    """Add / update / delete a conditional formatting rule on a range."""
+    """Add / update / delete / list conditional formatting rules.
+    v0.999.185: the range now rides INSIDE the rule (ConditionalFormatRule.ranges) - it was sent beside it, which Google
+    refuses - and update sends Google's 'index' (it sent 'rule_index'). list shows each rule's number, range and kind."""
     action = (action or "add").lower()
     c, meta = resolve(tenant, spreadsheet)
+    if action == "list":
+        t = tab_of(meta, tab or (str(rng).split("!")[0].strip("'") if rng and "!" in str(rng) else None))
+        raw = c.raw_meta(meta["id"], "sheets(properties(sheetId,title),conditionalFormats)")
+        rules = []
+        for sh in raw.get("sheets", []):
+            if sh["properties"]["sheetId"] != t["id"]:
+                continue
+            for i, r in enumerate(sh.get("conditionalFormats", [])):
+                br, gr = r.get("booleanRule"), r.get("gradientRule")
+                cond = (br or {}).get("condition", {})
+                fmt = (br or {}).get("format", {})
+                rules.append({"rule_index": i, "ranges": [_a1_of(g) for g in r.get("ranges", [])],
+                              "kind": "color_scale" if gr else ("expression" if cond.get("type") == "CUSTOM_FORMULA" else "cell_is"),
+                              "condition": cond.get("type", ""), "values": [v.get("userEnteredValue") for v in cond.get("values", [])],
+                              **({"bg_color": _hex(fmt.get("backgroundColorStyle") or fmt.get("backgroundColor"))} if fmt else {})})
+        return {"title": meta["title"], "tab": t["title"], "rules": rules,
+                "note": "rule_index is what update / delete take (0 = checked first)."}
+    if not rng:
+        raise SheetError("Give range (such as 'C2:C100').")
     t, a1 = _split_tab_range(meta, str(rng), tab)
     grid = _a1_to_grid_range(a1, t["id"])
     if action == "add":
         if not rule:
-            raise SheetError("rule do (type: color_scale / data_bar / cell_is / expression).")
-        c.batch(meta["id"], [{"addConditionalFormatRule": {"rule": _cf_rule(rule, t["id"]), "range": grid,
-                                                            "index": 0}}])
+            raise SheetError("Give rule (type: color_scale / data_bar / cell_is / expression).")
+        body = dict(_cf_rule(rule, t["id"]), ranges=[grid])
+        c.batch(meta["id"], [{"addConditionalFormatRule": {"rule": body, "index": 0}}])
         return {"title": meta["title"], "tab": t["title"], "range": a1, "action": "added", "rule_type": rule.get("type")}
     if action == "delete":
         if rule_index is None:
-            raise SheetError("Give rule_index (to delete).")
+            raise SheetError("Give rule_index (to delete; see action=list).")
         c.batch(meta["id"], [{"deleteConditionalFormatRule": {"sheetId": t["id"], "index": int(rule_index)}}])
         return {"title": meta["title"], "tab": t["title"], "action": "deleted", "rule_index": int(rule_index)}
     if action == "update":
         if rule_index is None or not rule:
-            raise SheetError("Give both rule_index and rule (to update).")
-        c.batch(meta["id"], [{"updateConditionalFormatRule": {
-            "rule": _cf_rule(rule, t["id"]), "rule_index": int(rule_index), "sheetId": t["id"]}}])
+            raise SheetError("Give both rule_index and rule (to update; see action=list).")
+        body = dict(_cf_rule(rule, t["id"]), ranges=[grid])
+        c.batch(meta["id"], [{"updateConditionalFormatRule": {"rule": body, "index": int(rule_index), "sheetId": t["id"]}}])
         return {"title": meta["title"], "tab": t["title"], "action": "updated", "rule_index": int(rule_index)}
-    raise SheetError("action: add / update / delete")
+    raise SheetError("action: add / update / delete / list")
 
 
 # ---------- data validation ----------

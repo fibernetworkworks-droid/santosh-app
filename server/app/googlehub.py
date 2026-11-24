@@ -94,6 +94,13 @@ APPS: list[dict[str, Any]] = [
     {"key": "searchconsole", "c": "w", "name": "Search Console", "group": "more",
      "does": "How people find your website on Google.",
      "primary": G + "webmasters.readonly", "ask": lambda: [G + "webmasters.readonly"], "table": None},
+    # v0.999.185 SHEETS COMPLETE: programs inside her sheets, and BigQuery data in a sheet
+    {"key": "appsscript", "c": "a", "name": "Apps Script", "group": "more",
+     "does": "Writes small programs inside your sheets, each after your yes.",
+     "primary": G + "script.projects", "ask": lambda: [G + "script.projects", G + "spreadsheets"], "table": None},
+    {"key": "bigquery", "c": "q", "name": "BigQuery", "group": "more",
+     "does": "Puts your BigQuery tables in a sheet (read only).",
+     "primary": G + "bigquery.readonly", "ask": lambda: [G + "bigquery.readonly", G + "spreadsheets"], "table": None},
 ]
 BY_KEY = {a["key"]: a for a in APPS}
 BY_C = {a["c"]: a for a in APPS}

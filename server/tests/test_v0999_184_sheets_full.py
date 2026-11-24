@@ -95,7 +95,7 @@ class FullFake(FakeSheets):
         elif k in ("updateDimensionProperties", "autoResizeDimensions", "updateBorders"):
             self.dims.append(r)
         elif k == "updateSpreadsheetProperties":
-            bk["title"] = v["properties"]["title"]
+            bk["title"] = v["properties"].get("title", bk["title"])
         elif k == "updateSheetProperties":
             props = v["properties"]
             name, t = self._tab(sid, props["sheetId"])

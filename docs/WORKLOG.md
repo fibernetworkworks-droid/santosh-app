@@ -3648,3 +3648,9 @@ Task ID: v0.999.184 SHEETS FULL
 Ask: Hoola can do 100% of Google Sheets; fix the 5,000-row bug + the 14 gaps
 Built: paged big-sheet reads, 7 new Sheets tools, read formulas, tick boxes, borders, access, locks, condition-name fixes
 Not verified: real Google sheet; Drive-side actions need Drive connected
+
+---
+Task ID: v0.999.185 SHEETS COMPLETE
+Ask: complete the last 10 Google Sheets gaps
+Built: copy/cut cells, file copy, settings, chart/pivot changes, look, groups, slicers, tables, versions, Apps Script, BigQuery, retry, parts
+Not verified: real Google sheet; Apps Script / BigQuery need connecting

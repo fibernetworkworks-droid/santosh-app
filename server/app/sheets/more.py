@@ -724,7 +724,8 @@ def run_pending(c: SheetsClient, p: dict) -> str:
     if act == "unprotect":
         c.batch(pl["sid"], [{"deleteProtectedRange": {"protectedRangeId": int(pl["lock_id"])}}])
         return f"{title}: lock removed."
-    raise SheetError("unknown sheet action")
+    from . import extra            # v0.999.185 the last parts of Sheets
+    return extra.run_pending(c, p)
 
 
 # ======================================================================= watch: a job when new rows arrive

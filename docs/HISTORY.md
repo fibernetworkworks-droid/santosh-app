@@ -11379,3 +11379,56 @@ count pins 649 -> 656; v0.210 sheet count 24 -> 31.
 
 **NOT VERIFIED:** against a real Google sheet (all request shapes from Google's reference). Bin / comments / access on
 a sheet Hoola did not create need the Drive connection (the Sheets-only sign-in has drive.file); the tool says so.
+
+## v0.999.185 SHEETS COMPLETE (owner: the 10 remaining Sheets gaps -> "COMPLETE THIS ALL"): sheet_cells (copy / cut-and-paste a block, paste values / formats / formulas / transpose, a card before writing over filled cells), a full copy of a spreadsheet, the sheet's language / time zone / recalculation, changing and moving a chart, pivot tables listed / changed / removed, colour rules listed (and the range now inside the rule, update sends Google's index - both were wrong), sheet_read show=look (colours, bold, fonts, number formats), +/- grouping of rows and columns, slicers, sheet_table (Google Tables with column types and dropdowns), sheet_versions (list, a copy of an old version, its values and formulas put back after a card - Google lets no app restore in place), sheet_script (Apps Script saved inside a sheet after a card that says what the code can do; onOpen / onEdit run by themselves, others after her Run once - Google runs a script from outside only for the same Cloud project), sheet_bigquery (Connected Sheets: a table or a SELECT, list, refresh, remove); waits and retries when Google says too many requests; big adds (50,000 rows) and block writes (200,000 cells) go in parts; Apps Script and BigQuery in Connectors > Google; registry 661; 14 tests.
+
+The 10 gaps left after v0.999.184, plus Google's speed limit and big writes. New module `sheets/extra.py`, 5 new
+tools (registry 656 -> 661), more actions on existing ones; request shapes from Google's reference (24 Nov 2026).
+
+1. **Copy / cut cells** - `sheet_cells` (copyPaste / cutPaste; paste all / values / format / formulas / no_borders /
+   validation / conditional; transpose). The destination is read first: filled cells that would be written over put a
+   card first (title "Paste over these cells?"), else it runs at once.
+2. **Full copy of a spreadsheet** - `sheet_structure action=copy_file` (Drive files.copy).
+3. **Change a chart** - `sheet_chart action=update` (title / type incl. to and from pie / axis titles / stacked, via
+   updateChartSpec on the chart's own spec) and `action=move` (updateEmbeddedObjectPosition: a cell, a size, or its own
+   tab). **Pivot tables** - `sheet_pivot action=list` (found in the first 300 rows A..AZ of each tab), `update`
+   (rows / values / columns / filters at its top-left cell), `delete` (card).
+4. **Colour rules listed** - `sheet_conditional_format action=list` (rule_index, ranges, condition, colour). FIXED
+   while here: add sent the range BESIDE the rule (Google takes ConditionalFormatRule.ranges) and update sent
+   `rule_index` (Google's field is `index`) - neither could have worked on a real sheet.
+5. **How cells look** - `sheet_read show=look` (effectiveFormat: colours, bold / italic / underline, font, size,
+   number format, alignment, wrap, notes, links; only cells that differ from plain, up to 1,000 cells).
+6. **Grouping** - `sheet_structure` group_rows / group_cols / ungroup_* / collapse_* / expand_* / list_groups
+   (add / delete / updateDimensionGroup). **Slicers** - `sheet_sort_filter` slicer_add / slicer_list / slicer_delete.
+7. **Language / time zone / recalculation** - `sheet_structure action=settings` (locale checked by shape, time zone by
+   zoneinfo, autoRecalc).
+8. **Google Tables** - `sheet_table` add (column types: number / currency / percent / date / time / datetime / text /
+   checkbox / dropdown / rating / person / file / place / finance; a dropdown must have its choices), list, update
+   (name / range / types), delete (the table and its rows: card).
+9. **Older versions** - `sheet_versions` list (Drive revisions; Google may not list every old version of a busy
+   sheet), copy (the version exported as .xlsx and uploaded as a new Google Sheet), restore (that copy, then after a
+   card the tab's old values and formulas written back; colours / formats stay - Google lets no app restore a Sheets
+   version in place).
+10. **Apps Script** - `sheet_script` write (a card shows the functions and what the code can do: email, internet,
+    Drive, delete data, triggers, calendar, sharing; then projects.create bound to the sheet + updateContent with the
+    manifest; other files kept) and read. Google runs an Apps Script from outside only for the same Cloud project, so
+    Hoola saves it: onOpen / onEdit run by themselves, other functions after she presses Run once. Needs the Apps
+    Script API turned on at script.google.com/home/usersettings (said when Google refuses). **BigQuery** -
+    `sheet_bigquery` connect (project_id + a table or a SELECT; write queries refused), list (state), refresh, delete
+    (card). Needs Google Cloud with BigQuery + billing or the free sandbox.
+
+**Smoothness:** `SheetsClient._req` waits and asks again on 429 / 5xx (Retry-After, else 1-2-4-8-16 s, 5 tries) and
+says Google's limit plainly after that; `sheet_append` takes up to 50,000 rows (sent 2,000 at a time),
+`sheet_write_range` up to 200,000 cells (sent in parts of whole rows).
+
+**Connectors > Google:** two new "more" apps - Apps Script (`script.projects`) and BigQuery (`bigquery.readonly`) -
+asked for only when she connects them; console page texts + phone names (Apps Script uses Google's own logo;
+BigQuery shows the Google mark until its artwork is shipped). A missing permission now names the app to connect.
+
+**Tests:** `test_v0999_185_sheets_complete.py` 14 (each gap, the cards, the speed-limit wait, writes in parts,
+registry + Connectors). The test fake reads ranges by their real columns (the v0.210 fake always read from column A).
+Tool count pins 656 -> 661; v0.210 sheet count 31 -> 36.
+
+**NOT VERIFIED:** against a real Google sheet. Apps Script and BigQuery ask Google for new permissions (her app's
+Google verification may need them added). Connected Sheets needs Google Cloud with BigQuery; which Google account
+types allow it was not confirmed.

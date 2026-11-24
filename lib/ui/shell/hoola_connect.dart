@@ -45,6 +45,8 @@ const Map<String, String> _googleNames = {
   'gmail': 'Gmail', 'calendar': 'Calendar', 'drive': 'Drive', 'sheets': 'Sheets', 'docs': 'Docs', 'forms': 'Forms',
   'slides': 'Slides', 'photos': 'Photos', 'youtube': 'YouTube', 'business': 'Business Profile',
   'searchconsole': 'Search Console',
+  'appsscript': 'Apps Script',
+  'bigquery': 'BigQuery',
 };
 
 /// Pure: the line under the Google card's logos (tested). `google` is GET /api/google, or null when it failed.
