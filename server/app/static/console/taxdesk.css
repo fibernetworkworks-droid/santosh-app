@@ -1,4 +1,4 @@
-/* v0.999.175 TAX DESK - the Tax employee's own section. Frame, chat, cards and buttons come from seodesk.css; small shared parts
+/* v0.999.176 TAX DESK - the Tax employee's own section. Frame, chat, cards and buttons come from seodesk.css; small shared parts
    (kpis, alerts, bars, files, letter) from moneydesk.css; only the Tax desk's own parts are here. */
 #txPage{display:flex;flex-direction:column;gap:20px;padding-top:4px}
 .tx-4{grid-template-columns:repeat(4,minmax(0,1fr))}

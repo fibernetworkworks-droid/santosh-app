@@ -1,4 +1,4 @@
-/* v0.999.175 TAX DESK - the Tax (worldwide) employee's own section, like Payroll and Books & Accounts (owner: "GO" on the design
+/* v0.999.176 TAX DESK - the Tax (worldwide) employee's own section, like Payroll and Books & Accounts (owner: "GO" on the design
    claude.ai/artifact/Faegn7ZmcGkTQqdkqRtZ1v).
    A thin top bar, then the Tax chat (its own conversation, kind 'tax': she asks about a return or drops a tax letter) beside the
    desk's pages: Today, Returns, Across borders, Letters, Personal, Dates & settings. The pages call /api/tax/do/<part>, which

@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.175"   # v0.999.175 TAX DESK (owner: "OK FINE LET CONTINUE THE WORK OF AI EMPLOYEE" -> Tax (worldwide) -> design claude.ai/artifact/Faegn7ZmcGkTQqdkqRtZ1v -> "GO"): the Tax employee gets its own section /console/tax + Tax chat (kind tax, `taxchat.py`, its desk block + the tax tool in view, out of her chat lists): Today (next due, to pay, letters waiting, rates to check, overdue returns not marked filed, coming up), Returns (the VAT / GST return laid out like her country's form from her own books, checks, download for filing as PDF + CSV, "I filed it" = her tap with the reference, which locks the period on the desk), Across borders (US sales by state against her limits, the EU One Stop Shop, each limit / rate with its checked state; withholding + e-invoices in the chat), Letters (a tax letter read: from, amount, reference, what it asks, a draft reply with blanks; the reply-by date goes into her dates only after she confirms it), Personal (money in from her statements, the papers checklist she ticks, an estimate only on her bands, the organiser as CSV), Dates & settings (calendar for this year and next, all dates with where each came from, Add a date, country / scheme / period / due rule / tax number, rates and limits - a rate is used only once a person checked it at that value, a changed rate needs checking again); team roles from Books (owner / accountant / approver change, auditor / viewer read, only owner / approver mark filed); Hoola never files, pays or sends a reply; NOT VERIFIED on her server; previous head v0.999.174 TEMPLATES, REDESIGNED; older stories live in git history.
+APP_VERSION = "0.999.176"   # v0.999.176 TAX DESK (owner: "OK FINE LET CONTINUE THE WORK OF AI EMPLOYEE" -> Tax (worldwide) -> design claude.ai/artifact/Faegn7ZmcGkTQqdkqRtZ1v -> "GO"): the Tax employee gets its own section /console/tax + Tax chat (kind tax, `taxchat.py`, its desk block + the tax tool in view, out of her chat lists): Today (next due, to pay, letters waiting, rates to check, overdue returns not marked filed, coming up), Returns (the VAT / GST return laid out like her country's form from her own books, checks, download for filing as PDF + CSV, "I filed it" = her tap with the reference, which locks the period on the desk), Across borders (US sales by state against her limits, the EU One Stop Shop, each limit / rate with its checked state; withholding + e-invoices in the chat), Letters (a tax letter read: from, amount, reference, what it asks, a draft reply with blanks; the reply-by date goes into her dates only after she confirms it), Personal (money in from her statements, the papers checklist she ticks, an estimate only on her bands, the organiser as CSV), Dates & settings (calendar for this year and next, all dates with where each came from, Add a date, country / scheme / period / due rule / tax number, rates and limits - a rate is used only once a person checked it at that value, a changed rate needs checking again); team roles from Books (owner / accountant / approver change, auditor / viewer read, only owner / approver mark filed); Hoola never files, pays or sends a reply; NOT VERIFIED on her server; previous head v0.999.175 APPS, REDESIGNED (theirs, built at the same time, both kept); older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2031,7 +2031,7 @@ def payroll_desk_page():
 @app.get("/console/tax")
 @app.get("/console/tax/")
 def tax_desk_page():
-    """v0.999.175 TAX DESK: the Tax employee's own section (its chat beside its pages)."""
+    """v0.999.176 TAX DESK: the Tax employee's own section (its chat beside its pages)."""
     return FileResponse(STATIC / "console" / "taxdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
                         "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
@@ -2577,7 +2577,7 @@ from . import bookschat as _bookschat_mod                        # noqa: E402  v
 _bookschat_mod.mount(app, current_tenant, require_key)          # /api/books/*
 from . import payrollchat as _payrollchat_mod                    # noqa: E402  v0.999.169 PAYROLL DESK
 _payrollchat_mod.mount(app, current_tenant, require_key)        # /api/payroll/*
-from . import taxchat as _taxchat_mod                            # noqa: E402  v0.999.175 TAX DESK
+from . import taxchat as _taxchat_mod                            # noqa: E402  v0.999.176 TAX DESK
 _taxchat_mod.mount(app, current_tenant, require_key)            # /api/tax/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME

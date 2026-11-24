@@ -1634,7 +1634,7 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_prc.block, tenant_id)
     except Exception:
         log.exception("payroll desk block failed")
-    try:   # v0.999.175 TAX DESK: a turn in the Tax chat (or a call started from it) knows the desk
+    try:   # v0.999.176 TAX DESK: a turn in the Tax chat (or a call started from it) knows the desk
         from .. import taxchat as _txc
         if _txc.is_tax(conversation_id):
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_txc.block, tenant_id)
@@ -2410,7 +2410,7 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "payroll chat"
     except Exception:
         log.exception("payroll chat admission failed")
-    try:   # v0.999.175 TAX DESK: the tax tool in view in the Tax chat
+    try:   # v0.999.176 TAX DESK: the tax tool in view in the Tax chat
         from .. import taxchat as _txc
         if adm is not None and _txc.is_tax(conversation_id):
             adm.admit_families(_txc.FAMILIES)

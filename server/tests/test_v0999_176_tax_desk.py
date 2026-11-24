@@ -1,4 +1,4 @@
-"""v0.999.175 TAX DESK: the Tax (worldwide) employee's own section, built like Payroll and Books & Accounts - its own chat (kind 'tax')
+"""v0.999.176 TAX DESK: the Tax (worldwide) employee's own section, built like Payroll and Books & Accounts - its own chat (kind 'tax')
 with the desk block + the tax tool in view; a return worked out from her books only once a person checked every rate in it; "I
 filed it" with the reference locks the period; tax letters read with the reply-by date a reminder only once she confirms it; US
 sales by state and the EU One Stop Shop with each limit / rate's checked state; the personal organiser with her papers; the

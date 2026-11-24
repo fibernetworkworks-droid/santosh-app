@@ -196,6 +196,17 @@ def make_hub_router(require_key: Callable, current_tenant: Callable) -> APIRoute
                          lang=str(b.get("lang") or "en"), avatar_id=str(b.get("avatar_id") or ""), title=str(b.get("title") or ""),
                          opts=dict(b.get("opts") or {})))
 
+    @r.get("/apps")
+    async def apps_list(tenant: str = Depends(current_tenant)):
+        """v0.999.175 every app on the Apps page with its real state on this server and her recently used ones."""
+        on()
+        return H.apps(tenant)
+
+    @r.post("/apps/used")
+    async def apps_used(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        on()
+        return wrap(H.app_used, tenant, str((body or {}).get("id") or ""))
+
     @r.post("/batch")
     async def batch(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         on()

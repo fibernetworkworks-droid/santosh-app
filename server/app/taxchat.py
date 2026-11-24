@@ -1,4 +1,4 @@
-"""v0.999.175 TAX DESK - the Tax (worldwide) employee's own section, like Payroll and Books & Accounts (owner: "OK FINE LET CONTINUE
+"""v0.999.176 TAX DESK - the Tax (worldwide) employee's own section, like Payroll and Books & Accounts (owner: "OK FINE LET CONTINUE
 THE WORK OF AI EMPLOYEE" -> Tax (worldwide) -> the design claude.ai/artifact/Faegn7ZmcGkTQqdkqRtZ1v -> "GO").
 
 - The Tax chat = a Conversation with kind 'tax', kept out of every Hoola chat list (callconv.not_call); facts she tells it still reach

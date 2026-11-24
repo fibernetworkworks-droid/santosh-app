@@ -11120,7 +11120,26 @@ The Interactive Templates page was six plain cards and a browser prompt() per bl
 - Tests `test_v0999_174_interactive_templates.py` (7, incl. a Chromium walk at 1440 and 390 px). NOT VERIFIED on her server or with
   a real translation model.
 
-## v0.999.175 TAX DESK (owner: "OK FINE LET CONTINUE THE WORK OF AI EMPLOYEE" -> Tax (worldwide) -> design claude.ai/artifact/Faegn7ZmcGkTQqdkqRtZ1v -> "GO")
+
+## v0.999.175 APPS, REDESIGNED (owner: "NOW SAME WAY FOR APPS SECTION -- GIVE ME DESIGN AND PREMIMUM, ADVANCE VIEW -- WITH PROPER WIRING" -> design canvas claude.ai/artifact/EW7fbQi3VZeBoTyPyG88Ke -> "GO")
+
+The Interactive Apps page was ten plain cards whose buttons opened other tools whether they worked or not. Now:
+
+- **Server** (`interactive/hub.py` APPS, `_app_ready`, `apps`, `app_used`; routes GET /hub/apps, POST /hub/apps/used): 12 apps
+  (podcast, clean-up, own voice, music, B-roll, translate, dub, lip sync, batch, many names, from a sheet, AI face), each with
+  where it opens (here / Hoola Vocal / Create), what it costs (free / free draft(s) / priced before it runs), what it needs, and
+  its REAL state on this server read from the engines it uses (`vocal.service.connected`, `create.service.ready`,
+  `cinema.kie.configured`, `interactive.engines.connected('gemini_broll')`); recently used kept per person.
+- **Page** (`interactive.js` apps block): search, kinds, Only ready to use, Recently used, two featured cards (many names, dub),
+  cards with icon, Ready / Not connected, where, cost. Runs on the page: One video, many names (videos that say {name}, names
+  with duplicates left out, a live preview, the drafts listed, the estimate per video, Make N drafts -> /hub/personalise), A
+  batch (scripts split by empty lines, language + face, /hub/batch), Translate (a video + a language -> /hub/translate -> the
+  Studio editor), A B-roll shot (describe, ideas, 4/6/8 s, frame, the price from /x/broll/quote before Make, shots with progress,
+  refreshed every 20 s while one is being made). From a sheet asks which template, then opens its sheet dialog. Vocal and
+  Create apps open their tool. An app that is not connected opens what it needs and what works meanwhile, never a broken page.
+- Tests `test_v0999_175_interactive_apps.py` (4, incl. a Chromium walk at 1440 and 390 px). NOT VERIFIED on her server.
+
+## v0.999.176 TAX DESK (built as 0.999.175; their APPS, REDESIGNED took 0.999.175, both kept; owner: "OK FINE LET CONTINUE THE WORK OF AI EMPLOYEE" -> Tax (worldwide) -> design claude.ai/artifact/Faegn7ZmcGkTQqdkqRtZ1v -> "GO")
 
 The Tax (worldwide) employee gets its own section, built like Payroll / Books & Accounts / Money Safety.
 
@@ -11148,6 +11167,6 @@ The Tax (worldwide) employee gets its own section, built like Payroll / Books & 
 - Desk state lives in the workspace settings under `tax_desk` (checked, letters, filed, papers). Roles from Books: owner / accountant /
   approver change things, auditor / viewer read, only owner / approver mark a return filed.
 - Wiring: employees.js `tax_worldwide: 'taxdesk'`, v2.js title + redirect, phone `hoola_employees.dart` opens `/console/tax`.
-- Tests `test_v0999_175_tax_desk.py` (6 incl. a Chromium walk at 1440 and 390 px); `test_fin_f7.py` updated for the new desk.
+- Tests `test_v0999_176_tax_desk.py` (6 incl. a Chromium walk at 1440 and 390 px); `test_fin_f7.py` updated for the new desk.
   NOT VERIFIED on her server.
 

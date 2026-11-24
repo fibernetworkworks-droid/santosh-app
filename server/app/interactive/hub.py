@@ -745,6 +745,80 @@ def overview(tenant: str) -> dict[str, Any]:
             "usage": usage(tenant, d), "status": status(), "limits": {"batch": MAX_BATCH, "trash_days": TRASH_DAYS}}
 
 
+# ------------------------------------------------------------------ apps (v0.999.175) ---
+APPS: list[dict[str, Any]] = [
+    {"id": "podcast", "group": "voice", "name": "Podcast with two hosts", "where": "vocal", "page": "dialogue", "cost": "priced",
+     "line": "A script from your document or notes, two voices talking, music under it.", "needs": "the voice engine"},
+    {"id": "cleanup", "group": "voice", "name": "Clean up a recording", "where": "vocal", "page": "cleanup", "cost": "free",
+     "line": "Background noise out, loud words softened, long pauses shortened.", "needs": "the sound tools on the server"},
+    {"id": "ownvoice", "group": "voice", "name": "Your own voice", "where": "vocal", "page": "mine", "cost": "priced",
+     "line": "Your voice, copied with your spoken consent, or a new one designed from words.", "needs": "a voice engine that can copy or design voices"},
+    {"id": "music", "group": "voice", "name": "Music under a video", "where": "create", "page": "music", "cost": "priced",
+     "line": "A short jingle or a song in any language, for your video.", "needs": "the music engine"},
+    {"id": "broll", "group": "shots", "name": "A B-roll shot", "where": "here", "page": "broll", "cost": "priced",
+     "line": "A few seconds of the shop, the product or the street. No person in it.", "needs": "the B-roll engine"},
+    {"id": "translate", "group": "shots", "name": "Translate a video", "where": "here", "page": "translate", "cost": "free_draft",
+     "line": "A new draft of any video in another language. Names, prices and dates kept.", "needs": ""},
+    {"id": "dub", "group": "shots", "name": "Dub a video", "where": "vocal", "page": "dub", "cost": "priced",
+     "line": "A video you have, spoken in another language by matched voices.", "needs": "the dubbing engine"},
+    {"id": "lipsync", "group": "shots", "name": "Lip sync a video", "where": "create", "page": "cinema", "cost": "priced",
+     "line": "A video of you, its lips moved to new words. Your consent is asked first.", "needs": "the lip-sync engine"},
+    {"id": "batch", "group": "many", "name": "A batch of videos", "where": "here", "page": "batch", "cost": "free_drafts",
+     "line": "Paste several scripts; each becomes its own draft with your face and voice.", "needs": ""},
+    {"id": "names", "group": "many", "name": "One video, many names", "where": "here", "page": "names", "cost": "free_drafts",
+     "line": "The same video, said to each person by name.", "needs": ""},
+    {"id": "sheet", "group": "many", "name": "From a sheet", "where": "here", "page": "sheet", "cost": "free_drafts",
+     "line": "A template filled from each row of your spreadsheet: names, prices, dates.", "needs": ""},
+    {"id": "aiface", "group": "many", "name": "An AI-made face", "where": "create", "page": "image", "cost": "priced",
+     "line": "A presenter who is no real person, marked as AI wherever it is used.", "needs": "the picture engine"},
+]
+
+
+def _app_ready() -> dict[str, bool]:
+    """Each app's real state on THIS server, read from the engines it uses - never a guess."""
+    from . import engines as EN
+    out: dict[str, bool] = {a["id"]: True for a in APPS}
+    try:
+        from ..vocal import service as VS
+        c = VS.connected()
+        out.update(podcast=bool(c["dialogue"]), cleanup=bool(c["cleanup"]), ownvoice=bool(c["clone"] or c["design"]), dub=bool(c["dub"]))
+    except Exception:   # noqa: BLE001
+        out.update(podcast=False, cleanup=False, ownvoice=False, dub=False)
+    try:
+        from ..create import service as CS
+        r = CS.ready()
+        out.update(music=bool(r.get("song")), aiface=bool(r.get("image")))
+    except Exception:   # noqa: BLE001
+        out.update(music=False, aiface=False)
+    try:
+        from ..cinema import kie
+        out["lipsync"] = bool(kie.configured())
+    except Exception:   # noqa: BLE001
+        out["lipsync"] = False
+    try:
+        out["broll"] = bool(EN.connected("gemini_broll"))
+    except Exception:   # noqa: BLE001
+        out["broll"] = False
+    return out
+
+
+def apps(tenant: str) -> dict[str, Any]:
+    ready = _app_ready()
+    used = dict(_d(tenant).get("apps_used") or {})
+    rows = [{**a, "ready": ready.get(a["id"], False), "used": used.get(a["id"], "")} for a in APPS]
+    return {"apps": rows, "recent": [a for a in sorted(rows, key=lambda x: x["used"], reverse=True) if a["used"]][:3]}
+
+
+def app_used(tenant: str, aid: str) -> dict[str, Any]:
+    if aid not in {a["id"] for a in APPS}:
+        raise S.StudioError("That app was not found.")
+    with S._LOCK:
+        d = _d(tenant)
+        d.setdefault("apps_used", {})[aid] = S._now_iso()
+        S._store(tenant, d)
+    return {"ok": True}
+
+
 def voice_sample(lang: str) -> bytes:
     """A short spoken line in the Hoola voice, so she can hear it before she picks. Needs the engine."""
     from . import lab

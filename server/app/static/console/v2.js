@@ -396,7 +396,7 @@ function go(v, arg) {
   if (v === 'moneydesk') { location.assign('/console/money'); return; }   // v0.999.156 MONEY SAFETY DESK: its own section
   if (v === 'booksdesk') { location.assign('/console/books'); return; }   // v0.999.158 BOOKS DESK: its own section
   if (v === 'payrolldesk') { location.assign('/console/payroll'); return; }   // v0.999.169 PAYROLL DESK: its own section
-  if (v === 'taxdesk') { location.assign('/console/tax'); return; }   // v0.999.175 TAX DESK: its own section
+  if (v === 'taxdesk') { location.assign('/console/tax'); return; }   // v0.999.176 TAX DESK: its own section
   if (v === 'telecallerdesk') { location.assign('/console/telecaller'); return; }   // v0.999.67 AI TELECALLER: its own section   // v0.999.52 LEAD DESK: its own section (chat beside the screens); ?full=1 keeps the old page
   if (v === 'leadsdesk') EMP?.leads($('#leadsdesk'));   // v0.686.0 Leads Desk (the Lead Generation employee)
   if (v === 'deptdesk') DDK?.open($('#deptdesk'), arg);
