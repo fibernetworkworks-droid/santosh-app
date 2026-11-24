@@ -11204,3 +11204,14 @@ Phone (`lib/ui/setup_screen.dart`): the same design on the app's own light / dar
 Tests: `server/tests/test_login_premium.py` (3, incl. a Chromium walk of the whole email sign-up at 1280 and 390 px).
 
 NOT VERIFIED: the phone screen compiles first on CI (no Flutter here); email sign-in on her server still needs SITE_MAIL_* in the VPS .env.
+
+## v0.999.179 LOGIN CENTRED (owner, her screenshot of the v0.999.178 login on a wide screen: "check the details gone very left fix this"): the left side of the console login (brand, the sentence, the example card, the "works with" line) now sits in one centred 520 px column inside its half, the sentence and the card in the middle of the height; the browser walk checks the gap is the same on both sides.
+
+What she saw: on a wide screen (about 1580 px) the left half of the new login is ~800 px wide, but its words began 50 px from the edge and stopped at ~520 px, leaving the rest of the half empty, so everything looked pushed to the left.
+
+Fix (server/app/static/console/v2.css, appended block "v0.999.179"):
+- every child of .lg-side gets width min(100%, 520px) with auto side margins, so the brand, the sentence, the example card and the "works with" line share one centred column;
+- the brand keeps its own width (a link should not be a full-width target) and is lined up with that column by margin-left max(0px, (100% - 520px) / 2);
+- .lg-pitch and .lg-works take margin-top auto, so the sentence and the card sit in the middle of the height.
+
+Checked at 1000, 1280, 1580 and 1920 px, light and dark: the left and right gaps match within a pixel; under 900 px the left side is still hidden. test_login_premium.py browser walk now asserts the two gaps differ by 3 px at most.

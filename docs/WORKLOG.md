@@ -3612,3 +3612,9 @@ Task ID: v0.999.178 LOGIN, PREMIUM
 Ask: login page more professional and premium, design first -> A -- GO
 Built: console #login direction A (v2.html / v2.css / v2.js), phone setup_screen.dart in the same design
 Not verified: phone screen compiles first on CI
+
+---
+Task ID: v0.999.179 LOGIN CENTRED
+Ask: the details gone very left fix this
+Built: v2.css .lg-side children in one centred 520 px column; browser walk checks the gap
+Not verified: on her server until deploy

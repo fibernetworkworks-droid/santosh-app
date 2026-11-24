@@ -5004,3 +5004,9 @@ html.human #app .landing .halo{display:none}
 }
 #login .lg-out{color:var(--ink)}
 #login .lnk:disabled{color:var(--dim);cursor:default;text-decoration:none}
+/* v0.999.179 the left side's words sit in one centred column (owner: "the details gone very left"), the pitch and the
+   moment in the middle of the height, the brand above and the "works with" line below on the same left edge. */
+.lg-side>*{box-sizing:border-box;width:min(100%,520px);max-width:none;margin-left:auto;margin-right:auto}
+.lg-side .lg-pitch{margin-top:auto}
+.lg-side .lg-works{margin-top:auto;margin-bottom:0}
+.lg-side .lg-brand{width:max-content;margin-left:max(0px,calc((100% - 520px) / 2))}

@@ -56,6 +56,13 @@ def test_browser_walk_email_sign_up(arena_server, monkeypatch):
         p.wait_for_selector("#lstep1:not([hidden])")
         assert p.is_visible(".lg-side") == (w > 900)
         assert p.evaluate("document.documentElement.scrollWidth") <= w
+        if w > 900:                                 # v0.999.179: the left side's words sit centred, not hugging the edge
+            gap = p.evaluate("""() => { const s = document.querySelector('.lg-side').getBoundingClientRect();
+                return ['.lg-pitch', '.lg-moment', '.lg-works'].map(q => {
+                    const e = document.querySelector('.lg-side ' + q).getBoundingClientRect();
+                    return [Math.round(e.left - s.left), Math.round(s.right - e.right)]; }); }""")
+            for left, right in gap:
+                assert abs(left - right) <= 3, gap
         addr = f"asha{w}@gmail.com"
         p.fill("#lemail", addr)
         p.click("#ebtn")
