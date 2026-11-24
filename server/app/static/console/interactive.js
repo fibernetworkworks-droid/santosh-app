@@ -1167,7 +1167,7 @@ window.HoolaInteractive = function (ctx) {
     const a = appOf(id); if (!a) return '';
     return `<article class="hx-afeat ${aTint(a)}"><div class="hx-afst" aria-hidden="true"><i></i><i></i><i></i></div>
       <div class="hx-growf"><small>${esc(kicker)}</small><h3 class="hx-serif">${esc(a.name)}</h3><p>${esc(line)}</p>
-        <div class="hx-acts"><button type="button" class="hx-btn dark" data-a="aopen" data-id="${esc(id)}">${esc(a.ready ? cta : 'See what it needs')}</button><span class="hx-sm">${esc(a.ready ? meta : 'Not connected yet')}</span></div></div></article>`;
+        <div class="hx-acts"><button type="button" class="hx-btn dark" data-a="aopen" data-id="${esc(id)}">${esc(a.ready ? cta : 'See what it needs')}</button><span class="hx-sm">${esc(a.ready ? meta : 'Needs an engine on this server')}</span></div></div></article>`;
   }
   function appsLib() {
     const all = UI.apps?.apps || [], n = g => all.filter(a => g === 'all' || a.group === g).length, rec = UI.apps?.recent || [];
