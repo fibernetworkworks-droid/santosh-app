@@ -253,9 +253,10 @@ class GoogleReconnectCard extends StatelessWidget {
         Text('${v['text'] ?? ''}', style: const TextStyle(color: C.chip, fontSize: 13)),
         const SizedBox(height: 10),
         Row(children: [
-          Expanded(child: GradientButton(label: 'Link Google', icon: Icons.add_to_drive_rounded, height: 44, onTap: () async {
-            try {
-              final url = await app.api!.driveLinkUrl();
+          Expanded(child: GradientButton(label: 'Reconnect Google', icon: Icons.sync_rounded, height: 44, onTap: () async {
+            try {   // v0.999.181 the whole Google account comes back (Gmail, Calendar, Drive...), not only Drive
+              final url = await app.api!.googleConnectUrl(
+                  '${v['app'] ?? ''}'.isEmpty ? const ['core'] : ['${v['app']}'], hint: '${v['email'] ?? ''}');
               await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
             } catch (e) {
               if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));

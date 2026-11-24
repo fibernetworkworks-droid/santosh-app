@@ -19,9 +19,9 @@
    already uses. */
 'use strict';
 window.HoolaConnectors = function ({api, esc, toast, say}) {
-  const TABS = [['apps', 'Apps'], ['connected', 'Connected'], ['mcp', 'MCP servers'], ['builtin', 'Built in'], ['apis', 'Public APIs'], ['limits', 'Limits & safety']];
+  const TABS = [['google', 'Google'], ['apps', 'Apps'], ['connected', 'Connected'], ['mcp', 'MCP servers'], ['builtin', 'Built in'], ['apis', 'Public APIs'], ['limits', 'Limits & safety']];
   const LS_TAB = 'hoola.connectors.tab', LS_PENDING = 'hoola.connect.pending';
-  let ROOT = null, TAB = 'apps';
+  let ROOT = null, TAB = 'google';   // v0.999.181 Google first
   try { const t = localStorage.getItem(LS_TAB); if (TABS.some(([k]) => k === t)) TAB = t; } catch {}
 
   const S = {
@@ -31,7 +31,8 @@ window.HoolaConnectors = function ({api, esc, toast, say}) {
     dir: {q: '', list: [], note: '', stats: null},
     apis: {q: '', cat: '', auth: 'any', list: [], count: 0, cats: [], ctl: null},
     built: {q: '', show: 'all', open: new Set()},
-    loaded: {mcp: false, builtin: false, apis: false, limits: false, connected: false},
+    loaded: {mcp: false, builtin: false, apis: false, limits: false, connected: false, google: false},
+    google: null,               // v0.999.181 GET /api/google
   };
 
   /* ------------------------------------------------------------------ small helpers */
@@ -203,7 +204,7 @@ window.HoolaConnectors = function ({api, esc, toast, say}) {
     S.loaded.limits = true;
   }
   async function refreshAll() {
-    const jobs = [loadApps(false)];
+    const jobs = [loadApps(false), loadGoogle()];
     if (S.loaded.mcp || TAB === 'mcp' || TAB === 'connected') jobs.push(loadMcp());
     if (S.loaded.builtin || TAB === 'builtin' || TAB === 'connected') jobs.push(loadBuiltin());
     await Promise.all(jobs);
@@ -215,7 +216,8 @@ window.HoolaConnectors = function ({api, esc, toast, say}) {
     const feat = S.feat.filter(f => f.status === 'ready').length;
     const own = S.mine.filter(m => !String(m.directory_ref || '').startsWith('featured:') && m.status === 'ready').length;
     const linked = S.conn.filter(c => c.status === 'ready' && !c.custom && !c.no_login).length;
-    return S.joined.filter(a => a.status === 'ready').length + feat + own + linked;
+    const goo = (S.google?.apps || []).filter(a => a.state === 'ok').length;
+    return S.joined.filter(a => a.status === 'ready').length + feat + own + linked + goo;
   }
   function drawHead() {
     const A = S.apps, c = connectedCount();
@@ -249,21 +251,21 @@ window.HoolaConnectors = function ({api, esc, toast, say}) {
   }
   async function drawBody() {
     const body = $('.cx-body'); if (!body) return;
-    const need = {mcp: 'mcp', builtin: 'builtin', apis: 'apis', limits: 'limits'}[TAB];
+    const need = {mcp: 'mcp', builtin: 'builtin', apis: 'apis', limits: 'limits', google: 'google'}[TAB];
     if (TAB === 'connected' && (!S.loaded.mcp || !S.loaded.builtin)) {
       body.innerHTML = skeleton(6);
       await Promise.all([S.loaded.mcp ? 0 : loadMcp(), S.loaded.builtin ? 0 : loadBuiltin()]);
       drawHead();
     } else if (need && !S.loaded[need]) {
       body.innerHTML = TAB === 'limits' ? skeleton(2) : skeleton(9);
-      await {mcp: loadMcp, builtin: loadBuiltin, apis: loadApis, limits: loadLimits}[need]();
+      await {mcp: loadMcp, builtin: loadBuiltin, apis: loadApis, limits: loadLimits, google: loadGoogle}[need]();
       if (TAB === 'mcp' || TAB === 'builtin') drawHead();
     } else if (TAB === 'apps' && !S.apps.loaded) {
       body.innerHTML = appsBar() + skeleton(12);
       await loadApps(false); drawHead();
     }
     if (!body.isConnected) return;
-    body.innerHTML = {apps: appsView, connected: connectedView, mcp: mcpView, builtin: builtinView, apis: apisView, limits: limitsView}[TAB]();
+    body.innerHTML = {google: googleView, apps: appsView, connected: connectedView, mcp: mcpView, builtin: builtinView, apis: apisView, limits: limitsView}[TAB]();
   }
   const skeleton = n => `<div class="cx-grid">${Array.from({length: n}, () => '<div class="cx-card sk"><span></span><span></span><span></span></div>').join('')}</div>`;
 
@@ -709,6 +711,128 @@ window.HoolaConnectors = function ({api, esc, toast, say}) {
     if (ok) { toast('Key saved.'); await loadApis(); drawBody(); }
   }
 
+
+  /* ------------------------------------------------------------------ Google (v0.999.181 GOOGLE CONNECTIONS)
+     Every Google app on Hoola's own connection: one tap for the everyday seven, one Connect each for the rest.
+     A connect always lands on THIS Hoola account (the server binds it); status is what the server really holds. */
+  const GA = {
+    gmail: ['M3 6h18v12H3z M3 7l9 6 9-6', '#B3261E'], calendar: ['M4 6h16v14H4z M4 10h16 M8 3v4 M16 3v4', '#1A5FC4'],
+    drive: ['M8 4h8l6 10-4 6H6l-4-6z M2 14h20', '#16723A'], docs: ['M6 3h9l4 4v14H6z M9 12h7 M9 16h7 M9 8h3', '#1A5FC4'],
+    sheets: ['M5 3h14v18H5z M5 9h14 M5 15h14 M11 9v12', '#16723A'], forms: ['M5 3h14v18H5z M9 8h7 M9 12h7 M9 16h7', '#6A2AA8'],
+    slides: ['M3 5h18v12H3z M12 17v4 M8 21h8', '#8A5300'], photos: ['M3 5h18v14H3z M3 16l5-5 4 4 3-3 6 6', '#B3261E'],
+    youtube: ['M3 7c0-2 1-3 3-3h12c2 0 3 1 3 3v10c0 2-1 3-3 3H6c-2 0-3-1-3-3z M10 9l5 3-5 3z', '#B3261E'],
+    business: ['M4 9l1-5h14l1 5 M4 9h16v11H4z M9 20v-6h6v6', '#1A5FC4'], searchconsole: ['M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z M21 21l-5-5', '#1A5FC4'],
+  };
+  const gTile = (k, big) => { const [d, c] = GA[k] || GA.drive; return `<span class="cx-gtile${big ? ' big' : ''}" style="--g:${c}" aria-hidden="true"><svg width="${big ? 22 : 19}" height="${big ? 22 : 19}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg></span>`; };
+  const gName = k => (S.google?.apps || []).find(a => a.key === k)?.name || k;
+  const gPill = st => st === 'ok' ? `<span class="cx-pill ok"><i></i>Connected</span>` : st === 'expired' ? `<span class="cx-pill warn">Reconnect</span>` : `<span class="cx-pill mute">Not connected</span>`;
+  const gInitial = e => esc(String(e || '?').charAt(0).toUpperCase());
+  async function loadGoogle() {
+    try { S.google = await api('GET', '/api/google'); } catch (e) { S.google = {error: e.message, accounts: [], apps: []}; }
+    S.loaded.google = true;
+  }
+  function googleView() {
+    const G = S.google || {accounts: [], apps: []};
+    if (G.error) return empty('plug', 'Google did not load', G.error);
+    if (G.ready === false) return empty('plug', 'Google is not set up on this server', 'The server needs its Google sign-in keys before anyone can connect Google apps.');
+    const accts = G.accounts || [], core = G.apps.filter(a => a.group === 'core'), more = G.apps.filter(a => a.group === 'more');
+    const allCore = core.every(a => a.state === 'ok');
+    const acctRow = a => `<div class="cx-grow${a.state === 'expired' ? ' warn' : ''}">
+        <span class="cx-gav">${gInitial(a.email)}</span>
+        <div class="cx-gtxt"><b>${esc(a.email)}${a.first ? ' <em>· used first</em>' : ''}</b>
+          <span>${a.state === 'expired' ? 'Google ended Hoola’s access. Apps on this account have stopped.' : esc(a.apps.map(gName).join(', ') || 'No apps yet')}</span></div>
+        ${a.state === 'expired' ? '<span class="cx-pill warn">Needs reconnecting</span>' : '<span class="cx-pill ok"><i></i>Connected</span>'}
+        ${a.state === 'expired' ? `<button class="cx-btn pri" data-g-connect="${esc(a.apps.join(',') || 'core')}" data-g-hint="${esc(a.email)}">Reconnect</button>` : `<button class="cx-btn soft" data-g-acct="${esc(a.email)}">Manage</button>`}
+      </div>`;
+    const card = a => `<article class="cx-card${a.state === 'ok' ? ' on' : ''}" data-g-app="${esc(a.key)}" tabindex="0" aria-label="${esc(a.name)}">
+        <div class="cx-ctop">${gTile(a.key)}<div class="cx-cname"><h3>${esc(a.name)}</h3></div>${gPill(a.state)}</div>
+        <p class="cx-line">${esc(a.does)}</p>
+        <div class="cx-cfoot"><span class="cx-meta">${a.state === 'expired' ? `${a.expired.length} account${a.expired.length > 1 ? 's' : ''} to reconnect` : a.working.length ? esc(a.working.join(', ')) : ''}</span>
+          ${a.state === 'ok' ? '' : `<button class="cx-btn ${a.state === 'expired' ? 'pri' : 'soft'}" data-g-connect="${esc(a.key)}"${a.expired[0] ? ` data-g-hint="${esc(a.expired[0])}"` : ''}>${a.state === 'expired' ? 'Reconnect' : 'Connect'}</button>`}</div>
+      </article>`;
+    const row = a => `<div class="cx-grow" data-g-app="${esc(a.key)}">${gTile(a.key)}
+        <div class="cx-gtxt"><b>${esc(a.name)}</b><span>${esc(a.does)}</span></div>${a.state === 'none' ? '' : gPill(a.state)}
+        ${a.state === 'ok' ? `<button class="cx-btn soft" data-g-app="${esc(a.key)}">Manage</button>` : `<button class="cx-btn ${a.state === 'expired' ? 'pri' : 'soft'}" data-g-connect="${esc(a.key)}">${a.state === 'expired' ? 'Reconnect' : 'Connect'}</button>`}</div>`;
+    return `<section class="cx-gsec"><div class="cx-sechead"><div><h2>Your Google accounts</h2><p>${accts.length ? 'Hoola works in these accounts for you.' : 'Connect a Google account and Hoola can work in Gmail, Calendar, Drive and more.'}</p></div>
+        <button class="cx-btn soft" data-g-connect="core" data-g-hint="">${ic('plus', 14)}${accts.length ? 'Add another Google account' : 'Connect Google'}</button></div>
+        ${accts.length ? `<div class="cx-glist">${accts.map(acctRow).join('')}</div>` : ''}
+        ${G.signin && !accts.length ? `<p class="cx-p">You signed in with ${esc(G.signin)}. Signing in only shares your name and email, so the apps still need connecting.</p>` : ''}</section>
+      <section class="cx-gsec"><div class="cx-sechead"><div><h2>Everyday apps</h2><p>One tap connects all seven. On Google’s page you can untick any you don’t want.</p></div>
+        ${allCore ? '' : `<button class="cx-btn pri" data-g-connect="core">Connect everyday apps</button>`}</div>
+        <div class="cx-grid">${core.map(card).join('')}</div></section>
+      <section class="cx-gsec"><div class="cx-sechead"><div><h2>More Google apps</h2><p>Connect each one only when you need it.</p></div></div>
+        <div class="cx-glist">${more.map(row).join('')}</div></section>
+      <div class="cx-note">${ic('shield', 15)}<span>Hoola never sends, shares, deletes or posts anything without your yes. Disconnecting an account also removes Hoola’s access in your Google account.</span></div>`;
+  }
+  async function gConnectAsk(keys, hint) {
+    const G = S.google || {accounts: []};
+    const core = !keys.length || keys.includes('core');
+    const list = core ? (G.core || ['gmail', 'calendar', 'drive', 'docs', 'sheets', 'forms', 'slides']) : keys;
+    const accts = G.accounts || [];
+    const pick = hint || (accts.find(a => a.first)?.email || G.signin || '');
+    const opts = [...new Set([pick, ...accts.map(a => a.email)].filter(Boolean))];
+    const body = `<p class="cx-p">Hoola will ask Google for ${list.length > 1 ? 'these apps' : 'this app'}. You can untick any of them on Google’s page.</p>
+      <ul class="cx-gask">${list.map(k => `<li>${gTile(k)}<span>${esc(gName(k))}</span></li>`).join('')}</ul>
+      <label class="cx-field"><span>Google account</span><select name="hint" class="cx-select">${opts.map(e => `<option value="${esc(e)}"${e === pick ? ' selected' : ''}>${esc(e)}</option>`).join('')}<option value="">Another account…</option></select></label>
+      <div class="cx-note">${ic('shield', 15)}<span>Google may first say it hasn’t checked Hoola yet. Choose Advanced, then Go to Hoola.</span></div>`;
+    await modal({title: hint && accts.some(a => a.email === hint && a.state === 'expired') ? 'Reconnect Google' : 'Connect Google', body, ok: 'Continue to Google',
+      onOk: async el => { const r = await api('POST', '/api/google/connect', {apps: core ? ['core'] : list, surface: 'web', hint: val(el, 'hint')}); location.href = r.url; return true; }});
+  }
+  function gResult(r) {
+    if (!r.ok) { modal({title: 'Google was not connected', body: `<p class="cx-p">${esc(r.why || 'Something went wrong. Try again.')}</p>`, ok: ''}); return; }
+    const got = r.got.split(',').filter(Boolean), miss = r.miss.split(',').filter(Boolean);
+    const acct = (S.google?.accounts || [])[0]?.email || '';
+    modal({title: 'Google is connected', sub: acct ? esc(acct) + ' · on your Hoola account' : '', ok: '',
+      body: `<ul class="cx-gask done">${got.map(k => `<li>${gTile(k)}<span>${esc(gName(k))}</span>${ic('check', 15)}</li>`).join('')}</ul>
+        ${miss.length ? `<div class="cx-gmiss">${miss.map(k => `<div>${gTile(k)}<span>${esc(gName(k))}: you left it unticked</span><button class="cx-btn soft" data-cx="close" data-g-connect="${esc(k)}">Allow</button></div>`).join('')}</div>` : ''}
+        ${got.includes('gmail') || got.includes('calendar') ? `<div class="cx-gtry"><b>Try now</b>${got.includes('gmail') ? '<button class="cx-chip" data-say="What needs me in my inbox?">What needs me in my inbox?</button>' : ''}${got.includes('calendar') ? '<button class="cx-chip" data-say="What is on my calendar tomorrow?">What is on my calendar tomorrow?</button>' : ''}</div>` : ''}`});
+    const m = MODAL?.el;
+    m?.addEventListener('click', e => { const g = e.target.closest('[data-g-connect]'); if (g) gConnectAsk([g.dataset.gConnect], ''); const s = e.target.closest('[data-say]'); if (s) { closeModal(null); say(s.dataset.say); } });
+  }
+  function gAppDrawer(k) {
+    const G = S.google || {apps: []}, a = G.apps.find(x => x.key === k); if (!a) return;
+    const accts = [...a.working.map(e => [e, 'ok']), ...a.expired.map(e => [e, 'expired'])];
+    const el = drawer(`<div class="cx-phead">${gTile(k, true)}<div><h2>${esc(a.name)}</h2><p>${esc(a.does)}</p></div><button class="cx-iconbtn" data-cd="close" aria-label="Close">${ic('x')}</button></div>
+      <div class="cx-pbody">
+        ${accts.length ? `<h3 class="cx-h3">Accounts Hoola uses for ${esc(a.name)}</h3>
+          <div class="cx-glist">${accts.map(([e, st]) => `<label class="cx-grow${st === 'expired' ? ' warn' : ''}">${accts.length > 1 ? `<input type="radio" name="gfirst" value="${esc(e)}"${e === a.first ? ' checked' : ''}>` : ''}
+            <div class="cx-gtxt"><b>${esc(e)}</b><span>${e === a.first && accts.length > 1 ? 'Used first' : st === 'expired' ? 'Google ended Hoola’s access' : 'Working'}</span></div>
+            ${st === 'expired' ? `<button class="cx-btn pri" type="button" data-g-reconnect="${esc(e)}">Reconnect</button>` : `<button class="cx-btn ghost" type="button" data-g-off="${esc(e)}">Disconnect</button>`}</label>`).join('')}</div>
+          ${accts.length > 1 ? `<p class="cx-p">“Used first” is the account Hoola picks when you don’t name one.</p>` : ''}`
+        : `<p class="cx-p">${esc(a.name)} is not connected yet.</p>`}
+        <div class="cx-actions"><button class="cx-btn pri" type="button" data-g-reconnect="">${accts.length ? 'Connect another account' : 'Connect ' + esc(a.name)}</button></div>
+      </div>`);
+    el.addEventListener('click', async e => {
+      if (e.target.closest('[data-cd="close"]')) return closeDrawer();
+      const rc = e.target.closest('[data-g-reconnect]'); if (rc) { closeDrawer(); gConnectAsk([k], rc.dataset.gReconnect); return; }
+      const off = e.target.closest('[data-g-off]');
+      if (off) {
+        const ok = await confirmBox(`Disconnect ${a.name}?`, `Hoola stops using ${a.name} for ${off.dataset.gOff}. Your other apps stay connected. To remove all of Hoola’s access, disconnect the whole account from Your Google accounts.`, 'Disconnect');
+        if (!ok) return;
+        try { await api('POST', '/api/google/disconnect', {email: off.dataset.gOff, app: k}); toast(`${a.name} disconnected.`); closeDrawer(); await loadGoogle(); drawBody(); drawHead(); } catch (x) { toast(x.message, true); }
+      }
+    });
+    el.addEventListener('change', async e => {
+      if (e.target.name !== 'gfirst') return;
+      try { await api('POST', '/api/google/first', {app: k, email: e.target.value}); toast(`${a.name} now uses ${e.target.value} first.`); await loadGoogle(); } catch (x) { toast(x.message, true); }
+    });
+  }
+  function gAcctDrawer(email) {
+    const a = (S.google?.accounts || []).find(x => x.email === email); if (!a) return;
+    const el = drawer(`<div class="cx-phead"><span class="cx-gav big">${gInitial(a.email)}</span><div><h2>${esc(a.email)}</h2><p>${a.first ? 'Used first by every app' : 'Google account'}</p></div><button class="cx-iconbtn" data-cd="close" aria-label="Close">${ic('x')}</button></div>
+      <div class="cx-pbody"><h3 class="cx-h3">Apps on this account</h3>
+        <div class="cx-glist">${a.apps.map(k => `<div class="cx-grow">${gTile(k)}<div class="cx-gtxt"><b>${esc(gName(k))}</b></div><span class="cx-pill ok"><i></i>Connected</span></div>`).join('') || '<p class="cx-p">None yet.</p>'}</div>
+        <div class="cx-actions"><button class="cx-btn soft" type="button" data-g-more>Add apps</button><button class="cx-btn danger ghost" type="button" data-g-drop>Disconnect this account…</button></div></div>`);
+    el.addEventListener('click', async e => {
+      if (e.target.closest('[data-cd="close"]')) return closeDrawer();
+      if (e.target.closest('[data-g-more]')) { closeDrawer(); gConnectAsk(['core'], a.email); return; }
+      if (!e.target.closest('[data-g-drop]')) return;
+      const ok = await confirmBox('Disconnect this Google account?', `Hoola stops using every app on ${a.email}, and its access is removed in your Google account too.`, 'Disconnect');
+      if (!ok) return;
+      try { await api('POST', '/api/google/disconnect', {email: a.email}); toast('Google account disconnected.'); closeDrawer(); await loadGoogle(); drawBody(); drawHead(); } catch (x) { toast(x.message, true); }
+    });
+  }
+
   /* ------------------------------------------------------------------ Limits & safety */
   function limitsView() {
     const s = S.settings || {};
@@ -781,6 +905,9 @@ window.HoolaConnectors = function ({api, esc, toast, say}) {
       const aa = t.closest('[data-aauth]'); if (aa) { S.apis.auth = aa.dataset.aauth; await loadApis(); drawBody(); return; }
       const ak = t.closest('[data-api-key]'); if (ak) { apiKey(ak.dataset.apiKey); return; }
       const ad = t.closest('[data-api-del]'); if (ad) { try { await api('DELETE', `/api/publicapis/${encodeURIComponent(ad.dataset.apiDel)}/key`); toast('Key removed.'); await loadApis(); drawBody(); } catch (x) { toast(x.message, true); } return; }
+      const gc = t.closest('[data-g-connect]'); if (gc) { gConnectAsk(gc.dataset.gConnect.split(',').filter(Boolean), gc.dataset.gHint || ''); return; }
+      const ga = t.closest('[data-g-app]'); if (ga) { gAppDrawer(ga.dataset.gApp); return; }
+      const gm = t.closest('[data-g-acct]'); if (gm) { gAcctDrawer(gm.dataset.gAcct); return; }
       const sy = t.closest('[data-say]'); if (sy) { say(sy.dataset.say); return; }
       const rt = t.closest('[data-retry]'); if (rt) { busy(rt, true, 'Loading…'); S.loaded.mcp = S.loaded.builtin = false; await drawBody(); drawHead(); return; }
       if (t.closest('button,a,input,select,textarea,summary,label')) return;
@@ -817,6 +944,8 @@ window.HoolaConnectors = function ({api, esc, toast, say}) {
     if (tab && TABS.some(([k]) => k === tab)) TAB = tab;
     if (ROOT !== el || !el.querySelector('.cx')) { ROOT = el; frame(); wire(); }
     drawHead(); await drawBody();
+    if (window.HOOLA_GCONN) { const r = window.HOOLA_GCONN; window.HOOLA_GCONN = null; if (!S.loaded.google) await loadGoogle(); gResult(r); }
+    if (!S.loaded.google) { await loadGoogle(); drawHead(); }
     if (!S.apps.loaded) { await loadApps(false); drawHead(); }                 // the counts in the header need every list
     if (!S.loaded.mcp) { await loadMcp(); drawHead(); }
     if (!S.loaded.builtin) { await loadBuiltin(); drawHead(); }

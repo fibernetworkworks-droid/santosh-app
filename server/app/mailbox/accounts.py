@@ -56,8 +56,7 @@ def _post(url: str, data: dict) -> dict:
     return r.json()
 
 
-RECONNECT = ("This mailbox's login has expired (Google ended it). Tell the owner: in the app, press 'reconnect' in Profile > Email "
-             "(or Profile > Google Drive) and tick all the boxes. Until then this mailbox's work "
+RECONNECT = ("This mailbox's login has expired (Google ended it). Tell the owner: On the web console open Connectors > Google, or in the phone app open Settings > Google, and press Reconnect. Until then this mailbox's work "
              "will not run - do not try again.")
 
 
@@ -83,20 +82,24 @@ def _oauth_token(account_id: str, force: bool) -> str:
     with session() as s:
         a = s.get(MailAccount, account_id)
         if a is None:
-            raise NotConnected("This mailbox is no longer connected to Santosh.")
+            raise NotConnected("This mailbox is no longer connected to Hoola.")
         exp = as_utc(a.expiry)
         if not force and a.access_token_enc and exp and exp > now() + timedelta(seconds=90):
             return acc.decrypt(a.access_token_enc) or ""
         refresh = acc.decrypt(a.refresh_token_enc)
         kind = a.kind
     if not refresh:
-        raise MailError("The mailbox login has expired. Reconnect it in the app under Profile > Email.")
-    if kind == "gmail":
-        tok = _post(GOOGLE_TOKEN, {"client_id": st.google_oauth_client_id, "client_secret": st.google_oauth_client_secret,
-                                   "refresh_token": refresh, "grant_type": "refresh_token"})
-    else:
-        tok = _post(_ms_token_url(), {"client_id": st.ms_oauth_client_id, "client_secret": st.ms_oauth_client_secret,
-                                      "refresh_token": refresh, "grant_type": "refresh_token", "scope": " ".join(MS_SCOPES)})
+        raise MailError("The mailbox login has expired. On the web console open Connectors > Google, or in the phone app open Settings > Google, and press Reconnect.")
+    try:
+        if kind == "gmail":
+            tok = _post(GOOGLE_TOKEN, {"client_id": st.google_oauth_client_id, "client_secret": st.google_oauth_client_secret,
+                                       "refresh_token": refresh, "grant_type": "refresh_token"})
+        else:
+            tok = _post(_ms_token_url(), {"client_id": st.ms_oauth_client_id, "client_secret": st.ms_oauth_client_secret,
+                                          "refresh_token": refresh, "grant_type": "refresh_token", "scope": " ".join(MS_SCOPES)})
+    except NotConnected as e:      # v0.999.181 remembered: the status screens say "Reconnect" and the watcher stops asking
+        mark_error(account_id, str(e))
+        raise
     with session() as s:
         a = s.get(MailAccount, account_id)
         a.access_token_enc = acc.encrypt(tok["access_token"])
@@ -159,7 +162,8 @@ def boxes(tenant: str) -> list[Box]:
     if tenant == st.tenant_id and env_configured() and st.email_address.lower() not in {b.address for b in out}:
         out.append(ImapBox("env", st.email_address, st.email_password, st.email_sender_name, _kv_signature(tenant, "env"),
                            st.email_imap_host, st.email_imap_port, st.email_smtp_host, st.email_smtp_port))
-    return out
+    from ..googlehub import arrange   # v0.999.181 her first choice first, refused accounts last
+    return arrange(tenant, "gmail", out)
 
 
 def has_mail(tenant: str) -> bool:
@@ -172,8 +176,8 @@ def has_mail(tenant: str) -> bool:
 def get_box(tenant: str, which: str | None = None) -> Box:
     bs = boxes(tenant)
     if not bs:
-        raise NotConnected("Your email is not connected to Santosh yet. In the app, under Profile > Email, connect Gmail, Outlook or "
-                           "any email (with an app password).")
+        raise NotConnected("Your email is not connected to Hoola yet. For Gmail: on the web console open Connectors > Google, or in the phone "
+                           "app open Settings > Google, and press Connect. Outlook or any other email: phone app, Settings > Email.")
     if not which:
         return bs[0]
     w = which.strip().lower()
@@ -340,7 +344,7 @@ def settings_scope_ok(tenant: str, box: Box) -> bool:
 
 def settings_scope_message(address: str) -> str:
     return (f"({address}) has not yet given permission for Gmail settings — to fix this, reconnect this "
-            "Gmail once from Profile > Email (press 'Connect' and tick all the boxes on Google's page). Mail, watcher, "
+            "Gmail once from Connectors > Google (console) or Settings > Google (phone) and tick every box on Google's page. Mail, watcher, "
             "rules — everything works as before; only vacation / signature / alias / auto-forward need this permission.")
 
 

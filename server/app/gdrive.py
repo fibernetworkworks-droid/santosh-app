@@ -65,7 +65,7 @@ def _svc(name, version, tenant_id: str | None = None):
         except Exception as e:
             log.warning("per-user google creds failed (%s); falling back to service account: %s", tenant_id, e)
     if creds is None and tenant_id and tenant_id != get_settings().tenant_id:
-        raise DriveError("Your Google Drive is not connected yet. Connect it with 'Sign in with Google' in the app.")
+        raise DriveError("Your Google Drive is not connected yet. On the web console open Connectors > Google, or in the phone app open Settings > Google, and press Connect.")
     return build(name, version, credentials=creds or _creds(), cache_discovery=False)
 
 

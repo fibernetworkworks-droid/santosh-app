@@ -280,5 +280,5 @@ def test_delete_and_share_need_the_tap(bz, gsl):  # noqa: F811
 
 
 def test_not_connected(env):
-    with pytest.raises(ToolError, match="Profile > Google Slides"):
+    with pytest.raises(ToolError, match="Connectors > Google"):
         run("slides_read", {"presentation": "x"}, Ctx("someone", "c"))

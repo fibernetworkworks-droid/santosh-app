@@ -1523,6 +1523,7 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
     case 'studio':
       return StudioCard(key: ValueKey('sp${it.data['project']}'), v: it.data, app: app);
     case 'google_reconnect':
+    case 'google_connect':   // v0.999.181
       return GoogleReconnectCard(v: it.data, app: app);
     case 'studio_approval':
       return StudioApprovalCard(key: ValueKey('sa${it.data['id']}'), v: it.data, app: app);

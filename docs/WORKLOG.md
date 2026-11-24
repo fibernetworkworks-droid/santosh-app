@@ -3624,3 +3624,9 @@ Task ID: v0.999.180 GOOGLE SIGN UP
 Ask: work on Google sign up on the sign up page first
 Built: welcome step after Google (console + phone), login_hint, email_verified check, her name kept
 Not verified: a real Google account on her server; phone compiles first on CI
+
+---
+Task ID: v0.999.181 GOOGLE CONNECTIONS
+Ask: check and fix the Gmail / Sheets / Forms / Drive connection across all surfaces, design first
+Built: googlehub.py + Connectors > Google (console) + Settings > Google (phone) + chat cards + the audit fixes
+Not verified: a real Google account on her server; phone compiles first on CI

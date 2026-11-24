@@ -667,21 +667,37 @@ def watcher_tenants() -> list[str]:
         out |= set(s.scalars(select(MailAccount.tenant_id).distinct().where(MailAccount.kind != "_sig")).all())
         out |= set(s.scalars(select(MailSyncState.tenant_id).distinct()).all())
         from ..db import OAuthConnection
-        try:
-            out |= set(s.scalars(select(OAuthConnection.tenant_id).distinct()
-                                 .where(OAuthConnection.scopes.contains("gmail.modify"))).all())
+        try:      # v0.999.181 the connection belongs to a user; her tenant comes from the user (there is no tenant_id column)
+            from ..accounts import tenant_of_user
+            for uid in set(s.scalars(select(OAuthConnection.user_id).where(OAuthConnection.scopes.contains("gmail.modify"),
+                                                                          OAuthConnection.refresh_token_enc.is_not(None))).all()):
+                out.add(tenant_of_user(uid))
         except Exception:
-            pass
+            log.exception("mail watcher tenants from Google connections")
     return sorted(t for t in out if t)
+
+
+def _dead_boxes() -> set[str]:
+    """Mailboxes whose login Google (or Microsoft) ended: asking every minute changes nothing until she reconnects."""
+    from ..db import MailAccount
+    from .accounts import RECONNECT
+    try:
+        with session() as s:
+            return set(s.scalars(select(MailAccount.id).where(MailAccount.status == "error",
+                                                              MailAccount.last_error.startswith(RECONNECT[:40]))).all())
+    except Exception:
+        return set()
 
 
 def sync_tick(max_accounts: int = 60) -> int:
     """Every mailbox once per tick (60s). At scale the start rotates each minute so no mailbox starves."""
     pairs: list[tuple[str, Box]] = []
+    dead = _dead_boxes()
     for tenant in watcher_tenants():
         try:
             for b in _boxes(tenant):
-                pairs.append((tenant, b))
+                if b.key not in dead:          # v0.999.181 a mailbox Google refused waits for her Reconnect
+                    pairs.append((tenant, b))
         except Exception:
             continue
     if not pairs:

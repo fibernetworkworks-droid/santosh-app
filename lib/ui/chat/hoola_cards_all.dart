@@ -29,11 +29,11 @@ import '../../state.dart';
 import '../any_card.dart' show AnyEventCard;
 import '../chat_screen.dart' show feedCard;
 import '../desk_cards.dart' show showCompactSheet;
-import '../drive_screen.dart' show DriveScreen;
 import '../glass.dart' show santoshTheme;
 import '../hoola_theme.dart';
 import '../model_receipt.dart' show ModelReceiptLine;
 import '../operator_screen.dart' show OperatorFrame, openOperatorLive;
+import '../shell/hoola_google.dart' show hoolaGoogleConnect, hoolaOpenGoogle;
 import 'hoola_card.dart';
 
 String _s(Object? o) => o is String ? o.trim() : (o is num ? '$o' : '');
@@ -747,31 +747,28 @@ class _HCQuietLineState extends State<HCQuietLine> {
 // ============================================================================================ connections
 
 class HCReconnect extends StatelessWidget {
-  const HCReconnect({super.key, required this.app, required this.it});
+  const HCReconnect({super.key, required this.app, required this.it, this.connect = false});
   final Santosh app;
   final FeedItem it;
+  final bool connect;   // v0.999.181 google_connect: an app not connected yet (else: Google ended an account's access)
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
-    final text = _s(it.data['text']);
+    final appKey = _s(it.data['app']), email = _s(it.data['email']);
+    final name = _s(it.data['app_name']).isEmpty ? 'Google' : _s(it.data['app_name']);
+    final text = _s(it.data['say']).isEmpty ? _s(it.data['text']) : _s(it.data['say']);
     return HoolaCard(
-      icon: Icons.sync_rounded,
-      tileTone: c.info,
-      label: 'Google account',
+      icon: connect ? Icons.link_rounded : Icons.sync_rounded,
+      tileTone: connect ? c.info : c.warn,
+      label: 'Google',
       when: hcAgo(it.at),
-      title: 'Reconnect Google so Gmail and Drive keep working',
-      status: HCStatus('Sign-in expired · one tap', c.info),
+      title: connect ? 'Connect $name' : '$name needs reconnecting',
+      status: HCStatus(email.isNotEmpty ? email : (connect ? 'Not connected yet' : 'Google ended Hoola\u2019s access'), connect ? c.info : c.warn),
       children: [if (text.isNotEmpty) Text(text, style: HoolaType.body(c).copyWith(color: c.ink2))],
-      lead: [hcQuiet(context, 'Check', () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DriveScreen(app: app))))],
+      lead: [hcQuiet(context, 'Google settings', () => hoolaOpenGoogle(context, app))],
       actions: [
-        hcMain(context, 'Reconnect', () async {
-          try {
-            final url = await app.api!.driveLinkUrl();
-            await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-          } catch (e) {
-            if (context.mounted) _toast(context, '$e');
-          }
-        }),
+        hcMain(context, connect ? 'Connect $name' : 'Reconnect',
+            () => hoolaGoogleConnect(context, app, appKey.isEmpty ? const ['core'] : [appKey], hint: email)),
       ],
     );
   }
@@ -1077,6 +1074,8 @@ Widget? hoolaCardAll(BuildContext context, Santosh app, FeedItem it) {
       return HCQuietLine(app: app, it: it);
     case 'google_reconnect':
       return HCReconnect(app: app, it: it);
+    case 'google_connect':   // v0.999.181
+      return HCReconnect(app: app, it: it, connect: true);
     case 'link':
       return HCLinkApp(app: app, it: it);
     case 'calendar_event':

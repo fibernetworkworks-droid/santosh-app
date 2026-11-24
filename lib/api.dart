@@ -673,6 +673,14 @@ class Api {
   Future<Map<String, dynamic>> driveState() => _gState('drive');
   // v0.70 why Google Drive / Gmail / Calendar do (not) work, with the fix
   Future<Map<String, dynamic>> googleStatus() async => Map<String, dynamic>.from(await _send('GET', '/api/google/status') as Map);
+  // v0.999.181 GOOGLE CONNECTIONS: one place for every Google app (Settings > Google)
+  Future<Map<String, dynamic>> googleHub() async => Map<String, dynamic>.from(await _send('GET', '/api/google') as Map);
+  Future<String> googleConnectUrl(List<String> apps, {String hint = ''}) async =>
+      ((await _send('POST', '/api/google/connect', body: {'apps': apps, 'surface': 'phone', 'hint': hint})) as Map)['url'] as String;
+  Future<void> googleDisconnect(String email, {String app = ''}) async =>
+      _send('POST', '/api/google/disconnect', body: {'email': email, 'app': app});
+  Future<void> googleFirst(String app, String email) async =>
+      _send('POST', '/api/google/first', body: {'app': app, 'email': email});
   Future<String> driveLinkUrl() => _gLink('drive');
   Future<Map<String, dynamic>> driveRemove(String key) => _gRemove('drive', key);
   Future<Map<String, dynamic>> formsState() => _gState('forms');

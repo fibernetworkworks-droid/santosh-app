@@ -285,15 +285,56 @@ def _google_refused(ctx: Ctx, e: BaseException) -> str:
         msg = reconnect_message("", str(e))
     else:
         return ""
-    import time as _t
-    if _t.time() - _reconnect_told.get(ctx.tenant_id, 0) > 1800 and ctx.conversation_id:
-        _reconnect_told[ctx.tenant_id] = _t.time()
-        try:
-            from ..events import bus
-            bus.publish(ctx.conversation_id, "google_reconnect", {"text": msg})
-        except Exception:
-            pass
-    return msg
+    return msg   # v0.999.181 the card (with the app and the button) is sent by _google_card
+
+
+_GOOGLE_PREFIX = (("email_", "gmail"), ("calendar", "calendar"), ("cal_", "calendar"), ("drive_", "drive"), ("doc_", "docs"),
+                  ("sheet", "sheets"), ("form", "forms"), ("slides", "slides"), ("photos_", "photos"), ("youtube", "youtube"),
+                  ("gbp_", "business"))
+_card_told: dict[str, float] = {}
+
+
+def _google_app_of(name: str) -> str:
+    for pre, app in _GOOGLE_PREFIX:
+        if name.startswith(pre):
+            return app
+    return ""
+
+
+def _google_card(ctx, name: str, e: Exception, refused: str) -> None:
+    """v0.999.181 a Google tool that is not connected (or whose account Google refused) puts ONE card in the chat with
+    the button that fixes it, at most once every 30 minutes per app. Before, she got words pointing to a screen that
+    did not exist on the console."""
+    try:
+        app = _google_app_of(name)
+        text = str(e)
+        if not app or not getattr(ctx, "conversation_id", "") or not (refused or "Connectors > Google" in text):
+            return
+        re_ = bool(refused) or "Reconnect" in text or "expired" in text.lower()
+        import time as _t
+        key = f"{ctx.tenant_id}|{app}|{re_}"
+        if _t.time() - _card_told.get(key, 0) < 1800:
+            return
+        if refused:      # the "Google ended access" notice has just put a reconnect card in her chat (mid-turn: this one)
+            from .. import google_auth
+            d = google_auth._DEAD.get(ctx.tenant_id) or {}
+            if _t.time() - d.get("told", 0) < 120:
+                _card_told[key] = _t.time()
+                return
+        _card_told[key] = _t.time()
+        from .. import googlehub
+        from ..events import bus
+        email = ""
+        if re_:
+            st = googlehub.status(ctx.tenant_id)
+            a = next((x for x in st["apps"] if x["key"] == app), None)
+            email = (a["expired"][0] if a and a["expired"] else "") or next((x["email"] for x in st["accounts"] if x["state"] == "expired"), "")
+        bus.publish(ctx.conversation_id, "google_reconnect" if re_ else "google_connect",
+                    {"app": app, "app_name": googlehub.BY_KEY[app]["name"], "email": email,
+                     "say": ("One tap brings this Google account back. Nothing else changes." if re_
+                             else "Google asks once. After that Hoola carries on.")})
+    except Exception:          # noqa: BLE001 - a card must never break the tool's own answer
+        pass
 
 
 _PC_HANDOFF = ("pc_do", "hoola_pc_do", "pc_team")
@@ -363,6 +404,7 @@ async def dispatch(name: str, args: dict, ctx: Ctx):
     except Exception as e:
         employee.after(ctx, name, args or {}, False, str(e)[:200])
         msg = _google_refused(ctx, e)
+        _google_card(ctx, name, e, msg)   # v0.999.181 one button in the chat: Connect / Reconnect that Google app
         if msg:        # v0.70: an expired Google sign-in used to surface as a raw "invalid_grant" crash
             raise ToolError(msg + " (Tell her this plainly in one or two lines and don't retry this tool now.)") from None
         if place_now == "pc" and name in ("pc_do", "pc_task_result") and isinstance(e, ToolError):
@@ -1769,6 +1811,14 @@ for _n, _v in list(globals().items()):
         for _t in _v:
             if isinstance(_t, dict) and _t.get("name"):
                 FAMILY_OF.setdefault(_t["name"], _fam)
+
+# v0.999.181 the old service-account module (GDRIVE_TOOLS, imported first) claimed five names its newer twins handle:
+# "read my sheet" / "add a row" lost sheet_read / sheet_append from view. The handlers already belong to the new modules,
+# so the family does too.
+for _t in SHEETS_TOOLS:
+    FAMILY_OF[_t["name"]] = "sheets"
+for _t in DRIVE_TOOLS:
+    FAMILY_OF[_t["name"]] = "drive"
 
 # v0.559 SAHI GINTI: two modules both export CONTRACTS_TOOLS, so the construction pair (const_contracts /
 # const_contracts_dekho) lost its family to the later import and rode on EVERY turn, "namaste" included.

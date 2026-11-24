@@ -728,6 +728,7 @@ async function enter() {
     const P = new URLSearchParams(location.search), want = (P.get('v') || '').replace(/[^a-z_]/g, '');
     const OWN = ['creative', 'gamedev', 'appdev', 'prompting', 'flow', 'route', 'code', 'design', 'computer', 'webdev'];
     if (P.get('full') === '1') window.HOOLA_FULL_DESK = true;   // v0.999.38 the full ad editor of the old Social desk
+    if (P.get('gconn')) window.HOOLA_GCONN = {ok: P.get('gconn') === 'ok', got: P.get('got') || '', miss: P.get('miss') || '', why: (P.get('why') || '').slice(0, 200)};   // v0.999.181 back from Google
     if (want && (OWN.includes(want) || $('#v-' + want))) { history.replaceState(null, '', '/console/'); go(want, (P.get('a') || '').slice(0, 60) || undefined); }
   } catch (e) { /* the chat stays */ }
   if (CONFIG.sessions && window.HoolaChats && window.HoolaStream && !CH) {   // v0.162 many chats (v0.170: on with CONSOLE_V2)
@@ -1298,7 +1299,7 @@ const LABEL = {bazar_approval:'Your approval is required', employee_ask:'Employe
   email_draft:'Email draft', hoola_deal:'Hoola Deal', hoola_knock:'Hoola Network', hoola_msg:'Hoola Network message', calendar_event:'Calendar',
   reminders:'Reminders', lists:'Lists', gyaan_sources:'Sources', call_receipt:'Call receipt', procedure:'Learned', memory_saved:'Saved to memory', memory_used:'From memory', model_receipt:'Made with', model_switch:'Model',
   artifact:'Page', pc_file:'File', photo_made:'Picture', motion:'Reel', video_job:'Video', studio_approval:'AI video cost', gst_return:'GST return',
-  payroll_run:'Salary run', google_reconnect:'Reconnect Google', campaign:'WhatsApp campaign', share_ask:'Share this?'};
+  payroll_run:'Salary run', google_reconnect:'Reconnect Google', google_connect:'Connect Google', campaign:'WhatsApp campaign', share_ask:'Share this?'};
 const CARDS = new Map();      // kind:id -> element (updated in place)
 // Build studio (build.js): website / app design / Android builds live, like the phone app
 const B = window.HoolaBuild ? window.HoolaBuild({api, esc, toast, narrow, conv: () => CONV,
@@ -1684,6 +1685,18 @@ function renderCard(kind, p, at, live) {
       decisionRow(el, {yesLabel: 'Slide to share',
         yes: async () => { const r = await api('POST', `/api/panel/share/${encodeURIComponent(p.id)}`, {approve: true}); renderCard(kind, r); },
         no: async () => { const r = await api('POST', `/api/panel/share/${encodeURIComponent(p.id)}`, {approve: false}); renderCard(kind, r); }});
+      break; }
+    case 'google_reconnect': case 'google_connect': {   // v0.999.181 a Google app that stopped or is not connected: one button
+      const app = String(p.app || ''), email = String(p.email || '');
+      const nm = p.app_name || (app ? app[0].toUpperCase() + app.slice(1) : 'Google');
+      const re = kind === 'google_reconnect';
+      el.innerHTML = head(re ? `${nm} needs reconnecting` : `Connect ${nm}`, email || (re ? 'Google ended Hoola\u2019s access' : 'Not connected yet'), 'warn')
+        + `<p style="font-size:14px">${esc(String(p.say || (re ? 'One tap brings this Google account back. Nothing else changes.' : 'Google asks once. After that Hoola carries on.')).slice(0, 400))}</p>`
+        + `<div class="acts"><button class="btn go" type="button" data-gk>${re ? 'Reconnect' : 'Connect ' + esc(nm)}</button><button class="btn soft" type="button" data-gl>Not now</button></div>`;
+      el.querySelector('[data-gk]').addEventListener('click', async () => {
+        try { const r = await api('POST', '/api/google/connect', {apps: app ? [app] : ['core'], surface: 'web', hint: email}); location.href = r.url; } catch (e) { toast(e.message, true); }
+      });
+      el.querySelector('[data-gl]').addEventListener('click', () => el.querySelector('.acts')?.remove());
       break; }
     default: {
       const tk = ['title', 'name', 'label', 'what', 'subject'].find(k => p[k]), sk = ['say', 'summary', 'text', 'reason', 'message'].find(k => p[k]);
@@ -2534,10 +2547,9 @@ async function drawMain() {
           <input type="password" id="pwn" placeholder="New password (10+ characters)" autocomplete="new-password" aria-label="New password" minlength="10">
           <input type="password" id="pwn2" placeholder="Confirm new password" autocomplete="new-password" aria-label="Repeat new password">
           <button class="btn go" type="submit">${m.has_password ? 'Change password' : 'Set password'}</button></form></div>
-      <div class="tile gl"><h3>Google apps <span class="tag ${gOn(m) ? 'ok' : 'warn'}">${gOn(m) ? 'connected' : 'not connected'}</span></h3>
-        <p class="muted" style="font-size:13.5px">Sign-in only reads your name and email. To work in Gmail, Calendar, Drive, Docs and Sheets, give Google permission separately.</p>
-        <div class="feat">${['gmail', 'calendar', 'drive', 'docs', 'sheets'].map(k => `<span class="chip">${(m.google_apps || {})[k] ? '✓' : '○'} ${k[0].toUpperCase() + k.slice(1)}</span>`).join('')}</div>
-        <div class="acts" style="margin-top:12px"><button class="btn ${gOn(m) ? 'soft' : 'go'}" type="button" id="gAppsBtn">${gOn(m) ? 'Reconnect' : 'Connect Google apps'}</button></div></div>
+      <div class="tile gl"><h3>Google <span class="tag v" id="gSum">…</span></h3>
+        <p class="muted" style="font-size:13.5px">Gmail, Calendar, Drive, Docs, Sheets, Forms, Slides and more live in Connectors › Google: connect, reconnect or disconnect each one there.</p>
+        <div class="acts" style="margin-top:12px"><button class="btn go" type="button" id="gAppsBtn">Open Connectors › Google</button></div></div>
       <div class="tile gl"><h3>Memory <span class="tag v" id="memc">…</span></h3><div class="mfacts" id="mfacts"><div class="empty">Loading…</div></div></div>
       <div class="tile gl"><h3>Server</h3><div class="feat" id="feat"><span class="empty">…</span></div></div>
     </div>
@@ -2545,7 +2557,9 @@ async function drawMain() {
       ${CONFIG.v2 ? '<a class="btn soft" href="/console/?legacy=1" style="text-decoration:none">Legacy console</a>' : ''}</div>`;
   themeSync();
   $('#logoutBtn').addEventListener('click', () => logout(false));
-  $('#gAppsBtn').addEventListener('click', () => { if (!CONFIG.google) return toast('Google sign-in is not configured.', true); location.href = '/auth/google/start?web=1&apps=1'; });
+  $('#gAppsBtn').addEventListener('click', () => go('connectors', 'google'));   // v0.999.181 the apps step moved to Connectors › Google (it is tied to this account)
+  api('GET', '/api/google').then(g => { const ok = (g.apps || []).filter(a => a.state === 'ok').length, bad = (g.accounts || []).filter(a => a.state === 'expired').length;
+    const s = $('#gSum'); if (s) { s.textContent = bad ? 'needs reconnecting' : ok ? ok + ' apps connected' : 'not connected'; s.className = 'tag ' + (bad ? 'warn' : ok ? 'ok' : 'warn'); } }).catch(() => {});
   $('#pwf').addEventListener('submit', async e => { e.preventDefault(); const n = $('#pwn').value, n2 = $('#pwn2').value;
     if (n !== n2) return toast('The new passwords do not match.', true);
     try { const r = await api('PUT', '/api/console/password', {password: n, current: $('#pwc')?.value || ''}); ME.has_password = true; toast(`Password set. You can now sign in with ${r.handle} + password.`); drawMain(); } catch (er) { toast(er.message, true); } });

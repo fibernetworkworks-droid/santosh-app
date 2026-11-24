@@ -44,11 +44,11 @@ def make_router(require_key, current_tenant) -> APIRouter:
 def _page(address: str | None, error: str = "") -> HTMLResponse:
     scheme = get_settings().app_redirect_scheme
     deep = f"{scheme}://forms?ok={0 if error else 1}"
-    msg = (f"<h2>Google Forms Santosh se jude! ✅</h2><p>{_h.escape(address or '')}</p>" if not error else
-           f"<h3>Google Forms nahi jude</h3><p>{_h.escape(error)}</p>")
+    msg = (f"<h2>Google Forms is connected to Hoola</h2><p>{_h.escape(address or '')}</p>" if not error else
+           f"<h3>Google Forms was not connected</h3><p>{_h.escape(error)}</p>")
     return HTMLResponse(f"""<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
 <body style="font-family:system-ui;text-align:center;padding:40px;background:#f3eefb">{msg}
-<p><a href="{deep}" style="display:inline-block;background:#6d3fe0;color:#fff;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:700">App kholiye</a></p>
+<p><a href="{deep}" style="display:inline-block;background:#6d3fe0;color:#fff;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:700">Back to Hoola</a></p>
 <script>setTimeout(function(){{location.href={deep!r}}},600);</script></body>""", status_code=400 if error else 200)
 
 

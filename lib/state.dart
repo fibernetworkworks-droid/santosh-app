@@ -842,6 +842,19 @@ class Santosh extends ChangeNotifier {
   int slidesLinkedTick = 0;
   int photosLinkedTick = 0;
   int youtubeLinkedTick = 0;
+  /// v0.999.181 GOOGLE CONNECTIONS: what Google's page just granted (the Google screen shows it, then clears it).
+  Map<String, String>? googleResult;
+  int googleTick = 0;
+  void onGoogleHub(String query) {
+    googleResult = Uri.splitQueryString(query);
+    googleTick++;
+    final ok = googleResult!['ok'] == '1';
+    if (!ok) {
+      feed.add(FeedItem('note', {'text': 'Google was not connected. ${googleResult!['why'] ?? ''}'.trim()}));
+    }
+    notifyListeners();
+  }
+
   void onGoogleLinked(String what, bool ok) {
     if (what == 'youtube') youtubeLinkedTick++;
     if (what == 'slides') slidesLinkedTick++;
@@ -2018,7 +2031,8 @@ class Santosh extends ChangeNotifier {
         studioTick++;
         break;
       case 'google_reconnect':
-        feed.add(FeedItem('google_reconnect', Map<String, dynamic>.from(p)));
+      case 'google_connect':   // v0.999.181 a Google app to connect / reconnect, with its button
+        feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
         if (inBackground && !_replaying && !pushOn) Device.instance.showNow('Reconnect Google', '${p['text'] ?? ''}');
         break;
       case 'studio_approval':

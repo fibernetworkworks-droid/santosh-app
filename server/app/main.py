@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 import json
 import re
 import logging
@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.180"   # v0.999.180 GOOGLE SIGN UP (owner: "NOW LETS WORK ON GOOGLE SIGN UP IN HOOLA SIGN UP PAGE FIRST"): Continue with Google as a real sign-up like Claude and ChatGPT - a person new to Hoola gets the welcome step with her Google name filled in (console + phone), only new + name ride the one-time code, an email she typed is picked on Google's page (login_hint), a Google account whose email Google has not checked never opens an account, her own Hoola name is never replaced by Google's; 7 tests incl. a browser walk. Previous: v0.999.179 LOGIN CENTRED (owner, her screenshot of the v0.999.178 login on a wide screen; older stories live in git history.
+APP_VERSION = "0.999.181"   # v0.999.181 GOOGLE CONNECTIONS (owner: "NOW LETS WORK ON GMAIL, SHEET, FORM, DRIVE ETC CONNECTION TO HOOLA" -> the audit -> design canvas claude.ai/artifact/HatjjJRPedGgA5zfgq1TBK -> "GO"): one place for every Google app - console Connectors > Google, phone Settings > Google (googlehub.py, /api/google*): accounts with their real state, the seven everyday apps in one tap, Photos / YouTube / Business Profile / Search Console each on its own, Reconnect, Disconnect (revoked at Google), which account an app uses first, refused accounts tried last; a connect is always added to the Hoola account she is signed in as (the console apps step used to switch accounts); chat cards with one button; audit fixes: access tokens renew by themselves, a sign-in never wipes the apps connection, Gmail connected through Google is watched, Sheets tools come up, expired mailboxes are not asked every minute, every message points to the new place, English return pages; 16 tests incl. a browser walk. Previous: v0.999.180 GOOGLE SIGN UP (owner; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -1780,6 +1780,9 @@ def google_start(app_session: bool = True, web: bool = False, apps: bool = False
 async def google_callback(request: Request):
     """Google returns here. We store tokens and hand the app a session token via a deep link."""
     from . import accounts
+    from .googlehub import is_link_state as is_hub_state
+    if is_hub_state(request.query_params.get("state", "")):     # v0.999.181 Connectors > Google / Settings > Google
+        return await _finish_hub(request)
     from .mailbox.accounts import is_link_state
     if is_link_state(request.query_params.get("state", "")):   # "connect my Gmail" from the app, not a sign-in
         return await _finish_mail_link(request)
@@ -3767,6 +3770,85 @@ def google_status(live: bool = True, tenant: str = Depends(current_tenant)):
     """v0.70 Why her Google Drive / Gmail / Calendar do (not) work, with the fix (no tokens shown)."""
     from . import google_check
     return google_check.diagnose(tenant, live)
+
+
+# ---------------- v0.999.181 GOOGLE CONNECTIONS: one place for every Google app ----------------
+class GoogleConnectIn(BaseModel):
+    apps: list[str] = Field(default_factory=lambda: ["core"], max_length=12)
+    surface: str = Field(default="web", pattern="^(web|phone)$")
+    hint: str = Field(default="", max_length=254)
+
+
+class GoogleAccountIn(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+    app: str = Field(default="", max_length=20)
+
+
+@app.get("/api/google", dependencies=[Depends(require_key)])
+def google_hub(tenant: str = Depends(current_tenant)):
+    """Every Google account and app she has connected, as they really are (no tokens)."""
+    from . import googlehub
+    return googlehub.status(tenant)
+
+
+@app.post("/api/google/connect", dependencies=[Depends(require_key)])
+def google_hub_connect(body: GoogleConnectIn, tenant: str = Depends(current_tenant)):
+    """Google's page for the apps she chose; whatever she grants is added to THIS Hoola account."""
+    from . import googlehub
+    try:
+        return {"url": googlehub.start(tenant, ["core"] if body.apps == ["core"] else body.apps, body.surface, body.hint)}
+    except googlehub.HubError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/google/disconnect", dependencies=[Depends(require_key)])
+def google_hub_disconnect(body: GoogleAccountIn, tenant: str = Depends(current_tenant)):
+    """A whole account (access removed at Google too) or one app for that account."""
+    from . import googlehub
+    try:
+        return googlehub.disconnect(tenant, body.email, body.app)
+    except googlehub.HubError as e:
+        raise HTTPException(404, str(e))
+
+
+@app.post("/api/google/first", dependencies=[Depends(require_key)])
+def google_hub_first(body: GoogleAccountIn, tenant: str = Depends(current_tenant)):
+    """Which of her Google accounts an app uses first."""
+    from . import googlehub
+    try:
+        return googlehub.set_first(tenant, body.app, body.email)
+    except googlehub.HubError as e:
+        raise HTTPException(400, str(e))
+
+
+def _hub_back(surface: str, got: list[str] | None = None, miss: list[str] | None = None, err: str = ""):
+    """Back to where she started: the console's Google tab, or the phone app (an English page that opens it)."""
+    import html as _h
+    q = ({"gconn": "err", "why": err[:200]} if err else
+         {"gconn": "ok", "got": ",".join(got or []), "miss": ",".join(miss or [])})
+    if surface == "web":
+        return RedirectResponse("/console/?v=connectors&a=google&" + urlencode(q), headers=_CONSOLE_NOREF)
+    deep = f"{get_settings().app_redirect_scheme}://google?" + urlencode({"ok": 0 if err else 1, **q})
+    msg = (f"<h2>Google is connected to Hoola</h2>" if not err else
+           f"<h3>Google was not connected</h3><p>{_h.escape(err)}</p>")
+    return HTMLResponse(f"""<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
+<body style="font-family:system-ui;text-align:center;padding:40px;background:#fafaf9;color:#1a1a19">{msg}
+<p><a href="{_h.escape(deep)}" style="display:inline-block;background:#1a1a19;color:#fff;padding:14px 22px;border-radius:12px;text-decoration:none;font-weight:600">Back to Hoola</a></p>
+<script>setTimeout(function(){{location.href={deep!r}}},500);</script></body>""", status_code=400 if err else 200)
+
+
+async def _finish_hub(request: Request):
+    from . import googlehub
+    q = request.query_params
+    surface = googlehub.surface_of(q.get("state", ""))
+    if q.get("error"):
+        return _hub_back(surface, err="You cancelled on Google's page." if q.get("error") == "access_denied"
+                         else f"Google said: {q.get('error')[:60]}")
+    try:
+        r = await asyncio.to_thread(googlehub.finish, q.get("code", ""), q.get("state", ""))
+    except googlehub.HubError as e:
+        return _hub_back(surface, err=str(e))
+    return _hub_back(r["surface"], r["got"], r["miss"])
 
 
 # ---------------- v0.68 Hoola Video Studio ----------------

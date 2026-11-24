@@ -208,5 +208,5 @@ def test_big_upload_needs_the_tap(ph):
 
 
 def test_not_connected(env):
-    with pytest.raises(ToolError, match="Profile > Google Photos"):
+    with pytest.raises(ToolError, match="Connectors > Google"):
         run("photos_pick", Ctx("someone", "c"))

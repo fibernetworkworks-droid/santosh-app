@@ -199,7 +199,7 @@ def _executor():
 
 
 def test_not_connected_points_to_profile(env):
-    with pytest.raises(ToolError, match="Profile > Google Forms"):
+    with pytest.raises(ToolError, match="Connectors > Google"):
         run("form_find", {}, Ctx("someone", "c"))
 
 

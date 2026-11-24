@@ -225,5 +225,5 @@ def test_notebook_gets_video_notes(env, monkeypatch):
 def test_nothing_configured(env):
     with pytest.raises(ToolError, match="YOUTUBE_API_KEY"):
         run("youtube_search", {"query": "x"}, Ctx("someone", "c"))
-    with pytest.raises(ToolError, match="Profile > YouTube"):
+    with pytest.raises(ToolError, match="Connectors > Google"):
         run("youtube_my_channel", {}, Ctx("someone", "c"))

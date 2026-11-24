@@ -201,13 +201,20 @@ async def finish_google(code: str, state: str) -> dict:
         if not conn:
             conn = OAuthConnection(user_id=uid, provider="google")
             s.add(conn)
-        conn.account_email = email
-        conn.access_token_enc = encrypt(tok["access_token"])
-        if tok.get("refresh_token"):                 # Google omits it on re-consent sometimes; keep the old one
-            conn.refresh_token_enc = encrypt(tok["refresh_token"])
-        conn.scopes = tok.get("scope") or conn.scopes or " ".join(SIGNIN_SCOPES)
-        conn.last_error = None                       # a fresh sign-in clears an old "login expired"
-        conn.expiry = expiry
+        # v0.999.181 a name-and-email sign-in never overwrites the Google apps connection: when the stored connection
+        # holds lasting access for ANOTHER Google account (Connectors > Google), it stays exactly as it is; for the same
+        # account the granted permissions are merged, and "expired" is cleared only when Google gave new lasting access
+        same = (conn.account_email or "").lower() in ("", email)
+        fresh = bool(tok.get("refresh_token"))
+        if same or fresh or not conn.refresh_token_enc:
+            old_sc = set((conn.scopes or "").split()) if same else set()
+            conn.account_email = email
+            conn.access_token_enc = encrypt(tok["access_token"])
+            if fresh:                                # Google omits it on re-consent sometimes; keep the old one
+                conn.refresh_token_enc = encrypt(tok["refresh_token"])
+                conn.last_error = None               # new lasting access clears an old "login expired"
+            conn.scopes = " ".join(sorted(old_sc | set((tok.get("scope") or " ".join(SIGNIN_SCOPES)).split())))
+            conn.expiry = expiry
         name = user.name or ""
     if new and name:
         _seed_profile(uid, name)

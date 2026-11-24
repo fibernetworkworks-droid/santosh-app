@@ -400,7 +400,7 @@ def test_create_import_and_export(gs, env):
 
 
 def test_not_connected(env):
-    with pytest.raises(ToolError, match="Profile > Google Sheets"):
+    with pytest.raises(ToolError, match="Connectors > Google"):
         run("sheet_query", {"spreadsheet": "x"}, Ctx("someone", "c"))
 
 

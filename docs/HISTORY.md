@@ -11239,3 +11239,54 @@ only, console + phone code pins, a browser walk at 1280 / 390 through the welcom
 
 NOT VERIFIED: a real Google account on her server (needs the deploy, and the Google app published out of Testing for
 anyone outside her test users); the phone screen compiles first on CI.
+
+## v0.999.181 GOOGLE CONNECTIONS (owner: "NOW LETS WORK ON GMAIL, SHEET, FORM, DRIVE ETC CONNECTION TO HOOLA" -> the audit -> design canvas claude.ai/artifact/HatjjJRPedGgA5zfgq1TBK -> "GO"): one place for every Google app - console Connectors > Google, phone Settings > Google (googlehub.py, /api/google*): accounts with their real state, the seven everyday apps in one tap, Photos / YouTube / Business Profile / Search Console each on its own, Reconnect, Disconnect (revoked at Google), which account an app uses first, refused accounts tried last; a connect is always added to the Hoola account she is signed in as (the console apps step used to switch accounts); chat cards with one button; audit fixes: access tokens renew by themselves, a sign-in never wipes the apps connection, Gmail connected through Google is watched, Sheets tools come up, expired mailboxes are not asked every minute, every message points to the new place, English return pages; 16 tests incl. a browser walk.
+
+Why: the owner asked to check how Gmail, Sheets, Forms, Drive and the rest connect to Hoola across every surface. Three
+read-only audits (server auth, each Google app in chat and on calls, every screen) found the console's "Connect Google
+apps" step could put her into a different Hoola account (the callback signed in as whichever Google account she picked),
+Reconnect fixed only Drive, no screen showed an expired login, access tokens never renewed on their own (Business Profile
+failed after an hour), the Business Profile listing could never get its permission, a Gmail connected through Google was
+never watched for new mail, "read my sheet" / "add a row" lost their two main tools, expired mailboxes were retried every
+minute in silence, every "not connected" message pointed to a Profile screen the console and the new phone do not have,
+and three return pages were still in Hinglish. The owner saw the design canvas
+(claude.ai/artifact/HatjjJRPedGgA5zfgq1TBK) and said GO.
+
+What changed:
+- NEW `server/app/googlehub.py`: the apps (Gmail, Calendar, Drive, Docs, Sheets, Forms, Slides = everyday; Photos, YouTube,
+  Business Profile, Search Console = one by one), each with the permission that decides "connected" and the scopes asked.
+  `start(tenant, apps, surface, hint)` = Google's page with offline access + consent + include_granted_scopes; the state
+  (`ggl_` + surface + app letters, a MailLinkState row) carries her tenant. `finish` saves on HER account and never issues a
+  session: her first Google account lives on the sign-in connection (permissions merged), a second Google account goes
+  into each app's own account table (MailAccount, CalendarAccount, DriveAccount, SheetsAccount, FormsAccount,
+  SlidesAccount, PhotosAccount, YouTubeAccount) which every app already reads, Search Console into SeoGoogle; returns what
+  was granted and what she left unticked. `status` = every account and app as stored (expired from the connection's
+  last_error or a row's error status). `disconnect` = a whole account (Google's revoke endpoint, every stored copy gone) or
+  one app (Hoola stops using it). `google_prefs` table + `set_first` + `arrange()`: her first choice first, refused
+  accounts last; every app's client list goes through it.
+- Routes: GET /api/google, POST /api/google/connect, /disconnect, /first (all need her key); the Google callback hands
+  `ggl_` states to `_finish_hub`, which goes back to /console/?v=connectors&a=google&gconn=... or, on the phone, to an
+  English page that opens santosh://google?ok=..&got=..&miss=...
+- Console: Connectors gets a first tab, Google (connectors.js): accounts (Reconnect / Manage / Add another), everyday
+  apps cards + Connect everyday apps, more apps rows, an app drawer (accounts, used first, Reconnect, Disconnect), an
+  account drawer (Add apps, Disconnect this account), the connect dialog (apps, account, the "Advanced > Go to Hoola"
+  note), the result dialog (granted, left unticked with Allow, two asks to try). The Account page tile now opens
+  Connectors > Google with its live state (the old /auth/google/start?apps=1 button is gone). Chat cards google_reconnect /
+  google_connect with one button.
+- Phone: `lib/ui/shell/hoola_google.dart` (Settings > Google: accounts, everyday apps, more apps, app sheet, account
+  sheet, connect sheet, result sheet), Settings > Connections > Google row with its line, chat cards (new look
+  HCReconnect for both kinds; old look card reconnects the whole account), santosh://google back (manifest +
+  MainActivity + main.dart + Santosh.onGoogleHub), api.dart googleHub / googleConnectUrl / googleDisconnect / googleFirst.
+- Audit fixes: `google_auth.credentials_for` passes the stored expiry; `accounts.finish_google` never overwrites a
+  connection that holds lasting access for another Google account, merges permissions for the same one and clears
+  "expired" only with new lasting access; `mailbox/sync.watcher_tenants` maps the connection's user to her tenant (it
+  read a column that does not exist); Sheets / Drive tools get their own families back from the old service-account
+  module; "share the file" brings Drive; an expired mailbox is marked and skipped by the watcher; `agent/tools._google_card`
+  sends one Connect / Reconnect card per app per 30 minutes; every Google message names Connectors > Google / Settings >
+  Google; Drive, Photos and Forms return pages in English.
+
+Tests: NEW server/tests/test_google_connections.py (16, incl. a Chromium walk of the Google tab at 1280 and 390);
+the nine older service suites now expect "Connectors > Google" in the not-connected message.
+
+NOT VERIFIED: a real Google account through the new flow on her server; Google's revoke on a real token; the phone
+screen compiles first on CI (no Flutter here).

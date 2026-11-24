@@ -186,6 +186,10 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
         widget.app.onConnectLink(t.substring(8));
         return;
       }
+      if (t.startsWith('google:')) {   // v0.999.181 back from Google's page (Settings > Google)
+        widget.app.onGoogleHub(t.substring(7));
+        return;
+      }
       for (final g in const ['sheets', 'drive', 'forms', 'slides', 'photos', 'youtube']) {
         if (t.startsWith('$g:')) {
           widget.app.onGoogleLinked(g, t.endsWith('=1'));

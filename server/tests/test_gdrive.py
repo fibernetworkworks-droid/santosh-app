@@ -42,5 +42,5 @@ def test_owner_service_account_sees_only_the_shared_folder(sa):
 
 
 def test_service_account_is_owner_only(sa):
-    with pytest.raises(ToolError, match="Profile > Google Drive"):
+    with pytest.raises(ToolError, match="Connectors > Google"):
         asyncio.run(dt.DRIVE_HANDLERS["drive_find"](Ctx("usr_other", "c"), query="x"))
