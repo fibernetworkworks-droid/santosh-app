@@ -11119,3 +11119,22 @@ The Interactive Templates page was six plain cards and a browser prompt() per bl
   refused or mislabelled every language past the first ten; now `S.lang_of` / `S.lang_label` (140).
 - Tests `test_v0999_174_interactive_templates.py` (7, incl. a Chromium walk at 1440 and 390 px). NOT VERIFIED on her server or with
   a real translation model.
+
+
+## v0.999.175 APPS, REDESIGNED (owner: "NOW SAME WAY FOR APPS SECTION -- GIVE ME DESIGN AND PREMIMUM, ADVANCE VIEW -- WITH PROPER WIRING" -> design canvas claude.ai/artifact/EW7fbQi3VZeBoTyPyG88Ke -> "GO")
+
+The Interactive Apps page was ten plain cards whose buttons opened other tools whether they worked or not. Now:
+
+- **Server** (`interactive/hub.py` APPS, `_app_ready`, `apps`, `app_used`; routes GET /hub/apps, POST /hub/apps/used): 12 apps
+  (podcast, clean-up, own voice, music, B-roll, translate, dub, lip sync, batch, many names, from a sheet, AI face), each with
+  where it opens (here / Hoola Vocal / Create), what it costs (free / free draft(s) / priced before it runs), what it needs, and
+  its REAL state on this server read from the engines it uses (`vocal.service.connected`, `create.service.ready`,
+  `cinema.kie.configured`, `interactive.engines.connected('gemini_broll')`); recently used kept per person.
+- **Page** (`interactive.js` apps block): search, kinds, Only ready to use, Recently used, two featured cards (many names, dub),
+  cards with icon, Ready / Not connected, where, cost. Runs on the page: One video, many names (videos that say {name}, names
+  with duplicates left out, a live preview, the drafts listed, the estimate per video, Make N drafts -> /hub/personalise), A
+  batch (scripts split by empty lines, language + face, /hub/batch), Translate (a video + a language -> /hub/translate -> the
+  Studio editor), A B-roll shot (describe, ideas, 4/6/8 s, frame, the price from /x/broll/quote before Make, shots with progress,
+  refreshed every 20 s while one is being made). From a sheet asks which template, then opens its sheet dialog. Vocal and
+  Create apps open their tool. An app that is not connected opens what it needs and what works meanwhile, never a broken page.
+- Tests `test_v0999_175_interactive_apps.py` (4, incl. a Chromium walk at 1440 and 390 px). NOT VERIFIED on her server.
