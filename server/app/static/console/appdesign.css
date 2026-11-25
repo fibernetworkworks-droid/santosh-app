@@ -445,3 +445,15 @@ html.appd[data-theme="dark"] #app .mu .mut{font-weight:400}
 @media (prefers-color-scheme:dark){html.appd:not([data-theme="light"]) #app .mu .mut{font-weight:400}}
 html.appd #app .mh .txt code,html.appd #app .mh .txt pre,html.appd #app .textmd code,html.appd #app .textmd pre{
   font-family:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace}
+
+/* v0.999.198 HOME LIKE CLAUDE (owner: Claude's home table "--- ALSO MAKE THIS SAME"): from claude.ai's stylesheet -
+   the greeting is font-display 38 px / 330 (dark 290) / 1.2 at opsz 48; the box text and its placeholder font-large
+   16 px / 430 (dark 400); the row under the box (Session, model, chips) font-base 14 px / 430 (dark 400). */
+html.appd{--hw:430;--gw:330}
+html.appd[data-theme="dark"]{--hw:400;--gw:290}
+@media (prefers-color-scheme:dark){html.appd:not([data-theme="light"]){--hw:400;--gw:290}}
+html.appd #app .landing .hi h1{font-size:38px;font-weight:var(--gw);line-height:1.2;letter-spacing:normal;font-variation-settings:"opsz" 48}
+html.appd #app #composer textarea,html.appd #app #composer textarea::placeholder{font-size:16px;font-weight:var(--hw)}
+html.appd .appunder .uchip,html.appd .appunder .modelb,html.appd #app #composer .modelb,html.appd #app #composer .qc[aria-pressed="true"]{
+  font-size:14px;font-weight:var(--hw);line-height:1.4}
+html.appd .appunder .uchip *,html.appd .appunder .modelb *,html.appd #app #composer .modelb *{font-size:inherit;font-weight:inherit}

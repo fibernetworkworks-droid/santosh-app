@@ -3726,3 +3726,9 @@ Task ID: v0.999.197 REPLY + MESSAGE LIKE CLAUDE
 Ask: reply and message fonts like Claude
 Built: reply title 28/1.3, her message 16/430/1.4, code in JetBrains Mono
 Not verified: on her server
+
+---
+Task ID: v0.999.198 HOME LIKE CLAUDE
+Ask: home screen fonts like Claude
+Built: greeting 38/330/1.2, box 16/430, row under the box 14/430
+Not verified: on her server

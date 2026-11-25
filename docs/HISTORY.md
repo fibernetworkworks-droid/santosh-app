@@ -11926,3 +11926,16 @@ stays 0.9 of the text as in v0.894. No 14 px small-reply element exists in Hoola
 Tests: NEW `test_v0999_197_reply_like_claude.py` measures body, bold, title, her message and code in light and dark.
 Older pins on v2.css (22 px h3) left as they are: the base rule is unchanged, the app design overrides it.
 NOT VERIFIED: on her server.
+
+## v0.999.198 HOME LIKE CLAUDE (owner: Claude home table "--- ALSO MAKE THIS SAME"): the greeting 38 px / 330 (dark 290) / 1.2 at opsz 48 (was 40 / 400), the typing box 16 px / 430 (dark 400; was 400), the row under the box 14 px / 430 (dark 400; was 15 / 500); recent-artifact cards and time labels do not exist on the Hoola home (v0.974 clean home); 1 test.
+
+The owner sent Claude's home table (greeting serif 38 / 330 / 1.2; box 16 / 430; model / effort / project chips 14 /
+430; Recent artifacts and card names 14 / 430; time labels 12-14 / 430 grey) and said "ALSO MAKE THIS SAME".
+
+Measured first: greeting 40 px / 400 / 46 px line, box 16 / 400, model button 15 / 500. Built (one block at the end
+of `static/console/appdesign.css`, weights from claude.ai's stylesheet: font-display 330 dark 290, font-large and
+font-base 430 dark 400): greeting 38 px / 330 / 1.2 at opsz 48, typing box + placeholder 16 / 430, the row under the
+box (Session, model, chips) 14 / 430 / 1.4. Recent-artifact cards and time labels are not on the Hoola home (v0.974
+clean home at her ask), so there is nothing there to change.
+
+Tests: NEW `test_v0999_198_home_like_claude.py` (light + dark, real browser). NOT VERIFIED: on her server.
