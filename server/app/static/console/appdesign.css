@@ -415,3 +415,22 @@ html.appd #app #composer .stopb.stopi{display:inline-flex;align-items:center;jus
   padding:0;border:0;border-radius:9px;background:var(--pill);color:var(--on-pill);font-size:0;box-shadow:none}
 html.appd #app #composer .stopb.stopi[hidden]{display:none}
 html.appd #app #composer .stopb.stopi::before{content:"";width:11px;height:11px;border-radius:2.5px;background:currentColor}
+
+/* v0.999.196 SIDE PANEL LIKE CLAUDE (owner: "Side panel - All of it is Anthropic Sans --- MAKE SAME FOR HOOLA"):
+   the whole side panel in ONE sans at Claude's own scale, read from claude.ai's stylesheet: base 14 px / 430 / 1.4,
+   small 12 px / 430 / 1.4, bold 500; dark mode 400 / 460. Anthropic Sans is Anthropic's private font, so Hoola's own
+   sans (Schibsted Grotesk, variable 400-700) carries the same numbers. The open chat is shown by its background,
+   not by a heavier word, like Claude. */
+html.appd #app .side{--sw:430;--swb:500}
+html.appd[data-theme="dark"] #app .side{--sw:400;--swb:460}
+@media (prefers-color-scheme:dark){html.appd:not([data-theme="light"]) #app .side{--sw:400;--swb:460}}
+html.appd #app .side,html.appd #app .side *{font-family:var(--fb)}
+html.appd #app .side .newc,html.appd #app .side .sn,html.appd #app .side .srch,html.appd #app .side .rc,
+html.appd #app .side .rct,html.appd #app .side .codepill,html.appd #app .side .sgh .sgn,html.appd #app .side .sgh .sgn-n,
+html.appd #app .side .user b,html.appd #app .side .newc .txt,html.appd #app .side .sn .txt{
+  font-size:14px;font-weight:var(--sw);line-height:1.4;letter-spacing:0}
+html.appd #app .side .rcw.cur .rc,html.appd #app .side .rcw.cur .rct,html.appd #app .side .rc[aria-current="true"],
+html.appd #app .side .sn[aria-current="true"]{font-weight:var(--sw)}
+html.appd #app .side .slabel,html.appd #app .side .rg,html.appd #app .side .pjl,html.appd #app .side .snl,
+html.appd #app .side .user #uhandle{font-size:12px;font-weight:var(--sw);line-height:1.4;letter-spacing:0}
+html.appd #app .side .user .uini,html.appd #app .side .sn .ct{font-weight:var(--swb)}

@@ -11889,3 +11889,21 @@ words (udhar, slice, pop, kiwi, jupiter, navi, cams, simpl) only by their full n
 services live in Connectors (tool_search("connectors") -> bazar_find / bazar_run).
 
 Tests: tests/test_v0999_195_apps_wiring2.py (5). NOT VERIFIED: a real connector run on her server.
+
+## v0.999.196 SIDE PANEL LIKE CLAUDE (owner: "Side panel - All of it is Anthropic Sans --- MAKE SAME FOR HOOLA"): the console side panel in one sans at the Claude scale read from the claude.ai stylesheet - rows, chats, groups, names 14 px / 430 / 1.4, labels 12 px / 430 / 1.4, dark 400, the open chat no heavier (it was 560); Anthropic Sans is private, so the Hoola sans carries the numbers; 1 test + the v0.975 pin moved to 430 / 400.
+
+The owner sent a Claude side panel screenshot: "All of it is Anthropic Sans --- MAKE SAME FOR HOOLA".
+
+Measured first (Chromium, app design on, light + dark): Hoola's side panel rows were 14 px / 500, chats 450 (and the
+open chat 560 in light), labels 12 px / 500, line height 20 px. Claude's own stylesheet: font-base 14 px / 430 / 1.4,
+font-small 12 px / 430 / 1.4, base-bold 500; in dark 400 / 460.
+
+Built: one block at the end of `static/console/appdesign.css` - every row (New chat, Search, the nav rows), every chat,
+group names, the Code pill and the account name at 14 px / 430 / 1.4; labels and the handle at 12 px / 430 / 1.4; dark
+mode 400 (both the data-theme and the system-dark case); counters and initials at the bold step; the open chat shown by
+its background, no heavier word. Anthropic Sans is Anthropic's private font and is not copied; Hoola's own variable
+sans (Schibsted Grotesk, 400-700, already loaded) carries the same numbers.
+
+Tests: NEW `test_v0999_196_side_panel.py` measures every visible side panel item in light and dark (font, size, weight,
+line height, with a chat opened). `test_v0975_console_sidebar_white.py` row weight pin 500 -> 430 light / 400 dark (the
+owner's new decision). NOT VERIFIED: on her server.

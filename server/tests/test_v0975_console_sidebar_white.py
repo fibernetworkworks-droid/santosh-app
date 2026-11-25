@@ -61,7 +61,7 @@ def test_sidebar_and_white_in_a_real_browser(arena_server):  # noqa: F811
             pinFirst:!!(q('#pinbox')&&q('#projects')&&(q('#pinbox').compareDocumentPosition(q('#projects'))&4)),
             dayLabels:[...document.querySelectorAll('#recents .rg')].map(e=>e.textContent),
             chatF:q('#recents .rc')?getComputedStyle(q('#recents .rc')).fontSize:''}}""")
-        assert m["rowH"] == 32 and m["rowF"] == "14px" and m["rowW"] == "500" and m["ic"] == 18, m
+        assert m["rowH"] == 32 and m["rowF"] == "14px" and m["rowW"] == ("430" if scheme == "light" else "400") and m["ic"] == 18, m
         assert m["lab"] == "12px" and m["rec"] == "Recents", m
         if scheme == "light":
             assert m["bg"] == "rgb(255, 255, 255)" and m["side"] == "rgb(250, 250, 249)", m

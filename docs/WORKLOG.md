@@ -3714,3 +3714,9 @@ Task ID: v0.999.195 APPS WIRING 2
 Ask: check all apps are wired properly
 Built: connector names open bazar_find / bazar_run, tool_search finds them, prompt line
 Not verified: a real connector run
+
+---
+Task ID: v0.999.196 SIDE PANEL LIKE CLAUDE
+Ask: side panel like Claude (Anthropic Sans)
+Built: side panel 14/430 rows, 12/430 labels, dark 400, open chat not bold
+Not verified: on her server
