@@ -258,7 +258,7 @@
 
   const GDO = {
     gmail: ['Reads, searches and sorts your mail · labels and archives · writes drafts · reads attachments', 'Sends a mail · forwards · mail to many people · deletes', 'Reads bank or payment codes from your mail · changes your password · follows instructions written inside an email'],
-    calendar: ['Reads your schedule · finds free time', 'Adds, moves or cancels events · replies to invites', 'Shares your calendar with anyone'],
+    calendar: ['Reads your schedule · finds free time for you or a group · adds and changes events, repeats and your own calendars · out of office · .ics files · tells you about new invites', 'Invites, moves or cancels with guests · declines · shares a calendar · deletes or clears a calendar', 'Makes your calendar public on its own'],
     drive: ['Finds and reads your files · lists folders · organises, converts and zips them', 'Shares a file · replaces its contents · puts an old version back · moves files to the bin · answers access requests', 'Makes a file public or deletes it forever on its own'],
     docs: ['Reads documents you name · writes new drafts', 'Shares a document', 'Deletes your documents on its own'],
     sheets: ['Reads the sheets you work on · creates new ones', 'Clears or deletes rows and tabs · shares a sheet', 'Deletes a whole spreadsheet on its own'],

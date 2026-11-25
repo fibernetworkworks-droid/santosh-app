@@ -431,6 +431,24 @@ class CalendarAlert(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class CalendarWatch(Base):
+    """v0.999.189: tell the user when a calendar gets a new invite or a change (Google's sync token, checked every few
+    minutes), and optionally run a job she asked for each time."""
+    __tablename__ = "calendar_watches"
+    __table_args__ = (UniqueConstraint("tenant_id", "box", "cal_id", name="uq_calendar_watch"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    box: Mapped[str] = mapped_column(String(40), default="")
+    cal_id: Mapped[str] = mapped_column(String(400), default="primary")
+    cal_name: Mapped[str] = mapped_column(String(300), default="")
+    conversation_id: Mapped[str] = mapped_column(String(40), default="")
+    kinds: Mapped[str] = mapped_column(String(20), default="invites")        # invites | changes | all
+    sync_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    job: Mapped[str | None] = mapped_column(Text, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class MailLinkState(Base):
     """Anti-CSRF state while the user connects a mailbox by OAuth (remembers whose mailbox it is)."""
     __tablename__ = "mail_link_states"

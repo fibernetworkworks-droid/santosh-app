@@ -1212,6 +1212,10 @@ async def mail_jobs() -> None:
         _mail_last["cal"] = t
         from .cal import service as cs
         jobs.append(cs.alerts_tick)
+    if t - _mail_last.get("calwatch", 0) >= 300:  # v0.999.189 Google Calendar: new invites / changes she watches
+        _mail_last["calwatch"] = t
+        from .cal import more as cmore
+        jobs.append(cmore.watch_tick)
     if t - _mail_last["forms"] >= 600:          # Google Forms: "N naye jawab" alerts
         _mail_last["forms"] = t
         from .forms import service as fsv

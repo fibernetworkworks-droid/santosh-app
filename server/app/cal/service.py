@@ -26,6 +26,15 @@ log = logging.getLogger("santosh.cal")
 _cal_cache: dict[str, tuple[float, list]] = {}
 REPEATS = {"daily": "DAILY", "weekly": "WEEKLY", "monthly": "MONTHLY", "yearly": "YEARLY", "weekdays": "WEEKLY"}
 DAYS = ("MO", "TU", "WE", "TH", "FR", "SA", "SU")
+# Google Calendar's own names for its 11 event colours (colorId 1-11, the colors endpoint gives only the shades)
+COLORS = {"lavender": "1", "sage": "2", "grape": "3", "flamingo": "4", "banana": "5", "tangerine": "6", "peacock": "7",
+          "graphite": "8", "blueberry": "9", "basil": "10", "tomato": "11",
+          "purple": "3", "pink": "4", "yellow": "5", "orange": "6", "blue": "9", "turquoise": "7", "teal": "7",
+          "grey": "8", "gray": "8", "green": "10", "red": "11", "light purple": "1", "light green": "2"}
+COLOR_NAME = {"1": "lavender", "2": "sage", "3": "grape", "4": "flamingo", "5": "banana", "6": "tangerine", "7": "peacock",
+              "8": "graphite", "9": "blueberry", "10": "basil", "11": "tomato"}
+DAYNAMES = {"monday": "MO", "tuesday": "TU", "wednesday": "WE", "thursday": "TH", "friday": "FR", "saturday": "SA",
+            "sunday": "SU"}
 
 
 def _tz(tenant: str) -> ZoneInfo:
@@ -146,6 +155,13 @@ def _parse_when(w: dict, tz: ZoneInfo) -> tuple[datetime | None, bool]:
     return None, False
 
 
+def _rule_words(rules: list[str] | None) -> str:
+    for r in rules or []:
+        if r.startswith("RRULE:"):
+            return r[6:]
+    return ""
+
+
 def view(box, cal_id: str, cal_name: str, e: dict, tz: ZoneInfo) -> dict[str, Any]:
     start, all_day = _parse_when(e.get("start") or {}, tz)
     end, _ = _parse_when(e.get("end") or {}, tz)
@@ -159,14 +175,22 @@ def view(box, cal_id: str, cal_name: str, e: dict, tz: ZoneInfo) -> dict[str, An
             continue
         if a.get("resource"):
             continue
-        attendees.append({"email": em, "name": a.get("displayName", ""), "response": a.get("responseStatus", "needsAction")})
+        row = {"email": em, "name": a.get("displayName", ""), "response": a.get("responseStatus", "needsAction")}
+        if a.get("optional"):
+            row["optional"] = True
+        if a.get("comment"):
+            row["comment"] = str(a["comment"])[:300]
+        if a.get("additionalGuests"):
+            row["bringing"] = int(a["additionalGuests"])
+        attendees.append(row)
     organizer = ((e.get("organizer") or {}).get("email") or "").lower()
     meet = e.get("hangoutLink") or ""
-    if not meet:
-        for ep in ((e.get("conferenceData") or {}).get("entryPoints") or []):
-            if ep.get("entryPointType") == "video":
-                meet = ep.get("uri", "")
-                break
+    phone = ""
+    for ep in ((e.get("conferenceData") or {}).get("entryPoints") or []):
+        if ep.get("entryPointType") == "video" and not meet:
+            meet = ep.get("uri", "")
+        if ep.get("entryPointType") == "phone" and not phone:
+            phone = (ep.get("label") or ep.get("uri", "")) + (f" PIN {ep['pin']}" if ep.get("pin") else "")
     if all_day:
         when = start.strftime("%d %b %Y") + " (all day)" if start else ""
         end_label = ((end - timedelta(days=1)).strftime("%d %b %Y") if end and (end - start).days > 1 else "")
@@ -180,7 +204,48 @@ def view(box, cal_id: str, cal_name: str, e: dict, tz: ZoneInfo) -> dict[str, An
             "attendees": attendees, "organizer": organizer,
             "i_am_organizer": (not organizer) or organizer == me or bool((e.get("organizer") or {}).get("self")),
             "my_response": my_response, "meet_link": meet, "link": e.get("htmlLink", ""), "calendar": cal_name,
-            "recurring": bool(e.get("recurringEventId") or e.get("recurrence")), "account": me}
+            "recurring": bool(e.get("recurringEventId") or e.get("recurrence")), "account": me,
+            **_extra(e)}
+
+
+def _extra(e: dict) -> dict[str, Any]:
+    """v0.999.189: the rest of what an event says - only the parts that are set, to keep answers short."""
+    out: dict[str, Any] = {}
+    et = e.get("eventType") or "default"
+    if et != "default":
+        out["kind"] = {"outOfOffice": "out of office", "focusTime": "focus time", "workingLocation": "working location",
+                       "birthday": "birthday", "fromGmail": "from Gmail"}.get(et, et)
+    if e.get("colorId"):
+        out["color"] = COLOR_NAME.get(str(e["colorId"]), str(e["colorId"]))
+    if e.get("visibility") in ("private", "confidential", "public"):
+        out["visibility"] = "private" if e["visibility"] == "confidential" else e["visibility"]
+    if e.get("transparency") == "transparent":
+        out["show_as"] = "free"
+    rule = _rule_words(e.get("recurrence"))
+    if rule:
+        out["repeat_rule"] = rule
+    rem = e.get("reminders") or {}
+    if rem.get("overrides"):
+        out["reminders"] = [f"{o.get('minutes')} min {o.get('method', 'popup')}" for o in rem["overrides"]]
+    if e.get("attachments"):
+        out["attachments"] = [{"title": a.get("title", ""), "link": a.get("fileUrl", "")} for a in e["attachments"][:25]]
+    perms = [k for k, f in (("guests can change it", "guestsCanModify"),) if e.get(f)]
+    if e.get("guestsCanInviteOthers") is False:
+        perms.append("guests cannot invite others")
+    if e.get("guestsCanSeeOtherGuests") is False:
+        perms.append("guests cannot see the guest list")
+    if perms:
+        out["guest_rules"] = perms
+    oo = e.get("outOfOfficeProperties") or e.get("focusTimeProperties") or {}
+    if oo.get("declineMessage"):
+        out["decline_message"] = oo["declineMessage"][:300]
+    wl = e.get("workingLocationProperties") or {}
+    if wl:
+        out["where_working"] = (wl.get("type") == "homeOffice" and "home") or ((wl.get("officeLocation") or {}).get(
+            "label") or (wl.get("customLocation") or {}).get("label") or wl.get("type", ""))
+    if e.get("eventLabelId"):
+        out["label_id"] = e["eventLabelId"]
+    return out
 
 
 # ---------------- reading ----------------
@@ -231,10 +296,22 @@ def rrule(repeat: dict | str | None) -> list[str] | None:
     if freq == "weekdays":
         days = ["MO", "TU", "WE", "TH", "FR"]
     if days:
+        days = [DAYNAMES.get(str(d).lower(), d) for d in (repeat.get("days") or days)] if freq != "weekdays" else days
+        days = [str(d).upper()[:2] for d in days]
         bad = [d for d in days if d not in DAYS]
         if bad:
             raise CalError(f"repeat.days: {', '.join(DAYS)}")
         parts.append("BYDAY=" + ",".join(days))
+    nth = repeat.get("nth")       # v0.999.189: "first Monday" = nth 1, "last Friday" = nth -1 (monthly / yearly)
+    if nth not in (None, "", 0):
+        try:
+            n = int(nth)
+        except (TypeError, ValueError):
+            n = {"first": 1, "second": 2, "third": 3, "fourth": 4, "last": -1}.get(str(nth).lower(), 0)
+        if n not in (1, 2, 3, 4, 5, -1, -2) or freq not in ("monthly", "yearly") or not days:
+            raise CalError("repeat.nth (1-5 or -1 for last) needs freq monthly or yearly and one day, e.g. "
+                           "{freq: monthly, nth: 1, days: [MO]} = the first Monday.")
+        parts[-1] = "BYDAY=" + ",".join(f"{n}{d}" for d in days)
     if repeat.get("interval"):
         parts.append(f"INTERVAL={max(1, int(repeat['interval']))}")
     if repeat.get("count"):
@@ -245,9 +322,60 @@ def rrule(repeat: dict | str | None) -> list[str] | None:
     return ["RRULE:" + ";".join(parts)]
 
 
+def color_id(color: Any) -> str:
+    c = str(color or "").strip().lower()
+    if not c:
+        return ""
+    if c in COLOR_NAME:
+        return c
+    if c in COLORS:
+        return COLORS[c]
+    raise CalError("color: " + ", ".join(COLOR_NAME.values()) + " (Google Calendar's event colours).")
+
+
+def reminders_body(reminders: list | None, email: list | None = None) -> dict | None:
+    if reminders is None and not email:
+        return None
+    rows = [("popup", m) for m in (reminders or [])] + [("email", m) for m in (email or [])]
+    seen, over = set(), []
+    for meth, m in rows:
+        mm = max(0, min(int(m), 40320))
+        if (meth, mm) not in seen:
+            seen.add((meth, mm))
+            over.append({"method": meth, "minutes": mm})
+    if len(over) > 5:
+        raise CalError("Google keeps at most 5 reminders on an event.")
+    return {"useDefault": False, "overrides": sorted(over, key=lambda o: (o["minutes"], o["method"]))}
+
+
+def options_body(visibility: str | None = None, show_as: str | None = None, guests: dict | None = None,
+                 color: Any = None) -> dict[str, Any]:
+    body: dict[str, Any] = {}
+    if visibility:
+        v = str(visibility).lower()
+        if v not in ("default", "private", "public"):
+            raise CalError("visibility: default, private or public.")
+        body["visibility"] = v
+    if show_as:
+        v = str(show_as).lower()
+        if v not in ("busy", "free"):
+            raise CalError("show_as: busy or free.")
+        body["transparency"] = "opaque" if v == "busy" else "transparent"
+    for k, f in (("can_modify", "guestsCanModify"), ("can_invite", "guestsCanInviteOthers"),
+                 ("can_see_guests", "guestsCanSeeOtherGuests")):
+        if guests and guests.get(k) is not None:
+            body[f] = bool(guests[k])
+    cid = color_id(color)
+    if cid:
+        body["colorId"] = cid
+    return body
+
+
 def build_body(tenant: str, *, title: str, start: datetime, end: datetime, all_day: bool, location: str = "",
                description: str = "", attendees: list[str] | None = None, reminders: list[int] | None = None,
-               repeat=None, color: str | None = None) -> dict[str, Any]:
+               repeat=None, color: str | None = None, optional: list[str] | None = None,
+               email_reminders: list[int] | None = None, visibility: str | None = None, show_as: str | None = None,
+               guests: dict | None = None, attachments: list[dict] | None = None) -> dict[str, Any]:
     tz = _tz(tenant)
     body: dict[str, Any] = {"summary": title.strip()[:300] or "(no title)",
                             "start": _when_body(start, all_day, tz), "end": _when_body(end, all_day, tz)}
@@ -255,16 +383,18 @@ def build_body(tenant: str, *, title: str, start: datetime, end: datetime, all_d
         body["location"] = location[:500]
     if description:
         body["description"] = description[:8000]
-    if attendees:
-        body["attendees"] = [{"email": a} for a in attendees]
-    if reminders is not None:
-        mins = sorted({max(0, min(int(m), 40320)) for m in reminders})[:5]
-        body["reminders"] = {"useDefault": False, "overrides": [{"method": "popup", "minutes": m} for m in mins]}
+    if attendees or optional:
+        body["attendees"] = [{"email": a} for a in attendees or []] + [{"email": a, "optional": True}
+                                                                       for a in optional or [] if a not in (attendees or [])]
+    rb = reminders_body(reminders, email_reminders)
+    if rb:
+        body["reminders"] = rb
     r = rrule(repeat)
     if r:
         body["recurrence"] = r
-    if color:
-        body["colorId"] = str(color)
+    body.update(options_body(visibility, show_as, guests, color))
+    if attachments:
+        body["attachments"] = attachments[:25]
     return body
 
 
@@ -319,11 +449,12 @@ def run_pending(tenant: str, pid: str) -> dict[str, Any]:
             _publish_event(conv, {**p["summary"], "id": pl["ref"]}, "cancelled")
             msg = f"\"{p['summary'].get('title', '')}\" cancelled" + (" and everyone told." if pl.get("notify") else ".")
         elif p["action"] == "decline":
-            respond_now(tenant, pl["ref"], "declined")
+            respond_now(tenant, pl["ref"], "declined", pl.get("comment", ""), pl.get("all", False))
             _publish_event(conv, {**p["summary"], "id": pl["ref"]}, "declined")
             msg = f"Declined \"{p['summary'].get('title', '')}\" (the organizer has been told)."
         else:
-            raise CalError("unknown calendar action")
+            from . import more
+            msg = more.run_pending(tenant, p, box)
     except CalError as e:
         with session() as s:
             s.get(CalendarPending, pid).status = "failed"
@@ -334,10 +465,12 @@ def run_pending(tenant: str, pid: str) -> dict[str, Any]:
 
 
 # ---------------- RSVP ----------------
-def respond_now(tenant: str, ref: str, response: str) -> dict[str, Any]:
+def respond_now(tenant: str, ref: str, response: str, comment: str = "", whole_series: bool = False) -> dict[str, Any]:
     if response not in ("accepted", "declined", "tentative"):
         raise CalError("response: accepted, declined or tentative")
     box, cal_id, raw, v = get_event(tenant, ref)
+    if whole_series and raw.get("recurringEventId") and box.kind == "google":
+        raw = box.get(cal_id, raw["recurringEventId"])
     if box.kind != "google":
         from .caldav_cal import NEEDS_SIGNIN
         raise CalError(NEEDS_SIGNIN)
@@ -347,13 +480,16 @@ def respond_now(tenant: str, ref: str, response: str) -> dict[str, Any]:
         raise CalError("You are not invited to this event (or you are the organizer).")
     for a in mine:
         a["responseStatus"] = response
+        if comment:
+            a["comment"] = str(comment)[:500]
     e = box.patch(cal_id, raw["id"], {"attendees": atts}, "all")
     return view(box, cal_id, cal_id, e, _tz(tenant))
 
 
 # ---------------- free time ----------------
 def free_slots(tenant: str, day_from: date, day_to: date, minutes: int = 60, work_start: str = "09:00",
-               work_end: str = "19:00", limit: int = 10) -> list[dict[str, Any]]:
+               work_end: str = "19:00", limit: int = 10, warn: list | None = None,
+               extra: list[tuple[datetime, datetime]] | None = None, weekdays_only: bool = False) -> list[dict[str, Any]]:
     tz = _tz(tenant)
     minutes = max(10, min(int(minutes or 60), 600))
     ws_h, ws_m = [int(x) for x in work_start.split(":")[:2]]
@@ -366,11 +502,17 @@ def free_slots(tenant: str, day_from: date, day_to: date, minutes: int = 60, wor
         by_box.setdefault(box.key, (box, []))[1].append(cal_id)
     for box, cal_ids in by_box.values():
         spans += box.busy(cal_ids, start, end)
+        if warn is not None:
+            warn += [f"Google could not read {c}, so its busy times are not counted" for c in getattr(box, "busy_errors", [])]
+    spans += list(extra or [])
     spans = sorted((a.astimezone(tz), b.astimezone(tz)) for a, b in spans)
     out = []
     nowl = datetime.now(tz)
     d = day_from
     while d <= day_to and len(out) < limit:
+        if weekdays_only and d.weekday() >= 5:
+            d += timedelta(days=1)
+            continue
         w0 = datetime(d.year, d.month, d.day, ws_h, ws_m, tzinfo=tz)
         w1 = datetime(d.year, d.month, d.day, we_h, we_m, tzinfo=tz)
         cur = max(w0, nowl.replace(second=0, microsecond=0) + timedelta(minutes=(15 - nowl.minute % 15) % 15)) \

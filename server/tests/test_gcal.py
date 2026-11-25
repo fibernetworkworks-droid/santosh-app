@@ -64,6 +64,9 @@ class FakeGoogle:
         p = path.removeprefix("/calendar/v3")
         if p == "/users/me/calendarList":
             return httpx.Response(200, json={"items": list(self.cals.values())})
+        if p == "/users/me/settings":       # v0.999.189: Hoola reads her Google Calendar settings too
+            return httpx.Response(200, json={"items": [{"id": "timezone", "value": "Asia/Kolkata"},
+                                                       {"id": "weekStart", "value": "1"}]})
         if p == "/freeBusy":
             body = json.loads(req.content)
             t0, t1 = datetime.fromisoformat(body["timeMin"]), datetime.fromisoformat(body["timeMax"])

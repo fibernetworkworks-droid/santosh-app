@@ -3672,3 +3672,9 @@ Task ID: v0.999.188 SLIDES COMPLETE
 Ask: check Google Slides, then 100% Slides work for Hoola
 Built: groups read, deck layouts + templates, Drive fallback, retry, design / table / fill / look / import / deck / comments tools, share list / remove / link
 Not verified: real Google deck; comments API new; charts need reconnect
+
+---
+Task ID: v0.999.189 CALENDAR COMPLETE
+Ask: check Google Calendar, then 100% Calendar work for Hoola
+Built: paging, retry, honest free/busy, calendars / share / status / series / meeting_time / ics / watch tools, more event options
+Not verified: real Google Calendar; holiday ids pattern; Workspace-only event kinds

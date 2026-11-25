@@ -11609,3 +11609,59 @@ Registry pins 675 -> 682.
 Slides): animations and slide transitions, changing a slide's layout or a deck's theme, publishing to the web,
 presenting, audio. Comments are new in Google's Slides API (revision 20261118) and have not been tried on a real deck.
 Charts need the Slides connection made again (the new Sheets read permission).
+
+## v0.999.189 CALENDAR COMPLETE (owner: "NOW LETS WORK ON GOOGLE CALENDER" = check Google Calendar, then 100%): FIXED against Google's own Calendar API description - lists stopped at one page (now paged), a calendar Google could not read counted as free time (now said), Google's speed limit told as an error (now waited out), every read-only refusal told as a permission problem (now: only the organizer, a calendar she can only see, Workspace-only event kinds); NEW calendar_calendars (make, rename, describe, time zone, colour, hide / show, subscribe, public holidays by country, remove, delete and clear behind cards, event labels), calendar_share (busy / view / edit / manage, change, remove, public, a whole domain; cards), calendar_status (out of office with auto-decline, focus time, working location), calendar_series (next occurrences, skip one, end, change all, change this and following), calendar_meeting_time (a time several people are free, saying whose calendar Google would not show), calendar_ics (.ics files in and out), calendar_watch (new invites / changes in the chat + a job); events gain colours, labels, private, show as free, guest rules, optional guests, email reminders, Drive attachments, first / last weekday repeats, moving to another calendar, a note with an RSVP, the whole series RSVP; her Google settings read; registry 689; 10 tests.
+
+Owner: "NOW LETS WORK ON GOOGLE CALENDER" (after SLIDES COMPLETE: check Google Calendar first, then 100%).
+Check first: Hoola had 8 Calendar tools (agenda, find, add, update, cancel, respond, free slots, settings) and meeting
+alerts. Every request shape was compared with Google's own Calendar API v3 description (its discovery document,
+revision 20261118, read 25 Nov 2026). New module `cal/more.py`, new table `calendar_watches`; 7 new tools (registry
+682 -> 689).
+
+**Bugs fixed**
+1. Calendar lists, events, sharing lists and settings stopped after one page from Google - now paged.
+2. Free-time finding: a calendar Google could not read came back with no busy times and was counted as free - now
+   said in warnings.
+3. Google's speed limit (429, 5xx, a rate-limit 403) became "Google Calendar error 403" - now waited out
+   (Retry-After, else 1-2-4-8-16 s, 5 tries), then said plainly.
+4. Every 403 / 400 was raw Google text: now "only the organizer can change this", "you can only look at this
+   calendar", the missing permission, and the Workspace-only event kinds are named.
+5. Email reminders, optional guests, the RSVP note and the whole-series RSVP could not be given; colours existed in the
+   code but the AI could not set them.
+
+**New**
+- `calendar_calendars` - list (hidden ones too), create (name, description, time zone, colour), rename / describe /
+  time zone, colour, hide, show, subscribe to a shared or public calendar by its id, public holidays by country
+  (Google's "Holidays in ..." calendars), unsubscribe / delete / clear behind cards, the calendar's own event labels
+  (list, add; new in Google's API).
+- `calendar_share` - list who sees a calendar; add (busy / free only, all details, edit, manage), change, remove, make
+  public (busy / free or details only, never edit), share with a whole domain - all behind cards; she is never taken
+  off her own calendar.
+- `calendar_status` - out of office (Google declines clashing invites: new ones, all, or none, with her message),
+  focus time (with chat do-not-disturb), working location (home, an office, a place).
+- `calendar_series` - a repeating event's rule and next occurrences, skip one, end it after a date, change every
+  occurrence, change this and the following (the series is split, earlier ones stay); guests -> card.
+- `calendar_meeting_time` - a time several people are free from Google's free / busy for each of them plus her own
+  calendars, weekdays only by default; names the people whose calendars Google would not show.
+- `calendar_ics` - an .ics file she sent into a calendar (Google's import: nobody emailed, the same file again updates
+  the same events), an event or a range of days as an .ics file in the chat.
+- `calendar_watch` - new invites (or any change) told in the chat every few minutes from Google's change list (sync
+  token; nothing old told as new), plus a job Hoola does each time (50 a day; invites are data; declining still asks).
+- Events: colours by Google's names, labels, private / public, show as free, what guests may do, optional guests,
+  email reminders, Google Drive attachments, "first Monday" / "last Friday" repeats, day names as well as MO / TU,
+  move to another of her calendars (card when guests), phone dial-in, attendee notes; her Google settings (time
+  zone, week start, default length) read.
+
+**Connectors > Google:** Calendar lines say what it now does.
+
+**Tests:** `test_v0999_189_calendar_complete.py` 10 on a stand-in for Google that also checks Google's shapes
+(sendUpdates values, supportsAttachments with attachments, eventLabelVersion with a label, reminder methods and
+limits, recurrence strings, event types and their properties, autoDecline modes, sharing roles and scope types,
+change list without timeMin / q / orderBy, colorRgbFormat on colours). `test_gcal.py`'s stand-in learnt Google's
+settings endpoint. Registry pins 682 -> 689.
+
+**NOT VERIFIED:** against a real Google Calendar. Holiday calendar ids follow the pattern Google's own holiday
+calendars carry (not documented); out of office, focus time and working location work only on a Google Workspace
+account's main calendar (Google refuses them on personal Gmail, said when it does); event labels are new in Google's
+API. Not possible through Google's API (said plainly): appointment schedules / booking pages, Google Tasks inside
+Calendar, a calendar's own notification settings, working hours on personal accounts.
