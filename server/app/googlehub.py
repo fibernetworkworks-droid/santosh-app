@@ -82,7 +82,7 @@ APPS: list[dict[str, Any]] = [
     {"key": "slides", "c": "l", "name": "Slides", "group": "core", "does": "Makes presentations from your notes.",
      "primary": G + "presentations", "ask": lambda: _scopes("slides.accounts", "SCOPES"),
      "table": lambda: _model("slides.models", "SlidesAccount")},
-    {"key": "photos", "c": "p", "name": "Photos", "group": "more", "does": "Uses only the photos you pick.",
+    {"key": "photos", "c": "p", "name": "Photos", "group": "more", "does": "Uses only the photos you pick and the ones Hoola adds.",
      "primary": G + "photospicker.mediaitems.readonly", "ask": lambda: _scopes("photos.accounts", "SCOPES"),
      "table": lambda: _model("photos.models", "PhotosAccount")},
     {"key": "youtube", "c": "y", "name": "YouTube", "group": "more", "does": "Your channel and uploads, each with your yes.",

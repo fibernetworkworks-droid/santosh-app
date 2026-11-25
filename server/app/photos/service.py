@@ -22,8 +22,12 @@ from .models import PhotosPending, PhotosPick
 log = logging.getLogger("santosh.photos")
 
 BIG_UPLOAD = 20
-MAX_BYTES = 50 * 1024 * 1024
+MAX_BYTES = 200 * 1024 * 1024        # v0.999.191 Google's photo limit (was 50 MB)
+MAX_VIDEO = 1024 * 1024 * 1024       # Google takes videos up to 20 GB; Hoola reads a file whole, so 1 GB here
+STORAGE_NOTE = 25 * 1024 * 1024      # Google asks apps to remind her past 25 MB that uploads use her storage
 PICK_MINUTES = 30
+LINK_MINUTES = 50                    # Google's download links last 60 minutes; fetch fresh ones before that
+PICK_KEEP_MINUTES = 55               # the picked items stay usable this long after she picks
 IMAGE_EXT = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".heif", ".bmp", ".tif", ".tiff", ".avif")
 VIDEO_EXT = (".mp4", ".mov", ".3gp", ".avi", ".mkv", ".m4v", ".wmv", ".mpg", ".webm")
 
@@ -39,13 +43,29 @@ def _client_for(tenant: str, key: str | None) -> PhotosClient:
 def _item_view(m: dict) -> dict[str, Any]:
     mf = m.get("mediaFile") or {}
     meta = mf.get("mediaFileMetadata") or {}
-    return {"id": m.get("id", ""), "type": m.get("type", "PHOTO"), "filename": mf.get("filename", "") or f"{m.get('id', 'photo')}.jpg",
-            "mime": mf.get("mimeType", "image/jpeg"), "width": meta.get("width"), "height": meta.get("height"),
-            "taken": m.get("createTime", ""), "base_url": mf.get("baseUrl", "")}
+    out = {"id": m.get("id", ""), "type": m.get("type", "PHOTO"), "filename": mf.get("filename", "") or f"{m.get('id', 'photo')}.jpg",
+           "mime": mf.get("mimeType", "image/jpeg"), "width": meta.get("width"), "height": meta.get("height"),
+           "taken": m.get("createTime", ""), "base_url": mf.get("baseUrl", "")}
+    cam = " ".join(x for x in (meta.get("cameraMake"), meta.get("cameraModel")) if x)
+    if cam:
+        out["camera"] = cam
+    ph = meta.get("photoMetadata") or {}
+    shot = [f"f/{ph['apertureFNumber']}" if ph.get("apertureFNumber") else "",
+            f"{ph['focalLength']} mm" if ph.get("focalLength") else "",
+            f"ISO {ph['isoEquivalent']}" if ph.get("isoEquivalent") else "", ph.get("exposureTime") or ""]
+    if any(shot):
+        out["settings"] = " ".join(x for x in shot if x)
+    vid = meta.get("videoMetadata") or {}
+    if vid.get("fps"):
+        out["fps"] = vid["fps"]
+    if vid.get("processingStatus"):
+        out["video_status"] = vid["processingStatus"]
+    return out
 
 
 def _public_item(it: dict) -> dict[str, Any]:
-    return {k: it.get(k) for k in ("id", "type", "filename", "mime", "width", "height", "taken")}
+    return {k: it.get(k) for k in ("id", "type", "filename", "mime", "width", "height", "taken", "camera", "settings",
+                                   "fps", "video_status") if it.get(k) not in (None, "")}
 
 
 def pick_view(p: PhotosPick) -> dict[str, Any]:
@@ -108,11 +128,29 @@ def refresh_pick(tenant: str, pick_id: str) -> dict[str, Any]:
     with session() as s:
         row = s.get(PhotosPick, p.id)
         row.items, row.item_count, row.status = items, len(items), "ready"
-    try:
-        c.delete_session(p.session_id)      # Google asks apps to clean up finished sessions
-    except PhotosError:
-        pass
+        row.ready_at = row.listed_at = now()
+    # v0.999.191 the session is NOT deleted here any more: its download links are what photos_send uses, so it is
+    # cleaned up by poll_tick once the picked items are no longer usable (Google: delete it after you are done)
     return pick_view(_get_pick(tenant, pick_id))
+
+
+def _fresh_links(c: PhotosClient, p: PhotosPick) -> list[dict]:
+    """Google's download links last 60 minutes: past LINK_MINUTES ask the picking session for new ones."""
+    listed = as_utc(p.listed_at) or as_utc(p.ready_at) or as_utc(p.created_at)
+    items = list(p.items or [])
+    if listed and listed > now() - timedelta(minutes=LINK_MINUTES):
+        return items
+    try:
+        fresh = {m.get("id"): _item_view(m) for m in c.picked(p.session_id)}
+    except PhotosError:
+        _mark(p.id, "ended")
+        raise PhotosError("The picked photos can no longer be fetched from Google Photos (the picking session ended). "
+                          "Start a new pick with photos_pick.")
+    items = [fresh.get(i["id"], i) for i in items]
+    with session() as s:
+        row = s.get(PhotosPick, p.id)
+        row.items, row.listed_at = items, now()
+    return items
 
 
 def _mark(pid: str, status: str) -> None:
@@ -130,6 +168,14 @@ def poll_tick() -> int:
         for p in s.scalars(select(PhotosPick).where(PhotosPick.status == "waiting",
                                                     PhotosPick.created_at < now() - timedelta(minutes=PICK_MINUTES + 5))).all():
             p.status = "expired"
+        old_ready = [(p.id, p.tenant_id, p.account, p.session_id) for p in s.scalars(select(PhotosPick).where(
+            PhotosPick.status == "ready", PhotosPick.ready_at < now() - timedelta(minutes=PICK_KEEP_MINUTES))).all()]
+    for pid, tenant, acct, sid in old_ready:       # v0.999.191 clean up finished sessions, as Google asks
+        try:
+            _client_for(tenant, acct).delete_session(sid)
+        except Exception:
+            pass
+        _mark(pid, "ended")
     done = 0
     for pid, tenant, conv in waiting:
         try:
@@ -164,7 +210,10 @@ def _items_of(tenant: str, pick_id: str, ids: list[str] | None = None) -> tuple[
         raise PhotosError("The user has not picked photos yet. Tap the photo picker card in the chat, pick them, then tell me.")
     if v["status"] == "expired":
         raise PhotosError("The photo picking session has expired; start a new one with photos_pick.")
-    items = list(p.items or [])
+    if v["status"] == "ended":
+        raise PhotosError("Picked photos can be fetched for about an hour after picking (Google's rule); this pick has "
+                          "ended. Start a new one with photos_pick.")
+    items = _fresh_links(_client_for(tenant, p.account), p)
     if ids:
         want = set(ids)
         items = [i for i in items if i["id"] in want or i["filename"] in want]
@@ -173,21 +222,34 @@ def _items_of(tenant: str, pick_id: str, ids: list[str] | None = None) -> tuple[
     return p, items
 
 
-def _bytes(c: PhotosClient, it: dict) -> bytes:
+def _bytes(c: PhotosClient, it: dict, preview: bool = False) -> bytes:
     if not it.get("base_url"):
         raise PhotosError(f"{it.get('filename')} has no download link; pick it again.")
-    return c.download(it["base_url"], it.get("type", "PHOTO"))
+    if it.get("type") == "VIDEO" and it.get("video_status") not in (None, "", "READY") and not preview:
+        raise PhotosError(f"{it.get('filename')} is still being processed by Google Photos; try again in a few minutes.")
+    return c.download(it["base_url"], it.get("type", "PHOTO"), preview)
 
 
 def send(tenant: str, conv: str, pick_id: str, to: str = "phone", ids: list[str] | None = None,
          folder: str | None = None) -> dict[str, Any]:
     """Picked photos -> phone (download cards) / for_email (file ids for email_draft) / pc / drive."""
+    p, items = _items_of(tenant, pick_id, ids)
+    return deliver(tenant, conv, _client_for(tenant, p.account), items, to, folder)
+
+
+def deliver(tenant: str, conv: str, c: PhotosClient, items: list[dict], to: str = "phone",
+            folder: str | None = None) -> dict[str, Any]:
+    """Photos with a Google download link -> phone / for_email / pc / drive (v0.999.191 shared by picks + Hoola's uploads)."""
     from ..mailbox import service as ms
     from ..pc import service as pcs
-    p, items = _items_of(tenant, pick_id, ids)
-    c = _client_for(tenant, p.account)
-    if len(items) > 50:
-        raise PhotosError("Up to 50 photos at a time; pick fewer or give ids.")
+    if to not in ("phone", "for_email", "pc", "drive"):
+        raise PhotosError("to: phone, for_email, pc or drive.")
+    if len(items) > 100:
+        raise PhotosError("Up to 100 photos at a time; give ids for the rest.")
+    if to == "pc":
+        from ..pc.hub import hub
+        if not hub.is_online(tenant):
+            raise PhotosError("The PC is offline. Start Santosh Desktop on the PC, or send with to='phone'.")
     out, problems = [], []
     for it in items:
         try:
@@ -196,7 +258,7 @@ def send(tenant: str, conv: str, pick_id: str, to: str = "phone", ids: list[str]
             problems.append(f"{it['filename']}: {e}")
             continue
         if len(data) > MAX_BYTES:
-            problems.append(f"{it['filename']}: larger than 50 MB")
+            problems.append(f"{it['filename']}: larger than 200 MB")
             continue
         direction = "to_pc" if to == "pc" else ("mail" if to in ("for_email", "drive") else "to_phone")
         row = ms.store_bytes(tenant, it["filename"], data, direction)
@@ -206,8 +268,6 @@ def send(tenant: str, conv: str, pick_id: str, to: str = "phone", ids: list[str]
                 bus.publish(conv, "pc_file", {**pcs.public_file(row), "source": "photos"})
         elif to == "pc":
             from ..pc.hub import hub
-            if not hub.is_online(tenant):
-                raise PhotosError("The PC is offline. Start Santosh Desktop on the PC, or send with to='phone'.")
             try:
                 res = hub.call_sync(tenant, "save_file", {"file_id": row.id, "name": row.name,
                                                           "url": f"/api/pc/fetch/{row.id}"})
@@ -250,6 +310,13 @@ def _source_bytes(tenant: str, src: dict[str, Any]) -> tuple[str, str, bytes]:
         if not path.exists():
             raise PhotosError(f"{row.name} is no longer on the server (files are removed after 24 hours).")
         name, mt, data = row.name, mimetypes.guess_type(row.name)[0] or "application/octet-stream", path.read_bytes()
+    elif src.get("url"):
+        name, mt, data = _from_web(str(src["url"]))
+    elif src.get("pick_id"):
+        p, items = _items_of(tenant, str(src["pick_id"]), [str(src["id"])] if src.get("id") else None)
+        it = items[0]
+        data = _bytes(_client_for(tenant, p.account), it)
+        name, mt = it["filename"], it.get("mime") or "image/jpeg"
     elif src.get("drive_file"):
         try:
             from ..drive import service as ds
@@ -257,14 +324,26 @@ def _source_bytes(tenant: str, src: dict[str, Any]) -> tuple[str, str, bytes]:
         except Exception as e:
             raise PhotosError(f"File not found in Drive: {e}")
     else:
-        raise PhotosError("Each source: {email_id, attachment_id}, {file_id} or {drive_file}")
+        raise PhotosError("Each source: {email_id, attachment_id}, {file_id}, {drive_file} or {url}")
     low = name.lower()
     if not (mt.startswith(("image/", "video/")) or low.endswith(IMAGE_EXT + VIDEO_EXT)):
         raise PhotosError(f"{name} is not a photo or video; only photos / videos can go to Google Photos.")
-    if len(data) > MAX_BYTES:
-        raise PhotosError(f"{name} is larger than 50 MB.")
     if not mt.startswith(("image/", "video/")):
         mt = mimetypes.guess_type(name)[0] or "image/jpeg"
+    if mt.startswith("video/") and len(data) > MAX_VIDEO:
+        raise PhotosError(f"{name} is larger than 1 GB; upload it from the Google Photos app.")
+    if mt.startswith("image/") and len(data) > MAX_BYTES:
+        raise PhotosError(f"{name} is larger than 200 MB, Google Photos' limit for a photo.")
+    return name, mt, data
+
+
+def _from_web(url: str) -> tuple[str, str, bytes]:
+    """v0.999.191 a photo / video from a public web link, through the same guarded fetch Drive uses."""
+    try:
+        from ..drive import more as dmore
+        name, mt, data = dmore.from_link(url, MAX_BYTES)
+    except Exception as e:
+        raise PhotosError(f"Could not download {url[:120]}: {e}")
     return name, mt, data
 
 
@@ -279,7 +358,7 @@ def _album_id(c: PhotosClient, album: str | None) -> tuple[str | None, str | Non
 
 
 def upload_now(tenant: str, sources: list[dict], album: str | None = None, description: str = "",
-               account: str | None = None) -> dict[str, Any]:
+               account: str | None = None, position: dict | None = None, descriptions: list[str] | None = None) -> dict[str, Any]:
     c = get_client(tenant, account)
     if not c.can_library:
         raise PhotosError("For uploads, connect Google Photos separately under Profile > Google Photos (the sign-in has no upload "
@@ -289,37 +368,50 @@ def upload_now(tenant: str, sources: list[dict], album: str | None = None, descr
     batch: list[dict] = []
     names: list[str] = []
 
+    total = 0
+    pos = {"p": position}
+
     def flush():
         if not batch:
             return
-        for name, r in zip(names, c.batch_create(list(batch), album_id)):
+        for name, r in zip(names, c.batch_create(list(batch), album_id, pos["p"] if album_id else None)):
             st = r.get("status") or {}
-            if r.get("mediaItem") and st.get("message", "Success") in ("Success", "OK", "") and not st.get("code"):
-                uploaded.append({"filename": name, "url": r["mediaItem"].get("productUrl", "")})
+            if r.get("mediaItem") and not st.get("code"):
+                m = r["mediaItem"]
+                uploaded.append({"filename": name, "id": m.get("id", ""), "url": m.get("productUrl", "")})
             else:
                 problems.append(f"{name}: {st.get('message') or 'upload fail'}")
+        if uploaded and pos["p"] and pos["p"].get("position") != "LAST_IN_ALBUM":
+            # the next batch goes right after the last one added, so the order she gave holds
+            pos["p"] = {"position": "AFTER_MEDIA_ITEM", "relativeMediaItemId": uploaded[-1]["id"]}
         batch.clear()
         names.clear()
-    for src in sources:
+    for n, src in enumerate(sources):
         try:
             name, mt, data = _source_bytes(tenant, src)
             token = c.upload_bytes(data, mt)
         except PhotosError as e:
             problems.append(str(e))
             continue
-        batch.append({"description": (description or "")[:1000], "simpleMediaItem": {"uploadToken": token, "fileName": name}})
+        total += len(data)
+        desc = (descriptions[n] if descriptions and n < len(descriptions) and descriptions[n] else description) or ""
+        batch.append({"description": str(desc)[:1000], "simpleMediaItem": {"uploadToken": token, "fileName": name}})
         names.append(name)
         if len(batch) == 50:
             flush()
     flush()
     res: dict[str, Any] = {"uploaded": len(uploaded), "items": uploaded, "album": album or None, "album_url": album_url}
+    if total > STORAGE_NOTE:
+        res["storage_note"] = ("Uploads keep the original quality and count towards her Google Account storage "
+                               f"({total // (1024 * 1024)} MB this time).")
     if problems:
         res["problems"] = problems
     return res
 
 
 def plan_or_upload(tenant: str, conv: str, sources: list[dict], album: str | None = None, description: str = "",
-                   account: str | None = None) -> dict[str, Any]:
+                   account: str | None = None, position: dict | None = None,
+                   descriptions: list[str] | None = None) -> dict[str, Any]:
     if not sources:
         raise PhotosError("Which photos? Give sources ({email_id, attachment_id}, {file_id} or {drive_file}).")
     if len(sources) > 500:
@@ -327,12 +419,13 @@ def plan_or_upload(tenant: str, conv: str, sources: list[dict], album: str | Non
     if len(sources) > BIG_UPLOAD:
         with session() as s:
             p = PhotosPending(tenant_id=tenant, conversation_id=conv, action="upload",
-                              payload={"sources": sources, "album": album, "description": description, "account": account},
+                              payload={"sources": sources, "album": album, "description": description, "account": account,
+                                       "position": position, "descriptions": descriptions},
                               summary={"count": len(sources), "album": album or ""})
             s.add(p)
             s.flush()
             return {"pending_id": p.id}
-    return upload_now(tenant, sources, album, description, account)
+    return upload_now(tenant, sources, album, description, account, position, descriptions)
 
 
 def pending(tenant: str, pid: str) -> dict | None:
@@ -349,8 +442,12 @@ def run_pending(tenant: str, pid: str) -> dict[str, Any]:
     if p is None or p["status"] != "pending":
         raise PhotosError("This upload is no longer pending.")
     pl = p["payload"]
+    if p["action"] != "upload":
+        from . import more
+        return more.run_pending(tenant, pid, p)
     try:
-        res = upload_now(tenant, pl["sources"], pl.get("album"), pl.get("description", ""), pl.get("account"))
+        res = upload_now(tenant, pl["sources"], pl.get("album"), pl.get("description", ""), pl.get("account"),
+                         pl.get("position"), pl.get("descriptions"))
     except PhotosError:
         with session() as s:
             s.get(PhotosPending, pid).status = "failed"
@@ -378,7 +475,7 @@ def create_album(tenant: str, title: str, account: str | None = None) -> dict[st
     return {"id": aid, "title": title.strip(), "url": url}
 
 
-def album_items(tenant: str, album: str, limit: int = 50, account: str | None = None) -> dict[str, Any]:
+def album_items(tenant: str, album: str, limit: int = 200, account: str | None = None) -> dict[str, Any]:
     c = get_client(tenant, account)
     found = [a for a in c.albums() if a["id"] == album or (a.get("title") or "").lower() == (album or "").strip().lower()]
     if not found:
@@ -390,7 +487,8 @@ def album_items(tenant: str, album: str, limit: int = 50, account: str | None = 
                        "taken": (m.get("mediaMetadata") or {}).get("creationTime", "")} for m in items]}
 
 
-LIMITS = ("Google policy (since 31 March 2025): Santosh cannot see your whole Google Photos library, share it, or delete from it. "
-          "You pick photos (photos_pick), or Santosh can upload photos and make its own albums. "
-          "Share / delete in the Google Photos app yourself.")
-
+LIMITS = ("Google's rule since 31 March 2025: Hoola cannot see her whole Google Photos library, cannot share albums or "
+          "photos, and cannot delete anything. She picks photos for Hoola (photos_pick); Hoola can look at, send and save "
+          "those, upload photos and videos into her Google Photos, and manage only the albums and photos Hoola added "
+          "(rename, cover, add / remove, notes, places, maps, captions). Sharing and deleting are done in the Google "
+          "Photos app.")

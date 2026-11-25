@@ -132,9 +132,9 @@ class _PhotosScreenState extends State<PhotosScreen> {
       body: () => RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-            const Text('You choose photos in Google Photos, and Hoola sends them to your phone, PC, Drive or email. '
-                'Hoola can also upload photos and make albums. Under Google\'s policy, Hoola cannot see your whole library, '
-                'nor share or delete from it.',
+            const Text('You choose photos in Google Photos, and Hoola can look at them and send them to your phone, PC, '
+                'Drive or email. Hoola can also upload photos and videos, make albums and manage the photos and albums it '
+                'added. Under Google\'s rule, Hoola cannot see the rest of your library, nor share or delete anything.',
                 style: TextStyle(color: C.muted, fontSize: 13)),
             const SizedBox(height: 14),
             if (_err != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),

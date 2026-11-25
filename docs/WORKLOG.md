@@ -3684,3 +3684,9 @@ Task ID: v0.999.190 CALENDAR, THE LAST 8
 Ask: complete the 8 remaining Calendar gaps
 Built: default reminders, notifications, event time zones, rooms, working hours, birthdays, transfer, chat files, Google Tasks
 Not verified: real Google Calendar / Tasks; Tasks needs reconnect
+
+---
+Task ID: v0.999.191 GOOGLE PHOTOS COMPLETE
+Ask: Google Photos the same way as the other Google apps
+Built: picked-photo fix, retries, paging, resumable uploads, photos_look, photos_library, album rename / cover / add / remove / notes / places / maps
+Not verified: real Google Photos account

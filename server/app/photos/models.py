@@ -36,11 +36,14 @@ class PhotosPick(Base):
     session_id: Mapped[str] = mapped_column(String(200))
     picker_uri: Mapped[str] = mapped_column(Text, default="")
     purpose: Mapped[str] = mapped_column(String(300), default="")
-    status: Mapped[str] = mapped_column(String(12), default="waiting")   # waiting | ready | expired
+    status: Mapped[str] = mapped_column(String(12), default="waiting")   # waiting | ready | expired | ended
     items: Mapped[list | None] = mapped_column(JSON, nullable=True)
     item_count: Mapped[int] = mapped_column(Integer, default=0)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    # v0.999.191 when she finished picking, and when the download links were last fetched (Google's links last 60 min)
+    ready_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    listed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class PhotosPending(Base):

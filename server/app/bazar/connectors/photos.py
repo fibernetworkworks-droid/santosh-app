@@ -21,8 +21,16 @@ class PhotosExecutor:
             raise ToolError(f"Unknown tool {tool}")
         p = ps.pending(ctx.user.id, str(args.get("pending_id", "")))
         if p is None or p["status"] != "pending":
-            raise ToolError("This upload is not ready; please ask again.")
+            raise ToolError("This change is not ready; please ask again.")
         sm = p["summary"]
+        if p["action"] == "album_remove":     # v0.999.191 taking photos out of an album Hoola made
+            return NeedsApproval(tier=2, title="Take these photos out of the album?", payee="Google Photos",
+                                 amount_paise=0, pay_method="Santosh Photos",
+                                 items=[{"name": f"{sm.get('count', 0)} photos out of the album {sm.get('album', '')}"},
+                                        {"name": "They stay in her Google Photos; only the album changes."}],
+                                 preview={"message": f"Approve to take {sm.get('count', 0)} photos out of {sm.get('album', '')}."},
+                                 action={"executor": "photos", "pack_id": pack.id, "name": "run",
+                                         "args": {"pending_id": p["id"]}})
         items = [{"name": f"{sm.get('count', 0)} photos / videos will go to Google Photos"}]
         if sm.get("album"):
             items.append({"name": f"Album: {sm['album']}"})

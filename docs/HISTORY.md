@@ -11705,3 +11705,46 @@ v0.999.189 stand-in now gives only busy times inside the asked window, like Goog
 
 **NOT VERIFIED:** against a real Google Calendar or Google Tasks. Rooms come from her own past events, not her
 company's room list. Working hours and transfer need Google Workspace (transfer also an administrator).
+
+## v0.999.191 GOOGLE PHOTOS COMPLETE (owner: "NOW LETS WORK ON GOOGLE PHOTOS"): everything Google still lets an app do in Google Photos (since March 2025 only the photos she picks and the ones Hoola added). FIXED picked photos dying right after picking (the picking session was deleted at once; now kept, fresh links after 50 min, cleaned up after 55), no retries on Google's speed limit, albums / album photos read only partly, uploads stopped at 50 MB (now photos 200 MB, videos 1 GB through the resumable upload, storage reminder past 25 MB), a processing video sent broken; NEW photos_look (what is in picked photos), photos_library (Hoola's uploads: Google's filters by date / kind / category / favourites, caption, send, look), albums rename / cover / add / remove (card) / notes / places / maps / share link + steps, uploads from web links and picked photos with positions and captions; registry 694; 7 tests.
+
+Owner: "NOW LETS WORK ON GOOGLE PHOTOS". Checked first against Google's own Photos Library API (revision 20261124) and
+Picker API (revision 20261124) descriptions and guides, and Google's "Updates to the Google Photos APIs" page. Google's
+rule since 31 March 2025: an app sees only the photos the user picks plus what the app itself added; sharing, shared
+albums and the whole-library scopes were removed (403). New module `photos/more.py`; 2 new tools (registry 692 -> 694).
+
+**Fixed:**
+- Picked photos stopped working right after picking: Hoola deleted Google's picking session the moment she finished,
+  and the download links belong to that session. The session now stays open; links older than 50 minutes are fetched
+  again (Google's links last 60 minutes); poll_tick deletes the session 55 minutes after picking (Google asks apps to
+  clean up) and the pick is "ended", said plainly ("pick again").
+- No retries: 429 / 5xx answered with a backoff (5 tries, Retry-After respected), as Google's upload guide asks.
+- Albums read only 10 pages, an album's photos only its first 100: both page now (albums up to 1,000, photos up to
+  Google's 20,000 an album).
+- Uploads stopped at 50 MB: photos up to Google's 200 MB, videos up to 1 GB, files over 20 MB through Google's
+  resumable upload (start, chunks in its granularity, finalize); past 25 MB the answer says uploads count towards her
+  Google storage (Google asks apps to remind).
+- A video Google is still processing is said, not sent as a broken file.
+- Upload status read by its code, not its message text.
+
+**New:**
+- `photos_look` - looks at what is IN picked photos (up to 10, her question passed on; a 1024 px picture through the
+  same vision helper chat files use).
+- `photos_library` - Hoola's own uploads: list with Google's filters (date ranges / up to 5 dates, photo / video,
+  Google's own categories like food / receipts / documents / selfies / pets, favourites, archived, oldest first) or
+  one album's photos, get, caption (the description shown in Google Photos), send / save (phone, email, PC, Drive),
+  look.
+- `photos_albums` grows: rename, cover, add photos, remove photos (behind a card; they stay in her library), notes /
+  places / maps inside an album at first / last / after a photo or note, share = the album link and the steps (Google
+  no longer lets apps share).
+- `photos_upload` takes web links and photos she picked (a copy is added), one caption per photo, and a position in
+  the album.
+- Picked items show camera, settings (aperture, ISO), frame rate and video state.
+
+**Tests:** `test_v0999_191_photos_complete.py` 7 on a stand-in that refuses what Google refuses (album + filters,
+a position without an album, more than 50 per call, updateMask values, a cover not in its album, enrichment shapes,
+category names, batchGet repeats) and answers 429 first; `test_photos.py` 4 (its session-deleted-at-once check now
+says the session stays open). Registry pins 692 -> 694.
+
+**NOT VERIFIED:** against a real Google Photos account. Still not possible through Google's API: seeing photos she did
+not pick, sharing, shared albums, deleting, reordering photos already in an album, changing or removing album notes.
