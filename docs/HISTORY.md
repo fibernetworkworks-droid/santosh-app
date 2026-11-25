@@ -11552,3 +11552,60 @@ answers after sending, a progress bar, shuffling question order, the confirmatio
 grading or deleting answers, right answers on grids. Push alerts (Forms watches) need a Pub/Sub topic in her Google
 Cloud project - Hoola checks for new answers every ~10 minutes instead. Pre-filled entry numbers follow Google's known
 pattern, not a documented rule.
+
+## v0.999.188 SLIDES COMPLETE (owner: "NOW LETS WORK ON GOOGE SLIDES SAME WAY" = check Google Slides, then 100%): FIXED against Google's own Slides API description - text inside grouped things was never read, a deck made from her own theme could not take Google's standard layouts, sharing / exporting a deck Hoola did not make had no fallback, Google's speed limit told as no permission (now waited out), finding stopped at one page of 50, Hinglish messages; NEW slides_design (text boxes, shapes, pictures incl. her chat photos, YouTube / Drive videos, lines, linked Sheets charts, tables; move, resize, style, links, alt text, layering, backgrounds, chart refresh), slides_table (rows, columns, cells, merge, widths), slides_fill (templates with {blanks}, one copy per person, pictures + charts too), slides_look (pictures of slides in the chat), slides_import (PowerPoint / ODP into Google Slides), slides_deck (rename, copy, bin behind a card), slides_comments (list, add, assign, reply, resolve, remove); slides_create from her template deck, slides_add with the deck's own layouts, skip a slide, replace on some slides only, export to ODP / text, share list / remove / link; registry 682; 11 tests.
+
+Owner: "NOW LETS WORK ON GOOGE SLIDES SAME WAY" (after FORMS COMPLETE: check Google Slides first, then 100%).
+Check first: Hoola had 9 Slides tools (find, read, create, add, edit, arrange, delete, export, share). Every request
+shape was compared with Google's own Slides API v1 description (its discovery document, revision 20261118, read 25 Nov
+2026). New module `slides/more.py`; 7 new tools (registry 675 -> 682).
+
+**Bugs fixed**
+1. Text inside grouped things on a slide was never read (only the top level) - now read, and listed in details.
+2. A deck made from her own theme often has no Google standard layouts: slides were asked for by Google's layout name
+   and Google would refuse. Now Hoola uses the deck's own layout that has the right boxes (by its placeholder ids), and
+   says when a part had no box.
+3. Sharing a deck Hoola did not make failed (the Slides connection only reaches files Hoola made in Drive): now it
+   uses her Drive connection for the same account, like export already did; copy / rename / bin / access too.
+4. Google's speed limit (429, 5xx, a rate-limit 403) was told as "No permission" - waited (Retry-After, else
+   1-2-4-8-16 s, 5 tries), then said plainly; a missing permission and the 10 MB export limit are named.
+5. Finding stopped at one page of 50 - now paged (up to 1,000).
+6. Messages left in Hinglish ("User se poochiye kaunsi", "Kaunsi slides hatani hain", "bina title"); the edit error
+   named the wrong box.
+
+**New**
+- `slides_design` - add a text box, a shape (Google's 140 shapes, everyday names), a picture (a public link, or a
+  photo she sent in the chat through a 15-minute signed link Google copies from), a YouTube or Drive video, a line,
+  a chart from her Google Sheet (linked, so it updates), a table; place by words (top right, full ...) or points;
+  change text, move, resize (one exact transform), style (bold, size, font, colour, highlight, alignment, fill,
+  outline, links to a site or a slide), alt text, layer order, remove; slide backgrounds (colour or picture, one or
+  all slides); refresh linked charts.
+- `slides_table` - add rows (with their cells) / columns, delete a row / column, a cell's text, style and colour,
+  merge / unmerge, column width.
+- `slides_fill` - a template with {{blanks}}: one new deck per person (names, words, pictures, charts), up to 50 (more
+  than 3 behind a card), or fill the deck itself; says which blanks are still empty and which values had no blank.
+- `slides_look` - pictures of up to 10 slides in the chat (Google's thumbnails).
+- `slides_import` - her PowerPoint (.pptx / .ppt / .pptm) or OpenDocument (.odp) turned into Google Slides.
+- `slides_deck` - rename, copy, move to the bin (card).
+- `slides_comments` - list (with their slide), add on a slide or a thing on it, assign to a person, reply, resolve,
+  reopen, remove (card). Uses the comment requests now in Google's Slides API.
+- `slides_create template=` - a new deck in her company look (Google's API cannot change a theme, so Hoola copies her
+  template and builds with its layouts); `slides_add` with `layout_name` (the deck's own layouts); numbered points; a
+  background colour per slide; `slides_edit skip=` (hide when presenting) and replace on some slides only;
+  `slides_read slides= details=` (ids, kinds, boxes, the deck's size and layouts, pictures / videos / charts, skipped);
+  export to ODP and plain text; `slides_share action=list / remove / link` (remove and anyone-with-the-link behind
+  cards) with a message in Google's email.
+- The Slides connection asks for one more Google permission (read her Sheets) so charts can be placed: decks
+  connected before need Connect again for charts only.
+
+**Connectors > Google:** Slides lines say what it now does.
+
+**Tests:** `test_v0999_188_slides_complete.py` 11 on a stand-in for Google that also checks Google's shapes (every
+request kind against the discovery list, fields on every update, EMU sizes, ABSOLUTE transforms, Google shape names,
+imageReplaceMethod not the old replaceMethod, line category not the old lineCategory, a deck's own layout ids).
+Registry pins 675 -> 682.
+
+**NOT VERIFIED:** against a real Google deck. Not possible through Google's API (said plainly, she does them in
+Slides): animations and slide transitions, changing a slide's layout or a deck's theme, publishing to the web,
+presenting, audio. Comments are new in Google's Slides API (revision 20261118) and have not been tried on a real deck.
+Charts need the Slides connection made again (the new Sheets read permission).

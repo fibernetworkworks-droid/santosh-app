@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.187"   # v0.999.187 FORMS COMPLETE (owner: "NOW LETS WORK ON GOOGLE FROM SAME WAY" = check Google Forms, then 100%): FIXED against Google's own Forms API description - grids were sent in a shape Google refuses (now questionGroupItem.questions with one rowQuestion per row + grid.columns) and their answers were never read (now one column per row), email collection used names Google refuses (now DO_NOT_COLLECT / VERIFIED), file-upload questions were sent though Google's API cannot create them (now refused with how she adds one; their answers read with Drive links), general feedback on auto-graded choice questions (Google refuses it; now used as right + wrong feedback), answers stopped at 5,000 (now all), the fill-in link was refused (now her form is found by it), Google's speed limit told as no permission (now waited out); NEW form_logic (go to a page by answer), form_link (pre-filled links per person, website code, QR), form_edit changes any field + type + duplicate + add_at, form_share list / remove (card), form_alerts job (a task on new answers), form_export into her existing sheet, answers since a date / search, summary per day + grid rows + right answers, question / option pictures, rating hearts / thumbs, date without year; registry 675; 13 tests. Previous: v0.999.186 DRIVE COMPLETE (owner; older stories live in git history.
+APP_VERSION = "0.999.188"   # v0.999.188 SLIDES COMPLETE (owner: "NOW LETS WORK ON GOOGE SLIDES SAME WAY" = check Google Slides, then 100%): FIXED against Google's own Slides API description - text inside grouped things was never read, a deck made from her own theme could not take Google's standard layouts, sharing / exporting a deck Hoola did not make had no fallback, Google's speed limit told as no permission (now waited out), finding stopped at one page of 50, Hinglish messages; NEW slides_design (text boxes, shapes, pictures incl. her chat photos, YouTube / Drive videos, lines, linked Sheets charts, tables; move, resize, style, links, alt text, layering, backgrounds, chart refresh), slides_table (rows, columns, cells, merge, widths), slides_fill (templates with {blanks}, one copy per person, pictures + charts too), slides_look (pictures of slides in the chat), slides_import (PowerPoint / ODP into Google Slides), slides_deck (rename, copy, bin behind a card), slides_comments (list, add, assign, reply, resolve, remove); slides_create from her template deck, slides_add with the deck's own layouts, skip a slide, replace on some slides only, export to ODP / text, share list / remove / link; registry 682; 11 tests. Previous: v0.999.187 FORMS COMPLETE (owner; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -3538,6 +3538,19 @@ def slides_remove(key: str, tenant: str = Depends(current_tenant)):
     if not sla.remove(tenant, key):
         raise HTTPException(404, "Account not found")
     return _slides_state(tenant)
+
+
+@app.get("/api/slides/img/{file_id}")
+def slides_image(file_id: str, e: str = "", s: str = ""):
+    """v0.999.188: a photo she sent in the chat, for Google Slides to copy into a slide (a signed link that works for
+    15 minutes; Google needs a public link when a picture is inserted). Only PNG / JPEG / GIF."""
+    from .slides.client import SlidesError
+    from .slides.more import open_image
+    try:
+        data, mime = open_image(file_id, e, s)
+    except SlidesError as err:
+        raise HTTPException(404, str(err))
+    return Response(data, media_type=mime, headers={"Cache-Control": "no-store"})
 
 
 # ---------------- Hoola Network: avatars talk to avatars ----------------

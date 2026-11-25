@@ -263,7 +263,7 @@
     docs: ['Reads documents you name · writes new drafts', 'Shares a document', 'Deletes your documents on its own'],
     sheets: ['Reads the sheets you work on · creates new ones', 'Clears or deletes rows and tabs · shares a sheet', 'Deletes a whole spreadsheet on its own'],
     forms: ['Makes and changes forms and quizzes · pages and answer rules · reads, sums up and exports answers · links, website code and QR', 'Shares or removes who can edit · deletes answered questions or a form', 'Submits a form as you'],
-    slides: ['Reads decks · builds new slides', 'Shares or deletes a deck', 'Publishes a deck on its own'],
+    slides: ['Reads and builds decks · text, shapes, pictures, videos, tables and Sheets charts · fills templates · pictures of slides · turns PowerPoint into Slides', 'Shares a deck or removes access · deletes slides or comments · bins a deck · makes many copies at once', 'Publishes a deck to the web on its own'],
     photos: ['Shows albums · uses pictures you pick', 'Uploads to your library', 'Opens photos you did not pick'],
     youtube: ['Reads your channel, videos and comments', 'Uploads or edits a video · replies to comments', 'Makes a private video public on its own'],
     business: ['Reads your listing and its numbers', 'Any change to your listing', 'Writes fake reviews'],

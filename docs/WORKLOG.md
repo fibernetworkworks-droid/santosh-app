@@ -3666,3 +3666,9 @@ Task ID: v0.999.187 FORMS COMPLETE
 Ask: check Google Forms, then 100% Forms work for Hoola
 Built: real grid / email / upload / feedback shapes, all answers, fill-in link lookup, retry, pages by answer, links + QR, any-field edits, editors, answer jobs, export into a sheet, since / search
 Not verified: real Google form; pre-filled entry numbers
+
+---
+Task ID: v0.999.188 SLIDES COMPLETE
+Ask: check Google Slides, then 100% Slides work for Hoola
+Built: groups read, deck layouts + templates, Drive fallback, retry, design / table / fill / look / import / deck / comments tools, share list / remove / link
+Not verified: real Google deck; comments API new; charts need reconnect

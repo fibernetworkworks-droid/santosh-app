@@ -21,7 +21,8 @@ from .models import SlidesAccount
 SLIDES_SCOPE = "https://www.googleapis.com/auth/presentations"
 SCOPES = ["openid", "email", "profile", SLIDES_SCOPE,
           "https://www.googleapis.com/auth/drive.metadata.readonly",   # find decks by name
-          "https://www.googleapis.com/auth/drive.file"]                # export / share the decks Santosh creates
+          "https://www.googleapis.com/auth/drive.file",                # export / share / import the decks Hoola makes
+          "https://www.googleapis.com/auth/spreadsheets.readonly"]     # v0.999.188 put her Sheets charts on slides
 SEARCH_SCOPES = ("https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/drive.readonly",
                  "https://www.googleapis.com/auth/drive.metadata.readonly", "https://www.googleapis.com/auth/drive.metadata")
 
