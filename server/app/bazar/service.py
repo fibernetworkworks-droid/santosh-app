@@ -1591,8 +1591,8 @@ def composio_connect(tenant_id: str, toolkit: str, conversation_id: str = "") ->
             except cmp.ComposioError as e:
                 raise ToolError(str(e))
             return {"status": "needs_key", "pack_id": cmp.PREFIX + toolkit, "url": "", "fields": fields,
-                    "say": f"{name} connects with its own API key: Hoola app > Connect > MCP servers > Apps > {name} > "
-                           f"'Add key' - enter your key there. Never send a key in chat."}
+                    "say": f"{name} connects with its own API key: in Hoola open Connectors, find {name} and "
+                           f"tap 'Add key' - enter your key there. Never send a key in chat."}
         if st_now == "needs_setup":
             name = cmp.toolkits().get(toolkit, (toolkit, ""))[0]
             return {"status": "needs_setup", "pack_id": cmp.PREFIX + toolkit, "url": "",

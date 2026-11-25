@@ -2670,6 +2670,15 @@ class Call:
         if cb:
             context += "\n\n" + cb
         context += "\n\n" + self._mcp_block
+        try:   # v0.999.194 her connected Composio apps: the call knows them and hands their work to the brain
+            from .bazar import composio as _cmp
+            apps = await asyncio.to_thread(_cmp.her_apps, self.ctx.tenant_id)
+            if apps:
+                context += ("\n\nHer connected apps (her own accounts): " + ", ".join(n for _, n in apps[:20]) +
+                            ". Any ask that names one of these or needs its work: call santosh_kaam with her words "
+                            "(it has the tools for them). Never answer it from your own knowledge.")
+        except Exception:
+            log.exception("connected apps line for the call failed")
         return context, mcp_defs
 
     async def _prebuild(self) -> None:

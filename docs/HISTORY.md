@@ -11847,3 +11847,24 @@ suggested looks folded into suggested insertions, heading ids, dropdown definiti
 `test_v0999_192_docs_complete.py` 12 still pass.
 
 **NOT VERIFIED:** against a real Google Doc.
+
+## v0.999.194 APPS WIRING (owner: "now check is all apps wiring to hoola is perfect or not"): a Composio app she connected (Perplexity, Slack, Notion ... by sign-in or her own key) now really reaches the brain - named in the system prompt with how to use it, naming it opens composio_apps / bazar_run (the live core-tools start never showed them), tool_search finds it by name, the PC picker prefers it (it looked her apps up under the wrong user id and never found one), a voice call knows them and hands their work to santosh_kaam; the Add key path text points at Connectors; registry 702; 7 tests.
+
+Owner: "now check is all apps wiring to hoola is perfect or not" (after asking how a connected Perplexity is used).
+The check found the app could be connected but Hoola could not reach it in a normal chat:
+
+1. **Never told** - the live chat runs on the small prompt + ~22 core tools; the small prompt listed her MCP servers
+   but not her Composio apps, so the brain did not know Perplexity / Slack were connected. Now
+   `composio.prompt_line` names each connected app with its toolkit and how to use it (composio_apps action=tools,
+   then bazar_run pack_id=cmp-<toolkit>), and says a named app beats Hoola's own web search.
+2. **Tools out of view** - composio_apps / bazar_run are not core tools; naming 'Perplexity' or 'Slack' opened no
+   family (Slack even opened tv / youtube). Now a turn whose words name a connected app admits the bazar family
+   (`composio.named_apps`, whole words, 'Perplexity AI' / 'perplexityai' -> 'perplexity').
+3. **tool_search** - tool_search('slack') found nothing; it now opens the app tools when the need names one of her
+   connected apps (tenant-scoped).
+4. **PC picker** - `pick._connected_way` looked her apps up under the hashed Composio user id; her rows are keyed by
+   her tenant id, so a connected app was never preferred over a PC. Fixed through `composio.her_apps`.
+5. **Voice** - a call's context names her connected apps and sends their work to santosh_kaam.
+6. **Text** - the 'Add key' path said 'Connect > MCP servers > Apps'; now 'Connectors > the app > Add key'.
+
+Tests: tests/test_v0999_194_apps_wiring.py (7). NOT VERIFIED with a real Composio app or key.

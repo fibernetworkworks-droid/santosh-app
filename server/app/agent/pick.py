@@ -114,13 +114,9 @@ def _connected_way(task: str, tenant: str) -> str:
         from ..bazar import composio
         from ..db import session
         if composio.configured():
-            with session() as s_:
-                joined = composio.joined(s_, composio.composio_user(tenant))
-            low = task.lower()
-            for app in joined:
-                word = str(app or "").replace("_", " ").strip().lower()
-                if len(word) >= 4 and re.search(r"\b" + re.escape(word) + r"\b", low):
-                    ways.append(f"{word.title()} = composio_apps (her connected {word.title()} account)")
+            # v0.999.194 her Connection rows are keyed by her tenant id; the hashed Composio user id never matched
+            for slug, name in composio.named_apps(task, composio.her_apps(tenant)):
+                ways.append(f"{name} = composio_apps / bazar_run pack_id=cmp-{slug} (her connected {name} account)")
     except Exception:
         pass
     return "; ".join(ways)

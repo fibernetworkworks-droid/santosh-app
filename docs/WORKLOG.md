@@ -3702,3 +3702,9 @@ Task ID: v0.999.193 GOOGLE DOCS, THE LAST 9
 Ask: the 9 Google Docs pieces still missing
 Built: table delete / row height / cell style, link_inside, move, section layout, first/even headers, dropdown edit/remove, reply edit/delete, withdraw, named range / picture removal, suggestion details
 Not verified: real Google Doc
+
+---
+Task ID: v0.999.194 APPS WIRING
+Ask: check all apps wiring to Hoola
+Built: connected apps in the prompt, admission by name, tool_search by name, pick user-id fix, call line, Add key text
+Not verified: a real Composio app

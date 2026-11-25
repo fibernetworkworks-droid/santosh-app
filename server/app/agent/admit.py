@@ -1069,6 +1069,13 @@ async def tool_search(ctx, need: str = "", **_):
         fam = FAMILY_OF.get(nm)
         if fam:
             hits.add(fam)
+    if not hits and getattr(ctx, "tenant_id", ""):   # v0.999.194 an app she connected through Composio, by name
+        try:
+            from ..bazar import composio as _cmp
+            if _cmp.named_apps(need, _cmp.her_apps(ctx.tenant_id)):
+                hits.add("bazar")
+        except Exception:
+            log.debug("connected app lookup failed", exc_info=True)
     if not hits:   # try the words as family tags / tool names directly
         low = need.lower()
         words = set(_WORD_RE.findall(low)) | {low}

@@ -2259,6 +2259,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
     _mark("mcp")
     mcp_defs, mcp_route = mcp_live.tool_defs(mcp_snap, settings.mcp_native_tools, _last_user_text(history))
     tail += "\n\n" + mcp_live.prompt_block(mcp_snap, mcp_route)
+    _her_apps: list = []
+    try:   # v0.999.194 her connected Composio apps: the brain is told which ones and how to use them
+        from ..bazar import composio as _cmp
+        _her_apps = await asyncio.to_thread(_cmp.her_apps, tenant_id)
+        if _her_apps:
+            tail += "\n\n" + _cmp.prompt_line(tenant_id, _her_apps)
+    except Exception:
+        log.exception("connected apps line failed")
     tail += state.get("hint") or ""
     if state.get("hard") and getattr(settings, "hard_recipe", True):
         # v0.433 SOCH KE JAWAB step 4: a hard question gets the reasoning recipe (ordinary chat never pays for it)
@@ -2295,6 +2303,15 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
             if _sticky - adm.families:
                 adm.admit_families(_sticky)
                 adm.why.update({f: "chat" for f in _sticky})
+    if adm is not None and _her_apps:   # v0.999.194 naming a connected app opens composio_apps / bazar_run
+        try:
+            from ..bazar import composio as _cmp
+            _named = _cmp.named_apps(state.get("request", "") or "", _her_apps)
+            if _named and "bazar" not in adm.families:
+                adm.admit_families(["bazar"])
+                adm.why = {**adm.why, "bazar": "her app " + _named[0][1]}
+        except Exception:
+            log.exception("connected app admission failed")
     if adm is not None and state.get("hard"):
         adm.extra.add("pylab")      # v0.430 a hard ask the judge (not the rules) found also gets the sandbox
     if adm is not None:             # v0.494 a LEARNED SKILL matched this ask: skill_manage must be callable to read it
