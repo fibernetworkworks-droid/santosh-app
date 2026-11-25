@@ -794,16 +794,59 @@ $('#slotLand').appendChild(composer);
 /* stick to the bottom: the newest line stays in view while a reply grows; scrolling up stops the pull and shows
    "Neeche jao". Handled here (Safari has no overflow-anchor): a ResizeObserver re-pins only while she is at the bottom. */
 let STICK = true;
-const scrollDown = force => { if (force) STICK = true; if (STICK) thread.scrollTop = thread.scrollHeight; $('#jump').hidden = STICK; };
-const unstick = () => { if (thread.scrollHeight - thread.clientHeight > 4) { STICK = false; $('#jump').hidden = false; } };
-thread.addEventListener('scroll', () => { const d = thread.scrollHeight - thread.scrollTop - thread.clientHeight; if (d < 48) { STICK = true; $('#jump').hidden = true; } else if (!STICK) $('#jump').hidden = false; }, {passive: true});
-thread.addEventListener('wheel', e => { if (e.deltaY < 0) unstick(); }, {passive: true});
+/* v0.999.199 SMOOTH LANDING like Claude: a message she sends lands at the TOP of the chat (16px under it), and the
+   space below is kept for the reply (LAND_PAD on the column), so the reply grows into it and the page does not jump
+   or pull her message away word by word. The page follows the reply again only when SHE scrolls to the bottom
+   (USER_AT: a wheel / touch / key within the last 800ms); then the arrow shows when the reply runs past the screen.
+   A chat opened or reloaded still opens at its bottom (scrollDown(true) drops the landing). */
+let ANCHOR = null, LAND_PAD = 0, LAND_BASE = 0, USER_AT = 0, LAND_T = 0;
+const yOf = el => el.getBoundingClientRect().top - thread.getBoundingClientRect().top + thread.scrollTop;
+const landTop = () => 16 + (parseFloat(getComputedStyle(thread).paddingTop) || 0);
+function landSpace() {
+  if (ANCHOR && !ANCHOR.isConnected) ANCHOR = null;
+  if (!LAND_PAD) LAND_BASE = parseFloat(getComputedStyle(col).paddingBottom) || 0;   // the column's own bottom padding
+  let pad = 0;
+  if (ANCHOR) {   // the page must reach (her message at the top) + one screen; the column alone ends at `natural`
+    const natural = col.getBoundingClientRect().bottom - thread.getBoundingClientRect().top + thread.scrollTop - LAND_PAD
+      + (parseFloat(getComputedStyle(thread).paddingBottom) || 0);
+    pad = Math.max(0, Math.ceil(yOf(ANCHOR) - landTop() + thread.clientHeight - natural));
+  }
+  if (Math.abs(pad - LAND_PAD) > 1 || (!pad && LAND_PAD)) {
+    LAND_PAD = pad;
+    col.style.paddingBottom = pad ? `${LAND_BASE + pad}px` : '';
+  }
+  if (ANCHOR && !STICK && USER_AT < LAND_T && Date.now() - LAND_T > 450) {   // held until she scrolls: a line added above
+    const want = Math.max(0, Math.round(yOf(ANCHOR) - landTop()));               // (an action row, a receipt) never moves it
+    if (Math.abs(thread.scrollTop - want) > 1) thread.scrollTop = want;
+  }
+  if (ANCHOR && !STICK) $('#jump').hidden = thread.scrollHeight - LAND_PAD - thread.scrollTop - thread.clientHeight < 48;
+}
+function dropAnchor() { ANCHOR = null; if (LAND_PAD) { LAND_PAD = 0; col.style.paddingBottom = ''; } }
+function landAt(el) {
+  ANCHOR = el; STICK = false; LAND_T = Date.now(); $('#jump').hidden = true; landSpace();
+  thread.scrollTo({top: Math.max(0, yOf(el) - landTop()), behavior: SMOOTH()});
+}
+const scrollDown = force => { if (force) { STICK = true; dropAnchor(); } if (STICK) thread.scrollTop = thread.scrollHeight; if (ANCHOR) landSpace(); else $('#jump').hidden = STICK; };
+const unstick = () => { USER_AT = Date.now(); if (thread.scrollHeight - thread.clientHeight > 4) { STICK = false; $('#jump').hidden = !!ANCHOR; } };
+thread.addEventListener('scroll', () => {
+  const d = thread.scrollHeight - thread.scrollTop - thread.clientHeight;
+  if (ANCHOR) {   // landed: only her own scroll to the very end gives the follow back
+    if (d < 48 && Date.now() - USER_AT < 800 && thread.scrollHeight - LAND_PAD - thread.scrollTop - thread.clientHeight < 48) STICK = true;
+    landSpace(); return;
+  }
+  if (d < 48) { STICK = true; $('#jump').hidden = true; } else if (!STICK) $('#jump').hidden = false;
+}, {passive: true});
+thread.addEventListener('wheel', e => { USER_AT = Date.now(); if (e.deltaY < 0) unstick(); }, {passive: true});
 let touchY = 0;
-thread.addEventListener('touchstart', e => { touchY = e.touches[0]?.clientY || 0; }, {passive: true});
-thread.addEventListener('touchmove', e => { if ((e.touches[0]?.clientY || 0) > touchY + 6) unstick(); }, {passive: true});
-thread.addEventListener('keydown', e => { if (['PageUp', 'ArrowUp', 'Home'].includes(e.key)) unstick(); });
-if (window.ResizeObserver) new ResizeObserver(() => { if (STICK) thread.scrollTop = thread.scrollHeight; }).observe(col);
-$('#jump').addEventListener('click', () => { thread.scrollTo({top: thread.scrollHeight, behavior: SMOOTH()}); STICK = true; $('#jump').hidden = true; });
+thread.addEventListener('touchstart', e => { USER_AT = Date.now(); touchY = e.touches[0]?.clientY || 0; }, {passive: true});
+thread.addEventListener('touchmove', e => { USER_AT = Date.now(); if ((e.touches[0]?.clientY || 0) > touchY + 6) unstick(); }, {passive: true});
+thread.addEventListener('pointerdown', () => { USER_AT = Date.now(); }, {passive: true});   // the scrollbar or a drag is hers too
+thread.addEventListener('keydown', e => { USER_AT = Date.now(); if (['PageUp', 'ArrowUp', 'Home'].includes(e.key)) unstick(); });
+if (window.ResizeObserver) {
+  const ro = new ResizeObserver(() => { if (ANCHOR) landSpace(); if (STICK) thread.scrollTop = thread.scrollHeight; });
+  ro.observe(col); ro.observe(thread);
+}
+$('#jump').addEventListener('click', () => { USER_AT = Date.now(); STICK = true; thread.scrollTo({top: thread.scrollHeight - LAND_PAD - thread.clientHeight, behavior: SMOOTH()}); $('#jump').hidden = true; });
 function landing(on) {
   $('#landing').hidden = !on; $('#thread').hidden = on; $('#dock').hidden = on;
   (on ? $('#slotLand') : $('#slotDock')).appendChild(composer);
@@ -899,7 +942,7 @@ function flushStepBuf() {
 const ATT = window.HoolaAttach ? HoolaAttach({api, esc, toast, token: () => TOKEN,
   itemOf: (kind, p) => PN?.itemOf(kind, p), open: item => PN ? (PN.open(item), true) : false}) : null;
 const FILE_ONLY = 'Look at this file';   // the words a files-only message carries to Hoola
-function userBubble(text, files, eid, cid, at) {
+function userBubble(text, files, eid, cid, at, land) {
   const d = document.createElement('div'); d.className = 'mu';
   const tiles = files?.length && ATT ? ATT.sent(files) : null;   // v0.279 her files sit above the bubble, like Claude
   d.innerHTML = (files?.length && !ATT ? `<div class="att">${files.map(f => `<span class="chip">📎 ${esc(f.name || f)}</span>`).join('')}</div>` : '') + `<span class="mut">${esc(text)}</span>`;
@@ -908,7 +951,9 @@ function userBubble(text, files, eid, cid, at) {
   if (eid && !files?.length) attachEdit(d, text, eid);
   if (at) d.dataset.at = at;                             // v0.178 the jump rail reads the day off this
   if (tiles) { if (at) tiles.dataset.at = at; SINK.appendChild(tiles); d._tiles = tiles; }
-  SINK.appendChild(d); if (SINK === col) scrollDown(true); TURN = null; return d;
+  SINK.appendChild(d);
+  if (SINK === col) { if (land) { d.classList.add('landed'); landAt(tiles || d); } else scrollDown(true); }   // v0.999.199 a new message lands at the top
+  TURN = null; return d;
 }
 /* v0.173 receipts: a message sent while Hoola works shows what became of it — queue mein (take-back possible),
    turant jawab (the quick lane answered beside the running kaam), bhej diya (the queued turn took it). */
@@ -1770,7 +1815,7 @@ function onEvent(ev) {
           if (b && !p.files?.length) attachEdit(b, p.text, ev.id); else if (b) b.dataset.eid = ev.id;
           return;
         }
-        landing(false); userBubble(p.text, p.files, ev.id, null, ev.at); return;
+        landing(false); userBubble(p.text, p.files, ev.id, null, ev.at, true); return;
       }
       if (p.source === 'greeting') return;        // v0.234 the console never draws the old greeting (the home greets), like Claude
       if (p.ack) { if (TYPING) simpleProgress('ack', p); return; }        // v0.227.3 the 5-second comfort line: one progress row, never a second avatar
@@ -2202,7 +2247,7 @@ composer.addEventListener('submit', async e => {
   const files = FILES.splice(0); drawFiles(); msg.value = ''; msg.style.height = 'auto'; $('#sendBtn').disabled = true;
   store.del('hoola.draft.' + origin);   // v0.173 the draft went out with the message
   const body = {text: text || FILE_ONLY, client_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())), files: files.map(f => f.file_id), hints: takeHints()};
-  landing(false); const bbl = userBubble(body.text, files, null, body.client_id);
+  landing(false); const bbl = userBubble(body.text, files, null, body.client_id, null, true);
   if (TYPING) receipt(bbl, body.client_id, 'queue');   // v0.173 steering: she sees it is queued and can take it back
   USER_ECHO.push(body.text);
   for (let i = 0; i < 3; i++) {

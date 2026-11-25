@@ -11939,3 +11939,29 @@ box (Session, model, chips) 14 / 430 / 1.4. Recent-artifact cards and time label
 clean home at her ask), so there is nothing there to change.
 
 Tests: NEW `test_v0999_198_home_like_claude.py` (light + dark, real browser). NOT VERIFIED: on her server.
+
+## v0.999.199 SMOOTH LANDING (owner: "NOW LETS WORK ON SMOOTH LANDING OF PROMPT IN CHAT" -> "GO"): like Claude, a message she sends lands at the top of the chat (16 px under it) on the console and the phone, the room below is kept for the reply so it grows in place, the view holds still even past the screen until she scrolls, a chat that opens still opens at its bottom; her bubble fades in 200 ms with a 6 px rise; 2 tests.
+
+Owner: "NOW LETS WORK ON SMOOTH LANDING OF PROMPT IN CHAT --- FIRST FIND HOW CLAUDE CHAT HANDLE THIS SMOOTH
+LANDING" (her Claude screenshot: the sent message near the top, "Reading memory" under it, empty room below) -> "GO".
+
+Found: Claude puts the sent message at the top of the view and keeps the space under it for the reply; Hoola jumped to
+the bottom and pulled the page down with every line of the reply, so her own message scrolled away.
+
+Console (`static/console/v2.js`, chat view): `landAt` scrolls her new message to 16 px under the top (smooth, none
+under reduced motion); `landSpace` adds exactly the bottom padding the column needs so that position is reachable and
+shrinks it as the reply fills it; the view is held (STICK off, re-pinned if a line appears above) until she scrolls
+herself (wheel / touch / key / pointer), then it follows from the bottom again; the arrow shows once the reply runs
+past the screen. `scrollDown(true)` (opening / reloading a chat) drops the landing, so a chat still opens at its
+bottom. History messages never land. Her bubble: 200 ms fade with a 6 px rise (was 320 ms with a scale).
+
+Phone (`lib/ui/chat/hoola_chat.dart`): when she sends, the newest turn (her message and everything after it) becomes
+one block at least a screen tall (the room animates open = the slide up); `_HoldTurn` (a sliver) asks the reversed
+list to move by exactly what the reply grew past the room in the same layout pass, so nothing on screen moves - not
+even for one frame - while held or while she reads higher up; her drag ends the hold. A chat that opens is unchanged.
+
+Tests: NEW `server/tests/test_v0999_199_smooth_landing.py` (real browser: lands at 16 px, stays while the reply grows
+past the screen, follows after her scroll to the end, stops when she scrolls up) and NEW `test/smooth_landing_test.dart`
+(phone: lands, holds every frame while a reply streams past the screen, released by her drag; history does not land).
+Full phone suite: no new failures (the 138 screenshot tests fail here before and after - they run on CI).
+NOT VERIFIED: on her server or phone.

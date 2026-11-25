@@ -451,6 +451,9 @@ class Santosh extends ChangeNotifier {
   bool _replaying = true;
   /// True while the chat history is replaying after a (re)connect: those items show at once, without animation.
   bool get replaying => _replaying;
+  /// Tests only: the history replay has finished, so new items count as live (v0.999.199 landing test).
+  @visibleForTesting
+  void endReplayForTest() => _replaying = false;
   DateTime _connectedAt = DateTime.now().toUtc();
 
   Future<void> saveSettings({String? server, String? key, String? lang, bool? speak}) async {
