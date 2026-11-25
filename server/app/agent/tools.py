@@ -288,7 +288,7 @@ def _google_refused(ctx: Ctx, e: BaseException) -> str:
     return msg   # v0.999.181 the card (with the app and the button) is sent by _google_card
 
 
-_GOOGLE_PREFIX = (("email_", "gmail"), ("calendar", "calendar"), ("cal_", "calendar"), ("drive_", "drive"), ("doc_", "docs"),
+_GOOGLE_PREFIX = (("email_", "gmail"), ("calendar", "calendar"), ("cal_", "calendar"), ("drive_", "drive"), ("doc_", "docs"), ("gdoc_", "docs"),
                   ("sheet", "sheets"), ("form", "forms"), ("slides", "slides"), ("photos_", "photos"), ("youtube", "youtube"),
                   ("gbp_", "business"))
 _card_told: dict[str, float] = {}
@@ -692,6 +692,7 @@ from .drive_tools import DRIVE_HANDLERS, DRIVE_LABELS, DRIVE_TOOLS  # noqa: E402
 from .forms_tools import FORMS_HANDLERS, FORMS_LABELS, FORMS_TOOLS  # noqa: E402
 from .slides_tools import SLIDES_HANDLERS, SLIDES_LABELS, SLIDES_TOOLS  # noqa: E402
 from .photos_tools import PHOTOS_HANDLERS, PHOTOS_LABELS, PHOTOS_TOOLS  # noqa: E402
+from .gdocs_tools import GDOCS_HANDLERS, GDOCS_LABELS, GDOCS_TOOLS  # noqa: E402
 from .notebook_tools import NOTEBOOK_HANDLERS, NOTEBOOK_LABELS, NOTEBOOK_TOOLS  # noqa: E402
 from .youtube_tools import YOUTUBE_HANDLERS, YOUTUBE_LABELS, YOUTUBE_TOOLS  # noqa: E402
 from .photo_tools import PHOTO_HANDLERS, PHOTO_LABELS, PHOTO_TOOLS  # noqa: E402
@@ -710,7 +711,7 @@ TOOL_LABELS.update({k: v for k, v in GDRIVE_LABELS.items() if k not in _new})
 HANDLERS.update({k: v for k, v in GDRIVE_HANDLERS.items() if k not in _new})
 for _t, _l, _h in ((SHEETS_TOOLS, SHEETS_LABELS, SHEETS_HANDLERS), (DRIVE_TOOLS, DRIVE_LABELS, DRIVE_HANDLERS),
                    (FORMS_TOOLS, FORMS_LABELS, FORMS_HANDLERS), (SLIDES_TOOLS, SLIDES_LABELS, SLIDES_HANDLERS),
-                   (PHOTOS_TOOLS, PHOTOS_LABELS, PHOTOS_HANDLERS), (NOTEBOOK_TOOLS, NOTEBOOK_LABELS, NOTEBOOK_HANDLERS),
+                   (PHOTOS_TOOLS, PHOTOS_LABELS, PHOTOS_HANDLERS), (GDOCS_TOOLS, GDOCS_LABELS, GDOCS_HANDLERS), (NOTEBOOK_TOOLS, NOTEBOOK_LABELS, NOTEBOOK_HANDLERS),
                    (YOUTUBE_TOOLS, YOUTUBE_LABELS, YOUTUBE_HANDLERS), (PHOTO_TOOLS, PHOTO_LABELS, PHOTO_HANDLERS), (CREATE_TOOLS, CREATE_LABELS, CREATE_HANDLERS), (APPCHECK_TOOLS, APPCHECK_LABELS, APPCHECK_HANDLERS),
                    (REA_TOOLS, REA_LABELS, REA_HANDLERS), (FRAMES_TOOLS, FRAMES_LABELS, FRAMES_HANDLERS), (HOOLA_TOOLS, HOOLA_LABELS, HOOLA_HANDLERS), (WEBCLONE_TOOLS, WEBCLONE_LABELS, WEBCLONE_HANDLERS)):
     TOOLS.extend(_t)

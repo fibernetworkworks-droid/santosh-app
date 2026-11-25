@@ -986,6 +986,9 @@ def run_pending(tenant: str, pid: str) -> dict[str, Any]:
             c = get_client(tenant, pl["account"])
             c.comment_delete(pl["fid"], pl["comment_id"])
             msg = "Comment removed."
+        elif p["action"].startswith("doc_"):      # v0.999.192 GOOGLE DOCS COMPLETE
+            from ..gdocs import service as gds
+            msg = gds.run_pending(tenant, p)
         else:
             from . import more
             msg = more.run_pending(tenant, p)

@@ -3690,3 +3690,9 @@ Task ID: v0.999.191 GOOGLE PHOTOS COMPLETE
 Ask: Google Photos the same way as the other Google apps
 Built: picked-photo fix, retries, paging, resumable uploads, photos_look, photos_library, album rename / cover / add / remove / notes / places / maps
 Not verified: real Google Photos account
+
+---
+Task ID: v0.999.192 GOOGLE DOCS COMPLETE
+Ask: Google Docs the same way as the other Google apps
+Built: gdocs package + 8 tools (read, write, edit, table, layout, tabs, comments, fill), Drive cards for docs, fake Docs engine tests
+Not verified: real Google Doc; chips on real accounts

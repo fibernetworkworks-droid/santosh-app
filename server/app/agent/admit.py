@@ -163,6 +163,8 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
              "recurring", "series", "meeting room", "conference room", "google tasks"),   # v0.999.189-190 CALENDAR
     "sheets": ("sheet", "excel", "spreadsheet", "csv", "row", "column", "pivot"),
     "gdrive": ("google doc", "gdoc", "drive", "google sheet"),      # v0.245 'document' / 'docx' = doc_studio now
+    "gdocs": ("google doc", "gdoc", "docs.google.com/document", "in the doc", "in my doc", "this doc",
+              "suggest changes", "track changes", "suggestion mode", "footnote", "{{"),   # v0.999.192
     "drive": ("drive", "folder", "storage", "share the file", "share this file", "share it with", "file share",   # v0.999.181
               "shared drive", "team drive", "zip", "unzip", "old version", "access request", "asked for access",
               "who edited", "who changed", "duplicate files"),   # v0.999.186 DRIVE COMPLETE

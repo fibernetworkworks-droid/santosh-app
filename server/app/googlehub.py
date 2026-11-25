@@ -71,7 +71,7 @@ APPS: list[dict[str, Any]] = [
     {"key": "drive", "c": "d", "name": "Drive", "group": "core", "does": "Finds, reads and saves your files.",
      "primary": G + "drive", "ask": lambda: _scopes("drive.accounts", "SCOPES"),
      "table": lambda: _model("drive.models", "DriveAccount")},
-    {"key": "docs", "c": "o", "name": "Docs", "group": "core", "does": "Writes and reads documents (they live in Drive).",
+    {"key": "docs", "c": "o", "name": "Docs", "group": "core", "does": "Reads, writes and edits documents, comments and suggestions (they live in Drive).",
      "primary": G + "drive", "ask": lambda: [G + "documents", G + "drive"], "table": None},
     {"key": "sheets", "c": "s", "name": "Sheets", "group": "core", "does": "Reads sheets, adds rows, makes new sheets.",
      "primary": G + "spreadsheets", "ask": lambda: _scopes("sheets.accounts", "SCOPES"),

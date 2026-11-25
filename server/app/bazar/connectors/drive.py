@@ -17,7 +17,11 @@ TITLES = {"share": "Share this file?", "public": "Create a public link?", "trash
           "replace": "Replace this file's contents?", "rev_restore": "Put the old version back?",
           "rev_delete": "Remove this version?", "team_delete": "Remove this shared drive?",
           "member_add": "Add to the shared drive?", "member_remove": "Remove from the shared drive?",
-          "member_role": "Change their role?", "request_accept": "Give access?", "request_deny": "Decline the request?"}
+          "member_role": "Change their role?", "request_accept": "Give access?", "request_deny": "Decline the request?",
+          # v0.999.192 GOOGLE DOCS COMPLETE
+          "doc_delete": "Delete this part of the document?", "doc_rewrite": "Rewrite this part of the document?",
+          "doc_tab_del": "Delete this tab?", "doc_comment": "Add this comment?", "doc_reply": "Add this reply?",
+          "doc_cmt_del": "Delete this comment?", "doc_sugg_all": "Change all these suggestions?"}
 ROLE = {"reader": "can only view", "commenter": "can comment", "writer": "can edit"}
 
 
@@ -36,7 +40,9 @@ class DriveExecutor:
         if p is None or p["status"] != "pending":
             raise ToolError("This Drive change is not ready; please ask again.")
         sm, act = p["summary"], p["action"]
-        if act == "share":
+        if act.startswith("doc_"):
+            items = [{"name": str(x)[:200]} for x in sm.get("lines") or [sm.get("name", "")]]
+        elif act == "share":
             items = [{"name": f"{sm['type']}: {sm['name']}"},
                      {"name": "To: " + ", ".join(sm["people"])[:200]},
                      {"name": f"They {ROLE.get(sm['role'], sm['role'])}; " +

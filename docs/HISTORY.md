@@ -11748,3 +11748,63 @@ says the session stays open). Registry pins 692 -> 694.
 
 **NOT VERIFIED:** against a real Google Photos account. Still not possible through Google's API: seeing photos she did
 not pick, sharing, shared albums, deleting, reordering photos already in an album, changing or removing album notes.
+
+## v0.999.192 GOOGLE DOCS COMPLETE (owner: "NOW LETS WORK SAME WAY FOR GOOGLE DOCS"): Hoola works inside Google Docs through Google's Docs API (it could only make a Doc from plain text and read its text before): NEW gdoc_read (real structure, numbered paragraphs, outline, tables, tabs, info, suggestions as is / accepted / without), gdoc_write (Markdown into a new Doc or anywhere: headings, looks, lists with levels, tables, pictures, page breaks), gdoc_edit (replace incl. every place + regex + formatted rewrite, delete, text and paragraph looks, lists, breaks, footnotes, pictures, people / date / link chips, dropdowns, named ranges), gdoc_table, gdoc_layout (margins, page size, landscape, pageless, header / footer, columns, whole styles), gdoc_tabs, gdoc_comments (comments + suggestions, accept / reject), gdoc_fill ({{blanks}} templates, a copy per row); every change can be a suggestion; places from the document's own UTF-16 indexes tied to its revision; big deletes, comments and accept-all wait for her tap; on her Drive connection (no reconnect); registry 702; 12 tests on a stand-in Docs engine.
+
+Owner: "NOW LETS WORK SAME WAY FOR GOOGLE DOCS". Checked first against Google's Docs API v1 description (revision
+20261118: 53 kinds of change), its release notes (comments + suggestions in the API generally available 30 Sep 2026;
+Google's own Docs MCP server GA 24 Nov 2026), its limits (60 writes a minute per user, 300 reads) and its edit
+rules. Before this Hoola could only make a Google Doc from plain text and read a doc's text through Drive; it never
+used the Docs API, so it could not edit, format or fill a document. New package `gdocs/` (client, model, md,
+service); 8 new tools (registry 694 -> 702). Runs on her Google Drive connection (the full Drive permission is
+accepted by the Docs API), so no reconnect.
+
+**The place math:** Google counts places in UTF-16 code units (an emoji counts 2). Every place Hoola uses comes from
+the document's own element indexes read just before (SUGGESTIONS_INLINE, the only view whose indexes a change may
+use), never from character counts; every change carries that read's revision (requiredRevisionId) - if someone edited
+meanwhile Hoola reads again once and rebuilds; a card made before someone else's edit never applies to moved text.
+
+**New tools:**
+- `gdoc_read` - find her Docs; read the real structure: numbered paragraphs [n], headings, lists, tables as rows,
+  people / date / link / dropdown chips, pictures, footnotes, suggestions marked; long documents in parts; outline,
+  tables, tabs, info (words, page setup, headers / footers, footnotes, picture ids, dropdowns, named ranges);
+  view as is / as if every suggestion were accepted / without them.
+- `gdoc_write` - formatted text from Markdown into a new Doc (title, folder) or anywhere in one (end, start,
+  before / after a text, under a heading, the end of a section, after paragraph N): headings, Title / Subtitle,
+  bold / italic / strike / underline / code, links, bullets / numbers / checklists with levels, quotes, code blocks,
+  tables (cells filled, heading row bold), pictures (a chat photo through a 15-minute signed link, or a public link),
+  page breaks. New text never takes over the look or list of the text it is put next to. suggest=true = as suggestions.
+- `gdoc_edit` - on found text (occurrence / all), a heading's whole section, or paragraph numbers: replace (every
+  place, regex; or a formatted rewrite), delete, text look, paragraph look (heading level, align, line spacing,
+  spacing, indents, keep together / with next, page break before, right-to-left), lists, page / section breaks,
+  footnotes, pictures, replace a picture, @mention, date, link chips, dropdowns (Google's id rules), named ranges +
+  filling them.
+- `gdoc_table` - insert, add / delete rows and columns, set / clear a cell, merge / unmerge, cell colour, column
+  width (Google's 5 pt minimum), heading rows repeated on each page.
+- `gdoc_layout` - margins, page size, landscape, pageless, background, header / footer text, first page / odd-even
+  different, page number start, 1-3 columns with a line, and a whole style at once (heading 1's font / size / colour...).
+- `gdoc_tabs` - list, add (emoji, under another tab, position), rename, emoji, move, delete (card).
+- `gdoc_comments` - comments (on a text, assigned to a person) and suggestions: list, add / reply (cards - others
+  see them), resolve / reopen, edit her own, delete (card), accept / reject one, accept / reject all or one person's
+  (card).
+- `gdoc_fill` - templates with {{blanks}} (also {{image:logo}}): list the blanks, fill a copy, or a copy per row (up
+  to 50) named by a pattern, in a folder; blanks left empty are named.
+
+**Cards (her tap):** deleting or rewriting more than 300 characters (not when it is only a suggestion), deleting a
+tab, adding a comment or reply, deleting a comment, accepting / rejecting all suggestions. Through Drive's own card
+(new actions doc_*).
+
+**Said plainly, not faked:** Google's API cannot insert page numbers (Insert > Page numbers in Docs), a horizontal
+line, or tick a checklist box; a Word file must become a Google Doc first (drive_convert).
+
+**Tests:** `tests/fakedocs.py` = a small Docs engine (UTF-16 places, a section break at 0, paragraphs ending in a
+newline, tables as markers, all-or-nothing batches, stale revisions refused, comments needing SUGGESTIONS_INLINE);
+`test_v0999_192_docs_complete.py` 12 (an edit after an emoji lands on the right letters; Markdown written in order
+with styles, nested lists, a filled table, a picture and a page break under a heading; a new Doc; suggestions
+accepted; a big delete waits for her tap and a stale card deletes nothing; paragraph looks, lists, footnote, chips,
+dropdown rules; tables, layout, headers, styles, tabs; comments behind cards; templates per row; Google's speed limit;
+Word files; a section rewritten from Markdown with no stray line; regex replace; named ranges; columns; accept all).
+Drive tests unchanged and green. Registry pins 694 -> 702.
+
+**NOT VERIFIED:** against a real Google Doc. Dropdown / people / date / rich-link chips are in Google's API
+description but not in its release notes, so their behaviour on real accounts is unconfirmed.
