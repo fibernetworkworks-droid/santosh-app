@@ -197,7 +197,18 @@ def view(box, cal_id: str, cal_name: str, e: dict, tz: ZoneInfo) -> dict[str, An
     else:
         when = _fmt(start, tz) if start else ""
         end_label = _fmt(end, tz) if end else ""
-    return {"id": make_ref(box, cal_id, e.get("id", "")), "title": e.get("summary") or "(no title)",
+    ev_tz = (e.get("start") or {}).get("timeZone") or ""
+    there = {}
+    if ev_tz and ev_tz != str(tz) and start and not all_day:
+        try:
+            there = {"time_zone": ev_tz, "start_there": start.astimezone(ZoneInfo(ev_tz)).strftime("%d %b %I:%M %p")}
+        except Exception:
+            there = {"time_zone": ev_tz}
+    rooms = [{"name": a.get("displayName") or a.get("email", ""), "response": a.get("responseStatus", "")}
+             for a in e.get("attendees") or [] if a.get("resource")]
+    if rooms:
+        there["rooms"] = rooms
+    return {**there, "id": make_ref(box, cal_id, e.get("id", "")), "title": e.get("summary") or "(no title)",
             "start": when, "end": end_label, "start_iso": start.isoformat() if start else "",
             "end_iso": end.isoformat() if end else "", "all_day": all_day,
             "location": e.get("location") or "", "description": (e.get("description") or "")[:600],
@@ -322,6 +333,21 @@ def rrule(repeat: dict | str | None) -> list[str] | None:
     return ["RRULE:" + ";".join(parts)]
 
 
+def zone(name: str) -> ZoneInfo:
+    """v0.999.189+1: an event in another place's time ("3 pm London time"): its own IANA time zone."""
+    n = str(name or "").strip()
+    alias = {"london": "Europe/London", "uk": "Europe/London", "new york": "America/New_York", "nyc": "America/New_York",
+             "dubai": "Asia/Dubai", "uae": "Asia/Dubai", "singapore": "Asia/Singapore", "india": "Asia/Kolkata",
+             "ist": "Asia/Kolkata", "tokyo": "Asia/Tokyo", "sydney": "Australia/Sydney", "paris": "Europe/Paris",
+             "berlin": "Europe/Berlin", "san francisco": "America/Los_Angeles", "california": "America/Los_Angeles",
+             "pst": "America/Los_Angeles", "est": "America/New_York", "utc": "UTC", "gmt": "Europe/London"}
+    try:
+        return ZoneInfo(alias.get(n.lower(), n))
+    except Exception:
+        raise CalError(f"'{n}' is not a time zone Hoola knows; give its IANA name like Europe/London or "
+                       "America/New_York.")
+
+
 def color_id(color: Any) -> str:
     c = str(color or "").strip().lower()
     if not c:
@@ -375,17 +401,19 @@ def build_body(tenant: str, *, title: str, start: datetime, end: datetime, all_d
                description: str = "", attendees: list[str] | None = None, reminders: list[int] | None = None,
                repeat=None, color: str | None = None, optional: list[str] | None = None,
                email_reminders: list[int] | None = None, visibility: str | None = None, show_as: str | None = None,
-               guests: dict | None = None, attachments: list[dict] | None = None) -> dict[str, Any]:
-    tz = _tz(tenant)
+               guests: dict | None = None, attachments: list[dict] | None = None, event_tz: str = "",
+               rooms: list[dict] | None = None) -> dict[str, Any]:
+    tz = zone(event_tz) if event_tz else _tz(tenant)
     body: dict[str, Any] = {"summary": title.strip()[:300] or "(no title)",
                             "start": _when_body(start, all_day, tz), "end": _when_body(end, all_day, tz)}
     if location:
         body["location"] = location[:500]
     if description:
         body["description"] = description[:8000]
-    if attendees or optional:
+    if attendees or optional or rooms:
         body["attendees"] = [{"email": a} for a in attendees or []] + [{"email": a, "optional": True}
                                                                        for a in optional or [] if a not in (attendees or [])]
+        body["attendees"] += [{"email": r["email"], "resource": True} for r in rooms or []]
     rb = reminders_body(reminders, email_reminders)
     if rb:
         body["reminders"] = rb

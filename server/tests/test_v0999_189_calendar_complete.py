@@ -3,7 +3,7 @@ series, a time for several people, .ics in and out, alerts on new invites, more 
 The stand-in checks every request against Google's own Calendar API v3 shapes (its discovery document, revision
 20261118)."""
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta
 from urllib.parse import unquote
 
 import httpx
@@ -169,8 +169,12 @@ class Full(FakeGoogle):
             for it in body["items"]:
                 if it["id"] in self.private:
                     out[it["id"]] = {"errors": [{"domain": "global", "reason": "notFound"}], "busy": []}
-                elif it["id"] in self.people_busy:
-                    out[it["id"]] = {"busy": self.people_busy[it["id"]]}
+                elif it["id"] in self.people_busy:          # like Google: only busy times inside the asked window
+                    t0 = datetime.fromisoformat(body["timeMin"].replace("Z", "+00:00"))
+                    t1 = datetime.fromisoformat(body["timeMax"].replace("Z", "+00:00"))
+                    out[it["id"]] = {"busy": [b for b in self.people_busy[it["id"]]
+                                              if datetime.fromisoformat(b["start"]) < t1
+                                              and datetime.fromisoformat(b["end"]) > t0]}
                 else:
                     busy = [{"start": e["start"]["dateTime"], "end": e["end"]["dateTime"]}
                             for e in self.events.get(it["id"], {}).values() if "dateTime" in e["start"]]
@@ -411,4 +415,4 @@ def test_speed_limit_respond_comment_and_settings(gc):
 
 def test_tool_count():
     from app.agent.gcal_tools import GCAL_HANDLERS, GCAL_LABELS, GCAL_TOOLS
-    assert len(GCAL_TOOLS) == 15 and set(GCAL_HANDLERS) == set(GCAL_LABELS) == {t["name"] for t in GCAL_TOOLS}
+    assert len(GCAL_TOOLS) == 18 and set(GCAL_HANDLERS) == set(GCAL_LABELS) == {t["name"] for t in GCAL_TOOLS}

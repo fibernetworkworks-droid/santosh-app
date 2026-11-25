@@ -3678,3 +3678,9 @@ Task ID: v0.999.189 CALENDAR COMPLETE
 Ask: check Google Calendar, then 100% Calendar work for Hoola
 Built: paging, retry, honest free/busy, calendars / share / status / series / meeting_time / ics / watch tools, more event options
 Not verified: real Google Calendar; holiday ids pattern; Workspace-only event kinds
+
+---
+Task ID: v0.999.190 CALENDAR, THE LAST 8
+Ask: complete the 8 remaining Calendar gaps
+Built: default reminders, notifications, event time zones, rooms, working hours, birthdays, transfer, chat files, Google Tasks
+Not verified: real Google Calendar / Tasks; Tasks needs reconnect

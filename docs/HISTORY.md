@@ -11665,3 +11665,43 @@ calendars carry (not documented); out of office, focus time and working location
 account's main calendar (Google refuses them on personal Gmail, said when it does); event labels are new in Google's
 API. Not possible through Google's API (said plainly): appointment schedules / booking pages, Google Tasks inside
 Calendar, a calendar's own notification settings, working hours on personal accounts.
+
+## v0.999.190 CALENDAR, THE LAST 8 (owner: "COMPLETE THIS ALL" on the 8 Calendar gaps): a calendar's default reminders and the emails Google sends her (new, changed, cancelled, replies, daily agenda); an event in another place's time ("3 pm London time", its own time zone, shown in both); meeting rooms (rooms she booked before, free or busy, booked on the event - Google lists a company's rooms only to its administrators); working hours (read, set, off; Google Workspace only); birthdays as Google's own birthday events (its API makes only birthdays; anniversaries as yearly all-day events); giving a calendar to another owner behind a card (Google allows it only for a Workspace administrator with Manage Calendars; refused said with the share-as-manage way); a file from the chat put in her Drive then on the event; Google Tasks (lists, add with due date / notes / under a task, change, done, reopen, move, delete / clear / delete a list behind cards; Google keeps only the date of a due time) on the same sign-in with a new Tasks permission; NEW calendar_rooms, calendar_birthday, google_tasks; registry 692; 9 tests.
+
+Owner: "COMPLETE THIS ALL" on the 8 Calendar pieces left after CALENDAR COMPLETE. Checked first against Google's
+Calendar API v3 (revision 20261118) and Tasks API v1 (revision 20261117) descriptions. New module `cal/tasks.py`;
+3 new tools (registry 689 -> 692). Also corrects v0.999.189's note: a calendar's notification settings ARE in Google's
+API (calendarList notificationSettings); that note said they were not.
+
+1. **Default reminders + notification emails** - `calendar_calendars action=default_reminders` (pop-up and email
+   minutes, up to 5, for every new event on that calendar) and `action=notifications` (the emails Google sends her:
+   new, changed, cancelled, replies, daily agenda; empty = none).
+2. **Another time zone** - `time_zone` on add / change ("London", "Dubai", "New York" or any IANA name): the time is
+   read in that place's time and saved with its zone; the event shows both her time and the time there.
+3. **Meeting rooms** - `calendar_rooms` lists the rooms she booked in the last 6 months (Google lists a company's rooms
+   only to its administrators, through another API) and checks which are free; `rooms=` on add / change checks the
+   room is free, then books it (the room is a resource guest).
+4. **Working hours** - `calendar_calendars action=working_hours`: read, set by days + times or several blocks, or
+   off (Google keeps them only on a Google Workspace account's main calendar; refused said).
+5. **Birthdays** - `calendar_birthday`: Google's own birthday event (every year, all day, private, does not block her
+   time - Google's rules for one made through its API); Google's API makes only birthdays, so an anniversary is a
+   normal yearly all-day event, said; if Google refuses the birthday kind on an account, it falls back and says so.
+6. **Giving a calendar away** - `calendar_calendars action=transfer` behind a card; Google allows it only for a Google
+   Workspace administrator with the Manage Calendars right inside one organisation, so a refusal is said with the
+   other way (share it as manage). A main calendar cannot be given away.
+7. **A file from the chat on an event** - `chat_files=` on add / change: the file goes into her Google Drive (her Drive
+   connection for the same account), then onto the event (Google attaches only Drive files); no Drive connection =
+   said.
+8. **Google Tasks** - `google_tasks`: her lists and tasks (list, show completed, due before), add (due date, notes,
+   under a parent task, after a task), change, done, reopen, move (another list, under a task), delete / clear
+   completed / delete a list behind cards, new list, rename list. Due dates show in her Google Calendar; Google keeps
+   only the date of a due time, said. The Calendar connection now asks for Google's Tasks permission too, so Tasks
+   needs Calendar connected again once (Connectors > Google > Calendar).
+
+**Tests:** `test_v0999_190_calendar_more.py` 9 on a stand-in that checks Google's shapes (notification types +
+method email, reminder methods, working-hours days and minutes, birthday event rules, the event's own time zone,
+room guests, transferOwnership needs useAdminAccess, Tasks due dates at midnight UTC, task status values). The
+v0.999.189 stand-in now gives only busy times inside the asked window, like Google. Registry pins 689 -> 692.
+
+**NOT VERIFIED:** against a real Google Calendar or Google Tasks. Rooms come from her own past events, not her
+company's room list. Working hours and transfer need Google Workspace (transfer also an administrator).

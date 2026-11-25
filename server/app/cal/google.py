@@ -10,6 +10,7 @@ from urllib.parse import quote
 import httpx
 
 API = "https://www.googleapis.com/calendar/v3"
+TASKS = "https://tasks.googleapis.com/tasks/v1"
 
 
 class CalError(Exception):
@@ -49,7 +50,7 @@ class GoogleCal:
     RETRY_WAIT = 1.0
     RATE = ("rateLimitExceeded", "userRateLimitExceeded", "quotaExceeded", "backendError", "Quota exceeded")
 
-    def _req(self, method: str, path: str, **kw) -> Any:
+    def _req(self, method: str, path: str, base: str = API, **kw) -> Any:
         """v0.999.189: Google's speed limit (429, 5xx, a 403 that says rate limit) is waited out (Retry-After, else
         1-2-4-8-16 s, 5 tries); other refusals say what is really wrong."""
         c = self._client or httpx.Client(timeout=30)
@@ -58,7 +59,7 @@ class GoogleCal:
             while True:
                 tries += 1
                 for attempt in (0, 1):
-                    r = c.request(method, API + path, headers={"Authorization": f"Bearer {self._token(attempt == 1)}"}, **kw)
+                    r = c.request(method, base + path, headers={"Authorization": f"Bearer {self._token(attempt == 1)}"}, **kw)
                     if r.status_code == 401 and attempt == 0:
                         continue
                     break
@@ -250,6 +251,20 @@ class GoogleCal:
 
     def import_event(self, cal_id: str, body: dict) -> dict:
         return self._req("POST", f"/calendars/{_q(cal_id)}/events/import", json=body)
+
+    def transfer(self, cal_id: str, new_owner: str) -> dict:
+        return self._req("POST", f"/calendars/{_q(cal_id)}/transferOwnership",
+                         params={"newDataOwner": new_owner, "useAdminAccess": "true"})
+
+    # ---------------- Google Tasks (same Google sign-in, its own permission) ----------------
+    def tasks_req(self, method: str, path: str, **kw) -> Any:
+        try:
+            return self._req(method, path, base=TASKS, **kw)
+        except CalError as e:
+            if "No calendar permission" in str(e) or "not enabled" in str(e):
+                raise CalError("Google Tasks needs its own permission: connect Google Calendar again (Connectors > "
+                               "Google > Calendar) and tick 'Create, edit, organize and delete all your tasks'.")
+            raise
 
     def colors(self) -> dict:
         return self._req("GET", "/colors")

@@ -13,7 +13,9 @@ TITLES = {"create": "Send invite?", "update": "Change meeting and tell everyone?
           "cal_clear": "Delete every event on your main calendar?", "share_add": "Share the calendar?",
           "share_public": "Make the calendar public?", "share_change": "Change who can do what?",
           "share_remove": "Stop sharing the calendar?", "series": "Change the repeating meeting and tell everyone?",
-          "move": "Move the meeting to another calendar?"}
+          "move": "Move the meeting to another calendar?", "cal_transfer": "Give the calendar to another owner?",
+          "tasks_delete": "Delete the task?", "tasks_clear": "Clear the completed tasks?",
+          "tasks_list": "Delete the whole task list?"}
 
 
 class CalendarExecutor:

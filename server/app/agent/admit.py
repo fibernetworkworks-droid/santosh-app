@@ -160,7 +160,7 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "gcal": ("calendar", "kalandar", "meeting", "meeeting", "event", "agenda", "slot", "schedule", "invite",
              "invitation", "rsvp", "appointment", "madh", "free busy", "milne", "मीटिंग", "कैलेंडर", "अपॉइंटमेंट",
              "बैठक", "out of office", "ooo", "focus time", "working location", "holidays calendar", ".ics", "ics file",
-             "recurring", "series"),   # v0.999.189 CALENDAR COMPLETE
+             "recurring", "series", "meeting room", "conference room", "google tasks"),   # v0.999.189-190 CALENDAR
     "sheets": ("sheet", "excel", "spreadsheet", "csv", "row", "column", "pivot"),
     "gdrive": ("google doc", "gdoc", "drive", "google sheet"),      # v0.245 'document' / 'docx' = doc_studio now
     "drive": ("drive", "folder", "storage", "share the file", "share this file", "share it with", "file share",   # v0.999.181

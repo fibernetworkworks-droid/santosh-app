@@ -20,7 +20,8 @@ from .caldav_cal import CaldavCal
 from .google import CalError, GoogleCal, NotConnected
 
 CAL_SCOPE = "https://www.googleapis.com/auth/calendar"
-SCOPES = ["openid", "email", "profile", CAL_SCOPE]
+TASKS_SCOPE = "https://www.googleapis.com/auth/tasks"
+SCOPES = ["openid", "email", "profile", CAL_SCOPE, TASKS_SCOPE]     # v0.999.190 Google Tasks rides the same sign-in
 
 
 def _token(account_id: str, force: bool) -> str:

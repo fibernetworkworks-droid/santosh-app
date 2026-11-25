@@ -68,9 +68,27 @@ def _forget_list(box) -> None:
 
 
 # ---------------- her calendars ----------------
+NOTIFY = {"new": "eventCreation", "new_event": "eventCreation", "eventcreation": "eventCreation",
+          "changed": "eventChange", "change": "eventChange", "eventchange": "eventChange",
+          "cancelled": "eventCancellation", "cancel": "eventCancellation", "eventcancellation": "eventCancellation",
+          "replies": "eventResponse", "reply": "eventResponse", "eventresponse": "eventResponse",
+          "daily_agenda": "agenda", "agenda": "agenda"}
+WEEK = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
+
+
+def _minutes_of(hhmm: str) -> int:
+    m = re.fullmatch(r"(\d{1,2}):(\d{2})", str(hhmm or "").strip())
+    if not m or int(m.group(1)) > 24 or int(m.group(2)) > 59:
+        raise CalError("Give times as HH:MM, like 09:30.")
+    return min(int(m.group(1)) * 60 + int(m.group(2)), 1440)
+
+
 def calendars(tenant: str, conv: str, action: str = "list", calendar: str = "", name: str = "",
               description: str | None = None, time_zone: str = "", color: str = "", country: str = "",
-              calendar_id: str = "", label: str = "", label_color: str = "") -> dict[str, Any]:
+              calendar_id: str = "", label: str = "", label_color: str = "", reminders: list | None = None,
+              email_reminders: list | None = None, notify: list | None = None, days: list | None = None,
+              work_start: str = "", work_end: str = "", hours: list | None = None, off: bool = False,
+              new_owner: str = "") -> dict[str, Any]:
     a = str(action or "list").lower()
     if a == "list":
         out = []
@@ -173,6 +191,67 @@ def calendars(tenant: str, conv: str, action: str = "list", calendar: str = "", 
         pid = cs.pend(tenant, conv, "cal_clear", {"box": box.key, "cal": cid},
                       {"title": title, "note": "Every event on her main calendar is deleted; this cannot be undone."})
         return {"pending_id": pid}
+    if a == "default_reminders":
+        rb = cs.reminders_body(list(reminders or []), list(email_reminders or []))
+        box.list_patch(cid, {"defaultReminders": (rb or {}).get("overrides", [])})
+        _forget_list(box)
+        return {"calendar": title, "default_reminders": [f"{o['minutes']} min {o['method']}"
+                                                         for o in (rb or {}).get("overrides", [])] or "none"}
+    if a == "notifications":
+        kinds = []
+        for n in notify or []:
+            k = NOTIFY.get(str(n).strip().lower().replace(" ", "_"))
+            if not k:
+                raise CalError("notify: new, changed, cancelled, replies, daily_agenda (emails Google sends her).")
+            if k not in kinds:
+                kinds.append(k)
+        box.list_patch(cid, {"notificationSettings": {"notifications": [{"type": k, "method": "email"} for k in kinds]}})
+        words = {v: k for k, v in NOTIFY.items() if k in ("new", "changed", "cancelled", "replies", "daily_agenda")}
+        return {"calendar": title, "emails_on": [words[k] for k in kinds] or "none"}
+    if a == "working_hours":
+        if not entry.get("primary"):
+            raise CalError("Working hours belong to her main calendar.")
+        if not (days or hours or work_start or off):
+            wh = box.calendar(cid).get("workingHours")
+            if wh is None:
+                return {"calendar": title, "working_hours": None,
+                        "note": "Google shows working hours only on a Google Workspace account's main calendar."}
+            return {"calendar": title, "working_hours": [
+                {"day": t["dayOfWeek"], "from": f"{t['periodStart'] // 60:02d}:{t['periodStart'] % 60:02d}",
+                 "to": f"{t['periodEnd'] // 60:02d}:{t['periodEnd'] % 60:02d}"} for t in wh.get("availableTimes", [])],
+                    "on": bool(wh.get("workingHoursEnabled"))}
+        if off:
+            body = {"workingHours": {"workingHoursEnabled": False, "availableTimes": []}}
+        else:
+            times = []
+            for h in hours or [{"days": days or list(WEEK[:5]), "from": work_start or "09:00", "to": work_end or "18:00"}]:
+                ds = [str(d).strip().lower() for d in (h.get("days") or [h.get("day")]) if d]
+                ds = [next((w for w in WEEK if w.startswith(d[:2])), d) for d in ds]
+                bad = [d for d in ds if d not in WEEK]
+                if bad or not ds:
+                    raise CalError("days: monday ... sunday.")
+                a0, a1 = _minutes_of(h.get("from", "09:00")), _minutes_of(h.get("to", "18:00"))
+                if a1 <= a0:
+                    raise CalError("Working hours must end after they start.")
+                times += [{"dayOfWeek": d, "periodStart": a0, "periodEnd": a1} for d in ds]
+            body = {"workingHours": {"workingHoursEnabled": True, "availableTimes": times}}
+        try:
+            box.calendar_patch(cid, body)
+        except CalError as e:
+            raise CalError(f"{e} (Google keeps working hours only on a Google Workspace account's main calendar.)")
+        return {"calendar": title, "working_hours": "off" if off else len(body["workingHours"]["availableTimes"])}
+    if a == "transfer":
+        if entry.get("primary"):
+            raise CalError("A main calendar cannot be given away; share it instead (calendar_share, role manage).")
+        if entry.get("role") != "owner":
+            raise CalError(f"{title} belongs to someone else.")
+        if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", str(new_owner or "").strip()):
+            raise CalError("Give the new owner's email.")
+        pid = cs.pend(tenant, conv, "cal_transfer", {"box": box.key, "cal": cid, "to": str(new_owner).strip().lower()},
+                      {"title": title, "people": [str(new_owner).strip().lower()],
+                       "note": "They become its owner. Google allows this only for a Google Workspace administrator "
+                               "with the Manage Calendars right, inside one organisation."})
+        return {"pending_id": pid}
     if a == "labels":
         return {"calendar": title, "labels": _labels(box, cid)}
     if a == "add_label":
@@ -188,7 +267,8 @@ def calendars(tenant: str, conv: str, action: str = "list", calendar: str = "", 
         box.calendar_patch(cid, {"labelProperties": {"eventLabels": cur + [new]}})
         return {"calendar": title, "label": nm, "labels": _labels(box, cid)}
     raise CalError("action: list, create, rename, describe, time_zone, color, hide, show, subscribe, holidays, "
-                   "unsubscribe, delete, clear, labels, add_label.")
+                   "unsubscribe, delete, clear, labels, add_label, default_reminders, notifications, working_hours, "
+                   "transfer.")
 
 
 def _hex(c: str) -> str:
@@ -743,6 +823,161 @@ def start_job(tenant: str, cal_name: str, task: str, lines: list[str]) -> bool:
     return True
 
 
+# ---------------- meeting rooms ----------------
+def known_rooms(tenant: str, days: int = 180) -> list[dict[str, str]]:
+    """Rooms she has booked before, read from her own events (Google lists a company's rooms only to its
+    administrators, through another API)."""
+    nowu = datetime.now(timezone.utc)
+    seen: dict[str, str] = {}
+    for box, cid, _n in cs._reading(tenant):
+        if box.kind != "google":
+            continue
+        try:
+            for e in box.events(cid, nowu - timedelta(days=days), nowu + timedelta(days=60), None, 1000):
+                for at in e.get("attendees") or []:
+                    if at.get("resource") and at.get("email"):
+                        seen.setdefault(at["email"].lower(), at.get("displayName") or at["email"])
+        except CalError:
+            continue
+    return [{"email": k, "name": v} for k, v in sorted(seen.items(), key=lambda x: x[1].lower())]
+
+
+def resolve_rooms(tenant: str, rooms: list[str] | None) -> list[dict[str, str]]:
+    out = []
+    known = None
+    for r in rooms or []:
+        v = str(r).strip()
+        if not v:
+            continue
+        if "@" in v:
+            out.append({"email": v.lower(), "name": v})
+            continue
+        known = known if known is not None else known_rooms(tenant)
+        hits = [k for k in known if v.lower() in k["name"].lower()]
+        if len(hits) != 1:
+            names = ", ".join(k["name"] for k in known) or "none yet"
+            raise CalError(f"Which room is '{v}'? Rooms she has booked before: {names}. Or give the room's email "
+                           "(Google Calendar shows it when you add a room).")
+        out.append(hits[0])
+    return out
+
+
+def rooms_busy(box, rooms: list[dict], start: datetime, end: datetime) -> tuple[list[str], list[str]]:
+    fb = box.free_busy([r["email"] for r in rooms], start, end)
+    busy, unknown = [], []
+    for r in rooms:
+        cal = fb.get(r["email"]) or {}
+        if cal.get("errors") or not cal:
+            unknown.append(r["name"])
+        elif cal.get("busy"):
+            busy.append(r["name"])
+    return busy, unknown
+
+
+def rooms(tenant: str, action: str = "list", names: list[str] | None = None, start: datetime | None = None,
+          end: datetime | None = None) -> dict[str, Any]:
+    a = str(action or "list").lower()
+    if a == "list":
+        rs = known_rooms(tenant)
+        return {"rooms": rs, "note": ("Rooms she has booked in the last 6 months. For another room give its email; "
+                                      "Google lists all of a company's rooms only to its administrators.")}
+    if a == "free":
+        if not (start and end):
+            raise CalError("Give start and end to check the rooms.")
+        rs = resolve_rooms(tenant, names) if names else known_rooms(tenant)
+        if not rs:
+            raise CalError("No rooms known yet; give a room's email.")
+        box = get_box(tenant)
+        _google(tenant, box)
+        busy, unknown = rooms_busy(box, rs, start, end)
+        return {"free": [r["name"] for r in rs if r["name"] not in busy and r["name"] not in unknown], "busy": busy,
+                "could_not_check": unknown}
+    raise CalError("action: list or free. Book a room with calendar_add_event / calendar_update_event rooms=.")
+
+
+# ---------------- birthdays ----------------
+def birthday(tenant: str, conv: str, name: str, day: str, kind: str = "birthday", reminders: list | None = None
+             ) -> dict[str, Any]:
+    nm = str(name or "").strip()[:200]
+    if not nm:
+        raise CalError("Whose birthday?")
+    try:
+        d = date.fromisoformat(str(day)[:10])
+    except ValueError:
+        raise CalError("Give the date as YYYY-MM-DD (any year).")
+    box = get_box(tenant)
+    _google(tenant, box)
+    tz = cs._tz(tenant)
+    k = str(kind or "birthday").lower()
+    end = d + timedelta(days=1)
+    rb = cs.reminders_body(list(reminders) if reminders is not None else None)
+    if k == "birthday":
+        # Google's rules for a birthday event made through its API: all day, every year, private, does not block time
+        body: dict[str, Any] = {"eventType": "birthday", "summary": f"{nm}'s birthday" if not nm.lower().endswith(
+            "birthday") else nm, "start": {"date": d.isoformat()}, "end": {"date": end.isoformat()},
+            "recurrence": ["RRULE:FREQ=YEARLY"], "visibility": "private", "transparency": "transparent",
+            "birthdayProperties": {"type": "birthday"}}
+        note = "Added as Google's own birthday event (it shows with the birthday icon)."
+    elif k in ("anniversary", "other", "custom"):
+        body = {"summary": nm if any(w in nm.lower() for w in ("anniversary", "day")) else f"{nm} - anniversary",
+                "start": {"date": d.isoformat()}, "end": {"date": end.isoformat()},
+                "recurrence": ["RRULE:FREQ=YEARLY"], "transparency": "transparent"}
+        note = ("Google's API makes only birthdays as its special events, so this is a normal yearly all-day event "
+                "(anniversaries from her Google Contacts appear by themselves).")
+    else:
+        raise CalError("kind: birthday or anniversary.")
+    if rb:
+        body["reminders"] = rb
+    try:
+        e = box.create("primary", body, "none")
+    except CalError as err:
+        if k != "birthday":
+            raise
+        body.pop("eventType")
+        body.pop("birthdayProperties")
+        e = box.create("primary", body, "none")
+        note = f"Google refused its own birthday kind here ({err}); added as a normal yearly all-day event."
+    v = cs.view(box, "primary", "primary", e, tz)
+    cs._publish_event(conv, v, "added")
+    return {"added": v["title"], "date": d.strftime("%d %b"), "every_year": True, "note": note}
+
+
+# ---------------- a file from the chat on an event ----------------
+def chat_attachments(tenant: str, address: str, file_ids: list[str]) -> list[dict]:
+    """Google attaches only Google Drive files to events: a file she sent in the chat goes into her Drive first
+    (her Drive connection for the same account), then onto the event."""
+    if not file_ids:
+        return []
+    from pathlib import Path
+    from ..mailbox import service as ms
+    d = None
+    try:
+        from ..drive.accounts import clients as dclients
+        d = next((x for x in dclients(tenant) if x.address == (address or "").lower()), None)
+    except Exception:
+        d = None
+    if d is None:
+        raise CalError(f"To put a file from the chat on an event, Google Drive must be connected for {address} "
+                       "(Connectors > Google > Drive): Google attaches only Drive files.")
+    out = []
+    for fid in file_ids[:25]:
+        try:
+            f = ms._file_row(tenant, str(fid))
+        except Exception as e:
+            raise CalError(str(e))
+        p = Path(f.stored_path or "")
+        if not p.exists():
+            raise CalError(f"{f.name} is no longer on the server (files are removed after 24 hours). Send it again.")
+        import mimetypes
+        mime = mimetypes.guess_type(f.name)[0] or "application/octet-stream"
+        try:
+            up = d.upload(f.name, mime, p.read_bytes())
+        except Exception as e:
+            raise CalError(f"Could not put {f.name} in her Drive: {e}")
+        out.append({"fileUrl": f"https://drive.google.com/open?id={up['id']}", "title": f.name, "mimeType": mime})
+    return out
+
+
 # ---------------- what her tap runs ----------------
 def run_pending(tenant: str, p: dict, box) -> str:
     pl = p["payload"]
@@ -776,6 +1011,18 @@ def run_pending(tenant: str, p: dict, box) -> str:
         return f"{t}: {', '.join(p['summary'].get('people', []))} no longer see it."
     if a == "series":
         return f"{t}: " + _run_series(box, pl, "all")
+    if a == "cal_transfer":
+        try:
+            box.transfer(pl["cal"], pl["to"])
+        except CalError as e:
+            raise CalError(f"{e} Google gives a calendar to another owner only when a Google Workspace administrator "
+                           "with the Manage Calendars right asks. Instead she can share it with them as manage "
+                           "(calendar_share).")
+        _forget_list(box)
+        return f"{t} now belongs to {pl['to']}."
+    if a.startswith("tasks_"):
+        from . import tasks
+        return tasks.run_pending(tenant, p, box)
     if a == "move":
         e = box.move(pl["cal"], pl["event"], pl["dest"], "all")
         cs._publish_event(p["conversation_id"], cs.view(box, pl["dest"], pl["dest"], e, cs._tz(tenant)), "moved")
