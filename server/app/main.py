@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.196"   # v0.999.196 SIDE PANEL LIKE CLAUDE (owner: "Side panel - All of it is Anthropic Sans --- MAKE SAME FOR HOOLA"): the console side panel in one sans at the Claude scale read from the claude.ai stylesheet - rows, chats, groups, names 14 px / 430 / 1.4, labels 12 px / 430 / 1.4, dark 400, the open chat no heavier (it was 560); Anthropic Sans is private, so the Hoola sans carries the numbers; 1 test + the v0.975 pin moved to 430 / 400. Previous: v0.999.195 APPS WIRING 2 (owner; older stories live in git history.
+APP_VERSION = "0.999.197"   # v0.999.197 REPLY + MESSAGE LIKE CLAUDE (owner: Claude reply table "--- DO SAME FOR THIS ALSO TO HOOLA"): the reply title 28 px / 1.3 (was 22), her own message 16 px / 430 / 1.4 (dark 400; was 400 / 1.5), reply code in JetBrains Mono (it fell back to the system mono); body 16 / 1.5 / 400-360 and bold 600-530 already matched; Anthropic fonts are private, Hoola fonts carry the numbers; 1 test. Previous: v0.999.196 SIDE PANEL LIKE CLAUDE (owner; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,

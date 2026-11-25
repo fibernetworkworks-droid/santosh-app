@@ -434,3 +434,14 @@ html.appd #app .side .sn[aria-current="true"]{font-weight:var(--sw)}
 html.appd #app .side .slabel,html.appd #app .side .rg,html.appd #app .side .pjl,html.appd #app .side .snl,
 html.appd #app .side .user #uhandle{font-size:12px;font-weight:var(--sw);line-height:1.4;letter-spacing:0}
 html.appd #app .side .user .uini,html.appd #app .side .sn .ct{font-weight:var(--swb)}
+
+/* v0.999.197 REPLY + MESSAGE LIKE CLAUDE (owner: Claude's reply table "--- DO SAME FOR THIS ALSO TO HOOLA"): from
+   claude.ai's stylesheet - reply title (#) 28 px / 1.3 / opsz 28 at the bold step (600 light, 530 dark); her own
+   message in the sans at 16 px / 430 / 1.4 (dark 400); reply code in the mono font (JetBrains Mono carries Anthropic
+   Mono, which is private). Body 16 / 1.5 / 400-360 and bold 600-530 were already the same. */
+html.appd #app .mh .txt h3.mdh,html.appd #app .textmd h3.mdh{font-size:28px;line-height:1.3;font-variation-settings:"opsz" 28}
+html.appd #app .mu .mut{font-weight:430;line-height:1.4}
+html.appd[data-theme="dark"] #app .mu .mut{font-weight:400}
+@media (prefers-color-scheme:dark){html.appd:not([data-theme="light"]) #app .mu .mut{font-weight:400}}
+html.appd #app .mh .txt code,html.appd #app .mh .txt pre,html.appd #app .textmd code,html.appd #app .textmd pre{
+  font-family:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace}

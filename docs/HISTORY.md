@@ -11907,3 +11907,22 @@ sans (Schibsted Grotesk, 400-700, already loaded) carries the same numbers.
 Tests: NEW `test_v0999_196_side_panel.py` measures every visible side panel item in light and dark (font, size, weight,
 line height, with a chat opened). `test_v0975_console_sidebar_white.py` row weight pin 500 -> 430 light / 400 dark (the
 owner's new decision). NOT VERIFIED: on her server.
+
+## v0.999.197 REPLY + MESSAGE LIKE CLAUDE (owner: Claude reply table "--- DO SAME FOR THIS ALSO TO HOOLA"): the reply title 28 px / 1.3 (was 22), her own message 16 px / 430 / 1.4 (dark 400; was 400 / 1.5), reply code in JetBrains Mono (it fell back to the system mono); body 16 / 1.5 / 400-360 and bold 600-530 already matched; Anthropic fonts are private, Hoola fonts carry the numbers; 1 test.
+
+The owner sent Claude's reply table (normal 16 / 400-360 / 1.5, bold 600-530, small 14, title 28 / 600-530 / 1.3,
+code 11 px mono, her own message sans 16 / 430 / 1.4) and said "DO SAME FOR THIS ALSO TO HOOLA".
+
+Measured first (Chromium, light + dark): body 16 / 1.5 at 400 / 360 and bold 600 / 530 already matched. Different:
+the # title 22 px (Claude 28 px / 1.3), her message 400 with a 1.5 line (Claude 430 / 1.4, dark 400), reply code
+falling back to the system mono because the code rule lists ui-monospace first.
+
+Built (one block at the end of `static/console/appdesign.css`): # title 28 px / 1.3 with opsz 28 at the bold step;
+her message 430 / 1.4, dark 400; reply code and code blocks in JetBrains Mono (Anthropic Mono is private). Sizes of
+code unchanged: Claude's 11 px class (`font-claude-response-code-small`) is a small-code style; code inside a reply
+stays 0.9 of the text as in v0.894. No 14 px small-reply element exists in Hoola's replies, so nothing to change.
+## (20 px) and ### (17 px) unchanged - Claude's stylesheet sets only their weight, not a size we could read.
+
+Tests: NEW `test_v0999_197_reply_like_claude.py` measures body, bold, title, her message and code in light and dark.
+Older pins on v2.css (22 px h3) left as they are: the base rule is unchanged, the app design overrides it.
+NOT VERIFIED: on her server.

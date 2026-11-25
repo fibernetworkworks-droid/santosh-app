@@ -3720,3 +3720,9 @@ Task ID: v0.999.196 SIDE PANEL LIKE CLAUDE
 Ask: side panel like Claude (Anthropic Sans)
 Built: side panel 14/430 rows, 12/430 labels, dark 400, open chat not bold
 Not verified: on her server
+
+---
+Task ID: v0.999.197 REPLY + MESSAGE LIKE CLAUDE
+Ask: reply and message fonts like Claude
+Built: reply title 28/1.3, her message 16/430/1.4, code in JetBrains Mono
+Not verified: on her server
