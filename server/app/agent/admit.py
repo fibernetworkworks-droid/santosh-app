@@ -776,10 +776,62 @@ def search_spec() -> dict:
 _LABEL = "Finding tools"
 
 
+_CONNECTOR_WORDS: frozenset[str] | None = None
+_CONNECTOR_KEYS = ("connector", "connectors", "plugin", "plugins", "cab", "taxi")
+# connector names that are everyday words ("udhar" = credit / over there, "slice", "pop", "kiwi"): never alone - "slice
+# card", "pop upi", "udhar reminder" still open it
+_CONNECTOR_EVERYDAY = frozenset({"pop", "slice", "udhar", "kiwi", "jupiter", "navi", "cams", "simpl"})
+
+
+def connector_words() -> frozenset[str]:
+    """v0.999.195 APPS WIRING 2: the names of the built-in connectors a user can see in Connectors (UPI apps, cabs,
+    banks, food apps, home devices, her helper plugins). Naming one opens the bazar family, so bazar_find / bazar_run
+    are in view - before this, none of the ~160 shown connectors reached a chat turn by name. Built once, from the
+    pack registry; bill packs only while bills are live, shop templates never (a shop is reached by its own name)."""
+    global _CONNECTOR_WORDS
+    if _CONNECTOR_WORDS is not None:
+        return _CONNECTOR_WORDS
+    out: set[str] = set()
+    try:
+        from ..bazar.config import get_settings as _bz
+        from ..bazar.service import CORE_EQUIVALENT, HIDDEN_EXECUTORS, registry
+        bills = bool(_bz().bills_live)
+        for p in registry().all():
+            if p.executor in HIDDEN_EXECUTORS or p.executor == "shop" or (p.executor == "bbps" and not bills):
+                continue
+            if p.executor == "native" and p.config.get("skill") in CORE_EQUIVALENT:
+                continue
+            name = (p.name or "").lower()
+            for v in {name, re.sub(r"\s*\(.*?\)\s*", " ", name).strip(), name.split(" (")[0].strip()}:
+                v = re.sub(r"\s+", " ", v).strip()
+                for tail in (" india", " upi"):
+                    if v.endswith(tail) and len(v) > len(tail) + 2:
+                        out.add(v[: -len(tail)])
+                out.add(v)
+    except Exception:
+        log.debug("connector words failed", exc_info=True)
+    _CONNECTOR_WORDS = frozenset(v for v in out if len(v) >= 3 and v not in _GENERIC and v not in _TIGHT_GENERIC
+                                 and v not in _STOP and v not in _CONNECTOR_EVERYDAY)
+    return _CONNECTOR_WORDS
+
+
+def _names_connector(text: str) -> bool:
+    if any(_hit_tight(k, text) for k in _CONNECTOR_KEYS):
+        return True
+    if any(re.search(r"\b" + re.escape(w) + r"\b", text) for w in connector_words()):
+        return True
+    # an everyday-word connector name counts only when the words around it make it the app ("use slice", "slice card")
+    names = "|".join(sorted(_CONNECTOR_EVERYDAY))
+    return re.search(r"\b(?:use|via|on|open|from|with|through)\s+(?:my\s+)?(?:" + names + r")\b|\b(?:" + names
+                     + r")\s+(?:app|card|upi|pay|credit|loan|account|bank|wallet|se|par|pe)\b", text) is not None
+
+
 def _match(text: str, tight: bool = False) -> set[str]:
     """Families whose keys (auto or hand-written) appear in the text. Lowercase in, family tags out.
     tight (Parity Phase 3, chat_core_tools): whole-word keys only and no everyday auto-keys."""
     hits: set[str] = set()
+    if "bazar" in set(FAMILY_OF.values()) and _names_connector(text):
+        hits.add("bazar")
     hit = _hit_tight if tight else _hit
     for fam, keys in _AUTO.items():
         for k in keys:

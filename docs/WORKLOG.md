@@ -3708,3 +3708,9 @@ Task ID: v0.999.194 APPS WIRING
 Ask: check all apps wiring to Hoola
 Built: connected apps in the prompt, admission by name, tool_search by name, pick user-id fix, call line, Add key text
 Not verified: a real Composio app
+
+---
+Task ID: v0.999.195 APPS WIRING 2
+Ask: check all apps are wired properly
+Built: connector names open bazar_find / bazar_run, tool_search finds them, prompt line
+Not verified: a real connector run

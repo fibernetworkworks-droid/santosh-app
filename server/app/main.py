@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.194"   # v0.999.194 APPS WIRING (owner: "now check is all apps wiring to hoola is perfect or not"): a Composio app she connected (Perplexity, Slack, Notion ... by sign-in or her own key) now really reaches the brain - named in the system prompt with how to use it, naming it opens composio_apps / bazar_run (the live core-tools start never showed them), tool_search finds it by name, the PC picker prefers it (it looked her apps up under the wrong user id and never found one), a voice call knows them and hands their work to santosh_kaam; the Add key path text points at Connectors; registry 702; 7 tests. Previous: v0.999.193 GOOGLE DOCS, THE LAST 9 (owner; older stories live in git history.
+APP_VERSION = "0.999.195"   # v0.999.195 APPS WIRING 2 (owner: "IS ALL APPs IS ALSO WIRED PROPERLY OR NOT CHECK"): every built-in connector shown in Connectors (UPI apps, cabs, banks, food and grocery apps, home devices, her helper plugins - 160) now reaches a chat turn by name: naming one, or saying connectors / cab / taxi, opens bazar_find / bazar_run (before, not one did on the live core-tools start; tool_search could not find them either), everyday words that are connector names (udhar, slice, pop ...) only by their full name, and the prompt says outside services live in Connectors; 5 tests. Previous: v0.999.194 APPS WIRING (owner; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,

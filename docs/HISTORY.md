@@ -11868,3 +11868,24 @@ The check found the app could be connected but Hoola could not reach it in a nor
 6. **Text** - the 'Add key' path said 'Connect > MCP servers > Apps'; now 'Connectors > the app > Add key'.
 
 Tests: tests/test_v0999_194_apps_wiring.py (7). NOT VERIFIED with a real Composio app or key.
+
+## v0.999.195 APPS WIRING 2 (owner: "IS ALL APPs IS ALSO WIRED PROPERLY OR NOT CHECK"): every built-in connector shown in Connectors (UPI apps, cabs, banks, food and grocery apps, home devices, her helper plugins - 160) now reaches a chat turn by name: naming one, or saying connectors / cab / taxi, opens bazar_find / bazar_run (before, not one did on the live core-tools start; tool_search could not find them either), everyday words that are connector names (udhar, slice, pop ...) only by their full name, and the prompt says outside services live in Connectors; 5 tests.
+
+Owner: "IS ALL APPs IS ALSO WIRED PROPERLY OR NOT CHECK" (after v0.999.194 fixed the Composio apps).
+The check walked every other kind of app on the Connectors page:
+
+- **MCP servers** (official + her own): already wired - named in the prompt, their tools declared directly
+  (`mcp_live.tool_defs`), calls route through `mcp_live.run`. No change.
+- **Public APIs** (the API box): already wired - pincode / rate / news / court / GSTIN words open the publicapi family.
+- **Built-in connectors - BROKEN**: of the 160 shown in Connectors (16 UPI apps, 7 cab apps, 94 bank / finance
+  readers, 30 helper plugins, 6 home devices, 6 food / grocery apps, IndiaMART), not one opened the bazar family
+  when she named it on the live core-tools start, and tool_search('ola cab') found nothing - so bazar_find /
+  bazar_run were never in view and Hoola could not use them.
+
+Fix: `admit.connector_words()` = the names of every shown connector (built once from the pack registry; bill packs
+only while bills are live, shop templates never), whole-word match inside `admit._match`, so plan_for AND
+tool_search open the bazar family; "connectors" / "plugins" / "cab" / "taxi" too; connector names that are everyday
+words (udhar, slice, pop, kiwi, jupiter, navi, cams, simpl) only by their full name. The small prompt says outside
+services live in Connectors (tool_search("connectors") -> bazar_find / bazar_run).
+
+Tests: tests/test_v0999_195_apps_wiring2.py (5). NOT VERIFIED: a real connector run on her server.
