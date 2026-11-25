@@ -38,7 +38,7 @@ ASKS: list[dict] = [
     {"id": "pdf_small", "text": "Yeh PDF bahut badi hai, WhatsApp pe nahi ja rahi, chhoti kar do", "ok": ["pdf_tools"], "bad": PC},
     {"id": "doc_check_file", "text": "Jo PDF abhi banaya usko andar se check karo sab theek hai na", "ok": ["doc_preview"],
      "bad": PC},
-    {"id": "gdoc", "text": "Google Doc mein meeting notes likh do", "ok": ["drive_create_doc", "doc_create"], "bad": PC},
+    {"id": "gdoc", "text": "Google Doc mein meeting notes likh do", "ok": ["gdoc_write", "drive_create_doc", "doc_create"], "bad": PC},
     # ---------------------------------------------------------------- data (lists / APIs / many records)
     {"id": "data_laptops", "text": "Mere liye 50 laptops ki price list Excel mein bana do", "ok": ["data_fetch", "google_search", "web_sources"],
      "bad": PC},
