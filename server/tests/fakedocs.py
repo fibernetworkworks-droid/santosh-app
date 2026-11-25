@@ -16,10 +16,11 @@ def u16(s: str) -> int:
 
 
 class Tok:
-    __slots__ = ("k", "ch", "st", "ps", "sug", "obj")
+    __slots__ = ("k", "ch", "st", "ps", "sug", "obj", "dele", "sugst")
 
     def __init__(self, k, ch="", st=None, ps=None, sug=None, obj=None):
         self.k, self.ch, self.st, self.ps, self.sug, self.obj = k, ch, dict(st or {}), ps, sug, obj
+        self.dele, self.sugst = None, {}
 
     @property
     def size(self):
@@ -119,6 +120,10 @@ class FakeDocs:
                 i += 1
                 pstart = i
                 continue
+            if t.k == "sb":
+                out.append({"startIndex": i, "endIndex": i + 1, "sectionBreak": {"sectionStyle": dict(t.obj or {})}})
+                i += 1
+                continue
             if t.k == "te":
                 tb = stack.pop()[0]
                 i += 1
@@ -146,11 +151,13 @@ class FakeDocs:
         elements, run, rst, rstart, rsug = [], "", None, None, None
         for i, t in para:
             if t.k == "c":
-                if run and (t.st != rst or t.sug != rsug):
+                key = (t.sug, t.dele, tuple(sorted(t.sugst)))
+                if run and (t.st != rst or key != rsug):
                     elements.append(self._run(rstart, i, run, rst, rsug))
                     run = ""
                 if not run:
-                    rst, rstart, rsug = t.st, i, t.sug
+                    rst, rstart, rsug = t.st, i, key
+                    self._last = t
                 run += t.ch
             else:
                 if run:
@@ -160,16 +167,24 @@ class FakeDocs:
         if run:
             elements.append(self._run(rstart, end, run, rst, rsug))
         p = {"elements": elements, "paragraphStyle": dict(nl.ps or {"namedStyleType": "NORMAL_TEXT"})}
+        if p["paragraphStyle"].get("namedStyleType", "").startswith("HEADING_"):
+            p["paragraphStyle"]["headingId"] = "h." + re.sub(r"[^a-z0-9]", "", "".join(
+                t.ch for _i, t in para if t.k == "c").lower())[:10]
         if nl.ps and nl.ps.get("_bullet"):
             p["bullet"] = {"listId": "l1", "nestingLevel": nl.ps.get("_level", 0)}
             p["paragraphStyle"] = {k: v for k, v in nl.ps.items() if not k.startswith("_")}
         return {"startIndex": start, "endIndex": end, "paragraph": p}
 
-    @staticmethod
-    def _run(a, b, text, st, sug):
+    def _run(self, a, b, text, st, key):
+        sug, dele, _ks = key if isinstance(key, tuple) else (key, None, ())
         tr = {"content": text, "textStyle": dict(st or {})}
         if sug:
             tr["suggestedInsertionIds"] = [sug]
+        if dele:
+            tr["suggestedDeletionIds"] = [dele]
+        last = getattr(self, "_last", None)
+        if last is not None and last.sugst:
+            tr["suggestedTextStyleChanges"] = copy.deepcopy(last.sugst)
         return {"startIndex": a, "endIndex": a + u16(text), "textRun": tr}
 
     def view(self, did: str, comments: bool = False) -> dict:
@@ -181,7 +196,8 @@ class FakeDocs:
                   "footers": {k: {"footerId": k, "content": self._content(v, 0, d, t)} for k, v in t["footers"].items()},
                   "footnotes": {k: {"footnoteId": k, "content": self._content(v, 0, d, t)} for k, v in t["footnotes"].items()},
                   "documentStyle": copy.deepcopy(t["style"]), "namedRanges": copy.deepcopy(t["named"]),
-                  "dropdownDefinitions": copy.deepcopy(t["ddefs"]), "inlineObjects": {}}
+                  "dropdownDefinitions": copy.deepcopy(t["ddefs"]), "inlineObjects": {},
+                  "positionedObjects": copy.deepcopy(t.setdefault("pos", {}))}
             props = {"tabId": t["id"], "title": t["title"], "index": t["index"]}
             if t["emoji"]:
                 props["iconEmoji"] = t["emoji"]
@@ -263,8 +279,36 @@ class FakeDocs:
             idx = loc.get("index") if "location" in r else self._end(seg, base)
             toks = [Tok("c", ch) for ch in r["text"] if ch not in ""]
             self._insert(seg, base, idx, toks, sug)
-            if suggest:
+            if suggest and not any(x["suggestionId"] == sug and x["status"] == "OPEN" for x in d["suggestions"]):
                 d["suggestions"].append({"suggestionId": sug, "status": "OPEN", "summaryText": f"Add \"{r['text'][:30]}\"",
+                                         "headPost": {"author": {"displayName": "Meghana"}}})
+            return {}
+        if kind == "deleteContentRange" and suggest:
+            seg, base = self._seg(tab, r["range"])
+            ka, kb = self._range(seg, base, r["range"]["startIndex"], r["range"]["endIndex"])
+            for t in seg.toks[ka:kb]:
+                t.dele = "suggest.del1"
+            d["suggestions"].append({"suggestionId": "suggest.del1", "status": "OPEN", "summaryText": "Delete text",
+                                     "headPost": {"author": {"displayName": "Meghana"}}})
+            return {}
+        if kind == "updateTextStyle" and suggest:
+            seg, base = self._seg(tab, r["range"])
+            ka, kb = self._range(seg, base, r["range"]["startIndex"], r["range"]["endIndex"])
+            state = {f + "Suggested": True for f in r["fields"].split(",")}
+            old_text = [t for t in seg.toks[ka:kb] if t.k == "c" and not t.sug]
+            for t in seg.toks[ka:kb]:
+                if t.k != "c":
+                    continue
+                if t.sug:              # text that is itself a suggested insertion takes the look directly
+                    for f in r["fields"].split(","):
+                        if f in r["textStyle"]:
+                            t.st[f] = r["textStyle"][f]
+                        else:
+                            t.st.pop(f, None)
+                else:
+                    t.sugst["suggest.look1"] = {"textStyle": dict(r["textStyle"]), "textStyleSuggestionState": state}
+            if old_text and not any(x["suggestionId"] == "suggest.look1" for x in d["suggestions"]):
+                d["suggestions"].append({"suggestionId": "suggest.look1", "status": "OPEN", "summaryText": "Format text",
                                          "headPost": {"author": {"displayName": "Meghana"}}})
             return {}
         if kind == "deleteContentRange":
@@ -390,11 +434,69 @@ class FakeDocs:
                     keep.append(x)
                 t["body"].toks = keep
             return {}
+        if kind == "insertSectionBreak":
+            seg, base = self._seg(tab, loc)
+            idx = loc.get("index")
+            self._insert(seg, base, idx, [Tok("c", "\n"), Tok("sb", obj={"sectionType": r["sectionType"]})])
+            return {}
+        if kind == "updateSectionStyle":
+            seg, base = self._seg(tab, r["range"])
+            i, cur = base, None
+            for t in seg.toks:                     # the section break before the range's start
+                if t.k == "sb" and i < r["range"]["startIndex"]:
+                    cur = t
+                i += t.size
+            target = cur.obj if cur is not None else tab["style"].setdefault("_first_section", {})
+            for f in r["fields"].split(","):
+                target[f] = r["sectionStyle"][f]
+            self.calls.append({kind: r})
+            return {}
+        if kind == "deleteSuggestion":
+            sg = next(x for x in d["suggestions"] if x["suggestionId"] == r["suggestionId"])
+            sg["status"] = "REJECTED"
+            for t in d["tabs"]:
+                t["body"].toks = [x for x in t["body"].toks if x.sug != r["suggestionId"]]
+            return {}
+        if kind == "deleteCommentReply":
+            th = next(x for x in d["comments"] if x["commentId"] == r.get("commentId"))
+            th["replies"] = [x for x in th["replies"] if x["postId"] != r["postId"]]
+            return {}
+        if kind == "updateCommentPost":
+            th = next(x for x in d["comments"] if x["commentId"] == r.get("commentId"))
+            post = th["headPost"] if th["headPost"]["postId"] == r["postId"] else next(
+                x for x in th["replies"] if x["postId"] == r["postId"])
+            post["content"] = r["content"]
+            return {}
+        if kind == "updateDropdownDefinitionProperties":
+            dd = tab["ddefs"][r["dropdownDefinitionId"]]
+            for f in r["fields"].split(","):
+                dd["dropdownDefinitionProperties"][f] = r["dropdownDefinitionProperties"][f]
+            ids = {o["optionId"] for o in dd["dropdownDefinitionProperties"]["options"]}
+            for k_, v_ in (r.get("selectedOptionIdReplacements") or {}).items():
+                assert v_ in ids, "a replacement must be a remaining option"
+            return {}
+        if kind == "deleteDropdownDefinition":
+            for t in tab["body"].toks:
+                if t.k == "o" and (t.obj.get("dropdown") or {}).get("dropdownProperties", {}).get(
+                        "dropdownDefinitionId") == r["dropdownDefinitionId"]:
+                    raise ValueError("the dropdown definition is still used by a chip")
+            del tab["ddefs"][r["dropdownDefinitionId"]]
+            return {}
+        if kind == "deleteNamedRange":
+            assert r["name"] in tab["named"], "no such named range"
+            del tab["named"][r["name"]]
+            return {}
+        if kind == "deletePositionedObject":
+            del tab["pos"][r["objectId"]]
+            return {}
         if kind == "deleteComment":
             d["comments"] = [x for x in d["comments"] if x["commentId"] != r["commentId"]]
             return {}
         if kind == "updateDocumentStyle":
             for f in r["fields"].split(","):
+                if f in ("firstPageHeaderId", "evenPageHeaderId", "firstPageFooterId", "evenPageFooterId",
+                         "defaultHeaderId", "defaultFooterId"):
+                    raise ValueError(f"{f} is read-only")
                 tab["style"][f] = r["documentStyle"][f]
             return {}
         if kind in ("createHeader", "createFooter"):
@@ -435,7 +537,7 @@ class FakeDocs:
                    "insertDate": lambda: {"dateElement": {"dateElementProperties": {**r["dateElementProperties"],
                                                                                     "displayText": "Dec 1, 2026"}}},
                    "insertRichLink": lambda: {"richLink": {"richLinkProperties": {**r["richLinkProperties"], "title": "Budget"}}},
-                   "insertDropdown": lambda: {"dropdown": {"dropdownProperties": {
+                   "insertDropdown": lambda: {"dropdown": {"dropdownId": f"kix.dd{len(self.calls)}", "dropdownProperties": {
                        "dropdownDefinitionId": r["dropdownDefinitionId"], "selectedOptionId": r.get("selectedOptionId", ""),
                        "displayValue": "x"}}}}[kind]()
             if kind == "insertDropdown":
@@ -457,8 +559,8 @@ class FakeDocs:
             return {"createNamedRange": {"namedRangeId": "kix.nr"}}
         if kind in ("insertTableRow", "insertTableColumn", "deleteTableRow", "deleteTableColumn", "mergeTableCells",
                     "unmergeTableCells", "updateTableCellStyle", "updateTableColumnProperties", "pinTableHeaderRows",
-                    "updateSectionStyle", "updateNamedStyle", "replaceImage", "replaceNamedRangeContent",
-                    "updateDropdownProperties", "insertSectionBreak", "deleteHeader", "deleteFooter", "updateCommentPost"):
+                    "updateNamedStyle", "replaceImage", "replaceNamedRangeContent", "updateTableRowStyle",
+                    "updateDropdownProperties", "deleteHeader", "deleteFooter"):
             self.calls.append({kind: r})       # recorded; their shape is checked by the test
             if kind == "insertTableRow":
                 self._table_row(tab, r)

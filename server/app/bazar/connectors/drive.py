@@ -21,7 +21,7 @@ TITLES = {"share": "Share this file?", "public": "Create a public link?", "trash
           # v0.999.192 GOOGLE DOCS COMPLETE
           "doc_delete": "Delete this part of the document?", "doc_rewrite": "Rewrite this part of the document?",
           "doc_tab_del": "Delete this tab?", "doc_comment": "Add this comment?", "doc_reply": "Add this reply?",
-          "doc_cmt_del": "Delete this comment?", "doc_sugg_all": "Change all these suggestions?"}
+          "doc_cmt_del": "Delete this comment?", "doc_reply_del": "Delete this reply?", "doc_sugg_all": "Change all these suggestions?"}
 ROLE = {"reader": "can only view", "commenter": "can comment", "writer": "can edit"}
 
 

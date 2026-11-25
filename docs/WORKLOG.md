@@ -3696,3 +3696,9 @@ Task ID: v0.999.192 GOOGLE DOCS COMPLETE
 Ask: Google Docs the same way as the other Google apps
 Built: gdocs package + 8 tools (read, write, edit, table, layout, tabs, comments, fill), Drive cards for docs, fake Docs engine tests
 Not verified: real Google Doc; chips on real accounts
+
+---
+Task ID: v0.999.193 GOOGLE DOCS, THE LAST 9
+Ask: the 9 Google Docs pieces still missing
+Built: table delete / row height / cell style, link_inside, move, section layout, first/even headers, dropdown edit/remove, reply edit/delete, withdraw, named range / picture removal, suggestion details
+Not verified: real Google Doc

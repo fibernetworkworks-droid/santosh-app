@@ -11808,3 +11808,42 @@ Drive tests unchanged and green. Registry pins 694 -> 702.
 
 **NOT VERIFIED:** against a real Google Doc. Dropdown / people / date / rich-link chips are in Google's API
 description but not in its release notes, so their behaviour on real accounts is unconfirmed.
+
+## v0.999.193 GOOGLE DOCS, THE LAST 9 (owner: the 9 Docs pieces still missing -> "work on this now"): tables (delete a whole table, row height, cell borders / padding / vertical alignment), links to a heading / tab / bookmark of the same document, moving text with its looks, one part in its own section (landscape, margins, columns; Hoola adds the breaks), first-page / even-page headers (Google makes only the main one: switched on and filled once started in Docs, said), dropdowns edited / removed, replies edited / deleted (card), a suggestion withdrawn, named ranges and pictures removed, suggestions read in detail (adds / removes / looks) and equations said plainly; in the 8 gdoc_ tools, registry 702; 8 tests.
+
+Owner: the 9 Google Docs pieces still missing after GOOGLE DOCS COMPLETE -> "work on this now". All built on the same
+Docs API (revision 20261118) inside the 8 existing gdoc_ tools; registry stays 702.
+
+1. **Tables** - `gdoc_table` action=delete (the whole table; one with more than 300 characters waits for her tap),
+   row_height (minRowHeight, keep a row on one page = preventOverflow; rows by number or all), cell_style (borders by
+   side with width / colour / solid-dotted-dashed - width 0 hides one, Google's way -, padding, vertical alignment,
+   background; one cell range or every cell).
+2. **Links inside the document** - `gdoc_edit` action=link_inside: text links to a heading (Google's Link.heading with
+   the heading's id), a tab, or an existing bookmark id. Google's API cannot make or list bookmarks: said.
+3. **Moving text** - action=move: the part (found text, a heading's section, paragraphs) goes to any place with its
+   words, run looks and paragraph looks (heading levels too), in one batch tied to the revision. Google's API has no
+   copy, so tables, pictures and chips are refused with the reason; list bullets are not copied (said).
+4. **One part in its own section** - `gdoc_layout` section=N or part_heading / part_find / part_paragraph: Hoola puts
+   section breaks around the part (next page, or continuous when only columns change) and sets margins,
+   orientation, columns, page number start, direction for that section only (updateSectionStyle). gdoc_read
+   what=info lists the sections.
+5. **First-page / even-page headers and footers** - header_first / footer_first / header_even / footer_even.
+   Google's API creates only the main (DEFAULT) header; the first-page and even-page ids are read-only. Hoola turns
+   the 'different first page / odd & even' setting on and fills them once they exist; when they do not, it says to
+   click into that header once in Google Docs.
+6. **Dropdowns** - dropdown_edit (new option list keeping the ids of options that stay, title, replace_with for chips
+   of removed options = selectedOptionIdReplacements), dropdown_remove (the chip; its definition too when no chip
+   uses it). gdoc_read shows each chip's id.
+7. **Comments and suggestions** - `gdoc_comments` edit_reply (updateCommentPost, her own), delete_reply (her tap),
+   withdraw (deleteSuggestion, her own); replies listed with their ids.
+8. **Removing other parts** - delete_named_range (the text stays), delete_picture (inline or floating; floating
+   pictures listed in info).
+9. **Reading** - suggestions in detail: what each adds, removes, and which looks it changes with the value (from
+   Google's suggestion state masks); suggested insertions / deletions marked [+ +] / [- -] in the text. Equations:
+   Google's API gives no content for them, so Hoola says an equation is there and that it cannot read it.
+
+**Tests:** `test_v0999_193_docs_more.py` 8 on the stand-in Docs engine (now with section breaks, suggested deletions,
+suggested looks folded into suggested insertions, heading ids, dropdown definition rules, read-only header ids).
+`test_v0999_192_docs_complete.py` 12 still pass.
+
+**NOT VERIFIED:** against a real Google Doc.

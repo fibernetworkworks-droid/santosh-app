@@ -67,6 +67,8 @@ class Para:
     table: int = 0               # 1-based table number when inside a table cell
     cell: tuple | None = None    # (row, col) inside that table
     suggested: bool = False
+    heading_id: str = ""
+    sugg: dict = field(default_factory=dict)   # suggestion id -> {"add": text, "del": text, "looks": [..]}
 
     @property
     def level(self) -> int:
@@ -93,7 +95,7 @@ def _element(el: dict, dt: dict) -> tuple[str, str]:
         shown = f"[{rp.get('title') or 'link'}]({rp.get('uri', '')})"
     elif "dropdown" in el:
         dp = el["dropdown"].get("dropdownProperties") or {}
-        shown = "[choice: " + (dp.get("displayValue") or "") + "]"
+        shown = "[choice: " + (dp.get("displayValue") or "") + f" | dropdown {el['dropdown'].get('dropdownId', '')}]"
     elif "inlineObjectElement" in el:
         oid = el["inlineObjectElement"].get("inlineObjectId", "")
         eo = ((dt.get("inlineObjects") or {}).get(oid, {}).get("inlineObjectProperties") or {}).get("embeddedObject") or {}
@@ -105,12 +107,46 @@ def _element(el: dict, dt: dict) -> tuple[str, str]:
     elif "horizontalRule" in el:
         shown = "[line]"
     elif "equation" in el:
-        shown = "[equation]"
+        shown = "[equation - Google's API does not give its content]"
     elif "autoText" in el:
         shown = "[" + (el["autoText"].get("type", "auto text").replace("_", " ").lower()) + "]"
     else:
         shown = ""
     return shown, PLACEHOLDER * n
+
+
+LOOK = {"bold": "bold", "italic": "italic", "underline": "underline", "strikethrough": "strikethrough",
+        "smallCaps": "small capitals", "foregroundColor": "text colour", "backgroundColor": "highlight",
+        "weightedFontFamily": "font", "fontSize": "size", "link": "link", "baselineOffset": "superscript / subscript",
+        "namedStyleType": "style", "alignment": "alignment", "lineSpacing": "line spacing", "spaceAbove": "space above",
+        "spaceBelow": "space below", "indentStart": "indent", "indentFirstLine": "first-line indent",
+        "direction": "direction", "keepLinesTogether": "keep lines together", "keepWithNext": "keep with next",
+        "pageBreakBefore": "page break before"}
+
+
+def _changed(state: dict | None, style: dict | None, kind: str) -> list[str]:
+    """Plain words for a suggested look change: which look, and the suggested value when Google gives it."""
+    out = []
+    style = style or {}
+    for k, v in (state or {}).items():
+        if v is not True or not k.endswith("Suggested"):
+            continue
+        f = k[:-len("Suggested")]
+        name = LOOK.get(f, f)
+        val = style.get(f)
+        if isinstance(val, bool):
+            out.append(f"{name} {'on' if val else 'off'}")
+        elif isinstance(val, str):
+            out.append(f"{name}: {val.replace('_', ' ').lower()}")
+        elif isinstance(val, dict) and "magnitude" in val:
+            out.append(f"{name}: {val['magnitude']} {val.get('unit', '').lower()}")
+        elif isinstance(val, dict) and f == "weightedFontFamily":
+            out.append(f"font: {val.get('fontFamily', '')}")
+        elif isinstance(val, dict) and f == "link":
+            out.append(f"link: {val.get('url') or 'inside the document'}")
+        else:
+            out.append(f"{name} changed")
+    return out
 
 
 def paragraphs(content: list, dt: dict, table_no: list | None = None, cell=None, out: list | None = None) -> list[Para]:
@@ -119,9 +155,14 @@ def paragraphs(content: list, dt: dict, table_no: list | None = None, cell=None,
     for se in content or []:
         if "paragraph" in se:
             p = se["paragraph"]
+            pst = p.get("paragraphStyle") or {}
             para = Para(n=len(out) + 1, start=int(se.get("startIndex", 0)), end=int(se.get("endIndex", 0)),
-                        style=(p.get("paragraphStyle") or {}).get("namedStyleType", "NORMAL_TEXT"),
+                        style=pst.get("namedStyleType", "NORMAL_TEXT"), heading_id=pst.get("headingId", ""),
                         bullet=p.get("bullet"), table=cell[0] if cell else 0, cell=cell[1:] if cell else None)
+            for sid, ch in (p.get("suggestedParagraphStyleChanges") or {}).items():
+                para.suggested = True
+                para.sugg.setdefault(sid, {"add": "", "del": "", "looks": []})["looks"] += _changed(
+                    ch.get("paragraphStyleSuggestionState"), ch.get("paragraphStyle"), "paragraph")
             raw_off = 0
             shown_parts = []
             for el in p.get("elements", []):
@@ -129,9 +170,25 @@ def paragraphs(content: list, dt: dict, table_no: list | None = None, cell=None,
                 para.chunks.append((raw_off, int(el.get("startIndex", 0)), raw))
                 raw_off += len(raw)
                 para.raw += raw
-                shown_parts.append(shown)
-                if (el.get("textRun") or {}).get("suggestedInsertionIds"):
+                body_el = next((el[k] for k in ("textRun", "person", "dateElement", "richLink", "dropdown",
+                                                "inlineObjectElement", "equation", "footnoteReference", "pageBreak")
+                                if k in el), {})
+                vis = shown.replace("\n", "")
+                for sid in body_el.get("suggestedInsertionIds") or []:
                     para.suggested = True
+                    para.sugg.setdefault(sid, {"add": "", "del": "", "looks": []})["add"] += vis
+                for sid in body_el.get("suggestedDeletionIds") or []:
+                    para.suggested = True
+                    para.sugg.setdefault(sid, {"add": "", "del": "", "looks": []})["del"] += vis
+                for sid, ch in (body_el.get("suggestedTextStyleChanges") or {}).items():
+                    para.suggested = True
+                    para.sugg.setdefault(sid, {"add": "", "del": "", "looks": []})["looks"] += [
+                        f"{x} for '{vis[:40]}'" for x in _changed(ch.get("textStyleSuggestionState"), ch.get("textStyle"), "text")]
+                if body_el.get("suggestedInsertionIds"):
+                    shown = "[+" + shown.rstrip("\n") + "+]" + ("\n" if shown.endswith("\n") else "")
+                elif body_el.get("suggestedDeletionIds"):
+                    shown = "[-" + shown.rstrip("\n") + "-]" + ("\n" if shown.endswith("\n") else "")
+                shown_parts.append(shown)
             para.text = "".join(shown_parts).rstrip("\n")
             out.append(para)
         elif "table" in se:
@@ -297,3 +354,67 @@ def words(tab: dict) -> int:
 
 def segment_text(content: list, dt: dict) -> str:
     return "\n".join(p.text for p in paragraphs(content, dt)).strip()
+
+
+def suggestion_details(tab: dict) -> dict[str, dict]:
+    out: dict[str, dict] = {}
+    for p in paragraphs(body(tab), tab["dt"]):
+        for sid, v in p.sugg.items():
+            o = out.setdefault(sid, {"add": "", "del": "", "looks": []})
+            o["add"] += v["add"]
+            o["del"] += v["del"]
+            o["looks"] += [x for x in v["looks"] if x not in o["looks"]]
+    return out
+
+
+def sections(tab: dict) -> list[dict]:
+    """Sections start at section breaks; the first starts at the beginning of the body."""
+    c = body(tab)
+    brk = [se for se in c if "sectionBreak" in se]
+    out = []
+    for k, se in enumerate(brk):
+        start = int(se.get("startIndex", 0))
+        end = int(brk[k + 1].get("startIndex", 0)) if k + 1 < len(brk) else body_end(tab)
+        st = (se["sectionBreak"].get("sectionStyle") or {})
+        out.append({"n": k + 1, "start": start, "end": end, "break": int(se.get("endIndex", start + 1)),
+                    "type": (st.get("sectionType") or "").lower(), "landscape": bool(st.get("flipPageOrientation")),
+                    "columns": len(st.get("columnProperties") or []) or 1})
+    return out
+
+
+def dropdown_chips(tab: dict) -> list[dict]:
+    out = []
+
+    def walk(content):
+        for se in content or []:
+            if "paragraph" in se:
+                for el in se["paragraph"].get("elements", []):
+                    if "dropdown" in el:
+                        dp = el["dropdown"].get("dropdownProperties") or {}
+                        out.append({"id": el["dropdown"].get("dropdownId", ""), "start": int(el.get("startIndex", 0)),
+                                    "end": int(el.get("endIndex", 0)), "definition": dp.get("dropdownDefinitionId", ""),
+                                    "value": dp.get("displayValue", "")})
+            elif "table" in se:
+                for row in se["table"].get("tableRows", []):
+                    for tc in row.get("tableCells", []):
+                        walk(tc.get("content"))
+    walk(body(tab))
+    return out
+
+
+def inline_pictures(tab: dict) -> list[dict]:
+    out = []
+
+    def walk(content):
+        for se in content or []:
+            if "paragraph" in se:
+                for el in se["paragraph"].get("elements", []):
+                    if "inlineObjectElement" in el:
+                        out.append({"id": el["inlineObjectElement"].get("inlineObjectId", ""),
+                                    "start": int(el.get("startIndex", 0)), "end": int(el.get("endIndex", 0))})
+            elif "table" in se:
+                for row in se["table"].get("tableRows", []):
+                    for tc in row.get("tableCells", []):
+                        walk(tc.get("content"))
+    walk(body(tab))
+    return out
