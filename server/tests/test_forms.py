@@ -102,6 +102,7 @@ class FakeForms:
                     if "quizSettings" in s:
                         f["settings"]["quizSettings"] = s["quizSettings"]
                     if "emailCollectionType" in s:
+                        assert s["emailCollectionType"] in ("DO_NOT_COLLECT", "VERIFIED", "RESPONDER_INPUT")
                         f["settings"]["emailCollectionType"] = s["emailCollectionType"]
                 elif "createItem" in r:
                     it = json.loads(json.dumps(r["createItem"]["item"]))
@@ -110,8 +111,16 @@ class FakeForms:
                         if it["questionItem"]["question"].get("grading") and not f["settings"].get("quizSettings", {}).get("isQuiz"):
                             return httpx.Response(400, json={"error": {"message": "grading needs quiz"}})
                         it["questionItem"]["question"]["questionId"] = self._id("q")[:8]
-                    if "questionGroupItem" in it and "question" in it["questionGroupItem"]:   # v0.213 grid
-                        it["questionGroupItem"]["question"]["questionId"] = self._id("q")[:8]
+                    if "questionGroupItem" in it:            # v0.999.187: Google's shape - one question per row
+                        assert set(it["questionGroupItem"]) <= {"questions", "grid", "image"}
+                        for gq in it["questionGroupItem"]["questions"]:
+                            assert "rowQuestion" in gq
+                            gq.setdefault("questionId", self._id("q")[:8])
+                    if "questionItem" in it:
+                        assert "fileUploadQuestion" not in it["questionItem"]["question"]   # Google: apps cannot add
+                        g = it["questionItem"]["question"].get("grading") or {}
+                        auto = "choiceQuestion" in it["questionItem"]["question"] and g.get("correctAnswers")
+                        assert not (auto and "generalFeedback" in g)   # Google: no general feedback when auto-graded
                     f["items"].insert(r["createItem"]["location"]["index"], it)
                 elif "updateItem" in r:
                     i = r["updateItem"]["location"]["index"]
@@ -452,6 +461,8 @@ def test_move_reorders_questions(fake):
 
 
 def test_page_grid_upload_item_types(fake):
+    """v0.999.187: grids in Google's real shape (questionGroupItem.questions = one rowQuestion per row, grid.columns
+    = a ChoiceQuestion); a file-upload question is refused with how she adds it (Google's API cannot create one)."""
     _connect()
     ctx = conv_ctx()
     out = run("form_create", {"title": "Club admission", "questions": [
@@ -460,35 +471,43 @@ def test_page_grid_upload_item_types(fake):
         {"title": "Din aur samay", "type": "grid", "rows": ["Somvaar", "Mangalvaar"], "columns": ["Subah", "Sham"]},
         {"title": "Kya kya aa sakta hai", "type": "checkbox_grid", "rows": ["Khana", "Music"],
          "columns": ["Haan", "Nahi"]},
-        {"title": "Resume", "type": "upload", "max_files": 2, "max_file_mb": 5, "file_types": ["PDF", "DOCX"]},
         {"title": "Kitna samay lagega?", "type": "time", "duration": True}]}, ctx)
     f = fake.forms[out["id"]]
     assert "pageBreakItem" in f["items"][1] and f["items"][1]["description"] == "Yahan se naya page shuru"
     g = f["items"][2]["questionGroupItem"]
-    assert [r["value"] for r in g["grid"]["rows"]] == ["Somvaar", "Mangalvaar"]
-    assert [c["value"] for c in g["grid"]["columns"]] == ["Subah", "Sham"]
-    assert "type" not in g["grid"]                                    # mc grid: one answer per row
-    assert f["items"][3]["questionGroupItem"]["grid"]["type"] == "CHECKBOX"   # checkbox grid: many
-    fq = f["items"][4]["questionItem"]["question"]["fileUploadQuestion"]
-    assert fq["maxFiles"] == 2 and fq["maxFileSizeMb"] == 5 and fq["types"] == ["PDF", "DOCX"]
-    assert f["items"][5]["questionItem"]["question"]["timeQuestion"] == {"duration": True}
+    assert [q["rowQuestion"]["title"] for q in g["questions"]] == ["Somvaar", "Mangalvaar"]
+    assert g["grid"]["columns"] == {"type": "RADIO", "options": [{"value": "Subah"}, {"value": "Sham"}]}
+    assert f["items"][3]["questionGroupItem"]["grid"]["columns"]["type"] == "CHECKBOX"
+    assert f["items"][4]["questionItem"]["question"]["timeQuestion"] == {"duration": True}
     kinds = [q.split(" (")[1].split(",")[0].rstrip(")") for q in out["questions"]]
-    assert kinds == ["short", "page", "grid", "grid", "upload", "time"]
+    assert kinds == ["short", "page", "grid", "checkbox_grid", "time"]
     with pytest.raises(ToolError, match="rows and columns"):
         run("form_create", {"title": "Bad grid", "questions": [{"title": "G", "type": "grid", "rows": ["r"]}]}, ctx)
+    with pytest.raises(ToolError, match="file-upload"):
+        run("form_create", {"title": "Jobs", "questions": [{"title": "Resume", "type": "upload"}]}, ctx)
 
 
 def test_quiz_feedback_fields(fake):
+    """Google's rule: right / wrong feedback on auto-graded choice questions, general feedback on the others; one
+    general feedback on an auto-graded choice question is shown for both (v0.999.187)."""
     _connect()
     ctx = conv_ctx()
     out = run("form_create", {"title": "Spoken English test", "questions": [
         {"title": "Plural of 'child'?", "type": "choice", "options": ["childs", "children"], "correct": "children",
-         "points": 1, "feedback": "Children is the irregular plural.",
-         "feedback_right": "Shabaash!", "feedback_wrong": "Revision chahiye."}]}, ctx)
-    g = fake.forms[out["id"]]["items"][0]["questionItem"]["question"]["grading"]
-    assert g["generalFeedback"] == {"text": "Children is the irregular plural."}
+         "points": 1, "feedback_right": "Shabaash!", "feedback_wrong": "Revision chahiye."},
+        {"title": "Plural of 'mouse'?", "type": "choice", "options": ["mouses", "mice"], "correct": "mice",
+         "feedback": "Mice is the irregular plural."},
+        {"title": "Write the plural of 'man'", "type": "short", "points": 2, "feedback": "Men."}]}, ctx)
+    items = fake.forms[out["id"]]["items"]
+    g = items[0]["questionItem"]["question"]["grading"]
     assert g["whenRight"] == {"text": "Shabaash!"} and g["whenWrong"] == {"text": "Revision chahiye."}
+    g2 = items[1]["questionItem"]["question"]["grading"]
+    assert g2["whenRight"] == g2["whenWrong"] == {"text": "Mice is the irregular plural."} and "generalFeedback" not in g2
+    assert items[2]["questionItem"]["question"]["grading"]["generalFeedback"] == {"text": "Men."}
     assert out["is_quiz"]
+    with pytest.raises(ToolError, match="right / wrong feedback"):
+        run("form_create", {"title": "X", "questions": [{"title": "Name it", "type": "short", "points": 1,
+                                                          "feedback_right": "ok"}]}, ctx)
 
 
 def test_media_image_and_video(fake):
@@ -551,9 +570,9 @@ def test_settings_published_and_emails(fake):
     back = run("form_settings", {"form": fid, "published": True}, ctx)
     assert back["published"] is True and back["accepting"] is True
     run("form_settings", {"form": fid, "emails": "verify"}, ctx)
-    assert fake.forms[fid]["settings"]["emailCollectionType"] == "VERIFIED_EMAIL"
+    assert fake.forms[fid]["settings"]["emailCollectionType"] == "VERIFIED"         # Google's real names (v0.999.187)
     run("form_settings", {"form": fid, "emails": "off"}, ctx)
-    assert fake.forms[fid]["settings"]["emailCollectionType"] == "DONT_COLLECT"
+    assert fake.forms[fid]["settings"]["emailCollectionType"] == "DO_NOT_COLLECT"
     with pytest.raises(ToolError, match="off / collect / verify"):
         run("form_settings", {"form": fid, "emails": "maybe"}, ctx)
 

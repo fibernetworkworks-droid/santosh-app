@@ -11496,3 +11496,59 @@ count 21 -> 33, registry pins 661 -> 673.
 lists a canStartApproval capability but no approvals method), the list of an organisation's labels (Drive Labels
 API not read), who only viewed a file (Google does not give it), spam / block. Shared drives and labels exist only on
 Google Workspace accounts. Drive Activity is a new Google permission (her app's Google verification may need it).
+
+## v0.999.187 FORMS COMPLETE (owner: "NOW LETS WORK ON GOOGLE FROM SAME WAY" = check Google Forms, then 100%): FIXED against Google's own Forms API description - grids were sent in a shape Google refuses (now questionGroupItem.questions with one rowQuestion per row + grid.columns) and their answers were never read (now one column per row), email collection used names Google refuses (now DO_NOT_COLLECT / VERIFIED), file-upload questions were sent though Google's API cannot create them (now refused with how she adds one; their answers read with Drive links), general feedback on auto-graded choice questions (Google refuses it; now used as right + wrong feedback), answers stopped at 5,000 (now all), the fill-in link was refused (now her form is found by it), Google's speed limit told as no permission (now waited out); NEW form_logic (go to a page by answer), form_link (pre-filled links per person, website code, QR), form_edit changes any field + type + duplicate + add_at, form_share list / remove (card), form_alerts job (a task on new answers), form_export into her existing sheet, answers since a date / search, summary per day + grid rows + right answers, question / option pictures, rating hearts / thumbs, date without year; registry 675; 13 tests.
+
+Owner: "NOW LETS WORK ON GOOGLE FROM SAME WAY" (after DRIVE COMPLETE: check Google Forms first, then 100%).
+Check first: Hoola had 13 Forms tools (create, edit, find, responses, summary, export, settings, share, alerts, move,
+media, delete, copy). Every request shape was compared with Google's own Forms API v1 description (its discovery
+document, read 25 Nov 2026). New module `forms/more.py`; 2 new tools (registry 673 -> 675).
+
+**Bugs fixed (Google would have refused these, or Hoola read them wrong)**
+1. Grids were sent as `questionGroupItem.grid.rows / columns` - not Google's shape. Now `questionGroupItem.questions`
+   = one `rowQuestion` per row and `grid.columns` = a ChoiceQuestion (RADIO / CHECKBOX). Their answers (one question
+   id per row) were never read: responses, summary and export now give one column per row.
+2. Email collection used `DONT_COLLECT` / `VERIFIED_EMAIL`; Google's names are `DO_NOT_COLLECT` / `VERIFIED`.
+3. File-upload questions were sent to Google, whose API says it cannot create them. Now refused with how she adds
+   one (edit link > + > File upload); uploaded files in answers come with their Drive link, counted in the summary.
+4. General feedback on an auto-graded choice question (Google refuses it): one `feedback` there is now shown both
+   when right and when wrong; right / wrong feedback on other kinds is refused with the reason.
+5. Answers stopped at 5,000 for summary and export - now every answer (up to 100,000).
+6. The fill-in (responder) link was refused - now Hoola finds which of her forms has it (her 60 newest forms).
+7. Google's speed limit (429, 5xx, a rate-limit 403) was told as "No permission" - waited (Retry-After, else
+   1-2-4-8-16 s, 5 tries), then said plainly; a missing Google permission is named.
+8. Form search stopped at one page of 50 - now paged.
+
+**New**
+- `form_logic` - send people to a page by their answer (goToSectionId / goToAction on one-answer questions): list
+  pages + rules, set by page title or number or next / submit / restart, clear. Options in form_create / form_edit
+  can carry `go_to` too; pages are matched once the form exists, an unmatched page is said in notes.
+- `form_link` - pre-filled links (one link, or one per person, up to 500; entry number = the question id read as
+  hexadecimal, Google's known pattern), the code that puts the form on a website (iframe ?embedded=true), a QR
+  picture in the chat.
+- `form_edit` changes ANY field of a question (right answer, points, feedback, scale, icon, shuffle, Other, grid
+  rows / columns, picture, go to page) keeping the question id (answers kept); a new type only while nobody has
+  answered; `duplicate` (copy right after); `add_at` (position). Edits carry the form's revision so Google refuses
+  a change to a form that moved meanwhile.
+- `form_share` action list / remove (remove behind a card); trash / copy / remove fall back to her Drive connection
+  for forms Hoola did not make.
+- `form_alerts job=` - a task Hoola does with each batch of new answers (answers fenced as DATA, 50 jobs a day,
+  sending still asks with its card). New column `forms_watches.job`.
+- `form_export sheet=` - every answer into a tab of her existing Google Sheet (replacing that tab).
+- `form_responses since= / search=`, `form_summary since=`; summary by day, grid rows, right answers per question.
+- Question and option pictures (public links), rating hearts / thumbs, date without the year, the form's own linked
+  Sheet shown.
+
+**Connectors > Google:** Forms lines say what it now does.
+
+**Tests:** `test_v0999_187_forms_complete.py` 13 on a stand-in for Google that also checks Google's shapes (grids,
+email names, no file-upload create, no general feedback on auto-graded choice). Old tests that pinned the refused
+shapes now pin Google's real ones (test_forms.py grid / feedback / email, test_v0213 item shapes + tool count 15).
+Registry pins 673 -> 675.
+
+**NOT VERIFIED:** against a real Google form. Not possible through Google's API (said plainly, she does them in the
+form): adding a file-upload question, "go to page" after a page (only by answer), limit to one answer, editing
+answers after sending, a progress bar, shuffling question order, the confirmation message, releasing quiz scores,
+grading or deleting answers, right answers on grids. Push alerts (Forms watches) need a Pub/Sub topic in her Google
+Cloud project - Hoola checks for new answers every ~10 minutes instead. Pre-filled entry numbers follow Google's known
+pattern, not a documented rule.

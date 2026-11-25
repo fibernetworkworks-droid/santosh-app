@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import time
 from typing import Any, Callable
 
 import httpx
@@ -48,24 +49,49 @@ class FormsClient:
         self._client = client
         self.can_search = can_search
 
+    RETRIES = 5
+    RETRY_WAIT = 1.0
+    RATE = ("rateLimitExceeded", "userRateLimitExceeded", "RATE_LIMIT_EXCEEDED", "backendError", "Quota exceeded")
+
     def _req(self, method: str, url: str, **kw) -> Any:
+        """v0.999.187: Google's speed limit (429, 5xx, a 403 that says rate limit) is waited out (Retry-After, else
+        1-2-4-8-16 s, 5 tries) instead of told as "No permission"; other 403s say what is really missing."""
         c = self._client or httpx.Client(timeout=40)
         try:
-            for attempt in (0, 1):
-                r = c.request(method, url, headers={"Authorization": f"Bearer {self._token(attempt == 1)}"}, **kw)
-                if r.status_code == 401 and attempt == 0:
-                    continue
-                break
+            tries = 0
+            while True:
+                tries += 1
+                for attempt in (0, 1):
+                    r = c.request(method, url, headers={"Authorization": f"Bearer {self._token(attempt == 1)}"}, **kw)
+                    if r.status_code == 401 and attempt == 0:
+                        continue
+                    break
+                rate = r.status_code in (429, 500, 502, 503, 504) or (
+                    r.status_code == 403 and any(w in r.text for w in self.RATE))
+                if not rate or tries >= self.RETRIES:
+                    break
+                try:
+                    wait = float(r.headers.get("retry-after") or 0)
+                except ValueError:
+                    wait = 0.0
+                time.sleep(min(wait or self.RETRY_WAIT * 2 ** (tries - 1), 30))
         except httpx.HTTPError as e:
             raise FormError(f"Could not reach Google Forms ({type(e).__name__})")
         finally:
             if self._client is None:
                 c.close()
+        if r.status_code in (429,) or (r.status_code >= 500) or (
+                r.status_code == 403 and any(w in r.text for w in self.RATE)):
+            raise FormError("Google Forms is busy (its speed limit for this account). Hoola waited and tried 5 times; "
+                            "try again in a minute.")
         if r.status_code == 403:
             if "has not been used" in r.text or "SERVICE_DISABLED" in r.text:
                 raise FormError("The Google Forms API is not enabled in the Google Cloud project.")
+            if "insufficient" in r.text.lower() and "scope" in r.text.lower():
+                raise FormError("Google Forms was connected without the permission this needs. Connect Forms again "
+                                "(Connectors > Google) and tick every box on Google's page.")
             raise FormError("No permission for this form (it may be someone else's form). Or connect again from "
-                            "Profile > Google Forms.")
+                            "Connectors > Google > Forms.")
         if r.status_code == 404:
             raise FormError("This form was not found. Is the edit link or name correct?")
         if r.status_code >= 400:
@@ -84,9 +110,13 @@ class FormsClient:
     def get(self, form_id: str) -> dict:
         return self._req("GET", f"{FORMS}/{form_id}")
 
-    def batch(self, form_id: str, requests: list[dict]) -> dict:
-        return self._req("POST", f"{FORMS}/{form_id}:batchUpdate",
-                         json={"requests": requests, "includeFormInResponse": True})
+    def batch(self, form_id: str, requests: list[dict], revision: str = "") -> dict:
+        """revision = the form's revisionId the change was planned on: Google refuses the batch (400) if the form
+        changed since (WriteControl.requiredRevisionId), so a card never edits a different form than she saw."""
+        body: dict[str, Any] = {"requests": requests, "includeFormInResponse": True}
+        if revision:
+            body["writeControl"] = {"requiredRevisionId": revision}
+        return self._req("POST", f"{FORMS}/{form_id}:batchUpdate", json=body)
 
     def publish(self, form_id: str, accepting: bool) -> dict:
         return self._req("POST", f"{FORMS}/{form_id}:setPublishSettings", json={
@@ -104,7 +134,7 @@ class FormsClient:
         """v0.213: forms.responses.get — one response by id."""
         return self._req("GET", f"{FORMS}/{form_id}/responses/{response_id}")
 
-    def responses(self, form_id: str, since: str | None = None, limit: int = 5000) -> list[dict]:
+    def responses(self, form_id: str, since: str | None = None, limit: int = 100000, at_or_after: bool = False) -> list[dict]:
         out: list[dict] = []
         token = None
         while True:
@@ -112,7 +142,7 @@ class FormsClient:
             if token:
                 params["pageToken"] = token
             if since:
-                params["filter"] = f"timestamp > {since}"
+                params["filter"] = f"timestamp {'>=' if at_or_after else '>'} {since}"
             res = self._req("GET", f"{FORMS}/{form_id}/responses", params=params)
             out += res.get("responses", [])
             token = res.get("nextPageToken")
@@ -121,17 +151,37 @@ class FormsClient:
 
     # ---------------- Drive ----------------
     def search(self, query: str = "", limit: int = 15) -> list[dict[str, Any]]:
+        """v0.999.187: follows Drive's pages (was one page of up to 50)."""
         if not self.can_search:
             raise FormError("Search by name does not work on this connection; give the form's edit link.")
         q = [f"mimeType = '{GFORM}'", "trashed = false"]
         if query:
             q.append("name contains '" + query.replace("\\", " ").replace("'", " ") + "'")
-        res = self._req("GET", DRIVE + "/files", params={
-            "q": " and ".join(q), "orderBy": "modifiedTime desc", "pageSize": max(1, min(limit, 50)),
-            "fields": "files(id,name,modifiedTime,webViewLink)", "supportsAllDrives": "true",
-            "includeItemsFromAllDrives": "true"})
-        return [{"id": f["id"], "title": f["name"], "modified": f.get("modifiedTime", "")[:10],
-                 "edit_link": f.get("webViewLink") or edit_link(f["id"])} for f in res.get("files", [])]
+        limit = max(1, min(int(limit or 15), 1000))
+        out: list[dict[str, Any]] = []
+        token = None
+        while True:
+            params: dict[str, Any] = {"q": " and ".join(q), "orderBy": "modifiedTime desc",
+                                      "pageSize": min(limit - len(out), 100),
+                                      "fields": "nextPageToken,files(id,name,modifiedTime,webViewLink)",
+                                      "supportsAllDrives": "true", "includeItemsFromAllDrives": "true"}
+            if token:
+                params["pageToken"] = token
+            res = self._req("GET", DRIVE + "/files", params=params)
+            out += [{"id": f["id"], "title": f["name"], "modified": f.get("modifiedTime", "")[:10],
+                     "edit_link": f.get("webViewLink") or edit_link(f["id"])} for f in res.get("files", [])]
+            token = res.get("nextPageToken")
+            if not token or len(out) >= limit:
+                return out[:limit]
+
+    def permissions(self, form_id: str) -> list[dict]:
+        """v0.999.187: who can edit / view the form itself (Drive permissions)."""
+        res = self._req("GET", f"{DRIVE}/files/{form_id}/permissions", params={
+            "supportsAllDrives": "true", "fields": "permissions(id,type,role,emailAddress,displayName,domain)"})
+        return res.get("permissions", [])
+
+    def unshare(self, form_id: str, permission_id: str) -> None:
+        self._req("DELETE", f"{DRIVE}/files/{form_id}/permissions/{permission_id}", params={"supportsAllDrives": "true"})
 
     def share(self, form_id: str, email: str, role: str = "writer") -> dict:
         return self._req("POST", f"{DRIVE}/files/{form_id}/permissions",

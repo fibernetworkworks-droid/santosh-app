@@ -166,7 +166,8 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
               "shared drive", "team drive", "zip", "unzip", "old version", "access request", "asked for access",
               "who edited", "who changed", "duplicate files"),   # v0.999.186 DRIVE COMPLETE
     "slides": ("slide", "ppt", "presentation", "deck"),
-    "forms": ("form", "survey", "respons"),
+    "forms": ("form", "survey", "respons", "quiz", "questionnaire", "prefill", "pre-fill",   # v0.999.187
+              "answer key", "go to section", "go to page"),
     "photos": ("google photos", "album", "gallery"),
     "photo": ("photo", "tasveer", "image", "picture", "wish", "greeting", "फोटो", "तस्वीर"),
     "audio_edit": ("audio edit", "edit audio", "edit this audio", "trim audio", "cut audio", "audio trim", "audio cut",

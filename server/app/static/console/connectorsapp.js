@@ -262,7 +262,7 @@
     drive: ['Finds and reads your files · lists folders · organises, converts and zips them', 'Shares a file · replaces its contents · puts an old version back · moves files to the bin · answers access requests', 'Makes a file public or deletes it forever on its own'],
     docs: ['Reads documents you name · writes new drafts', 'Shares a document', 'Deletes your documents on its own'],
     sheets: ['Reads the sheets you work on · creates new ones', 'Clears or deletes rows and tabs · shares a sheet', 'Deletes a whole spreadsheet on its own'],
-    forms: ['Reads responses · drafts new forms', 'Shares or deletes a form', 'Submits a form as you'],
+    forms: ['Makes and changes forms and quizzes · pages and answer rules · reads, sums up and exports answers · links, website code and QR', 'Shares or removes who can edit · deletes answered questions or a form', 'Submits a form as you'],
     slides: ['Reads decks · builds new slides', 'Shares or deletes a deck', 'Publishes a deck on its own'],
     photos: ['Shows albums · uses pictures you pick', 'Uploads to your library', 'Opens photos you did not pick'],
     youtube: ['Reads your channel, videos and comments', 'Uploads or edits a video · replies to comments', 'Makes a private video public on its own'],

@@ -3660,3 +3660,9 @@ Task ID: v0.999.186 DRIVE COMPLETE
 Ask: check Google Drive, then 100% Drive work for Hoola
 Built: paging, long reads, shortcuts, retry, resumable upload, ownership for Gmail, replace, versions, bulk, zip, convert, new files, folder tools, lock, shared drives, access requests, watch, activity, labels, sharing options
 Not verified: real Google Drive; Drive Activity needs connecting; Workspace-only parts
+
+---
+Task ID: v0.999.187 FORMS COMPLETE
+Ask: check Google Forms, then 100% Forms work for Hoola
+Built: real grid / email / upload / feedback shapes, all answers, fill-in link lookup, retry, pages by answer, links + QR, any-field edits, editors, answer jobs, export into a sheet, since / search
+Not verified: real Google form; pre-filled entry numbers
