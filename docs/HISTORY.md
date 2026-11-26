@@ -12256,3 +12256,6 @@ The Cash & Treasury employee (`cash_treasury`, the F5 engine `fin/desks/cash.py`
 
 NOT VERIFIED: on her server.
 
+## v0.999.217 CUSTOMIZE IN THE PROFILE MENU (owner, after v0.999.215: "UNDO -- I TELL U TO JUST PALCE / MOVE THE CONSTERZE SECTION IN PROPFINE"): v0.999.215 undone - the app-design sidebar has no Customize row any more; Customize is an item of the profile (account) menu, first under her email, and opens the Customize page; its own brush icon; 2 tests incl. a browser walk. Console only.
+
+Console only (`static/console/v2.js`, `menu.js`). v0.999.215 is undone: the sidebar row `['main', 'Customize']`, its `data-acct` button and its click handler are gone, so the app-design sidebar ends with More. `acctItems()` (the profile / account button's menu) gets `Customize` as its first item under her email; it opens the Customize page (view main). HoolaMenu gets a `brush` icon. Tests: test_v0999_215_customize_menu.py removed; NEW test_v0999_217_customize_in_profile.py (shape + a Chromium walk: no Customize row, the profile menu lists Customize, picking it opens the Customize page); sidebar pins in test_v0973 / test_v0975 now end with More. NOT VERIFIED: on her server.

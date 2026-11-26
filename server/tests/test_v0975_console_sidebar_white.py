@@ -78,7 +78,7 @@ def test_sidebar_and_white_in_a_real_browser(arena_server):  # noqa: F811
         else:
             assert m["bg"] == "rgb(20, 20, 19)" and m["rowC"] == "rgb(242, 241, 236)", m
         rows = pg.evaluate("[...document.querySelectorAll('#snav .sn > .txt')].map(e=>e.textContent)")
-        assert rows[:3] == ["AI Employees", "Tools", "Computer"] and rows[-2:] == ["More", "Customize"], rows   # v0.976
+        assert rows[:3] == ["AI Employees", "Tools", "Computer"] and rows[-1:] == ["More"], rows   # v0.976; v0.999.217 Customize in the profile menu
         assert not {"Work", "AI Apps", "Arena"} & set(rows) and not any(r.startswith("Made by") for r in rows), rows
         pg.click(".side [data-more]"); pg.wait_for_timeout(300)
         items = pg.evaluate("[...document.querySelectorAll('[role=menu] [role^=menuitem]')].map(e=>e.textContent.trim())")

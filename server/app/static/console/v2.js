@@ -388,10 +388,10 @@ const IC_APP = {more: '<circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12"
   main: '<path d="M4 9.5h16v9A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5Z"/><path d="M8.5 9.5V7a3.5 3.5 0 0 1 7 0v2.5"/>'};
 function appNav() {   // v0.973 Claude's rows with Hoola's places: New chat + Search sit above, then these
   const own = ['chat', 'hire', 'kaam', 'computer', 'aaj', 'bana', 'baat', 'main', ...APP_TOOLS.map(t => t[0])];
-  // any other page the old sidebar carried (Arena for the owner, Skills, AI Apps...) keeps its row before Customize
+  // any other page the old sidebar carried (Arena for the owner, Skills, AI Apps...) keeps its row before More
   // v0.976 her ask: AI Apps + Arena hidden for now; Work + Docs and files live under More
   const more = NAV.filter(([k]) => !own.includes(k) && !APP_HIDE.includes(k));
-  return [['hire', 'AI Employees'], ['kaam', 'Tools'], ['computer', 'Computer'], ...more, ['more', 'More'], ['main', 'Customize']];
+  return [['hire', 'AI Employees'], ['kaam', 'Tools'], ['computer', 'Computer'], ...more, ['more', 'More']];   // v0.999.217 her ask: Customize lives in the profile menu now, not the sidebar
 }
 const APP_HIDE = ['aiapps', 'arena'];
 const APP_MORE = [['aaj', 'Work', 'briefcase'], ['bana', 'Docs and files', 'doc']];   // v0.976 the More menu
@@ -406,7 +406,6 @@ function drawNav() {
   if (APPD) {
     const studio = new Set(APP_TOOLS.map(t => t[0])), cur = k => k === VIEW || (k === 'hire' && /desk$/.test(VIEW)) || (k === 'kaam' && studio.has(VIEW));
     $('#snav').innerHTML = appNav().map(([k, n]) => k === '-' ? `<div class="snl">${esc(n)}</div>`
-      : k === 'main' ? `<button class="sn" type="button" data-acct aria-haspopup="menu" title="Customize" aria-label="Customize" aria-current="${VIEW === 'main'}">${svg(IC_APP.main)}<span class="txt">Customize</span></button>`
       : k === 'more' ? `<button class="sn" type="button" data-more aria-haspopup="menu" title="More" aria-label="More" aria-current="${APP_MORE.some(([m]) => m === VIEW)}">${svg(IC_APP.more)}<span class="txt">More</span>${navBadge('aaj')}</button>`
       : `<button class="sn" data-v="${k}" title="${esc(n)}" aria-label="${esc(n)}" aria-current="${cur(k)}">${k === 'chat' ? `<span class="hmk" aria-hidden="true">${MARK()}</span>` : svg(IC_APP[k] || IC[k === 'baat' ? 'call' : k] || IC.creative)}<span class="txt">${esc(n)}</span>${navBadge(k)}</button>`).join('');
     return drawTabs();
@@ -504,10 +503,11 @@ $('#liveBtn').addEventListener('click', () => {
 $('#liveClose').addEventListener('click', () => $('#app').classList.remove('open'));
 // v0.285 the account button opens Claude's account menu (above it): who is signed in, Settings, Library, the theme,
 // keyboard shortcuts, Log out
-function acctItems() {   // v0.999.215 one list for the account button and the Customize row
+function acctItems() {   // v0.999.215 the account button's menu; v0.999.217 Customize moved in here
   const t = TH?.theme() || 'system', setT = v => () => TH?.setTheme(v);
   return [
     {header: ME.email || ME.owner || 'Signed in'},
+    {label: 'Customize', icon: 'brush', run: () => go('main')},   // v0.999.217 moved here from the sidebar
     {label: 'Settings', icon: 'settings', run: () => go('main')},
     {label: 'Credits', icon: 'spark', run: () => go('credits')},   // v0.999.26 HOOLA CREDITS
     ...(PN ? [{label: 'Library', icon: 'library', run: () => go('bana')}] : []),
@@ -524,12 +524,6 @@ function acctItems() {   // v0.999.215 one list for the account button and the C
 $('#model').addEventListener('click', e => {
   if (!window.HoolaMenu) { go('main'); return; }
   HoolaMenu.open(e.currentTarget, acctItems(), {align: 'start', place: 'above', width: 'anchor', cls: 'acctm', label: 'Account', keyboard: e.detail === 0});
-});
-// v0.999.215 her ask: the Customize row opens the same profile menu (below it) instead of the Customize page
-document.addEventListener('click', e => {
-  const b = e.target.closest?.('.side [data-acct]'); if (!b) return;
-  if (!window.HoolaMenu) { go('main'); return; }
-  HoolaMenu.open(b, acctItems(), {align: 'start', place: 'below', width: 'anchor', cls: 'acctm', label: 'Customize', keyboard: e.detail === 0});
 });
 
 /* ================= v0.240 CALM BRAND: Light / Dark / System, text size, reduce motion, live border glow ================= */

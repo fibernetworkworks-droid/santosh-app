@@ -3845,3 +3845,9 @@ Task ID: v0.999.215 CUSTOMIZE = PROFILE MENU
 Ask: Customize row = the profile menu
 Built: acctItems shared by the account button and the Customize row, Skills icon
 Not verified: on her server
+
+---
+Task ID: v0.999.217 CUSTOMIZE IN THE PROFILE MENU
+Ask: undo v0.999.215, move Customize into the profile menu
+Built: Customize row removed from the sidebar, Customize item in acctItems, brush icon
+Not verified: on her server
