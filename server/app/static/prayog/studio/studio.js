@@ -798,7 +798,7 @@
     // one question at a time and an answer cannot be stopped: Send is simply off while Hoola answers
     function lock(on) { busy = on; go.disabled = on || !bar.value.trim(); }
     bar.input.addEventListener('input', function () { if (busy) go.disabled = true; });
-    function note(t) { T.raw({ node: el('div', 'hck-note', t) }); msgs.scrollTop = msgs.scrollHeight; }
+    function note(t) { T.raw({ node: el('div', 'hck-note', t) }); if (!T.holding) msgs.scrollTop = msgs.scrollHeight; }
     function dropEmpty() { var n = thread.lastElementChild; if (n && n.classList.contains('hck-ho') && !n.childElementCount) n.remove(); }
     S.askNote = note;
     btn.addEventListener('click', function () { dock.hidden = false; btn.hidden = true; bar.focus(); });

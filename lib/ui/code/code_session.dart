@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 
 import '../../state.dart';
 import '../chat/hoola_md.dart';
+import '../chat/hoola_thread.dart' show ThreadLander, HoolaRiseIn;
 import '../hoola_mark.dart';
 import '../hoola_theme.dart';
 import 'code_changes.dart';
@@ -74,6 +75,9 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
   final _msg = TextEditingController();
   final _focus = FocusNode();
   final _scroll = ScrollController();
+  // v0.999.203 her sent message lands at the top with room kept for the reply (hoola_thread.dart ThreadLander)
+  late final ThreadLander _lander = ThreadLander(_scroll)..addListener(() { if (mounted) setState(() {}); });
+  int _herAt = -1;                    // the newest of her bubbles in the rows being built
 
   String get _base => '/api/devsahayak/tasks/${Uri.encodeComponent(widget.id)}';
 
@@ -142,7 +146,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
   /// true end - no 260 ms slide racing a snap (the plan card and the words above it shook between the two).
   bool _stickQueued = false;
   void _stick() {
-    if (_away || _stickQueued) return;
+    if (_away || _stickQueued || _lander.held) return;
     _stickQueued = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _stickQueued = false;
@@ -196,6 +200,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
     _tick?.cancel();
     _msg.dispose();
     _focus.dispose();
+    _lander.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -402,7 +407,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         _away = false;
       });
       if (words == null) _msg.clear();
-      _stick();
+      _lander.land();                                 // v0.999.203 to the top, room kept (was: follow the end)
     }
     final r = switch (mode) {
       'note' => await _run('POST', '$_base/note', {'text': text, 'comments': comments}),
@@ -623,12 +628,12 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
                             _stick();                 // the thread grew (a word wrapped, a row came): stay at the end
                             return false;
                           },
-                          child: ListView.builder(
+                          child: _lander.listen(ListView.builder(
                               controller: _scroll,
                               padding: EdgeInsets.fromLTRB(20, 16, 20, a + r > 0 || madeN > 0 ? 76 : 24),
                               itemCount: rows.length,
                               findChildIndexCallback: (k) => at[k],
-                              itemBuilder: (_, i) => rows[i]),
+                              itemBuilder: (_, i) => rows[i])),
                         );
                       }),
                       if (_away || a + r > 0 || madeN > 0)
@@ -637,7 +642,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
                           left: 0,
                           right: 0,
                           child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            if (_away) CodeNewestButton(onTap: () => _toEnd()),
+                            if (_away) CodeNewestButton(onTap: () { _lander.held = false; _toEnd(); }),
                             if (_away && a + r > 0) const SizedBox(width: 10),
                             if (a + r > 0) _changesPill(c, a, r),
                             if ((_away || a + r > 0) && madeN > 0) const SizedBox(width: 10),
@@ -668,6 +673,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
     final running = codeRunning(t);
     final st = cs(t['status']);
     final out = <Widget>[_her(c, cs(t['text']), cl(t['attach']))];
+    _herAt = 0;
     // v0.935 the words Hoola is writing right now (the server's live stream), unless they are already a step
     var live = running ? cs(t['live']).trim() : '';
     final newestSay = steps.lastWhere((s) => cs(s['k']) == 'say', orElse: () => const <String, dynamic>{});
@@ -785,6 +791,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         flush(last: false);
         // v0.940 every message she sends after the first is HER message, drawn like the first one
         out.add(Padding(padding: const EdgeInsets.only(top: 18), child: _her(c, cs(s['text']), const [], key: 'note${_stepN(s, si)}')));
+        _herAt = out.length - 1;
         if (_sent != null && _stepN(s, si) > _sentAt && _same(cs(s['text']), _sent!)) _sentSeen = true;
       } else if (k == 'todo') {
         // v0.957 the plan shows in the dock above the typing box (_planDock), never in the thread
@@ -804,9 +811,13 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
     for (final n in queued) {
       if (_sent != null && _same(n, _sent!)) _sentSeen = true;
       out.add(_herWaiting(c, n, 'Hoola reads it at its next step'));
+      _herAt = out.length - 1;
     }
     // v0.940 what she just sent shows at once, before the server has written it down
-    if (_sent != null && !_sentSeen) out.add(_herWaiting(c, _sent!, 'Sending…'));
+    if (_sent != null && !_sentSeen) {
+      out.add(HoolaRiseIn(child: _herWaiting(c, _sent!, 'Sending…')));
+      _herAt = out.length - 1;
+    }
     if (_sentSeen) _sent = null;
     if (!running && !(_landBusy && !_away)) {
       // v0.964 the question / PR / ready cards wait until the closing words above them have landed
@@ -835,6 +846,10 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
     // v0.957 the working row stays at the end the whole time it works - also while its words stream (it vanished then
     // and came back, 44 px each time, which shook everything under it)
     if (running) out.add(_runningRow(c, t, nowGroup));
+    if (_lander.anchored) {
+      if (_herAt >= 0) out[_herAt] = KeyedSubtree(key: _lander.key, child: out[_herAt]);
+      out.add(SizedBox(key: const ValueKey('landroom'), height: _lander.room));
+    }
     return out;
   }
 
@@ -1064,10 +1079,10 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
                 borderRadius: BorderRadius.circular(20),
               ),
               child: _selecting == key
-                  ? SelectableText(text, style: codeSans(c, size: small ? 15.5 : 17, height: 1.45))
+                  ? SelectableText(text, style: codeSans(c, size: small ? 15.5 : 16, height: 1.4))
                   : GestureDetector(
                       onLongPress: () => _herMenu(text, key),
-                      child: Text(text, style: codeSans(c, size: small ? 15.5 : 17, height: 1.45)),
+                      child: Text(text, style: codeSans(c, size: small ? 15.5 : 16, height: 1.4)),
                     ),
             ),
           ]),

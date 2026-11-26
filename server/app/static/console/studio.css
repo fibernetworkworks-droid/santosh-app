@@ -1224,3 +1224,9 @@ small{font-size:12.5px}
 .mlyr textarea{width:100%;min-height:120px;resize:vertical;border:1px solid var(--line2);border-radius:12px;padding:10px 12px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;line-height:1.5}
 .mlyr textarea:focus-visible{outline:0;border-color:var(--pri);box-shadow:0 0 0 3px var(--priSoft)}
 .mlyr .lnk{display:inline-flex;align-items:center;gap:6px}
+
+/* v0.999.203 EVERY CHAT LIKE CLAUDE: the main chat's v0.999.197-199 numbers here too - the home greeting Literata 38 / 330
+   (dark 290) / 1.2 at opsz 48, the box text 16 / 430 (dark 400), her message 16 / 430 / 1.4, the reply 16 / 1.5 at 400
+   (dark 360). The weights come from chatkit.css (--hck0-*), so dark mode follows the page. */
+.hero h1{font-family:'Literata',Georgia,serif;font-size:clamp(28px,5.4vw,38px);font-weight:var(--hck0-gw,330);line-height:1.2;letter-spacing:normal;font-variation-settings:"opsz" 48}
+.compose textarea,.compose textarea::placeholder{font-size:16px;font-weight:var(--hck0-hw,430)}

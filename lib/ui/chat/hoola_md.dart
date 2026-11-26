@@ -99,7 +99,7 @@ class HoolaMd extends StatelessWidget {
           // small notes keep their own
           final reply = !sans && !compact;
           final st = headStyle(b.level <= 1
-              ? HoolaType.replyH1(c).copyWith(fontSize: reply ? 22 : null)
+              ? HoolaType.replyH1(c).copyWith(fontSize: reply ? 28 : null, height: reply ? 1.3 : null)   // v0.999.203 the reply title 28 / 1.3, like the console's
               : b.level == 2
                   ? HoolaType.replyH2(c).copyWith(fontSize: reply ? 20 : null)
                   : HoolaType.replyH3(c).copyWith(fontSize: reply ? 17 : null));

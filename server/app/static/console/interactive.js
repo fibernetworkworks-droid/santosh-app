@@ -414,9 +414,16 @@ window.HoolaInteractive = function (ctx) {
       <div class="hx-pvb">${body}</div>`;
   }
   function paintPv() { const a = $('#hxPv'); if (!a) return; a.innerHTML = pvPane(); fillMedia(); }
+  /* v0.999.203 her sent message lands at the top of the chat with room kept for the reply (chatkit.js lander) */
+  let LAND = null;
+  function lander(t, log) { if (!window.HoolaChat?.lander) return null; if (!LAND || LAND.t !== t) LAND = {t, l: HoolaChat.lander(t, log)}; return LAND.l; }
   function paintChat() {
     const t = $('#hxThread'); if (!t) return; const log = $('#hxLog'), atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
-    t.innerHTML = thread(); fillMedia(); if (atEnd) log.scrollTop = log.scrollHeight;
+    t.innerHTML = thread(); fillMedia();
+    const L = lander(t, log), me = [...t.querySelectorAll('.hx-me')].pop();
+    if (C.landNow && me && L) { C.landNow = false; me.classList.add('hx-landed'); L.at(me); }
+    else if (L && L.anchored) { L.again(me); if (!L.held && atEnd) log.scrollTop = Math.max(log.scrollTop, log.scrollHeight - L.pad - log.clientHeight); }
+    else if (atEnd) log.scrollTop = log.scrollHeight;
     if (!C.items.some(i => i.id === UI.pv.id)) { UI.pv.id = C.items[0]?.id || ''; UI.pv.scene = 0; }
     if (!$('#hxPv textarea:focus')) paintPv();
     C.items.filter(i => i.status === 'making').forEach(i => watchJob(i.id));
@@ -489,7 +496,7 @@ window.HoolaInteractive = function (ctx) {
     const said = text || 'Make a video from the file I attached.';
     C.sending = true; if (textIn == null) { C.ask = ''; C.files = []; } const ta = $('#hxAsk'); if (ta && textIn == null) ta.value = '';
     C.rows.push({role: 'user', text: said + (files.length ? `\n(${files.map(f => f.name).join(', ')})` : ''), at: new Date().toISOString()});
-    pvStop();
+    pvStop(); C.landNow = true;
     if ($('.hx-hero')) draw(); else paintChat();
     try {
       await api('POST', `/api/conversations/${q(C.conv)}/messages`, {text: `${said}\n\n${settingsNote()}`, files: files.map(f => f.id), client_id: 'ix' + Date.now().toString(36)});

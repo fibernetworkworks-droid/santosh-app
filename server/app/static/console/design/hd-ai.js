@@ -159,7 +159,7 @@
       const ho = st.box && st.box.firstChild && st.box.firstChild.lastElementChild;
       if (ho && ho.classList.contains('hck-ho') && !ho.childElementCount) ho.remove();
       if (failed) T.raw({node: h('p', {class: 'hdai-err', role: 'alert', text: failed})});
-      if (st.box) st.box.scrollTop = st.box.scrollHeight;
+      if (st.box && !T.holding) st.box.scrollTop = st.box.scrollHeight;
     } else if (failed) { st.error = failed; paint(); }
   }
   /* the panel's thread: one mount for as long as the page lives (re-used across paints and across close / open) */

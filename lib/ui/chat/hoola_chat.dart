@@ -530,7 +530,7 @@ class _Mine extends StatelessWidget {
     final hasFiles = files.any((f) => f is Map);
     final onlyFiles = hasFiles &&
         (RegExp(r'^here (is a file|are \d+ files)$', caseSensitive: false).hasMatch(text.trim()) || filesOnlyText(text, files));
-    final style = HoolaType.bodyLarge(c).copyWith(height: 1.5);   // v0.991 the console's 16 / 1.5 for her message
+    final style = HoolaType.bodyLarge(c).copyWith(height: 1.4);   // v0.999.203 Claude.s 16 / 1.4 for her message (was 1.5, v0.991)
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
       child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [

@@ -895,10 +895,10 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     const th = t.status === 'plan_wait' && t.plan ? planHTML(t) : !t.running ? doneHTML(t) : '';      // the cards under the thread
     if (th !== k.tailSig) { k.tailSig = th; k.tail.innerHTML = th; k.tail.hidden = !th; }
     thTail();
-    k.stick = fresh ? y < 0 : atEnd;                                             // she is at the newest: stay there (paint() asks again once the bar under the feed is drawn)
+    k.stick = !k.t.holding && (fresh ? y < 0 : atEnd);                                             // she is at the newest: stay there (paint() asks again once the bar under the feed is drawn)
     if (fresh && y >= 0) feed.scrollTop = y; else if (k.stick) feed.scrollTop = feed.scrollHeight;
   }
-  function threadStay() { const feed = $('#hcdFeed'); if (K && K.stick && feed) feed.scrollTop = feed.scrollHeight; }
+  function threadStay() { const feed = $('#hcdFeed'); if (K && K.stick && !K.t.holding && feed) feed.scrollTop = feed.scrollHeight; }
   function herNow(text) {           // her follow-up / answer shows the moment she sends; the step that carries it is this bubble
     const k = K; if (!k) return null; const p = {text, node: null}; k.pend = p;
     thLater(() => { thEnd(); p.node = k.t.her(text); thTail(); }); return p;

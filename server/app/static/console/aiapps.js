@@ -276,7 +276,7 @@ window.HoolaAiApps = function ({api, toast}) {
         t.end(); const ho = root.lastElementChild; if (ho && !ho.childElementCount) ho.remove();   // no answer came: no empty block
         t.raw({node: h('div', {class: 'aia-err', role: 'alert', text: e.message || 'Could not answer'})});
       }
-      scroll.scrollTop = scroll.scrollHeight;
+      if (!t.holding) scroll.scrollTop = scroll.scrollHeight;
       lock(false);
     };
     body.append(h('div', {class: 'aia-panel'},

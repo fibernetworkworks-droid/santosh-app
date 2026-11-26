@@ -1762,3 +1762,11 @@
   #hvRoot .hv-sdpg .hv-search,#hvRoot .hv-dict .hv-search{width:100%} #hvRoot .hv-sengs,#hvRoot .hv-dk2{grid-template-columns:minmax(0,1fr)} #hvRoot .hv-sdfmt{grid-template-columns:repeat(2,minmax(0,1fr))}
   #hvRoot .hv-srow{flex-wrap:wrap} #hvRoot .hv-srows .hv-dd{width:100%;max-width:none} #hvRoot .hv-dir{grid-template-columns:28px minmax(0,1fr)} #hvRoot .hv-dir>.hv-sm{grid-column:2} #hvRoot .hv-dir>.hv-dis{grid-column:2}
   #hvRoot .hv-sdmeter{width:100%} #hvRoot .hv-sdtop.pick{position:sticky;top:0;z-index:2;gap:8px} #hvRoot .hv-sdtop.pick>.hv-vt{flex:1 1 calc(100% - 64px);min-width:0} #hvRoot .hv-sdtop.pick>.hv-grow{display:none} }
+
+/* v0.999.203 EVERY CHAT LIKE CLAUDE: the main chat's v0.999.197-199 numbers here too - the home greeting Literata 38 / 330
+   (dark 290) / 1.2 at opsz 48, the box text 16 / 430 (dark 400), her message 16 / 430 / 1.4, the reply 16 / 1.5 at 400
+   (dark 360). The weights come from chatkit.css (--hck0-*), so dark mode follows the page. */
+#hvRoot .hv-heroh{font-family:'Literata',Georgia,serif;font-size:clamp(28px,5.4vw,38px);font-weight:var(--hck0-gw,330);line-height:1.2;letter-spacing:normal;font-variation-settings:"opsz" 48}
+#hvRoot .hv-log .hck-bub{font-size:16px;font-weight:var(--hck0-hw,430);line-height:1.4}
+#hvRoot .hv-chatpage .hv-ho,#hvRoot .hv-chatpage .hck-txt{font-size:16px;line-height:1.5}
+#hvRoot #hvAsk,#hvRoot #hvAsk::placeholder{font-size:16px;font-weight:var(--hck0-hw,430)}

@@ -18,6 +18,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
@@ -194,8 +195,10 @@ class _HoolaLandingState extends State<HoolaLanding> with SingleTickerProviderSt
 
 /// Her message: a quiet bubble on the right.
 class HoolaHerBubble extends StatelessWidget {
-  const HoolaHerBubble(this.text, {super.key, this.onLongPress, this.above, this.pending = false});
+  const HoolaHerBubble(this.text, {super.key, this.onLongPress, this.above, this.pending = false, this.rise = false});
   final String text;
+  /// v0.999.203 a message she just sent rises in (.2 s, 6 dp), like the main chat's.
+  final bool rise;
   final VoidCallback? onLongPress;
   /// Her files, drawn above the bubble (the screen's own tiles).
   final Widget? above;
@@ -204,8 +207,8 @@ class HoolaHerBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
-    final style = HoolaType.bodyLarge(c).copyWith(height: 1.5);
-    return Padding(
+    final style = HoolaType.bodyLarge(c).copyWith(height: 1.4);   // v0.999.203 Claude's 16 / 1.4 for her message
+    final body = Padding(
       padding: const EdgeInsets.only(bottom: 18),
       child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
         if (above != null) above!,
@@ -230,7 +233,104 @@ class HoolaHerBubble extends StatelessWidget {
           ),
       ]),
     );
+    return rise ? HoolaRiseIn(child: body) : body;
   }
+}
+
+/// v0.999.203 a new message rises in: .2 s from 6 dp below, from clear to full (the main chat's hmRise / _LandIn).
+class HoolaRiseIn extends StatelessWidget {
+  const HoolaRiseIn({super.key, required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) return child;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+      builder: (context, t, c) => Opacity(opacity: t, child: Transform.translate(offset: Offset(0, 6 * (1 - t)), child: c)),
+      child: child,
+    );
+  }
+}
+
+/// v0.999.203 THE LANDING for a list that grows downwards (every tool chat): her sent message goes to the top of the
+/// list ([top] dp under it) and [room] is kept under the thread, so the reply grows into space that is already there;
+/// the view is held there until she drags it, then it is hers. A screen uses it in four places:
+///   the newest bubble she sent gets [key]; the list's last item is SizedBox(height: lander.room);
+///   the list is wrapped in lander.listen(...); lander.land() when she sends (after the bubble is in the list).
+class ThreadLander extends ChangeNotifier {
+  ThreadLander(this.controller, {this.top = 16});
+  final ScrollController controller;
+  final double top;
+  final key = GlobalKey(debugLabel: 'landed');
+  double room = 0;
+  bool _on = false;
+  /// True while her message is held at the top (a screen that follows the end leaves it alone).
+  bool held = false;
+  bool get anchored => _on;
+
+  /// She sent: next frame, keep the room and bring her message to the top.
+  void land() {
+    _on = true;
+    held = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _space();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final t = _target();
+        if (t == null || !controller.hasClients) return;
+        if (WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.disableAnimations) {
+          controller.jumpTo(t.clamp(0, controller.position.maxScrollExtent));
+        } else {
+          controller.animateTo(t.clamp(0, controller.position.maxScrollExtent), duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
+        }
+      });
+    });
+  }
+
+  double? _target() {
+    final ro = key.currentContext?.findRenderObject();
+    if (ro == null || !ro.attached) return null;
+    final vp = RenderAbstractViewport.maybeOf(ro);
+    if (vp == null) return null;
+    return (vp.getOffsetToReveal(ro, 0).offset - top).clamp(0.0, double.infinity);
+  }
+
+  /// The room under the thread: enough for her message to reach the top, never more.
+  void _space() {
+    if (!_on || !controller.hasClients) return;
+    final t = _target();
+    if (t == null) return;
+    final want = (t - (controller.position.maxScrollExtent - room)).clamp(0.0, double.infinity).ceilToDouble();
+    if ((want - room).abs() > .5) {
+      room = want;
+      notifyListeners();
+    }
+  }
+
+  /// A new chat / history redrawn: no room, nothing held.
+  void reset() {
+    _on = false;
+    held = false;
+    if (room != 0) {
+      room = 0;
+      notifyListeners();
+    }
+  }
+
+  Widget listen(Widget child) => NotificationListener<ScrollMetricsNotification>(
+        onNotification: (n) {
+          if (n.depth == 0 && _on) WidgetsBinding.instance.addPostFrameCallback((_) => _space());
+          return false;
+        },
+        child: NotificationListener<ScrollStartNotification>(
+          onNotification: (n) {
+            if (n.depth == 0 && n.dragDetails != null) held = false;
+            return false;
+          },
+          child: child,
+        ),
+      );
 }
 
 /// While Hoola works: the thinking mark, the real step, and how long it has taken.
@@ -440,6 +540,11 @@ class _HoolaThreadViewState extends State<HoolaThreadView> {
   Set<String>? _seen;                 // null until the first load is in
   final _fresh = <String>{};          // replies that arrived while she watched: these land
   bool _stick = true;
+  late final ThreadLander _land = ThreadLander(_c)..addListener(_redraw);
+  String? _landId;                    // v0.999.203 her message that landed at the top
+  final _risen = <String>{};          // her messages sent while she watched: they rise in
+
+  void _redraw() { if (mounted) setState(() {}); }
 
   @override
   void initState() {
@@ -453,6 +558,9 @@ class _HoolaThreadViewState extends State<HoolaThreadView> {
     if (old.threadKey != widget.threadKey) {
       _seen = null;
       _fresh.clear();
+      _risen.clear();
+      _landId = null;
+      _land.reset();
       _stick = true;
     }
     _take();
@@ -471,14 +579,19 @@ class _HoolaThreadViewState extends State<HoolaThreadView> {
       if (seen.add(m.id)) {
         grew = true;
         if (!m.mine && m.custom == null) _fresh.add(m.id);
-        if (m.mine) _stick = true;      // her own message always brings the end into view
+        if (m.mine && m.custom == null) {   // v0.999.203 her own message lands at the top, room kept for the reply
+          _landId = m.id;
+          _risen.add(m.id);
+          _stick = false;
+          _land.land();
+        }
       }
     }
     if (grew) _later();
   }
 
   void _later() => WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _stick) _toEnd();
+        if (mounted && _stick && !_land.held) _toEnd();
       });
 
   void _toEnd() {
@@ -488,6 +601,8 @@ class _HoolaThreadViewState extends State<HoolaThreadView> {
 
   @override
   void dispose() {
+    _land.removeListener(_redraw);
+    _land.dispose();
     if (widget.controller == null) _c.dispose();
     super.dispose();
   }
@@ -511,8 +626,12 @@ class _HoolaThreadViewState extends State<HoolaThreadView> {
         break;
       }
     }
+    // v0.999.203 the actions belong to the newest answer: once she has asked again they leave the old one at once (they
+    // left only when the next reply came, and the thread above her landed message shrank by their row)
+    if (lastReply >= 0 && msgs.skip(lastReply + 1).any((m) => m.mine)) lastReply = -1;
     final head = widget.header == null ? 0 : 1;
     final tail = widget.working ? 1 : 0;
+    final room = _land.anchored ? 1 : 0;
     if (msgs.isEmpty && !widget.working && widget.empty != null) return widget.empty!;
     return NotificationListener<ScrollMetricsNotification>(
       onNotification: (n) {
@@ -527,19 +646,23 @@ class _HoolaThreadViewState extends State<HoolaThreadView> {
           }
           return false;
         },
-        child: ListView.builder(
+        child: _land.listen(ListView.builder(
           controller: _c,
           padding: widget.padding,
-          itemCount: head + msgs.length + tail,
+          itemCount: head + msgs.length + tail + room,
           itemBuilder: (context, i) {
             if (head == 1 && i == 0) return widget.header!;
             final k = i - head;
+            if (room == 1 && k == msgs.length + tail) return SizedBox(key: const ValueKey('landroom'), height: _land.room);
             if (k >= msgs.length) {
               return HoolaWorkingRow(key: const ValueKey('hoola-working'), label: widget.label, since: widget.since, name: widget.name);
             }
             final m = msgs[k];
             if (m.custom != null) return KeyedSubtree(key: ValueKey('c-${m.id}'), child: m.custom!);
-            if (m.mine) return HoolaHerBubble(m.text, key: ValueKey('m-${m.id}'), pending: m.pending);
+            if (m.mine) {
+              final b = HoolaHerBubble(m.text, key: ValueKey('m-${m.id}'), pending: m.pending, rise: _risen.contains(m.id));
+              return m.id == _landId ? KeyedSubtree(key: _land.key, child: b) : b;
+            }
             final landing = _fresh.contains(m.id);
             final acts = k == lastReply && !widget.working && !landing;
             return Padding(
@@ -556,7 +679,7 @@ class _HoolaThreadViewState extends State<HoolaThreadView> {
               ]),
             );
           },
-        ),
+        )),
       ),
     );
   }

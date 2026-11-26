@@ -2523,7 +2523,7 @@
     } else if (K.t.busy) { K.t.sync({key: st.key, messages: st.msgs, working: false}); K.liveOn = false; }
     adorn(st.items);
     const box = $('#wsMsgs');
-    if (THREAD.scrollTo && box) { const el = K.root.querySelector(`[data-id="${CSS.escape(THREAD.scrollTo)}"]`); THREAD.scrollTo = ''; if (el) box.scrollTop = Math.max(0, el.offsetTop - 12); }
+    if (THREAD.scrollTo && box) { const el = K.root.querySelector(`[data-id="${CSS.escape(THREAD.scrollTo)}"]`); THREAD.scrollTo = ''; if (el && !K.t.holding) box.scrollTop = Math.max(0, el.offsetTop - 12); }
     else keepPinned();
   }
   /* streamed words go to the kit as "the text so far": it lands only what is new, at the shared pace */
@@ -2805,7 +2805,7 @@
     q.innerHTML = THREAD.queue.map((r, i) => `<div class="me queued" data-mid="${esc(S(r.id))}">${esc(clean(r.text))}${fileChips(r.files)}
       ${i === 0 ? `<span class="qacts"><button class="b sm" type="button" data-act="stop-turn" title="Stop the current work so this runs next">Interrupt</button></span>` : ''}</div>`).join('');
   }
-  function keepPinned() { const box = $('#wsMsgs'); if (box && THREAD.pinned) box.scrollTop = box.scrollHeight; }
+  function keepPinned() { const box = $('#wsMsgs'); if (box && THREAD.pinned && !(KIT && KIT.t.holding)) box.scrollTop = box.scrollHeight; }
   /* Stop sits beside Send only while Hoola works (Send still queues her next message) */
   function drawStop() { const b = $('#wsStop'); if (b) b.hidden = !THREAD.waiting; }
   /* the ONE working row: the kit's mark + the real step words + the clock (kitDraw), and Stop in the composer */
