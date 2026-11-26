@@ -96,6 +96,16 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         _on()
         return VO.voices(tenant)
 
+    @r.post("/voices/apply")
+    def voices_apply(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """v0.999.201 one voice into several of her videos (free; only the voice changes)."""
+        _on()
+        b = dict(body or {})
+        try:
+            return VO.apply_voice(tenant, str(b.get("voice") or ""), list(b.get("ids") or []))
+        except VO.VoiceError as e:
+            raise HTTPException(404 if "not found" in str(e).lower() else 422, str(e))
+
     @r.get("/langs")
     async def langs():
         _on()

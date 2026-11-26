@@ -346,7 +346,8 @@ def test_interactive_chat_is_its_own_and_plans_drafts(ix, monkeypatch):
     assert r["status"] == "draft" and "nothing is made" in r["note"]
     assert IC.chat_items("default", c["id"])[0]["quote"]["line"]
     from app import callconv
-    assert '"payroll", "interactive")' in Path(callconv.__file__).read_text("utf-8")
+    src = Path(callconv.__file__).read_text("utf-8")      # v0.999.201: the list grows (tax came after it); the chat kind is in it
+    assert '"interactive"' in src[src.index("Conversation.kind.not_in(("):].split(")))", 1)[0]
 
 
 def test_console_page_is_the_new_frame():

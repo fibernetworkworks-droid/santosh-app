@@ -53,10 +53,31 @@ def voices(tenant: str) -> dict[str, Any]:
              "tier": v.get("tier"), "ready": bool(v.get("ready")), "langs": v.get("langs") or [], "any": True,
              "color": v.get("color")} for v in V._mine(d)]
     lib = [{"id": v["id"], "name": v["name"], "gender": v.get("gender") or "", "tone": v.get("tone") or "",
-            "accent": v.get("accent") or "", "engine": v["engine"], "tier": v["tier"], "ready": bool(v.get("ready")),
+            "accent": v.get("accent") or "", "age": v.get("age") or "", "use": v.get("use") or "",
+            "engine": v["engine"], "tier": v["tier"], "ready": bool(v.get("ready")),
             "langs": v.get("langs") or [], "any": bool(v.get("any")), "color": v.get("color")} for v in V.library()]
     favs = list((d.get("favs") or [])) if isinstance(d.get("favs"), list) else []
-    return {"mine": mine, "library": lib, "favs": favs, "default": default_voice(tenant)}
+    return {"mine": mine, "library": lib, "favs": favs, "default": default_voice(tenant),
+            "sample_lines": dict(getattr(V, "PREVIEW", {}) or {})}     # v0.999.201 the words each sample says, per language
+
+
+def apply_voice(tenant: str, vid: str, ids: list[Any]) -> dict[str, Any]:
+    """v0.999.201 one voice put into several of her videos. Only the voice changes; a video being made is left out, said."""
+    from . import studio as S
+    vid = str(vid or "").strip()
+    if not vid:
+        raise VoiceError("Choose a voice.")
+    voice_info(tenant, vid)                     # a voice she does not have is refused here
+    done, skipped = [], []
+    for pid in [str(x) for x in (ids or [])][:50]:
+        try:
+            S.save(tenant, pid, {"voice": vid})
+            done.append(pid)
+        except S.StudioError as e:
+            skipped.append({"id": pid, "why": str(e)})
+    if not done and not skipped:
+        raise VoiceError("Choose at least one video.")
+    return {"done": done, "skipped": skipped}
 
 
 def default_voice(tenant: str) -> str:

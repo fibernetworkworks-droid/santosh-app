@@ -142,7 +142,7 @@ window.HoolaInteractive = function (ctx) {
     t.innerHTML = PAGE === 'chat' ? `${UI.credits != null ? `<button type="button" class="hx-credp hx-num" data-a="credits" title="Your credits">${ic('spark', 14)}${num(UI.credits)} credits</button>` : ''}
       <button type="button" class="hx-ib" data-a="chats" aria-label="Earlier chats" title="Earlier chats">${ic('clock', 18)}</button>
       <button type="button" class="hx-ib" data-a="newchat" aria-label="New chat" title="New chat">${ic('plus', 18)}</button>`
-      : PAGE === 'studio' || PAGE === 'templates' || PAGE === 'apps' || PAGE === 'avatars' ? (UI.credits != null ? `<button type="button" class="hx-credp hx-num" data-a="credits" title="Your credits">${ic('spark', 14)}${num(UI.credits)} credits</button>` : '') : '';
+      : PAGE === 'studio' || PAGE === 'templates' || PAGE === 'apps' || PAGE === 'avatars' || PAGE === 'voices' ? (UI.credits != null ? `<button type="button" class="hx-credp hx-num" data-a="credits" title="Your credits">${ic('spark', 14)}${num(UI.credits)} credits</button>` : '') : '';
   }
   function go(page, arg) {
     window.HoolaMenu?.close();
@@ -1009,7 +1009,7 @@ window.HoolaInteractive = function (ctx) {
     let w = $('#hxDlg');
     if (!UI.dlg) { if (w) w.remove(); return; }
     if (!w) { w = document.createElement('div'); w.id = 'hxDlg'; w.className = 'hx-dlgw'; ROOT.appendChild(w); }
-    w.innerHTML = `<div class="hx-dlgs" data-a="dlgx" aria-hidden="true"></div>${({save: svBody, pick: pickBody, need: needBody, avphoto: avPhBody, avai: avAiBody, avtwin: avTwinBody, avren: avRenBody}[UI.dlg.k] || shBody)()}`;
+    w.innerHTML = `<div class="hx-dlgs" data-a="dlgx" aria-hidden="true"></div>${({save: svBody, pick: pickBody, need: needBody, voput: voPutBody, avphoto: avPhBody, avai: avAiBody, avtwin: avTwinBody, avren: avRenBody}[UI.dlg.k] || shBody)()}`;
     const f = w.querySelector('[data-auto]'); if (f && !w.contains(document.activeElement)) f.focus();
     fillMedia();
   }
@@ -1321,7 +1321,8 @@ window.HoolaInteractive = function (ctx) {
     wand: '<path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z"/>',
     video: '<rect x="3" y="6" width="12" height="12" rx="2"/><path d="M15 10l6-3v10l-6-3z"/>',
     shield: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
-    pen: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>'});
+    pen: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>',
+    star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>'});
   const AVMAX = 12;
   const avKind = a => (a.kind === 'ai' || a.ai) ? 'ai' : 'photo';
   const avUses = a => (D.projects || []).filter(p => p.avatar_id === a.id);
@@ -1511,6 +1512,134 @@ window.HoolaInteractive = function (ctx) {
     catch (er) { UI.av.busy = false; draw(); toast(er.message, true); }
   }
 
+  // ---- voices (v0.999.201 VOICES, REDESIGNED: the voice her videos speak in, find one by describing it, a sample in her
+  //      language, favourites shared with Hoola Vocal, a voice put into several videos at once)
+  const VOWORDS = {man: 'male', men: 'male', male: 'male', boy: 'male', guy: 'male', woman: 'female', women: 'female', lady: 'female', female: 'female', girl: 'female',
+    old: 'older', older: 'older', elderly: 'older', senior: 'older', young: 'young', youthful: 'young', teen: 'young', middle: 'middle'};
+  const VOSKIP = new Set(['a', 'an', 'the', 'for', 'and', 'with', 'of', 'to', 'in', 'voice', 'voices', 'who', 'that', 'very', 'bit', 'little', 'my', 'some', 'like', 'sounds', 'sounding']);
+  const VOSETS = [['narrat', 'story', 'stories', 'audiobook', 'informative', 'knowledgeable', 'documentary', 'clear', 'mature', 'firm', 'even', 'news'],
+    ['upbeat', 'excited', 'lively', 'bright', 'energetic', 'ad', 'ads', 'promo', 'youthful', 'social', 'reels'],
+    ['friendly', 'casual', 'easy', 'warm', 'conversation', 'support', 'breezy', 'forward', 'chat'],
+    ['gravelly', 'breathy', 'playful', 'character', 'games', 'rough', 'husky', 'deep', 'quirky'],
+    ['calm', 'soft', 'smooth', 'gentle', 'soothing', 'meditation', 'relaxed', 'mellow']];
+  const voAll = () => { const Vv = UI.V || {mine: [], library: []}; return [...(Vv.mine || []).map(v => ({...v, mine: true})), ...(Vv.library || [])]; };
+  const voOf = id => voAll().find(v => v.id === id);
+  const voHay = v => [v.name, v.tone, v.accent, v.use, v.gender, v.age].join(' ').toLowerCase();
+  const voFav = id => (UI.V?.favs || []).includes(id);
+  const voUses = id => (D.projects || []).filter(p => p.voice === id);
+  const voTint = id => [...String(id || 'x')].reduce((a, c) => a + c.charCodeAt(0), 0) % 5;
+  const voGender = v => v.gender === 'male' ? 'man' : v.gender === 'female' ? 'woman' : '';
+  const voLine = v => v.mine ? (v.kind === 'designed' ? 'Your voice, designed from words' : v.kind === 'remix' ? 'Your voice, changed from another' : 'Your own voice, kept with your consent')
+    : [v.tone, voGender(v), v.accent].filter(Boolean).join(' · ') || 'A ready-made voice';
+  const voTier = v => v.mine ? ['mine', 'Your voice'] : v.tier === 'premium' ? ['pr', 'Premium'] : ['st', 'Standard'];
+  const voCur = () => SET.voice || UI.V?.default || '';
+  function voMatch(v, q) {
+    const hay = voHay(v), why = []; let n = 0;
+    for (const raw of String(q).toLowerCase().split(/[\s,;.]+/).filter(Boolean)) {
+      if (VOSKIP.has(raw)) continue;
+      const g = VOWORDS[raw];
+      if (g === 'male' || g === 'female') { if (v.gender === g) { n += 2; why.push(g === 'male' ? 'man' : 'woman'); } else if (v.gender) n -= 3; continue; }
+      if (g) { if (v.age === g || hay.includes(g)) { n += 2; why.push(g); } continue; }
+      const w = raw.replace(/s$/, '');
+      if (hay.includes(w)) { n += 3; why.push(raw); continue; }
+      const set = VOSETS.find(x => x.some(k => raw.startsWith(k) || k.startsWith(w)));
+      if (set && set.some(k => new RegExp(`\\b${k}`).test(hay))) { n += 1; why.push(raw); }
+    }
+    return {n, why: [...new Set(why)].slice(0, 4).join(', ')};
+  }
+  function voList() {
+    const st = UI.vo || (UI.vo = {k: 'all', q: '', g: '', lang: '', more: 0, sel: ''}), q = (st.q || '').trim();
+    let xs = voAll().filter(v => st.k === 'all' || (st.k === 'mine' ? v.mine : st.k === 'fav' ? voFav(v.id) : st.k === 'premium' ? !v.mine && v.tier === 'premium' : !v.mine && v.tier !== 'premium'))
+      .filter(v => !st.g || v.gender === st.g);
+    let why = {};
+    if (q) { const m = xs.map(v => [v, voMatch(v, q)]).filter(([v, r]) => r.n > 0 || v.name.toLowerCase().includes(q.toLowerCase()));
+      m.sort((a, b) => b[1].n - a[1].n); xs = m.map(([v]) => v); why = Object.fromEntries(m.map(([v, r]) => [v.id, r.why])); }
+    if (!xs.length) return `<div class="hx-empty"><b>No voice matches</b><span>${q ? 'Try other words, like warm, deep, calm, young, woman.' : st.k === 'fav' ? 'Tap the star on a voice to keep it here.' : 'Try another filter.'}</span></div>`;
+    const lim = 60 + (st.more || 0) * 120, sel = st.sel || voCur();
+    return `<div class="hx-vol">${xs.slice(0, lim).map(v => { const [tc, tl] = voTier(v), on = sel === v.id, pl = UI.voPlay === v.id;
+      return `<div class="hx-vor${on ? ' on' : ''}"><button type="button" class="hx-vop${pl ? ' on' : ''}" data-a="voplay" data-id="${esc(v.id)}" aria-label="${pl ? 'Stop' : 'Play'} ${esc(v.name)}">${ic(pl ? 'stop' : 'play', 13)}</button>
+        <button type="button" class="hx-vom" data-a="vosel" data-id="${esc(v.id)}" aria-pressed="${on}"><span class="hx-vot t${voTint(v.id)}" aria-hidden="true">${esc(v.name.slice(0, 1).toUpperCase())}</span>
+          <span class="hx-ct"><b>${esc(v.name)}${voCur() === v.id ? ' <small class="hx-vous">Your videos</small>' : ''}</b><small>${esc(voLine(v))}${why[v.id] ? ` · matches “${esc(why[v.id])}”` : ''}</small></span></button>
+        <span class="hx-vtier ${tc}">${tl}</span>${v.ready ? '' : '<span class="hx-vtier no">Not connected</span>'}
+        <button type="button" class="hx-ib hx-vofav${voFav(v.id) ? ' on' : ''}" data-a="vofav" data-id="${esc(v.id)}" aria-pressed="${voFav(v.id)}" aria-label="${voFav(v.id) ? 'Remove from favourites' : 'Add to favourites'}">${ic('star', 17)}</button></div>`; }).join('')}</div>
+      ${xs.length > lim ? `<div class="hx-acts hx-vomore"><span class="hx-mut hx-sm hx-num">Showing ${num(lim)} of ${num(xs.length)}</span><button type="button" class="hx-btn" data-a="vomore">Show more voices</button></div>` : ''}`;
+  }
+  const voWave = (id, n = 28) => { let h = [...String(id || 'x')].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 9973, 7); const bars = [];
+    for (let i = 0; i < n; i++) { h = (h * 17 + 7) % 101; bars.push(6 + (h % 22)); } return `<span class="hx-vow" aria-hidden="true">${bars.map(b => `<i style="height:${b}px"></i>`).join('')}</span>`; };
+  const voLang = () => UI.vo?.lang || (SET.lang && SET.lang !== 'auto' ? SET.lang : 'en');
+  function voPanel(v) {
+    if (!v) return '';
+    const uses = voUses(v.id), [tc, tl] = voTier(v), pl = UI.voPlay === v.id, line = (UI.V?.sample_lines || {})[voLang()] || (UI.V?.sample_lines || {}).en || '';
+    return `<aside class="hx-voside" aria-label="${esc(v.name)}"><div class="hx-vosh t${voTint(v.id)}">
+        <div class="hx-vohd"><span class="hx-vot big t${voTint(v.id)}" aria-hidden="true">${esc(v.name.slice(0, 1).toUpperCase())}</span><div class="hx-growf"><h2 class="hx-serif">${esc(v.name)}</h2><span class="hx-sm">${esc(voLine(v))}</span></div></div>
+        <div class="hx-voplay"><button type="button" class="hx-vop big${pl ? ' on' : ''}" data-a="voplay" data-id="${esc(v.id)}" aria-label="${pl ? 'Stop' : 'Play'} ${esc(v.name)}">${ic(pl ? 'stop' : 'play', 15)}</button>${voWave(v.id, 26)}
+          <button type="button" class="hx-chip s" data-a="volang" aria-haspopup="menu">${esc(langName(voLang()))}${ic('down', 12)}</button></div>
+        ${line ? `<p class="hx-voline">“${esc(line)}”</p>` : ''}</div>
+      <div class="hx-vosb"><div class="hx-acts hx-votags"><span class="hx-vtier ${tc}">${tl}</span>${voGender(v) ? `<span class="hx-vtag">${esc(voGender(v).replace(/^./, c => c.toUpperCase()))}</span>` : ''}${v.accent ? `<span class="hx-vtag">${esc(v.accent)}</span>` : ''}<span class="hx-vtag">${v.any || v.mine ? 'Speaks every language' : esc(`${(v.langs || []).length} language${(v.langs || []).length === 1 ? '' : 's'}`)}</span></div>
+        <span class="hx-mut hx-sm">${uses.length ? `In ${num(uses.length)} of your video${uses.length === 1 ? '' : 's'}` : 'Not in a video yet'}</span>
+        ${v.ready ? '' : '<p class="hx-why">This voice is not connected on this server, so it cannot speak yet.</p>'}
+        <button type="button" class="hx-btn dark l" data-a="vouse" data-id="${esc(v.id)}"${voCur() === v.id && SET.voice ? ' aria-pressed="true"' : ''}${v.ready ? '' : ' disabled'}>${voCur() === v.id && SET.voice ? `${ic('check', 14)}Your videos use this voice` : 'Use for my videos'}</button>
+        <div class="hx-acts"><button type="button" class="hx-btn hx-grow" data-a="voput" data-id="${esc(v.id)}"${v.ready ? '' : ' disabled'}>Put in a video</button><button type="button" class="hx-btn hx-grow" data-a="vovocal" data-id="${esc(v.id)}">Open in Vocal</button></div>
+        <span class="hx-mut hx-sm">A sample is made once per voice and language, then it is free to hear again. The first one in a new language uses a few credits.</span></div></aside>`;
+  }
+  function voPage() {
+    if (!UI.V) return `<div class="hx-doc"><p class="hx-mut">Loading voices…</p></div>`;
+    const st = UI.vo || (UI.vo = {k: 'all', q: '', g: '', lang: '', more: 0, sel: ''}), all = voAll(), cur = voOf(voCur()), sel = voOf(st.sel) || cur || all[0];
+    const n = k => all.filter(v => k === 'all' || (k === 'mine' ? v.mine : k === 'fav' ? voFav(v.id) : k === 'premium' ? !v.mine && v.tier === 'premium' : !v.mine && v.tier !== 'premium')).length;
+    const pl = cur && UI.voPlay === cur.id;
+    return `<div class="hx-doc hx-vopage"><div class="hx-doch"><div class="hx-growf"><h2 class="hx-serif">Voices</h2>
+          <p class="hx-mut">The voice that speaks your videos. The same voices as Hoola Vocal: 140 languages, premium voices and your own. Every voice speaks any language.</p></div>
+        <button type="button" class="hx-btn" data-a="aopen" data-id="ownvoice">${ic('mic', 14)}Make your own voice</button></div>
+      <section class="hx-vocur" aria-label="The voice for your videos">${cur ? `<button type="button" class="hx-vop big inv${pl ? ' on' : ''}" data-a="voplay" data-id="${esc(cur.id)}" aria-label="${pl ? 'Stop' : 'Play'} ${esc(cur.name)}">${ic(pl ? 'stop' : 'play', 16)}</button>` : ''}
+        <div class="hx-growf"><span class="hx-vok">YOUR VIDEOS SPEAK IN</span><b class="hx-serif">${esc(cur ? cur.name : 'Hoola picks')}</b><span class="hx-sm">${cur ? `${esc(voLine(cur))} · ${voTier(cur)[1]}${SET.voice ? '' : ' · Hoola picks it until you choose'}` : 'A ready-made voice that fits each video.'}</span></div>
+        ${cur ? voWave(cur.id, 30) : ''}<button type="button" class="hx-btn" data-a="pick" data-k="voice" aria-haspopup="menu">Change</button></section>
+      <div class="hx-vobody"><div class="hx-vomain">
+          <label class="hx-vodesc">${ic('wand', 18)}<span class="hx-sr">Describe a voice</span><input type="search" id="hxVoq" placeholder="Describe a voice: warm woman, calm older man, bright and young…" value="${esc(st.q || '')}"><small class="hx-mut">${st.q ? 'Best matches first' : ''}</small></label>
+          <div class="hx-avbar">${[['all', 'All'], ['mine', 'Your voices'], ['fav', 'Favourites'], ['premium', 'Premium'], ['standard', 'Standard']].map(([k, l]) => `<button type="button" class="hx-chip${st.k === k ? ' on' : ''}" data-a="vokind" data-val="${k}">${l} <span class="hx-num">${num(n(k))}</span></button>`).join('')}
+            <span class="hx-grow"></span><button type="button" class="hx-chip" data-a="vogen" aria-haspopup="menu">${st.g === 'male' ? 'Men' : st.g === 'female' ? 'Women' : 'Any gender'}${ic('down', 12)}</button>
+            <button type="button" class="hx-chip" data-a="volang" aria-haspopup="menu">Samples in ${esc(langName(voLang()))}${ic('down', 12)}</button></div>
+          <div id="hxVoList">${voList()}</div></div>${voPanel(sel)}</div></div>`;
+  }
+  async function voPlay(id) {
+    if (UI.voPlay === id) { UI.audio?.pause(); UI.voPlay = ''; return voRepaint(); }
+    UI.audio?.pause(); UI.voPlay = id; voRepaint();
+    try { const r = await api('GET', `/api/vocal/voice/preview?id=${q(id)}&lang=${q(voLang())}`, undefined, {raw: true});
+      if (!r.ok) { let m = 'The sample could not be made.'; try { m = (await r.json()).detail || m; } catch { /* keep */ } throw new Error(m); }
+      if (UI.voPlay !== id) return;
+      UI.audio = new Audio(URL.createObjectURL(await r.blob())); UI.audio.onended = () => { if (UI.voPlay === id) { UI.voPlay = ''; voRepaint(); } };
+      UI.audio.play().catch(() => {}); }
+    catch (er) { if (UI.voPlay === id) { UI.voPlay = ''; voRepaint(); } toast(er.message, true); }
+  }
+  function voRepaint() { if (PAGE !== 'voices') return; const y = $('#hxView')?.scrollTop; const qf = document.activeElement?.id === 'hxVoq'; draw(); if (y != null && $('#hxView')) $('#hxView').scrollTop = y;
+    if (qf) { const i = $('#hxVoq'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } } }
+  async function voFavToggle(id) {
+    const on = !voFav(id);
+    try { const r = await api('PUT', '/api/vocal/voices/fav', {id, on}); UI.V.favs = r.favs || []; voRepaint();
+      toast(on ? `${voOf(id)?.name || 'The voice'} is in your favourites, here and in Hoola Vocal.` : `${voOf(id)?.name || 'The voice'} is out of your favourites.`); }
+    catch (er) { toast(er.message, true); }
+  }
+  function voPutBody() {
+    const s = UI.dlg, v = voOf(s.id); if (!v) return '';
+    const ps = (D.projects || []).filter(p => (p.scenes || []).length || p.title);
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><span class="hx-vot t${voTint(v.id)}" aria-hidden="true">${esc(v.name.slice(0, 1).toUpperCase())}</span>
+        <div class="hx-growf"><h2 class="hx-serif" id="hxDlgT">Put ${esc(v.name)} in a video</h2><span class="hx-mut hx-sm">Only the voice changes. The words, faces and scenes stay as they are.</span></div>
+        <button type="button" class="hx-ib" data-a="dlgx" aria-label="Close" data-auto="1">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb">${ps.length ? `<div class="hx-vopick">${ps.slice(0, 50).map(p => { const on = s.ids.includes(p.id), mk = p.status === 'making';
+          return `<label class="hx-vopr${on ? ' on' : ''}${mk ? ' off' : ''}"><input type="checkbox" data-vop="${esc(p.id)}"${on ? ' checked' : ''}${mk ? ' disabled' : ''}>${libThumb(p)}
+            <span class="hx-ct"><b>${esc(p.title)}</b><small>${num((p.scenes || []).length)} scene${(p.scenes || []).length === 1 ? '' : 's'} · now ${esc(p.voice ? (voOf(p.voice)?.name || 'another voice') : 'Hoola picks')}</small></span>${chip(p)}</label>`; }).join('')}</div>
+          <p class="hx-mut hx-sm">A video that is already made keeps its old voice until you make it again, priced first in the Studio.</p>`
+        : `<p class="hx-mut">You have no videos yet. Choose “Use for my videos” and every new video starts with this voice.</p>`}</div>
+      <div class="hx-dlgf"><span class="hx-mut hx-sm hx-grow">${num(s.ids.length)} video${s.ids.length === 1 ? '' : 's'} chosen · free</span><button type="button" class="hx-btn" data-a="dlgx">Cancel</button>
+        <button type="button" class="hx-btn dark" data-a="voputgo"${!s.ids.length || s.busy ? ' disabled' : ''}>${s.busy ? 'Saving…' : `Use in ${num(s.ids.length)} video${s.ids.length === 1 ? '' : 's'}`}</button></div></div>`;
+  }
+  async function voPutGo() {
+    const s = UI.dlg; if (!s || !s.ids.length || s.busy) return;
+    s.busy = true; dlgPaint();
+    try { const r = await api('POST', `${X}/voices/apply`, {voice: s.id, ids: s.ids}); UI.dlg = null; dlgPaint(); await load(); draw();
+      toast(`${voOf(s.id)?.name || 'The voice'} is in ${num(r.done.length)} video${r.done.length === 1 ? '' : 's'}.${r.skipped.length ? ` ${num(r.skipped.length)} left out: ${r.skipped[0].why}` : ''}`, !!r.skipped.length); }
+    catch (er) { s.busy = false; dlgPaint(); toast(er.message, true); }
+  }
+
   // ------------------------------------------------------------------ pages ---
   const V = {
     chat() {
@@ -1522,15 +1651,7 @@ window.HoolaInteractive = function (ctx) {
     templates() { const t = ARG && tplOf(ARG); return t ? tplUse(t) : tplLib(); },
     apps() { return ARG && appOf(ARG) ? appRun(ARG) : appsLib(); },
     avatars() { return avPage(); },
-    voices() {
-      const Vv = UI.V || {mine: [], library: []};
-      const row = v => `<div class="hx-vrow"><span class="hx-ct"><b>${esc(v.name)}</b><small>${esc([v.tone, v.gender, v.tier === 'premium' ? 'Premium' : 'Standard', v.ready ? '' : 'not connected'].filter(Boolean).join(' · '))}</small></span>
-        <button type="button" class="hx-btn s${SET.voice === v.id ? ' dark' : ''}" data-a="setvoice" data-id="${esc(v.id)}"${v.ready ? '' : ' disabled'}>${SET.voice === v.id ? 'Chosen' : 'Use this voice'}</button></div>`;
-      return `<div class="hx-doc"><div class="hx-doch"><div class="hx-growf"><h2 class="hx-serif">Voices</h2><p class="hx-mut">The same voices as Hoola Vocal: 140 languages, premium voices, and your own.</p></div>
-          <button type="button" class="hx-btn" data-a="aopen" data-id="ownvoice">Make your own voice in Vocal</button></div>
-        ${Vv.mine.length ? `<b class="hx-t">Your voices</b><div class="hx-card hx-list">${Vv.mine.map(row).join('')}</div>` : ''}
-        <b class="hx-t">Ready-made voices</b><div class="hx-card hx-list">${Vv.library.slice(0, 80).map(row).join('') || '<p class="hx-mut">Loading voices…</p>'}</div></div>`;
-    },
+    voices() { return voPage(); },
     live() {
       const ag = D.live?.agents || [], cur = ag.find(a => a.id === UI.live);
       if (!cur && UI.live !== 'new') {
@@ -1641,7 +1762,7 @@ window.HoolaInteractive = function (ctx) {
   };
   const ENTER = {
     chat() { (C.conv ? Promise.resolve() : openChat()).then(chatLoad).then(() => { if (PAGE !== 'chat') return; if ($('.hx-hero') && !fresh()) draw(); else paintChat(); chatPoll(); }); estimate(); },
-    voices() { voicesLoad().then(() => { if (PAGE === 'voices') draw(); }); },
+    voices() { Promise.all([voicesLoad(), langsLoad()]).then(() => { if (PAGE === 'voices') draw(); }); },
     apps() { appsLoad().then(() => { if (PAGE !== 'apps') return; draw(); if (ARG === 'broll') { abQuote(); abWatch(); } if (ARG === 'names' || ARG === 'batch') arEstimate(ARG === 'names' ? lenOf((D.projects || []).find(x => x.id === arState().vid) || {}) : 30); }); },
     templates() { const t = ARG && tplOf(ARG); if (!t) return; const u = tuState(t); tuEstimate(); if (u.sample) { u.scene = 0; tuPlay(); } },
     studio() { if (ARG) { const p = cur(); if (!p) return; if (p.status === 'making') watchJob(ARG); studioQuote(); if (UI.tool === 'Engine') edCompare(); }
@@ -1866,6 +1987,18 @@ window.HoolaInteractive = function (ctx) {
         try { await api('DELETE', `${S}/avatar?id=${q(id)}`); if (SET.face === id) setPick('face', ''); if (UI.av?.sel === id) UI.av.sel = ''; await load(); draw(); toast('Face removed.'); } catch (er) { toast(er.message, true); } return; }
       case 'useface': setPick('face', id); toast('Your next video uses this face.'); return;
       case 'setvoice': setPick('voice', id); return;
+      case 'voplay': return voPlay(id);
+      case 'vosel': (UI.vo ||= {}).sel = id; return voRepaint();
+      case 'vokind': Object.assign(UI.vo ||= {}, {k: b.dataset.val, more: 0}); return voRepaint();
+      case 'vomore': (UI.vo ||= {}).more = (UI.vo.more || 0) + 1; return voRepaint();
+      case 'vofav': return voFavToggle(id);
+      case 'vogen': return menu(b, [['', 'Any gender'], ['female', 'Women'], ['male', 'Men']].map(([v, l]) => ({label: l, checked: (UI.vo?.g || '') === v, run: () => { Object.assign(UI.vo ||= {}, {g: v, more: 0}); voRepaint(); }})));
+      case 'volang': return menu(b, [{search: 'Samples in', empty: 'No language matches'}, ...(UI.L || []).map(l => ({label: l.native && l.native !== l.name ? `${l.name} · ${l.native}` : l.name, sub: l.region, checked: voLang() === l.code,
+        run: () => { (UI.vo ||= {}).lang = l.code; UI.audio?.pause(); UI.voPlay = ''; voRepaint(); }}))], {width: 280});
+      case 'vouse': setPick('voice', id); toast(`New videos speak in ${voOf(id)?.name || 'this voice'}.`); return;
+      case 'voput': UI.dlg = {k: 'voput', id, ids: []}; return dlgPaint();
+      case 'voputgo': return voPutGo();
+      case 'vovocal': window.__hvPage = 'voices'; leave(); return ctx.go ? ctx.go('vocal') : back?.();
       case 'livenew': UI.live = 'new'; UI.liveOut = []; return draw();
       case 'liveopen': UI.live = id; UI.liveOut = []; UI.pub = null; return draw();
       case 'liveback': UI.live = ''; return draw();
@@ -1903,6 +2036,7 @@ window.HoolaInteractive = function (ctx) {
     const t = e.target;
     if (t.dataset.isc != null) { saveLine(t.dataset.id, +t.dataset.isc, t.value); return; }
     if (t.id === 'hxAsk') { C.ask = t.value; t.style.height = 'auto'; t.style.height = Math.min(180, t.scrollHeight) + 'px'; $('.hx-send')?.classList.toggle('on', !!t.value.trim()); return; }
+    if (t.id === 'hxVoq') { Object.assign(UI.vo ||= {}, {q: t.value, more: 0}); const l = $('#hxVoList'); if (l) l.innerHTML = voList(); const sm = t.parentElement?.querySelector('small'); if (sm) sm.textContent = t.value ? 'Best matches first' : ''; return; }
     if (t.id === 'hxAvq') { (UI.av ||= {}).q = t.value; const l = $('#hxAvList'); if (l) l.innerHTML = avList(); fillMedia(); return; }
     if (UI.dlg && t.id === 'hxAvNm') { UI.dlg.name = t.value; return; }
     if (UI.dlg && t.id === 'hxAvPer') { UI.dlg.person = t.value; return; }
@@ -1944,6 +2078,7 @@ window.HoolaInteractive = function (ctx) {
     if (t.id === 'hxAready') { UI.aready = t.checked; const l = $('#hxAppList'); if (l) l.innerHTML = appsList(); return; }
     if (t.id === 'hxShFile' && UI.dlg) { const f = t.files?.[0]; if (!f) return; if (f.size > 2 * 1024 * 1024) return toast('That file is larger than 2 MB.', true);
       const rd = new FileReader(); rd.onload = () => { UI.dlg.text = String(rd.result || ''); dlgPaint(); }; rd.readAsText(f); return; }
+    if (t.dataset?.vop && UI.dlg?.k === 'voput') { const id = t.dataset.vop, ids = UI.dlg.ids; if (t.checked) { if (!ids.includes(id)) ids.push(id); } else UI.dlg.ids = ids.filter(x => x !== id); return dlgPaint(); }
     if (t.id === 'hxAvPh') return avPhFile(t.files?.[0]);
     if (t.name === 'hxAvWho' && UI.dlg?.k === 'avphoto') { UI.dlg.who = t.value; return dlgPaint(); }
     if (t.id === 'hxAvOk' && UI.dlg?.k === 'avphoto') { UI.dlg.consent = t.checked; return dlgPaint(); }
