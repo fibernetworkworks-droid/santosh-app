@@ -12339,3 +12339,21 @@ and Credit & Lending: `/console/firm` (`firmdesk.html/.js/.css`) and the Firm ch
   Settings (who you are, how the firm works here). A client of the firm gets one page: papers asked for ("I sent it"), shared documents.
 - The Firm chat's greeting is rewritten when the firm is set up or she switches person, while nobody has written in it.
 - Tests: `server/tests/test_firm_desk.py` (5, incl. a Chromium walk at 1440 and 390 px). NOT VERIFIED on her server.
+
+## v0.999.223 PAYMENTS DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE PAYMENTS DESK")
+
+The Payments employee (F8 engine `fin/desks/payments.py`, tool `payments_desk`) gets its own section like the other finance desks:
+`/console/payments` (`paydesk.html/.js/.css`) and the Payments chat (Conversation kind `payments`, `server/app/paychat.py`,
+`/api/payments/*`), out of every chat list; a turn in it gets the desk block and the `paydesk` family. Employees hub, v2.js and the
+phone open it.
+
+- The engine is stateless; the desk keeps her data in the business's settings under `payments_desk`: dispute case files, gateways with
+  the rate in her contract and their dispute window, settlement lines + orders + failed payments + marketplace sales uploaded as CSV
+  (headers read by name: payout id / date / order id / type / amount ...), her limits (dispute rate, payout days, retry days, commission).
+- Deposits come from her imported bank statements (`fin.spine.txns`, money in) - payouts are matched to them by amount within her window.
+- Pages: Today (hero, dispute rate by month vs her limit, needs you, respond soonest, by gateway), Disputes (+ one case: respond-by,
+  evidence meter, the evidence for the code as ticks, the letter, compelling evidence for Visa 10.4, what happened with her reference,
+  notes), Payouts & fees, Recurring & sellers, Payment firm (KYB, ISO 20022, safeguarding), Settings.
+- Hoola never submits a dispute response, charges a card or pays anyone; reason codes are Hoola's table until her processor's guide is
+  checked (said on the page).
+- Tests: `server/tests/test_pay_desk.py` (6, incl. a Chromium walk at 1440 and 390 px). NOT VERIFIED on her server.

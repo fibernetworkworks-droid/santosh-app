@@ -1680,6 +1680,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_fmc.block, tenant_id)
     except Exception:
         log.exception("firm desk block failed")
+    try:   # PAYMENTS DESK: a turn in the Payments chat (or a call started from it) knows the desk
+        from .. import paychat as _pyc
+        if _pyc.is_payments(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_pyc.block, tenant_id)
+    except Exception:
+        log.exception("payments desk block failed")
     _mark("hint")
     return state
 
@@ -2499,6 +2505,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "firm chat"
     except Exception:
         log.exception("firm chat admission failed")
+    try:   # PAYMENTS DESK: the payments tool in view in the Payments chat
+        from .. import paychat as _pyc
+        if adm is not None and _pyc.is_payments(conversation_id):
+            adm.admit_families(_pyc.FAMILIES)
+            for f in _pyc.FAMILIES:
+                adm.why[f] = "payments chat"
+    except Exception:
+        log.exception("payments chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,
