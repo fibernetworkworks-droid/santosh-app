@@ -75,8 +75,23 @@ def _id(prefix: str) -> str:
     return f"{prefix}_{uuid.uuid4().hex[:10]}"
 
 
+MAX_LOG = 10        # v0.999.209 the deliveries a webhook remembers
+
+
+def _month() -> str:
+    return time.strftime("%Y-%m", time.gmtime())
+
+
+def _hour_calls(kid: str) -> int:
+    now = time.time()
+    return sum(1 for t in _RATE.get(kid, []) if now - t < 3600)
+
+
 def _public_key(k: dict[str, Any]) -> dict[str, Any]:
-    return {x: k.get(x) for x in ("id", "name", "last4", "made", "used_at", "calls")}
+    out = {x: k.get(x) for x in ("id", "name", "last4", "made", "used_at", "calls")}
+    out["calls_month"] = int(k.get("calls_m") or 0) if k.get("month") == _month() else 0
+    out["calls_hour"] = _hour_calls(str(k.get("id") or ""))
+    return out
 
 
 def keys_list(tenant: str) -> list[dict[str, Any]]:
@@ -99,6 +114,32 @@ def key_new(tenant: str, name: Any) -> dict[str, Any]:
         idx[row["sha"]] = {"tenant": tenant, "kid": row["id"]}
         _index_save(idx)
     return {**_public_key(row), "key": full, "note": "Copy this key now. It is shown only once; Hoola keeps only a fingerprint of it."}
+
+
+def key_rename(tenant: str, kid: str, name: Any) -> dict[str, Any]:
+    name = " ".join(str(name or "").split())[:40]
+    if not name:
+        raise S.StudioError("Give the key a name.")
+    with S._LOCK:
+        d = S._load(tenant)
+        k = next((x for x in _apps(d)["keys"] if x["id"] == kid), None)
+        if not k:
+            raise S.StudioError("That app key was not found.")
+        k["name"] = name
+        S._store(tenant, d)
+    return _public_key(k)
+
+
+def count_video(tenant: str) -> None:
+    """v0.999.209 a video one of her apps asked to make, counted for this month."""
+    with S._LOCK:
+        d = S._load(tenant)
+        st = _apps(d).setdefault("stats", {})
+        if st.get("month") != _month():
+            st.clear()
+            st["month"] = _month()
+        st["videos"] = int(st.get("videos") or 0) + 1
+        S._store(tenant, d)
 
 
 def key_remove(tenant: str, kid: str) -> dict[str, Any]:
@@ -143,6 +184,9 @@ def who(auth: str) -> tuple[str, str]:
             raise PermissionError("That app key is not known. It may have been removed.")
         k["used_at"] = S._now_iso()
         k["calls"] = int(k.get("calls") or 0) + 1
+        if k.get("month") != _month():
+            k["month"], k["calls_m"] = _month(), 0
+        k["calls_m"] = int(k.get("calls_m") or 0) + 1
         S._store(tenant, d)
     return tenant, kid
 
@@ -158,7 +202,9 @@ def _check_url(url: str) -> str:
 
 
 def _public_hook(h: dict[str, Any]) -> dict[str, Any]:
-    return {x: h.get(x) for x in ("id", "url", "events", "made", "last_at", "last_status", "last_event")}
+    out = {x: h.get(x) for x in ("id", "url", "events", "made", "last_at", "last_status", "last_event")}
+    out["log"] = list(h.get("log") or [])[:MAX_LOG]
+    return out
 
 
 def hooks_list(tenant: str) -> list[dict[str, Any]]:
@@ -230,6 +276,13 @@ def _deliver(tenant: str, hid: str, url: str, secret: str, event: str, body: byt
         h = next((x for x in _apps(d)["hooks"] if x["id"] == hid), None)
         if h is not None:
             h.update(last_at=S._now_iso(), last_status=status[:120], last_event=event)
+            title = ""
+            try:
+                title = str(json.loads(body.decode() or "{}").get("title") or "")[:80]
+            except Exception:   # noqa: BLE001
+                title = ""
+            h["log"] = ([{"at": h["last_at"], "event": event, "status": status[:120], "title": title}]
+                        + list(h.get("log") or []))[:MAX_LOG]
             S._store(tenant, d)
 
 
@@ -265,9 +318,19 @@ def hook_test(tenant: str, hid: str) -> dict[str, Any]:
     return next(_public_hook(x) for x in _apps(S._load(tenant))["hooks"] if x["id"] == hid)
 
 
-def view(tenant: str) -> dict[str, Any]:
-    return {"keys": keys_list(tenant), "hooks": hooks_list(tenant), "events": list(EVENTS), "max_keys": MAX_KEYS,
-            "max_hooks": MAX_HOOKS, "rate_hour": RATE_HOUR,
+def _base() -> str:
+    from ..config import get_settings
+    return (getattr(get_settings(), "public_base_url", "") or "").rstrip("/")
+
+
+def view(tenant: str, base: str = "") -> dict[str, Any]:
+    d = S._load(tenant)
+    st = _apps(d).get("stats") or {}
+    keys = keys_list(tenant)
+    return {"keys": keys, "hooks": hooks_list(tenant), "events": list(EVENTS), "max_keys": MAX_KEYS,
+            "max_hooks": MAX_HOOKS, "rate_hour": RATE_HOUR, "base": (_base() or base.rstrip("/")) + "/api/interactive",
+            "month": {"calls": sum(k["calls_month"] for k in keys),
+                      "videos": int(st.get("videos") or 0) if st.get("month") == _month() else 0},
             "doors": [{"method": "GET", "path": "/api/interactive/v1/engines", "does": "The engines and which are connected"},
                       {"method": "GET", "path": "/api/interactive/v1/avatars", "does": "Your faces"},
                       {"method": "POST", "path": "/api/interactive/v1/videos", "does": "A script in, a draft and its price out"},

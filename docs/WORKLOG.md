@@ -3790,3 +3790,13 @@ Work Log:
 - engines.need_of / prices / ladder + routes /x/engines/prices and /x/engines/one; Engines page rebuilt (defaults, price for a length, cards, one-engine dialog, B-roll maker priced first).
 - Tests test_v0999_208 (4) green; Interactive suites green except the pre-existing v0747 browser test.
 Stage Summary: shipped as v0.999.208; NOT VERIFIED on her server.
+
+---
+Task ID: v0.999.209
+Agent: Claude Code (session hopeful-carson)
+Task: DEVELOPERS, REDESIGNED - design canvas claude.ai/artifact/GEoE5TiJyZoAVeijrfxBVo, then GO BUILD.
+Work Log:
+- apps.key_rename / count_video, calls this hour + this month per key, last 10 deliveries per webhook, base address; PATCH /x/apps/keys.
+- Developers page rebuilt (counts, four steps, key + webhook cards, key / secret shown once, the API with real requests).
+- Tests test_v0999_209 (4) green with v0999_208 + v0999_169.
+Stage Summary: shipped as v0.999.209; NOT VERIFIED on her server.

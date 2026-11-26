@@ -12146,3 +12146,27 @@ The Interactive Engines page (console `interactive.js` enPage / enCard / enBroll
 Tests `test_v0999_208_interactive_engines.py` (4: prices match the Make price, the panel, every drawn button wired,
 a Chromium walk at 1440 and 390). PRE-EXISTING red, not from this: `test_v0747_hoola_interactive.py::test_the_page_in_a_real_browser`
 (fails on the commit before too). NOT VERIFIED on her server.
+
+## v0.999.209 DEVELOPERS, REDESIGNED (owner: "NOW DEVLOPER SECTION" -> design claude.ai/artifact/GEoE5TiJyZoAVeijrfxBVo -> "GO BUILD")
+
+The Interactive Developers page (her own programs make videos with her credits through `hi_live_` app keys) rebuilt from
+the design, showing only what the server really does:
+
+- **This month**: calls across her keys and videos her apps made (`apps.view` -> `month`; per key `calls_month`, kept with
+  the month it counts; `apps.count_video` counts a POST /v1/videos/{id}/make that really starts).
+- **The four steps** from a script to a video; nothing is spent before the make (`quote.key` sent back as `quote_key`, a
+  changed price refused, never charged).
+- **App keys** as cards: name, last four, made, last used, total calls, calls this hour of the 120 limit (`calls_hour`,
+  read from the in-memory rate counter, so it restarts at 0 after a server restart), Rename (NEW `apps.key_rename` +
+  PATCH /x/apps/keys), Remove asks first.
+- **A new key** is named, then shown once with Copy and a first call (GET /v1/engines) ready to paste in curl /
+  JavaScript / Python with the key already in it; the page never shows it again.
+- **Webhooks**: her https address, the events she picks (video.ready, video.failed), the signing secret shown once, Send a
+  test, the last answer and the last 10 deliveries (NEW `log` on each hook: time, event, answer, video title).
+- **The API**: the six calls with a real request in her server's address (`view` -> `base`, from PUBLIC_BASE_URL or the
+  request), the answer, the fields, what 401 / 429 / 409 / 404 / 422 / 502 mean, and how to check X-Hoola-Signature
+  (HMAC-SHA256 of "t.body") in Python and JavaScript.
+
+Files: server/app/interactive/apps.py, routes2.py, static/console/interactive.js (`dvPage`, `dvApi`, dialogs dvnew / dvkey
+/ dvren / dvdel / dvhook / dvsecret), interactive2.css (DEVELOPERS block). Tests: test_v0999_209_interactive_developers.py
+(4, incl. a real-browser walk at 1440 and 390). NOT VERIFIED on her server.

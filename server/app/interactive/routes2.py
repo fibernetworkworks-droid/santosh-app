@@ -224,9 +224,15 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
 
     # ---- app keys + webhooks
     @r.get("/apps")
-    async def apps(tenant: str = Depends(current_tenant)):
+    async def apps(request: Request, tenant: str = Depends(current_tenant)):
         _on()
-        return AP.view(tenant)
+        return AP.view(tenant, str(request.base_url))
+
+    @r.patch("/apps/keys")
+    async def key_rename(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        _on()
+        b = dict(body or {})
+        return _wrap(AP.key_rename, tenant, str(b.get("id") or ""), b.get("name"))
 
     @r.post("/apps/keys")
     async def key_new(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
@@ -307,7 +313,9 @@ def make_public_router() -> APIRouter:
     @r.post("/v1/videos/{pid}/make")
     def v1_make(pid: str, body: dict = Body(default={}), authorization: str = Header(default="")):
         tenant = tenant_of(authorization)
-        return _wrap(S.make, tenant, pid, quote_key=str((body or {}).get("quote_key") or ""), code=409)
+        out = _wrap(S.make, tenant, pid, quote_key=str((body or {}).get("quote_key") or ""), code=409)
+        AP.count_video(tenant)
+        return out
 
     @r.get("/v1/videos/{pid}")
     async def v1_get(pid: str, authorization: str = Header(default="")):
