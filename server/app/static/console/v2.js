@@ -406,8 +406,8 @@ function drawNav() {
   if (APPD) {
     const studio = new Set(APP_TOOLS.map(t => t[0])), cur = k => k === VIEW || (k === 'hire' && /desk$/.test(VIEW)) || (k === 'kaam' && studio.has(VIEW));
     $('#snav').innerHTML = appNav().map(([k, n]) => k === '-' ? `<div class="snl">${esc(n)}</div>`
-      : k === 'more' ? `<button class="sn" type="button" data-more aria-haspopup="menu" aria-current="${APP_MORE.some(([m]) => m === VIEW)}">${svg(IC_APP.more)}<span class="txt">More</span>${navBadge('aaj')}</button>`
-      : `<button class="sn" data-v="${k}" aria-current="${cur(k)}">${k === 'chat' ? `<span class="hmk" aria-hidden="true">${MARK()}</span>` : svg(IC_APP[k] || IC[k === 'baat' ? 'call' : k] || IC.creative)}<span class="txt">${esc(n)}</span>${navBadge(k)}</button>`).join('');
+      : k === 'more' ? `<button class="sn" type="button" data-more aria-haspopup="menu" title="More" aria-label="More" aria-current="${APP_MORE.some(([m]) => m === VIEW)}">${svg(IC_APP.more)}<span class="txt">More</span>${navBadge('aaj')}</button>`
+      : `<button class="sn" data-v="${k}" title="${esc(n)}" aria-label="${esc(n)}" aria-current="${cur(k)}">${k === 'chat' ? `<span class="hmk" aria-hidden="true">${MARK()}</span>` : svg(IC_APP[k] || IC[k === 'baat' ? 'call' : k] || IC.creative)}<span class="txt">${esc(n)}</span>${navBadge(k)}</button>`).join('');
     return drawTabs();
   }
   $('#snav').innerHTML = NAV.map(([k, n]) => `<button class="sn" data-v="${k}" aria-current="${k === VIEW || (k === 'hire' && /desk$/.test(VIEW))}">${svg(IC[k === 'baat' ? 'call' : k])}<span class="txt">${n}</span>${navBadge(k)}</button>`).join('');
