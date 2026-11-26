@@ -3888,3 +3888,9 @@ Work Log:
 - Hid body>#composer in v2.css; browser test fails without the fix, passes with it.
 Stage Summary:
 - Pushed to main as v0.999.225; deploy with Actions > VPS ops > deploy.
+
+---
+Task ID: v0.999.226 CUSTOMIZE, PREMIUM
+Ask: make the Customize page premium (design ENS4Mk3mkFsgEJaA8hxSD2)
+Built: drawMain + appearanceHTML rebuilt, cz- styles at the end of v2.css
+Not verified: on her server
