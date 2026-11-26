@@ -12228,3 +12228,95 @@ shows everything as before. The old console look is unchanged.
 Test: test_v0999_214_collapsed_sidebar.py - every visible button 40x40 with its middle within 1 px of the rail's
 middle, every icon on that middle, one even step, no words when folded (with a pinned chat present), labels back when
 opened. NOT VERIFIED: on her server.
+
+## v0.999.215 CUSTOMIZE = PROFILE MENU (owner, her account-menu screenshot: "CHANGE THE CUSTOMERIZE SECTION TO THIS SHOWN PROFILE OPTIONS"): the app-design sidebar's Customize row opens the same profile menu as the account button, below it (her email, Settings, Credits, Library, Skills, Light / Dark / System, Keyboard shortcuts, Log out; one list `acctItems`), instead of the Customize page; Skills gets its own icon in the menu; 2 tests incl. a browser walk. Console only.
+
+Console only (`static/console/v2.js`, `menu.js`). The account menu's items moved into `acctItems()`; the account button opens it above itself as before, and the app-design sidebar's Customize row (`data-acct`, was `data-v="main"`) opens it below itself. Settings in the menu still opens the Customize page (view main), which keeps the row marked. Skills had no icon in HoolaMenu; it has one now. Tests: test_v0999_215_customize_menu.py (shape + a Chromium walk: every item with its icon, menu below the row and inside the window, page unchanged until an item is picked). NOT VERIFIED: on her server.
+
+## v0.999.216 CASH & TREASURY DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE CASH AND TRESARY ---- MAKE IT FULLY FUCTIONAL SAME AS PAYROLL SECTION. ALSO MAKE DESIGN ADVANCE AND PREMIUM SAME AS OTHER SECTIONS")
+
+The Cash & Treasury employee (`cash_treasury`, the F5 engine `fin/desks/cash.py`, unchanged) gets its own section like Payroll and Tax.
+
+- `server/app/cashchat.py`: Cash chat = Conversation kind `cash` (out of every chat list via callconv / convs), the desk block `<cash_desk>` and the
+  `treasury` family admitted in that chat and in calls started from it (santosh.py). Desk state in the workspace settings under `cash_desk`:
+  `opening` (cash she says is in the bank, with the day; older than 7 days is said), `items` (money she expects in / out), `checked` (a covenant is
+  tested only once a person checked it against the loan agreement; the check is bound to its terms, so a changed limit needs checking again),
+  `figures` (what her ratios divide, dated), `rates` (her exchange rates, dated; never guessed). Roles from Books (`books_ent.access`): owner /
+  accountant / approver change, auditor / viewer read. Routes `/api/cash/chat`, `/chat/new`, `/chat/{id}/ok`, `/desk`, `/do/{part}`
+  (forecast, backtest, idle, fees, fx, covenants, settings, opening, add_item, remove_item, set_covenant, remove_covenant, check_covenant, figure,
+  rate), `/download` (forecast PDF + CSV, with the what-if), `PUT /workspace`.
+- `static/console/cashdesk.{html,js,css}` at `/console/cash`: Today (hero cash today -> lowest point -> after 13 weeks over an SVG weekly cash chart
+  with in / out bars, the minimum line and hover details; 30 / 60 / 90 days; spare cash; needs you; biggest movements; fees, covenants and
+  currencies at a glance), Forecast (chart, the what-if "customers pay 15 / 30 / 60 days later" as a second line, week table that opens into each
+  line and where it came from, money you expect, how good the forecast was on months she lived, downloads), Spare cash (buffer choice), Bank fees
+  (by kind, by month, every line), Currencies (positions, her rates, a 5 / 10 / 20 % move), Covenants (cards with a gauge, headroom, "I checked it
+  against the agreement", her figures), Settings (cash today, minimum, payment lag, buffer, words to leave out, where the forecast comes from).
+- Wiring: employees.js `cash_treasury: 'cashdesk'`, v2.js redirect to `/console/cash`, phone `hoola_employees.dart` opens `/console/cash`.
+- Tests `server/tests/test_cash_desk.py` (5, incl. a Chromium walk at 1440 / 390); `test_fin_f7.py` own-desk map.
+
+NOT VERIFIED: on her server.
+
+## v0.999.217 CUSTOMIZE IN THE PROFILE MENU (owner, after v0.999.215: "UNDO -- I TELL U TO JUST PALCE / MOVE THE CONSTERZE SECTION IN PROPFINE"): v0.999.215 undone - the app-design sidebar has no Customize row any more; Customize is an item of the profile (account) menu, first under her email, and opens the Customize page; its own brush icon; 2 tests incl. a browser walk. Console only.
+
+Console only (`static/console/v2.js`, `menu.js`). v0.999.215 is undone: the sidebar row `['main', 'Customize']`, its `data-acct` button and its click handler are gone, so the app-design sidebar ends with More. `acctItems()` (the profile / account button's menu) gets `Customize` as its first item under her email; it opens the Customize page (view main). HoolaMenu gets a `brush` icon. Tests: test_v0999_215_customize_menu.py removed; NEW test_v0999_217_customize_in_profile.py (shape + a Chromium walk: no Customize row, the profile menu lists Customize, picking it opens the Customize page); sidebar pins in test_v0973 / test_v0975 now end with More. NOT VERIFIED: on her server.
+
+## v0.999.218 CREDIT & LENDING DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE CREDIT AND LENDING")
+
+The Credit & Lending employee (F6 engine `fin/desks/credit.py`, tool `credit_lending`) gets its own section like Payroll, Tax and Cash &
+Treasury: `/console/credit` (`creditdesk.html/.js/.css`, frame + chat on seodesk / moneydesk / cashdesk styles) and the Credit chat
+(Conversation kind `credit`, `server/app/creditchat.py`, `/api/credit/*`), out of every chat list (`convs.py`, `callconv.py`); a turn
+in it gets the desk block and the `lending` family (`agent/santosh.py`). Employees hub, v2.js and the phone open it.
+
+- Desk state in the workspace settings under `credit_desk`: loans (lent / borrowed, monthly schedule, payments that happened, time zone,
+  her PD / LGD), applications (figures each with a source, applicant details, statement rows pasted as date, narration, amount,
+  conditions, the recorded decision), offers, memo policy limits, underwriting rules, her APR method. Contact rules + the contact log
+  stay where the engine keeps them (`settings.credit`).
+- Pages: Today (owed to you -> behind -> you owe, the lateness bar by bucket, payments in 30 days, needs you, open applications),
+  Borrowing (APR calculator by her country's remembered method - said "check this" - or the one she chose; offers side by side, cheapest
+  by total cost; invoice finance; the readiness pack from her own statements and books), Applications (ratios vs her limits, rule hits,
+  statement analysis, conditions with who waived, key-facts draft, memo PDF / text, the decision recorded with who decided), Loan book
+  (due vs paid, days past due month by month, record a payment that happened - never a future one, collections contact checked against
+  her rules + Hoola's floor and logged as planned, CSV), Risk (early warning, ECL working paper only with her PD / LGD), Settings.
+- Guards: no score, no approve / decline / payout (engine refuses those actions; the desk has none); rules and applicant details on
+  protected grounds refused; a figure with no source is refused; viewer / auditor read only.
+- Tests: `server/tests/test_credit_desk.py` (6, incl. a Chromium walk at 1440 and 390 px with screenshots). NOT VERIFIED on her server.
+
+## v0.999.219 CREDIT & LENDING, FULLER (owner: "DESIGN -- MAKE IT FULLY FUCTIONAL AND ADVANCE AND PREMIUM. ALSO MAKE IT SAME WORKING AS OTHER AI EMPLOYEE SECTION WE DEVLPOED")
+
+On top of v0.999.218 (`creditchat.py`, `creditdesk.*`):
+- `matches` / `confirm_match` / `dismiss_match`: lines in her imported bank statements (`fin.spine.txns`) that look like a loan's payment -
+  the right direction (money in for a loan she lent, out for one she owes), the payment or what is behind to within 1%, not before a month
+  ahead of the first due; "Name matches" when a word of the borrower's / lender's name is in the line, else "Amount only". Nothing is
+  recorded until she confirms; the payment then carries the bank line's id (never twice); a dismissed line is remembered. Today shows the
+  matches and a "needs you" line; the chat block says how many wait.
+- `outlook`: 12 months of what the schedules bring in / take out (late instalments shown as "behind, owed now") - the chart on Today.
+- `schedule`: every instalment (due, payment, interest, principal, balance after, paid / part paid / late / to come) on the loan page; a
+  loan statement PDF (`/api/credit/download?what=loan`).
+- Applications: stage gathering -> with the decider (`stage`), decided = the recorded decision (reopen goes back to with the decider); the
+  list is a three-column board; proposed terms editable; the borrower's statement from a CSV file.
+- Loan book: filters (all / you lent / you owe / behind) + search; the key-facts draft rendered as a table.
+- Tests: `test_credit_desk.py` 7 (new: schedule, bank matches, outlook, stages; the browser walk confirms a match, filters, searches,
+  moves a stage). NOT VERIFIED on her server.
+
+## v0.999.220 NO THEME IN THE PROFILE MENU (owner: "NOW REMOVE THE LIGHT DARK AND SYTEM OPTION IN PROFILE SECTION . IT IS ALREADY IN CONSTERIZE SECTION"): the profile (account) menu no longer lists Light / Dark / System; the theme choice stays on the Customize page; 2 tests incl. a browser walk. Console only.
+
+Console only (`static/console/v2.js`). `acctItems()` (the profile / account button's menu) no longer lists Light / Dark / System; the theme choice stays on the Customize page's Appearance cards (`data-theme-set`). Tests: NEW test_v0999_220_no_theme_in_profile.py (shape + a Chromium walk: the profile menu lists Customize and no theme items); test_v0285_menus.py reads the acctItems block (moved there in v0.999.215) and checks the theme items are gone. Already red before this change and left alone: test_v0285::test_claude_look_is_crisp, test_v0973::test_version. NOT VERIFIED: on her server.
+
+## v0.999.221 THE + CARD AND ITS CHIP (owner, her + menu and the chosen Deep research chip: "NOW CHECK + IN CHAT SECTION OPTIONS -- ALL ARE PERFECT -- MAKE THE CARD PREMIUM. ALSO CHECK THE SETECTED CARD OPTIONS HOW APPERING IN CHAT MAKE IT PERFECTLY ALLINED AND MUST BE LIKE HUMAN NATIVE MADE NOT A AI BLUE , PINK COMBINATION")
+
+Measured in a real browser before the fix: after picking Deep research the chip stood about 140 px from the + in the
+middle of the bar, because both the + (#attach) and the chip group (.qchips) had margin-right:auto and split the free
+space; it was drawn in the violet "pri-soft" tint.
+
+The + menu (v2.js plusMenu now opens with cls 'plusm', width 320; appdesign.css end block): a card with a hairline
+border and a soft layered shadow; every choice has its own 32 px tile with the icon in ink, the name at 14 / 500 and
+one line under it at 12.5 in the muted grey; a chosen choice's tile turns ink (paper icon) with a tick on the right
+(the tick had taken the tile's colour, so it was invisible - fixed and tested); the last row ("Everything ... can do")
+ends in an arrow. Light and dark both drawn from the theme's own ink / paper.
+
+The chosen option: right beside the + (8 px), centred on the same line, 32 px tall, ink text and icon on the page's
+paper with a hairline border and an x; hover darkens the border; a tap takes it off. Inside an open chat the row order
+is + , chosen option, mic, call, so it sits beside the + there too. The old console look is unchanged.
+
+Test: test_v0999_221_plus_card.py - the card's class and rows, chip gap 0-10 px and centred within 1 px on the home
+and in a chat, paper background, not the brand violet, the tick in ink, a tap removes the chip. NOT VERIFIED: on her server.

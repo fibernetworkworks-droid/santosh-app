@@ -1,0 +1,139 @@
+/* CREDIT & LENDING DESK - the Credit & Lending employee's own section. Frame, chat, cards and buttons come from seodesk.css; kpis,
+   alerts, forms and files from moneydesk.css; rows, tags, the hero and the money bars from cashdesk.css; only the Credit desk's own
+   parts are here: the age bar, offers, applications, ratios, conditions, the contact verdict, the month bars. */
+#crPage{display:flex;flex-direction:column;gap:20px;padding-top:4px}
+.cr-hero .top{gap:36px}
+.cr-hero .k{min-width:150px}
+.cr-sub{font-size:12.5px;color:var(--mut);margin-bottom:8px;font-weight:600;letter-spacing:.01em}
+.ib.sm{width:26px;height:26px}
+
+/* the age of the money owed: one bar in parts */
+.cr-age{display:flex;height:12px;border-radius:999px;overflow:hidden;background:var(--soft);gap:2px}
+.cr-age span{display:block;height:100%;background:var(--acc);min-width:4px}
+.cr-age span.ok{background:var(--ok)}.cr-age span.warn{background:var(--warn)}.cr-age span.bad{background:var(--bad)}
+.cr-legs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:12px}
+@media (max-width:760px){.cr-legs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cr-leg i{width:10px;height:10px;border-radius:3px;background:var(--acc)}
+.cr-leg i.ok{background:var(--ok)}.cr-leg i.warn{background:var(--warn)}.cr-leg i.bad{background:var(--bad)}
+.cr-leg b{font-size:14px;color:var(--ink)}
+
+/* progress (conditions in) */
+.cr-prog{display:block;width:90px;height:8px;border-radius:999px;background:var(--soft);overflow:hidden;flex:none}
+.cr-prog span{display:block;height:100%;background:var(--ok);border-radius:999px}
+
+/* the APR result */
+.cr-apr{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-end;padding:14px 16px;border-radius:14px;background:linear-gradient(180deg,var(--accs),var(--bg))}
+.cr-apr .l{font-size:12.5px;color:var(--mut)}
+.cr-apr .v{font-size:34px;font-weight:600;letter-spacing:-.01em;color:var(--acct)}
+.cr-apr .v.sm{font-size:18px;color:var(--ink)}
+.cr-how{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.cr-how span{font-size:12.5px;background:var(--soft);border-radius:999px;padding:3px 10px;color:var(--ink2)}
+
+/* offers side by side */
+.cr-offers{display:flex;flex-direction:column;gap:10px}
+.cr-offer{border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;background:var(--bg)}
+.cr-offer.best{border-color:var(--ok);box-shadow:inset 3px 0 0 var(--ok)}
+.cr-offer .t{display:flex;align-items:center;gap:8px}
+.cr-offer .t .ib{margin-left:auto}
+.cr-offer .nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.cr-offer .nums .l{display:block;font-size:12px;color:var(--mut)}
+.cr-offer .nums b{font-size:16px}
+
+/* month bars (statement in / out, days past due) */
+.cr-months{display:flex;align-items:flex-end;gap:6px;height:130px;margin-top:14px}
+.cr-months>div{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;height:100%;justify-content:flex-end;position:relative}
+.cr-months .pair{display:flex;gap:2px;align-items:flex-end;height:100%;width:100%;max-width:44px;justify-content:center}
+.cr-months .pair b{display:block;flex:1;max-width:18px;border-radius:5px 5px 2px 2px;background:var(--acc);min-height:2px}
+.cr-months .pair b.in{background:var(--ok);opacity:.7}.cr-months .pair b.out{background:var(--bad);opacity:.55}
+.cr-months .pair b.ok{background:var(--ok)}.cr-months .pair b.warn{background:var(--warn)}.cr-months .pair b.bad{background:var(--bad)}
+.cr-months span{font-size:11px;color:var(--mut);white-space:nowrap}
+.cr-months em{font-style:normal;font-size:12px;font-weight:600}
+.cr-months.dpd .pair b{max-width:36px}
+.cr-months.dpd{height:150px}
+
+/* applications */
+.cr-apps{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.cr-app{all:unset;box-sizing:border-box;cursor:pointer;border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:6px;background:var(--bg);transition:border-color .15s,box-shadow .15s}
+.cr-app:hover{border-color:var(--line2);box-shadow:0 6px 22px rgba(0,0,0,.06)}
+.cr-app:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.cr-app .t{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.cr-app .t b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cr-app .v{font-size:24px;font-weight:600}
+.cr-app .f{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin-top:4px}
+.cr-ratios{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.cr-ratio{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:3px}
+.cr-ratio.bad{border-color:var(--bad);background:var(--bads)}
+.cr-ratio .l{font-size:12.5px;color:var(--mut)}
+.cr-ratio .v{font-size:22px;font-weight:600}
+.cr-ratio .s{font-size:11.5px;color:var(--mut)}
+.cr-ratio .cs-tag{align-self:flex-start;margin:4px 0 0}
+.cr-st{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:none;background:var(--bads);color:var(--badt)}
+.cr-st.received{background:var(--oks);color:var(--okt)}.cr-st.waived{background:var(--soft);color:var(--ink2)}
+.cr-chk{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--line2);flex:none}
+.cr-md{font-size:14px;line-height:1.5;background:var(--page);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0 0;overflow-x:auto}
+.cs-row select.in.sm{width:auto;min-width:104px}
+
+/* the contact verdict */
+.cr-verdict{display:flex;flex-direction:column;gap:4px;margin-top:14px;border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.45}
+.cr-verdict.ok{background:var(--oks);color:var(--okt)}
+.cr-verdict.bad{background:var(--bads);color:var(--badt)}
+
+/* risk */
+.cr-ews{border:1px solid var(--line);border-radius:12px;padding:6px 12px;margin-bottom:10px}
+.cr-ews .t{display:flex;align-items:center;justify-content:space-between;padding:6px 0}
+.cr-stages{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.cr-stages .l{font-size:12.5px}
+.cr-stages .v{font-size:18px;font-weight:600;margin:2px 0 6px}
+@media (max-width:600px){.cr-stages{grid-template-columns:minmax(0,1fr)}.cr-offer .nums{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* settings */
+.cr-meths{display:flex;flex-direction:column;gap:8px}
+.cr-meth{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;font-size:14px}
+.cr-meth:has(input:checked){border-color:var(--acc);background:var(--accs)}
+.cr-meth>span{display:flex;flex-direction:column;gap:2px}
+.cr-meth .mut{font-size:12.5px;line-height:1.4}
+.cr-days{display:flex;flex-wrap:wrap;gap:6px}
+.cr-days label{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:13px;color:var(--ink);cursor:pointer}
+.cr-days label:has(input:checked){border-color:var(--acc);background:var(--accs)}
+.cr-days input{margin:0}
+@media (prefers-reduced-motion: reduce){.cr-app{transition:none}}
+.cr-leg{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--ink2)}
+.cr-leg i{margin-top:4px;flex:none}
+.cr-leg>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.cr-leg em{font-style:normal;color:var(--mut)}
+.cr-leg.none{opacity:.55}
+.cr-age span.warn1,.cr-leg i.warn1{background:color-mix(in srgb,var(--warn) 55%,var(--bg))}
+.cr-age span.bad1,.cr-leg i.bad1{background:color-mix(in srgb,var(--bad) 60%,var(--bg))}
+#crPage .cs-row .num{font-family:inherit;font-variant-numeric:normal;font-weight:600}
+.md-kpi .v.sm{font-size:20px}
+.cr-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.cr-grid .wide{grid-column:1/-1}
+@media (max-width:600px){.cr-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.linkbtn{all:unset;cursor:pointer;color:var(--acct);text-decoration:underline;text-underline-offset:2px}
+#crPage table.tb .num{font-family:inherit;font-weight:500}
+.cr-md table{width:100%;border-collapse:collapse;font-size:13.5px}.cr-md td,.cr-md th{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left}.cr-md p{margin:8px 0}
+.cr-months.dpd .pair{height:calc(100% - 38px)}
+
+/* v2: the 12-month chart, bank matches, the pipeline board, filters, the schedule */
+.cr-chart{margin-top:12px}
+.cr-chart .blate{fill:var(--warn);opacity:.55}
+.cs-legend i.late{background:var(--warn);opacity:.6;height:8px}
+.cr-found{border-color:color-mix(in srgb,var(--ok) 45%,var(--line));background:linear-gradient(180deg,var(--oks),var(--bg) 60%)}
+.cr-match .btn{flex:none}
+.cr-board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
+@media (max-width:1100px){.cr-board{grid-template-columns:minmax(0,1fr)}}
+.cr-col{display:flex;flex-direction:column;gap:10px;background:var(--page);border:1px solid var(--line);border-radius:16px;padding:12px;min-width:0}
+.cr-colh{display:flex;align-items:center;justify-content:space-between;padding:2px 4px;font-size:14px}
+.cr-colempty{font-size:13px;color:var(--mut);padding:18px 6px;text-align:center;border:1px dashed var(--line2);border-radius:12px}
+.cr-stagebar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 16px}
+.cr-stagebar .btn{margin-left:auto}
+.cs-seg button:disabled{cursor:default}
+.cs-seg button[aria-pressed="true"]:disabled{opacity:1}
+.cr-filter{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.cr-filter .in{flex:1;min-width:160px;max-width:280px;margin-left:auto}
+@media (max-width:600px){.cr-filter .in{max-width:none;margin-left:0}}
+tr.cr-late td:first-child{box-shadow:inset 3px 0 0 var(--bad)}
+label.linkbtn{display:inline}
+.cr-chart .bin{opacity:.72}.cr-chart .bout{opacity:.62}.cr-chart .blate{opacity:.85}
+#crPage .num,#crPage table.tb .num{font-variant-numeric:normal;font-family:inherit}
+tr.cr-late td:first-child{padding-left:14px}

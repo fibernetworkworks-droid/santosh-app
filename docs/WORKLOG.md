@@ -3839,3 +3839,31 @@ Work Log:
 - appdesign.css end block: folded = no scrollbar strip, every button 40x40 on the middle, one 44 px step, headers / words / counts hidden (a dot for a count); v2.js + v2.html give each icon a title + aria-label.
 - test_v0999_214_collapsed_sidebar.py: shape + browser walk (light + dark shots); version ritual 0.999.214 on main's 0.999.213.
 Stage Summary: shipped to main; not verified on her server.
+
+---
+Task ID: v0.999.215 CUSTOMIZE = PROFILE MENU
+Ask: Customize row = the profile menu
+Built: acctItems shared by the account button and the Customize row, Skills icon
+Not verified: on her server
+
+---
+Task ID: v0.999.217 CUSTOMIZE IN THE PROFILE MENU
+Ask: undo v0.999.215, move Customize into the profile menu
+Built: Customize row removed from the sidebar, Customize item in acctItems, brush icon
+Not verified: on her server
+
+---
+Task ID: v0.999.220 NO THEME IN THE PROFILE MENU
+Ask: remove Light / Dark / System from the profile menu
+Built: theme items removed from acctItems, test_v0285 reads acctItems
+Not verified: on her server
+
+---
+Task ID: v0.999.221 THE + CARD AND ITS CHIP
+Agent: Claude (Claude Code session)
+Task: make the console + menu a premium card and line the chosen option up beside the +, in plain ink (no violet).
+Work Log:
+- Measured in Chromium: the chosen chip floated mid-bar (both #attach and .qchips had margin-right:auto, splitting the free space); it was violet pri-soft.
+- appdesign.css end block: .hmenu.plusm card (border, layered shadow, soft tile per choice, one line under each, chosen tile in ink + a visible tick, arrow on the last row); chip beside the + (8 px), centred on its line, ink on paper with an x, chat row order + chip; v2.js gives the + menu cls plusm, width 320.
+- test_v0999_221_plus_card.py: shape + browser walk (home + chat, tick colour, tap removes); version ritual 0.999.221 on main's 0.999.220.
+Stage Summary: shipped to main; not verified on her server.

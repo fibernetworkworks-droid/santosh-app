@@ -478,3 +478,47 @@ html.appd #app.collapsed .side :is(.newc,.sn,.srch) :is(.txt,.ct,.hx,.lv,kbd){di
 html.appd #app.collapsed .side :is(.newc,.sn,.srch) :is(svg,.hmk){margin:0;flex:none}
 html.appd #app.collapsed .side .sn:has(.ct)::after{content:"";position:absolute;top:8px;right:8px;width:7px;height:7px;border-radius:9px;background:var(--pri);box-shadow:0 0 0 2px var(--side-bg)}
 html.appd #app.collapsed .side .user{width:40px;margin-top:auto;padding:8px 0 0;justify-content:center;border:0}
+/* v0.999.221 THE + CARD AND ITS CHIP (owner, her + menu and the chosen Deep research chip: "MAKE THE CARD PREMIUM ...
+   SELECTED CARD OPTIONS ... PERFECTLY ALLINED AND MUST BE LIKE HUMAN NATIVE MADE NOT A AI BLUE, PINK COMBINATION"):
+   the + menu is a quiet card - each choice with its own soft tile, one clear line under it, a chosen one in ink with a
+   tick, the last row leads on with an arrow; the chosen option sits right beside the +, on its line, in ink on paper
+   (no violet), with an x to take it off. Measured before: the chip floated mid-bar because the + and the chip group
+   both took the free space. */
+.hmenu.plusm{padding:6px;border-radius:14px;border:1px solid var(--line);background:var(--raise);gap:2px;
+  box-shadow:0 1px 2px rgb(0 0 0 / .04),0 8px 24px -6px rgb(0 0 0 / .10),0 24px 48px -16px rgb(0 0 0 / .10)}
+html[data-theme="dark"] .hmenu.plusm{box-shadow:0 1px 2px rgb(0 0 0 / .3),0 12px 32px -8px rgb(0 0 0 / .55)}
+.hmenu.plusm .mi{gap:12px;min-height:44px;padding:6px 10px 6px 6px;border-radius:10px;align-items:center}
+.hmenu.plusm .mi:has(small){align-items:center;min-height:52px}
+.hmenu.plusm .mi .ic{width:32px;height:32px;padding:8px;margin:0;box-sizing:border-box;border-radius:9px;background:rgb(var(--fg-rgb) / .06);
+  color:var(--ink);stroke-width:1.7;transition:background .15s ease,color .15s ease}
+.hmenu.plusm .mi:has(small) .ic{margin-top:0}
+.hmenu.plusm .mi .mt{gap:1px}
+.hmenu.plusm .mi .mt>span{font:500 14px/20px var(--fb);color:var(--ink)}
+.hmenu.plusm .mi .mt small{font:400 12.5px/17px var(--fb);color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hmenu.plusm .mi:focus,.hmenu.plusm .mi:hover{background:rgb(var(--fg-rgb) / .045)}
+.hmenu.plusm .mi:hover .ic,.hmenu.plusm .mi:focus .ic{background:rgb(var(--fg-rgb) / .1)}
+.hmenu.plusm .mi[aria-checked="true"] .ic{background:var(--ink);color:var(--bg)}
+.hmenu.plusm .mi .mc{width:18px;height:18px;color:var(--ink)}
+.hmenu.plusm .mi .mc .ic,.hmenu.plusm .mi[aria-checked="true"] .mc .ic{width:18px;height:18px;padding:0;background:none;border-radius:0;stroke-width:2;color:var(--ink)}
+.hmenu.plusm .msep{margin:4px 2px;background:var(--line)}
+.hmenu.plusm .msep:last-of-type + .mi{min-height:40px}
+.hmenu.plusm .msep:last-of-type + .mi .ic{background:none}
+.hmenu.plusm .msep:last-of-type + .mi::after{content:"";width:16px;height:16px;flex:none;margin-left:auto;background:var(--dim);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center/16px no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center/16px no-repeat}
+/* the chosen option: right after the +, centred on the same line, ink on paper, an x to take it off */
+html.appd #app #composer .row:has(.qc[aria-pressed="true"]) #attach{margin-right:0}
+html.appd #app #composer .row .qchips{align-self:center;align-items:center;margin-left:4px;gap:6px}
+html.appd #app #composer:not(.home) #attach{order:1}
+html.appd #app #composer:not(.home) .qchips{order:2;margin-right:auto}
+html.appd #app #composer:not(.home) #micBtn{order:3}
+html.appd #app #composer:not(.home) .callb{order:4}
+html.appd #app #composer .qc[aria-pressed="true"]{height:32px;padding:0 8px 0 10px;gap:6px;border-radius:9px;
+  border:1px solid var(--line);background:var(--bg);color:var(--ink);box-shadow:0 1px 2px rgb(0 0 0 / .04);
+  font:500 13.5px/1 var(--fb);transition:border-color .15s ease,background .15s ease}
+html.appd #app #composer .qc[aria-pressed="true"] svg{width:15px;height:15px;color:var(--ink);stroke-width:2}
+html.appd #app #composer .qc[aria-pressed="true"]::after{content:"";width:14px;height:14px;flex:none;margin-left:2px;background:var(--dim);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M7 7l10 10M17 7L7 17'/%3E%3C/svg%3E") center/14px no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M7 7l10 10M17 7L7 17'/%3E%3C/svg%3E") center/14px no-repeat}
+html.appd #app #composer .qc[aria-pressed="true"]:hover{border-color:var(--hair2);background:var(--sunk)}
+html.appd #app #composer .qc[aria-pressed="true"]:hover::after{background:var(--ink)}

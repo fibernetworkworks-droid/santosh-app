@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.214"   # v0.999.214 COLLAPSED SIDEBAR IN ONE LINE (built as 0.999.213; their MAIL NEWS ONLY WHEN ASKED took 0.999.213, both kept; owner, her collapsed-sidebar screenshot: "ICON AND TEXT ARRANGEMENT ARE MESSY AND MISPLACED --- FIX THIS PERFECTLY AND MAKE IT ALINED"): the folded app-design sidebar is one column - every button a 40 px square on the rail's exact middle (were at 16 / 22 / 25 px, pushed off by the scrollbar strip), one even step, no Pinned / Recents headers or words, a dot instead of a count; each icon names itself on hover (title + aria-label); open again = unchanged. Console only (appdesign.css, v2.js, v2.html). Previous: v0.999.213 MAIL NEWS ONLY WHEN ASKED.
+APP_VERSION = "0.999.221"   # v0.999.221 THE + CARD AND ITS CHIP (owner, her + menu and the chosen Deep research chip: "MAKE THE CARD PREMIUM ... SELECTED CARD OPTIONS ... PERFECTLY ALLINED AND MUST BE LIKE HUMAN NATIVE MADE NOT A AI BLUE, PINK COMBINATION"): the + menu is a card with a soft tile per choice, one line under each, the chosen one in ink with a visible tick, the last row with an arrow; the chosen option sits right beside the + on the same line (it floated mid-bar: the + and the chip group both took the free space), in ink on paper with an x, on the home and inside a chat. Console only (appdesign.css, v2.js). Previous: v0.999.220 NO THEME IN THE PROFILE MENU.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2115,6 +2115,24 @@ def tax_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/cash")
+@app.get("/console/cash/")
+def cash_desk_page():
+    """CASH & TREASURY DESK: the Cash & Treasury employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "cashdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/credit")
+@app.get("/console/credit/")
+def credit_desk_page():
+    """CREDIT & LENDING DESK: the Credit & Lending employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "creditdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/money")
 @app.get("/console/money/")
 def money_desk_page():
@@ -2660,6 +2678,10 @@ from . import payrollchat as _payrollchat_mod                    # noqa: E402  v
 _payrollchat_mod.mount(app, current_tenant, require_key)        # /api/payroll/*
 from . import taxchat as _taxchat_mod                            # noqa: E402  v0.999.176 TAX DESK
 _taxchat_mod.mount(app, current_tenant, require_key)            # /api/tax/*
+from . import cashchat as _cashchat_mod                          # noqa: E402  CASH & TREASURY DESK
+_cashchat_mod.mount(app, current_tenant, require_key)           # /api/cash/*
+from . import creditchat as _creditchat_mod                      # noqa: E402  CREDIT & LENDING DESK
+_creditchat_mod.mount(app, current_tenant, require_key)         # /api/credit/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

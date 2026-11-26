@@ -114,7 +114,7 @@ function plusMenu(b) {
     {label: 'Use Hoola PC', sub: "Do it on Hoola's own cloud computer", icon: 'monitor', checked: on('qPc'), run: () => $('#qPc').click()}];
   if (imp && !imp.hidden) items.push({label: 'Improve my prompt', sub: 'See what Hoola understood first', icon: 'spark', run: () => imp.click()});
   items.push({sep: true}, {label: `Everything ${AV} can do`, icon: 'grid', run: () => go('kaam')});
-  HoolaMenu.open(b, items, {align: 'start', place: 'below', label: 'Add to this message', width: 280});
+  HoolaMenu.open(b, items, {align: 'start', place: 'below', label: 'Add to this message', width: 320, cls: 'plusm'});
 }
 function sessName() { const c = CH?.find(CONV), p = c?.project_id && PJ?.nameOf(c.project_id); return p ? `${p.emoji || ''} ${p.name}`.trim() : ''; }
 function drawSess() { const b = $('#sessBtn'); if (b) b.querySelector('.sl').textContent = sessName() || 'Session'; }
@@ -388,10 +388,10 @@ const IC_APP = {more: '<circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12"
   main: '<path d="M4 9.5h16v9A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5Z"/><path d="M8.5 9.5V7a3.5 3.5 0 0 1 7 0v2.5"/>'};
 function appNav() {   // v0.973 Claude's rows with Hoola's places: New chat + Search sit above, then these
   const own = ['chat', 'hire', 'kaam', 'computer', 'aaj', 'bana', 'baat', 'main', ...APP_TOOLS.map(t => t[0])];
-  // any other page the old sidebar carried (Arena for the owner, Skills, AI Apps...) keeps its row before Customize
+  // any other page the old sidebar carried (Arena for the owner, Skills, AI Apps...) keeps its row before More
   // v0.976 her ask: AI Apps + Arena hidden for now; Work + Docs and files live under More
   const more = NAV.filter(([k]) => !own.includes(k) && !APP_HIDE.includes(k));
-  return [['hire', 'AI Employees'], ['kaam', 'Tools'], ['computer', 'Computer'], ...more, ['more', 'More'], ['main', 'Customize']];
+  return [['hire', 'AI Employees'], ['kaam', 'Tools'], ['computer', 'Computer'], ...more, ['more', 'More']];   // v0.999.217 her ask: Customize lives in the profile menu now, not the sidebar
 }
 const APP_HIDE = ['aiapps', 'arena'];
 const APP_MORE = [['aaj', 'Work', 'briefcase'], ['bana', 'Docs and files', 'doc']];   // v0.976 the More menu
@@ -434,7 +434,7 @@ function go(v, arg) {
   if (v === 'computer') { location.assign('/console/computer' + (arg ? '#/' + encodeURIComponent(arg) : '')); return; }
   if (v === 'webdev') { location.assign('/console/web' + (arg ? '#/site/' + encodeURIComponent(arg) : '')); return; }   // v0.649 Web Studio = its own app
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Voice call', main:'· Account', bana: APPD ? '· Docs and files' : '· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Lab', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk', telecallerdesk:'· Telecaller', supportdesk:'· Customer Support', credits:'· Credits', cred:'· Hoola Cred', wallet:'· Hoola Wallet', deptdesk:'· Department desk', accountsdesk:'· GST & Accounts', moneydesk:'· Money Safety', booksdesk:'· Books & Accounts', payrolldesk:'· Payroll', taxdesk:'· Tax'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Voice call', main:'· Account', bana: APPD ? '· Docs and files' : '· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Lab', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk', telecallerdesk:'· Telecaller', supportdesk:'· Customer Support', credits:'· Credits', cred:'· Hoola Cred', wallet:'· Hoola Wallet', deptdesk:'· Department desk', accountsdesk:'· GST & Accounts', moneydesk:'· Money Safety', booksdesk:'· Books & Accounts', payrolldesk:'· Payroll', taxdesk:'· Tax', cashdesk:'· Cash & Treasury', creditdesk:'· Credit & Lending'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
@@ -469,6 +469,8 @@ function go(v, arg) {
   if (v === 'booksdesk') { location.assign('/console/books'); return; }   // v0.999.158 BOOKS DESK: its own section
   if (v === 'payrolldesk') { location.assign('/console/payroll'); return; }   // v0.999.169 PAYROLL DESK: its own section
   if (v === 'taxdesk') { location.assign('/console/tax'); return; }   // v0.999.176 TAX DESK: its own section
+  if (v === 'cashdesk') { location.assign('/console/cash'); return; }   // CASH & TREASURY DESK: its own section
+  if (v === 'creditdesk') { location.assign('/console/credit'); return; }   // CREDIT & LENDING DESK: its own section
   if (v === 'telecallerdesk') { location.assign('/console/telecaller'); return; }   // v0.999.67 AI TELECALLER: its own section   // v0.999.52 LEAD DESK: its own section (chat beside the screens); ?full=1 keeps the old page
   if (v === 'leadsdesk') EMP?.leads($('#leadsdesk'));   // v0.686.0 Leads Desk (the Lead Generation employee)
   if (v === 'deptdesk') DDK?.open($('#deptdesk'), arg);
@@ -502,23 +504,22 @@ $('#liveBtn').addEventListener('click', () => {
 $('#liveClose').addEventListener('click', () => $('#app').classList.remove('open'));
 // v0.285 the account button opens Claude's account menu (above it): who is signed in, Settings, Library, the theme,
 // keyboard shortcuts, Log out
-$('#model').addEventListener('click', e => {
-  if (!window.HoolaMenu) { go('main'); return; }
-  const t = TH?.theme() || 'system', setT = v => () => TH?.setTheme(v);
-  HoolaMenu.open(e.currentTarget, [
+function acctItems() {   // v0.999.215 the account button's menu; v0.999.217 Customize moved in here
+  return [   // v0.999.220 Light / Dark / System live on the Customize page only
     {header: ME.email || ME.owner || 'Signed in'},
+    {label: 'Customize', icon: 'brush', run: () => go('main')},   // v0.999.217 moved here from the sidebar
     {label: 'Settings', icon: 'settings', run: () => go('main')},
     {label: 'Credits', icon: 'spark', run: () => go('credits')},   // v0.999.26 HOOLA CREDITS
     ...(PN ? [{label: 'Library', icon: 'library', run: () => go('bana')}] : []),
     {label: 'Skills', icon: 'skills', run: () => go('skills')},   // v0.481 the Skill Desk
     {sep: true},
-    {label: 'Light', icon: 'sun', checked: t === 'light', run: setT('light')},
-    {label: 'Dark', icon: 'moon', checked: t === 'dark', run: setT('dark')},
-    {label: 'System', icon: 'monitor', checked: t === 'system', run: setT('system')},
-    {sep: true},
     {label: 'Keyboard shortcuts', icon: 'keyboard', kbd: '?', run: () => openKeys()},
     {label: 'Log out', icon: 'logout', run: () => logout()},
-  ], {align: 'start', place: 'above', width: 'anchor', cls: 'acctm', label: 'Account', keyboard: e.detail === 0});
+  ];
+}
+$('#model').addEventListener('click', e => {
+  if (!window.HoolaMenu) { go('main'); return; }
+  HoolaMenu.open(e.currentTarget, acctItems(), {align: 'start', place: 'above', width: 'anchor', cls: 'acctm', label: 'Account', keyboard: e.detail === 0});
 });
 
 /* ================= v0.240 CALM BRAND: Light / Dark / System, text size, reduce motion, live border glow ================= */

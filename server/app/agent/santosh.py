@@ -1662,6 +1662,18 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_txc.block, tenant_id)
     except Exception:
         log.exception("tax desk block failed")
+    try:   # CASH & TREASURY DESK: a turn in the Cash chat (or a call started from it) knows the desk
+        from .. import cashchat as _csc
+        if _csc.is_cash(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_csc.block, tenant_id)
+    except Exception:
+        log.exception("cash desk block failed")
+    try:   # CREDIT & LENDING DESK: a turn in the Credit chat (or a call started from it) knows the desk
+        from .. import creditchat as _crc
+        if _crc.is_credit(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_crc.block, tenant_id)
+    except Exception:
+        log.exception("credit desk block failed")
     _mark("hint")
     return state
 
@@ -2457,6 +2469,22 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "tax chat"
     except Exception:
         log.exception("tax chat admission failed")
+    try:   # CASH & TREASURY DESK: the cash tool in view in the Cash chat
+        from .. import cashchat as _csc
+        if adm is not None and _csc.is_cash(conversation_id):
+            adm.admit_families(_csc.FAMILIES)
+            for f in _csc.FAMILIES:
+                adm.why[f] = "cash chat"
+    except Exception:
+        log.exception("cash chat admission failed")
+    try:   # CREDIT & LENDING DESK: the credit tool in view in the Credit chat
+        from .. import creditchat as _crc
+        if adm is not None and _crc.is_credit(conversation_id):
+            adm.admit_families(_crc.FAMILIES)
+            for f in _crc.FAMILIES:
+                adm.why[f] = "credit chat"
+    except Exception:
+        log.exception("credit chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,
