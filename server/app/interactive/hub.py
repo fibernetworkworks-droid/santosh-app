@@ -966,6 +966,153 @@ def brain_remove(tenant: str, bid: str) -> bool:
         return True
 
 
+# ------------------------------------------------------------------ settings (v0.999.210) ---
+PREF_KINDS = ("presenter", "explainer", "reel", "product", "lesson")
+PREF_LENS = (15, 30, 45, 60, 90)
+PREF_DEFAULT: dict[str, Any] = {"lang": "auto", "voice": "", "face": "", "kind": "presenter", "len": 30, "folder": ""}
+
+
+def prefs(tenant: str, d: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Her starting choices for every new video, kept on her account (the computer and the phone start the same way)."""
+    d = d or _d(tenant)
+    raw = d.get("prefs") if isinstance(d.get("prefs"), dict) else {}
+    out = {**PREF_DEFAULT, **{k: raw[k] for k in PREF_DEFAULT if k in raw}}
+    if out["face"] and not any(a.get("id") == out["face"] for a in d.get("avatars") or []):
+        out["face"] = ""                                    # a removed face is never a default
+    if out["folder"] and not any(f.get("id") == out["folder"] for f in d.get("folders") or []):
+        out["folder"] = ""
+    return {**out, "updated": str(raw.get("updated") or ""), "saved": bool(raw)}
+
+
+def _pref_value(tenant: str, d: dict[str, Any], k: str, v: Any) -> Any:
+    """One starting choice checked, or StudioError with the reason in plain words."""
+    if k == "lang":
+        v = str(v or "").strip()
+        if v in ("", "auto"):
+            return "auto"
+        from . import voice as VO
+        c = VO.lang_ok(v)
+        if not c:
+            raise S.StudioError("Hoola does not know that language.")
+        return c
+    if k == "voice":
+        v = str(v or "").strip()[:60]
+        if v:
+            from . import voice as VO
+            try:
+                VO.voice_info(tenant, v)
+            except Exception as e:  # noqa: BLE001
+                raise S.StudioError(str(e) or "That voice is not in your list.")
+        return v
+    if k == "face":
+        v = str(v or "").strip()
+        if v and not any(a.get("id") == v for a in d.get("avatars") or []):
+            raise S.StudioError("That face is not in your Avatars.")
+        return v
+    if k == "kind":
+        if v not in PREF_KINDS:
+            raise S.StudioError("Pick a kind of video.")
+        return v
+    if k == "len":
+        try:
+            n = int(v)
+        except (TypeError, ValueError):
+            n = 0
+        if n not in PREF_LENS:
+            raise S.StudioError("Pick 15, 30, 45, 60 or 90 seconds.")
+        return n
+    if k == "folder":
+        v = str(v or "").strip()
+        if v and not any(f.get("id") == v for f in d.get("folders") or []):
+            raise S.StudioError("That folder is not in Projects.")
+        return v
+    raise S.StudioError("Unknown setting.")
+
+
+def prefs_save(tenant: str, body: dict[str, Any]) -> dict[str, Any]:
+    """Saves each choice that checks out; the others come back in `refused` with the reason (nothing half-saved silently)."""
+    with S._LOCK:
+        d = _d(tenant)
+        cur = {**PREF_DEFAULT, **{k: v for k, v in (d.get("prefs") or {}).items() if k in PREF_DEFAULT}}
+        refused = []
+        for k in PREF_DEFAULT:
+            if k in (body or {}):
+                try:
+                    cur[k] = _pref_value(tenant, d, k, body[k])
+                except S.StudioError as e:
+                    refused.append({"key": k, "why": str(e)})
+        cur["updated"] = S._now_iso()
+        d["prefs"] = cur
+        S._store(tenant, d)
+        return {"prefs": prefs(tenant, d), "refused": refused}
+
+
+def prefs_reset(tenant: str) -> dict[str, Any]:
+    with S._LOCK:
+        d = _d(tenant)
+        d["prefs"] = {**PREF_DEFAULT, "updated": S._now_iso()}
+        S._store(tenant, d)
+        return prefs(tenant, d)
+
+
+def _month_before(month: str) -> str:
+    y, m = (int(x) for x in month.split("-"))
+    return f"{y - 1}-12" if m == 1 else f"{y}-{m - 1:02d}"
+
+
+def settings_view(tenant: str) -> dict[str, Any]:
+    """Everything the Settings page shows, from her real data and this server's real state."""
+    from . import apps as AP
+    from . import engines as EN
+    from . import live as LV
+    with S._LOCK:
+        d = _d(tenant)
+        if _purge(tenant, d):
+            S._store(tenant, d)
+        d = copy.deepcopy(d)
+    u = usage(tenant, d)
+    before = _month_before(u["month"])
+    u["videos_before"] = len([p for p in d["projects"] + d["trash"] if p.get("video") and str(p["video"].get("made") or "").startswith(before)])
+    try:
+        u["apps_videos"] = int(AP.view(tenant).get("month", {}).get("videos") or 0)
+    except Exception:   # noqa: BLE001
+        u["apps_videos"] = 0
+    now = time.time()
+    trash_rows = [{"id": p["id"], "title": p.get("title") or "Untitled",
+                   "days_left": max(0, int(-(-(TRASH_DAYS * 86400 - (now - float(p.get("trashed_ts") or now))) // 86400)))}
+                  for p in d["trash"]]
+    try:
+        agents = len(LV.agents(tenant).get("agents") or [])
+    except Exception:   # noqa: BLE001
+        agents = 0
+    ev = EN.view(tenant)
+    faces = [e for e in ev["engines"] if e["job"] == "video" and e.get("face")]
+    ready_faces = [e for e in faces if e["ready"]]
+    st = status()
+    caps = [
+        {"id": "draw", "title": "Drawing the video", "what": "Scenes, words on screen and pictures are drawn into an MP4.",
+         "ok": bool(st["draw"]), "state": "Ready" if st["draw"] else "Not installed"},
+        {"id": "voice", "title": "Hoola voices", "what": "Speech in 140 languages for every video.",
+         "ok": bool(st["vocal"]), "state": "Ready" if st["vocal"] else "Not connected"},
+        {"id": "faces", "title": "Talking faces", "what": f"A face engine makes a face speak: {len(ready_faces)} of {len(faces)} engines connected.",
+         "ok": bool(ready_faces), "state": f"{len(ready_faces)} engine{'' if len(ready_faces) == 1 else 's'}" if ready_faces else "None yet"},
+        {"id": "captions", "title": "Captions from speech", "what": "Words timed to the voice, for subtitles.",
+         "ok": bool(st["whisper"]), "state": "Ready" if st["whisper"] else "Not installed"},
+        {"id": "lab", "title": "Own GPU lab", "what": "Hoola's own voice and face models on its own GPU.",
+         "ok": bool(st["lab"]), "state": "Connected" if st["lab"] else "Off"},
+        {"id": "busy", "title": "A video being made now", "what": "Videos are made one at a time on this server.",
+         "ok": not st["busy"], "state": "Busy" if st["busy"] else "Free"},
+    ]
+    limits = [{"k": "Finished videos kept", "v": S.MAX_VIDEOS}, {"k": "Days in Trash", "v": TRASH_DAYS},
+              {"k": "Names in one batch", "v": MAX_BATCH}, {"k": "App keys", "v": AP.MAX_KEYS},
+              {"k": "Calls an hour per app key", "v": AP.RATE_HOUR}, {"k": "Webhooks", "v": AP.MAX_HOOKS}]
+    return {"prefs": prefs(tenant, d), "usage": u, "checked": S._now_iso(),
+            "kept": {"stored": u["stored"], "max": S.MAX_VIDEOS, "trash": trash_rows, "trash_days": TRASH_DAYS,
+                     "things": [{"k": "Faces", "v": len(d.get("avatars") or [])}, {"k": "Your templates", "v": len(d.get("templates") or [])},
+                                {"k": "Folders", "v": len(d.get("folders") or [])}, {"k": "Live agents", "v": agents}]},
+            "server": {"caps": caps, "limits": limits}}
+
+
 # ------------------------------------------------------------------ usage + status ---
 def usage(tenant: str, d: dict[str, Any] | None = None) -> dict[str, Any]:
     d = d or _d(tenant)
@@ -978,7 +1125,8 @@ def usage(tenant: str, d: dict[str, Any] | None = None) -> dict[str, Any]:
     return {"month": month, "videos": len(rows), "minutes": round(secs / 60, 1),
             "credits": sum(int((p.get("video") or {}).get("credits") or 0) for p in rows),
             "by_language": [{"lang": S.lang_label(k), "minutes": round(v / 60, 1)} for k, v in sorted(by.items(), key=lambda kv: -kv[1])],
-            "recent": [{"title": p["title"], "made": p["video"].get("made"), "seconds": round(float(p["video"].get("duration") or 0))}
+            "recent": [{"title": p["title"], "made": p["video"].get("made"), "seconds": round(float(p["video"].get("duration") or 0)),
+                        "credits": int(p["video"].get("credits") or 0), "lang": S.lang_label(p.get("lang") or "")}
                        for p in sorted(rows, key=lambda p: str(p["video"].get("made")), reverse=True)[:8]],
             "stored": len([p for p in d["projects"] if p.get("video")]), "kept_max": S.MAX_VIDEOS}
 
@@ -1000,7 +1148,7 @@ def overview(tenant: str) -> dict[str, Any]:
             S._store(tenant, d)
     return {"projects": d["projects"], "avatars": d["avatars"], "running": S.running_for(tenant), "brand": _brand(d["brand"]),
             "glossary": d["glossary"], "templates": templates(tenant), "trash": d["trash"], "brains": d["brains"], "folders": d["folders"],
-            "usage": usage(tenant, d), "status": status(), "limits": {"batch": MAX_BATCH, "trash_days": TRASH_DAYS}}
+            "usage": usage(tenant, d), "status": status(), "prefs": prefs(tenant, d), "limits": {"batch": MAX_BATCH, "trash_days": TRASH_DAYS}}
 
 
 # ------------------------------------------------------------------ apps (v0.999.175) ---

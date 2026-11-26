@@ -52,6 +52,25 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         ov = await asyncio.to_thread(H.overview, tenant)
         return {**ov, "engines": EN.view(tenant), "live": LV.agents(tenant), "apps": AP.view(tenant)}
 
+    @r.get("/settings")
+    async def settings(tenant: str = Depends(current_tenant)):
+        """v0.999.210 the Settings page: her starting choices, this month, what is kept, what this server can do."""
+        _on()
+        from . import hub as H
+        return await asyncio.to_thread(H.settings_view, tenant)
+
+    @r.put("/settings")
+    def settings_save(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        _on()
+        from . import hub as H
+        return _wrap(H.prefs_save, tenant, body or {})
+
+    @r.post("/settings/reset")
+    def settings_reset(tenant: str = Depends(current_tenant)):
+        _on()
+        from . import hub as H
+        return {"prefs": _wrap(H.prefs_reset, tenant)}
+
     @r.get("/engines")
     async def engines(tenant: str = Depends(current_tenant)):
         _on()

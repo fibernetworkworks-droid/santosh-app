@@ -23,6 +23,17 @@ window.HoolaInteractive = function (ctx) {
   const toast = (m, bad) => ctx.toast(scrub(m), bad);
   const SET = Object.assign({lang: 'auto', face: '', voice: '', engine: '', shape: 'talking_head', kind: 'presenter', len: 30}, store.get('hx.set', {}));
   if (SET.lang === 'hi' && !store.get('hx.langv2', false)) { SET.lang = 'auto'; store.set('hx.langv2', true); store.set('hx.set', SET); }   // v0.999.172 the old India default becomes Auto
+  // v0.999.210 her starting choices live on her account too: every change goes to the server (quietly), so the computer and the phone start the same way
+  const PREFK = ['lang', 'voice', 'face', 'kind', 'len'];
+  let prefT = 0;
+  function persist() { store.set('hx.set', SET); clearTimeout(prefT); prefT = setTimeout(() => prefPush().catch(() => {}), 700); }
+  function prefPush(body) { return api('PUT', `/api/interactive/x/settings`, body || Object.fromEntries(PREFK.map(k => [k, SET[k]]))); }
+  function prefApply(p) {
+    if (!p) return;
+    if (!p.saved) { prefPush().catch(() => {}); return; }          // first time on the server: this browser's choices become hers
+    PREFK.forEach(k => { if (p[k] !== undefined) SET[k] = p[k]; }); SET.folder = p.folder || '';
+    SET.shape = SET.kind === 'reel' ? 'reel' : SET.kind === 'product' ? 'product' : 'talking_head'; store.set('hx.set', SET);
+  }
   const C = {conv: '', title: '', rows: [], items: [], ask: '', files: [], sending: false, waitUntil: 0, t: 0, gen: 0};
   const UI = {slim: store.get('hx.slim', false), nav: false, etab: 'video', ptab: 'Videos', scene: 0, tool: 'Scene', lf: 'all', lq: '', ls: store.get('hx.lsort', 'new'), lv: store.get('hx.lview', 'grid'), edv: 'video', edp: false, edt: 0, jp: {}, q: null, cmp: null, V: null, L: null,
     live: '', liveOut: [], pub: null, broll: {prompt: '', seconds: 6, aspect: '16:9', q: null}, jobs: {},
@@ -92,7 +103,7 @@ window.HoolaInteractive = function (ctx) {
 
   // ------------------------------------------------------------------ data ---
   async function load() {
-    try { D = await api('GET', `${X}/home`); }
+    try { D = await api('GET', `${X}/home`); prefApply(D.prefs); }
     catch (e) { D = D || {projects: [], avatars: [], engines: {engines: [], defaults: {}}, live: {agents: [], broll: [], faces: []}, apps: {keys: [], hooks: []}, usage: {}, templates: [], glossary: [], brand: {}, trash: []};
       toast(e.message, true); }
   }
@@ -475,7 +486,7 @@ window.HoolaInteractive = function (ctx) {
       catch (e) { C.files.splice(C.files.indexOf(row), 1); toast(e.message, true); }
       const t2 = $('#hxTray'); if (t2) t2.innerHTML = tray();
     }
-    if (kind) { SET.kind = kind; store.set('hx.set', SET); }
+    if (kind) { SET.kind = kind; persist(); }
     if (ask && !C.ask.trim()) { C.ask = ask; const t = $('#hxAsk'); if (t) t.value = ask; }
     if ($('.hx-hero')) draw(); $('.hx-send')?.classList.toggle('on', !!C.ask.trim()); $('#hxAsk')?.focus();
   }
@@ -486,7 +497,7 @@ window.HoolaInteractive = function (ctx) {
   function fromWeb() {
     const u = (prompt('Paste the address of the web page') || '').trim(); if (!u) return;
     if (!/^https?:\/\/\S+\.\S+/i.test(u)) return toast('Paste a full web address that starts with https://', true);
-    SET.kind = 'product'; store.set('hx.set', SET); C.ask = `Make a product video from this page: ${u}`; draw(); $('#hxAsk')?.focus(); $('.hx-send')?.classList.add('on');
+    SET.kind = 'product'; persist(); C.ask = `Make a product video from this page: ${u}`; draw(); $('#hxAsk')?.focus(); $('.hx-send')?.classList.add('on');
   }
   function toDubbing() { window.__hvPage = 'dub'; leave(); return ctx.go ? ctx.go('vocal') : back?.(); }
   async function chatSend(textIn) {
@@ -1018,7 +1029,7 @@ window.HoolaInteractive = function (ctx) {
     let w = $('#hxDlg');
     if (!UI.dlg) { if (w) w.remove(); return; }
     if (!w) { w = document.createElement('div'); w.id = 'hxDlg'; w.className = 'hx-dlgw'; ROOT.appendChild(w); }
-    w.innerHTML = `<div class="hx-dlgs" data-a="dlgx" aria-hidden="true"></div>${({save: svBody, pick: pickBody, need: needBody, pjfolder: pjFolderBody, voput: voPutBody, lvweb: lvWebBody, lvlearn: lvLearnBody, avphoto: avPhBody, avai: avAiBody, avtwin: avTwinBody, avren: avRenBody, eng: enOneBody, dvnew: dvNewBody, dvkey: dvKeyBody, dvren: dvRenBody, dvdel: dvDelBody, dvhook: dvHookBody, dvsecret: dvSecretBody, brkit: brKitBody, brlogodel: brLogoDelBody}[UI.dlg.k] || shBody)()}`;
+    w.innerHTML = `<div class="hx-dlgs" data-a="dlgx" aria-hidden="true"></div>${({save: svBody, pick: pickBody, need: needBody, pjfolder: pjFolderBody, voput: voPutBody, lvweb: lvWebBody, lvlearn: lvLearnBody, avphoto: avPhBody, avai: avAiBody, avtwin: avTwinBody, avren: avRenBody, eng: enOneBody, dvnew: dvNewBody, dvkey: dvKeyBody, dvren: dvRenBody, dvdel: dvDelBody, stempty: stEmptyBody, dvhook: dvHookBody, dvsecret: dvSecretBody, brkit: brKitBody, brlogodel: brLogoDelBody}[UI.dlg.k] || shBody)()}`;
     const f = w.querySelector('[data-auto]'); if (f && !w.contains(document.activeElement)) f.focus();
     fillMedia();
   }
@@ -1804,6 +1815,102 @@ window.HoolaInteractive = function (ctx) {
   }
   function lvSet(k, v) { const a = lvDraft(); a[k] = v; UI.ldDirty = true; }
 
+  // ---- settings (v0.999.210: starting choices on her account, usage, kept + trash, this server) ----
+  const STTABS = [['new', 'New videos'], ['usage', 'Usage'], ['kept', 'Kept & trash'], ['server', 'This server']];
+  const stS = () => (UI.st ||= {tab: 'new', v: null, est: null});
+  async function stLoad() {
+    const s = stS();
+    try { s.v = await api('GET', `${X}/settings`); prefApply(s.v.prefs); s.err = ''; } catch (e) { s.err = e.message; }
+    if (PAGE === 'settings') draw(); stEstimate();
+  }
+  async function stEstimate() {
+    const s = stS();
+    try { s.est = await api('GET', `${X}/estimate?engine=${q(defEngine())}&seconds=${SET.len || 30}&voice=${q(SET.voice || '')}`); } catch { s.est = null; }
+    const el = $('#hxStEst'); if (el) el.innerHTML = stEstLine();
+  }
+  const stEstLine = () => { const e = stS().est; return e ? `A video like this costs about <b>${esc(cr(e.credits))}</b> · you see the exact price before it is made` : 'You see the exact price before anything is made.'; };
+  const stLen = n => n < 60 ? `${n} seconds` : n === 60 ? '1 minute' : '1.5 minutes';
+  const stFolder = id => (D.folders || []).find(f => f.id === id);
+  const stEng = () => (D.engines?.engines || []).find(e => e.id === defEngine());
+  async function stSave(body, said) {
+    try { const r = await api('PUT', `${X}/settings`, body); prefApply(r.prefs); if (stS().v) stS().v.prefs = r.prefs;
+      if ((r.refused || []).length) toast(r.refused[0].why, true); else if (said) toast(said);
+    } catch (e) { toast(e.message, true); }
+    draw(); stEstimate();
+  }
+  function stField(label, val, sub, act, k) {
+    return `<div class="hx-fld"><span class="hx-lab">${esc(label)}</span><button type="button" class="hx-dd" data-a="${act}" data-k="${k}" aria-haspopup="menu"><span>${esc(val)}</span>${ic('down', 14)}</button><span class="hx-stsub">${esc(sub)}</span></div>`;
+  }
+  function stNew() {
+    const f = face(SET.face), e = stEng(), fo = stFolder(SET.folder), b = D.brand || {}, p = stS().v?.prefs || {};
+    const kind = KIND_NAME[SET.kind] || 'Talking presenter', ratio = SET.kind === 'reel' ? 'tall 9:16' : 'wide 16:9';
+    const card = b.closing || b.name ? 'Your Brand kit card' : 'No closing card yet';
+    const look = `${kind}, ${ratio}, about ${stLen(SET.len || 30)}${f ? `, ${f.name}'s face` : ', no face'}, ${voiceName(SET.voice)} voice, ${SET.lang && SET.lang !== 'auto' ? `in ${langName(SET.lang)}` : 'in the language you write in'}${e ? `, made by ${e.label}` : ''}.`;
+    return `<div class="hx-stgrid"><section class="hx-card hx-stcard"><div class="hx-strow"><b class="hx-t hx-growf">Every new video starts with</b><span class="hx-sm hx-mut">You can change any of these in the chat, per video</span></div>
+      <div class="hx-stfields">${stField('Language', langName(SET.lang || 'auto'), 'Any of the 140 languages; Auto follows your words', 'stpick', 'lang')}
+        ${stField('Voice', voiceName(SET.voice), 'From Voices; play it there first', 'stpick', 'voice')}
+        ${stField('Face', f ? f.name : 'No face', f ? 'Consent on record' : 'Words, pictures and voice only', 'stpick', 'face')}
+        ${stField('Face engine', e ? e.label : 'Hoola picks', 'The same default as on Engines', 'stpick', 'engine')}
+        ${stField('Folder', fo ? fo.name : 'No folder', 'New videos land here in Projects', 'stpick', 'folder')}
+        <div class="hx-fld"><span class="hx-lab">Closing card</span><button type="button" class="hx-dd" data-a="go" data-p="brand"><span>${esc(card)}</span>${ic('fwd', 14)}</button><span class="hx-stsub">Set on Brand: line, logo, QR</span></div></div>
+      <div class="hx-fld"><span class="hx-lab">Kind of video</span>${dvSeg(SET.kind || 'presenter', 'stkind', KINDS.filter(k => k[0] !== 'translate').map(k => [k[0], k[1]]))}</div>
+      <div class="hx-fld"><span class="hx-lab">About how long</span>${dvSeg(String(SET.len || 30), 'stlen', LENS.map(n => [String(n), n < 60 ? `${n} s` : n === 60 ? '1 min' : '1.5 min']))}</div>
+      <div class="hx-strow hx-stfoot"><span class="hx-sm hx-mut hx-growf">${p.updated ? `Saved to your account ${esc(ago(p.updated))}` : 'Saved to your account'}</span><button type="button" class="hx-btn s" data-a="streset">Back to Hoola's starting choices</button></div></section>
+      <section class="hx-stside"><div class="hx-stprev"><div class="hx-stpic${SET.kind === 'reel' ? ' tall' : ''}">${f ? `<img data-av="${esc(f.id)}" alt="">` : ''}<span>${esc(b.name || kind)}</span></div>
+        <div class="hx-stpv"><b>How your next video will look</b><span class="hx-sm hx-mut">${esc(look)}</span><span class="hx-sm hx-mut" id="hxStEst">${stEstLine()}</span></div></div>
+        <div class="hx-card hx-stcard"><b class="hx-t">Where this also changes</b>${[['avatars', 'Faces', 'Make a face the default on Avatars'], ['engines', 'Engines', 'Your default engine for each job'], ['brand', 'Brand', 'Name on screen, colour, closing card']].map(([pg, t, d]) =>
+          `<button type="button" class="hx-stlink" data-a="go" data-p="${pg}"><span class="hx-growf"><b>${t}</b><span class="hx-sm hx-mut">${d}</span></span>${ic('fwd', 14)}</button>`).join('')}</div></section></div>`;
+  }
+  function stUsage() {
+    const u = stS().v?.usage || D.usage || {}, langs = u.by_language || [], top = Math.max(0.1, ...langs.map(l => l.minutes || 0));
+    const diff = (u.videos || 0) - (u.videos_before || 0);
+    const stats = [['Videos this month', num(u.videos || 0), diff === 0 ? 'the same as last month' : `${num(Math.abs(diff))} ${diff > 0 ? 'more' : 'fewer'} than last month`],
+      ['Minutes', num(u.minutes || 0), 'finished videos only'], ['Credits spent', num(u.credits || 0), 'drafts and samples are free'], ['Made by your apps', num(u.apps_videos || 0), 'through your app keys']];
+    return `<div class="hx-dvstats">${stats.map(([k, v, d]) => `<div class="hx-dvstat"><span class="hx-lab">${k}</span><b class="hx-num">${v}</b><small>${esc(d)}</small></div>`).join('')}</div>
+      <div class="hx-stgrid u"><section class="hx-card hx-stcard"><b class="hx-t">Minutes by language</b>${langs.length ? langs.map(l => `<div class="hx-stbar"><div class="hx-strow"><span class="hx-growf">${esc(l.lang)}</span><b class="hx-num">${num(l.minutes)} min</b></div>
+          <span class="hx-dvbar" role="meter" aria-label="${esc(l.lang)} minutes" aria-valuemin="0" aria-valuemax="${top}" aria-valuenow="${l.minutes}"><i style="width:${Math.round((l.minutes || 0) / top * 100)}%"></i></span></div>`).join('') : '<p class="hx-mut hx-sm">No finished videos this month yet.</p>'}</section>
+        <section class="hx-card hx-stcard"><b class="hx-t">Videos made this month</b>${(u.recent || []).length ? `<div class="hx-sttab"><span>Video</span><span>Length</span><span>Credits</span></div>${u.recent.map(r => `<div class="hx-sttab"><span><b>${esc(r.title)}</b><small>${esc(ago(r.made))}${r.lang ? ` · ${esc(r.lang)}` : ''}</small></span><span class="hx-num">${Math.floor((r.seconds || 0) / 60)}:${String((r.seconds || 0) % 60).padStart(2, '0')}</span><span class="hx-num">${num(r.credits || 0)}</span></div>`).join('')}` : '<p class="hx-mut hx-sm">Nothing made yet this month. Drafts and samples are free and do not count.</p>'}</section></div>`;
+  }
+  function stKept() {
+    const k = stS().v?.kept || {stored: D.usage?.stored || 0, max: D.usage?.kept_max || 40, trash: [], trash_days: 30, things: []}, pct = Math.min(100, Math.round(k.stored / Math.max(1, k.max) * 100));
+    return `<div class="hx-stgrid k"><section class="hx-card hx-stcard"><b class="hx-t">Finished videos kept for you</b><div class="hx-stbig"><b class="hx-num">${num(k.stored)}</b><span class="hx-mut">of ${num(k.max)}</span></div>
+        <span class="hx-dvbar big" role="meter" aria-label="Places used" aria-valuemin="0" aria-valuemax="${k.max}" aria-valuenow="${k.stored}"><i style="width:${pct}%"></i></span>
+        <p class="hx-sm hx-mut">When all ${num(k.max)} places are full, a new video cannot be made until you download and remove an old one. Hoola never removes a finished video by itself.</p>
+        <div class="hx-strow"><button type="button" class="hx-btn s" data-a="go" data-p="projects">Open Projects</button></div></section>
+      <section class="hx-card hx-stcard"><b class="hx-t">Trash</b><div class="hx-stbig"><b class="hx-num">${num(k.trash.length)}</b><span class="hx-mut">video${k.trash.length === 1 ? '' : 's'}</span></div>
+        <p class="hx-sm hx-mut">A video you remove waits here for ${num(k.trash_days)} days, then it is deleted for good. Bring it back any time before then.</p>
+        ${k.trash.slice(0, 8).map(t => `<div class="hx-strow hx-sttr"><b class="hx-growf">${esc(t.title)}</b><span class="hx-sm hx-mut">${num(t.days_left)} day${t.days_left === 1 ? '' : 's'} left</span><button type="button" class="hx-btn s" data-a="strestore" data-id="${esc(t.id)}">Bring back</button></div>`).join('')}
+        ${k.trash.length > 8 ? `<button type="button" class="hx-btn s" data-a="go" data-p="projects">See all ${num(k.trash.length)} in Projects</button>` : ''}
+        ${k.trash.length ? `<div class="hx-strow"><span class="hx-grow"></span><button type="button" class="hx-btn s danger" data-a="stemptyask">Delete all now</button></div>` : ''}</section></div>
+      <section class="hx-card hx-stcard"><b class="hx-t">Your other things</b><div class="hx-stthings">${(k.things || []).map(t => `<div><b class="hx-num">${num(t.v)}</b><span class="hx-sm hx-mut">${esc(t.k)}</span></div>`).join('')}</div></section>`;
+  }
+  function stServer() {
+    const v = stS().v?.server || {caps: [], limits: []};
+    return `<div class="hx-stgrid"><section class="hx-card hx-stcard"><div class="hx-strow"><b class="hx-t hx-growf">What this server can do right now</b><span class="hx-sm hx-mut">Checked ${esc(ago(stS().v?.checked))}</span><button type="button" class="hx-btn s" data-a="stcheck">Check again</button></div>
+        ${v.caps.map(c => `<div class="hx-stcap"><span class="hx-stdot${c.ok ? ' on' : ''}" aria-hidden="true"></span><span class="hx-growf"><b>${esc(c.title)}</b><span class="hx-sm hx-mut">${esc(scrub(c.what))}</span></span><span class="hx-sttag${c.ok ? ' on' : ''}">${esc(c.state)}</span></div>`).join('')}</section>
+      <section class="hx-card hx-stcard"><b class="hx-t">Limits</b>${v.limits.map(l => `<div class="hx-strow hx-stlim"><span class="hx-growf">${esc(l.k)}</span><b class="hx-num">${num(l.v)}</b></div>`).join('')}
+        <p class="hx-sm hx-mut">Something not connected? The person who runs your Hoola server adds it there. Nothing on this page asks you for a key.</p></section></div>`;
+  }
+  function stPage() {
+    const s = stS(), body = {new: stNew, usage: stUsage, kept: stKept, server: stServer}[s.tab] || stNew;
+    return `<div class="hx-doc hx-stpage"><div class="hx-dvhead"><div class="hx-growf"><h2 class="hx-serif">Settings</h2>
+        <p class="hx-mut">How every new video starts, what you used this month, what is kept for you, and what this server can do.</p></div>
+        <span class="hx-stsaved">${ic('check', 14)}Saved to your account · follows you to the phone</span></div>
+      ${dvSeg(s.tab, 'sttab', STTABS)}${s.err ? `<p class="hx-why">${esc(s.err)}</p>` : ''}${body()}</div>`;
+  }
+  function stEmptyBody() {
+    const n = stS().v?.kept?.trash?.length || 0;
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT">${dvHead(`Delete the ${num(n)} video${n === 1 ? '' : 's'} in Trash now?`)}
+      <div class="hx-dlgb"><p>They are gone for good and cannot be brought back. Your faces, voices and templates stay.</p></div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx" data-auto="1">Keep them</button><button type="button" class="hx-btn danger" data-a="stempty">Delete for good</button></div></div>`;
+  }
+  function stPickMenu(el, k) {
+    if (k === 'engine') return menu(el, (D.engines?.engines || []).filter(e => e.job === 'video').map(e => ({label: e.label, sub: e.ready ? e.price : 'Not connected', disabled: !e.ready, checked: defEngine() === e.id,
+      run: async () => { try { await api('PUT', `${X}/engines/default`, {id: e.id}); SET.engine = ''; persist(); await load(); toast(`New videos are made by ${e.label}.`); } catch (er) { toast(er.message, true); } draw(); stEstimate(); }})), {width: 300});
+    if (k === 'folder') return menu(el, [{label: 'No folder', checked: !SET.folder, run: () => stSave({folder: ''}, 'New videos land outside folders.')},
+      ...(D.folders || []).map(f => ({label: f.name, checked: SET.folder === f.id, run: () => stSave({folder: f.id}, `New videos land in ${f.name}.`)})), {sep: true}, {label: 'Make a folder', icon: 'plus', run: () => go('projects')}]);
+    return pickMenu(el, k, v => { SET[k] = v; stSave({[k]: v}); });
+  }
   // ---- developers (v0.999.209 DEVELOPERS, REDESIGNED: what her apps did, the four steps, keys with their hourly limit,
   //      webhooks with their recent deliveries, a key shown once with a first call, the API with real requests)
   const dvS = () => UI.dv || (UI.dv = {tab: 'over', door: 2, lang: 'curl'});
@@ -2287,17 +2394,7 @@ window.HoolaInteractive = function (ctx) {
     brand() { return brPage(); },
     engines() { return enPage(); },
     developers() { return dvPage(); },
-    settings() {
-      const st = D.status || {}, u = D.usage || {};
-      return `<div class="hx-doc"><h2 class="hx-serif">Settings</h2>
-        <div class="hx-card hx-form tight"><b class="hx-t">For new videos</b>
-          <div class="hx-row2"><div class="hx-fld"><span class="hx-lab">Language</span><button type="button" class="hx-dd" data-a="pick" data-k="lang"><span>${esc(langName(SET.lang))}</span>${ic('down', 14)}</button></div>
-          <div class="hx-fld"><span class="hx-lab">Voice</span><button type="button" class="hx-dd" data-a="pick" data-k="voice"><span>${esc(voiceName(SET.voice))}</span>${ic('down', 14)}</button></div>
-          <div class="hx-fld"><span class="hx-lab">Shape</span><button type="button" class="hx-dd" data-a="pick" data-k="shape"><span>${esc(SHAPE[SET.shape])}</span>${ic('down', 14)}</button></div></div></div>
-        <div class="hx-card"><b class="hx-t">This month</b><dl class="hx-dl"><dt>Videos</dt><dd class="hx-num">${num(u.videos)}</dd><dt>Minutes</dt><dd class="hx-num">${num(u.minutes)}</dd><dt>Kept</dt><dd class="hx-num">${num(u.stored)} of ${num(u.kept_max)}</dd></dl></div>
-        <div class="hx-card"><b class="hx-t">On this server</b><dl class="hx-dl"><dt>Drawing videos</dt><dd>${st.draw ? 'Ready' : 'Not installed'}</dd><dt>Hoola voices</dt><dd>${st.vocal ? 'Ready' : 'Not connected'}</dd>
-          <dt>GPU lab</dt><dd>${st.lab ? 'Connected' : 'Off'}</dd></dl></div></div>`;
-    },
+    settings() { return stPage(); },
   };
   const ENTER = {
     chat() { (C.conv ? Promise.resolve() : openChat()).then(chatLoad).then(() => { if (PAGE !== 'chat') return; if ($('.hx-hero') && !fresh()) draw(); else paintChat(); chatPoll(); }); estimate(); },
@@ -2307,6 +2404,7 @@ window.HoolaInteractive = function (ctx) {
     studio() { if (ARG) { const p = cur(); if (!p) return; if (p.status === 'making') watchJob(ARG); studioQuote(); if (UI.tool === 'Engine') edCompare(); }
       else (D.projects || []).filter(p => p.status === 'making').forEach(p => watchJob(p.id)); },
     developers() { dvReload(); },
+    settings() { stLoad(); },
     engines() { enPrices(UI.etab); if (UI.etab === 'broll') brQuote(); },
     brand() { UI.brd = null; Promise.all([brLoad(), langsLoad()]).then(() => { if (PAGE !== 'brand') return; draw(); }); },
   };
@@ -2346,7 +2444,7 @@ window.HoolaInteractive = function (ctx) {
     if (k === 'lang') return menu(el, [{search: 'Find a language', empty: 'No language matches'}, ...(item ? [] : [{label: 'Auto', sub: 'Matches the language you write in', checked: !SET.lang || SET.lang === 'auto', run: cbs('auto')}]), ...(UI.L || []).map(l => ({label: l.native && l.native !== l.name ? `${l.name} · ${l.native}` : l.name, sub: l.region, run: cbs(l.code)}))], {width: 280});
     if (k === 'shape') return menu(el, Object.entries(SHAPE).map(([s, n]) => ({label: n, checked: SET.shape === s, run: cbs(s)})));
   }
-  function setPick(k, v) { SET[k] = v; store.set('hx.set', SET); if (PAGE === 'chat') refreshBar(); else draw(); }
+  function setPick(k, v) { SET[k] = v; persist(); if (PAGE === 'chat') refreshBar(); else draw(); }
 
   // ------------------------------------------------------------------ clicks ---
   async function onClick(e) {
@@ -2362,7 +2460,7 @@ window.HoolaInteractive = function (ctx) {
       case 'openchat': clearTimeout(C.t); C.gen++; C.conv = id; C.rows = []; C.items = []; UI.pv.id = ''; pvStop(); await chatLoad(); return go('chat');
       case 'credits': leave(); location.assign('/console/?v=credits'); return;
       case 'kind': if (b.dataset.val === 'translate') return toDubbing();
-        SET.kind = b.dataset.val; SET.shape = shapeOf(SET.kind); if (SET.kind === 'reel' && (SET.len || 30) > 30) SET.len = 15; store.set('hx.set', SET); estimate(); return draw();
+        SET.kind = b.dataset.val; SET.shape = shapeOf(SET.kind); if (SET.kind === 'reel' && (SET.len || 30) > 30) SET.len = 15; persist(); estimate(); return draw();
       case 'ideag': UI.ideaG = b.dataset.val; return draw();
       case 'from': { const v = b.dataset.val;
         if (v === 'doc') return pickFiles('.pdf,.doc,.docx,.txt,.md,.rtf,.odt', 'explainer', 'Make an explainer video from this document.');
@@ -2393,7 +2491,7 @@ window.HoolaInteractive = function (ctx) {
       case 'chats': { let list = []; try { list = (await api('GET', `${C0}/chats`)).chats || []; } catch (er) { return toast(er.message, true); }
         return menu(b, list.length ? list.map(c => ({label: c.title, sub: ago(c.at), run: async () => { clearTimeout(C.t); C.gen++; C.conv = c.id; C.title = c.title; C.rows = []; C.items = []; await chatLoad(); go('chat'); }})) : [{note: 'No earlier chats yet.'}], {align: 'end', width: 300}); }
       case 'send': return chatSend();
-      case 'idea': { const [t, l, k] = IDEAS[UI.ideaG || 'business'][+b.dataset.n]; C.ask = t; SET.lang = l; SET.kind = k; SET.shape = shapeOf(k); store.set('hx.set', SET);
+      case 'idea': { const [t, l, k] = IDEAS[UI.ideaG || 'business'][+b.dataset.n]; C.ask = t; SET.lang = l; SET.kind = k; SET.shape = shapeOf(k); persist();
         draw(); const ta = $('#hxAsk'); if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } return; }
       case 'pick': return pickMenu(b, b.dataset.k, v => setPick(b.dataset.k, v));
       case 'make': return make(id, b.dataset.k);
@@ -2626,14 +2724,23 @@ window.HoolaInteractive = function (ctx) {
       case 'ensort': { const st = enS(), set = v => { st.sort = v; store.set('hx.ensort', v); draw(); };
         return menu(b, [['price', 'Lowest price'], ['quality', 'Best quality'], ['ready', 'Ready first']].map(([v, l]) => ({label: l, checked: st.sort === v, run: () => set(v)})), {width: 220}); }
       case 'enone': return enOpen(id);
-      case 'enuse': SET.engine = id; store.set('hx.set', SET); dlgClose(); return go('chat');
+      case 'enuse': SET.engine = id; persist(); dlgClose(); return go('chat');
       case 'enmkshot': dlgClose(); UI.etab = 'broll'; draw(); brQuote(); return setTimeout(() => $('#hxBr')?.focus(), 50);
-      case 'edef': try { await api('PUT', `${X}/engines/default`, {id}); await load(); if (D.engines.engines.find(x => x.id === id)?.job === 'video') { SET.engine = ''; store.set('hx.set', SET); } draw(); if (UI.dlg?.k === 'eng') { const r = enS().one?.r; if (r) r.engine = enAll().find(x => x.id === id) || r.engine; dlgPaint(); } toast('Default engine changed.'); } catch (er) { toast(er.message, true); } return;
+      case 'edef': try { await api('PUT', `${X}/engines/default`, {id}); await load(); if (D.engines.engines.find(x => x.id === id)?.job === 'video') { SET.engine = ''; persist(); } draw(); if (UI.dlg?.k === 'eng') { const r = enS().one?.r; if (r) r.engine = enAll().find(x => x.id === id) || r.engine; dlgPaint(); } toast('Default engine changed.'); } catch (er) { toast(er.message, true); } return;
       case 'brs': UI.broll.seconds = +b.dataset.val; UI.broll.q = null; draw(); return brQuote();
       case 'bra': UI.broll.aspect = b.dataset.val; return draw();
       case 'brmake': { UI.broll.prompt = ($('#hxBr')?.value || '').trim();
         try { await api('POST', `${X}/broll`, {prompt: UI.broll.prompt, seconds: UI.broll.seconds, aspect: UI.broll.aspect, quote_key: UI.broll.q?.key || ''}); toast('Making the shot. It appears here when ready.'); await load(); draw(); setTimeout(async () => { await load(); if (PAGE === 'engines') draw(); }, 60000); }
         catch (er) { toast(er.message, true); } return; }
+      case 'sttab': stS().tab = b.dataset.val; return draw();
+      case 'stpick': return stPickMenu(b, b.dataset.k);
+      case 'stkind': SET.kind = b.dataset.val; SET.shape = shapeOf(SET.kind); return stSave({kind: SET.kind});
+      case 'stlen': SET.len = +b.dataset.val; return stSave({len: SET.len});
+      case 'streset': try { const r = await api('POST', `${X}/settings/reset`); prefApply({...r.prefs, saved: true}); SET.engine = ''; store.set('hx.set', SET); if (stS().v) stS().v.prefs = r.prefs; toast("Back to Hoola's starting choices."); } catch (er) { toast(er.message, true); } draw(); stEstimate(); return;
+      case 'stcheck': return stLoad();
+      case 'strestore': try { await api('POST', `${H}/restore`, {id}); await load(); await stLoad(); toast('Brought back to Projects.'); } catch (er) { toast(er.message, true); } return;
+      case 'stemptyask': UI.dlg = {k: 'stempty'}; return dlgPaint();
+      case 'stempty': try { const r = await api('POST', `${H}/trash/empty`); dlgClose(); await load(); await stLoad(); toast(`${num(r.removed || 0)} deleted for good.`); } catch (er) { toast(er.message, true); } return;
       case 'dvtab': dvS().tab = b.dataset.val === 'api' ? 'api' : 'over'; return draw();
       case 'dvdoor': dvS().door = +b.dataset.val || 0; return draw();
       case 'dvlang': dvS().lang = b.dataset.val || 'curl'; if (UI.dlg?.k === 'dvkey') dlgPaint(); return draw();

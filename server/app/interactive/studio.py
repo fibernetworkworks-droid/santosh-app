@@ -403,6 +403,9 @@ def draft(tenant: str, ask: str, shape: str = "talking_head", lang: str = "en", 
          "chat": str(chat or "")[:64], "kind": kind or {"reel": "reel", "product": "product"}.get(shape, "presenter")}
     with _LOCK:
         d = _load(tenant)
+        fid = str(((d.get("prefs") or {}) if isinstance(d.get("prefs"), dict) else {}).get("folder") or "")
+        if fid and any(f.get("id") == fid for f in d.get("folders") or []):
+            p["folder"] = fid                                   # v0.999.210 her chosen folder for new videos
         d["projects"].insert(0, p)
         d["projects"] = d["projects"][:MAX_PROJECTS]
         _store(tenant, d)
