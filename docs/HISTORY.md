@@ -12382,3 +12382,14 @@ results, Chrome ending by itself, typing kept, language menu, Esc, Done, send st
 the bar in a chat); `test_v0751_hoola_flow.py` pin moved. Pre-existing reds unchanged (test_v0719 side panel,
 test_v0973 shape + version, test_v0981 shape - red on main without this change). NOT VERIFIED: on her server or with a
 real microphone (headless Chromium has none).
+
+## v0.999.225 NO FLASH ON LOAD (owner, her screenshot of the console home while loading: "WHEN HOME PAGE LOADS WHY IT SHOW LIKE THIS EVERYTIME CHECK AND FIX")
+
+Cause: `<form id="composer">` is written AFTER `<div id="app" hidden>` in v2.html and `v2.js` (the last of ~25 scripts)
+moves it into `#slotLand` at load. Until that script ran, the box was a direct child of body, outside the hidden app,
+so it showed on its own - and every rule that sizes its parts is scoped `#app #composer ...`, so the Deep research /
+Hoola PC icons drew at their natural size (huge), with the old clip and grid buttons and Call under its icon. It
+happened on every load, for as long as the scripts took. Fix: `body>#composer{display:none!important}` at the end of
+v2.css (in the head, so it holds from the first paint); once v2.js moves the box into the app it shows exactly as
+before. Test `test_v0999_225_no_flash.py`: blocks v2.js to freeze the loading moment, checks the bare box is not
+visible (fails on the old CSS = her screenshot), then loads normally and checks the box shows in the app.
