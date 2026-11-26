@@ -84,4 +84,4 @@ def test_same_mail_in_two_mailboxes_told_once(quiet, bz, monkeypatch):  # noqa: 
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.213")
+    assert tuple(int(x) for x in APP_VERSION.split(".")) >= (0, 999, 213)

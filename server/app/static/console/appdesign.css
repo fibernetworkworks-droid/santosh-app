@@ -463,7 +463,7 @@ html.appd #app .side #projects{display:none}
    Live / Studio pills under Recents are gone from the app design; the account row stays at the bottom */
 html.appd #app .side .console-controls,html.appd #app .side #conn{display:none !important}
 html.appd #app .side .user{margin-top:auto}
-/* v0.999.213 COLLAPSED SIDEBAR IN ONE LINE (owner, her collapsed-sidebar screenshot: "ICON AND TEXT ARRANGEMENT ARE
+/* v0.999.214 COLLAPSED SIDEBAR IN ONE LINE (owner, her collapsed-sidebar screenshot: "ICON AND TEXT ARRANGEMENT ARE
    MESSY AND MISPLACED --- FIX THIS PERFECTLY AND MAKE IT ALINED"): measured, the folded rail had three left edges (16 /
    22 / 25 px), every icon off the middle by the scrollbar's reserved strip, and Pinned / Recents headers spilling out.
    Folded = one column of 40 px squares on the rail's exact middle, no words, no headers, no counters. */
