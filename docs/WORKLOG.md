@@ -3839,3 +3839,9 @@ Work Log:
 - appdesign.css end block: folded = no scrollbar strip, every button 40x40 on the middle, one 44 px step, headers / words / counts hidden (a dot for a count); v2.js + v2.html give each icon a title + aria-label.
 - test_v0999_214_collapsed_sidebar.py: shape + browser walk (light + dark shots); version ritual 0.999.214 on main's 0.999.213.
 Stage Summary: shipped to main; not verified on her server.
+
+---
+Task ID: v0.999.215 CUSTOMIZE = PROFILE MENU
+Ask: Customize row = the profile menu
+Built: acctItems shared by the account button and the Customize row, Skills icon
+Not verified: on her server

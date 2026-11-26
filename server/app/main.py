@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.214"   # v0.999.214 COLLAPSED SIDEBAR IN ONE LINE (built as 0.999.213; their MAIL NEWS ONLY WHEN ASKED took 0.999.213, both kept; owner, her collapsed-sidebar screenshot: "ICON AND TEXT ARRANGEMENT ARE MESSY AND MISPLACED --- FIX THIS PERFECTLY AND MAKE IT ALINED"): the folded app-design sidebar is one column - every button a 40 px square on the rail's exact middle (were at 16 / 22 / 25 px, pushed off by the scrollbar strip), one even step, no Pinned / Recents headers or words, a dot instead of a count; each icon names itself on hover (title + aria-label); open again = unchanged. Console only (appdesign.css, v2.js, v2.html). Previous: v0.999.213 MAIL NEWS ONLY WHEN ASKED.
+APP_VERSION = "0.999.215"   # v0.999.215 CUSTOMIZE = PROFILE MENU (owner, her account-menu screenshot: "CHANGE THE CUSTOMERIZE SECTION TO THIS SHOWN PROFILE OPTIONS"): the app-design sidebar's Customize row opens the same profile menu as the account button, below it (her email, Settings, Credits, Library, Skills, Light / Dark / System, Keyboard shortcuts, Log out; one list `acctItems`), instead of the Customize page; Skills gets its own icon in the menu; 2 tests incl. a browser walk. Console only. Previous: v0.999.214 COLLAPSED SIDEBAR IN ONE LINE (built as 0.999.213; their MAIL NEWS ONLY WHEN ASKED took 0.999.213, both kept; owner, her collapsed-sidebar screenshot; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,

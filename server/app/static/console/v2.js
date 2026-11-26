@@ -406,6 +406,7 @@ function drawNav() {
   if (APPD) {
     const studio = new Set(APP_TOOLS.map(t => t[0])), cur = k => k === VIEW || (k === 'hire' && /desk$/.test(VIEW)) || (k === 'kaam' && studio.has(VIEW));
     $('#snav').innerHTML = appNav().map(([k, n]) => k === '-' ? `<div class="snl">${esc(n)}</div>`
+      : k === 'main' ? `<button class="sn" type="button" data-acct aria-haspopup="menu" title="Customize" aria-label="Customize" aria-current="${VIEW === 'main'}">${svg(IC_APP.main)}<span class="txt">Customize</span></button>`
       : k === 'more' ? `<button class="sn" type="button" data-more aria-haspopup="menu" title="More" aria-label="More" aria-current="${APP_MORE.some(([m]) => m === VIEW)}">${svg(IC_APP.more)}<span class="txt">More</span>${navBadge('aaj')}</button>`
       : `<button class="sn" data-v="${k}" title="${esc(n)}" aria-label="${esc(n)}" aria-current="${cur(k)}">${k === 'chat' ? `<span class="hmk" aria-hidden="true">${MARK()}</span>` : svg(IC_APP[k] || IC[k === 'baat' ? 'call' : k] || IC.creative)}<span class="txt">${esc(n)}</span>${navBadge(k)}</button>`).join('');
     return drawTabs();
@@ -502,10 +503,9 @@ $('#liveBtn').addEventListener('click', () => {
 $('#liveClose').addEventListener('click', () => $('#app').classList.remove('open'));
 // v0.285 the account button opens Claude's account menu (above it): who is signed in, Settings, Library, the theme,
 // keyboard shortcuts, Log out
-$('#model').addEventListener('click', e => {
-  if (!window.HoolaMenu) { go('main'); return; }
+function acctItems() {   // v0.999.215 one list for the account button and the Customize row
   const t = TH?.theme() || 'system', setT = v => () => TH?.setTheme(v);
-  HoolaMenu.open(e.currentTarget, [
+  return [
     {header: ME.email || ME.owner || 'Signed in'},
     {label: 'Settings', icon: 'settings', run: () => go('main')},
     {label: 'Credits', icon: 'spark', run: () => go('credits')},   // v0.999.26 HOOLA CREDITS
@@ -518,7 +518,17 @@ $('#model').addEventListener('click', e => {
     {sep: true},
     {label: 'Keyboard shortcuts', icon: 'keyboard', kbd: '?', run: () => openKeys()},
     {label: 'Log out', icon: 'logout', run: () => logout()},
-  ], {align: 'start', place: 'above', width: 'anchor', cls: 'acctm', label: 'Account', keyboard: e.detail === 0});
+  ];
+}
+$('#model').addEventListener('click', e => {
+  if (!window.HoolaMenu) { go('main'); return; }
+  HoolaMenu.open(e.currentTarget, acctItems(), {align: 'start', place: 'above', width: 'anchor', cls: 'acctm', label: 'Account', keyboard: e.detail === 0});
+});
+// v0.999.215 her ask: the Customize row opens the same profile menu (below it) instead of the Customize page
+document.addEventListener('click', e => {
+  const b = e.target.closest?.('.side [data-acct]'); if (!b) return;
+  if (!window.HoolaMenu) { go('main'); return; }
+  HoolaMenu.open(b, acctItems(), {align: 'start', place: 'below', width: 'anchor', cls: 'acctm', label: 'Customize', keyboard: e.detail === 0});
 });
 
 /* ================= v0.240 CALM BRAND: Light / Dark / System, text size, reduce motion, live border glow ================= */

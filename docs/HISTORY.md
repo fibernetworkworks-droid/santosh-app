@@ -12228,3 +12228,7 @@ shows everything as before. The old console look is unchanged.
 Test: test_v0999_214_collapsed_sidebar.py - every visible button 40x40 with its middle within 1 px of the rail's
 middle, every icon on that middle, one even step, no words when folded (with a pinned chat present), labels back when
 opened. NOT VERIFIED: on her server.
+
+## v0.999.215 CUSTOMIZE = PROFILE MENU (owner, her account-menu screenshot: "CHANGE THE CUSTOMERIZE SECTION TO THIS SHOWN PROFILE OPTIONS"): the app-design sidebar's Customize row opens the same profile menu as the account button, below it (her email, Settings, Credits, Library, Skills, Light / Dark / System, Keyboard shortcuts, Log out; one list `acctItems`), instead of the Customize page; Skills gets its own icon in the menu; 2 tests incl. a browser walk. Console only.
+
+Console only (`static/console/v2.js`, `menu.js`). The account menu's items moved into `acctItems()`; the account button opens it above itself as before, and the app-design sidebar's Customize row (`data-acct`, was `data-v="main"`) opens it below itself. Settings in the menu still opens the Customize page (view main), which keeps the row marked. Skills had no icon in HoolaMenu; it has one now. Tests: test_v0999_215_customize_menu.py (shape + a Chromium walk: every item with its icon, menu below the row and inside the window, page unchanged until an item is picked). NOT VERIFIED: on her server.
