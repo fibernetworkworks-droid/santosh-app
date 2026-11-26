@@ -12053,3 +12053,26 @@ Kept as they are: Game Dev's engine-look hero and Hoola Computer's page title (d
 Tests: `server/tests/test_v0999_203_every_chat.py` (6, incl. a Chromium walk: history opens at its end, her message lands 16 px down, held within 1 px while the reply grows past the panel, released by her wheel, a stand-in scroller still lands, weights 400 / 430 light and 360 / 400 dark) and `test/every_chat_landing_test.dart` (the phone thread kit, frame by frame).
 
 NOT VERIFIED: on her server or phone. The phone has no 430 weight for her message (its sans is bundled as static cuts 400 / 500 / 600 / 700).
+
+## v0.999.204 PROJECTS, REDESIGNED (built as 0.999.203; their EVERY CHAT LIKE CLAUDE took 0.999.203, both kept)
+
+Owner: "NOW DO SAME FOR PROJECTS SECTION" -> design canvas claude.ai/artifact/PGZ1YCtgGjMoqZWA1PuxWF (boards: Projects, Trash,
+Phone) -> "GO BUILD". The Studio already lists videos and Apps already makes many, so this page does the jobs neither did.
+
+- Server (`interactive/hub.py`): `folders` on her data (30 at most, a colour each, names unique ignoring case); `folder_save`
+  (make / rename), `folder_delete` (its videos and trashed videos lose the folder, nothing else); `bulk(ids, action, value)` for
+  move / voice / face / duplicate / trash (100 at most; the folder, face and voice checked first; a video being made left out and
+  named; voice and face go through `studio.save`, so a made video keeps its file until it is made again); `purge_one` (one video
+  and its made file out of the trash); `usage` adds this month's credits; the home payload carries `folders`. Routes POST + DELETE
+  /hub/folders, POST /hub/bulk, POST /hub/trash/purge.
+- The page (`interactive.js` projects block, `interactive2.css` v0.999.204 block): this month (made, minutes, credits used, drafts
+  waiting, in the trash = opens it), folder cards (All videos, hers with a menu to rename or remove, Not in a folder, New folder),
+  the videos of the chosen folder as a table (tick boxes and Choose all, video with its folder, state, language, face and voice,
+  length, changed; search; newest / oldest / by name); a bar for the chosen videos (Move to folder incl. a new folder for them,
+  Change voice, Change face, Duplicate, Move to trash after a question); the trash with days left (orange in the last five),
+  Bring it back, Delete now, Empty the trash with the count and "cannot be undone". Batch / Many names left for Apps (a line
+  points there). Phone: the month's numbers slide, folders slide, the table keeps video + state.
+- Tests: `test_v0999_204_interactive_projects.py` (4, incl. a Chromium walk at 1440 and 390: choose two, a new folder for them,
+  search, trash one, bring it back, remove the folder with its videos kept).
+- NOT VERIFIED: on her server.
+
