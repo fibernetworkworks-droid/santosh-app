@@ -1674,6 +1674,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_crc.block, tenant_id)
     except Exception:
         log.exception("credit desk block failed")
+    try:   # FIRM PRACTICE DESK: a turn in the Firm chat (or a call started from it) knows the desk
+        from .. import firmchat as _fmc
+        if _fmc.is_firm(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_fmc.block, tenant_id)
+    except Exception:
+        log.exception("firm desk block failed")
     _mark("hint")
     return state
 
@@ -2485,6 +2491,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "credit chat"
     except Exception:
         log.exception("credit chat admission failed")
+    try:   # FIRM PRACTICE DESK: the firm tool in view in the Firm chat
+        from .. import firmchat as _fmc
+        if adm is not None and _fmc.is_firm(conversation_id):
+            adm.admit_families(_fmc.FAMILIES)
+            for f in _fmc.FAMILIES:
+                adm.why[f] = "firm chat"
+    except Exception:
+        log.exception("firm chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,

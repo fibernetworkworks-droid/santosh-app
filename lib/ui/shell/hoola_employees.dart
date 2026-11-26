@@ -48,6 +48,7 @@ String employeeConsolePath(String key) {
   if (key == 'tax_worldwide') return '/console/tax';   // v0.999.176 TAX DESK: its own section (chat + tax)
   if (key == 'cash_treasury') return '/console/cash';   // CASH & TREASURY DESK: its own section (chat + cash)
   if (key == 'credit_lending') return '/console/credit';   // CREDIT & LENDING DESK: its own section (chat + loans)
+  if (key == 'firm_practice') return '/console/firm';   // FIRM PRACTICE DESK: its own section (chat + clients)
   if (key == 'support') return '/console/support';   // v0.999.81 CUSTOMER SUPPORT: its own section (chat + tickets)
   if (key == 'telecaller') return '/console/telecaller';   // v0.999.67 AI TELECALLER: its own section (chat + call lists)
   final v = key.startsWith('const_') ? 'deptdesk' : views[key] ?? 'hire';

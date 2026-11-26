@@ -12320,3 +12320,22 @@ is + , chosen option, mic, call, so it sits beside the + there too. The old cons
 
 Test: test_v0999_221_plus_card.py - the card's class and rows, chip gap 0-10 px and centred within 1 px on the home
 and in a chat, paper background, not the brand violet, the tick in ink, a tap removes the chip. NOT VERIFIED: on her server.
+
+## v0.999.222 FIRM PRACTICE DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE FIRM PRACTICE -- MAKE IT SAME PREMIUM AND ADVANCE AS WE DONE WITH OTHER SECTIONS")
+
+The Firm Practice employee (F7 engine `fin/desks/firm.py`, tool `firm_practice`) gets its own section like Payroll, Tax, Cash & Treasury
+and Credit & Lending: `/console/firm` (`firmdesk.html/.js/.css`) and the Firm chat (Conversation kind `firm`, `server/app/firmchat.py`,
+`/api/firm/*`), out of every chat list; a turn in it gets the desk block and the `firmmode` family. Employees hub, v2.js, the phone open it.
+
+- A firm = a finance workspace of size firm; `POST /api/firm/setup` makes one with her as the first partner.
+- Who she is on the desk (settings `practice_desk`): `who` = the person the owner picked (she can switch); `logins` = a partner links a
+  person to a team member's email (a Books & Accounts team member of the firm) - that member is always that person. Every engine action
+  runs AS that person, so the engine's rules hold: only the named signer signs the approved text, nobody reviews their own draft, a
+  preparer sees only their clients, a client sees only their own page.
+- Pages: Today (KPIs, where the drafts are, lanes to review / to sign / sent back, needs you, clients, drafts by preparer), Clients (+ one
+  client: team chips, papers asked for / marked received, drafts + new draft, engagement letter, fact-find with a completeness ring,
+  meeting notes, suitability, CFO pack, audit trail), Drafts & reviews (the four-step flow, filters, search; one draft as a document with
+  its steps, review / sign / share / change, history, PDF / text), Team (people by role, add a person, link logins, drafts by preparer),
+  Settings (who you are, how the firm works here). A client of the firm gets one page: papers asked for ("I sent it"), shared documents.
+- The Firm chat's greeting is rewritten when the firm is set up or she switches person, while nobody has written in it.
+- Tests: `server/tests/test_firm_desk.py` (5, incl. a Chromium walk at 1440 and 390 px). NOT VERIFIED on her server.
