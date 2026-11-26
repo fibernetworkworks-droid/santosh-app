@@ -601,6 +601,10 @@ const mlabel = m => (m && (m.name || m.id || '')).replace(/^[^:]*:\s*/, '').repl
 let TIERS = null;
 const TIER_NAME = {'': 'Normal', ultra: 'Ultra', high: 'High', medium: 'Medium', low: 'Low'};
 const TIER_ROWS = ['', 'ultra', 'high', 'medium', 'low'];
+// v0.999.228 the quality sheet like the + card: a tile per tier and one plain line under each (no prices, no model names)
+const TIER_ICON = {'': 'qauto', ultra: 'qultra', high: 'qhigh', medium: 'qmed', low: 'qlow'};
+const TIER_SUB = {'': 'Hoola picks the model for each job', ultra: 'Best models, for the hardest work',
+  high: 'Stronger answers for harder work', medium: 'Good answers, credit lasts longer', low: 'Quick everyday answers, least credit'};
 async function loadModels() {
   const b = $('#modelBtn'); if (!b) return;
   try { MODELS = await api('GET', '/api/model/choices'); } catch { MODELS = null; }
@@ -610,7 +614,7 @@ async function loadModels() {
   const own = cur && !cur.default;        // an older one-model pick still runs until she picks a tier
   const name = own ? mlabel(cur) : TIER_NAME[TIERS.selected || ''] || 'Normal';
   b.querySelector('.mname').textContent = name;
-  b.title = 'Quality: ' + name; b.setAttribute('aria-label', 'Quality: ' + name);
+  b.removeAttribute('title'); b.setAttribute('aria-label', 'Quality: ' + name);   // v0.999.228 no browser tooltip over the sheet
   b.hidden = false;
 }
 async function setTier(id) {
@@ -621,24 +625,24 @@ async function setTier(id) {
 function tierRows() {
   const sel = TIERS.selected || '', own = MODELS?.models?.find(m => m.selected && !m.default);
   const lock = !!TIERS.locked;   // v0.999.26 Free = Normal only: the rest open once she buys credits
-  return TIER_ROWS.map(id => ({label: TIER_NAME[id], checked: !own && sel === id,
-    tag: id === '' ? 'Recommended' : lock ? '🔒 Buy credits' : id === 'ultra' ? '⚠ Up to 70× credit' : '', warn: id === 'ultra' && !lock,
+  return TIER_ROWS.map(id => ({label: TIER_NAME[id], checked: !own && sel === id, icon: TIER_ICON[id], sub: TIER_SUB[id],
+    tag: id === '' ? 'Recommended' : lock ? 'Buy credits' : id === 'ultra' ? 'Up to 70× credit' : '', warn: id === 'ultra' && !lock,
     run: () => id && lock ? go('credits') : id === 'ultra' && sel !== 'ultra' ? ultraAsk() : setTier(id)}));
 }
 function ultraAsk() {
   const b = $('#modelBtn');
   HoolaMenu.open(b, [
-    {title: 'Use Ultra?', tag: '⚠ Up to 70× credit', warn: true, backLabel: 'Back to the tiers', back: () => modelMenu(true)},
+    {title: 'Use Ultra?', tag: 'Up to 70× credit', warn: true, backLabel: 'Back to the tiers', back: () => modelMenu(true)},
     {note: 'Ultra runs the best and most expensive models in every field: chat, coding, AI employees, apps and videos.'},
     {note: 'Your credit runs out up to 70 times faster than on Medium.'},
     {actions: [{label: 'Not now', run: () => {}}, {label: 'Use Ultra', primary: true, run: () => setTier('ultra')}]},
-  ], {align: 'end', place: 'above', cls: 'tierask', label: 'Use Ultra?', width: 340, keyboard: true});
+  ], {align: 'end', place: 'below', cls: 'plusm tierask', label: 'Use Ultra?', width: 340, keyboard: true});
 }
 function modelMenu(again) {
   const b = $('#modelBtn'); if (!window.HoolaMenu || !(TIERS && TIERS.available)) return;
   if (again) HoolaMenu.close(false);
-  HoolaMenu.open(b, [{note: 'Better models give better answers and use your credit faster.'}, ...tierRows()],
-                 {align: 'end', place: 'above', cls: 'tiers', label: 'Quality', width: 340, keyboard: !!again});
+  HoolaMenu.open(b, [{header: 'Quality'}, ...tierRows(), {sep: true}, {note: 'Better models answer better and use credit faster.'}],
+                 {align: 'end', place: 'below', cls: 'plusm tiers', label: 'Quality', width: 372, keyboard: !!again});
 }
 document.addEventListener('click', e => { if (e.target.closest && e.target.closest('#modelBtn')) modelMenu(); });
 

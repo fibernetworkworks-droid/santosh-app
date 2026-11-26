@@ -522,3 +522,25 @@ html.appd #app #composer .qc[aria-pressed="true"]::after{content:"";width:14px;h
   mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M7 7l10 10M17 7L7 17'/%3E%3C/svg%3E") center/14px no-repeat}
 html.appd #app #composer .qc[aria-pressed="true"]:hover{border-color:var(--hair2);background:var(--sunk)}
 html.appd #app #composer .qc[aria-pressed="true"]:hover::after{background:var(--ink)}
+/* v0.999.228 THE QUALITY SHEET (owner, her quality menu: "NOT PROPERLY ALINED AND STALE MAKE IT PREMIUM SHEET LIKE THE
+   ATTACHMENT SHEET"): the same card as the + menu - a small Quality header, a soft tile per tier with its own mark
+   (Hoola's pick, a gem for Ultra, signal bars for High / Medium / Low), one plain line under each, the chosen one with an
+   ink tile + an ink tick (no violet), the note at the foot; it opens below the button and goes above only when there is
+   no room, and the browser tooltip that sat on top of it is gone. */
+.hmenu.plusm.tiers .mh{padding:6px 10px 6px;font:500 12px/16px var(--fb);color:var(--mut);letter-spacing:.01em}
+.hmenu.plusm.tiers .mi{min-height:50px}
+.hmenu.plusm.tiers .mi[aria-checked="true"]{background:rgb(var(--fg-rgb) / .045)}
+.hmenu.plusm.tiers .mi[aria-checked="true"]:hover{background:rgb(var(--fg-rgb) / .07)}
+.hmenu.plusm.tiers .mi .mt>span{display:flex;align-items:center;gap:8px;min-width:0}
+.hmenu.plusm .mtag{margin-left:0;padding:0 7px;border-radius:999px;font:500 11.5px/19px var(--fb);letter-spacing:.01em;vertical-align:0;
+  background:rgb(var(--fg-rgb) / .06);color:var(--mut);flex:none}
+.hmenu.plusm .mtag.warn{background:var(--warn-soft);color:var(--warn)}
+.hmenu.plusm.tiers .mi .mc{color:var(--ink)}
+.hmenu.plusm.tiers .mnote{margin:4px 10px 6px;font:400 12.5px/1.45 var(--fb);color:var(--dim)}
+.hmenu.plusm.tierask{padding:12px}
+.hmenu.plusm.tierask .mtitle{padding:2px 4px 4px}
+.hmenu.plusm.tierask .mtitle .mtag{margin-left:4px}
+.hmenu.plusm.tierask .mnote{margin:6px 6px 0;font:400 13.5px/1.5 var(--fb);color:var(--mut)}
+.hmenu.plusm.tierask .mi.mback{min-height:28px;padding:0}
+.hmenu.plusm.tierask .mi.mback .ic{width:16px;height:16px;padding:0;background:none}
+.hmenu.plusm.tierask .macts .mi.mbtn{min-height:36px;padding:0 14px}

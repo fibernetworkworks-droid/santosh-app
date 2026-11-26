@@ -12419,3 +12419,15 @@ The Institution employee (tool `institution_desk`, the F9 engine fin/desks/insti
   phone hoola_employees.dart, test_fin_f7 map.
 - Tests: server/tests/test_inst_desk.py (5, incl. a Chromium walk at 1440 and 390).
 - NOT VERIFIED on her server. Nothing is filed, frozen or reported to a regulator.
+
+## v0.999.228 THE QUALITY SHEET (built as 0.999.226; their CUSTOMIZE PAGE + INSTITUTION DESK took 0.999.226-0.999.227, all kept; owner, her screenshot of the quality menu: "CHECK THE MODEL SECTION SHOWING NOT PROPERLY ALINED AND STALE MAKE IT PREMIUM SHEET LIKE THE ATTACHMENT SHEET")
+
+Before: plain text rows with tags of different heights, a violet tick, the note on top, the sheet opened ABOVE the Normal
+button (over the typing box and the greeting), and the browser's own "Quality: Normal" tooltip sat on top of it. Now the
+sheet uses the + card's style (`cls: 'plusm tiers'`): a small Quality header, a 32 px soft tile per tier with its own
+mark (menu.js `qauto` / `qultra` gem / `qhigh` `qmed` `qlow` signal bars), one plain line under each (`TIER_SUB`, no
+prices, no model names), the chosen tier with an ink tile and an ink tick, Recommended as a grey pill and Up to 70x
+credit as an amber pill (emoji dropped), the note at the foot after a hairline. It opens below the button and goes above
+only when there is no room. The button no longer carries a `title`, so no tooltip covers the sheet. The Use Ultra?
+card uses the same style. Test `test_v0999_228_tier_sheet.py` walks it in Chromium: the sheet is below the button,
+right edges line up, every tile on one edge, one tick, no line cut off.

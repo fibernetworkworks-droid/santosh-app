@@ -3894,3 +3894,13 @@ Task ID: v0.999.226 CUSTOMIZE, PREMIUM
 Ask: make the Customize page premium (design ENS4Mk3mkFsgEJaA8hxSD2)
 Built: drawMain + appearanceHTML rebuilt, cz- styles at the end of v2.css
 Not verified: on her server
+
+---
+Task ID: v0.999.228 THE QUALITY SHEET
+Agent: Claude (cloud session)
+Task: Quality-tier menu looked stale and misaligned; make it like the + (attachment) card.
+Work Log:
+- Tier rows get icons + one-line descriptions, plusm card style, header, ink tick, note at the foot, opens below.
+- Removed the native tooltip on the Quality button; browser test with screenshots. Renumbered 226 -> 228 (main moved).
+Stage Summary:
+- Pushed to main as v0.999.228; deploy with Actions > VPS ops > deploy.
