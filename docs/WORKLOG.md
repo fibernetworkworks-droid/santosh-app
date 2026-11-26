@@ -3781,3 +3781,12 @@ Task ID: v0.999.207 BRAND, REDESIGNED
 Ask: Brand page advanced and premium like the other Interactive pages
 Built: name on screen switch, colour contrast check, shared logo, closing card with logo / QR in the real video, preview, words to keep with languages, Use my Brand kit
 Not verified: on her server
+
+---
+Task ID: v0.999.208
+Agent: Claude Code (session hopeful-carson)
+Task: ENGINES, REDESIGNED - design canvas claude.ai/artifact/QzR1tQ2n8v4zyjxdiTU7yG, then GO BUILD.
+Work Log:
+- engines.need_of / prices / ladder + routes /x/engines/prices and /x/engines/one; Engines page rebuilt (defaults, price for a length, cards, one-engine dialog, B-roll maker priced first).
+- Tests test_v0999_208 (4) green; Interactive suites green except the pre-existing v0747 browser test.
+Stage Summary: shipped as v0.999.208; NOT VERIFIED on her server.

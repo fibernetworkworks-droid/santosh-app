@@ -62,6 +62,30 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         _on()
         return {"defaults": _wrap(EN.set_default, tenant, str((body or {}).get("id") or ""), code=409)}
 
+    @r.get("/engines/prices")
+    def engine_prices(job: str = "video", seconds: int = 30, voice: str = "", tenant: str = Depends(current_tenant)):
+        """v0.999.208 every engine of one job priced for one length (the Engines page cards). Nothing is spent."""
+        _on()
+        vc = int(VO.credits_for(tenant, voice, int(seconds * 14)).get("credits") or 0) if job == "video" else 0
+        return _wrap(EN.prices, job, float(seconds), vc)
+
+    @r.get("/engines/one")
+    def engine_one(id: str = "", voice: str = "", tenant: str = Depends(current_tenant)):
+        """v0.999.208 one engine for the side panel: its row, its price at each usual length, her videos on it."""
+        _on()
+        row = next((e for e in EN.view(tenant)["engines"] if e["id"] == id), None)
+        if row is None:
+            raise HTTPException(404, "That engine is not on the list.")
+        vf = lambda s: int(VO.credits_for(tenant, voice, int(s * 14)).get("credits") or 0)   # noqa: E731
+        vids = []
+        if row["job"] == "video":
+            for p in S.listing(tenant)["projects"]:
+                if (p.get("engine") or "hoola") == id:
+                    vids.append({"id": p.get("id"), "title": p.get("title") or "Untitled", "status": p.get("status") or "",
+                                 "seconds": round(float(((p.get("video") or {}).get("duration")) or 0)),
+                                 "updated": p.get("updated") or p.get("created") or ""})
+        return {"engine": row, "prices": _wrap(EN.ladder, id, vf), "videos": vids[:12]}
+
     @r.get("/estimate")
     def estimate(engine: str = "", seconds: int = 30, voice: str = "", tenant: str = Depends(current_tenant)):
         """v0.999.172 the price shown under the home box BEFORE anything is planned: her engine x the length she picked,
