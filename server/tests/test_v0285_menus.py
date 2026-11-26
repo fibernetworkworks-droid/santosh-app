@@ -40,8 +40,11 @@ def test_every_console_menu_uses_it():
     assert "CH?.menu(CONV, e.currentTarget, e.detail === 0)" in v2
     acc = v2[v2.index("$('#model').addEventListener('click'"):]
     acc = acc[:acc.index("});") + 3]
-    for k in ("'Settings'", "'Light'", "'Dark'", "'System'", "'Keyboard shortcuts'", "'Log out'", "place: 'above'"):
+    acc += v2[v2.index("function acctItems()"):][:v2[v2.index("function acctItems()"):].index("\n}\n")]   # v0.999.215 items
+    for k in ("'Settings'", "'Keyboard shortcuts'", "'Log out'", "place: 'above'"):
         assert k in acc, k
+    for k in ("'Light'", "'Dark'", "'System'"):             # v0.999.220 the theme lives on the Customize page only
+        assert k not in acc, k
     assert "window.HoolaMenu?.isOpen()" in v2                  # Esc peels the open menu first
 
 

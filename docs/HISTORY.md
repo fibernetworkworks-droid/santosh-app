@@ -12297,3 +12297,7 @@ On top of v0.999.218 (`creditchat.py`, `creditdesk.*`):
 - Loan book: filters (all / you lent / you owe / behind) + search; the key-facts draft rendered as a table.
 - Tests: `test_credit_desk.py` 7 (new: schedule, bank matches, outlook, stages; the browser walk confirms a match, filters, searches,
   moves a stage). NOT VERIFIED on her server.
+
+## v0.999.220 NO THEME IN THE PROFILE MENU (owner: "NOW REMOVE THE LIGHT DARK AND SYTEM OPTION IN PROFILE SECTION . IT IS ALREADY IN CONSTERIZE SECTION"): the profile (account) menu no longer lists Light / Dark / System; the theme choice stays on the Customize page; 2 tests incl. a browser walk. Console only.
+
+Console only (`static/console/v2.js`). `acctItems()` (the profile / account button's menu) no longer lists Light / Dark / System; the theme choice stays on the Customize page's Appearance cards (`data-theme-set`). Tests: NEW test_v0999_220_no_theme_in_profile.py (shape + a Chromium walk: the profile menu lists Customize and no theme items); test_v0285_menus.py reads the acctItems block (moved there in v0.999.215) and checks the theme items are gone. Already red before this change and left alone: test_v0285::test_claude_look_is_crisp, test_v0973::test_version. NOT VERIFIED: on her server.

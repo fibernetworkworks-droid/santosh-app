@@ -505,18 +505,13 @@ $('#liveClose').addEventListener('click', () => $('#app').classList.remove('open
 // v0.285 the account button opens Claude's account menu (above it): who is signed in, Settings, Library, the theme,
 // keyboard shortcuts, Log out
 function acctItems() {   // v0.999.215 the account button's menu; v0.999.217 Customize moved in here
-  const t = TH?.theme() || 'system', setT = v => () => TH?.setTheme(v);
-  return [
+  return [   // v0.999.220 Light / Dark / System live on the Customize page only
     {header: ME.email || ME.owner || 'Signed in'},
     {label: 'Customize', icon: 'brush', run: () => go('main')},   // v0.999.217 moved here from the sidebar
     {label: 'Settings', icon: 'settings', run: () => go('main')},
     {label: 'Credits', icon: 'spark', run: () => go('credits')},   // v0.999.26 HOOLA CREDITS
     ...(PN ? [{label: 'Library', icon: 'library', run: () => go('bana')}] : []),
     {label: 'Skills', icon: 'skills', run: () => go('skills')},   // v0.481 the Skill Desk
-    {sep: true},
-    {label: 'Light', icon: 'sun', checked: t === 'light', run: setT('light')},
-    {label: 'Dark', icon: 'moon', checked: t === 'dark', run: setT('dark')},
-    {label: 'System', icon: 'monitor', checked: t === 'system', run: setT('system')},
     {sep: true},
     {label: 'Keyboard shortcuts', icon: 'keyboard', kbd: '?', run: () => openKeys()},
     {label: 'Log out', icon: 'logout', run: () => logout()},

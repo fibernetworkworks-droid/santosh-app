@@ -3851,3 +3851,9 @@ Task ID: v0.999.217 CUSTOMIZE IN THE PROFILE MENU
 Ask: undo v0.999.215, move Customize into the profile menu
 Built: Customize row removed from the sidebar, Customize item in acctItems, brush icon
 Not verified: on her server
+
+---
+Task ID: v0.999.220 NO THEME IN THE PROFILE MENU
+Ask: remove Light / Dark / System from the profile menu
+Built: theme items removed from acctItems, test_v0285 reads acctItems
+Not verified: on her server
