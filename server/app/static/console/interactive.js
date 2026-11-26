@@ -25,7 +25,7 @@ window.HoolaInteractive = function (ctx) {
   if (SET.lang === 'hi' && !store.get('hx.langv2', false)) { SET.lang = 'auto'; store.set('hx.langv2', true); store.set('hx.set', SET); }   // v0.999.172 the old India default becomes Auto
   const C = {conv: '', title: '', rows: [], items: [], ask: '', files: [], sending: false, waitUntil: 0, t: 0, gen: 0};
   const UI = {slim: store.get('hx.slim', false), nav: false, etab: 'video', ptab: 'Videos', scene: 0, tool: 'Scene', lf: 'all', lq: '', ls: store.get('hx.lsort', 'new'), lv: store.get('hx.lview', 'grid'), edv: 'video', edp: false, edt: 0, jp: {}, q: null, cmp: null, V: null, L: null,
-    live: '', liveOut: [], newKey: null, newHook: null, pub: null, broll: {prompt: '', seconds: 6, aspect: '16:9', q: null}, jobs: {},
+    live: '', liveOut: [], pub: null, broll: {prompt: '', seconds: 6, aspect: '16:9', q: null}, jobs: {},
     me: '', credits: null, recent: [], est: null, ideaG: 'business', pv: {id: '', scene: 0, tab: 'sketch', play: false, t: 0}, audio: null};
   const URLS = new Map();
   const q = encodeURIComponent;
@@ -1018,7 +1018,7 @@ window.HoolaInteractive = function (ctx) {
     let w = $('#hxDlg');
     if (!UI.dlg) { if (w) w.remove(); return; }
     if (!w) { w = document.createElement('div'); w.id = 'hxDlg'; w.className = 'hx-dlgw'; ROOT.appendChild(w); }
-    w.innerHTML = `<div class="hx-dlgs" data-a="dlgx" aria-hidden="true"></div>${({save: svBody, pick: pickBody, need: needBody, pjfolder: pjFolderBody, voput: voPutBody, lvweb: lvWebBody, lvlearn: lvLearnBody, avphoto: avPhBody, avai: avAiBody, avtwin: avTwinBody, avren: avRenBody, eng: enOneBody, brkit: brKitBody, brlogodel: brLogoDelBody}[UI.dlg.k] || shBody)()}`;
+    w.innerHTML = `<div class="hx-dlgs" data-a="dlgx" aria-hidden="true"></div>${({save: svBody, pick: pickBody, need: needBody, pjfolder: pjFolderBody, voput: voPutBody, lvweb: lvWebBody, lvlearn: lvLearnBody, avphoto: avPhBody, avai: avAiBody, avtwin: avTwinBody, avren: avRenBody, eng: enOneBody, dvnew: dvNewBody, dvkey: dvKeyBody, dvren: dvRenBody, dvdel: dvDelBody, dvhook: dvHookBody, dvsecret: dvSecretBody, brkit: brKitBody, brlogodel: brLogoDelBody}[UI.dlg.k] || shBody)()}`;
     const f = w.querySelector('[data-auto]'); if (f && !w.contains(document.activeElement)) f.focus();
     fillMedia();
   }
@@ -1804,6 +1804,158 @@ window.HoolaInteractive = function (ctx) {
   }
   function lvSet(k, v) { const a = lvDraft(); a[k] = v; UI.ldDirty = true; }
 
+  // ---- developers (v0.999.209 DEVELOPERS, REDESIGNED: what her apps did, the four steps, keys with their hourly limit,
+  //      webhooks with their recent deliveries, a key shown once with a first call, the API with real requests)
+  const dvS = () => UI.dv || (UI.dv = {tab: 'over', door: 2, lang: 'curl'});
+  const DVLANG = [['curl', 'curl'], ['js', 'JavaScript'], ['py', 'Python']];
+  const DVDOORS = [
+    {m: 'GET', p: '/v1/engines', does: 'The engines and which are connected', price: 'free',
+      ans: '{\n  "engines": [\n    {"id": "kling", "label": "Kling AI Avatar", "job": "video",\n     "ready": true, "default": true, "max_s": 300}\n  ],\n  "defaults": {"video": "kling", "live": "voice_only"}\n}'},
+    {m: 'GET', p: '/v1/avatars', does: 'Your faces', price: 'free',
+      ans: '{\n  "avatars": [\n    {"id": "av_3k9…", "name": "Asha", "kind": "photo",\n     "lang": "en", "consent_at": "2026-11-20T09:12:00Z"}\n  ]\n}'},
+    {m: 'POST', p: '/v1/videos', does: 'A script in, a draft and its price out', price: 'free',
+      body: {brief: 'Our summer offers, 30 seconds', lang: 'en', seconds: 30, engine: 'kling'},
+      ans: '{\n  "id": "iv_8f2c…",\n  "status": "draft",\n  "scenes": [{"say": "…", "look": "title"}],\n  "problems": [],\n  "quote": {\n    "credits": 1557, "face_credits": 1515,\n    "voice_credits": 42, "key": "51ab9c…"\n  }\n}',
+      fields: [['brief', 'yes', 'What the video says, in your words'], ['lang', 'no', 'Any of the 140 languages, for example en, hi, es, ar'],
+        ['seconds', 'no', 'About how long; 30 if left out'], ['shape', 'no', 'talking_head, explainer, product or reel'],
+        ['engine', 'no', 'A face engine id from /v1/engines; your default if left out'], ['avatar_id', 'no', 'One of your faces from /v1/avatars'],
+        ['voice', 'no', 'A voice id from Voices; your default if left out'], ['scenes', 'no', 'Your own scenes instead of the written ones']]},
+    {m: 'POST', p: '/v1/videos/{id}/make', does: 'Make it at the price you confirmed', price: 'spends credits',
+      body: {quote_key: '51ab9c…'},
+      ans: '{\n  "pid": "iv_8f2c…",\n  "status": "making",\n  "done": false,\n  "steps": [{"k": "voice", "label": "Speaking the script"}, …]\n}',
+      fields: [['quote_key', 'for a paid face', 'The quote.key you got from POST /v1/videos. A changed price is refused, never charged']]},
+    {m: 'GET', p: '/v1/videos/{id}', does: 'Status, progress and the download address', price: 'free',
+      ans: '{\n  "id": "iv_8f2c…",\n  "status": "ready",\n  "progress": {"done": true, "elapsed": 84.2},\n  "download": "…/v1/videos/iv_8f2c…/file"\n}'},
+    {m: 'GET', p: '/v1/videos/{id}/file', does: 'The finished MP4', price: 'free', ans: 'The video itself (video/mp4). 404 until it is ready.'},
+  ];
+  const DVERR = [['401', 'No key, or a key that was removed'], ['429', 'More than 120 calls in an hour on one key; wait a little'],
+    ['409', 'The price changed since your quote, or a problem stops the make (the reason is in detail)'], ['404', 'No such video, or it is not ready yet'],
+    ['422', 'A field is missing or wrong'], ['502', 'The script writer did not answer; try again']];
+  function dvBase() { const b = (D.apps || {}).base || '/api/interactive'; return b.startsWith('/') ? location.origin + b : b; }
+  function dvCode(d, lang, key) {
+    const url = dvBase() + d.p.replace('{id}', 'iv_8f2c…'), k = key || '$HOOLA_KEY', body = d.body ? JSON.stringify(d.body, null, 2) : '';
+    if (lang === 'js') return `const r = await fetch("${url}", {\n  method: "${d.m}",\n  headers: {\n    "Authorization": "Bearer " + ${key ? `"${k}"` : 'process.env.HOOLA_KEY'},${d.body ? '\n    "Content-Type": "application/json",' : ''}\n  },${d.body ? `\n  body: JSON.stringify(${body.replace(/\n/g, '\n  ')}),` : ''}\n});\nconst out = await r.json();`;
+    if (lang === 'py') return `import os, requests\n\nr = requests.${d.m.toLowerCase()}(\n    "${url}",\n    headers={"Authorization": "Bearer " + ${key ? `"${k}"` : 'os.environ["HOOLA_KEY"]'}},${d.body ? `\n    json=${body.replace(/\n/g, '\n    ')},` : ''}\n)\nprint(r.json())`;
+    return `curl${d.m === 'POST' ? ' -X POST' : ''} "${url}" \\\n  -H "Authorization: Bearer ${k}"${d.body ? ` \\\n  -H "Content-Type: application/json" \\\n  -d '${JSON.stringify(d.body)}'` : ''}`;
+  }
+  const DVSIG = {
+    py: 'import hmac, hashlib, time\n\ndef from_hoola(raw_body, header, secret):\n    parts = dict(p.split("=", 1) for p in header.split(","))\n    t, v1 = int(parts["t"]), parts["v1"]\n    mine = hmac.new(secret.encode(), f"{t}.".encode() + raw_body,\n                    hashlib.sha256).hexdigest()\n    return abs(time.time() - t) < 300 and hmac.compare_digest(mine, v1)',
+    js: 'import crypto from "node:crypto";\n\nfunction fromHoola(rawBody, header, secret) {\n  const parts = Object.fromEntries(header.split(",").map(p => p.split("=")));\n  const t = Number(parts.t);\n  const mine = crypto.createHmac("sha256", secret)\n    .update(t + "." + rawBody).digest("hex");\n  return Math.abs(Date.now() / 1000 - t) < 300 &&\n    crypto.timingSafeEqual(Buffer.from(mine), Buffer.from(parts.v1));\n}',
+  };
+  const DVPAY = '{"event": "video.ready", "id": "iv_8f2c…", "title": "Summer offers",\n "status": "ready", "lang": "en", "engine": "kling", "seconds": 31,\n "credits": 1557, "error": "", "download": "…/v1/videos/iv_8f2c…/file"}';
+  const dvSeg = (cur, act, list) => `<div class="hx-seg" role="radiogroup">${list.map(([v, l]) => `<button type="button" role="radio" aria-checked="${v === cur}" data-a="${act}" data-val="${esc(v)}">${esc(l)}</button>`).join('')}</div>`;
+  const dvPre = (txt, what) => `<div class="hx-dvcode"><pre><code>${esc(txt)}</code></pre><button type="button" class="hx-dvcp" data-a="dvcopy" data-val="${esc(what)}">${ic('copy', 13)}Copy</button></div>`;
+  function dvStatus(s) {
+    const t = String(s || ''), ok = /^2\d\d$/.test(t);
+    return `<span class="hx-dvst ${ok ? 'ok' : 'bad'}">${esc(ok ? t + ' OK' : t ? (/^\d+$/.test(t) ? t : 'No answer') : '—')}</span>`;
+  }
+  function dvPage() {
+    const A = D.apps || {keys: [], hooks: []}, s = dvS(), m = A.month || {}, mk = A.max_keys || 5, mh = A.max_hooks || 3, rate = A.rate_hour || 120;
+    const lastHook = (A.hooks || []).find(h => h.last_status);
+    const head = `<div class="hx-dvhead"><div class="hx-growf"><h2 class="hx-serif">Developers</h2>
+        <p class="hx-mut">Let your own programs make videos with your credits: send a script, get the price, confirm it, and hear back when the video is ready.</p></div>
+        <div class="hx-dvbtns"><button type="button" class="hx-btn" data-a="dvtab" data-val="${s.tab === 'api' ? 'over' : 'api'}">${s.tab === 'api' ? 'Back to your keys' : 'Read the API'}</button>
+        <button type="button" class="hx-btn dark" data-a="dvkeyask"${(A.keys || []).length >= mk ? ' disabled title="Up to 5 keys. Remove one first."' : ''}>${ic('plus', 14)}Make an app key</button></div></div>
+      ${dvSeg(s.tab, 'dvtab', [['over', 'Your keys and webhooks'], ['api', 'The API']])}`;
+    if (s.tab === 'api') return `<div class="hx-doc hx-dvpage">${head}${dvApi()}</div>`;
+    const stats = [['App keys', `${(A.keys || []).length} of ${mk}`, 'each key is shown once'], ['Calls this month', num(m.calls || 0), 'across your keys'],
+      ['Videos from your apps', num(m.videos || 0), 'this month'], ['Webhooks', `${(A.hooks || []).length} of ${mh}`, lastHook ? 'last answer ' + (/^2\d\d$/.test(lastHook.last_status) ? lastHook.last_status + ' OK' : lastHook.last_status) : 'none answered yet']];
+    const steps = [['Send a script', 'POST /v1/videos', 'Your words, length and language. You get a draft and its price.'],
+      ['Read the price', 'quote.credits', 'The same price the Make card shows here. Nothing is spent yet.'],
+      ['Make it', 'POST /v1/videos/{id}/make', 'Send quote.key back. A changed price is refused, not charged.'],
+      ['Get the video', 'video.ready', 'Your webhook hears it, then download the MP4.']];
+    const keys = (A.keys || []).map(k => `<div class="hx-dvcard"><div class="hx-dvrow"><b class="hx-growf">${esc(k.name)}</b><code class="hx-dvmono">hi_live_…${esc(k.last4)}</code></div>
+        <div class="hx-dvmeta"><span>Made ${esc(ago(k.made))}</span><span>${k.used_at ? 'Used ' + esc(ago(k.used_at)) : 'Not used yet'}</span><span><b class="hx-num">${num(k.calls || 0)}</b> calls</span></div>
+        <div class="hx-dvrate"><span class="hx-dvbar" role="meter" aria-label="Calls this hour" aria-valuemin="0" aria-valuemax="${rate}" aria-valuenow="${k.calls_hour || 0}"><i style="width:${Math.min(100, Math.round((k.calls_hour || 0) / rate * 100))}%"></i></span><span class="hx-num">${num(k.calls_hour || 0)} of ${rate} this hour</span></div>
+        <div class="hx-dvrow"><button type="button" class="hx-btn s" data-a="dvren" data-id="${esc(k.id)}">Rename</button><button type="button" class="hx-btn s danger" data-a="dvdel" data-val="key" data-id="${esc(k.id)}">Remove</button></div></div>`).join('')
+      || `<div class="hx-dvempty"><b>No app keys yet</b><p class="hx-mut">A key lets one of your programs call the API. It is shown once, then Hoola keeps only a fingerprint of it.</p><button type="button" class="hx-btn dark s" data-a="dvkeyask">Make an app key</button></div>`;
+    const hooks = (A.hooks || []).map(h => `<div class="hx-dvcard"><code class="hx-dvmono hx-dvurl">${esc(h.url)}</code>
+        <div class="hx-dvrow">${(h.events || []).map(e => `<span class="hx-dvev">${esc(e)}</span>`).join('')}</div>
+        <div class="hx-dvmeta">${h.last_status ? `${dvStatus(h.last_status)}<span>Last: ${esc(h.last_event || '')} · ${esc(ago(h.last_at))}</span>` : '<span>Nothing sent yet. Send a test to check your server.</span>'}</div>
+        ${(h.log || []).length ? `<div class="hx-dvlog"><span class="hx-lab">Recent deliveries</span>${h.log.map(l => `<div class="hx-dvlrow">${dvStatus(l.status)}<span class="hx-growf">${esc(l.event)}${l.title ? ' · ' + esc(l.title) : ''}</span><span class="hx-mut">${esc(ago(l.at))}</span></div>`).join('')}</div>` : ''}
+        <div class="hx-dvrow"><button type="button" class="hx-btn s" data-a="hooktest" data-id="${esc(h.id)}">Send a test</button><button type="button" class="hx-btn s danger" data-a="dvdel" data-val="hook" data-id="${esc(h.id)}">Remove</button></div></div>`).join('')
+      || `<div class="hx-dvempty"><b>No webhooks yet</b><p class="hx-mut">Hoola calls your server when a video from your apps is ready or fails, so your program does not have to keep asking.</p></div>`;
+    return `<div class="hx-doc hx-dvpage">${head}
+      <div class="hx-dvstats">${stats.map(([k, v, sub]) => `<div class="hx-dvstat"><span class="hx-lab">${esc(k)}</span><b class="hx-num">${esc(v)}</b><small>${esc(sub)}</small></div>`).join('')}</div>
+      <section class="hx-dvsteps" aria-labelledby="hxDvStepsT"><div class="hx-dvrow"><b id="hxDvStepsT" class="hx-growf">How a video is made from your program</b><span class="hx-mut hx-sm">Nothing is spent until step 3</span></div>
+        <ol>${steps.map(([t, c, d], i) => `<li><span class="hx-dvn">${i + 1}</span><span class="hx-ct"><b>${esc(t)}</b><code class="hx-dvmono">${esc(c)}</code><small>${esc(d)}</small></span></li>`).join('')}</ol></section>
+      <div class="hx-dvcols">
+        <section aria-labelledby="hxDvKeysT"><div class="hx-dvrow hx-dvsech"><b id="hxDvKeysT" class="hx-growf">App keys</b><span class="hx-mut hx-sm">${(A.keys || []).length} of ${mk} · each key up to ${rate} calls an hour</span></div>${keys}</section>
+        <section aria-labelledby="hxDvHooksT"><div class="hx-dvrow hx-dvsech"><b id="hxDvHooksT" class="hx-growf">Webhooks</b><span class="hx-mut hx-sm">${(A.hooks || []).length} of ${mh}</span>
+          <button type="button" class="hx-btn s" data-a="dvhookask"${(A.hooks || []).length >= mh ? ' disabled' : ''}>Add a webhook</button></div>${hooks}
+          <p class="hx-hint">Hoola tries three times (now, after 5 s, after 30 s). Every delivery is signed with your webhook's secret: see The API.</p></section>
+      </div></div>`;
+  }
+  function dvApi() {
+    const s = dvS(), d = DVDOORS[s.door] || DVDOORS[0], sl = s.lang === 'curl' ? 'py' : s.lang;
+    return `<div class="hx-dvapi"><div class="hx-dvdoors"><span class="hx-lab">Base address</span><code class="hx-dvmono hx-dvbase">${esc(dvBase())}</code>
+        <div role="listbox" aria-label="API calls">${DVDOORS.map((x, i) => `<button type="button" role="option" aria-selected="${i === s.door}" class="hx-dvdoor${i === s.door ? ' on' : ''}" data-a="dvdoor" data-val="${i}"><span class="hx-dvm ${x.m === 'POST' ? 'post' : ''}">${x.m}</span><span class="hx-ct"><code class="hx-dvmono">${esc(x.p)}</code><small>${esc(x.does)}</small></span></button>`).join('')}</div>
+        <div class="hx-dverr"><b>When something is refused</b>${DVERR.map(([c, t]) => `<div><code class="hx-dvmono">${c}</code><span>${esc(t)}</span></div>`).join('')}</div></div>
+      <div class="hx-dvdoc"><div class="hx-dvrow"><span class="hx-dvm big ${d.m === 'POST' ? 'post' : ''}">${d.m}</span><code class="hx-dvmono hx-dvpath hx-growf">${esc(d.p)}</code>${dvSeg(s.lang, 'dvlang', DVLANG)}</div>
+        <p class="hx-mut">${esc(d.does)} · ${esc(d.price)}. Send your key as <code class="hx-dvmono">Authorization: Bearer hi_live_…</code></p>
+        <div class="hx-dvpair"><div><span class="hx-lab">Request</span>${dvPre(dvCode(d, s.lang), 'req')}</div><div><span class="hx-lab">Answer</span>${dvPre(d.ans, 'ans')}</div></div>
+        ${d.fields ? `<div class="hx-tablew hx-card"><table class="hx-table hx-dvfields"><thead><tr><th>Field</th><th>Needed</th><th>What it is</th></tr></thead><tbody>${d.fields.map(([n, r, w]) => `<tr><td><code class="hx-dvmono">${esc(n)}</code></td><td>${esc(r)}</td><td>${esc(w)}</td></tr>`).join('')}</tbody></table></div>` : ''}
+        <section class="hx-dvcard" aria-labelledby="hxDvSigT"><b id="hxDvSigT">Check that a webhook really came from Hoola</b>
+          <p class="hx-mut hx-sm">Each call carries <code class="hx-dvmono">X-Hoola-Event</code> and <code class="hx-dvmono">X-Hoola-Signature: t=&lt;unix time&gt;,v1=&lt;hex&gt;</code>, where v1 is the HMAC-SHA256 of “t.body” with your webhook's signing secret. Refuse anything older than 5 minutes.</p>
+          ${dvSeg(sl, 'dvlang', [['py', 'Python'], ['js', 'JavaScript']])}${dvPre(DVSIG[sl], 'sig')}
+          <span class="hx-lab">What Hoola sends</span>${dvPre(DVPAY, 'pay')}</section>
+      </div></div>`;
+  }
+  function dvTxt(what) {
+    const s = dvS(), d = DVDOORS[s.door] || DVDOORS[0], sl = s.lang === 'curl' ? 'py' : s.lang;
+    if (what === 'key') return UI.dlg?.key || '';
+    if (what === 'secret') return UI.dlg?.secret || '';
+    if (what === 'try') return dvCode(DVDOORS[0], s.lang, UI.dlg?.key || '');
+    if (what === 'req') return dvCode(d, s.lang);
+    if (what === 'ans') return d.ans;
+    if (what === 'sig') return DVSIG[sl];
+    return DVPAY;
+  }
+  const dvHead = t => `<div class="hx-dlgh"><h2 class="hx-serif hx-growf" id="hxDlgT">${esc(t)}</h2><button type="button" class="hx-ib" data-a="dlgx" aria-label="Close">${ic('x', 16)}</button></div>`;
+  function dvNewBody() {
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT">${dvHead('Make an app key')}
+      <div class="hx-dlgb"><label class="hx-fld"><span class="hx-lab">What will use it</span><input class="hx-in" id="hxDvName" maxlength="40" placeholder="Shop website" data-auto="1"></label>
+        <p class="hx-mut hx-sm">The key can make videos with your credits. You will see it once.</p></div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx">Cancel</button><button type="button" class="hx-btn dark" data-a="keynew">Make the key</button></div></div>`;
+  }
+  function dvKeyBody() {
+    const k = UI.dlg || {};
+    return `<div class="hx-dlg w hx-dvonce" role="dialog" aria-modal="true" aria-labelledby="hxDlgT">${dvHead('Your new app key')}
+      <div class="hx-dlgb"><p>“${esc(k.name || '')}” can now make videos with your credits. Copy the key now: it is shown only this once. Hoola keeps only a fingerprint of it.</p>
+        <div class="hx-dvkey"><code class="hx-dvmono">${esc(k.key || '')}</code><button type="button" class="hx-btn dark s" data-a="dvcopy" data-val="key" data-auto="1">${ic('copy', 13)}Copy</button></div>
+        <div class="hx-dvrow"><b class="hx-growf">Try it now</b>${dvSeg(dvS().lang, 'dvlang', DVLANG)}</div>${dvPre(dvTxt('try'), 'try')}
+        <p class="hx-mut hx-sm">Keep it on your server, never in a web page or a phone app anyone can open. Lost it? Remove it and make a new one.</p></div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn dark" data-a="dlgx">I have copied it</button></div></div>`;
+  }
+  function dvRenBody() {
+    const k = ((D.apps || {}).keys || []).find(x => x.id === UI.dlg.id); if (!k) return '';
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT">${dvHead('Rename ' + k.name)}
+      <div class="hx-dlgb"><label class="hx-fld"><span class="hx-lab">Name</span><input class="hx-in" id="hxDvRn" maxlength="40" value="${esc(k.name)}" data-auto="1"></label></div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx">Cancel</button><button type="button" class="hx-btn dark" data-a="dvrensave">Save</button></div></div>`;
+  }
+  function dvDelBody() {
+    const A = D.apps || {}, isKey = UI.dlg.what === 'key', x = (isKey ? A.keys : A.hooks || []).find(y => y.id === UI.dlg.id); if (!x) return '';
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT">${dvHead(isKey ? `Remove ${x.name}?` : 'Remove this webhook?')}
+      <div class="hx-dlgb"><p>${isKey ? 'Programs that use this key stop working at once. Videos they made stay.' : `Hoola stops calling <code class="hx-dvmono">${esc(x.url)}</code>.`}</p></div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx" data-auto="1">Keep it</button><button type="button" class="hx-btn danger" data-a="${isKey ? 'keydel' : 'hookdel'}" data-id="${esc(x.id)}">Remove</button></div></div>`;
+  }
+  function dvHookBody() {
+    const ev = UI.dlg.ev || ['video.ready', 'video.failed'];
+    const D2 = [['video.ready', 'The video is made; the download is in the message'], ['video.failed', 'It could not be made; the reason is in error']];
+    return `<div class="hx-dlg w" role="dialog" aria-modal="true" aria-labelledby="hxDlgT">${dvHead('Add a webhook')}
+      <div class="hx-dlgb"><p class="hx-mut">Hoola calls this address when a video made by your apps is ready or fails.</p>
+        <label class="hx-fld"><span class="hx-lab">Your server's address</span><input class="hx-in hx-dvmono" id="hxDvUrl" maxlength="400" placeholder="https://your-server.com/hoola" value="${esc(UI.dlg.url || '')}" data-auto="1"><small class="hx-mut">https only, your own server, no user name or password in it.</small></label>
+        <fieldset class="hx-dvevs"><legend class="hx-lab">Tell me when</legend>${D2.map(([e, t]) => `<label><input type="checkbox" name="hxDvEv" value="${e}"${ev.includes(e) ? ' checked' : ''}><code class="hx-dvmono">${e}</code><span class="hx-mut">${esc(t)}</span></label>`).join('')}</fieldset></div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx">Cancel</button><button type="button" class="hx-btn dark" data-a="hooknew">Add the webhook</button></div></div>`;
+  }
+  function dvSecretBody() {
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT">${dvHead('Your webhook signing secret')}
+      <div class="hx-dlgb"><p>Your server uses it to check that a call really came from Hoola. Copy it now: it is shown only this once.</p>
+        <div class="hx-dvkey"><code class="hx-dvmono">${esc(UI.dlg.secret || '')}</code><button type="button" class="hx-btn dark s" data-a="dvcopy" data-val="secret" data-auto="1">${ic('copy', 13)}Copy</button></div></div>
+      <div class="hx-dlgf"><button type="button" class="hx-btn" data-a="dvsig">How to check a call</button><span class="hx-grow"></span><button type="button" class="hx-btn dark" data-a="dlgx">I have copied it</button></div></div>`;
+  }
+  async function dvReload() { try { D.apps = await api('GET', `${X}/apps`); } catch { /* keep what is shown */ } if (PAGE === 'developers') draw(); }
+
   // ---- engines (v0.999.208 ENGINES, REDESIGNED: her three defaults, every engine of a job priced for one length the way
   // the Make price card prices it, cards with ready / default / not connected said plainly (never a key name), a panel per
   // engine with its price at each length and her videos on it, the B-roll shot maker with its price first)
@@ -2134,19 +2286,7 @@ window.HoolaInteractive = function (ctx) {
     projects() { return UI.ptab === 'Trash' ? pjTrash() : pjMain(); },
     brand() { return brPage(); },
     engines() { return enPage(); },
-    developers() {
-      const A = D.apps || {keys: [], hooks: [], doors: []};
-      return `<div class="hx-doc"><h2 class="hx-serif">Developers</h2><p class="hx-mut">Let your own programs make videos with your credits. Keys are shown once.</p>
-        <b class="hx-t">App keys</b>${UI.newKey ? `<div class="hx-note warn"><code class="hx-code">${esc(UI.newKey.key)}</code><br>${esc(UI.newKey.note)}</div>` : ''}
-        <div class="hx-card hx-list">${A.keys.map(k => `<div class="hx-vrow"><span class="hx-ct"><b>${esc(k.name)}</b><small>…${esc(k.last4)} · ${num(k.calls)} calls${k.used_at ? ' · used ' + esc(ago(k.used_at)) : ''}</small></span><button type="button" class="hx-btn s danger" data-a="keydel" data-id="${esc(k.id)}">Remove</button></div>`).join('') || '<p class="hx-mut hx-sm">No keys yet.</p>'}
-          <div class="hx-filerow"><input class="hx-in" id="hxKeyName" placeholder="My app" maxlength="40"><button type="button" class="hx-btn s dark" data-a="keynew">Make a key</button></div></div>
-        <b class="hx-t">Webhooks</b>${UI.newHook ? `<div class="hx-note warn"><code class="hx-code">${esc(UI.newHook.secret)}</code><br>${esc(UI.newHook.note)}</div>` : ''}
-        <div class="hx-card hx-list">${A.hooks.map(h => `<div class="hx-vrow"><span class="hx-ct"><b>${esc(h.url)}</b><small>${esc((h.events || []).join(', '))}${h.last_status ? ' · last answer ' + esc(h.last_status) : ''}</small></span>
-            <button type="button" class="hx-btn s" data-a="hooktest" data-id="${esc(h.id)}">Send a test</button><button type="button" class="hx-btn s danger" data-a="hookdel" data-id="${esc(h.id)}">Remove</button></div>`).join('') || '<p class="hx-mut hx-sm">No webhooks yet.</p>'}
-          <div class="hx-filerow"><input class="hx-in" id="hxHookUrl" placeholder="https://your-server.com/hoola" maxlength="400"><button type="button" class="hx-btn s dark" data-a="hooknew">Add</button></div></div>
-        <b class="hx-t">Doors</b><div class="hx-tablew hx-card"><table class="hx-table"><tbody>${(A.doors || []).map(d => `<tr><td class="hx-num"><b>${esc(d.method)}</b></td><td><code>${esc(d.path)}</code></td><td>${esc(d.does)}</td></tr>`).join('')}</tbody></table></div>
-        <p class="hx-hint">${esc(A.signature || '')}</p></div>`;
-    },
+    developers() { return dvPage(); },
     settings() {
       const st = D.status || {}, u = D.usage || {};
       return `<div class="hx-doc"><h2 class="hx-serif">Settings</h2>
@@ -2166,6 +2306,7 @@ window.HoolaInteractive = function (ctx) {
     templates() { const t = ARG && tplOf(ARG); if (!t) return; const u = tuState(t); tuEstimate(); if (u.sample) { u.scene = 0; tuPlay(); } },
     studio() { if (ARG) { const p = cur(); if (!p) return; if (p.status === 'making') watchJob(ARG); studioQuote(); if (UI.tool === 'Engine') edCompare(); }
       else (D.projects || []).filter(p => p.status === 'making').forEach(p => watchJob(p.id)); },
+    developers() { dvReload(); },
     engines() { enPrices(UI.etab); if (UI.etab === 'broll') brQuote(); },
     brand() { UI.brd = null; Promise.all([brLoad(), langsLoad()]).then(() => { if (PAGE !== 'brand') return; draw(); }); },
   };
@@ -2493,11 +2634,26 @@ window.HoolaInteractive = function (ctx) {
       case 'brmake': { UI.broll.prompt = ($('#hxBr')?.value || '').trim();
         try { await api('POST', `${X}/broll`, {prompt: UI.broll.prompt, seconds: UI.broll.seconds, aspect: UI.broll.aspect, quote_key: UI.broll.q?.key || ''}); toast('Making the shot. It appears here when ready.'); await load(); draw(); setTimeout(async () => { await load(); if (PAGE === 'engines') draw(); }, 60000); }
         catch (er) { toast(er.message, true); } return; }
-      case 'keynew': try { UI.newKey = await api('POST', `${X}/apps/keys`, {name: $('#hxKeyName')?.value || ''}); D.apps = await api('GET', `${X}/apps`); draw(); } catch (er) { toast(er.message, true); } return;
-      case 'keydel': try { await api('DELETE', `${X}/apps/keys?id=${q(id)}`); UI.newKey = null; D.apps = await api('GET', `${X}/apps`); draw(); } catch (er) { toast(er.message, true); } return;
-      case 'hooknew': try { UI.newHook = await api('POST', `${X}/apps/hooks`, {url: $('#hxHookUrl')?.value || ''}); D.apps = await api('GET', `${X}/apps`); draw(); } catch (er) { toast(er.message, true); } return;
-      case 'hookdel': try { await api('DELETE', `${X}/apps/hooks?id=${q(id)}`); D.apps = await api('GET', `${X}/apps`); draw(); } catch (er) { toast(er.message, true); } return;
-      case 'hooktest': try { const h = await api('POST', `${X}/apps/hooks/test`, {id}); toast(`Your server answered: ${h.last_status || 'nothing'}`); D.apps = await api('GET', `${X}/apps`); draw(); } catch (er) { toast(er.message, true); } return;
+      case 'dvtab': dvS().tab = b.dataset.val === 'api' ? 'api' : 'over'; return draw();
+      case 'dvdoor': dvS().door = +b.dataset.val || 0; return draw();
+      case 'dvlang': dvS().lang = b.dataset.val || 'curl'; if (UI.dlg?.k === 'dvkey') dlgPaint(); return draw();
+      case 'dvsig': dlgClose(); dvS().tab = 'api'; return draw();
+      case 'dvcopy': try { await navigator.clipboard.writeText(dvTxt(b.dataset.val)); toast('Copied.'); } catch { toast('Select the text and copy it.', true); } return;
+      case 'dvkeyask': UI.dlg = {k: 'dvnew'}; return dlgPaint();
+      case 'dvhookask': UI.dlg = {k: 'dvhook'}; return dlgPaint();
+      case 'dvren': UI.dlg = {k: 'dvren', id}; return dlgPaint();
+      case 'dvdel': UI.dlg = {k: 'dvdel', id, what: b.dataset.val}; return dlgPaint();
+      case 'dvrensave': { const n = ($('#hxDvRn')?.value || '').trim(); if (!n) return toast('Give the key a name.');
+        try { await api('PATCH', `${X}/apps/keys`, {id: UI.dlg.id, name: n}); dlgClose(); toast('Renamed.'); await dvReload(); } catch (er) { toast(er.message, true); } return; }
+      case 'keynew': try { const k = await api('POST', `${X}/apps/keys`, {name: $('#hxDvName')?.value || ''}); UI.dlg = {k: 'dvkey', key: k.key, name: k.name}; dlgPaint(); await dvReload(); } catch (er) { toast(er.message, true); } return;
+      case 'keydel': try { await api('DELETE', `${X}/apps/keys?id=${q(id)}`); dlgClose(); toast('Removed. Programs using it stop at once.'); await dvReload(); } catch (er) { toast(er.message, true); } return;
+      case 'hooknew': { const ev = [...document.querySelectorAll('input[name=hxDvEv]:checked')].map(x => x.value);
+        if (!ev.length) return toast('Pick at least one event.', true);
+        const url = $('#hxDvUrl')?.value || '';
+        try { const h = await api('POST', `${X}/apps/hooks`, {url, events: ev}); UI.dlg = {k: 'dvsecret', secret: h.secret}; dlgPaint(); await dvReload(); }
+        catch (er) { UI.dlg = {k: 'dvhook', url, ev}; dlgPaint(); toast(er.message, true); } return; }
+      case 'hookdel': try { await api('DELETE', `${X}/apps/hooks?id=${q(id)}`); dlgClose(); toast('Webhook removed.'); await dvReload(); } catch (er) { toast(er.message, true); } return;
+      case 'hooktest': b.disabled = true; try { const h = await api('POST', `${X}/apps/hooks/test`, {id}); toast(/^2\d\d$/.test(h.last_status || '') ? `Your server answered ${h.last_status} OK.` : `Your server answered: ${h.last_status || 'nothing'}`, !/^2\d\d$/.test(h.last_status || '')); await dvReload(); } catch (er) { toast(er.message, true); b.disabled = false; } return;
     }
   }
   function onInput(e) {
