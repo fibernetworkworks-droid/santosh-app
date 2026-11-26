@@ -12357,3 +12357,28 @@ phone open it.
 - Hoola never submits a dispute response, charges a card or pays anyone; reason codes are Hoola's table until her processor's guide is
   checked (said on the page).
 - Tests: `server/tests/test_pay_desk.py` (6, incl. a Chromium walk at 1440 and 390 px). NOT VERIFIED on her server.
+
+## v0.999.224 THE CHAT BOX MICROPHONE (owner: "NOW CHECK THE CONSOLE MICROPHONE NOT FUCTIONING PROPERLY FIND THE BUG , DESIGN -- MAKE IT PERFECTLY ADVCNE , PREMIUM AND PROFESSIONAL -- MCHING WITH THIS CHAT PANEL DESIGN")
+
+Bugs found in the old composer mic (v0.173 block in v2.js), each fixed in NEW `server/app/static/console/dictate.js`
+(`window.HoolaDictate`, loaded before v2.js; v2.js wires it as `DICTATE`):
+1. it always listened for Hindi (`r.lang = 'hi-IN'`), so English came back wrong or in Devanagari - now the browser's
+   first language (matched to a list of 21), her pick from the bar's language menu, kept in localStorage `hoola.dictate.lang`;
+2. sending while it listened did not stop it - the next result wrote the SENT words back into the empty box; now a capture
+   submit listener ends it, and any change to the box the page made (another chat opened) ends it;
+3. Chrome ends a continuous session after a pause and the mic went off mid-sentence - now a new session starts at once;
+   three silent rounds in a row stop it with a plain line;
+4. typing while it listened was overwritten - now her typing pauses listening and it starts again 0.7 s after;
+5. only `not-allowed` said anything - every error (no microphone, network, language, service) has a plain line;
+6. a browser without speech typing (Firefox) was thrown onto the voice call page - now it says what to use;
+7. Ctrl + Space worked only with Hoola Flow - now with both; Esc cancels (her words from before come back).
+Design: while dictating the composer row is one bar - cancel (x), a live waveform (an analyser on the microphone on
+computers; a level from the speech events on phones and for Hoola Flow), "Listening", the language chip, the clock and
+Done in an ink circle; the box placeholder reads "Speak - your words appear here"; no red pulse (`#micBtn.on` animation
+off), only the page's ink and paper (v2.css end block). Hoola Flow (Kaan) still runs first when its engine is ready;
+`HoolaFlowMic` gained `onLevel` and `cancel()`.
+Tests: NEW `test_v0999_224_console_mic.py` (shape + a browser walk with a stand-in speech service: her language,
+results, Chrome ending by itself, typing kept, language menu, Esc, Done, send stops it, a missing microphone explained,
+the bar in a chat); `test_v0751_hoola_flow.py` pin moved. Pre-existing reds unchanged (test_v0719 side panel,
+test_v0973 shape + version, test_v0981 shape - red on main without this change). NOT VERIFIED: on her server or with a
+real microphone (headless Chromium has none).

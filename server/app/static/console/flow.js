@@ -654,7 +654,7 @@ window.HoolaFlow = function ({api, esc, toast, say}) {
 
 
 /* the chat box mic: dictation through Kaan (start / stop). Returns null when it cannot (the caller falls back). */
-window.HoolaFlowMic = function ({api, toast, onText, onState}) {
+window.HoolaFlowMic = function ({api, toast, onText, onState, onLevel}) {
   let S = null, base = '', ready = null;
   async function canUse() {
     if (ready != null) return ready;
@@ -667,7 +667,7 @@ window.HoolaFlowMic = function ({api, toast, onText, onState}) {
     canUse,
     async start(current) {
       base = current ? current.replace(/\s*$/, ' ') : '';
-      const s = window.HoolaFlowSession({api, onWords: t => onText(base + t), onError: e => toast(e.message, true)});
+      const s = window.HoolaFlowSession({api, onWords: t => onText(base + t), onLevel, onError: e => toast(e.message, true)});
       await s.start(); S = s; onState(true);
     },
     async stop() {
@@ -680,5 +680,6 @@ window.HoolaFlowMic = function ({api, toast, onText, onState}) {
         onText(base + (t || '').trim());
       } catch (e) { toast(e.message, true); }
       onState(false);
-    }};
+    },
+    async cancel() { const s = S; if (!s) return; S = null; onState(false); try { await s.cancel(); } catch { /* gone */ } }};   // v0.999.224 nothing kept
 };
