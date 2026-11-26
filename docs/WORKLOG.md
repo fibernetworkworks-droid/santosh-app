@@ -3815,3 +3815,11 @@ Work Log:
 - chatlist.js SIDE_SECS (no session groups in the app design, session chats in Recents, no Add to session menu item); appdesign.css hides #projects.
 - test_v0999_211_no_sessions_sidebar.py: shape + browser walk; version ritual 0.999.211.
 Stage Summary: shipped to main; not verified on her server.
+
+---
+Task ID: v0.999.212 NO LIVE PILL
+Agent: Claude (Claude Code session)
+Task: remove the Live pill at the bottom of the console sidebar.
+Work Log:
+- appdesign.css hides the Live / Studio strip and the connection line in the app design; test extended; version ritual 0.999.212.
+Stage Summary: shipped to main; not verified on her server.

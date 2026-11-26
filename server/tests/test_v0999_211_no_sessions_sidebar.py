@@ -20,6 +20,7 @@ def test_shape():
     assert "const SIDE_SECS = () => APPD() ? [] : SECS;" in CL
     assert "for (const p of SIDE_SECS())" in CL and "ctx.pickProject && !APPD()" in CL
     assert "html.appd #app .side #projects{display:none}" in CSS
+    assert "html.appd #app .side .console-controls,html.appd #app .side #conn{display:none !important}" in CSS   # v0.999.212 no Live pill
 
 
 def test_sidebar_has_no_sessions(arena_server):  # noqa: F811
@@ -45,8 +46,10 @@ def test_sidebar_has_no_sessions(arena_server):  # noqa: F811
     m = pg.evaluate("""()=>{const side=document.querySelector('.side');
       const vis=e=>e&&e.getClientRects().length>0;
       return {text:side.innerText, projects:vis(document.querySelector('#projects')), groups:document.querySelectorAll('#recents .sgh').length,
+        live:vis(document.querySelector('#liveBtn')), liveEls:[...document.querySelectorAll('.side *')].filter(e=>e.childElementCount===0&&e.textContent.trim()==='Live'&&vis(e)).map(e=>e.outerHTML.slice(0,200)+' | '+(e.parentElement&&e.parentElement.outerHTML.slice(0,160))), user:(()=>{const u=document.querySelector('.side .user').getBoundingClientRect();return Math.round(innerHeight-u.bottom);})(),
         chats:[...document.querySelectorAll('#recents .rc .rct')].map(e=>e.textContent), other:[...document.querySelectorAll('#recents .rg')].map(e=>e.textContent)}}""")
     assert not m["projects"] and m["groups"] == 0, m
+    assert not m["live"] and "Live" not in m["text"].split(), m["liveEls"]   # v0.999.212 no Live pill, account row at the bottom
     assert "Sessions" not in m["text"] and "GST work" not in m["text"], m
     assert {"HELO", "READ"} <= set(m["chats"]) and "Other chats" not in m["other"], m
     pg.hover("#recents .rcw"); pg.click("#recents .rcw .rcm")
@@ -55,6 +58,7 @@ def test_sidebar_has_no_sessions(arena_server):  # noqa: F811
     assert items and not any("session" in t.lower() for t in items), items
     shots = os.environ.get("HOOLA_SHOTS")
     if shots:
+        pg.screenshot(path=f"{shots}/no-live.png")
         pg.keyboard.press("Escape"); pg.screenshot(path=f"{shots}/no-sessions.png")
     assert not errors, errors
     ctx.close()

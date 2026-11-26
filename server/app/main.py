@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.211"   # v0.999.211 NO SESSIONS IN THE SIDEBAR (owner, her sidebar screenshot: "NOW CHECK THE SESSIONS --- REMOVE THAT FROM SIDE BAR"): the app-design console sidebar shows no Sessions label, no + and no session groups; a chat that sits in a session is listed in Recents like any other chat (nothing disappears), and the chat menu there no longer offers Add to session. Sessions themselves, their instructions and memory stay on the server and keep applying to their chats; the old look keeps its session groups. Console only (chatlist.js SIDE_SECS, appdesign.css). Previous: v0.999.210 SETTINGS, REDESIGNED.
+APP_VERSION = "0.999.212"   # v0.999.212 NO LIVE PILL (owner, her sidebar screenshot: "check at bottom a live name at a icon ... Remove that entirely in side bar"): the app-design console sidebar no longer shows the "Live" pill at the bottom - the Live / Studio buttons strip and the connection status line (which loses its hidden class once connected and read "Live") are hidden; the account row stays at the bottom. Console only (appdesign.css). Previous: v0.999.211 NO SESSIONS IN THE SIDEBAR.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
