@@ -160,7 +160,7 @@ class _Title extends StatelessWidget {
             child: Text(title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontFamily: HoolaFont.serif, fontSize: 30, fontWeight: FontWeight.w400, color: c.ink, height: 1.2)),
+                style: HoolaType.pageTitle(c)),
           ),
           if (count != null) ...[
             const SizedBox(width: 10),

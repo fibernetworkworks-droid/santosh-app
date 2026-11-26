@@ -492,7 +492,7 @@ class _BigTitle extends StatelessWidget {
     final c = HoolaColors.of(context);
     return Semantics(
       header: true,
-      child: Text(text, style: HoolaType.hero(c).copyWith(fontSize: 30, fontWeight: FontWeight.w500, letterSpacing: -.2)),
+      child: Text(text, style: HoolaType.pageTitle(c)),
     );
   }
 }

@@ -1023,7 +1023,7 @@ class _CodeNewSessionPageState extends State<CodeNewSessionPage> {
                             : Column(key: const ValueKey('ready'), mainAxisSize: MainAxisSize.min, children: [
                                 const HoolaMark(size: 58),
                                 const SizedBox(height: 20),
-                                Text('Ready when you are', textAlign: TextAlign.center, style: HoolaType.hero(c).copyWith(fontSize: 30)),
+                                Text('Ready when you are', textAlign: TextAlign.center, style: HoolaType.hero(c)),
                                 if (_st['github'] != true) ...[
                                   const SizedBox(height: 18),
                                   CodeOutline('Connect GitHub first', icon: Icons.link_rounded, onTap: () async {

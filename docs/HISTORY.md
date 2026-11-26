@@ -12085,3 +12085,15 @@ Phone) -> "GO BUILD". The Studio already lists videos and Apps already makes man
 - Tests: `test_v0999_204_interactive_projects.py` (4, incl. a Chromium walk at 1440 and 390).
 - NOT VERIFIED: on her server.
 
+## v0.999.206 PHONE LIKE CLAUDE (owner: "NOW DO SAME FOR HOOLA APP ALL SECTIONS"): every phone home greeting in Claude's greeting (Literata 38 / 1.2 at 330, dark 290: new static cuts LiterataGreet / LiterataGreetDark at opsz 48) - Hoola home, Hoola Code, Create, Vocal, Music, Connect your PC, AI Employees, Wallet, the first screen; serif page titles at 28 / 530 (LiterataTitle cut at opsz 28) - departments, employees, sessions, Connect, Wallet, Create pages, CA practice; the Vocal, Music and Notebook chats land her sent message at the top like the main chat (ThreadLander), her bubble 16 / 1.4; 2 phone tests + 1 server test.
+
+Owner: "NOW DO SAME FOR HOOLA APP ALL SECTIONS" - the phone after the console's v0.999.197-199 + v0.999.203-204.
+
+- Fonts: `assets/fonts/LiterataGreet-Regular.ttf` (wght 330, opsz 48), `LiterataGreetDark-Regular.ttf` (290, opsz 48), `LiterataTitle-SemiBold.ttf` (530, opsz 28) - the variable Literata (google/fonts, OFL) instanced with fontTools as plain static cuts, as Flutter wants (families `Literata Greet`, `Literata Greet Dark`, `Literata Title` in pubspec). The phone had no weight under 400 before, so the greeting could not be Claude's.
+- `HoolaType.hero` = Claude's greeting: Literata 38 / 1.2, the light cut (dark: the 290 cut), no tightening. New `HoolaType.pageTitle` (28 / 1.25 at 530) for serif page titles, `HoolaType.serifFigure` (the old regular serif) for amounts on cards.
+- Greetings on hero: Hoola home, Hoola Code home + New session ("Ready when you are"), Create home, Vocal home, Music home, Connect your PC, AI Employees, Wallet intro, the first screen.
+- Page titles on pageTitle: the drawer's Hoola, a department, an employee, a session, Connect's header, Hoola Wallet, Create pages, the film page, CA practice.
+- Chats: Vocal, Music and Notebook land her sent message at the top like the main chat (ThreadLander from hoola_thread.dart: room under the thread, held until she drags, a reply arriving never pulls it away), rising in; her Vocal / Music bubble 16 / 1.4.
+- Tests: `test/claude_titles_phone_test.dart`, `test/claude_titles_shot_test.dart` (a picture of the greeting light + dark, the light cut narrower than the regular serif), `server/tests/test_v0999_206_phone_titles.py` (font weights, styles, the landing in each chat). `design_rules_test` now expects the greeting family; its colour ratchet (setup_screen) was already red before this.
+
+NOT VERIFIED: on her phone.

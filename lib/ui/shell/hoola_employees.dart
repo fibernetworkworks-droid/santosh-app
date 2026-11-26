@@ -470,7 +470,7 @@ class _HoolaEmployeesState extends State<HoolaEmployees> with TickerProviderStat
     final head = rise(0, Padding(
       padding: const EdgeInsets.fromLTRB(HoolaSpace.gutter + 4, HoolaSpace.s20, HoolaSpace.gutter + 4, 0),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Semantics(header: true, child: Text('AI Employees', style: HoolaType.hero(c).copyWith(fontSize: 34, height: 1.12))),
+        Semantics(header: true, child: Text('AI Employees', style: HoolaType.hero(c))),
         const SizedBox(height: 10),
         Text('Hire a coworker for one job. It works all day, and it asks you before anything leaves Hoola.',
             style: HoolaType.body(c).copyWith(color: c.ink2)),
@@ -1047,7 +1047,7 @@ class _HoolaDepartmentPageState extends State<HoolaDepartmentPage> with TickerPr
                     const SizedBox(height: 16),
                     Semantics(
                       header: true,
-                      child: Text(dept.name, textAlign: TextAlign.center, style: HoolaType.hero(c).copyWith(fontSize: 30, height: 1.15)),
+                      child: Text(dept.name, textAlign: TextAlign.center, style: HoolaType.pageTitle(c)),
                     ),
                     if (dept.desc.isNotEmpty) ...[
                       const SizedBox(height: 8),
@@ -1233,7 +1233,7 @@ class _HoolaEmployeePageState extends State<HoolaEmployeePage> with TickerProvid
         child: Column(children: [
           _Ringed(clock: live ? clock : null, child: EmployeeMono(e: e, size: 84, serif: true)),
           const SizedBox(height: 16),
-          Semantics(header: true, child: Text(_s(e['name']), textAlign: TextAlign.center, style: HoolaType.hero(c).copyWith(fontSize: 30, height: 1.15))),
+          Semantics(header: true, child: Text(_s(e['name']), textAlign: TextAlign.center, style: HoolaType.pageTitle(c))),
           const SizedBox(height: 10),
           EmployeeStatus(e: e, clock: clock),
           const SizedBox(height: 16),

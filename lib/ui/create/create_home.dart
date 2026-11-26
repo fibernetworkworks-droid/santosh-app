@@ -141,8 +141,7 @@ class _HoolaCreateState extends State<HoolaCreate> {
           Semantics(
             header: true,
             child: Text('What are we\nmaking today?',
-                style: TextStyle(
-                    fontFamily: c.dark ? HoolaFont.serifDark : HoolaFont.serif, fontSize: 32, height: 1.1, letterSpacing: -.4, color: c.ink)),
+                style: HoolaType.hero(c)),
           ),
           const SizedBox(height: 10),
           Text('Pictures, clips, films, songs and voices from one line. Every price shows before anything is spent.',

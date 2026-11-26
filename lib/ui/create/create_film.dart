@@ -1112,7 +1112,7 @@ class _CreateFilmState extends State<CreateFilm> {
         Semantics(
           header: true,
           child: Text(crS(v['project']),
-              style: TextStyle(fontFamily: c.dark ? HoolaFont.serifDark : HoolaFont.serif, fontSize: 28, height: 1.2, color: c.ink)),
+              style: HoolaType.pageTitle(c)),
         ),
         if (crS(v['brief']).isNotEmpty) ...[
           const SizedBox(height: 6),

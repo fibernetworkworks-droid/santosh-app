@@ -1254,7 +1254,7 @@ class CrIntro extends StatelessWidget {
       Semantics(
         header: true,
         child: Text(title,
-            style: TextStyle(fontFamily: c.dark ? HoolaFont.serifDark : HoolaFont.serif, fontSize: 28, height: 1.25, color: c.ink)),
+            style: HoolaType.pageTitle(c)),
       ),
       const SizedBox(height: 6),
       Text(sub, style: HoolaType.body(c).copyWith(color: c.ink2, fontSize: 15)),

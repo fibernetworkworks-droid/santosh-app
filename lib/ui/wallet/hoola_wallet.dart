@@ -155,10 +155,10 @@ class _HoolaWalletScreenState extends State<HoolaWalletScreen> with WidgetsBindi
                 _tile(c, '${p['category']}', 46),
                 const SizedBox(width: 12),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('${p['shop']}', style: HoolaType.hero(c).copyWith(fontSize: 22)),
+                  Text('${p['shop']}', style: HoolaType.serifFigure(c).copyWith(fontSize: 22)),
                   Text('${p['title']}', style: HoolaType.small(c), maxLines: 2, overflow: TextOverflow.ellipsis),
                 ])),
-                Text('${p['amount_text']}', style: HoolaType.hero(c).copyWith(fontSize: 28)),
+                Text('${p['amount_text']}', style: HoolaType.serifFigure(c).copyWith(fontSize: 28)),
               ]),
               const SizedBox(height: 10),
               for (final i in items.take(10))
@@ -447,7 +447,7 @@ class _HoolaWalletScreenState extends State<HoolaWalletScreen> with WidgetsBindi
     return ListView(padding: const EdgeInsets.fromLTRB(18, 8, 18, 28), children: [
       _topBar(c),
       const SizedBox(height: 6),
-      Text('Hoola Wallet', style: HoolaType.hero(c)),
+      Text('Hoola Wallet', style: HoolaType.pageTitle(c)),
       if (paused) Padding(padding: const EdgeInsets.only(top: 6), child: Text('All spending is paused.', style: HoolaType.body(c).copyWith(color: c.bad, fontWeight: FontWeight.w600))),
       const SizedBox(height: 14),
       Container(
@@ -457,7 +457,7 @@ class _HoolaWalletScreenState extends State<HoolaWalletScreen> with WidgetsBindi
           Text(w['balance'] != null ? 'Wallet balance' : 'Left to spend this month', style: HoolaType.small(c).copyWith(color: c.onPill.withOpacity(.75))),
           const SizedBox(height: 8),
           Text(w['balance'] != null ? _money(w['balance'] as num) : '${txt['left'] ?? ''}',
-              style: HoolaType.hero(c).copyWith(color: c.onPill, fontSize: 38, height: 1)),
+              style: HoolaType.serifFigure(c).copyWith(color: c.onPill, fontSize: 38, height: 1)),
           const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(5),

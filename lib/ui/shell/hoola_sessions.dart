@@ -317,7 +317,7 @@ class _HoolaSessionPageState extends State<HoolaSessionPage> {
                                 padding: const EdgeInsets.symmetric(vertical: 6),
                                 child: Row(children: [
                                   Flexible(
-                                    child: Text(sessionName(p), maxLines: 2, overflow: TextOverflow.ellipsis, style: HoolaType.hero(c)),
+                                    child: Text(sessionName(p), maxLines: 2, overflow: TextOverflow.ellipsis, style: HoolaType.pageTitle(c)),
                                   ),
                                   const SizedBox(width: 8),
                                   Icon(Icons.edit_outlined, size: 18, color: c.ink3),
