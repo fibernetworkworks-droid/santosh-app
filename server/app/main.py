@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.226"   # v0.999.226 CUSTOMIZE, PREMIUM (owner: "CUSTOMERISE SECTION LOOKS STALE AND OLD ... ADVANCE PRIMIUM AND PROFESSIONAL" -> design claude.ai/artifact/ENS4Mk3mkFsgEJaA8hxSD2 -> "MAKE IT MORE PREMIUN" -> "GO BUILD"): the Customize page rebuilt - header, account card with Credits / Google apps / Memories, a page list, one card per part; Appearance = controls + a live preview of a chat in her real font and size, Reset to default; password with show / strength; Connections; Memory with search, pin and a two-tap forget; About this server tiles + features behind a button; Log out card; 2 tests incl. a browser walk at desktop + phone width. Console only. Previous: v0.999.225 NO FLASH ON LOAD (owner, her screenshot of the console home while it loads; older stories live in git history.
+APP_VERSION = "0.999.227"   # v0.999.227 INSTITUTION DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE INSTITUTION DESK"): the Institution employee gets its own section /console/institution + Institution chat (kind institution, `instchat.py`): set up an institution on the desk with her as the first admin; who she is on the desk (the owner picks her person, an admin links a team member's login - everything is done AS that person with that person's roles); Today (waiting for your check, monitoring alerts, obligations overdue, incident reports due, the five areas as cards, maker-checker bar, report clocks, alerts by rule); Financial crime (transactions CSV -> alerts on HER rule values, Hoola's starting values marked check this, a SAR draft from an alert into maker-checker with machine checks, sanctions against her own watch list, customer file review); Compliance (obligations with their source, done today, complaints vs her deadline, policy and promotion checks); Risk (incidents with her report clocks and when SHE reported, RCSA heat map vs her appetite, third parties, models, ECL); Audit (prepared-by-client list, samples by seed, pass / fail per item -> the control test, journal tests); Governance (board pack, cap table and a new round, related parties, whistleblowing with a case number only); Drafts (maker never checks, two checkers above her limit, a check holds for the exact text, the MLRO scores a SAR, PDF); Team & settings (roles, logins, limit, keep periods, keys shown once, export); typed values survive a redraw; files, freezes and reports nothing; 5 tests incl. a browser walk. NOT VERIFIED on her server. Previous: v0.999.226 CUSTOMIZE, PREMIUM (owner: "CUSTOMERISE SECTION LOOKS STALE AND OLD ... ADVANCE PRIMIUM AND PROFESSIONAL" -> design claude.ai/artifact/ENS4Mk3mkFsgEJaA8hxSD2 -> "MAKE IT MORE PREMIUN" -> "GO BUILD"): the Customize page rebuilt - header, account card with Credits / Google apps / Memories, a page list, one card per part; Appearance = controls + a live preview of a chat in her real font and size, Reset to default; password with show / strength; Connections; Memory with search, pin and a two-tap forget; About this server tiles + features behind a button; Log out card; 2 tests incl. a browser walk at desktop + phone width. Console only. Previous: v0.999.225 NO FLASH ON LOAD (owner, her screenshot of the console home while it loads; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2142,6 +2142,15 @@ def firm_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/institution")
+@app.get("/console/institution/")
+def institution_desk_page():
+    """INSTITUTION DESK: the Institution employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "instdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/payments")
 @app.get("/console/payments/")
 def payments_desk_page():
@@ -2704,6 +2713,8 @@ from . import firmchat as _firmchat_mod                          # noqa: E402  F
 _firmchat_mod.mount(app, current_tenant, require_key)           # /api/firm/*
 from . import paychat as _paychat_mod                            # noqa: E402  PAYMENTS DESK
 _paychat_mod.mount(app, current_tenant, require_key)            # /api/payments/*
+from . import instchat as _instchat_mod                          # noqa: E402  INSTITUTION DESK
+_instchat_mod.mount(app, current_tenant, require_key)           # /api/institution/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through
