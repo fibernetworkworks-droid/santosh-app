@@ -3878,3 +3878,13 @@ Work Log:
 - Browser walk with a stand-in speech service; renumbered 223 -> 224 (Payments desk took 223).
 Stage Summary:
 - Pushed to main as v0.999.224; deploy with Actions > VPS ops > deploy. Not tried with a real microphone.
+
+---
+Task ID: v0.999.225 NO FLASH ON LOAD
+Agent: Claude (cloud session)
+Task: Console home showed a bare, unstyled typing box with huge icons on every load.
+Work Log:
+- Found the composer sits outside #app until v2.js moves it in; its styles are scoped under #app.
+- Hid body>#composer in v2.css; browser test fails without the fix, passes with it.
+Stage Summary:
+- Pushed to main as v0.999.225; deploy with Actions > VPS ops > deploy.

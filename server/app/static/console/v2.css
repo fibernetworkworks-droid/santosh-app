@@ -5077,3 +5077,7 @@ html.human #app .landing .halo{display:none}
 @container composer (max-width:380px){#app #composer .dictbar .dlang .dl,#app #composer .dictbar .dlang svg:last-child{display:none}}
 @media(prefers-reduced-motion:reduce){#app #composer .dictbar,#app #composer .dictbar .dstate::before{animation:none}}
 .hmenu.dlangm{max-height:min(420px,60vh);overflow:auto}
+
+/* v0.999.225 NO FLASH ON LOAD: the typing box is written after #app in v2.html and v2.js moves it into the page;
+   until then it stood alone at the top of the page with no styles (huge icons, an old clip and grid button). */
+body>#composer{display:none!important}
