@@ -294,6 +294,30 @@ def make_hub_router(require_key: Callable, current_tenant: Callable) -> APIRoute
         on()
         return view(wrap(H.restore, tenant, str((body or {}).get("id") or "")))
 
+    @r.post("/trash/purge")
+    async def purge_one(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """v0.999.204 one video out of the trash for good."""
+        on()
+        return {"ok": wrap(H.purge_one, tenant, str((body or {}).get("id") or ""))}
+
+    @r.post("/folders")
+    async def folder_save(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        on()
+        b = dict(body or {})
+        return wrap(H.folder_save, tenant, b.get("name"), b.get("color"), str(b.get("id") or ""))
+
+    @r.delete("/folders")
+    async def folder_delete(id: str = "", tenant: str = Depends(current_tenant)):
+        on()
+        return wrap(H.folder_delete, tenant, id)
+
+    @r.post("/bulk")
+    async def bulk(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """v0.999.204 many videos at once: move / voice / face / duplicate / trash."""
+        on()
+        b = dict(body or {})
+        return wrap(H.bulk, tenant, list(b.get("ids") or []), str(b.get("action") or ""), b.get("value"))
+
     @r.post("/trash/empty")
     async def empty(tenant: str = Depends(current_tenant)):
         on()
