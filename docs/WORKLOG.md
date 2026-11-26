@@ -3800,3 +3800,9 @@ Work Log:
 - Developers page rebuilt (counts, four steps, key + webhook cards, key / secret shown once, the API with real requests).
 - Tests test_v0999_209 (4) green with v0999_208 + v0999_169.
 Stage Summary: shipped as v0.999.209; NOT VERIFIED on her server.
+
+---
+Task ID: v0.999.210 SETTINGS, REDESIGNED
+What: Interactive Settings redesigned to the approved canvas (claude.ai/artifact/LZBJ9AF2Y9LgcZq6sJBywR): starting choices saved to her account, usage, kept & trash, this server.
+Tests: test_v0999_210_interactive_settings.py 4 passed (browser at 1440 + 390).
+Not verified: on her server.
