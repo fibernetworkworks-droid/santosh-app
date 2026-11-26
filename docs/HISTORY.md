@@ -12053,3 +12053,13 @@ Kept as they are: Game Dev's engine-look hero and Hoola Computer's page title (d
 Tests: `server/tests/test_v0999_203_every_chat.py` (6, incl. a Chromium walk: history opens at its end, her message lands 16 px down, held within 1 px while the reply grows past the panel, released by her wheel, a stand-in scroller still lands, weights 400 / 430 light and 360 / 400 dark) and `test/every_chat_landing_test.dart` (the phone thread kit, frame by frame).
 
 NOT VERIFIED: on her server or phone. The phone has no 430 weight for her message (its sans is bundled as static cuts 400 / 500 / 600 / 700).
+
+## v0.999.204 TITLES LIKE CLAUDE (owner: "ALSO DO GAME DEV AND HOOLA COMPUTER TITLES"): Game Dev's home greeting in Claude's greeting (Literata 38 / 1.2 at 290, the engine look is always dark) and its page titles in the serif at 28 / 530; Hoola Computer and Connect your PC the same 38 at 330 (dark 290), were sans 32 / 600; 1 test.
+
+Owner, after v0.999.203 kept them as they were: "ALSO DO GAME DEV AND HOOLA COMPUTER TITLES".
+
+- `gamedev.css`: the home greeting (What game should we make today?) Literata clamp(28px, 5.4vw, 38px) / 1.2 / opsz 48 at 290 - Game Dev's engine look is always dark, so Claude's dark greeting weight; the page titles (All games, The crew, Game Developer ...) Literata 28 / 1.25 / opsz 28 at 530 (were Sora 28 / 600).
+- `computer.css`: Hoola Computer and Connect your PC (`.hc-main h1`) Literata 38 at `--hck0-gw` (330 light, 290 dark) - they were Schibsted Grotesk 32 / 600.
+- Test `server/tests/test_v0999_204_titles.py`: the rules, the font links, and a Chromium render of the three titles in light and dark.
+
+NOT VERIFIED: on her server.

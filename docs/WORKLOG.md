@@ -3759,3 +3759,9 @@ Task ID: v0.999.203 EVERY CHAT LIKE CLAUDE
 Ask: the last 3 chat updates in every chat panel
 Built: chat kit type + landing for every desk and studio, Interactive / Vocal / Create / Hoola Code / Studio homes, phone thread kit + Hoola Code
 Not verified: on her server
+
+---
+Task ID: v0.999.204 TITLES LIKE CLAUDE
+Ask: Game Dev and Hoola Computer titles like Claude
+Built: gamedev.css + computer.css title blocks
+Not verified: on her server

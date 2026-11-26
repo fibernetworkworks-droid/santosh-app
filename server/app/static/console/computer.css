@@ -253,3 +253,7 @@ button.hc-tile{cursor:pointer}button.hc-tile:hover{border-color:var(--acc)}
 @keyframes hcBeat{50%{box-shadow:0 0 0 9px rgba(139,123,255,.08)}}
 @media (prefers-reduced-motion:reduce){.hc-wait i{animation:none}.hc-prog i{transition:none}}
 @media (max-width:860px){.hc-facts{grid-template-columns:1fr}.hc-os{grid-template-columns:1fr}.hc-home h1,.hc-connect h1{font-size:26px}}
+
+/* v0.999.204 TITLES LIKE CLAUDE (owner: "ALSO DO GAME DEV AND HOOLA COMPUTER TITLES"): Hoola Computer and Connect your
+   PC in Claude's greeting - Literata 38 / 330 (dark 290) / 1.2 at opsz 48 (were sans 32 / 600); the weights from chatkit.css. */
+.hc-main h1,.hc-home h1,.hc-connect h1{font-family:'Literata',Georgia,serif;font-size:clamp(28px,5.4vw,38px);line-height:1.2;letter-spacing:normal;font-variation-settings:"opsz" 48;font-weight:var(--hck0-gw,330)}
