@@ -68,9 +68,15 @@ def _agents(d: dict[str, Any]) -> list[dict[str, Any]]:
 def _public_agent(a: dict[str, Any]) -> dict[str, Any]:
     pub = a.get("public") or {}
     today = time.strftime("%Y-%m-%d")
-    return {**{k: v for k, v in a.items() if k not in ("public", "used")},
+    week = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(time.time() - 7 * 86400))
+    log = [x for x in (a.get("log") or []) if isinstance(x, dict)]
+    recent = [x for x in log if str(x.get("at") or "") >= week]
+    return {**{k: v for k, v in a.items() if k not in ("public", "used", "log")},
             "published": bool(pub.get("sha")), "pass_last4": pub.get("last4", ""),
-            "used_today_s": round(float((a.get("used") or {}).get(today, 0.0)), 1)}
+            "used_today_s": round(float((a.get("used") or {}).get(today, 0.0)), 1),
+            # v0.999.202 what it was asked this week, and the questions its facts could not answer (open ones, newest first)
+            "asked_week": len(recent), "missed_week": sum(1 for x in recent if not x.get("known")),
+            "misses": [{k: x.get(k) for k in ("id", "q", "at", "src")} for x in log if not x.get("known") and not x.get("resolved")][:8]}
 
 
 def agents(tenant: str) -> dict[str, Any]:
@@ -148,6 +154,11 @@ def _think(system: str, prompt: str) -> dict[str, Any]:
 
 
 def answer(a: dict[str, Any], question: str, think: Any = None) -> str:
+    return answer_known(a, question, think)[0]
+
+
+def answer_known(a: dict[str, Any], question: str, think: Any = None) -> tuple[str, bool]:
+    """v0.999.202 the answer, and whether her facts held it (a refused number or the model's own "not in the facts" = False)."""
     q = _clip(question, MAX_Q)
     if len(q) < 2:
         raise LiveError("Ask something.")
@@ -156,15 +167,16 @@ def answer(a: dict[str, Any], question: str, think: Any = None) -> str:
               "from the facts below - never from memory. If the facts do not hold the answer, say you do not know and "
               "offer that the business will help. Never invent a price, time, date, number, name or promise. One to "
               f"three short spoken sentences in {VO.lang_name(lang)} (for Hindi use Roman script unless the customer "
-              "wrote Devanagari). Return ONLY JSON {\"answer\": \"...\"}.\nFacts:\n" + a["knows"])
+              "wrote Devanagari). Return ONLY JSON {\"answer\": \"...\", \"known\": true} - known is false when the "
+              "facts did not hold the answer.\nFacts:\n" + a["knows"])
     try:
         out = (think or _think)(system, f"Customer: {q}")
     except Exception as e:   # noqa: BLE001
         raise LiveError(f"The brain did not answer just now ({type(e).__name__}). Try again.", 502) from None
     text = _clip((out or {}).get("answer") if isinstance(out, dict) else "", 600)
     if not text or not _digits(text) <= (_digits(a["knows"]) | _digits(q)):
-        return _DONT_KNOW.get(lang, _DONT_KNOW["en"])     # a number she never wrote is never said
-    return text
+        return _DONT_KNOW.get(lang, _DONT_KNOW["en"]), False     # a number she never wrote is never said
+    return text, (out.get("known") is not False)
 
 
 def _spend(tenant: str, aid: str, seconds: float) -> None:
@@ -187,11 +199,67 @@ def _room(a: dict[str, Any]) -> None:
         raise LiveError("This agent has used its minutes for today. It answers again tomorrow.", 429)
 
 
-def ask(tenant: str, aid: str, text: str, think: Any = None, speak: Any = None) -> dict[str, Any]:
+LOG_KEEP = 300
+
+
+def _note(tenant: str, aid: str, q: str, words: str, known: bool, src: str) -> None:
+    """v0.999.202 every question kept on its agent (newest first, 300 at most) so she sees what it could not answer."""
+    with S._LOCK:
+        d = S._load(tenant)
+        try:
+            a = _find(d, aid)
+        except LiveError:
+            return
+        row = {"id": "lq_" + uuid.uuid4().hex[:8], "q": _clip(q, MAX_Q), "a": _clip(words, 600), "known": bool(known),
+               "src": "web" if src == "web" else "try", "at": time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime())}
+        a["log"] = [row] + [x for x in (a.get("log") or []) if isinstance(x, dict)][:LOG_KEEP - 1]
+        S._store(tenant, d)
+
+
+def questions(tenant: str, aid: str) -> dict[str, Any]:
+    a = _find(S._load(tenant), aid)
+    return {"questions": [x for x in (a.get("log") or []) if isinstance(x, dict)][:150]}
+
+
+def learn(tenant: str, aid: str, qid: str, text: str) -> dict[str, Any]:
+    """Her answer to a question it could not answer, added to its facts (the facts are what it answers from)."""
+    ans = " ".join(str(text or "").split())[:600]
+    if len(ans) < 2:
+        raise LiveError("Write the answer.")
+    with S._LOCK:
+        d = S._load(tenant)
+        a = _find(d, aid)
+        row = next((x for x in (a.get("log") or []) if isinstance(x, dict) and x.get("id") == qid), None)
+        if row is None:
+            raise LiveError("That question was not found.", 404)
+        add = f"\nQ: {row['q']}\nA: {ans}"
+        if len(a.get("knows") or "") + len(add) > 6000:
+            raise LiveError("Its facts are full (6,000 characters). Shorten them first.")
+        a["knows"] = (a.get("knows") or "").rstrip() + add
+        row["resolved"] = True
+        a["updated"] = S._now_iso()
+        S._store(tenant, d)
+        return _public_agent(a)
+
+
+def dismiss(tenant: str, aid: str, qid: str) -> dict[str, Any]:
+    with S._LOCK:
+        d = S._load(tenant)
+        a = _find(d, aid)
+        row = next((x for x in (a.get("log") or []) if isinstance(x, dict) and x.get("id") == qid), None)
+        if row is None:
+            raise LiveError("That question was not found.", 404)
+        row["resolved"] = True
+        S._store(tenant, d)
+        return _public_agent(a)
+
+
+def ask(tenant: str, aid: str, text: str, think: Any = None, speak: Any = None, src: str = "try") -> dict[str, Any]:
     d = S._load(tenant)
     a = _find(d, aid)
     _room(a)
-    words = answer(a, text, think)
+    words, known = answer_known(a, text, think)
+    _note(tenant, aid, text, words, known, src)
     audio, secs = "", VO.seconds_of(words)
     try:
         wav = (speak or VO.speaker(tenant, a.get("voice") or "", a.get("lang") or "hi"))(words, a.get("lang") or "hi")
@@ -203,9 +271,9 @@ def ask(tenant: str, aid: str, text: str, think: Any = None, speak: Any = None) 
         audio = base64.b64encode(wav).decode()
     except VO.VoiceError as e:
         _spend(tenant, aid, secs)
-        return {"answer": words, "audio": "", "voice_error": str(e), "seconds": secs}
+        return {"answer": words, "known": known, "audio": "", "voice_error": str(e), "seconds": secs}
     _spend(tenant, aid, secs)
-    return {"answer": words, "audio": audio, "mime": "audio/wav", "seconds": round(secs, 1)}
+    return {"answer": words, "known": known, "audio": audio, "mime": "audio/wav", "seconds": round(secs, 1)}
 
 
 def session(tenant: str, aid: str) -> dict[str, Any]:
@@ -320,7 +388,7 @@ def public_info(token: str, origin: str) -> dict[str, Any]:
 def public_ask(token: str, text: str, origin: str, ip: str) -> dict[str, Any]:
     tenant, a = _pub(token, origin)
     _visitor(token, ip)
-    return {**ask(tenant, a["id"], text), "ai": "You are talking to an AI assistant."}
+    return {**ask(tenant, a["id"], text, src="web"), "ai": "You are talking to an AI assistant."}
 
 
 def public_session(token: str, origin: str, ip: str) -> dict[str, Any]:

@@ -96,6 +96,16 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         _on()
         return VO.voices(tenant)
 
+    @r.post("/voices/apply")
+    def voices_apply(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """v0.999.201 one voice into several of her videos (free; only the voice changes)."""
+        _on()
+        b = dict(body or {})
+        try:
+            return VO.apply_voice(tenant, str(b.get("voice") or ""), list(b.get("ids") or []))
+        except VO.VoiceError as e:
+            raise HTTPException(404 if "not found" in str(e).lower() else 422, str(e))
+
     @r.get("/langs")
     async def langs():
         _on()
@@ -163,6 +173,24 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         _on()
         b = dict(body or {})
         return _wrap(LV.ask, tenant, str(b.get("id") or ""), str(b.get("text") or ""), code=409)
+
+    @r.get("/live/questions")
+    async def live_questions(id: str = "", tenant: str = Depends(current_tenant)):
+        _on()
+        return _wrap(LV.questions, tenant, id)
+
+    @r.post("/live/learn")
+    async def live_learn(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """v0.999.202 her answer to a question it could not answer, added to its facts."""
+        _on()
+        b = dict(body or {})
+        return _wrap(LV.learn, tenant, str(b.get("id") or ""), str(b.get("qid") or ""), str(b.get("answer") or ""))
+
+    @r.post("/live/dismiss")
+    async def live_dismiss(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        _on()
+        b = dict(body or {})
+        return _wrap(LV.dismiss, tenant, str(b.get("id") or ""), str(b.get("qid") or ""))
 
     @r.post("/live/publish")
     async def live_publish(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):

@@ -11989,3 +11989,48 @@ canvas claude.ai/artifact/D5nT24BS35LP5KpAmHKqoy (boards: Avatars, Add from a ph
   a named person who agreed, an AI face made and kept, filters, search, rename, default, a test video). Interactive suites 56 passed.
 - NOT VERIFIED: on her server, with a real picture engine making the AI faces, with her real photos.
 
+## v0.999.201 VOICES, REDESIGNED
+
+Owner: "NOW DO SAME FOR VOICES SECTION" -> design canvas claude.ai/artifact/FaMDEFsqTVCJsv6tF4ptE6 (boards: Voices, Put this voice
+in a video, Phone) -> "GO BUILD".
+
+- The page (`interactive.js` voices block, `interactive2.css` v0.999.201 VOICES block): the voice her videos speak in at the top
+  (`SET.voice`, else Vocal's default shown as "Hoola picks it until you choose"; play, Change); a describe box ("calm older man,
+  storyteller") scored in the browser like Vocal's matcher (gender, age, words, feel), best matches first with the matching words
+  said; filters All / Your voices / Favourites / Premium / Standard + gender; "Samples in" any of the 140 languages; rows with play,
+  tier, Not connected, a star; 60 rows then Show more.
+- The side panel: the sample line in the chosen language (`sample_lines` = Vocal's PREVIEW, now in GET /x/voices with age / use),
+  play through GET /api/vocal/voice/preview (made once per voice + language, then free; the page says the first one uses a few
+  credits), tags, how many videos use it, Use for my videos, Put in a video, Open in Vocal.
+- Favourites go through PUT /api/vocal/voices/fav, so they are the same in Hoola Vocal.
+- Put in a video: a window listing her videos (a video being made cannot be ticked) -> NEW POST /api/interactive/x/voices/apply
+  (`voice.apply_voice`: the voice checked, only `voice` saved on each project, a refused one named; free). A made video keeps its
+  old voice until made again, priced first in the Studio (said).
+- Tests: `test_v0999_201_interactive_voices.py` (4, incl. a Chromium walk at 1440 and 390 with stand-in voices: describe, filters,
+  a favourite seen by Vocal, a Spanish sample asked for, use for my videos, put in two videos).
+- NOT VERIFIED: on her server with the real voice library and real samples.
+
+## v0.999.202 LIVE AGENTS, REDESIGNED
+
+Owner: "NOW DO SAME FOR LIVE AGENTS SECTION" -> design canvas claude.ai/artifact/MiwxCvC2zVJACEeEaGT4wb (boards: Live agents,
+Build an agent, On your website, Phone) -> "GO BUILD".
+
+- Server (`interactive/live.py`): `answer_known` (the model returns known; a number she never wrote = the "don't know" line and
+  not known; `answer` keeps its old shape); `ask(..., src)` keeps every question on its agent (`log`, newest first, 300 at most:
+  question, answer, known, try|web, time; website questions marked web); `_public_agent` adds asked_week, missed_week and the open
+  misses (the log itself never leaves the server in the list); `questions`, `learn` (her answer added to the facts as "Q: / A:",
+  6,000-character limit kept, the question marked resolved), `dismiss`. Routes GET /x/live/questions, POST /x/live/learn,
+  POST /x/live/dismiss. `ask` returns `known`.
+- The page (`interactive.js` live agents block, `interactive2.css` v0.999.202 block): this week (questions, answered from facts,
+  minutes today across agents, websites), a card per agent (picture or initial, language / voice / face, On your website, the start
+  of its facts, minutes bar, questions and not answered, Open / Try it), "They could not answer these" with Add the answer;
+  the builder = 1 Who it is (voice sample through Vocal preview), 2 What it knows (character count, the numbers it may say), 3 Its
+  face (every live face engine with its price and Ready / Not connected, the picture, the engine face id), 4 Minutes a day (slider);
+  edits kept in a draft so a redraw never loses them, leaving unsaved asks first; Try it (from your facts / not in your facts + Add
+  the answer, Enter to ask, a mic where the browser has speech recognition) and Questions tabs; the website window (addresses as
+  chips checked in the browser and the server, the line shown once with Copy, pass / limits / today, what visitors see, take it off).
+- Tests: `test_v0999_202_interactive_live.py` (4, incl. a Chromium walk at 1440 and 390: new agent, numbers it may say, save,
+  try one known and one unknown, add the answer, questions tab, put on a website, back to the list); one older test's stand-in moved
+  from `answer` to `answer_known`.
+- NOT VERIFIED: on her server with a real model and voice; the question counts start from the deploy (nothing was kept before).
+

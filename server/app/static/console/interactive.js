@@ -112,6 +112,8 @@ window.HoolaInteractive = function (ctx) {
     ROOT.addEventListener('click', onClick); ROOT.addEventListener('input', onInput); ROOT.addEventListener('change', onChange);
     ROOT.addEventListener('focusin', e => { const n = e.target.dataset?.sc; if (n != null && PAGE === 'studio' && +n !== UI.scene) { edStop(); UI.scene = +n; edPaint(); } });
     ROOT.addEventListener('keydown', e => { if (e.target.id === 'hxAsk' && e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); chatSend(); }
+      if (e.key === 'Enter' && !e.isComposing && e.target.id === 'hxTryIn') { e.preventDefault(); lvAsk(); }
+      if (e.key === 'Enter' && !e.isComposing && e.target.id === 'hxLvSite') { e.preventDefault(); ROOT.querySelector('[data-a=lvsiteadd]')?.click(); }
       if (e.key === 'Escape' && UI.dlg) { dlgClose(); return; }
       if (e.key === 'Escape' && UI.nav) { UI.nav = false; side(); } });
   }
@@ -142,7 +144,7 @@ window.HoolaInteractive = function (ctx) {
     t.innerHTML = PAGE === 'chat' ? `${UI.credits != null ? `<button type="button" class="hx-credp hx-num" data-a="credits" title="Your credits">${ic('spark', 14)}${num(UI.credits)} credits</button>` : ''}
       <button type="button" class="hx-ib" data-a="chats" aria-label="Earlier chats" title="Earlier chats">${ic('clock', 18)}</button>
       <button type="button" class="hx-ib" data-a="newchat" aria-label="New chat" title="New chat">${ic('plus', 18)}</button>`
-      : PAGE === 'studio' || PAGE === 'templates' || PAGE === 'apps' || PAGE === 'avatars' ? (UI.credits != null ? `<button type="button" class="hx-credp hx-num" data-a="credits" title="Your credits">${ic('spark', 14)}${num(UI.credits)} credits</button>` : '') : '';
+      : PAGE === 'studio' || PAGE === 'templates' || PAGE === 'apps' || PAGE === 'avatars' || PAGE === 'voices' || PAGE === 'live' ? (UI.credits != null ? `<button type="button" class="hx-credp hx-num" data-a="credits" title="Your credits">${ic('spark', 14)}${num(UI.credits)} credits</button>` : '') : '';
   }
   function go(page, arg) {
     window.HoolaMenu?.close();
@@ -1016,7 +1018,7 @@ window.HoolaInteractive = function (ctx) {
     let w = $('#hxDlg');
     if (!UI.dlg) { if (w) w.remove(); return; }
     if (!w) { w = document.createElement('div'); w.id = 'hxDlg'; w.className = 'hx-dlgw'; ROOT.appendChild(w); }
-    w.innerHTML = `<div class="hx-dlgs" data-a="dlgx" aria-hidden="true"></div>${({save: svBody, pick: pickBody, need: needBody, avphoto: avPhBody, avai: avAiBody, avtwin: avTwinBody, avren: avRenBody}[UI.dlg.k] || shBody)()}`;
+    w.innerHTML = `<div class="hx-dlgs" data-a="dlgx" aria-hidden="true"></div>${({save: svBody, pick: pickBody, need: needBody, voput: voPutBody, lvweb: lvWebBody, lvlearn: lvLearnBody, avphoto: avPhBody, avai: avAiBody, avtwin: avTwinBody, avren: avRenBody}[UI.dlg.k] || shBody)()}`;
     const f = w.querySelector('[data-auto]'); if (f && !w.contains(document.activeElement)) f.focus();
     fillMedia();
   }
@@ -1328,7 +1330,8 @@ window.HoolaInteractive = function (ctx) {
     wand: '<path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z"/>',
     video: '<rect x="3" y="6" width="12" height="12" rx="2"/><path d="M15 10l6-3v10l-6-3z"/>',
     shield: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
-    pen: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>'});
+    pen: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>',
+    star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>'});
   const AVMAX = 12;
   const avKind = a => (a.kind === 'ai' || a.ai) ? 'ai' : 'photo';
   const avUses = a => (D.projects || []).filter(p => p.avatar_id === a.id);
@@ -1518,6 +1521,289 @@ window.HoolaInteractive = function (ctx) {
     catch (er) { UI.av.busy = false; draw(); toast(er.message, true); }
   }
 
+  // ---- voices (v0.999.201 VOICES, REDESIGNED: the voice her videos speak in, find one by describing it, a sample in her
+  //      language, favourites shared with Hoola Vocal, a voice put into several videos at once)
+  const VOWORDS = {man: 'male', men: 'male', male: 'male', boy: 'male', guy: 'male', woman: 'female', women: 'female', lady: 'female', female: 'female', girl: 'female',
+    old: 'older', older: 'older', elderly: 'older', senior: 'older', young: 'young', youthful: 'young', teen: 'young', middle: 'middle'};
+  const VOSKIP = new Set(['a', 'an', 'the', 'for', 'and', 'with', 'of', 'to', 'in', 'voice', 'voices', 'who', 'that', 'very', 'bit', 'little', 'my', 'some', 'like', 'sounds', 'sounding']);
+  const VOSETS = [['narrat', 'story', 'stories', 'audiobook', 'informative', 'knowledgeable', 'documentary', 'clear', 'mature', 'firm', 'even', 'news'],
+    ['upbeat', 'excited', 'lively', 'bright', 'energetic', 'ad', 'ads', 'promo', 'youthful', 'social', 'reels'],
+    ['friendly', 'casual', 'easy', 'warm', 'conversation', 'support', 'breezy', 'forward', 'chat'],
+    ['gravelly', 'breathy', 'playful', 'character', 'games', 'rough', 'husky', 'deep', 'quirky'],
+    ['calm', 'soft', 'smooth', 'gentle', 'soothing', 'meditation', 'relaxed', 'mellow']];
+  const voAll = () => { const Vv = UI.V || {mine: [], library: []}; return [...(Vv.mine || []).map(v => ({...v, mine: true})), ...(Vv.library || [])]; };
+  const voOf = id => voAll().find(v => v.id === id);
+  const voHay = v => [v.name, v.tone, v.accent, v.use, v.gender, v.age].join(' ').toLowerCase();
+  const voFav = id => (UI.V?.favs || []).includes(id);
+  const voUses = id => (D.projects || []).filter(p => p.voice === id);
+  const voTint = id => [...String(id || 'x')].reduce((a, c) => a + c.charCodeAt(0), 0) % 5;
+  const voGender = v => v.gender === 'male' ? 'man' : v.gender === 'female' ? 'woman' : '';
+  const voLine = v => v.mine ? (v.kind === 'designed' ? 'Your voice, designed from words' : v.kind === 'remix' ? 'Your voice, changed from another' : 'Your own voice, kept with your consent')
+    : [v.tone, voGender(v), v.accent].filter(Boolean).join(' · ') || 'A ready-made voice';
+  const voTier = v => v.mine ? ['mine', 'Your voice'] : v.tier === 'premium' ? ['pr', 'Premium'] : ['st', 'Standard'];
+  const voCur = () => SET.voice || UI.V?.default || '';
+  function voMatch(v, q) {
+    const hay = voHay(v), why = []; let n = 0;
+    for (const raw of String(q).toLowerCase().split(/[\s,;.]+/).filter(Boolean)) {
+      if (VOSKIP.has(raw)) continue;
+      const g = VOWORDS[raw];
+      if (g === 'male' || g === 'female') { if (v.gender === g) { n += 2; why.push(g === 'male' ? 'man' : 'woman'); } else if (v.gender) n -= 3; continue; }
+      if (g) { if (v.age === g || hay.includes(g)) { n += 2; why.push(g); } continue; }
+      const w = raw.replace(/s$/, '');
+      if (hay.includes(w)) { n += 3; why.push(raw); continue; }
+      const set = VOSETS.find(x => x.some(k => raw.startsWith(k) || k.startsWith(w)));
+      if (set && set.some(k => new RegExp(`\\b${k}`).test(hay))) { n += 1; why.push(raw); }
+    }
+    return {n, why: [...new Set(why)].slice(0, 4).join(', ')};
+  }
+  function voList() {
+    const st = UI.vo || (UI.vo = {k: 'all', q: '', g: '', lang: '', more: 0, sel: ''}), q = (st.q || '').trim();
+    let xs = voAll().filter(v => st.k === 'all' || (st.k === 'mine' ? v.mine : st.k === 'fav' ? voFav(v.id) : st.k === 'premium' ? !v.mine && v.tier === 'premium' : !v.mine && v.tier !== 'premium'))
+      .filter(v => !st.g || v.gender === st.g);
+    let why = {};
+    if (q) { const m = xs.map(v => [v, voMatch(v, q)]).filter(([v, r]) => r.n > 0 || v.name.toLowerCase().includes(q.toLowerCase()));
+      m.sort((a, b) => b[1].n - a[1].n); xs = m.map(([v]) => v); why = Object.fromEntries(m.map(([v, r]) => [v.id, r.why])); }
+    if (!xs.length) return `<div class="hx-empty"><b>No voice matches</b><span>${q ? 'Try other words, like warm, deep, calm, young, woman.' : st.k === 'fav' ? 'Tap the star on a voice to keep it here.' : 'Try another filter.'}</span></div>`;
+    const lim = 60 + (st.more || 0) * 120, sel = st.sel || voCur();
+    return `<div class="hx-vol">${xs.slice(0, lim).map(v => { const [tc, tl] = voTier(v), on = sel === v.id, pl = UI.voPlay === v.id;
+      return `<div class="hx-vor${on ? ' on' : ''}"><button type="button" class="hx-vop${pl ? ' on' : ''}" data-a="voplay" data-id="${esc(v.id)}" aria-label="${pl ? 'Stop' : 'Play'} ${esc(v.name)}">${ic(pl ? 'stop' : 'play', 13)}</button>
+        <button type="button" class="hx-vom" data-a="vosel" data-id="${esc(v.id)}" aria-pressed="${on}"><span class="hx-vot t${voTint(v.id)}" aria-hidden="true">${esc(v.name.slice(0, 1).toUpperCase())}</span>
+          <span class="hx-ct"><b>${esc(v.name)}${voCur() === v.id ? ' <small class="hx-vous">Your videos</small>' : ''}</b><small>${esc(voLine(v))}${why[v.id] ? ` · matches “${esc(why[v.id])}”` : ''}</small></span></button>
+        <span class="hx-vtier ${tc}">${tl}</span>${v.ready ? '' : '<span class="hx-vtier no">Not connected</span>'}
+        <button type="button" class="hx-ib hx-vofav${voFav(v.id) ? ' on' : ''}" data-a="vofav" data-id="${esc(v.id)}" aria-pressed="${voFav(v.id)}" aria-label="${voFav(v.id) ? 'Remove from favourites' : 'Add to favourites'}">${ic('star', 17)}</button></div>`; }).join('')}</div>
+      ${xs.length > lim ? `<div class="hx-acts hx-vomore"><span class="hx-mut hx-sm hx-num">Showing ${num(lim)} of ${num(xs.length)}</span><button type="button" class="hx-btn" data-a="vomore">Show more voices</button></div>` : ''}`;
+  }
+  const voWave = (id, n = 28) => { let h = [...String(id || 'x')].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 9973, 7); const bars = [];
+    for (let i = 0; i < n; i++) { h = (h * 17 + 7) % 101; bars.push(6 + (h % 22)); } return `<span class="hx-vow" aria-hidden="true">${bars.map(b => `<i style="height:${b}px"></i>`).join('')}</span>`; };
+  const voLang = () => UI.vo?.lang || (SET.lang && SET.lang !== 'auto' ? SET.lang : 'en');
+  function voPanel(v) {
+    if (!v) return '';
+    const uses = voUses(v.id), [tc, tl] = voTier(v), pl = UI.voPlay === v.id, line = (UI.V?.sample_lines || {})[voLang()] || (UI.V?.sample_lines || {}).en || '';
+    return `<aside class="hx-voside" aria-label="${esc(v.name)}"><div class="hx-vosh t${voTint(v.id)}">
+        <div class="hx-vohd"><span class="hx-vot big t${voTint(v.id)}" aria-hidden="true">${esc(v.name.slice(0, 1).toUpperCase())}</span><div class="hx-growf"><h2 class="hx-serif">${esc(v.name)}</h2><span class="hx-sm">${esc(voLine(v))}</span></div></div>
+        <div class="hx-voplay"><button type="button" class="hx-vop big${pl ? ' on' : ''}" data-a="voplay" data-id="${esc(v.id)}" aria-label="${pl ? 'Stop' : 'Play'} ${esc(v.name)}">${ic(pl ? 'stop' : 'play', 15)}</button>${voWave(v.id, 26)}
+          <button type="button" class="hx-chip s" data-a="volang" aria-haspopup="menu">${esc(langName(voLang()))}${ic('down', 12)}</button></div>
+        ${line ? `<p class="hx-voline">“${esc(line)}”</p>` : ''}</div>
+      <div class="hx-vosb"><div class="hx-acts hx-votags"><span class="hx-vtier ${tc}">${tl}</span>${voGender(v) ? `<span class="hx-vtag">${esc(voGender(v).replace(/^./, c => c.toUpperCase()))}</span>` : ''}${v.accent ? `<span class="hx-vtag">${esc(v.accent)}</span>` : ''}<span class="hx-vtag">${v.any || v.mine ? 'Speaks every language' : esc(`${(v.langs || []).length} language${(v.langs || []).length === 1 ? '' : 's'}`)}</span></div>
+        <span class="hx-mut hx-sm">${uses.length ? `In ${num(uses.length)} of your video${uses.length === 1 ? '' : 's'}` : 'Not in a video yet'}</span>
+        ${v.ready ? '' : '<p class="hx-why">This voice is not connected on this server, so it cannot speak yet.</p>'}
+        <button type="button" class="hx-btn dark l" data-a="vouse" data-id="${esc(v.id)}"${voCur() === v.id && SET.voice ? ' aria-pressed="true"' : ''}${v.ready ? '' : ' disabled'}>${voCur() === v.id && SET.voice ? `${ic('check', 14)}Your videos use this voice` : 'Use for my videos'}</button>
+        <div class="hx-acts"><button type="button" class="hx-btn hx-grow" data-a="voput" data-id="${esc(v.id)}"${v.ready ? '' : ' disabled'}>Put in a video</button><button type="button" class="hx-btn hx-grow" data-a="vovocal" data-id="${esc(v.id)}">Open in Vocal</button></div>
+        <span class="hx-mut hx-sm">A sample is made once per voice and language, then it is free to hear again. The first one in a new language uses a few credits.</span></div></aside>`;
+  }
+  function voPage() {
+    if (!UI.V) return `<div class="hx-doc"><p class="hx-mut">Loading voices…</p></div>`;
+    const st = UI.vo || (UI.vo = {k: 'all', q: '', g: '', lang: '', more: 0, sel: ''}), all = voAll(), cur = voOf(voCur()), sel = voOf(st.sel) || cur || all[0];
+    const n = k => all.filter(v => k === 'all' || (k === 'mine' ? v.mine : k === 'fav' ? voFav(v.id) : k === 'premium' ? !v.mine && v.tier === 'premium' : !v.mine && v.tier !== 'premium')).length;
+    const pl = cur && UI.voPlay === cur.id;
+    return `<div class="hx-doc hx-vopage"><div class="hx-doch"><div class="hx-growf"><h2 class="hx-serif">Voices</h2>
+          <p class="hx-mut">The voice that speaks your videos. The same voices as Hoola Vocal: 140 languages, premium voices and your own. Every voice speaks any language.</p></div>
+        <button type="button" class="hx-btn" data-a="aopen" data-id="ownvoice">${ic('mic', 14)}Make your own voice</button></div>
+      <section class="hx-vocur" aria-label="The voice for your videos">${cur ? `<button type="button" class="hx-vop big inv${pl ? ' on' : ''}" data-a="voplay" data-id="${esc(cur.id)}" aria-label="${pl ? 'Stop' : 'Play'} ${esc(cur.name)}">${ic(pl ? 'stop' : 'play', 16)}</button>` : ''}
+        <div class="hx-growf"><span class="hx-vok">YOUR VIDEOS SPEAK IN</span><b class="hx-serif">${esc(cur ? cur.name : 'Hoola picks')}</b><span class="hx-sm">${cur ? `${esc(voLine(cur))} · ${voTier(cur)[1]}${SET.voice ? '' : ' · Hoola picks it until you choose'}` : 'A ready-made voice that fits each video.'}</span></div>
+        ${cur ? voWave(cur.id, 30) : ''}<button type="button" class="hx-btn" data-a="pick" data-k="voice" aria-haspopup="menu">Change</button></section>
+      <div class="hx-vobody"><div class="hx-vomain">
+          <label class="hx-vodesc">${ic('wand', 18)}<span class="hx-sr">Describe a voice</span><input type="search" id="hxVoq" placeholder="Describe a voice: warm woman, calm older man, bright and young…" value="${esc(st.q || '')}"><small class="hx-mut">${st.q ? 'Best matches first' : ''}</small></label>
+          <div class="hx-avbar">${[['all', 'All'], ['mine', 'Your voices'], ['fav', 'Favourites'], ['premium', 'Premium'], ['standard', 'Standard']].map(([k, l]) => `<button type="button" class="hx-chip${st.k === k ? ' on' : ''}" data-a="vokind" data-val="${k}">${l} <span class="hx-num">${num(n(k))}</span></button>`).join('')}
+            <span class="hx-grow"></span><button type="button" class="hx-chip" data-a="vogen" aria-haspopup="menu">${st.g === 'male' ? 'Men' : st.g === 'female' ? 'Women' : 'Any gender'}${ic('down', 12)}</button>
+            <button type="button" class="hx-chip" data-a="volang" aria-haspopup="menu">Samples in ${esc(langName(voLang()))}${ic('down', 12)}</button></div>
+          <div id="hxVoList">${voList()}</div></div>${voPanel(sel)}</div></div>`;
+  }
+  async function voPlay(id) {
+    if (UI.voPlay === id) { UI.audio?.pause(); UI.voPlay = ''; return voRepaint(); }
+    UI.audio?.pause(); UI.voPlay = id; voRepaint();
+    try { const r = await api('GET', `/api/vocal/voice/preview?id=${q(id)}&lang=${q(voLang())}`, undefined, {raw: true});
+      if (!r.ok) { let m = 'The sample could not be made.'; try { m = (await r.json()).detail || m; } catch { /* keep */ } throw new Error(m); }
+      if (UI.voPlay !== id) return;
+      UI.audio = new Audio(URL.createObjectURL(await r.blob())); UI.audio.onended = () => { if (UI.voPlay === id) { UI.voPlay = ''; voRepaint(); } };
+      UI.audio.play().catch(() => {}); }
+    catch (er) { if (UI.voPlay === id) { UI.voPlay = ''; voRepaint(); } toast(er.message, true); }
+  }
+  function voRepaint() { if (PAGE !== 'voices') return; const y = $('#hxView')?.scrollTop; const qf = document.activeElement?.id === 'hxVoq'; draw(); if (y != null && $('#hxView')) $('#hxView').scrollTop = y;
+    if (qf) { const i = $('#hxVoq'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } } }
+  async function voFavToggle(id) {
+    const on = !voFav(id);
+    try { const r = await api('PUT', '/api/vocal/voices/fav', {id, on}); UI.V.favs = r.favs || []; voRepaint();
+      toast(on ? `${voOf(id)?.name || 'The voice'} is in your favourites, here and in Hoola Vocal.` : `${voOf(id)?.name || 'The voice'} is out of your favourites.`); }
+    catch (er) { toast(er.message, true); }
+  }
+  function voPutBody() {
+    const s = UI.dlg, v = voOf(s.id); if (!v) return '';
+    const ps = (D.projects || []).filter(p => (p.scenes || []).length || p.title);
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><span class="hx-vot t${voTint(v.id)}" aria-hidden="true">${esc(v.name.slice(0, 1).toUpperCase())}</span>
+        <div class="hx-growf"><h2 class="hx-serif" id="hxDlgT">Put ${esc(v.name)} in a video</h2><span class="hx-mut hx-sm">Only the voice changes. The words, faces and scenes stay as they are.</span></div>
+        <button type="button" class="hx-ib" data-a="dlgx" aria-label="Close" data-auto="1">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb">${ps.length ? `<div class="hx-vopick">${ps.slice(0, 50).map(p => { const on = s.ids.includes(p.id), mk = p.status === 'making';
+          return `<label class="hx-vopr${on ? ' on' : ''}${mk ? ' off' : ''}"><input type="checkbox" data-vop="${esc(p.id)}"${on ? ' checked' : ''}${mk ? ' disabled' : ''}>${libThumb(p)}
+            <span class="hx-ct"><b>${esc(p.title)}</b><small>${num((p.scenes || []).length)} scene${(p.scenes || []).length === 1 ? '' : 's'} · now ${esc(p.voice ? (voOf(p.voice)?.name || 'another voice') : 'Hoola picks')}</small></span>${chip(p)}</label>`; }).join('')}</div>
+          <p class="hx-mut hx-sm">A video that is already made keeps its old voice until you make it again, priced first in the Studio.</p>`
+        : `<p class="hx-mut">You have no videos yet. Choose “Use for my videos” and every new video starts with this voice.</p>`}</div>
+      <div class="hx-dlgf"><span class="hx-mut hx-sm hx-grow">${num(s.ids.length)} video${s.ids.length === 1 ? '' : 's'} chosen · free</span><button type="button" class="hx-btn" data-a="dlgx">Cancel</button>
+        <button type="button" class="hx-btn dark" data-a="voputgo"${!s.ids.length || s.busy ? ' disabled' : ''}>${s.busy ? 'Saving…' : `Use in ${num(s.ids.length)} video${s.ids.length === 1 ? '' : 's'}`}</button></div></div>`;
+  }
+  async function voPutGo() {
+    const s = UI.dlg; if (!s || !s.ids.length || s.busy) return;
+    s.busy = true; dlgPaint();
+    try { const r = await api('POST', `${X}/voices/apply`, {voice: s.id, ids: s.ids}); UI.dlg = null; dlgPaint(); await load(); draw();
+      toast(`${voOf(s.id)?.name || 'The voice'} is in ${num(r.done.length)} video${r.done.length === 1 ? '' : 's'}.${r.skipped.length ? ` ${num(r.skipped.length)} left out: ${r.skipped[0].why}` : ''}`, !!r.skipped.length); }
+    catch (er) { s.busy = false; dlgPaint(); toast(er.message, true); }
+  }
+
+  // ---- live agents (v0.999.202 LIVE AGENTS, REDESIGNED: this week's numbers, a card per agent, the questions they could not
+  //      answer with "Add the answer", a builder in four steps beside Try it, the website window)
+  const LVTINT = ['#8A5A2B', '#2E4F8A', '#4A36C9', '#2F6B48', '#8A2F4E'];
+  const lvTint = id => LVTINT[[...String(id || 'x')].reduce((a, c) => a + c.charCodeAt(0), 0) % LVTINT.length];
+  const lvAgents = () => D.live?.agents || [];
+  const lvOf = id => lvAgents().find(a => a.id === id);
+  const lvFaceLabel = a => engine(a.face)?.label || (a.face === 'voice_only' ? 'Voice only' : a.face);
+  const lvWho = a => [langName(a.lang), voiceName(a.voice), a.face === 'voice_only' ? 'voice only' : (face(a.avatar_id)?.name ? `${face(a.avatar_id).name}’s face` : lvFaceLabel(a))].filter(Boolean).join(' · ');
+  const lvNums = t => [...new Set(String(t || '').replace(/,/g, '').match(/\d+(?:\.\d+)?/g) || [])].slice(0, 18);
+  const lvAgo = iso => { const t = Date.parse(String(iso || '') + (String(iso || '').endsWith('Z') ? '' : 'Z')); if (!t) return ''; const m = Math.round((Date.now() - t) / 60000);
+    return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : m < 2880 ? 'yesterday' : `${Math.round(m / 1440)} days ago`; };
+  function lvLib() {
+    const ag = lvAgents(), asked = ag.reduce((n, a) => n + (a.asked_week || 0), 0), missed = ag.reduce((n, a) => n + (a.missed_week || 0), 0);
+    const used = Math.round(ag.reduce((n, a) => n + (a.used_today_s || 0), 0) / 60), allow = ag.reduce((n, a) => n + (+a.minutes_day || 0), 0);
+    const pub = ag.filter(a => a.published), hosts = [...new Set(pub.flatMap(a => a.sites || []))];
+    const misses = ag.flatMap(a => (a.misses || []).map(m => ({...m, aid: a.id, an: a.name}))).sort((x, y) => String(y.at).localeCompare(String(x.at))).slice(0, 6);
+    const kpi = (l, v, sub) => `<div class="hx-lvk"><span>${l}</span><b class="hx-serif hx-num">${v}</b><small>${sub}</small></div>`;
+    return `<div class="hx-doc hx-lvpage"><div class="hx-doch"><div class="hx-growf"><h2 class="hx-serif">Live agents</h2>
+          <p class="hx-mut">An assistant that listens and answers your customers from your facts only, in a voice and face you choose. It never says a price, time or number you did not write.</p></div>
+        <div class="hx-acts hx-avhd"><span class="hx-avcount hx-num">${num(ag.length)} of 10 agents</span><button type="button" class="hx-btn dark" data-a="livenew"${ag.length >= 10 ? ' disabled' : ''}>${ic('plus', 14)}New agent</button></div></div>
+      ${ag.length ? `<section class="hx-lvks" aria-label="This week">${kpi('Questions this week', num(asked), 'From your website and Try it')}
+          ${kpi('Answered from your facts', asked ? `${Math.round(100 * (asked - missed) / asked)}%` : '—', asked ? `${num(asked - missed)} of ${num(asked)}` : 'No questions yet')}
+          ${kpi('Minutes today', num(used), `of ${num(allow)} allowed across agents`)}
+          ${kpi('On your website', num(pub.length), hosts.length ? esc(hosts.slice(0, 3).join(', ')) : 'Not on a website yet')}</section>
+        <section class="hx-lvgrid" aria-label="Your agents">${ag.map(a => { const pct = Math.min(100, Math.round(100 * (a.used_today_s || 0) / 60 / Math.max(1, +a.minutes_day || 30)));
+          return `<article class="hx-lvc"><div class="hx-lvct" style="--gc:${lvTint(a.id)}">${face(a.avatar_id) ? avImg(face(a.avatar_id), 'l') : `<span class="hx-lvf" aria-hidden="true">${esc(a.name.slice(0, 1).toUpperCase())}</span>`}
+              <div class="hx-growf"><b>${esc(a.name)}</b><small>${esc(lvWho(a))}</small></div><span class="hx-lvst${a.published ? ' on' : ''}"><i></i>${a.published ? 'On your website' : 'Not published'}</span></div>
+            <div class="hx-lvcb"><p class="hx-serifp">${esc(String(a.knows || '').slice(0, 150))}${String(a.knows || '').length > 150 ? '…' : ''}</p>
+              <div class="hx-lvbar"><div><span class="hx-mut">Minutes today</span><b class="hx-num">${num(Math.round((a.used_today_s || 0) / 60))} of ${num(a.minutes_day)} min</b></div><span class="hx-lvtrack"><i style="width:${pct}%"></i></span></div>
+              <div class="hx-lvstat"><span><b class="hx-num">${num(a.asked_week || 0)}</b> questions this week</span><span class="${a.missed_week ? 'miss' : ''}"><b class="hx-num">${num(a.missed_week || 0)}</b> it could not answer</span></div></div>
+            <div class="hx-lvcf"><button type="button" class="hx-btn dark hx-grow" data-a="liveopen" data-id="${esc(a.id)}">Open</button><button type="button" class="hx-btn hx-grow" data-a="livetry" data-id="${esc(a.id)}">Try it</button></div></article>`; }).join('')}</section>
+        <section class="hx-lvmiss" aria-label="Questions your agents could not answer"><div class="hx-sech"><b>They could not answer these</b><span class="hx-mut hx-sm">Add the answer to the agent’s facts and it answers next time.</span></div>
+          ${misses.length ? misses.map(m => `<div class="hx-lvq"><span class="hx-serifp">“${esc(m.q)}”</span><small class="hx-mut">${esc(m.an)} · ${m.src === 'web' ? 'website' : 'Try it'} · ${esc(lvAgo(m.at))}</small>
+              <button type="button" class="hx-btn s" data-a="lvlearn" data-id="${esc(m.aid)}" data-q="${esc(m.id)}">Add the answer</button></div>`).join('')
+            : '<p class="hx-mut hx-sm">Nothing waiting. Every question was answered from the facts.</p>'}</section>`
+        : `<div class="hx-avfirst"><span class="hx-lvf big" aria-hidden="true">${ic('live', 40)}</span><div><b class="hx-serif">No agents yet</b>
+          <p class="hx-mut">Write what your business knows: hours, prices, address, how to book. The agent answers your customers only from that, out loud, in the voice you choose, and says when it does not know.</p>
+          <div class="hx-acts"><button type="button" class="hx-btn dark" data-a="livenew">${ic('plus', 14)}Make your first agent</button></div></div></div>`}</div>`;
+  }
+  function lvDraft() {
+    const a = lvOf(UI.live);
+    if (!UI.ld || UI.ld._for !== UI.live) UI.ld = a ? {_for: UI.live, ...a} : {_for: 'new', name: '', knows: '', opening: '', lang: SET.lang && SET.lang !== 'auto' ? SET.lang : 'en', voice: SET.voice || '', face: 'voice_only', avatar_id: '', face_ref: '', minutes_day: 30};
+    return UI.ld;
+  }
+  function lvEdit() {
+    const a = lvDraft(), cur = lvOf(UI.live), faces = D.live?.faces || [], fe = faces.find(f => f.id === a.face), needRef = ['simli', 'anam', 'liveavatar', 'tavus'].includes(a.face);
+    const step = (n, t, extra = '') => `<div class="hx-lvsh"><span class="hx-lvn">${n}</span><b>${t}</b><span class="hx-grow"></span>${extra}</div>`, nums = lvNums(a.knows);
+    return `<div class="hx-lved"><header class="hx-lvhd"><button type="button" class="hx-btn" data-a="liveback">${ic('back', 14)}All agents</button>
+        <h2 class="hx-serif hx-growf">${esc(a.name || 'New agent')}</h2>${UI.ldDirty ? '<span class="hx-mut hx-sm">Not saved</span>' : cur ? '<span class="hx-mut hx-sm">Saved</span>' : ''}
+        ${cur ? `<button type="button" class="hx-btn" data-a="lvweb" data-id="${esc(cur.id)}">${cur.published ? `${ic('check', 14)}On your website` : 'Put on your website'}</button>` : ''}
+        <button type="button" class="hx-btn dark" data-a="livesave"${UI.ldBusy ? ' disabled' : ''}>${UI.ldBusy ? 'Saving…' : 'Save'}</button></header>
+      <div class="hx-lvbody"><div class="hx-lvform">
+        <section class="hx-lvs">${step(1, 'Who it is')}<div class="hx-row2">
+          <label class="hx-fld"><span class="hx-lab">Name</span><input class="hx-in" data-lv="name" maxlength="40" value="${esc(a.name)}" placeholder="Shop helper"></label>
+          <label class="hx-fld"><span class="hx-lab">First words</span><input class="hx-in" data-lv="opening" maxlength="160" value="${esc(a.opening || '')}" placeholder="Hello! Ask me about our hours, prices or delivery."></label>
+          <div class="hx-fld"><span class="hx-lab">Language</span><button type="button" class="hx-dd" data-a="lvpick" data-k="lang"><span>${esc(langName(a.lang))}</span>${ic('down', 14)}</button></div>
+          <div class="hx-fld"><span class="hx-lab">Voice</span><div class="hx-lvvoice"><button type="button" class="hx-dd" data-a="lvpick" data-k="voice"><span>${esc(voiceName(a.voice))}</span>${ic('down', 14)}</button>
+            <button type="button" class="hx-vop${UI.lvHear ? ' on' : ''}" data-a="lvhear" aria-label="Hear this voice"${a.voice ? '' : ' disabled'}>${ic(UI.lvHear ? 'stop' : 'play', 13)}</button></div></div></div></section>
+        <section class="hx-lvs">${step(2, 'What it knows', `<span class="hx-mut hx-sm hx-num" id="hxLvLen">${num((a.knows || '').length)} of 6,000 characters</span>`)}
+          <textarea class="hx-in hx-ta hx-serifp" data-lv="knows" rows="6" maxlength="6000" placeholder="Your hours, prices, address, delivery, how to book. Write it the way you would tell a new member of staff.">${esc(a.knows)}</textarea>
+          <div class="hx-lvnums" id="hxLvNums">${nums.length ? `<span class="hx-mut hx-sm">Numbers it may say:</span>${nums.map(n => `<span class="hx-lvnum hx-num">${esc(n)}</span>`).join('')}` : '<span class="hx-mut hx-sm">No numbers yet. It will not say a price, time or number until you write it here.</span>'}</div>
+          <span class="hx-mut hx-sm">It answers only from these words. Any other number is never said; it says it does not know and offers that you will help.</span></section>
+        <section class="hx-lvs">${step(3, 'Its face')}<div class="hx-lvfaces" role="radiogroup" aria-label="Face engine">${faces.map(f => `<button type="button" role="radio" aria-checked="${f.id === a.face}" class="hx-lvface${f.id === a.face ? ' on' : ''}" data-a="lvface" data-id="${esc(f.id)}"${f.ready ? '' : ' disabled'}>
+              <b>${esc(f.label)}</b><small>${esc(f.price === 'free' ? 'Free' : f.price)}</small><span class="hx-ast ${f.ready ? 'ok' : 'no'}"><i></i>${f.ready ? 'Ready' : 'Not connected'}</span></button>`).join('')}</div>
+          ${a.face !== 'voice_only' ? `<div class="hx-row2"><div class="hx-fld"><span class="hx-lab">Picture shown with it</span><button type="button" class="hx-dd" data-a="lvpick" data-k="face"><span>${esc(face(a.avatar_id)?.name || 'None')}</span>${ic('down', 14)}</button></div>
+            ${needRef ? `<label class="hx-fld"><span class="hx-lab">${esc(fe?.label || '')} face id</span><input class="hx-in" data-lv="face_ref" maxlength="80" value="${esc(a.face_ref || '')}" placeholder="Made in ${esc(fe?.label || 'the engine')}’s own dashboard"></label>` : ''}</div>` : ''}</section>
+        <section class="hx-lvs hx-lvmin">${step(4, 'Minutes a day')}<div class="hx-lvminr"><span class="hx-mut hx-sm hx-growf">When they are used up it stops answering until tomorrow, so the bill cannot run away.</span>
+          <input type="range" min="5" max="240" step="5" data-lv="minutes_day" value="${esc(a.minutes_day || 30)}" aria-label="Minutes a day"><b class="hx-num" id="hxLvMin">${num(a.minutes_day || 30)} min</b></div></section>
+        ${cur ? `<div class="hx-acts"><span class="hx-grow"></span><button type="button" class="hx-btn danger" data-a="livedel" data-id="${esc(cur.id)}">Remove this agent</button></div>` : ''}</div>
+      <aside class="hx-lvtry" aria-label="Try it">${lvTryPane(cur, a)}</aside></div></div>`;
+  }
+  function lvTryPane(cur, a) {
+    const tab = UI.lvTab || 'try', qs = UI.lvQs && cur && UI.lvQs.id === cur.id ? UI.lvQs.rows : null;
+    const tabs = `<div class="hx-lvtabs"><button type="button" class="hx-chip${tab === 'try' ? ' on' : ''}" data-a="lvtab" data-val="try">Try it</button><button type="button" class="hx-chip${tab === 'qs' ? ' on' : ''}" data-a="lvtab" data-val="qs"${cur ? '' : ' disabled'}>Questions${cur ? ` <span class="hx-num">${num(cur.asked_week || 0)}</span>` : ''}</button></div>`;
+    if (!cur) return `${tabs}<div class="hx-lvempty">${ic('live', 28)}<b>Save the agent first</b><span class="hx-mut hx-sm">Then talk to it here, the way your customers will.</span></div>`;
+    if (tab === 'qs' && !qs && !UI.lvQsBusy) { UI.lvQsBusy = true; setTimeout(() => lvQsLoad(cur.id).finally(() => { UI.lvQsBusy = false; })); }
+    if (tab === 'qs') return `${tabs}<div class="hx-lvqs">${!qs ? '<p class="hx-mut">Loading…</p>' : qs.length ? qs.map(x => `<div class="hx-lvqr${x.known ? '' : ' miss'}"><span class="hx-ct"><b>“${esc(x.q)}”</b><small>${esc(x.a)}</small>
+          <small class="hx-mut">${x.src === 'web' ? 'Website' : 'Try it'} · ${esc(lvAgo(x.at))}${x.known ? ' · From your facts' : x.resolved ? ' · Answer added' : ''}</small></span>
+          ${!x.known && !x.resolved ? `<button type="button" class="hx-btn s" data-a="lvlearn" data-id="${esc(cur.id)}" data-q="${esc(x.id)}">Add the answer</button>` : ''}</div>`).join('') : '<p class="hx-mut hx-sm">No questions yet. Questions from Try it and your website show here.</p>'}</div>`;
+    const used = Math.round((cur.used_today_s || 0) / 60);
+    return `${tabs}<div class="hx-lvstage" style="--gc:${lvTint(cur.id)}">${face(cur.avatar_id) ? avImg(face(cur.avatar_id), 'xl') : `<span class="hx-lvf big" aria-hidden="true">${esc(cur.name.slice(0, 1).toUpperCase())}</span>`}
+        <span class="hx-livebadge"><i></i>${esc(lvFaceLabel(cur))}</span>${cur.face !== 'voice_only' ? `<button type="button" class="hx-btn s hx-lvsess" data-a="livesess">Start the face</button>` : ''}</div>
+      <div class="hx-lvlog" id="hxTry">${cur.opening ? `<div class="hx-lvb ho">${esc(cur.opening)}</div>` : ''}${UI.liveOut.map(o => o.me ? `<div class="hx-lvb me">${esc(o.t)}</div>`
+        : `<div class="hx-lvb ho${o.known === false ? ' miss' : ''}">${esc(o.t)}<small>${o.err ? 'Not answered' : o.known === false ? `Not in your facts · <button type="button" class="hx-lnk" data-a="lvlearn" data-id="${esc(cur.id)}" data-q="${esc(o.qid || '')}">Add the answer</button>` : `From your facts${o.secs ? ` · ${num(Math.round(o.secs))} s spoken` : ''}`}</small></div>`).join('')}
+        ${UI.lvBusy ? '<div class="hx-lvb ho"><span class="hx-spin" aria-hidden="true"></span></div>' : ''}</div>
+      <form class="hx-lvask" onsubmit="return false">${window.SpeechRecognition || window.webkitSpeechRecognition ? `<button type="button" class="hx-ib${UI.lvMic ? ' on' : ''}" data-a="lvmic" aria-label="${UI.lvMic ? 'Stop listening' : 'Speak'}">${ic('mic', 16)}</button>` : ''}
+        <input class="hx-in" id="hxTryIn" placeholder="Ask it something" maxlength="400"><button type="button" class="hx-btn dark" data-a="liveask"${UI.lvBusy ? ' disabled' : ''}>Ask</button></form>
+      <span class="hx-mut hx-sm hx-num">${num(used)} of ${num(cur.minutes_day)} minutes used today. Trying it counts toward the minutes.</span>`;
+  }
+  function lvWebBody() {
+    const s = UI.dlg, a = lvOf(s.id); if (!a) return '';
+    const sites = s.sites || [];
+    return `<div class="hx-dlg w" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><div class="hx-growf"><h2 class="hx-serif" id="hxDlgT">${esc(a.name)} on your website</h2>
+        <span class="hx-mut hx-sm">Visitors talk to it in a small window on your pages. Your keys never reach the page.</span></div><button type="button" class="hx-ib" data-a="dlgx" aria-label="Close" data-auto="1">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb"><div class="hx-avph"><div class="hx-avphr">
+          <div class="hx-fld"><span class="hx-lab">Your website addresses</span><div class="hx-acts hx-lvsites">${sites.map((h, i) => `<span class="hx-lvsite">${esc(h)}<button type="button" class="hx-ib xs" data-a="lvsitedel" data-i="${i}" aria-label="Remove ${esc(h)}">${ic('x', 12)}</button></span>`).join('')}
+            <input class="hx-in" id="hxLvSite" placeholder="${sites.length ? 'Add another address' : 'myshop.com'}" maxlength="120"><button type="button" class="hx-btn s" data-a="lvsiteadd">Add</button></div>
+            <span class="hx-mut hx-sm">It only answers on these addresses (and their sub-addresses). On any other site it stays silent. Up to 5.</span></div>
+          ${s.embed ? `<div class="hx-fld"><span class="hx-lab">The line to paste into your website</span><code class="hx-lvcode">${esc(s.embed)}</code>
+              <div class="hx-acts"><button type="button" class="hx-btn dark s" data-a="lvcopy">${ic('copy', 14)}Copy the line</button><span class="hx-why">The pass is shown only once. Copy it now.</span></div></div>`
+            : a.published ? `<p class="hx-mut hx-sm">It is on your website. The line you pasted keeps working; putting it on again gives a new pass and the old line stops.</p>` : ''}
+          ${a.published ? `<div class="hx-lvfacts"><div><span>Pass ends in</span><b>${esc(a.pass_last4 || '—')}</b></div><div><span>Each visitor</span><b>20 questions / 10 min</b></div><div><span>Today</span><b class="hx-num">${num(Math.round((a.used_today_s || 0) / 60))} of ${num(a.minutes_day)} min</b></div></div>` : ''}</div>
+        <div class="hx-lvprev" aria-hidden="true"><span class="hx-vok">WHAT VISITORS SEE</span><div class="hx-lvpw"><div class="hx-lvph"><span class="hx-lvf s" style="--gc:${lvTint(a.id)}">${esc(a.name.slice(0, 1).toUpperCase())}</span><b>${esc(a.name)}</b><span class="hx-vtier pr">AI</span></div>
+          <div class="hx-lvpb">${a.opening ? `<span class="hx-lvb ho">${esc(a.opening)}</span>` : ''}<span class="hx-lvb me">Are you open today?</span></div><div class="hx-lvpf">Ask a question…</div></div></div></div></div>
+      <div class="hx-dlgf"><span class="hx-mut hx-sm hx-grow">${a.published ? 'Taking it off stops it at once on every address.' : 'Nothing goes live until you press the button.'}</span>
+        ${a.published ? `<button type="button" class="hx-btn danger" data-a="lvunpub">Take it off my website</button>` : ''}
+        <button type="button" class="hx-btn dark" data-a="lvpub"${!sites.length || s.busy ? ' disabled' : ''}>${s.busy ? 'Working…' : a.published ? (s.embed ? 'Done' : 'Save the addresses and get a new line') : 'Put it on my website'}</button></div></div>`;
+  }
+  function lvLearnBody() {
+    const s = UI.dlg, a = lvOf(s.id); if (!a) return '';
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><div class="hx-growf"><h2 class="hx-serif" id="hxDlgT">Add the answer</h2>
+        <span class="hx-mut hx-sm">${esc(a.name)} will answer from it next time.</span></div><button type="button" class="hx-ib" data-a="dlgx" aria-label="Close">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb"><p class="hx-serifp hx-lvqq">“${esc(s.q)}”</p>
+        <label class="hx-fld"><span class="hx-lab">The answer</span><textarea class="hx-in hx-ta" id="hxLvAns" rows="3" maxlength="600" data-auto="1" placeholder="Yes, we deliver on Sundays between 10 am and 2 pm.">${esc(s.answer || '')}</textarea></label>
+        <span class="hx-mut hx-sm">It is added to its facts as this question and your answer. Numbers you write here are numbers it may say.</span></div>
+      <div class="hx-dlgf"><button type="button" class="hx-btn" data-a="lvdismiss">Not needed</button><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx">Cancel</button>
+        <button type="button" class="hx-btn dark" data-a="lvlearnsave"${s.busy ? ' disabled' : ''}>Add to its facts</button></div></div>`;
+  }
+  async function lvQsLoad(id) { try { const r = await api('GET', `${X}/live/questions?id=${q(id)}`); UI.lvQs = {id, rows: r.questions || []}; } catch { UI.lvQs = {id, rows: []}; } if (PAGE === 'live') draw(); }
+  async function lvSave() {
+    const a = lvDraft(); if (UI.ldBusy) return;
+    UI.ldBusy = true; draw();
+    try { const body = {id: lvOf(UI.live) ? UI.live : '', name: a.name, knows: a.knows, opening: a.opening, lang: a.lang, voice: a.voice, face: a.face, avatar_id: a.avatar_id, face_ref: a.face_ref, minutes_day: a.minutes_day};
+      const r = await api('POST', `${X}/live`, body); UI.ldBusy = false; UI.ldDirty = false; UI.live = r.id; UI.ld = null; await load(); draw(); toast('Saved.'); }
+    catch (er) { UI.ldBusy = false; draw(); toast(er.message, true); }
+  }
+  async function lvAsk() {
+    const i = $('#hxTryIn'), t = (i?.value || '').trim(); if (!t || UI.lvBusy) return;
+    UI.liveOut.push({me: true, t}); UI.lvBusy = true; draw();
+    try { const r = await api('POST', `${X}/live/ask`, {id: UI.live, text: t}); UI.lvBusy = false;
+      await load(); const cur = lvOf(UI.live), m = (cur?.misses || [])[0];
+      UI.liveOut.push({t: r.answer, known: r.known, secs: r.seconds, qid: r.known === false && m && m.q === t.slice(0, 400) ? m.id : ''}); UI.lvQs = null; draw();
+      if (r.audio) { UI.audio?.pause(); UI.audio = new Audio(`data:${r.mime || 'audio/wav'};base64,${r.audio}`); UI.audio.play().catch(() => {}); } else if (r.voice_error) toast(r.voice_error, true); }
+    catch (er) { UI.lvBusy = false; UI.liveOut.push({t: er.message, err: true}); draw(); }
+    const l = $('#hxTry'); if (l) l.scrollTop = l.scrollHeight; $('#hxTryIn')?.focus();
+  }
+  function lvMic() {
+    const R = window.SpeechRecognition || window.webkitSpeechRecognition; if (!R) return;
+    if (UI.lvRec) { UI.lvRec.stop(); return; }
+    const r = new R(); r.lang = lvDraft().lang || 'en'; r.interimResults = false;
+    r.onresult = e => { const t = e.results?.[0]?.[0]?.transcript || ''; const i = $('#hxTryIn'); if (i && t) { i.value = t; lvAsk(); } };
+    r.onend = () => { UI.lvRec = null; UI.lvMic = false; if (PAGE === 'live') draw(); };
+    r.onerror = () => {}; UI.lvRec = r; UI.lvMic = true; draw(); try { r.start(); } catch { UI.lvRec = null; UI.lvMic = false; draw(); }
+  }
+  async function lvHear() {
+    const a = lvDraft(); if (!a.voice) return;
+    if (UI.lvHear) { UI.audio?.pause(); UI.lvHear = false; return draw(); }
+    UI.lvHear = true; draw();
+    try { const r = await api('GET', `/api/vocal/voice/preview?id=${q(a.voice)}&lang=${q(a.lang || 'en')}`, undefined, {raw: true});
+      if (!r.ok) { let m = 'The sample could not be made.'; try { m = (await r.json()).detail || m; } catch { /* keep */ } throw new Error(m); }
+      UI.audio?.pause(); UI.audio = new Audio(URL.createObjectURL(await r.blob())); UI.audio.onended = () => { UI.lvHear = false; if (PAGE === 'live') draw(); }; UI.audio.play().catch(() => {}); }
+    catch (er) { UI.lvHear = false; draw(); toast(er.message, true); }
+  }
+  function lvSet(k, v) { const a = lvDraft(); a[k] = v; UI.ldDirty = true; }
+
   // ------------------------------------------------------------------ pages ---
   const V = {
     chat() {
@@ -1529,54 +1815,8 @@ window.HoolaInteractive = function (ctx) {
     templates() { const t = ARG && tplOf(ARG); return t ? tplUse(t) : tplLib(); },
     apps() { return ARG && appOf(ARG) ? appRun(ARG) : appsLib(); },
     avatars() { return avPage(); },
-    voices() {
-      const Vv = UI.V || {mine: [], library: []};
-      const row = v => `<div class="hx-vrow"><span class="hx-ct"><b>${esc(v.name)}</b><small>${esc([v.tone, v.gender, v.tier === 'premium' ? 'Premium' : 'Standard', v.ready ? '' : 'not connected'].filter(Boolean).join(' · '))}</small></span>
-        <button type="button" class="hx-btn s${SET.voice === v.id ? ' dark' : ''}" data-a="setvoice" data-id="${esc(v.id)}"${v.ready ? '' : ' disabled'}>${SET.voice === v.id ? 'Chosen' : 'Use this voice'}</button></div>`;
-      return `<div class="hx-doc"><div class="hx-doch"><div class="hx-growf"><h2 class="hx-serif">Voices</h2><p class="hx-mut">The same voices as Hoola Vocal: 140 languages, premium voices, and your own.</p></div>
-          <button type="button" class="hx-btn" data-a="aopen" data-id="ownvoice">Make your own voice in Vocal</button></div>
-        ${Vv.mine.length ? `<b class="hx-t">Your voices</b><div class="hx-card hx-list">${Vv.mine.map(row).join('')}</div>` : ''}
-        <b class="hx-t">Ready-made voices</b><div class="hx-card hx-list">${Vv.library.slice(0, 80).map(row).join('') || '<p class="hx-mut">Loading voices…</p>'}</div></div>`;
-    },
-    live() {
-      const ag = D.live?.agents || [], cur = ag.find(a => a.id === UI.live);
-      if (!cur && UI.live !== 'new') {
-        return `<div class="hx-doc"><div class="hx-doch"><div class="hx-growf"><h2 class="hx-serif">Live agents</h2><p class="hx-mut">An assistant that listens and answers from your facts, in your voice, with a face you choose.</p></div>
-          <button type="button" class="hx-btn dark" data-a="livenew">${ic('plus', 14)}New agent</button></div>
-          ${ag.length ? `<div class="hx-grid3">${ag.map(a => `<button type="button" class="hx-card hx-agent" data-a="liveopen" data-id="${esc(a.id)}"><b>${esc(a.name)}</b>
-            <small class="hx-mut">${esc(langName(a.lang))} · ${esc(engine(a.face)?.label || 'Voice only')}${a.published ? ' · on your website' : ''}</small>
-            <span class="hx-hint">${num(Math.round((a.used_today_s || 0) / 60))} of ${num(a.minutes_day)} min today</span></button>`).join('')}</div>`
-            : `<div class="hx-empty"><b>No agents yet</b><span>Write what your business knows; the agent answers only from that.</span></div>`}</div>`;
-      }
-      const a = cur || {name: '', knows: '', opening: '', lang: SET.lang || 'hi', voice: SET.voice || '', face: 'voice_only', face_ref: '', minutes_day: 30};
-      const faces = D.live?.faces || [], fe = faces.find(f => f.id === a.face);
-      const needRef = ['simli', 'anam', 'liveavatar', 'tavus'].includes(a.face);
-      return `<div class="hx-split"><section class="hx-panel wide" aria-label="Build the agent"><form id="hxLiveF" class="hx-form tight">
-          <label class="hx-fld"><span class="hx-lab">Name</span><input class="hx-in" name="name" maxlength="40" value="${esc(a.name)}" placeholder="Shop helper"></label>
-          <label class="hx-fld"><span class="hx-lab">What it knows</span><textarea class="hx-in hx-serifp" name="knows" rows="6" placeholder="Open 9 am to 9 pm. Kaju katli Rs 1,100 a kg. Home delivery above Rs 500.">${esc(a.knows)}</textarea>
-            <span class="hx-hint">It answers only from these words. A number you did not write here is never said.</span></label>
-          <label class="hx-fld"><span class="hx-lab">First words (optional)</span><input class="hx-in" name="opening" maxlength="160" value="${esc(a.opening || '')}"></label>
-          <div class="hx-row2"><div class="hx-fld"><span class="hx-lab">Language</span><button type="button" class="hx-dd" data-a="lpick" data-k="lang"><span>${esc(langName(a.lang))}</span>${ic('down', 14)}</button><input type="hidden" name="lang" value="${esc(a.lang)}"></div>
-            <div class="hx-fld"><span class="hx-lab">Voice</span><button type="button" class="hx-dd" data-a="lpick" data-k="voice"><span>${esc(voiceName(a.voice))}</span>${ic('down', 14)}</button><input type="hidden" name="voice" value="${esc(a.voice || '')}"></div>
-            <label class="hx-fld"><span class="hx-lab">Minutes a day</span><input class="hx-in" name="minutes_day" type="number" min="1" max="600" value="${esc(a.minutes_day || 30)}"></label></div>
-          <fieldset class="hx-fs"><legend class="hx-lab">Face</legend><div class="hx-grid3 tight">${faces.map(f => `<label class="hx-opt${f.id === a.face ? ' on' : ''}${f.ready ? '' : ' off'}"><input type="radio" name="face" value="${esc(f.id)}"${f.id === a.face ? ' checked' : ''}${f.ready ? '' : ' disabled'}>
-            <span class="hx-ct"><b>${esc(f.label)}</b><small>${esc(f.ready ? f.price : scrub(f.status))}</small></span></label>`).join('')}</div></fieldset>
-          ${needRef ? `<label class="hx-fld"><span class="hx-lab">${esc(fe?.label || '')} face id</span><input class="hx-in" name="face_ref" maxlength="80" value="${esc(a.face_ref || '')}" placeholder="Made in ${esc(fe?.label || 'the engine')}'s own dashboard"></label>` : ''}
-          <input type="hidden" name="id" value="${esc(cur?.id || '')}">
-          <div class="hx-acts"><button type="button" class="hx-btn dark" data-a="livesave">Save</button><button type="button" class="hx-btn" data-a="liveback">All agents</button>
-          ${cur ? `<span class="hx-grow"></span><button type="button" class="hx-btn danger" data-a="livedel" data-id="${esc(cur.id)}">Remove</button>` : ''}</div></form></section>
-        <aside class="hx-stage hx-side2" aria-label="Try it"><div class="hx-stageb"><b class="hx-t">Try it</b>
-          ${cur ? `<div class="hx-tryface" id="hxFace">${cur.avatar_id ? avImg(face(cur.avatar_id), 'xl') : `<span class="hx-mark l">${markSvg()}</span>`}<span class="hx-livebadge">Live · ${esc(engine(cur.face)?.label || 'Voice only')}</span></div>
-            <div class="hx-trylog" id="hxTry">${UI.liveOut.map(o => `<div class="hx-${o.me ? 'me' : 'ho'}">${esc(o.t)}</div>`).join('')}</div>
-            <form class="hx-tryf" data-a="noop" onsubmit="return false"><input class="hx-in" id="hxTryIn" placeholder="Ask it something" maxlength="400"><button type="button" class="hx-btn dark" data-a="liveask">Ask</button></form>
-            ${cur.face !== 'voice_only' ? `<button type="button" class="hx-btn" data-a="livesess">Start the face</button>` : ''}
-            <div class="hx-card"><b class="hx-sm">On your website</b>${cur.published ? `<p class="hx-hint">Published (pass ending ${esc(cur.pass_last4)}) on ${esc((cur.sites || []).join(', '))}.</p>
-              ${UI.pub && UI.pub.id === cur.id ? `<code class="hx-code">${esc(UI.pub.embed)}</code><p class="hx-hint">Copy this line now; the pass is shown once.</p>` : ''}
-              <button type="button" class="hx-btn s danger" data-a="liveunpub" data-id="${esc(cur.id)}">Take it off my website</button>`
-              : `<input class="hx-in" id="hxSites" placeholder="Your website address, e.g. myshop.in"><button type="button" class="hx-btn s" data-a="livepub" data-id="${esc(cur.id)}">Put it on my website</button>`}
-              <p class="hx-hint">Each visitor gets a short pass; your keys never reach the page. A minute cap a day keeps the bill safe.</p></div>`
-            : '<p class="hx-mut">Save the agent first, then talk to it here.</p>'}</div></aside></div>`;
-    },
+    voices() { return voPage(); },
+    live() { return UI.live ? lvEdit() : lvLib(); },
     projects() {
       const tabs = ['Videos', 'Batch', 'Many names', 'Trash'], t = UI.ptab;
       const ps = D.projects || [];
@@ -1648,7 +1888,7 @@ window.HoolaInteractive = function (ctx) {
   };
   const ENTER = {
     chat() { (C.conv ? Promise.resolve() : openChat()).then(chatLoad).then(() => { if (PAGE !== 'chat') return; if ($('.hx-hero') && !fresh()) draw(); else paintChat(); chatPoll(); }); estimate(); },
-    voices() { voicesLoad().then(() => { if (PAGE === 'voices') draw(); }); },
+    voices() { Promise.all([voicesLoad(), langsLoad()]).then(() => { if (PAGE === 'voices') draw(); }); },
     apps() { appsLoad().then(() => { if (PAGE !== 'apps') return; draw(); if (ARG === 'broll') { abQuote(); abWatch(); } if (ARG === 'names' || ARG === 'batch') arEstimate(ARG === 'names' ? lenOf((D.projects || []).find(x => x.id === arState().vid) || {}) : 30); }); },
     templates() { const t = ARG && tplOf(ARG); if (!t) return; const u = tuState(t); tuEstimate(); if (u.sample) { u.scene = 0; tuPlay(); } },
     studio() { if (ARG) { const p = cur(); if (!p) return; if (p.status === 'making') watchJob(ARG); studioQuote(); if (UI.tool === 'Engine') edCompare(); }
@@ -1873,16 +2113,53 @@ window.HoolaInteractive = function (ctx) {
         try { await api('DELETE', `${S}/avatar?id=${q(id)}`); if (SET.face === id) setPick('face', ''); if (UI.av?.sel === id) UI.av.sel = ''; await load(); draw(); toast('Face removed.'); } catch (er) { toast(er.message, true); } return; }
       case 'useface': setPick('face', id); toast('Your next video uses this face.'); return;
       case 'setvoice': setPick('voice', id); return;
-      case 'livenew': UI.live = 'new'; UI.liveOut = []; return draw();
-      case 'liveopen': UI.live = id; UI.liveOut = []; UI.pub = null; return draw();
-      case 'liveback': UI.live = ''; return draw();
-      case 'lpick': { const k = b.dataset.k; return pickMenu(b, k, v => { const i = $(`#hxLiveF [name="${k}"]`); if (i) i.value = v; b.querySelector('span').textContent = k === 'lang' ? langName(v) : voiceName(v); }, true); }
-      case 'livesave': return liveSave();
-      case 'livedel': if (!confirm('Remove this agent? If it is on your website it stops answering there.')) return; try { await api('DELETE', `${X}/live?id=${q(id)}`); UI.live = ''; await load(); draw(); } catch (er) { toast(er.message, true); } return;
-      case 'liveask': return liveAsk();
+      case 'voplay': return voPlay(id);
+      case 'vosel': (UI.vo ||= {}).sel = id; return voRepaint();
+      case 'vokind': Object.assign(UI.vo ||= {}, {k: b.dataset.val, more: 0}); return voRepaint();
+      case 'vomore': (UI.vo ||= {}).more = (UI.vo.more || 0) + 1; return voRepaint();
+      case 'vofav': return voFavToggle(id);
+      case 'vogen': return menu(b, [['', 'Any gender'], ['female', 'Women'], ['male', 'Men']].map(([v, l]) => ({label: l, checked: (UI.vo?.g || '') === v, run: () => { Object.assign(UI.vo ||= {}, {g: v, more: 0}); voRepaint(); }})));
+      case 'volang': return menu(b, [{search: 'Samples in', empty: 'No language matches'}, ...(UI.L || []).map(l => ({label: l.native && l.native !== l.name ? `${l.name} · ${l.native}` : l.name, sub: l.region, checked: voLang() === l.code,
+        run: () => { (UI.vo ||= {}).lang = l.code; UI.audio?.pause(); UI.voPlay = ''; voRepaint(); }}))], {width: 280});
+      case 'vouse': setPick('voice', id); toast(`New videos speak in ${voOf(id)?.name || 'this voice'}.`); return;
+      case 'voput': UI.dlg = {k: 'voput', id, ids: []}; return dlgPaint();
+      case 'voputgo': return voPutGo();
+      case 'vovocal': window.__hvPage = 'voices'; leave(); return ctx.go ? ctx.go('vocal') : back?.();
+      case 'livenew': UI.live = 'new'; UI.ld = null; UI.ldDirty = false; UI.liveOut = []; UI.lvTab = 'try'; return draw();
+      case 'liveopen': UI.live = id; UI.ld = null; UI.ldDirty = false; UI.liveOut = []; UI.lvTab = 'try'; return draw();
+      case 'livetry': UI.live = id; UI.ld = null; UI.ldDirty = false; UI.liveOut = []; UI.lvTab = 'try'; draw(); return $('#hxTryIn')?.focus();
+      case 'liveback': if (UI.ldDirty && !confirm('Leave without saving your changes?')) return; UI.live = ''; UI.ld = null; UI.ldDirty = false; UI.audio?.pause(); return draw();
+      case 'lvpick': { const k = b.dataset.k;
+        if (k === 'face') return menu(b, [{label: 'None', checked: !lvDraft().avatar_id, run: () => { lvSet('avatar_id', ''); draw(); }}, ...(D.avatars || []).map(x => ({label: x.name, sub: x.kind === 'ai' ? 'Made by AI' : 'Consent on record', checked: lvDraft().avatar_id === x.id, run: () => { lvSet('avatar_id', x.id); draw(); }})),
+          {sep: true}, {label: 'Add a face', icon: 'plus', run: () => go('avatars')}]);
+        return pickMenu(b, k, v => { lvSet(k, v); UI.lvHear = false; draw(); }, true); }
+      case 'lvface': lvSet('face', id); return draw();
+      case 'lvhear': return lvHear();
+      case 'lvtab': UI.lvTab = b.dataset.val; if (UI.lvTab === 'qs' && UI.lvQs?.id !== UI.live) { UI.lvQs = null; draw(); return lvQsLoad(UI.live); } return draw();
+      case 'lvmic': return lvMic();
+      case 'livesave': return lvSave();
+      case 'livedel': if (!confirm('Remove this agent? If it is on your website it stops answering there.')) return; try { await api('DELETE', `${X}/live?id=${q(id)}`); UI.live = ''; UI.ld = null; UI.ldDirty = false; await load(); draw(); toast('Agent removed.'); } catch (er) { toast(er.message, true); } return;
+      case 'liveask': return lvAsk();
       case 'livesess': return liveSession();
-      case 'livepub': try { UI.pub = {id, ...(await api('POST', `${X}/live/publish`, {id, on: true, sites: [($('#hxSites')?.value || '').trim()]}))}; await load(); draw(); } catch (er) { toast(er.message, true); } return;
-      case 'liveunpub': try { await api('POST', `${X}/live/publish`, {id, on: false}); UI.pub = null; await load(); draw(); } catch (er) { toast(er.message, true); } return;
+      case 'lvweb': { const a = lvOf(id); UI.dlg = {k: 'lvweb', id, sites: [...(a?.sites || [])]}; return dlgPaint(); }
+      case 'lvsiteadd': { const s = UI.dlg, v = ($('#hxLvSite')?.value || '').trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0]; if (!s || !v) return;
+        if (!/^[a-z0-9.-]{3,120}$/.test(v) || !v.includes('.')) return toast('Write a website address, like myshop.com.');
+        if (!s.sites.includes(v) && s.sites.length < 5) s.sites.push(v); s.embed = ''; return dlgPaint(); }
+      case 'lvsitedel': UI.dlg.sites.splice(+b.dataset.i, 1); return dlgPaint();
+      case 'lvpub': { const s = UI.dlg; if (!s) return; if (s.embed) return dlgClose(); s.busy = true; dlgPaint();
+        try { const r = await api('POST', `${X}/live/publish`, {id: s.id, on: true, sites: s.sites}); s.busy = false; s.embed = r.embed; await load(); dlgPaint(); if (PAGE === 'live') draw(); toast('It is on your website once you paste the line.'); }
+        catch (er) { s.busy = false; dlgPaint(); toast(er.message, true); } return; }
+      case 'lvunpub': { const s = UI.dlg; if (!s || !confirm('Take it off your website? It stops answering there at once.')) return;
+        try { await api('POST', `${X}/live/publish`, {id: s.id, on: false}); UI.dlg = null; dlgPaint(); await load(); draw(); toast('Taken off your website.'); } catch (er) { toast(er.message, true); } return; }
+      case 'lvcopy': try { await navigator.clipboard.writeText(UI.dlg?.embed || ''); toast('Copied. Paste it before the closing body tag of your pages.'); } catch { toast('Select the line and copy it.', true); } return;
+      case 'lvlearn': { const qid = b.dataset.q; if (!qid) return toast('Open Questions to add the answer.');
+        const a = lvOf(id), m = (a?.misses || []).find(x => x.id === qid) || (UI.lvQs?.rows || []).find(x => x.id === qid);
+        UI.dlg = {k: 'lvlearn', id, qid, q: m?.q || '', answer: ''}; return dlgPaint(); }
+      case 'lvlearnsave': { const s = UI.dlg, t = ($('#hxLvAns')?.value || '').trim(); if (!s) return; if (!t) return toast('Write the answer.');
+        s.busy = true; dlgPaint();
+        try { await api('POST', `${X}/live/learn`, {id: s.id, qid: s.qid, answer: t}); UI.dlg = null; dlgPaint(); UI.ld = null; UI.lvQs = null; await load(); draw(); toast('Added to its facts. It answers that next time.'); }
+        catch (er) { s.busy = false; dlgPaint(); toast(er.message, true); } return; }
+      case 'lvdismiss': { const s = UI.dlg; if (!s) return; try { await api('POST', `${X}/live/dismiss`, {id: s.id, qid: s.qid}); UI.dlg = null; dlgPaint(); UI.lvQs = null; await load(); draw(); } catch (er) { toast(er.message, true); } return; }
       case 'ptab': UI.ptab = b.dataset.val; return draw();
       case 'batch': { const scripts = ($('#hxBatch')?.value || '').split(/\n\s*\n/).map(s => s.trim()).filter(Boolean); if (!scripts.length) return toast('Write at least one script.');
         try { const r = await api('POST', `${H}/batch`, {scripts, lang: SET.lang, avatar_id: SET.face}); toast(`${r.made.length} drafts made.`); await load(); UI.ptab = 'Videos'; draw(); } catch (er) { toast(er.message, true); } return; }
@@ -1910,6 +2187,12 @@ window.HoolaInteractive = function (ctx) {
     const t = e.target;
     if (t.dataset.isc != null) { saveLine(t.dataset.id, +t.dataset.isc, t.value); return; }
     if (t.id === 'hxAsk') { C.ask = t.value; t.style.height = 'auto'; t.style.height = Math.min(180, t.scrollHeight) + 'px'; $('.hx-send')?.classList.toggle('on', !!t.value.trim()); return; }
+    if (t.dataset?.lv && PAGE === 'live') { const k = t.dataset.lv; lvSet(k, k === 'minutes_day' ? +t.value : t.value);
+      if (k === 'knows') { const n = $('#hxLvNums'), L = $('#hxLvLen'), xs = lvNums(t.value); if (L) L.textContent = `${num(t.value.length)} of 6,000 characters`;
+        if (n) n.innerHTML = xs.length ? `<span class="hx-mut hx-sm">Numbers it may say:</span>${xs.map(x => `<span class="hx-lvnum hx-num">${esc(x)}</span>`).join('')}` : '<span class="hx-mut hx-sm">No numbers yet. It will not say a price, time or number until you write it here.</span>'; }
+      if (k === 'minutes_day') { const m = $('#hxLvMin'); if (m) m.textContent = `${num(+t.value)} min`; }
+      return; }
+    if (t.id === 'hxVoq') { Object.assign(UI.vo ||= {}, {q: t.value, more: 0}); const l = $('#hxVoList'); if (l) l.innerHTML = voList(); const sm = t.parentElement?.querySelector('small'); if (sm) sm.textContent = t.value ? 'Best matches first' : ''; return; }
     if (t.id === 'hxAvq') { (UI.av ||= {}).q = t.value; const l = $('#hxAvList'); if (l) l.innerHTML = avList(); fillMedia(); return; }
     if (UI.dlg && t.id === 'hxAvNm') { UI.dlg.name = t.value; return; }
     if (UI.dlg && t.id === 'hxAvPer') { UI.dlg.person = t.value; return; }
@@ -1951,22 +2234,11 @@ window.HoolaInteractive = function (ctx) {
     if (t.id === 'hxAready') { UI.aready = t.checked; const l = $('#hxAppList'); if (l) l.innerHTML = appsList(); return; }
     if (t.id === 'hxShFile' && UI.dlg) { const f = t.files?.[0]; if (!f) return; if (f.size > 2 * 1024 * 1024) return toast('That file is larger than 2 MB.', true);
       const rd = new FileReader(); rd.onload = () => { UI.dlg.text = String(rd.result || ''); dlgPaint(); }; rd.readAsText(f); return; }
+    if (t.dataset?.vop && UI.dlg?.k === 'voput') { const id = t.dataset.vop, ids = UI.dlg.ids; if (t.checked) { if (!ids.includes(id)) ids.push(id); } else UI.dlg.ids = ids.filter(x => x !== id); return dlgPaint(); }
     if (t.id === 'hxAvPh') return avPhFile(t.files?.[0]);
     if (t.name === 'hxAvWho' && UI.dlg?.k === 'avphoto') { UI.dlg.who = t.value; return dlgPaint(); }
     if (t.id === 'hxAvOk' && UI.dlg?.k === 'avphoto') { UI.dlg.consent = t.checked; return dlgPaint(); }
     if (t.name === 'peng' && PAGE === 'studio') return save({engine: t.value});
-    if (t.name === 'face' && t.closest('#hxLiveF')) { const f = new FormData($('#hxLiveF')); UI._draft = Object.fromEntries(f); }
-  }
-  async function liveSave() {
-    const body = Object.fromEntries(new FormData($('#hxLiveF')));
-    try { const a = await api('POST', `${X}/live`, body); UI.live = a.id; await load(); draw(); toast('Saved.'); } catch (er) { toast(er.message, true); }
-  }
-  async function liveAsk() {
-    const i = $('#hxTryIn'), t = (i?.value || '').trim(); if (!t) return;
-    i.value = ''; UI.liveOut.push({me: true, t}); draw();
-    try { const r = await api('POST', `${X}/live/ask`, {id: UI.live, text: t}); UI.liveOut.push({t: r.answer}); draw();
-      if (r.audio) { const au = new Audio(`data:${r.mime || 'audio/wav'};base64,${r.audio}`); au.play().catch(() => {}); } else if (r.voice_error) toast(r.voice_error, true); }
-    catch (er) { UI.liveOut.push({t: er.message}); draw(); }
   }
   async function liveSession() {
     try {
