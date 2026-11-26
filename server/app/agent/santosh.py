@@ -1686,6 +1686,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_pyc.block, tenant_id)
     except Exception:
         log.exception("payments desk block failed")
+    try:   # INSTITUTION DESK: a turn in the Institution chat (or a call started from it) knows the desk
+        from .. import instchat as _inc
+        if _inc.is_institution(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_inc.block, tenant_id)
+    except Exception:
+        log.exception("institution desk block failed")
     _mark("hint")
     return state
 
@@ -2513,6 +2519,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "payments chat"
     except Exception:
         log.exception("payments chat admission failed")
+    try:   # INSTITUTION DESK: the institution tool in view in the Institution chat
+        from .. import instchat as _inc
+        if adm is not None and _inc.is_institution(conversation_id):
+            adm.admit_families(_inc.FAMILIES)
+            for f in _inc.FAMILIES:
+                adm.why[f] = "institution chat"
+    except Exception:
+        log.exception("institution chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,

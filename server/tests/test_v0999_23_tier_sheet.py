@@ -118,7 +118,7 @@ def test_the_console_sheet_is_five_rows_with_no_prices_and_ultra_asks_first():
     for name in ("'Normal'", "'Ultra'", "'High'", "'Medium'", "'Low'"):
         assert name in sheet
     assert "Recommended" in sheet and "Up to 70× credit" in sheet
-    assert "Better models give better answers and use your credit faster." in sheet
+    assert "Better models answer better and use credit faster." in sheet
     assert "Use Ultra?" in sheet and "'Not now'" in sheet and "'Use Ultra'" in sheet
     assert "confirm_ultra: id === 'ultra'" in sheet
     assert "cost" not in sheet and "rs_step" not in sheet and "/api/model/choice'" not in sheet   # no prices, no list

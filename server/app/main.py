@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.225"   # v0.999.225 NO FLASH ON LOAD (owner, her screenshot of the console home while it loads: "WHEN HOME PAGE LOADS WHY IT SHOW LIKE THIS EVERYTIME CHECK AND FIX"): the typing box is written after #app in v2.html and moved into the page by v2.js, the last script; until it ran the box stood alone at the top of the page with no styles (huge Deep research / Hoola PC icons, a clip and a grid button, Call under its icon); now it is not drawn until it is inside the app (v2.css body>#composer); 2 tests incl. a browser walk that fails without it. NOT VERIFIED: on her server. Previous: v0.999.224 THE CHAT BOX MICROPHONE (owner: "NOW CHECK THE CONSOLE MICROPHONE NOT FUCTIONING PROPERLY FIND THE BUG , DESIGN -- MAKE IT PERFECTLY ADVCNE , PREMIUM AND PROFESSIONAL -- MCHING WITH THIS CHAT PANEL DESIGN"): the bugs - it always listened for Hindi (hi-IN), sending a message while it listened wrote the sent words back into the box, Chrome ended the session after a pause and the mic went off mid-sentence, typing while it listened was overwritten, only "not allowed" was ever explained, Firefox was thrown onto the voice call page, Ctrl + Space worked only with Hoola Flow; now `static/console/dictate.js` (window.HoolaDictate): her own language (browser first, then her pick, kept), stops on send, carries on after a pause (3 silent rounds = stops and says so), keeps her typing, a plain line for every error, Ctrl + Space / Esc; the design: the row under her words becomes one recording bar - cancel, a live waveform of her voice, Listening, the language, the clock, Done in an ink circle; no red pulse, no colour outside the page ink; Hoola Flow still first when its engine is ready; 2 tests incl. a browser walk. NOT VERIFIED: on her server / a real microphone.
+APP_VERSION = "0.999.228"   # v0.999.228 THE QUALITY SHEET (owner, her quality menu: "CHECK THE MODEL SECTION SHOWING NOT PROPERLY ALINED AND STALE MAKE IT PREMIUM SHEET LIKE THE ATTACHMENT SHEET"; built as 0.999.226, their CUSTOMIZE PAGE + INSTITUTION DESK took 0.999.226-0.999.227, all kept): the Normal / Ultra / High / Medium / Low sheet is now the + card - a Quality header, a soft tile per tier with its own mark (Hoola pick, a gem, signal bars), one plain line under each, an ink tile + ink tick on the chosen one, amber Up to 70x credit, the note at the foot; it opens below the button (above only when there is no room) instead of over the typing box, and the browser tooltip that sat on it is gone; the Use Ultra? card in the same style; 2 tests incl. a browser walk. NOT VERIFIED: on her server. Previous: v0.999.227 INSTITUTION DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE INSTITUTION DESK"): the Institution employee gets its own section /console/institution + Institution chat (kind institution, `instchat.py`): set up an institution on the desk with her as the first admin; who she is on the desk (the owner picks her person, an admin links a team member's login - everything is done AS that person with that person's roles); Today (waiting for your check, monitoring alerts, obligations overdue, incident reports due, the five areas as cards, maker-checker bar, report clocks, alerts by rule); Financial crime (transactions CSV -> alerts on HER rule values, Hoola's starting values marked check this, a SAR draft from an alert into maker-checker with machine checks, sanctions against her own watch list, customer file review); Compliance (obligations with their source, done today, complaints vs her deadline, policy and promotion checks); Risk (incidents with her report clocks and when SHE reported, RCSA heat map vs her appetite, third parties, models, ECL); Audit (prepared-by-client list, samples by seed, pass / fail per item -> the control test, journal tests); Governance (board pack, cap table and a new round, related parties, whistleblowing with a case number only); Drafts (maker never checks, two checkers above her limit, a check holds for the exact text, the MLRO scores a SAR, PDF); Team & settings (roles, logins, limit, keep periods, keys shown once, export); typed values survive a redraw; files, freezes and reports nothing; 5 tests incl. a browser walk. NOT VERIFIED on her server.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2142,6 +2142,15 @@ def firm_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/institution")
+@app.get("/console/institution/")
+def institution_desk_page():
+    """INSTITUTION DESK: the Institution employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "instdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/payments")
 @app.get("/console/payments/")
 def payments_desk_page():
@@ -2704,6 +2713,8 @@ from . import firmchat as _firmchat_mod                          # noqa: E402  F
 _firmchat_mod.mount(app, current_tenant, require_key)           # /api/firm/*
 from . import paychat as _paychat_mod                            # noqa: E402  PAYMENTS DESK
 _paychat_mod.mount(app, current_tenant, require_key)            # /api/payments/*
+from . import instchat as _instchat_mod                          # noqa: E402  INSTITUTION DESK
+_instchat_mod.mount(app, current_tenant, require_key)           # /api/institution/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

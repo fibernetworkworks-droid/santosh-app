@@ -12393,3 +12393,41 @@ happened on every load, for as long as the scripts took. Fix: `body>#composer{di
 v2.css (in the head, so it holds from the first paint); once v2.js moves the box into the app it shows exactly as
 before. Test `test_v0999_225_no_flash.py`: blocks v2.js to freeze the loading moment, checks the bare box is not
 visible (fails on the old CSS = her screenshot), then loads normally and checks the box shows in the app.
+
+## v0.999.226 CUSTOMIZE, PREMIUM (owner: "CUSTOMERISE SECTION LOOKS STALE AND OLD ... ADVANCE PRIMIUM AND PROFESSIONAL" -> design claude.ai/artifact/ENS4Mk3mkFsgEJaA8hxSD2 -> "MAKE IT MORE PREMIUN" -> "GO BUILD"): the Customize page rebuilt - header, account card with Credits / Google apps / Memories, a page list, one card per part; Appearance = controls + a live preview of a chat in her real font and size, Reset to default; password with show / strength; Connections; Memory with search, pin and a two-tap forget; About this server tiles + features behind a button; Log out card; 2 tests incl. a browser walk at desktop + phone width. Console only.
+
+Console only (`static/console/v2.js` drawMain + appearanceHTML, `v2.css` block `v0.999.223 CUSTOMIZE, PREMIUM`, classes `cz-`). Built from the approved design claude.ai/artifact/ENS4Mk3mkFsgEJaA8hxSD2. The page: header (Make Hoola yours, Changes save as you make them), account card (avatar + online dot, name, Hoola ID, owner, email, three stats: Credits from GET /api/credits, Google apps from GET /api/google, Memories from GET /api/memory), a page list on the left that follows the scroll, Appearance (theme cards with drawn mini consoles, Text size, Chat font tiles, Reduce motion + Live border glow, Reset to default; a live preview of a chat that uses the real --fchat / --fs / theme tokens), Console password (show / hide, a strength bar as a hint - the server's 10-character rule stays the gate), Connections (Google -> Connectors > Google, All other apps -> Connectors), Memory (search, pin / unpin via PATCH /api/memory/{id}, forget via DELETE /api/memory/{id} only after a second tap on the row), About this server (version, status, feature count, the list behind Show features), Log out card. Old classes .pvm/.pvL/.pvD/.ps/.pm/.mk had live styles elsewhere, so the new parts use czm / czL / czD / cps / cpm / czmk. Tests: NEW test_v0999_223_customize_premium.py (shape + a Chromium walk at 1440 and 390: memory search, two-tap forget then Keep, dark theme, font in the preview note, strength levels, show password, reset, no sideways scroll); test_v0240 pin reads the wrapped appearanceHTML. Already red before this change and left alone: test_v0240::test_version + test_switch_in_sidebar..., test_v0285::test_claude_look_is_crisp, test_v0223 (3), test_v0975::test_shape. NOT VERIFIED: on her server.
+
+
+## v0.999.227 INSTITUTION DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE INSTITUTION DESK")
+
+The Institution employee (tool `institution_desk`, the F9 engine fin/desks/institution.py + fin/makerchecker.py) gets its own section
+/console/institution with its own chat (kind `institution`, `server/app/instchat.py`), like the other finance desks.
+
+- Setup: POST /api/institution/setup makes an institution workspace with her as the first person (admin + the roles she ticks).
+- Who she is: the owner picks her person of the institution; an admin links a team member's login email (`institution_desk.who` /
+  `.logins`). Every engine call is made AS that person, so the engine's own role checks hold (maker never checks, two checkers above
+  the single-check limit, a check binds to the text hash, only MLRO / compliance scores a SAR).
+- The desk keeps her inputs in `institution_desk` (transactions, rule values, watch list, complaints, risks, vendors, models, exposures,
+  PBC, samples with results, journals, board agenda / papers / actions, holders, related parties, her report clocks); the engine keeps its
+  registers in `inst`. Desk-input changes need the area's role (crime: MLRO / compliance / maker; compliance; risk; audit; secretary) or admin.
+- Desk-only actions beyond the engine: roles (admin, at least one admin kept), obligation_done, incident_report (when SHE reported),
+  test_result (per sampled item; all done -> control_test, conclusion stored), whistle_status.
+- Pages: Today, Financial crime, Compliance, Risk, Audit, Governance, Drafts (+ one draft), Team & settings. Downloads: a draft PDF, the
+  export JSON (keys never in it). Typed form values survive a page redraw when a later part of the page arrives.
+- Wiring: convs / callconv kind lists, santosh.py block + admission, main.py page + mount, employees.js `instdesk`, v2.js redirect + title,
+  phone hoola_employees.dart, test_fin_f7 map.
+- Tests: server/tests/test_inst_desk.py (5, incl. a Chromium walk at 1440 and 390).
+- NOT VERIFIED on her server. Nothing is filed, frozen or reported to a regulator.
+
+## v0.999.228 THE QUALITY SHEET (built as 0.999.226; their CUSTOMIZE PAGE + INSTITUTION DESK took 0.999.226-0.999.227, all kept; owner, her screenshot of the quality menu: "CHECK THE MODEL SECTION SHOWING NOT PROPERLY ALINED AND STALE MAKE IT PREMIUM SHEET LIKE THE ATTACHMENT SHEET")
+
+Before: plain text rows with tags of different heights, a violet tick, the note on top, the sheet opened ABOVE the Normal
+button (over the typing box and the greeting), and the browser's own "Quality: Normal" tooltip sat on top of it. Now the
+sheet uses the + card's style (`cls: 'plusm tiers'`): a small Quality header, a 32 px soft tile per tier with its own
+mark (menu.js `qauto` / `qultra` gem / `qhigh` `qmed` `qlow` signal bars), one plain line under each (`TIER_SUB`, no
+prices, no model names), the chosen tier with an ink tile and an ink tick, Recommended as a grey pill and Up to 70x
+credit as an amber pill (emoji dropped), the note at the foot after a hairline. It opens below the button and goes above
+only when there is no room. The button no longer carries a `title`, so no tooltip covers the sheet. The Use Ultra?
+card uses the same style. Test `test_v0999_228_tier_sheet.py` walks it in Chromium: the sheet is below the button,
+right edges line up, every tile on one edge, one tick, no line cut off.

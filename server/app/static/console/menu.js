@@ -41,6 +41,12 @@ const P = {
   branch: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 8v8M18 10c0 4-6 3-12 6"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   pr: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><path d="M6 8v8M18 16V9a3 3 0 0 0-3-3h-4"/>',
+  // v0.999.228 the quality sheet: a mark for Hoola's own pick, a gem for Ultra, signal bars for High / Medium / Low
+  qauto: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M18.5 16.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
+  qultra: '<path d="M6.5 4h11L21 9l-9 11L3 9z"/><path d="M3 9h18M9.5 4 8 9l4 11 4-11-1.5-5"/>',
+  qhigh: '<path d="M5 19v-4M10 19v-8M15 19V7M20 19V3"/>',
+  qmed: '<path d="M5 19v-4M10 19v-8M15 19V7"/><path d="M20 19V3" opacity=".25"/>',
+  qlow: '<path d="M5 19v-4M10 19v-8"/><path d="M15 19V7M20 19V3" opacity=".25"/>',
 };
 const icon = k => P[k] ? `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[k]}</svg>` : '';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
