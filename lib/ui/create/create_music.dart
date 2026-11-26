@@ -17,6 +17,7 @@ import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../state.dart';
+import '../chat/hoola_thread.dart';
 import '../hoola_mark.dart';
 import '../hoola_theme.dart';
 import 'create_kit.dart';
@@ -267,6 +268,12 @@ class _Up {
 class _CreateMusicState extends State<CreateMusic> {
   late final _q = TextEditingController(text: widget.brief);
   final _scroll = ScrollController();
+  // v0.999.206 her sent message lands at the top like the main chat (ThreadLander, hoola_thread.dart)
+  late final ThreadLander _lander = ThreadLander(_scroll)..addListener(_roomMoved);
+  void _roomMoved() {
+    if (mounted) setState(() {});
+  }
+
   final _focusNode = FocusNode();
   final _ms = MusicSettings();
   late final MusicPlayer _player = MusicPlayer(widget.store.app);
@@ -294,6 +301,7 @@ class _CreateMusicState extends State<CreateMusic> {
   void dispose() {
     _timer?.cancel();
     _q.dispose();
+    _lander.dispose();
     _scroll.dispose();
     _focusNode.dispose();
     _player.dispose();
@@ -324,6 +332,7 @@ class _CreateMusicState extends State<CreateMusic> {
         _conv = crS(c['id']);
         _title = crS(c['title']).isEmpty ? 'Music chat' : crS(c['title']);
         _rows = [];
+        _lander.reset();
         _turn = null;
         _last = null;
         _focus = '';
@@ -397,9 +406,11 @@ class _CreateMusicState extends State<CreateMusic> {
     final n = _rows.length + musicSets(store, _conv).length;
     if (n == _seen) return;
     _seen = n;
+    if (_lander.held) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scroll.hasClients) {
-        _scroll.animateTo(_scroll.position.maxScrollExtent, duration: HoolaMotion.of(context, HoolaMotion.menu), curve: Curves.easeOut);
+      if (_scroll.hasClients && !_lander.held) {
+        final p = _scroll.position, end = p.maxScrollExtent - _lander.room;
+        if (end > p.pixels) _scroll.animateTo(end, duration: HoolaMotion.of(context, HoolaMotion.menu), curve: Curves.easeOut);
       }
     });
   }
@@ -443,7 +454,7 @@ class _CreateMusicState extends State<CreateMusic> {
       _focus = '';
       _focusTitle = '';
     });
-    _follow();
+    _lander.land();
     try {
       await api.sendMessage(_conv, full, files: files);
     } catch (e) {
@@ -739,7 +750,7 @@ class _CreateMusicState extends State<CreateMusic> {
       const SizedBox(height: 12),
       const Center(child: HoolaMark(size: 40)),
       const SizedBox(height: 14),
-      Text('What shall we make?', textAlign: TextAlign.center, style: HoolaType.replyH1(c).copyWith(fontSize: 28, fontWeight: FontWeight.w400)),
+      Text('What shall we make?', textAlign: TextAlign.center, style: HoolaType.hero(c)),
       const SizedBox(height: 8),
       Text('Any language. A song, an instrumental, a jingle or a film score; your own lyrics or mine. You get two versions to pick from.',
           textAlign: TextAlign.center, style: HoolaType.small(c).copyWith(fontSize: 15)),
@@ -802,7 +813,10 @@ class _CreateMusicState extends State<CreateMusic> {
       final text = crS(r['text']);
       if (r['role'] == 'user') {
         final shown = musicStripNotes(text);
-        if (shown.isNotEmpty) kids.add(_her(c, shown));
+        if (shown.isNotEmpty) {
+          final newest = _lander.anchored && !_rows.skip(j + 1).any((x) => x['role'] == 'user');
+          kids.add(newest ? KeyedSubtree(key: _lander.key, child: HoolaRiseIn(child: _her(c, shown))) : _her(c, shown));
+        }
       } else if (text.trim().isNotEmpty && j > 0) {
         kids.add(_hoola(c, text.trim()));
       }
@@ -813,13 +827,14 @@ class _CreateMusicState extends State<CreateMusic> {
     if (_working) kids.add(_workRow(c));
     final fail = _failCard(c, sets);
     if (fail != null) kids.add(fail);
-    return ListView.separated(
+    if (_lander.anchored) kids.add(SizedBox(key: const ValueKey('landroom'), height: _lander.room));
+    return _lander.listen(ListView.separated(
       controller: _scroll,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       itemCount: kids.length,
       separatorBuilder: (_, __) => const SizedBox(height: 14),
       itemBuilder: (_, i) => kids[i],
-    );
+    ));
   }
 
   Widget _her(HoolaColors c, String text) => Align(
@@ -829,7 +844,7 @@ class _CreateMusicState extends State<CreateMusic> {
           child: Container(
             padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
             decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(18)),
-            child: SelectableText(text, style: HoolaType.body(c)),
+            child: SelectableText(text, style: HoolaType.bodyLarge(c).copyWith(height: 1.4)),
           ),
         ),
       );

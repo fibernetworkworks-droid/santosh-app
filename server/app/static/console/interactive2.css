@@ -1411,7 +1411,7 @@
 @media (max-width:900px){ #hxRoot .hx-pjr{grid-template-columns:36px minmax(0,1fr) auto} #hxRoot .hx-pjr>:nth-child(n+4){display:none}
   #hxRoot .hx-pjpage>.hx-doch{flex-wrap:wrap} #hxRoot .hx-pjpage>.hx-doch>.hx-growf{flex:1 1 100%} #hxRoot .hx-pjth{width:56px} #hxRoot .hx-pjleft{width:auto;flex:1 1 120px} }
 
-/* ---- v0.999.205 BRAND (design claude.ai/artifact/9KiLgKxN4xkWGL4rrJZx6H): name, colour + contrast, logo, closing card, preview */
+/* ---- v0.999.207 BRAND (design claude.ai/artifact/9KiLgKxN4xkWGL4rrJZx6H): name, colour + contrast, logo, closing card, preview */
 #hxRoot .hx-brpage{gap:20px}
 #hxRoot .hx-brgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,480px);gap:24px;align-items:start}
 #hxRoot .hx-brcol{display:flex;flex-direction:column;gap:16px;min-width:0}

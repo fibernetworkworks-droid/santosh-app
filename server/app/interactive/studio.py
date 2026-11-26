@@ -496,7 +496,7 @@ def _brand_color(tenant: str) -> dict[str, str]:
 
 
 def _show_name(tenant: str) -> bool:
-    """v0.999.205 her Brand page can keep the name out of the corner of every scene."""
+    """v0.999.207 her Brand page can keep the name out of the corner of every scene."""
     return (_load(tenant).get("brand") or {}).get("show_name") is not False
 
 
@@ -508,7 +508,7 @@ def spec_for(tenant: str, p: dict[str, Any], silent: bool) -> tuple[dict[str, An
         spec["items"] = p["items"]
     files: list[dict[str, Any]] = []
     cta: dict[str, Any] = {"text": p["closing"]} if p.get("closing") else {}
-    try:                                            # v0.999.205 her logo / QR code on the closing card
+    try:                                            # v0.999.207 her logo / QR code on the closing card
         from . import hub as _H
         img = _H.card_image(tenant)
     except Exception:

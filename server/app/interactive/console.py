@@ -212,7 +212,7 @@ def make_hub_router(require_key: Callable, current_tenant: Callable) -> APIRoute
 
     @r.get("/brand")
     async def brand_get(tenant: str = Depends(current_tenant)):
-        """v0.999.205 her brand + what her poster Brand kit holds (for Use my Brand kit)."""
+        """v0.999.207 her brand + what her poster Brand kit holds (for Use my Brand kit)."""
         on()
         return H.brand_info(tenant)
 

@@ -188,7 +188,7 @@ class _HoolaCodeState extends State<HoolaCode> {
     }
     final old = _all ? by['old']! : by['old']!.take(6).toList();
     return [
-      Text('What should we build today?', style: HoolaType.hero(c).copyWith(fontSize: 28)),
+      Text('What should we build today?', style: HoolaType.hero(c)),
       const SizedBox(height: 14),
       if (st['github'] != true)
         _note(c, Icons.link_rounded, 'Connect GitHub first', 'Add your fine-grained token in Repos & GitHub. It is typed only there.',

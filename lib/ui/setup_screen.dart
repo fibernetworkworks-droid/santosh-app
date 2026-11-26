@@ -149,7 +149,7 @@ class _SetupScreenState extends State<SetupScreen> {
       TextStyle(fontFamily: HoolaFont.sans, fontSize: size, fontWeight: w, color: color ?? c.ink, height: 1.5);
 
   Text _title(HoolaColors c, String t) => Text(t,
-      style: TextStyle(fontFamily: HoolaFont.serif, fontSize: 32, height: 1.18, letterSpacing: -0.4, color: c.ink));
+      style: HoolaType.hero(c));
 
   Widget _primary(HoolaColors c, String label, VoidCallback onTap, {IconData? icon}) => SizedBox(
         height: 52,

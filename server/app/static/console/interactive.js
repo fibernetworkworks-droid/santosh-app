@@ -1804,7 +1804,7 @@ window.HoolaInteractive = function (ctx) {
   }
   function lvSet(k, v) { const a = lvDraft(); a[k] = v; UI.ldDirty = true; }
 
-  // ---- brand (v0.999.205 BRAND, REDESIGNED: name on screen, colour with a contrast check, the shared logo, the closing card
+  // ---- brand (v0.999.207 BRAND, REDESIGNED: name on screen, colour with a contrast check, the shared logo, the closing card
   //      (line + logo / QR), a preview drawn the way the video draws it, words to keep, and Use my Brand kit)
   const BR_COLORS = ['#5B45E0', '#2E6F8E', '#B4462F', '#2F6B48', '#C27A1A', '#8A2F4E', '#1E293B', '#1A1A19'];
   const BR_CARDS = [['logo', 'Logo'], ['qr', 'QR code'], ['both', 'Logo and QR'], ['none', 'Nothing']];

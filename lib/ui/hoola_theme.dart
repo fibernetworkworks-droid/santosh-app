@@ -27,6 +27,11 @@ class HoolaFont {
   /// v0.892 Literata cut at Claude's dark-mode weights: 400 here = 360, 600 here = 530 (claude.ai's own stylesheet
   /// thins its reply in dark mode, because light letters on a dark page read bolder than they are).
   static const serifDark = 'Literata Dark';
+  /// v0.999.206 Claude's home greeting: Literata at opsz 48, weight 330 (light) / 290 (dark), cut static for Flutter.
+  static const greet = 'Literata Greet';
+  static const greetDark = 'Literata Greet Dark';
+  /// v0.999.206 page titles: Literata at opsz 28, weight 530.
+  static const title = 'Literata Title';
   static const dyslexic = 'OpenDyslexic';
   static const system = 'Roboto';   // the phone's own font
 }
@@ -240,8 +245,14 @@ class HoolaType {
   static TextStyle _sans(double size, FontWeight w, Color c, {double h = 1.35, double ls = 0}) =>
       TextStyle(fontFamily: HoolaFont.sans, fontSize: size, fontWeight: w, color: c, height: h, letterSpacing: ls);
 
-  /// The home greeting, a drawer title: serif, large, quiet.
-  static TextStyle hero(HoolaColors c) =>
+  /// The home greeting: v0.999.206 like Claude's - Literata 38 / 1.2 at weight 330 (dark 290), no tightening.
+  static TextStyle hero(HoolaColors c) => TextStyle(
+      fontFamily: c.dark ? HoolaFont.greetDark : HoolaFont.greet, fontSize: 38, fontWeight: FontWeight.w400, color: c.ink, height: 1.2);
+  /// A page title in the serif (an employee, a department, a session): Literata 28 / 1.25 at weight 530.
+  static TextStyle pageTitle(HoolaColors c) =>
+      TextStyle(fontFamily: HoolaFont.title, fontSize: 28, fontWeight: FontWeight.w600, color: c.ink, height: 1.25);
+  /// A large figure in the serif (an amount on a card): the regular Literata.
+  static TextStyle serifFigure(HoolaColors c) =>
       TextStyle(fontFamily: HoolaFont.serif, fontSize: 32, fontWeight: FontWeight.w400, color: c.ink, height: 1.2, letterSpacing: -.3);
   /// Screen titles in a big header.
   static TextStyle display(HoolaColors c) => _sans(22, FontWeight.w700, c.ink, h: 1.25, ls: -.2);

@@ -3770,3 +3770,14 @@ Task ID: v0.999.205 PROJECTS, REDESIGNED
 Ask: Projects page advanced and premium like the other Interactive pages
 Built: folders, bulk changes, this month incl. credits, trash with days left + delete one now
 Not verified: on her server
+
+---
+Task ID: v0.999.206 PHONE LIKE CLAUDE
+Ask: the last updates on every phone section
+Built: greeting + title font cuts, HoolaType.hero / pageTitle on every home, landing in Vocal / Music / Notebook
+Not verified: on her phone
+---
+Task ID: v0.999.207 BRAND, REDESIGNED
+Ask: Brand page advanced and premium like the other Interactive pages
+Built: name on screen switch, colour contrast check, shared logo, closing card with logo / QR in the real video, preview, words to keep with languages, Use my Brand kit
+Not verified: on her server

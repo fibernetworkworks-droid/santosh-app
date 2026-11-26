@@ -284,7 +284,7 @@ class _ComputerSetupState extends State<ComputerSetup> {
       appBar: AppBar(backgroundColor: c.bg, surfaceTintColor: c.bg, foregroundColor: c.ink, elevation: 0,
           title: Text('Your PC', style: HoolaType.title(c))),
       body: ListView(padding: const EdgeInsets.fromLTRB(HoolaSpace.gutter, HoolaSpace.s8, HoolaSpace.gutter, HoolaSpace.s32), children: [
-        Text('Connect your PC', style: HoolaType.display(c)),
+        Text('Connect your PC', style: HoolaType.hero(c)),
         const SizedBox(height: HoolaSpace.s8),
         Text('Hoola works on your Windows computer with your home internet. Good for Aadhaar, Parivahan and other sites that block cloud computers.',
             style: HoolaType.body(c).copyWith(color: c.ink2)),

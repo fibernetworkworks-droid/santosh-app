@@ -306,7 +306,7 @@ def set_logo(tenant: str, data: bytes | None = None, file_id: str = "", name: st
 
 
 def clear_logo(tenant: str) -> None:
-    """v0.999.205 take the logo out of the Brand kit (posters and videos). Her colours stay."""
+    """v0.999.207 take the logo out of the Brand kit (posters and videos). Her colours stay."""
     for old in _dir(tenant).glob("logo.*"):
         old.unlink(missing_ok=True)
     with session() as s:

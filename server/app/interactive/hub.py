@@ -201,12 +201,12 @@ def _new_project(tenant: str, d: dict[str, Any], *, title: str, scenes: list[dic
 
 
 # ------------------------------------------------------------------ brand + glossary ---
-CARDS = ("logo", "qr", "both", "none")       # v0.999.205 what the closing card carries beside the line
+CARDS = ("logo", "qr", "both", "none")       # v0.999.207 what the closing card carries beside the line
 _URL = re.compile(r"^https?://[^\s<>\"']{3,300}$")
 
 
 def _brand(b: dict[str, Any] | None) -> dict[str, Any]:
-    """Her brand with the v0.999.205 keys filled in (old rows only had name / closing / colour)."""
+    """Her brand with the v0.999.207 keys filled in (old rows only had name / closing / colour)."""
     b = dict(b or {})
     b.setdefault("name", ""); b.setdefault("closing", ""); b.setdefault("color", "")
     b["show_name"] = b.get("show_name") is not False
