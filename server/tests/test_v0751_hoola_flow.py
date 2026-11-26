@@ -106,7 +106,7 @@ def test_page_files_are_wired():
     js, v2, html = (st / "flow.js").read_text(), (st / "v2.js").read_text(), (st / "v2.html").read_text()
     assert "window.HoolaFlow =" in js and "window.HoolaFlowMic =" in js and "createScriptProcessor" in js and "'RIFF'" in js
     assert "/api/kaan/live/start" in js and "/api/kaan/transcribe" in js and "/api/flow/overview" in js
-    assert "CONFIG.flow && window.HoolaFlow" in v2 and "['flow', 'Hoola Flow']" in v2 and "await flowMic()" in v2
+    assert "CONFIG.flow && window.HoolaFlow" in v2 and "['flow', 'Hoola Flow']" in v2 and "FMIC.canUse()" in v2   # v0.999.224 the mic lives in dictate.js, Hoola Flow first
     assert 'id="v-flow"' in html and "/static/console/flow.js?v=" in html
 
 

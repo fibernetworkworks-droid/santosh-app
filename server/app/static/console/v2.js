@@ -434,7 +434,7 @@ function go(v, arg) {
   if (v === 'computer') { location.assign('/console/computer' + (arg ? '#/' + encodeURIComponent(arg) : '')); return; }
   if (v === 'webdev') { location.assign('/console/web' + (arg ? '#/site/' + encodeURIComponent(arg) : '')); return; }   // v0.649 Web Studio = its own app
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Voice call', main:'· Account', bana: APPD ? '· Docs and files' : '· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Lab', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk', telecallerdesk:'· Telecaller', supportdesk:'· Customer Support', credits:'· Credits', cred:'· Hoola Cred', wallet:'· Hoola Wallet', deptdesk:'· Department desk', accountsdesk:'· GST & Accounts', moneydesk:'· Money Safety', booksdesk:'· Books & Accounts', payrolldesk:'· Payroll', taxdesk:'· Tax', cashdesk:'· Cash & Treasury', creditdesk:'· Credit & Lending'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Voice call', main:'· Account', bana: APPD ? '· Docs and files' : '· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Lab', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk', telecallerdesk:'· Telecaller', supportdesk:'· Customer Support', credits:'· Credits', cred:'· Hoola Cred', wallet:'· Hoola Wallet', deptdesk:'· Department desk', accountsdesk:'· GST & Accounts', moneydesk:'· Money Safety', booksdesk:'· Books & Accounts', payrolldesk:'· Payroll', taxdesk:'· Tax', cashdesk:'· Cash & Treasury', creditdesk:'· Credit & Lending', firmdesk:'· Firm Practice', paydesk:'· Payments'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
@@ -471,6 +471,8 @@ function go(v, arg) {
   if (v === 'taxdesk') { location.assign('/console/tax'); return; }   // v0.999.176 TAX DESK: its own section
   if (v === 'cashdesk') { location.assign('/console/cash'); return; }   // CASH & TREASURY DESK: its own section
   if (v === 'creditdesk') { location.assign('/console/credit'); return; }   // CREDIT & LENDING DESK: its own section
+  if (v === 'firmdesk') { location.assign('/console/firm'); return; }   // FIRM PRACTICE DESK: its own section
+  if (v === 'paydesk') { location.assign('/console/payments'); return; }   // PAYMENTS DESK: its own section
   if (v === 'telecallerdesk') { location.assign('/console/telecaller'); return; }   // v0.999.67 AI TELECALLER: its own section   // v0.999.52 LEAD DESK: its own section (chat beside the screens); ?full=1 keeps the old page
   if (v === 'leadsdesk') EMP?.leads($('#leadsdesk'));   // v0.686.0 Leads Desk (the Lead Generation employee)
   if (v === 'deptdesk') DDK?.open($('#deptdesk'), arg);
@@ -658,9 +660,7 @@ async function enter() {
       setTimeout(() => { FLOW_TEXT = ''; }, 6000); }
   } catch (e) { /* private window */ }
   if (CONFIG.flow_mic && window.HoolaFlowMic && !FMIC) {   // v0.751 the chat box mic dictates through Kaan when its engine is ready
-    FMIC = HoolaFlowMic({api, toast, onText: t => { msg.value = t; msg.dispatchEvent(new Event('input')); scrollDown(true); },
-      onState: (on, why) => { $('#micBtn').classList.toggle('on', !!on); $('#micBtn').classList.toggle('busy', why === 'writing');
-        $('#micBtn').title = on ? 'Hoola Flow is listening - click (or Ctrl + Space) to finish' : 'Speak to type (Hoola Flow) - Ctrl + Space'; }});
+    FMIC = HoolaFlowMic({api, toast, onText: t => DICTATE?.flowText(t), onState: () => {}, onLevel: l => DICTATE?.level(l)});   // v0.999.224 the bar draws it
   }
   if (CONFIG.design) {   // v0.777 HOOLA DESIGN: the design editor, a row right under Create; opens /console/design
     if (!NAV.some(([k]) => k === 'design')) NAV.splice(NAV.findIndex(([k]) => k === 'creative') + 1, 0, ['design', 'Hoola Design']);
@@ -2420,45 +2420,14 @@ $('#files').addEventListener('click', e => {
   const v = e.target.closest('[data-view]');
   if (v && ATT) ATT.view(FILES, +v.dataset.view);
 });
-$('#micBtn').title = 'Speak to type (dictation)';
+$('#micBtn').title = 'Speak to type (Ctrl + Space)'; $('#micBtn').setAttribute('aria-pressed', 'false');
 $('#toolsBtn').addEventListener('click', () => go('kaam'));
 
-/* v0.173 dictation in the composer: mic button speaks hi-IN into the box (Chrome / Android); the live call
-   stays on Baat. No speech recognition in this browser = the old jump to Baat, with a one-line why. */
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-let DICT = null;
-async function flowMic() {   // v0.751 Kaan first (her own server), the browser's speech service only when Kaan cannot hear
-  if (FMIC?.on) { FMIC.stop(); return true; }
-  if (!FMIC || DICT || !(await FMIC.canUse())) return false;
-  try { await FMIC.start(msg.value); toast('Hoola Flow is listening. Click the microphone (or Ctrl + Space) to finish.'); return true; }
-  catch (e) { toast(/denied|NotAllowed|Permission/i.test(String(e?.message)) ? 'Allow the microphone for this site in your browser address bar.' : (e.message || 'The microphone could not start.'), true); return true; }
-}
-document.addEventListener('keydown', e => {   // v0.751 Ctrl + Space starts / finishes dictation while the chat box has focus
-  if (!FMIC || !e.ctrlKey || e.code !== 'Space' || document.activeElement !== msg) return;
-  e.preventDefault(); $('#micBtn').click();
-});
-$('#micBtn').addEventListener('click', async () => {
-  if (await flowMic()) return;
-  if (!SR) { go('baat'); return; }
-  if (DICT) { DICT.stop(); return; }
-  const r = new SR();
-  r.lang = 'hi-IN'; r.interimResults = true; r.continuous = true;
-  let base = msg.value ? msg.value.replace(/\s*$/, ' ') : '';
-  DICT = r;
-  $('#micBtn').classList.add('on');
-  r.onresult = ev => {
-    let fin = '', mid = '';
-    for (let i = ev.resultIndex; i < ev.results.length; i++) {
-      if (ev.results[i].isFinal) fin += ev.results[i][0].transcript; else mid += ev.results[i][0].transcript;
-    }
-    if (fin) { base += (base && !/\s$/.test(base) ? ' ' : '') + fin.trim(); }
-    msg.value = base + (mid ? (base ? ' ' : '') + mid : '');
-    msg.dispatchEvent(new Event('input')); scrollDown(true);
-  };
-  const stop = () => { DICT = null; $('#micBtn').classList.remove('on'); };
-  r.onend = stop; r.onerror = ev => { stop(); if (ev.error === 'not-allowed') toast('Allow microphone access in your browser address bar.', true); };
-  try { r.start(); toast('Speak to dictate. Click the microphone again to stop.'); } catch { stop(); go('baat'); }
-});
+/* v0.999.224 THE CHAT BOX MICROPHONE (dictate.js): her language, a recording bar in the page's ink, it never writes into
+   a sent message, carries on after a pause, keeps her typing, says why when it cannot hear. Hoola Flow first when ready. */
+const DICTATE = window.HoolaDictate ? window.HoolaDictate({composer, msg, button: $('#micBtn'), toast,
+  flow: {canUse: async () => !!(FMIC && await FMIC.canUse()), start: t => FMIC.start(t), stop: () => FMIC.stop(), cancel: () => FMIC.cancel()},
+  onWrite: () => scrollDown(true)}) : null;
 
 /* ================= landing ideas + "All tools" (real prompts) ================= */
 const KAAM = window.KAAM || [], KI = window.KAAM_ICON || {};

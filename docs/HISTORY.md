@@ -12320,3 +12320,65 @@ is + , chosen option, mic, call, so it sits beside the + there too. The old cons
 
 Test: test_v0999_221_plus_card.py - the card's class and rows, chip gap 0-10 px and centred within 1 px on the home
 and in a chat, paper background, not the brand violet, the tick in ink, a tap removes the chip. NOT VERIFIED: on her server.
+
+## v0.999.222 FIRM PRACTICE DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE FIRM PRACTICE -- MAKE IT SAME PREMIUM AND ADVANCE AS WE DONE WITH OTHER SECTIONS")
+
+The Firm Practice employee (F7 engine `fin/desks/firm.py`, tool `firm_practice`) gets its own section like Payroll, Tax, Cash & Treasury
+and Credit & Lending: `/console/firm` (`firmdesk.html/.js/.css`) and the Firm chat (Conversation kind `firm`, `server/app/firmchat.py`,
+`/api/firm/*`), out of every chat list; a turn in it gets the desk block and the `firmmode` family. Employees hub, v2.js, the phone open it.
+
+- A firm = a finance workspace of size firm; `POST /api/firm/setup` makes one with her as the first partner.
+- Who she is on the desk (settings `practice_desk`): `who` = the person the owner picked (she can switch); `logins` = a partner links a
+  person to a team member's email (a Books & Accounts team member of the firm) - that member is always that person. Every engine action
+  runs AS that person, so the engine's rules hold: only the named signer signs the approved text, nobody reviews their own draft, a
+  preparer sees only their clients, a client sees only their own page.
+- Pages: Today (KPIs, where the drafts are, lanes to review / to sign / sent back, needs you, clients, drafts by preparer), Clients (+ one
+  client: team chips, papers asked for / marked received, drafts + new draft, engagement letter, fact-find with a completeness ring,
+  meeting notes, suitability, CFO pack, audit trail), Drafts & reviews (the four-step flow, filters, search; one draft as a document with
+  its steps, review / sign / share / change, history, PDF / text), Team (people by role, add a person, link logins, drafts by preparer),
+  Settings (who you are, how the firm works here). A client of the firm gets one page: papers asked for ("I sent it"), shared documents.
+- The Firm chat's greeting is rewritten when the firm is set up or she switches person, while nobody has written in it.
+- Tests: `server/tests/test_firm_desk.py` (5, incl. a Chromium walk at 1440 and 390 px). NOT VERIFIED on her server.
+
+## v0.999.223 PAYMENTS DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE PAYMENTS DESK")
+
+The Payments employee (F8 engine `fin/desks/payments.py`, tool `payments_desk`) gets its own section like the other finance desks:
+`/console/payments` (`paydesk.html/.js/.css`) and the Payments chat (Conversation kind `payments`, `server/app/paychat.py`,
+`/api/payments/*`), out of every chat list; a turn in it gets the desk block and the `paydesk` family. Employees hub, v2.js and the
+phone open it.
+
+- The engine is stateless; the desk keeps her data in the business's settings under `payments_desk`: dispute case files, gateways with
+  the rate in her contract and their dispute window, settlement lines + orders + failed payments + marketplace sales uploaded as CSV
+  (headers read by name: payout id / date / order id / type / amount ...), her limits (dispute rate, payout days, retry days, commission).
+- Deposits come from her imported bank statements (`fin.spine.txns`, money in) - payouts are matched to them by amount within her window.
+- Pages: Today (hero, dispute rate by month vs her limit, needs you, respond soonest, by gateway), Disputes (+ one case: respond-by,
+  evidence meter, the evidence for the code as ticks, the letter, compelling evidence for Visa 10.4, what happened with her reference,
+  notes), Payouts & fees, Recurring & sellers, Payment firm (KYB, ISO 20022, safeguarding), Settings.
+- Hoola never submits a dispute response, charges a card or pays anyone; reason codes are Hoola's table until her processor's guide is
+  checked (said on the page).
+- Tests: `server/tests/test_pay_desk.py` (6, incl. a Chromium walk at 1440 and 390 px). NOT VERIFIED on her server.
+
+## v0.999.224 THE CHAT BOX MICROPHONE (owner: "NOW CHECK THE CONSOLE MICROPHONE NOT FUCTIONING PROPERLY FIND THE BUG , DESIGN -- MAKE IT PERFECTLY ADVCNE , PREMIUM AND PROFESSIONAL -- MCHING WITH THIS CHAT PANEL DESIGN")
+
+Bugs found in the old composer mic (v0.173 block in v2.js), each fixed in NEW `server/app/static/console/dictate.js`
+(`window.HoolaDictate`, loaded before v2.js; v2.js wires it as `DICTATE`):
+1. it always listened for Hindi (`r.lang = 'hi-IN'`), so English came back wrong or in Devanagari - now the browser's
+   first language (matched to a list of 21), her pick from the bar's language menu, kept in localStorage `hoola.dictate.lang`;
+2. sending while it listened did not stop it - the next result wrote the SENT words back into the empty box; now a capture
+   submit listener ends it, and any change to the box the page made (another chat opened) ends it;
+3. Chrome ends a continuous session after a pause and the mic went off mid-sentence - now a new session starts at once;
+   three silent rounds in a row stop it with a plain line;
+4. typing while it listened was overwritten - now her typing pauses listening and it starts again 0.7 s after;
+5. only `not-allowed` said anything - every error (no microphone, network, language, service) has a plain line;
+6. a browser without speech typing (Firefox) was thrown onto the voice call page - now it says what to use;
+7. Ctrl + Space worked only with Hoola Flow - now with both; Esc cancels (her words from before come back).
+Design: while dictating the composer row is one bar - cancel (x), a live waveform (an analyser on the microphone on
+computers; a level from the speech events on phones and for Hoola Flow), "Listening", the language chip, the clock and
+Done in an ink circle; the box placeholder reads "Speak - your words appear here"; no red pulse (`#micBtn.on` animation
+off), only the page's ink and paper (v2.css end block). Hoola Flow (Kaan) still runs first when its engine is ready;
+`HoolaFlowMic` gained `onLevel` and `cancel()`.
+Tests: NEW `test_v0999_224_console_mic.py` (shape + a browser walk with a stand-in speech service: her language,
+results, Chrome ending by itself, typing kept, language menu, Esc, Done, send stops it, a missing microphone explained,
+the bar in a chat); `test_v0751_hoola_flow.py` pin moved. Pre-existing reds unchanged (test_v0719 side panel,
+test_v0973 shape + version, test_v0981 shape - red on main without this change). NOT VERIFIED: on her server or with a
+real microphone (headless Chromium has none).

@@ -3867,3 +3867,14 @@ Work Log:
 - appdesign.css end block: .hmenu.plusm card (border, layered shadow, soft tile per choice, one line under each, chosen tile in ink + a visible tick, arrow on the last row); chip beside the + (8 px), centred on its line, ink on paper with an x, chat row order + chip; v2.js gives the + menu cls plusm, width 320.
 - test_v0999_221_plus_card.py: shape + browser walk (home + chat, tick colour, tap removes); version ritual 0.999.221 on main's 0.999.220.
 Stage Summary: shipped to main; not verified on her server.
+
+---
+Task ID: v0.999.224 THE CHAT BOX MICROPHONE
+Agent: Claude (cloud session)
+Task: Console mic not working properly - find the bugs, redesign premium to match the chat panel.
+Work Log:
+- Read the v0.173 mic block + HoolaFlowMic; found 7 bugs (forced hi-IN, sent words written back, silent end after a pause, typing overwritten, silent errors, Firefox to the call page, Ctrl + Space Flow-only).
+- New dictate.js recording bar (cancel, waveform, state, language, clock, Done in ink), wired in v2.js, styles in v2.css.
+- Browser walk with a stand-in speech service; renumbered 223 -> 224 (Payments desk took 223).
+Stage Summary:
+- Pushed to main as v0.999.224; deploy with Actions > VPS ops > deploy. Not tried with a real microphone.

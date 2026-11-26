@@ -1,0 +1,61 @@
+/* PAYMENTS DESK - the Payments employee's own section. Frame, chat and cards from seodesk.css; kpis / forms from moneydesk.css; rows,
+   tags, the hero and charts from cashdesk.css; grids, filters, verdicts from creditdesk.css; only the Payments desk's own parts are here. */
+#pyPage{display:flex;flex-direction:column;gap:20px;padding-top:4px}
+#pyPage .num,#pyPage table.tb .num{font-variant-numeric:normal;font-family:inherit}
+.fm-chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;background:var(--bg)}
+.fm-out{margin-top:12px;border-top:1px solid var(--line);padding-top:8px}
+.py-files{display:flex;gap:8px;flex-wrap:wrap}
+.py-chart .brate{fill:var(--acc);opacity:.75}.py-chart .bover{fill:var(--bad);opacity:.8}
+.py-net{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:.03em;flex:none;
+  background:var(--soft);color:var(--ink2)}
+.py-net.visa{background:#1a1f71;color:#fff}.py-net.mastercard{background:#eb001b;color:#fff}.py-net.amex{background:#2e77bb;color:#fff}
+.py-clock{display:inline-flex;align-items:baseline;gap:4px;font-size:12.5px;color:var(--mut);white-space:nowrap}
+.py-clock b{font-size:16px;color:var(--ink)}
+.py-clock.bad b,.py-clock.bad{color:var(--badt)}
+.py-gws{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.py-gw{border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.py-gw .t{display:flex;justify-content:space-between;align-items:center}
+.py-flow{display:flex;flex-wrap:wrap;gap:6px}
+.py-flow span{display:flex;flex-direction:column;gap:2px;background:var(--page);border-radius:10px;padding:6px 10px;font-size:13.5px;font-weight:600;flex:1;min-width:84px}
+.py-flow em{font-style:normal;font-size:11.5px;font-weight:400;color:var(--mut)}
+.py-flow .neg{color:var(--badt)}.py-flow .net{background:var(--oks);color:var(--okt)}
+.py-cases{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.py-case{all:unset;box-sizing:border-box;cursor:pointer;border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:6px;background:var(--bg);transition:border-color .15s,box-shadow .15s}
+.py-case:hover{border-color:var(--line2);box-shadow:0 6px 22px rgba(0,0,0,.06)}
+.py-case:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.py-case .t{display:flex;gap:8px;align-items:center}
+.py-case .t .cs-tag{margin-left:auto}
+.py-case .v{font-size:24px;font-weight:600}
+.py-case .f{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:12.5px;color:var(--mut);margin-top:4px;flex-wrap:wrap}
+.py-lab{display:flex;flex-direction:column;gap:2px;font-size:11.5px;color:var(--mut)}
+.py-meter{height:10px;border-radius:999px;background:var(--soft);overflow:hidden}
+.py-meter span{display:block;height:100%;border-radius:999px;background:var(--acc)}
+.py-meter span.ok{background:var(--ok)}.py-meter span.warn{background:var(--warn)}
+.py-evs{display:flex;flex-direction:column;gap:8px}
+.py-ev{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;font-size:14px}
+.py-ev.on,.py-ev:has(input:checked){border-color:var(--ok);background:var(--oks)}
+.py-ev input{margin-top:3px}
+.py-ev span{display:flex;flex-direction:column;gap:2px}
+.py-ev em{font-style:normal;font-size:11.5px;color:var(--okt);font-weight:600}
+.py-more{margin-top:10px}.py-more summary{cursor:pointer;font-size:13.5px;color:var(--acct);margin-bottom:8px}
+.py-letter{white-space:pre-wrap;font-family:Literata,Georgia,serif;font-size:14px;line-height:1.6;background:var(--page);border:1px solid var(--line);border-radius:12px;padding:16px;margin:0;max-height:420px;overflow:auto}
+.py-drop{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1.5px dashed var(--line2);border-radius:14px;padding:14px 16px;background:var(--page)}
+.py-drop .t{display:flex;flex-direction:column;gap:2px;flex:1;min-width:180px;font-size:14px}
+.py-drop .t .mut{font-size:12.5px}
+.py-drop label.btn{cursor:pointer}
+.py-fail{border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:10px}
+.py-fail .h{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:14px}
+.py-fail .h .mut{font-size:12.5px}
+.py-fail .r{margin-left:auto;display:flex;gap:6px}
+.py-steps{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-left:4px;border-left:2px solid var(--line);margin-left:10px}
+.py-steps>div{display:grid;grid-template-columns:24px 110px minmax(0,1fr);gap:8px;align-items:baseline;font-size:13px;margin-left:-13px}
+.py-steps .dot{width:22px;height:22px;border-radius:50%;background:var(--bg);border:1.5px solid var(--line2);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+@media (max-width:600px){.py-steps>div{grid-template-columns:24px minmax(0,1fr)}.py-steps .mut{grid-column:2}}
+.py-share{display:block;width:90px;height:8px;border-radius:999px;background:var(--soft);overflow:hidden;flex:none}
+.py-share i{display:block;height:100%;background:var(--acc)}
+.py-sg{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:12px}
+.py-sg div{border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;font-size:12.5px}
+.py-sg .ok{background:var(--oks);color:var(--okt)}.py-sg .bad{background:var(--bads);color:var(--badt)}
+.py-sg b{font-size:13.5px}
+@media (prefers-reduced-motion: reduce){.py-case{transition:none}}
+.py-lab{flex:0 0 auto}.py-lab .in{flex:none;height:40px;min-height:0;width:160px}

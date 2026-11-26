@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.221"   # v0.999.221 THE + CARD AND ITS CHIP (owner, her + menu and the chosen Deep research chip: "MAKE THE CARD PREMIUM ... SELECTED CARD OPTIONS ... PERFECTLY ALLINED AND MUST BE LIKE HUMAN NATIVE MADE NOT A AI BLUE, PINK COMBINATION"): the + menu is a card with a soft tile per choice, one line under each, the chosen one in ink with a visible tick, the last row with an arrow; the chosen option sits right beside the + on the same line (it floated mid-bar: the + and the chip group both took the free space), in ink on paper with an x, on the home and inside a chat. Console only (appdesign.css, v2.js). Previous: v0.999.220 NO THEME IN THE PROFILE MENU.
+APP_VERSION = "0.999.224"   # v0.999.224 THE CHAT BOX MICROPHONE (owner: "NOW CHECK THE CONSOLE MICROPHONE NOT FUCTIONING PROPERLY FIND THE BUG , DESIGN -- MAKE IT PERFECTLY ADVCNE , PREMIUM AND PROFESSIONAL -- MCHING WITH THIS CHAT PANEL DESIGN"): the bugs - it always listened for Hindi (hi-IN), sending a message while it listened wrote the sent words back into the box, Chrome ended the session after a pause and the mic went off mid-sentence, typing while it listened was overwritten, only "not allowed" was ever explained, Firefox was thrown onto the voice call page, Ctrl + Space worked only with Hoola Flow; now `static/console/dictate.js` (window.HoolaDictate): her own language (browser first, then her pick, kept), stops on send, carries on after a pause (3 silent rounds = stops and says so), keeps her typing, a plain line for every error, Ctrl + Space / Esc; the design: the row under her words becomes one recording bar - cancel, a live waveform of her voice, Listening, the language, the clock, Done in an ink circle; no red pulse, no colour outside the page ink; Hoola Flow still first when its engine is ready; 2 tests incl. a browser walk. NOT VERIFIED: on her server / a real microphone. Previous: v0.999.223 PAYMENTS DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE PAYMENTS DESK"): the Payments employee gets its own section /console/payments + Payments chat (kind payments, `paychat.py`): Today (disputes open with the amount at stake, payouts not in the bank, fees above her contract, failed payments, disputes as a share of sales by month against her limit, by gateway sales -> refunds -> chargebacks -> fees -> paid out), Disputes (a case file per chargeback: reason code -> the evidence that answers it, the response date from her processor's window, Visa 10.4 compelling evidence from her earlier payments, the response letter + PDF, the status SHE records with her processor's reference), Payouts & fees (gateway settlement CSVs and her orders matched with the deposits in her imported bank statements, every fee against her contract rate), Recurring & sellers (failed payments with the retry plan and messages, marketplace seller payouts + CSV), Payment firm (beneficial owners, ISO 20022 file check, safeguarding by day), Settings; team roles from Books; submits, charges and pays nothing; 6 tests incl. a browser walk. NOT VERIFIED on her server.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2133,6 +2133,24 @@ def credit_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/firm")
+@app.get("/console/firm/")
+def firm_desk_page():
+    """FIRM PRACTICE DESK: the Firm Practice employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "firmdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/payments")
+@app.get("/console/payments/")
+def payments_desk_page():
+    """PAYMENTS DESK: the Payments employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "paydesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/money")
 @app.get("/console/money/")
 def money_desk_page():
@@ -2682,6 +2700,10 @@ from . import cashchat as _cashchat_mod                          # noqa: E402  C
 _cashchat_mod.mount(app, current_tenant, require_key)           # /api/cash/*
 from . import creditchat as _creditchat_mod                      # noqa: E402  CREDIT & LENDING DESK
 _creditchat_mod.mount(app, current_tenant, require_key)         # /api/credit/*
+from . import firmchat as _firmchat_mod                          # noqa: E402  FIRM PRACTICE DESK
+_firmchat_mod.mount(app, current_tenant, require_key)           # /api/firm/*
+from . import paychat as _paychat_mod                            # noqa: E402  PAYMENTS DESK
+_paychat_mod.mount(app, current_tenant, require_key)            # /api/payments/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through
