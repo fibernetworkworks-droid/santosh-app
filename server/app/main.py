@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.213"   # v0.999.213 COLLAPSED SIDEBAR IN ONE LINE (owner, her collapsed-sidebar screenshot: "ICON AND TEXT ARRANGEMENT ARE MESSY AND MISPLACED --- FIX THIS PERFECTLY AND MAKE IT ALINED"): the folded app-design sidebar is one column - every button a 40 px square on the rail's exact middle (were at 16 / 22 / 25 px, pushed off by the scrollbar strip), one even step, no Pinned / Recents headers or words, a dot instead of a count; each icon names itself on hover (title + aria-label); open again = unchanged. Console only (appdesign.css, v2.js, v2.html). Previous: v0.999.212 NO LIVE PILL.
+APP_VERSION = "0.999.214"   # v0.999.214 COLLAPSED SIDEBAR IN ONE LINE (built as 0.999.213; their MAIL NEWS ONLY WHEN ASKED took 0.999.213, both kept; owner, her collapsed-sidebar screenshot: "ICON AND TEXT ARRANGEMENT ARE MESSY AND MISPLACED --- FIX THIS PERFECTLY AND MAKE IT ALINED"): the folded app-design sidebar is one column - every button a 40 px square on the rail's exact middle (were at 16 / 22 / 25 px, pushed off by the scrollbar strip), one even step, no Pinned / Recents headers or words, a dot instead of a count; each icon names itself on hover (title + aria-label); open again = unchanged. Console only (appdesign.css, v2.js, v2.html). Previous: v0.999.213 MAIL NEWS ONLY WHEN ASKED.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,

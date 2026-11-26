@@ -277,8 +277,8 @@ EMAIL_TOOLS = [
         "signature_push=true also pushes it INTO Gmail itself, behind a confirm card), make_default (address), "
         "daily_summary ('09:00' local time for a daily inbox summary, 'weekly 09:00' for a weekly digest every "
         "weekday of the first run, or 'off'), undo_seconds (0-60: after Send the email waits this many seconds and "
-        "can still be cancelled; 0 = send at once), watch_mode ('off' = no new-mail announcements, 'vip' = important "
-        "mail + people she mails herself [default], 'all' = every new mail; for one account or all), mute (sender "
+        "can still be cancelled; 0 = send at once), watch_mode ('off' = no new-mail announcements [default: "
+        "set it only when SHE asks for new-mail news], 'vip' = important mail + people she mails herself, 'all' = every new mail; for one account or all), mute (sender "
         "emails, comma-separated, to never announce; 'clear' empties the list), send_as=true lists the Gmail send-as "
         "aliases plus the current auto-forwarding (read-only), auto_forward=('off', or an email address to forward "
         "new mail to — always behind a confirm card). Call with no arguments to just list everything. If nothing is "
@@ -296,7 +296,7 @@ EMAIL_TOOLS = [
                              "description": "what Gmail does with mail fetched via POP (with pop)"},
          "language": {"type": "string", "description": "'get', or a Gmail display language code (hi / en / en-GB / mr / ta)"},
          "watch_mode": {"type": "string", "enum": ["off", "vip", "all"],
-                        "description": "New-mail announcements: off / vip (default) / all"},
+                        "description": "New-mail announcements: off (default) / vip / all - only when she asks"},
          "mute": {"type": "string", "description": "Sender emails to never announce (comma-separated), or 'clear'"}}}},
 ]
 

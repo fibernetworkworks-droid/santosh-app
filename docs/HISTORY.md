@@ -12197,7 +12197,21 @@ The Live activity panel itself still exists; nothing in the sidebar opens it now
 Test: `test_v0999_211_no_sessions_sidebar.py` now also checks in a real browser that no sidebar element reads "Live".
 NOT VERIFIED: on her server.
 
-## v0.999.213 COLLAPSED SIDEBAR IN ONE LINE (owner, her collapsed-sidebar screenshot: "CHECK THE SIDE PANEL WHEN COLAPSE THE ICON AND TEXT ARRANGEMENT ARE MESSY AND MISPLACED --- FIX THIS PERFECTLY AND MAKE IT ALINED")
+## v0.999.213 MAIL NEWS ONLY WHEN ASKED (owner, her Hoola updates screenshot: "WHY SHOWING LOT OF UNWANTED EMAIL UPDATE -- WITHOUT USER ASK"): every Google-connected mailbox was watched in mode vip by default since v0.999.181, so Google's own Security alert for each Connect (OTP / security words always announced), company notices Gmail labels important and the same mail in both mailboxes became cards in Hoola updates; now new-mail cards are off until she picks a mode (MailSyncState.chosen, setting mail_watch_default off; her rules still run and a notify rule still tells her), Google's alert about her own app connection is never a card, Gmail important counts only for a person, one card per mail across her mailboxes; phone New-mail news Off / Important / All in English; 5 tests. Old cards stay in the chat.
+
+Why the cards came: since v0.999.181 the new-mail watcher (`mailbox/sync.py`) watches every mailbox reached through her Google connection, and a mailbox she never set was in mode `vip`. In vip a mail is announced when its subject or snippet has a login / security word (OTP_RE has "security alert", "sign-in"), when Gmail labels it IMPORTANT, or when it reads like a question. So every Connect / Reconnect of a Google app made Google send "Security alert: Hoola was granted access" and Hoola announced it; Google Workspace notices Gmail marked important were announced; a mail reaching both her mailboxes came twice.
+
+Now:
+- `MailSyncState.chosen` (new nullable column) marks a mode she set herself (`set_watch_mode`, the email_accounts tool, the phone chips, the Books business mailbox). A mailbox she never set uses `settings.mail_watch_default` = `off`: no email_new cards, no digest; her own rules still run, and a rule with notify still makes its card.
+- In any mode, Google's Security alert about access granted to her account (from accounts.google.com / google.com, naming Hoola or the access) is never a card.
+- Gmail's IMPORTANT label counts only when the sender is a person (not a no-reply / bulk sender).
+- One card per mail across her mailboxes: hashed Message-ID (or sender + subject) kept on a `_told` row (last 300).
+- watch_views returns the effective mode + `chosen`; tool texts and the prompt say off is the default and never to turn it on by itself; phone New-mail news chips Off / Important / All in English, default shown Off.
+- Tests: test_v0999_213_mail_quiet.py (5). Older watcher suites pin the old default via conftest MAIL_WATCH_DEFAULT=vip.
+- The cards already in her Hoola updates chat stay (nothing deleted).
+NOT VERIFIED: on her server.
+
+## v0.999.214 COLLAPSED SIDEBAR IN ONE LINE (built as 0.999.213; their MAIL NEWS ONLY WHEN ASKED took 0.999.213, both kept; owner, her collapsed-sidebar screenshot: "CHECK THE SIDE PANEL WHEN COLAPSE THE ICON AND TEXT ARRANGEMENT ARE MESSY AND MISPLACED --- FIX THIS PERFECTLY AND MAKE IT ALINED")
 
 Measured in a real browser before the fix: the folded app-design sidebar (72 px) had icons at three left edges - the
 collapse button at 25 px, New chat at 16 px, the rest at 22 px - all centred near 31 px instead of the rail's middle (36)
@@ -12211,6 +12225,6 @@ shows a small violet dot instead; the account circle sits on the same middle at 
 hover and to screen readers (title + aria-label in v2.js appNav and on New chat in v2.html). Opening the sidebar again
 shows everything as before. The old console look is unchanged.
 
-Test: test_v0999_213_collapsed_sidebar.py - every visible button 40x40 with its middle within 1 px of the rail's
+Test: test_v0999_214_collapsed_sidebar.py - every visible button 40x40 with its middle within 1 px of the rail's
 middle, every icon on that middle, one even step, no words when folded (with a pinned chat present), labels back when
 opened. NOT VERIFIED: on her server.

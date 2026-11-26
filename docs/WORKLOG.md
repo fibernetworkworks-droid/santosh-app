@@ -3825,11 +3825,17 @@ Work Log:
 Stage Summary: shipped to main; not verified on her server.
 
 ---
-Task ID: v0.999.213 COLLAPSED SIDEBAR IN ONE LINE
+Task ID: v0.999.213 MAIL NEWS ONLY WHEN ASKED
+Ask: unwanted email cards in Hoola updates without her asking
+Built: watcher off until she picks a mode, own-access security alerts skipped, one card per mail across mailboxes
+Not verified: on her server
+
+---
+Task ID: v0.999.214 COLLAPSED SIDEBAR IN ONE LINE (built as 0.999.213; their MAIL NEWS ONLY WHEN ASKED took 0.999.213, both kept)
 Agent: Claude (Claude Code session)
 Task: the folded console sidebar had icons at three left edges and Pinned / Recents words spilling out - align it.
 Work Log:
 - Measured in Chromium: icons at 16 / 22 / 25 px of a 72 px rail (centre 31 vs 36, the scrollbar strip), uneven steps (42-48 px), "Recents" / "Pinned" text visible.
 - appdesign.css end block: folded = no scrollbar strip, every button 40x40 on the middle, one 44 px step, headers / words / counts hidden (a dot for a count); v2.js + v2.html give each icon a title + aria-label.
-- test_v0999_213_collapsed_sidebar.py: shape + browser walk (light + dark shots); version ritual 0.999.213.
+- test_v0999_214_collapsed_sidebar.py: shape + browser walk (light + dark shots); version ritual 0.999.214 on main's 0.999.213.
 Stage Summary: shipped to main; not verified on her server.

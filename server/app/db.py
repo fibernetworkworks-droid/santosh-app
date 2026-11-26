@@ -511,6 +511,7 @@ class MailSyncState(Base):
     recent: Mapped[list | None] = mapped_column(JSON, nullable=True)
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_error: Mapped[str] = mapped_column(Text, default="")
+    chosen: Mapped[bool | None] = mapped_column(Boolean, nullable=True)   # v0.999.213 she picked this mode herself (unset = the server default, off)
 
 
 class MailRule(Base):

@@ -8,6 +8,8 @@ import pytest
 os.environ.setdefault("PIPELINE_HOLDOUT_PCT", "0")
 # v0.999: her fixed writers are off in the suites (the Box's own choice is what the older tests pin); v0999 sets them
 os.environ.setdefault("PIPELINE_WRITERS", "")
+# v0.999.213: new-mail news is off until she turns it on; the older watcher suites pin the old default (vip)
+os.environ.setdefault("MAIL_WATCH_DEFAULT", "vip")
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))

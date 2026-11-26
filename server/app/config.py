@@ -503,6 +503,7 @@ class Settings(BaseSettings):
     pc_verify: bool = True                   # v0.999.47 on again (owner: "a check before done") - v0.859 D4: 'done' only after the screen is checked against her ask
     pc_check_model: str = "claude-haiku-5-5"   # v0.859 the stage / done checker (one look at the screen)
     pc_otp_from_mail: bool = True            # v0.999.47 a fresh code mail in her connected inbox / Hoola's own inbox fills the PC's OTP box (never bank / card / payment codes)
+    mail_watch_default: str = "off"         # v0.999.213 new-mail news until she picks a mode: off = no cards unless she asks (vip / all = the old behaviour)
     hoola_mail_domain: str = ""              # v0.999.47 Hoola's own email addresses: <name>@<this domain> (the owner's email worker)
     hoola_mail_secret: str = ""              # v0.999.47 shared HMAC secret with that worker (VPS .env only)
     hoola_pc_lanes: int = 3                  # v0.999.47 her jobs at once on ONE Hoola PC (side browser windows, same logins); 1 = off
