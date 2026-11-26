@@ -459,3 +459,7 @@ html.appd .appunder .uchip,html.appd .appunder .modelb,html.appd #app #composer 
 html.appd .appunder .uchip *,html.appd .appunder .modelb *,html.appd #app #composer .modelb *{font-size:inherit;font-weight:inherit}
 /* v0.999.211 NO SESSIONS IN THE SIDEBAR: the Sessions label, its + and its note are gone from the app design */
 html.appd #app .side #projects{display:none}
+/* v0.999.212 NO LIVE PILL (owner: "check at bottom a live name at a icon ... Remove that entirely in side bar"): the
+   Live / Studio pills under Recents are gone from the app design; the account row stays at the bottom */
+html.appd #app .side .console-controls,html.appd #app .side #conn{display:none !important}
+html.appd #app .side .user{margin-top:auto}

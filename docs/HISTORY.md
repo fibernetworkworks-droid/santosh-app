@@ -12186,3 +12186,13 @@ applying to their chats; the old console look (app design off) keeps its session
 `test_v0999_211_no_sessions_sidebar.py` (shape + a browser walk: a session chat and a plain chat both in Recents, no Sessions
 text, no session item in the chat menu). Pre-existing reds unchanged (test_v0194 / test_v0909 version pins, test_v0288 type
 rules). NOT VERIFIED: on her server.
+
+## v0.999.212 NO LIVE PILL (owner, her sidebar screenshot: "check at bottom a live name at a icon ... Remove that entirely in side bar")
+
+The "● Live" pill above the account row in the app-design console sidebar is gone. It was two things: the Live / Studio
+buttons strip (`.console-controls`, Export was already hidden there) and the connection status `#conn`, which is screen-reader
+only until it connects and then gets the class `conn ok` and reads "Live" on the page. Both are hidden in `appdesign.css`
+(`html.appd #app .side .console-controls, html.appd #app .side #conn`); the account row keeps the bottom (`margin-top:auto`).
+The Live activity panel itself still exists; nothing in the sidebar opens it now. The old console look keeps its Live button.
+Test: `test_v0999_211_no_sessions_sidebar.py` now also checks in a real browser that no sidebar element reads "Live".
+NOT VERIFIED: on her server.
