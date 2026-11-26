@@ -1018,7 +1018,7 @@ window.HoolaInteractive = function (ctx) {
     let w = $('#hxDlg');
     if (!UI.dlg) { if (w) w.remove(); return; }
     if (!w) { w = document.createElement('div'); w.id = 'hxDlg'; w.className = 'hx-dlgw'; ROOT.appendChild(w); }
-    w.innerHTML = `<div class="hx-dlgs" data-a="dlgx" aria-hidden="true"></div>${({save: svBody, pick: pickBody, need: needBody, pjfolder: pjFolderBody, voput: voPutBody, lvweb: lvWebBody, lvlearn: lvLearnBody, avphoto: avPhBody, avai: avAiBody, avtwin: avTwinBody, avren: avRenBody}[UI.dlg.k] || shBody)()}`;
+    w.innerHTML = `<div class="hx-dlgs" data-a="dlgx" aria-hidden="true"></div>${({save: svBody, pick: pickBody, need: needBody, pjfolder: pjFolderBody, voput: voPutBody, lvweb: lvWebBody, lvlearn: lvLearnBody, avphoto: avPhBody, avai: avAiBody, avtwin: avTwinBody, avren: avRenBody, brkit: brKitBody, brlogodel: brLogoDelBody}[UI.dlg.k] || shBody)()}`;
     const f = w.querySelector('[data-auto]'); if (f && !w.contains(document.activeElement)) f.focus();
     fillMedia();
   }
@@ -1804,6 +1804,124 @@ window.HoolaInteractive = function (ctx) {
   }
   function lvSet(k, v) { const a = lvDraft(); a[k] = v; UI.ldDirty = true; }
 
+  // ---- brand (v0.999.207 BRAND, REDESIGNED: name on screen, colour with a contrast check, the shared logo, the closing card
+  //      (line + logo / QR), a preview drawn the way the video draws it, words to keep, and Use my Brand kit)
+  const BR_COLORS = ['#5B45E0', '#2E6F8E', '#B4462F', '#2F6B48', '#C27A1A', '#8A2F4E', '#1E293B', '#1A1A19'];
+  const BR_CARDS = [['logo', 'Logo'], ['qr', 'QR code'], ['both', 'Logo and QR'], ['none', 'Nothing']];
+  const brOk = c => /^#[0-9a-f]{6}$/i.test(c || '');
+  function brLum(h) { const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(v => v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; }
+  const brContrast = h => brOk(h) ? 1.05 / (brLum(h) + 0.05) : 0;
+  function brS() {
+    const b = UI.bri?.brand || D.brand || {};
+    if (!UI.brd) UI.brd = {name: b.name || '', show_name: b.show_name !== false, color: brOk(b.color) ? b.color.toUpperCase() : '#5B45E0', closing: b.closing || '', card: b.card || 'logo', qr_url: b.qr_url || ''};
+    return UI.brd;
+  }
+  const brSaved = () => { const b = UI.bri?.brand || D.brand || {}, d = brS(); return d.name === (b.name || '') && d.show_name === (b.show_name !== false) && d.color === (brOk(b.color) ? b.color.toUpperCase() : '#5B45E0') && d.closing === (b.closing || '') && d.card === (b.card || 'logo') && d.qr_url === (b.qr_url || ''); };
+  async function brLoad() { try { UI.bri = await api('GET', `${H}/brand`); } catch (er) { UI.bri = {brand: D.brand || {}, kit: {}, logo: {on: false}, glossary_max: 200}; } }
+  function brSwatches() {
+    const d = brS(), pal = UI.bri?.kit?.palette || [], all = [...new Set([...pal, ...BR_COLORS].map(c => c.toUpperCase()))].slice(0, 10);
+    return `<div class="hx-brsws" role="radiogroup" aria-label="Colour">${all.map(c => `<button type="button" class="hx-brsw${d.color === c ? ' on' : ''}" role="radio" aria-checked="${d.color === c}" data-a="brsw" data-val="${c}" style="background:${c}" aria-label="Colour ${c}"></button>`).join('')}
+      <label class="hx-brhex"><span class="hx-sr">Colour code</span><input class="hx-in hx-num" id="hxBrHex" maxlength="7" value="${esc(d.color)}" spellcheck="false"></label>
+      <label class="hx-brpick" title="Any colour"><span class="hx-sr">Any colour</span><input type="color" id="hxBrPick" value="${esc(d.color.toLowerCase())}"></label></div>
+      ${pal.length ? `<span class="hx-mut hx-sm">The first ${pal.length === 1 ? 'one comes' : num(pal.length) + ' come'} from your logo.</span>` : ''}`;
+  }
+  function brContrastLine() {
+    const r = brContrast(brS().color);
+    const [k, t] = r >= 4.5 ? ['ok', 'White words read well on it'] : r >= 3 ? ['warn', 'White words read only when they are big'] : ['bad', 'Too light: white words will be hard to read'];
+    return `<div class="hx-brcon ${k}" id="hxBrCon"><b>${t}</b><span class="hx-num">contrast ${r.toFixed(1)} to 1</span></div>`;
+  }
+  function brLogoCard() {
+    const L = UI.bri?.logo || {};
+    return `<section class="hx-card hx-brsec"><b class="hx-t">Logo</b>
+      ${L.on ? `<div class="hx-brlogo"><span class="hx-brlimg"><img data-brlogo="1" alt="Your logo"></span><div class="hx-brlmeta"><b>Your logo${L.px?.length ? ` <span class="hx-num hx-mut">· ${L.px[0]} × ${L.px[1]}</span>` : ''}</b>
+          <span class="hx-mut hx-sm">Shared with your Brand kit, so your posters use it too. It goes on the closing card.</span>
+          ${L.px?.length && L.px[0] < 300 && L.px[1] < 300 ? '<span class="hx-why">It is small - a bigger PNG looks sharper.</span>' : ''}
+          <span class="hx-acts"><button type="button" class="hx-btn s" data-a="brlogo">Change</button><button type="button" class="hx-btn s danger" data-a="brlogodel">Remove</button></span></div></div>`
+        : `<div class="hx-brlogo"><span class="hx-brlimg none">${ic('camera', 22)}</span><div class="hx-brlmeta"><b>No logo yet</b><span class="hx-mut hx-sm">A PNG or JPG. It is kept in your Brand kit and goes on the closing card.</span>
+          <span class="hx-acts"><button type="button" class="hx-btn s dark" data-a="brlogo">Add your logo</button></span></div></div>`}
+      <input type="file" id="hxBrLogoF" accept="image/png,image/jpeg,image/webp" hidden></section>`;
+  }
+  function brPreview() {
+    const d = brS(), shape = UI.brShape || 'wide', col = d.color;
+    const corner = d.show_name && d.name ? `<span class="hx-brpn">${esc(d.name)}</span>` : '';
+    const img = d.card !== 'none' ? `<img id="hxBrCard" alt="" hidden>` : '';
+    return `<div class="hx-brpvh"><b class="hx-t hx-growf">How it looks</b><div class="hx-seg" role="radiogroup" aria-label="Shape">${[['wide', 'Wide'], ['tall', 'Tall'], ['square', 'Square']].map(([k, n]) => `<button type="button" role="radio" aria-checked="${shape === k}" data-a="brshape" data-val="${k}">${n}</button>`).join('')}</div></div>
+      <span class="hx-lab">During the video</span>
+      <div class="hx-brfr ${shape}" style="--brand:${esc(col)}">${corner}<span class="hx-brlt"><b>Your words appear here</b><small>One scene of your video</small></span></div>
+      <span class="hx-lab">The last 2 seconds</span>
+      <div class="hx-brfr end ${shape}" style="--brand:${esc(col)}"><span class="hx-brcta">${img}${d.closing ? `<b>${esc(d.closing)}</b>` : ''}${!d.closing && d.card === 'none' ? '<small>No closing card: add a line, your logo or a QR code.</small>' : ''}</span></div>
+      <p class="hx-mut hx-sm">Drawn the way Hoola draws your videos. Nothing is made or charged here.</p>`;
+  }
+  function brPvPaint() { const a = $('#hxBrPv'); if (a) { a.innerHTML = brPreview(); brCardLoad(); } const c = $('#hxBrCon'); if (c) c.outerHTML = brContrastLine(); const sv = $('[data-a=brsave]'); if (sv) sv.disabled = brSaved(); }
+  async function brCardLoad() {
+    const d = brS(), img = $('#hxBrCard'); if (!img) return;
+    const key = `${d.card}|${d.qr_url}|${UI.brLogoV || 0}`; UI.brCardKey = key;
+    if (UI.brCardLast === key) { if (UI.brCardUrl) { img.src = UI.brCardUrl; img.hidden = false; } return; }
+    clearTimeout(UI.brCardT); UI.brCardT = setTimeout(async () => {
+      try { const r = await api('GET', `${H}/brand/card?card=${q(d.card)}&url=${q(d.qr_url)}&v=${UI.brLogoV || 0}`, undefined, {raw: true});
+        const b = await r.blob(); if (UI.brCardKey !== key) return; const el = $('#hxBrCard'); if (!el) return;
+        if (UI.brCardUrl) URL.revokeObjectURL(UI.brCardUrl); UI.brCardUrl = b.size ? URL.createObjectURL(b) : ''; UI.brCardLast = key;
+        if (UI.brCardUrl) { el.src = UI.brCardUrl; el.hidden = false; } else el.hidden = true; }
+      catch { /* the line still shows */ } }, 250);
+  }
+  function brGlossary() {
+    const g = UI.gl ||= {mode: 'keep', lang: ''}, xs = D.glossary || [], max = UI.bri?.glossary_max || 200;
+    const langs = (UI.L || []).filter(l => l.code !== 'auto');
+    return `<section class="hx-card hx-brsec"><div class="hx-brgh"><b class="hx-t hx-growf">Words to keep</b><span class="hx-mut hx-sm hx-num">${num(xs.length)} of ${num(max)}</span></div>
+      <p class="hx-mut hx-sm">Names a translation must not change, or words that must always become one exact word in a language. Checked on every translated video.</p>
+      ${xs.length ? `<div class="hx-brgl">${xs.map(w => `<div class="hx-brgr"><b>${esc(w.term)}</b><span>${w.mode === 'keep' ? 'Kept as written' : `Becomes "${esc(w.to)}" in ${esc(langName(w.lang))}`}</span><button type="button" class="hx-ib s" data-a="glodel" data-id="${esc(w.id)}" aria-label="Remove ${esc(w.term)}">${ic('x', 15)}</button></div>`).join('')}</div>`
+        : '<p class="hx-mut hx-sm">None yet. Your business name is a good first one.</p>'}
+      <div class="hx-brgadd"><label class="hx-fld hx-growf"><span class="hx-sr">A word or name</span><input class="hx-in" id="hxGlo" maxlength="40" placeholder="A word or name"></label>
+        <label class="hx-fld"><span class="hx-sr">What happens to it</span><select class="hx-in" id="hxGloMode"><option value="keep"${g.mode === 'keep' ? ' selected' : ''}>Keep as written</option><option value="as"${g.mode === 'as' ? ' selected' : ''}>Always becomes…</option></select></label>
+        ${g.mode === 'as' ? `<label class="hx-fld"><span class="hx-sr">It becomes</span><input class="hx-in" id="hxGloTo" maxlength="60" placeholder="It becomes"></label>
+          <label class="hx-fld"><span class="hx-sr">In which language</span><select class="hx-in" id="hxGloLang"><option value="">In which language?</option>${langs.map(l => `<option value="${esc(l.code)}"${g.lang === l.code ? ' selected' : ''}>${esc(l.name)}</option>`).join('')}</select></label>` : ''}
+        <button type="button" class="hx-btn dark" data-a="gloadd">Add</button></div></section>`;
+  }
+  function brPage() {
+    const d = brS(), kit = UI.bri?.kit || {};
+    return `<div class="hx-doc hx-brpage"><div class="hx-doch hx-avhd"><div class="hx-growf"><h2 class="hx-serif">Brand</h2><p class="hx-mut">Every new video starts with these. You can still change them on one video in the Studio.</p></div>
+        <button type="button" class="hx-btn" data-a="brkit"${kit.name || kit.logo || kit.color || kit.website ? '' : ' title="Your Brand kit is empty"'}>Use my Brand kit</button>
+        <button type="button" class="hx-btn dark" data-a="brsave"${brSaved() ? ' disabled' : ''}>Save</button></div>
+      <div class="hx-brgrid"><div class="hx-brcol">
+        <section class="hx-card hx-brsec"><b class="hx-t">Your name on screen</b>
+          <label class="hx-fld"><span class="hx-lab">Business name</span><input class="hx-in" id="hxBrName" maxlength="40" value="${esc(d.name)}" placeholder="Your business"></label>
+          <button type="button" class="hx-brtog" role="switch" aria-checked="${d.show_name}" data-a="brshow"><span class="hx-brknob" aria-hidden="true"></span>Show it in the corner of every scene</button></section>
+        <section class="hx-card hx-brsec"><b class="hx-t">Colour</b>${brSwatches()}${brContrastLine()}</section>
+        ${brLogoCard()}
+        <section class="hx-card hx-brsec"><b class="hx-t">The closing card</b>
+          <label class="hx-fld"><span class="hx-lab">Closing line</span><input class="hx-in" id="hxBrClose" maxlength="80" value="${esc(d.closing)}" placeholder="Book a visit today"></label>
+          <div class="hx-fld"><span class="hx-lab">Also on it</span><div class="hx-seg" role="radiogroup" aria-label="Also on the closing card">${BR_CARDS.map(([k, n]) => `<button type="button" role="radio" aria-checked="${d.card === k}" data-a="brcard" data-val="${k}">${n}</button>`).join('')}</div>
+            ${(d.card === 'logo' || d.card === 'both') && !UI.bri?.logo?.on ? '<span class="hx-why">Add your logo above, or it is left out.</span>' : ''}</div>
+          ${d.card === 'qr' || d.card === 'both' ? `<label class="hx-fld"><span class="hx-lab">QR code opens</span><input class="hx-in" id="hxBrQr" type="url" maxlength="300" value="${esc(d.qr_url)}" placeholder="https://"></label>` : ''}
+          <span class="hx-mut hx-sm">The closing card stays on screen for the last 2 seconds.</span></section>
+      </div><aside class="hx-card hx-brpv" id="hxBrPv">${brPreview()}</aside></div>
+      ${brGlossary()}</div>`;
+  }
+  function brKitBody() {
+    const s = UI.dlg, k = UI.bri?.kit || {}, d = brS(), L = UI.bri?.logo || {};
+    const rows = [['name', 'Name', d.name || 'empty', k.name], ['color', 'Colour', d.color, k.color ? `${k.color} (main colour)` : ''], ['logo', 'Logo', L.on && (d.card === 'logo' || d.card === 'both') ? 'on the closing card' : 'not on the closing card', k.logo ? 'your logo' : ''],
+      ['qr', 'QR code', (d.qr_url || '').replace(/^https?:\/\//, '') || 'none', k.website ? `website: ${k.website.replace(/^https?:\/\//, '')}` : ''], ['closing', 'Closing line', d.closing || 'empty', k.tagline ? `tagline: ${k.tagline}` : '']];
+    const any = rows.some(r => r[3]);
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><h2 class="hx-serif hx-growf" id="hxDlgT">Use my Brand kit</h2><button type="button" class="hx-ib" data-a="dlgx" aria-label="Close" data-auto="1">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb">${any ? `<p class="hx-mut">Your Brand kit is what Hoola uses for posters. Tick what should come into your videos.</p>
+        <div class="hx-brkit">${rows.map(([f, n, now, kv]) => `<label class="hx-brkr${kv ? '' : ' off'}"><input type="checkbox" data-brkit="${f}"${s.pick.includes(f) ? ' checked' : ''}${kv ? '' : ' disabled'}><b>${n}</b><span class="hx-mut">Now: ${esc(now)}</span><span>${kv ? 'Kit: ' + esc(kv) : 'Not in your kit'}</span></label>`).join('')}</div>
+        <p class="hx-mut hx-sm">Nothing changes until you press Use these. Videos already made stay as they are.</p>`
+        : '<p class="hx-mut">Your Brand kit is empty. Fill it in Create, Brand kit, or set your brand right here.</p>'}</div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx">Cancel</button>${any ? `<button type="button" class="hx-btn dark" data-a="brkitgo"${s.pick.length && !s.busy ? '' : ' disabled'}>Use these</button>` : ''}</div></div>`;
+  }
+  function brLogoDelBody() {
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><h2 class="hx-serif hx-growf" id="hxDlgT">Remove your logo?</h2><button type="button" class="hx-ib" data-a="dlgx" aria-label="Close" data-auto="1">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb"><p>It comes out of your Brand kit too, so new posters and new videos go without it. Videos already made keep it.</p></div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx">Cancel</button><button type="button" class="hx-btn dark danger" data-a="brlogogo"${UI.dlg.busy ? ' disabled' : ''}>Remove the logo</button></div></div>`;
+  }
+  function brFillLogo() { $$('img[data-brlogo]').forEach(async img => { try { img.src = await blobUrl(`${H}/brand/logo?v=${UI.brLogoV || 0}`); } catch { img.remove(); } }); }
+  async function brSave() {
+    const d = brS();
+    if (!brOk(d.color)) return toast('The colour must look like #5B45E0.', true);
+    try { D.brand = await api('PUT', `${H}/brand`, d); UI.bri = {...(UI.bri || {}), brand: D.brand}; UI.brd = null; draw(); toast('Saved. Every new video starts with this.'); }
+    catch (er) { toast(er.message, true); }
+  }
+
   // ---- projects (v0.999.204 PROJECTS, REDESIGNED: this month, folders, many videos changed at once, a trash with days left)
   const pjS = () => UI.pj || (UI.pj = {f: 'all', q: '', sort: 'new', sel: []});
   const pjFolders = () => D.folders || [];
@@ -1899,17 +2017,7 @@ window.HoolaInteractive = function (ctx) {
     voices() { return voPage(); },
     live() { return UI.live ? lvEdit() : lvLib(); },
     projects() { return UI.ptab === 'Trash' ? pjTrash() : pjMain(); },
-    brand() {
-      const b = D.brand || {};
-      return `<div class="hx-doc"><h2 class="hx-serif">Brand</h2><p class="hx-mut">Drawn into every video: your name, your colour, your closing line.</p>
-        <form class="hx-card hx-form tight" id="hxBrandF"><label class="hx-fld"><span class="hx-lab">Business name</span><input class="hx-in" name="name" maxlength="40" value="${esc(b.name || '')}"></label>
-          <label class="hx-fld"><span class="hx-lab">Colour</span><input class="hx-in" name="color" type="color" value="${esc(/^#[0-9a-f]{6}$/i.test(b.color || '') ? b.color : '#5B45E0')}"></label>
-          <label class="hx-fld"><span class="hx-lab">Closing line</span><input class="hx-in" name="closing" maxlength="80" value="${esc(b.closing || '')}"></label>
-          <button type="button" class="hx-btn dark" data-a="brandsave">Save</button></form>
-        <b class="hx-t">Words to keep</b><p class="hx-mut hx-sm">Names and words a translation must never change.</p>
-        <div class="hx-card hx-list">${(D.glossary || []).map(g => `<div class="hx-vrow"><span class="hx-ct"><b>${esc(g.term)}</b><small>${g.mode === 'keep' ? 'Kept as it is' : 'Becomes ' + esc(g.to)}</small></span><button type="button" class="hx-ib s" data-a="glodel" data-id="${esc(g.id)}" aria-label="Remove">${ic('trash', 15)}</button></div>`).join('') || '<p class="hx-mut hx-sm">None yet.</p>'}
-          <div class="hx-filerow"><input class="hx-in" id="hxGlo" placeholder="A word to keep" maxlength="60"><button type="button" class="hx-btn s" data-a="gloadd">Add</button></div></div></div>`;
-    },
+    brand() { return brPage(); },
     engines() {
       const E = D.engines || {engines: [], notes: {}}, rows = E.engines.filter(e => e.job === UI.etab);
       const bars = n => `<span class="hx-q" aria-label="Quality ${n} of 5">${[0, 1, 2, 3, 4].map(i => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
@@ -1962,8 +2070,9 @@ window.HoolaInteractive = function (ctx) {
     studio() { if (ARG) { const p = cur(); if (!p) return; if (p.status === 'making') watchJob(ARG); studioQuote(); if (UI.tool === 'Engine') edCompare(); }
       else (D.projects || []).filter(p => p.status === 'making').forEach(p => watchJob(p.id)); },
     engines() { if (UI.etab === 'broll') brQuote(); },
+    brand() { UI.brd = null; Promise.all([brLoad(), langsLoad()]).then(() => { if (PAGE !== 'brand') return; draw(); }); },
   };
-  const AFTER = {};
+  const AFTER = {brand() { brFillLogo(); brCardLoad(); }};
 
   // ------------------------------------------------------------------ studio edits ---
   const cur = () => (D.projects || []).find(x => x.id === ARG);
@@ -2254,8 +2363,24 @@ window.HoolaInteractive = function (ctx) {
         catch (er) { s.busy = false; dlgPaint(); toast(er.message, true); } return; }
       case 'lvdismiss': { const s = UI.dlg; if (!s) return; try { await api('POST', `${X}/live/dismiss`, {id: s.id, qid: s.qid}); UI.dlg = null; dlgPaint(); UI.lvQs = null; await load(); draw(); } catch (er) { toast(er.message, true); } return; }
       case 'ptab': UI.ptab = b.dataset.val; return draw();
-      case 'brandsave': { const f = new FormData($('#hxBrandF')); try { D.brand = await api('PUT', `${H}/brand`, Object.fromEntries(f)); toast('Saved.'); } catch (er) { toast(er.message, true); } return; }
-      case 'gloadd': { const t = ($('#hxGlo')?.value || '').trim(); if (!t) return; try { D.glossary = await api('POST', `${H}/glossary`, {term: t}); draw(); } catch (er) { toast(er.message, true); } return; }
+      case 'brsave': return brSave();
+      case 'brshow': { const d = brS(); d.show_name = !d.show_name; b.setAttribute('aria-checked', String(d.show_name)); return brPvPaint(); }
+      case 'brsw': { brS().color = b.dataset.val.toUpperCase(); $$('.hx-brsw').forEach(x => { const on = x.dataset.val === brS().color; x.classList.toggle('on', on); x.setAttribute('aria-checked', String(on)); });
+        const h = $('#hxBrHex'); if (h) h.value = brS().color; const pk = $('#hxBrPick'); if (pk) pk.value = brS().color.toLowerCase(); return brPvPaint(); }
+      case 'brcard': brS().card = b.dataset.val; return draw();
+      case 'brshape': UI.brShape = b.dataset.val; return brPvPaint();
+      case 'brlogo': return $('#hxBrLogoF')?.click();
+      case 'brlogodel': UI.dlg = {k: 'brlogodel'}; return dlgPaint();
+      case 'brlogogo': { UI.dlg.busy = true; dlgPaint(); try { UI.bri = await api('DELETE', `${H}/brand/logo`); D.brand = UI.bri.brand; UI.brd = null; UI.brLogoV = (UI.brLogoV || 0) + 1; UI.dlg = null; dlgPaint(); draw(); toast('Logo removed.'); } catch (er) { UI.dlg.busy = false; dlgPaint(); toast(er.message, true); } return; }
+      case 'brkit': { const k = UI.bri?.kit || {}, d = brS(); const pick = [k.name && k.name !== d.name && 'name', k.color && k.color !== d.color && 'color', k.logo && !UI.bri?.logo?.on && 'logo', k.website && k.website !== d.qr_url && 'qr'].filter(Boolean);
+        UI.dlg = {k: 'brkit', pick}; return dlgPaint(); }
+      case 'brkitgo': { const s2 = UI.dlg; s2.busy = true; dlgPaint();
+        try { UI.bri = await api('POST', `${H}/brand/kit`, {fields: s2.pick}); D.brand = UI.bri.brand; UI.brd = null; UI.brLogoV = (UI.brLogoV || 0) + 1; UI.dlg = null; dlgPaint(); draw(); toast('Brought in from your Brand kit and saved.'); }
+        catch (er) { s2.busy = false; dlgPaint(); toast(er.message, true); } return; }
+      case 'gloadd': { const t = ($('#hxGlo')?.value || '').trim(), g = UI.gl ||= {mode: 'keep', lang: ''}; if (!t) return toast('Type the word first.');
+        const to = ($('#hxGloTo')?.value || '').trim(); g.lang = $('#hxGloLang')?.value || g.lang;
+        if (g.mode === 'as' && (!to || !g.lang)) return toast('Say what it becomes, and in which language.', true);
+        try { D.glossary = await api('POST', `${H}/glossary`, {term: t, mode: g.mode, to, lang: g.lang}); draw(); $('#hxGlo')?.focus(); } catch (er) { toast(er.message, true); } return; }
       case 'glodel': try { D.glossary = await api('DELETE', `${H}/glossary?id=${q(id)}`); draw(); } catch (er) { toast(er.message, true); } return;
       case 'etab': UI.etab = b.dataset.val; draw(); if (UI.etab === 'broll') brQuote(); return;
       case 'edef': try { await api('PUT', `${X}/engines/default`, {id}); await load(); if (D.engines.engines.find(x => x.id === id)?.job === 'video') { SET.engine = ''; store.set('hx.set', SET); } draw(); } catch (er) { toast(er.message, true); } return;
@@ -2281,6 +2406,12 @@ window.HoolaInteractive = function (ctx) {
       if (k === 'minutes_day') { const m = $('#hxLvMin'); if (m) m.textContent = `${num(+t.value)} min`; }
       return; }
     if (t.id === 'hxPjq') { pjS().q = t.value; return pjPaint(); }
+    if (t.id === 'hxBrName') { brS().name = t.value; return brPvPaint(); }
+    if (t.id === 'hxBrClose') { brS().closing = t.value; return brPvPaint(); }
+    if (t.id === 'hxBrQr') { brS().qr_url = t.value.trim(); return brPvPaint(); }
+    if (t.id === 'hxBrHex' || t.id === 'hxBrPick') { let v = t.value.trim(); if (!v.startsWith('#')) v = '#' + v; if (!brOk(v)) return; brS().color = v.toUpperCase();
+      $$('.hx-brsw').forEach(x => { const on = x.dataset.val === brS().color; x.classList.toggle('on', on); x.setAttribute('aria-checked', String(on)); });
+      const o = $(t.id === 'hxBrHex' ? '#hxBrPick' : '#hxBrHex'); if (o) o.value = t.id === 'hxBrHex' ? brS().color.toLowerCase() : brS().color; return brPvPaint(); }
     if (t.id === 'hxVoq') { Object.assign(UI.vo ||= {}, {q: t.value, more: 0}); const l = $('#hxVoList'); if (l) l.innerHTML = voList(); const sm = t.parentElement?.querySelector('small'); if (sm) sm.textContent = t.value ? 'Best matches first' : ''; return; }
     if (t.id === 'hxAvq') { (UI.av ||= {}).q = t.value; const l = $('#hxAvList'); if (l) l.innerHTML = avList(); fillMedia(); return; }
     if (UI.dlg && t.id === 'hxAvNm') { UI.dlg.name = t.value; return; }
@@ -2324,6 +2455,13 @@ window.HoolaInteractive = function (ctx) {
     if (t.id === 'hxShFile' && UI.dlg) { const f = t.files?.[0]; if (!f) return; if (f.size > 2 * 1024 * 1024) return toast('That file is larger than 2 MB.', true);
       const rd = new FileReader(); rd.onload = () => { UI.dlg.text = String(rd.result || ''); dlgPaint(); }; rd.readAsText(f); return; }
     if (t.dataset?.vop && UI.dlg?.k === 'voput') { const id = t.dataset.vop, ids = UI.dlg.ids; if (t.checked) { if (!ids.includes(id)) ids.push(id); } else UI.dlg.ids = ids.filter(x => x !== id); return dlgPaint(); }
+    if (t.id === 'hxGloMode') { (UI.gl ||= {mode: 'keep', lang: ''}).mode = t.value; const term = $('#hxGlo')?.value || ''; draw(); const f = $('#hxGlo'); if (f) { f.value = term; f.focus(); } return; }
+    if (t.id === 'hxGloLang') { (UI.gl ||= {mode: 'keep', lang: ''}).lang = t.value; return; }
+    if (t.dataset?.brkit && UI.dlg?.k === 'brkit') { const f = t.dataset.brkit; UI.dlg.pick = t.checked ? [...new Set([...UI.dlg.pick, f])] : UI.dlg.pick.filter(x => x !== f); const g = $('[data-a=brkitgo]'); if (g) g.disabled = !UI.dlg.pick.length; return; }
+    if (t.id === 'hxBrLogoF') { const f = t.files?.[0]; t.value = ''; if (!f) return; if (f.size > 8 * 1024 * 1024) return toast('That picture is larger than 8 MB.', true);
+      toast('Adding your logo…');
+      (async () => { try { const up = await upload(f); UI.bri = await api('POST', `${H}/brand/logo`, {file_id: up.file_id}); UI.brLogoV = (UI.brLogoV || 0) + 1;
+        const d = brS(); if (d.card === 'none') d.card = 'logo'; else if (d.card === 'qr') d.card = 'both'; draw(); toast('Logo added. Press Save to put it on the closing card.'); } catch (er) { toast(er.message, true); } })(); return; }
     if (t.dataset?.pjsel) { const st = pjS(), id = t.dataset.pjsel; st.sel = t.checked ? [...new Set([...st.sel, id])] : st.sel.filter(x => x !== id); return pjPaint(); }
     if (t.id === 'hxPjAll') { const st = pjS(); st.sel = t.checked ? pjRows().map(p => p.id) : []; return pjPaint(); }
     if (t.id === 'hxAvPh') return avPhFile(t.files?.[0]);

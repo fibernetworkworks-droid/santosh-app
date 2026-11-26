@@ -495,15 +495,31 @@ def _brand_color(tenant: str) -> dict[str, str]:
     return {"color": c} if re.fullmatch(r"#[0-9A-Fa-f]{6}", c) else {}
 
 
+def _show_name(tenant: str) -> bool:
+    """v0.999.207 her Brand page can keep the name out of the corner of every scene."""
+    return (_load(tenant).get("brand") or {}).get("show_name") is not False
+
+
 def spec_for(tenant: str, p: dict[str, Any], silent: bool) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     spec: dict[str, Any] = {"shape": p["shape"], "title": p["title"], "lang": p["lang"], "aspect": p["aspect"],
-                            "silent": bool(silent), "brand": {"name": p.get("brand", ""), **_brand_color(tenant)},
+                            "silent": bool(silent), "brand": {"name": p.get("brand", "") if _show_name(tenant) else "", **_brand_color(tenant)},
                             "scenes": [{"say": s["say"], "look": s["look"]} for s in p["scenes"]]}
     if p["items"]:
         spec["items"] = p["items"]
-    if p.get("closing"):
-        spec["cta"] = {"text": p["closing"]}
     files: list[dict[str, Any]] = []
+    cta: dict[str, Any] = {"text": p["closing"]} if p.get("closing") else {}
+    try:                                            # v0.999.207 her logo / QR code on the closing card
+        from . import hub as _H
+        img = _H.card_image(tenant)
+    except Exception:
+        img = None
+    if img:
+        cp = _home(tenant) / "brand_card.png"
+        cp.write_bytes(img)
+        cta["image"] = "assets/cta.png"
+        files.append({"name": "assets/cta.png", "path": str(cp)})
+    if cta:
+        spec["cta"] = cta
     if p.get("avatar_id"):
         ph = photo_path(tenant, p["avatar_id"])
         if ph is not None:

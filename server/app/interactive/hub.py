@@ -201,15 +201,172 @@ def _new_project(tenant: str, d: dict[str, Any], *, title: str, scenes: list[dic
 
 
 # ------------------------------------------------------------------ brand + glossary ---
+CARDS = ("logo", "qr", "both", "none")       # v0.999.207 what the closing card carries beside the line
+_URL = re.compile(r"^https?://[^\s<>\"']{3,300}$")
+
+
+def _brand(b: dict[str, Any] | None) -> dict[str, Any]:
+    """Her brand with the v0.999.207 keys filled in (old rows only had name / closing / colour)."""
+    b = dict(b or {})
+    b.setdefault("name", ""); b.setdefault("closing", ""); b.setdefault("color", "")
+    b["show_name"] = b.get("show_name") is not False
+    b["card"] = b.get("card") if b.get("card") in CARDS else "logo"
+    b.setdefault("qr_url", "")
+    return b
+
+
 def brand_set(tenant: str, body: dict[str, Any]) -> dict[str, Any]:
     color = str(body.get("color") or "").strip()
     if color and not HEX.match(color):
         raise S.StudioError("The colour must look like #5B45E0.")
+    card = str(body.get("card") or "").strip()
+    if card and card not in CARDS:
+        raise S.StudioError("The closing card shows: logo, qr, both or none.")
+    qr = str(body.get("qr_url") or "").strip()
+    if qr and not _URL.match(qr):
+        raise S.StudioError("The QR code needs a full web address, starting with https://")
     with S._LOCK:
         d = _d(tenant)
-        d["brand"] = {"name": _clip(body.get("name"), 40), "closing": _clip(body.get("closing"), 80), "color": color.upper()}
+        prev = _brand(d["brand"])
+        d["brand"] = {"name": _clip(body.get("name"), 40), "closing": _clip(body.get("closing"), 80), "color": color.upper(),
+                      "show_name": prev["show_name"] if body.get("show_name") is None else bool(body.get("show_name")),
+                      "card": card or prev["card"], "qr_url": qr if "qr_url" in body else prev["qr_url"]}
+        if d["brand"]["card"] in ("qr", "both") and not d["brand"]["qr_url"]:
+            raise S.StudioError("Write the web address the QR code opens, or choose another closing card.")
         S._store(tenant, d)
-        return d["brand"]
+        return _brand(d["brand"])
+
+
+def _kit(tenant: str) -> dict[str, Any]:
+    """The poster Brand kit (brand/service.py), the parts a video can use. Empty when there is none."""
+    try:
+        from ..brand import service as BS
+        k = BS.kit(tenant)
+    except Exception:
+        return {}
+    site = str((k.get("contact") or {}).get("website") or "").strip()
+    if site and not site.startswith(("http://", "https://")):
+        site = "https://" + site
+    pal = [c.upper() for c in (k.get("palette") or []) if HEX.match(str(c))][:4]
+    col = str((k.get("colors") or {}).get("primary") or "").upper()
+    return {"name": str(k.get("name") or ""), "tagline": str(k.get("tagline") or "")[:80],
+            "color": col if HEX.match(col) and (k.get("colors_set") or k.get("logo")) else "",
+            "palette": pal, "logo": bool(k.get("logo")), "website": site if _URL.match(site) else ""}
+
+
+def logo_px(tenant: str) -> list[int]:
+    try:
+        from PIL import Image
+        from ..brand import service as BS
+        p, _m = BS.logo_file(tenant)
+        with Image.open(p) as im:
+            return [im.width, im.height]
+    except Exception:
+        return []
+
+
+def brand_info(tenant: str) -> dict[str, Any]:
+    with S._LOCK:
+        d = _d(tenant)
+        b = _brand(d["brand"])
+        n = len(d["glossary"])
+    k = _kit(tenant)
+    return {"brand": b, "kit": k, "logo": {"on": k.get("logo", False), "px": logo_px(tenant) if k.get("logo") else []},
+            "glossary_count": n, "glossary_max": MAX_GLOSSARY, "cards": list(CARDS)}
+
+
+def logo_set(tenant: str, file_id: str) -> dict[str, Any]:
+    from ..brand import service as BS
+    try:
+        BS.set_logo(tenant, file_id=file_id)
+    except BS.BrandError as e:
+        raise S.StudioError(str(e))
+    return brand_info(tenant)
+
+
+def logo_clear(tenant: str) -> dict[str, Any]:
+    from ..brand import service as BS
+    BS.clear_logo(tenant)
+    with S._LOCK:
+        d = _d(tenant)
+        b = _brand(d["brand"])
+        if b["card"] in ("logo", "both"):
+            b["card"] = "qr" if b["card"] == "both" else "none"
+            d["brand"] = b
+            S._store(tenant, d)
+    return brand_info(tenant)
+
+
+KIT_FIELDS = ("name", "color", "logo", "qr", "closing")
+
+
+def kit_apply(tenant: str, fields: list[str]) -> dict[str, Any]:
+    """Use my Brand kit: only the parts she ticked come in; nothing else changes."""
+    fields = [f for f in (fields or []) if f in KIT_FIELDS]
+    if not fields:
+        raise S.StudioError("Tick at least one thing to bring in.")
+    k = _kit(tenant)
+    if not k:
+        raise S.StudioError("Your Brand kit is empty.")
+    with S._LOCK:
+        d = _d(tenant)
+        b = _brand(d["brand"])
+        if "name" in fields and k["name"]:
+            b["name"] = k["name"][:40]
+        if "color" in fields and k["color"]:
+            b["color"] = k["color"]
+        if "closing" in fields and k["tagline"]:
+            b["closing"] = k["tagline"][:80]
+        if "qr" in fields and k["website"]:
+            b["qr_url"] = k["website"]
+        logo = k["logo"] and ("logo" in fields or b["card"] in ("logo", "both"))
+        qr = bool(b["qr_url"]) and ("qr" in fields or b["card"] in ("qr", "both"))
+        if "logo" in fields or "qr" in fields:
+            b["card"] = "both" if logo and qr else "logo" if logo else "qr" if qr else "none"
+        d["brand"] = b
+        S._store(tenant, d)
+    return brand_info(tenant)
+
+
+def card_image(tenant: str, card: str | None = None, qr_url: str | None = None) -> bytes | None:
+    """The picture on the closing card: her logo and / or a QR code, on a white tile so the code scans.
+    None when the card carries only the line. The same picture goes into the video and the page's preview."""
+    b = _brand(S._load(tenant).get("brand"))
+    card = card if card in CARDS else b["card"]
+    url = b["qr_url"] if qr_url is None else str(qr_url or "").strip()
+    parts = []
+    from PIL import Image, ImageDraw
+    import io
+    if card in ("logo", "both"):
+        try:
+            from ..brand import service as BS
+            p, _m = BS.logo_file(tenant)
+            im = Image.open(p).convert("RGBA")
+            im.thumbnail((360, 360))
+            parts.append(im)
+        except Exception:
+            pass
+    if card in ("qr", "both") and _URL.match(url):
+        import segno
+        buf = io.BytesIO()
+        segno.make(url, error="m").save(buf, kind="png", scale=10, border=0)
+        q = Image.open(io.BytesIO(buf.getvalue())).convert("RGBA")
+        q = q.resize((360, 360), Image.NEAREST)
+        parts.append(q)
+    if not parts:
+        return None
+    pad, gap = 28, 28
+    w = pad * 2 + sum(x.width for x in parts) + gap * (len(parts) - 1)
+    h = pad * 2 + max(x.height for x in parts)
+    tile = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    ImageDraw.Draw(tile).rounded_rectangle((0, 0, w - 1, h - 1), radius=28, fill=(255, 255, 255, 255))
+    x = pad
+    for im in parts:
+        tile.alpha_composite(im, (x, pad + (h - pad * 2 - im.height) // 2))
+        x += im.width + gap
+    out = io.BytesIO()
+    tile.save(out, format="PNG")
+    return out.getvalue()
 
 
 def glossary_add(tenant: str, term: str, mode: str = "keep", to: str = "", lang: str = "") -> list[dict[str, Any]]:
@@ -841,7 +998,7 @@ def overview(tenant: str) -> dict[str, Any]:
         d = _d(tenant)
         if _purge(tenant, d):
             S._store(tenant, d)
-    return {"projects": d["projects"], "avatars": d["avatars"], "running": S.running_for(tenant), "brand": d["brand"],
+    return {"projects": d["projects"], "avatars": d["avatars"], "running": S.running_for(tenant), "brand": _brand(d["brand"]),
             "glossary": d["glossary"], "templates": templates(tenant), "trash": d["trash"], "brains": d["brains"], "folders": d["folders"],
             "usage": usage(tenant, d), "status": status(), "limits": {"batch": MAX_BATCH, "trash_days": TRASH_DAYS}}
 

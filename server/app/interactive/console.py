@@ -210,6 +210,46 @@ def make_hub_router(require_key: Callable, current_tenant: Callable) -> APIRoute
         on()
         return wrap(H.brand_set, tenant, dict(body or {}))
 
+    @r.get("/brand")
+    async def brand_get(tenant: str = Depends(current_tenant)):
+        """v0.999.207 her brand + what her poster Brand kit holds (for Use my Brand kit)."""
+        on()
+        return H.brand_info(tenant)
+
+    @r.post("/brand/logo")
+    async def brand_logo(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """Her logo from a file she just uploaded; shared with the Brand kit (posters use it too)."""
+        on()
+        return wrap(H.logo_set, tenant, str((body or {}).get("file_id") or ""))
+
+    @r.delete("/brand/logo")
+    async def brand_logo_del(tenant: str = Depends(current_tenant)):
+        on()
+        return H.logo_clear(tenant)
+
+    @r.get("/brand/logo")
+    async def brand_logo_file(tenant: str = Depends(current_tenant)):
+        on()
+        from ..brand import service as BS
+        try:
+            p, m = BS.logo_file(tenant)
+        except BS.BrandError:
+            raise HTTPException(404, "There is no logo.")
+        return FileResponse(str(p), media_type=m)
+
+    @r.get("/brand/card")
+    async def brand_card(card: str = "", url: str | None = None, tenant: str = Depends(current_tenant)):
+        """The exact picture the closing card carries (her logo and / or the QR code); 204 when there is none."""
+        on()
+        from fastapi.responses import Response
+        img = H.card_image(tenant, card or None, url)
+        return Response(img, media_type="image/png") if img else Response(status_code=204)
+
+    @r.post("/brand/kit")
+    async def brand_kit(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        on()
+        return wrap(H.kit_apply, tenant, list((body or {}).get("fields") or []))
+
     @r.post("/glossary")
     async def glossary_add(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         on()

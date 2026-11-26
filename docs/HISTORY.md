@@ -12097,3 +12097,27 @@ Owner: "NOW DO SAME FOR HOOLA APP ALL SECTIONS" - the phone after the console's 
 - Tests: `test/claude_titles_phone_test.dart`, `test/claude_titles_shot_test.dart` (a picture of the greeting light + dark, the light cut narrower than the regular serif), `server/tests/test_v0999_206_phone_titles.py` (font weights, styles, the landing in each chat). `design_rules_test` now expects the greeting family; its colour ratchet (setup_screen) was already red before this.
 
 NOT VERIFIED: on her phone.
+
+## v0.999.207 BRAND, REDESIGNED
+
+Owner: "NOW DO SAME FOR BRAND SECTION" -> design canvas claude.ai/artifact/9KiLgKxN4xkWGL4rrJZx6H (boards: Brand, Use my Brand kit,
+Phone) -> "GO BUILD". Only what a video really draws is on the page.
+
+- Server (`interactive/hub.py`): her brand keeps `show_name` (the name in the corner of every scene or not), `card` (logo / qr /
+  both / none) and `qr_url` (a full https address) beside name / closing / colour; an old-style save keeps them. `card_image` makes
+  the closing card picture - her logo and / or a QR code (segno) on one white tile so the code scans. `studio.spec_for` puts that
+  picture into the video's closing card (`cta.image`, assets/cta.png) and leaves the corner name out when she turned it off.
+  `brand_info` = her brand + what her poster Brand kit holds (name, main colour, logo, website, tagline) + the logo size;
+  `kit_apply` brings in only the parts she ticked; `logo_set` / `logo_clear` use the Brand kit's logo (posters share it;
+  NEW `brand.service.clear_logo`). Routes GET /hub/brand, POST + DELETE + GET /hub/brand/logo, GET /hub/brand/card (the exact
+  picture, 204 when none), POST /hub/brand/kit.
+- The page (`interactive.js` brand block, `interactive2.css` BRAND block): name + a switch for the corner; colour swatches (the
+  logo's colours first), a colour code and a free picker, with a contrast line for white words (reads well / only when big / too
+  light, with the number); the logo card (add, change, remove after a question that says posters lose it too); the closing card
+  (line, Also on it: logo / QR / both / nothing, the address the QR opens); a preview beside it - a scene and the last 2 seconds,
+  wide / tall / square, with the real closing card picture from the server; words to keep (kept as written, or always becomes
+  one word in a chosen language, count of 200); Use my Brand kit (tick what comes in; Nothing changes until Use these). Phone: the
+  preview first, then the sections; the kit dialog and the words list stack.
+- Tests: `test_v0999_207_interactive_brand.py` (4, incl. a Chromium walk at 1440 and 390).
+- NOT VERIFIED: on her server; a real video with the logo / QR closing card not made here.
+

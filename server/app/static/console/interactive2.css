@@ -1410,3 +1410,61 @@
 @media (max-width:720px){ #hxRoot .hx-pjks{display:flex;overflow-x:auto;gap:10px;padding-bottom:4px} #hxRoot .hx-pjks>.hx-lvk{flex:none;width:136px;padding:12px 14px} #hxRoot .hx-pjks b{font-size:22px} #hxRoot .hx-pjfs .hx-pjf{width:150px} }
 @media (max-width:900px){ #hxRoot .hx-pjr{grid-template-columns:36px minmax(0,1fr) auto} #hxRoot .hx-pjr>:nth-child(n+4){display:none}
   #hxRoot .hx-pjpage>.hx-doch{flex-wrap:wrap} #hxRoot .hx-pjpage>.hx-doch>.hx-growf{flex:1 1 100%} #hxRoot .hx-pjth{width:56px} #hxRoot .hx-pjleft{width:auto;flex:1 1 120px} }
+
+/* ---- v0.999.207 BRAND (design claude.ai/artifact/9KiLgKxN4xkWGL4rrJZx6H): name, colour + contrast, logo, closing card, preview */
+#hxRoot .hx-brpage{gap:20px}
+#hxRoot .hx-brgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,480px);gap:24px;align-items:start}
+#hxRoot .hx-brcol{display:flex;flex-direction:column;gap:16px;min-width:0}
+#hxRoot .hx-brsec{display:flex;flex-direction:column;gap:12px;padding:18px 20px}
+#hxRoot .hx-brsec>.hx-t{font-size:16px}
+#hxRoot .hx-brtog{display:inline-flex;align-items:center;gap:10px;align-self:flex-start;min-height:40px;font-size:14px;color:var(--ink);text-align:left}
+#hxRoot .hx-brknob{width:36px;height:20px;border-radius:999px;background:var(--hx-box);position:relative;flex:none;transition:background-color .15s}
+#hxRoot .hx-brknob::after{content:"";position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgb(0 0 0 / .2);transition:transform .15s}
+#hxRoot .hx-brtog[aria-checked="true"] .hx-brknob{background:var(--hx-pill)}
+#hxRoot .hx-brtog[aria-checked="true"] .hx-brknob::after{transform:translateX(16px)}
+#hxRoot .hx-brsws{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#hxRoot .hx-brsw{width:34px;height:34px;border-radius:50%;border:1px solid rgb(0 0 0 / .08);flex:none}
+#hxRoot .hx-brsw.on{box-shadow:0 0 0 2px var(--hx-surface),0 0 0 4px var(--ink)}
+#hxRoot .hx-brhex .hx-in{width:112px;font-size:13px}
+#hxRoot .hx-brpick input{width:40px;height:40px;padding:0;border:1px solid var(--hx-box);border-radius:10px;background:none;cursor:pointer}
+#hxRoot .hx-brcon{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border-radius:12px;font-size:13px}
+#hxRoot .hx-brcon.ok{background:color-mix(in srgb,var(--ok) 12%,transparent);color:color-mix(in srgb,var(--ok) 80%,var(--ink))}
+#hxRoot .hx-brcon.warn{background:color-mix(in srgb,var(--warn) 14%,transparent);color:color-mix(in srgb,var(--warn) 75%,var(--ink))}
+#hxRoot .hx-brcon.bad{background:color-mix(in srgb,var(--bad) 12%,transparent);color:color-mix(in srgb,var(--bad) 80%,var(--ink))}
+#hxRoot .hx-brlogo{display:flex;align-items:center;gap:16px}
+#hxRoot .hx-brlimg{width:88px;height:88px;border-radius:16px;border:1px solid var(--hx-box);background:var(--hx-sunk);display:flex;align-items:center;justify-content:center;flex:none;overflow:hidden;color:var(--mut)}
+#hxRoot .hx-brlimg img{max-width:84%;max-height:84%;object-fit:contain}
+#hxRoot .hx-brlmeta{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1}
+#hxRoot .hx-btn.dark.danger{background:var(--bad);color:#fff;border-color:transparent}
+#hxRoot .hx-brpv{position:sticky;top:16px;display:flex;flex-direction:column;gap:10px;padding:18px 20px;background:var(--hx-sunk)}
+#hxRoot .hx-brpvh{display:flex;align-items:center;gap:10px}
+#hxRoot .hx-brfr{position:relative;width:100%;aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:linear-gradient(140deg,var(--brand),#1E293B);color:#fff}
+#hxRoot .hx-brfr.tall{aspect-ratio:9/16;width:min(100%,230px);align-self:center}
+#hxRoot .hx-brfr.square{aspect-ratio:1/1;width:min(100%,300px);align-self:center}
+#hxRoot .hx-brfr.end{background:#101426;display:flex;align-items:center;justify-content:center}
+#hxRoot .hx-brpn{position:absolute;left:5%;top:6%;font-size:12px;font-weight:600;color:#B8C0D9;max-width:80%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#hxRoot .hx-brlt{position:absolute;left:5%;right:30%;bottom:12%;padding:10px 14px;border-radius:10px;background:rgb(16 20 38 / .86);border-left:5px solid var(--brand);display:flex;flex-direction:column;gap:3px}
+#hxRoot .hx-brfr.tall .hx-brlt,#hxRoot .hx-brfr.square .hx-brlt{right:5%}
+#hxRoot .hx-brlt b{font-size:14px}#hxRoot .hx-brlt small{font-size:11px;color:#B8C0D9}
+#hxRoot .hx-brcta{max-width:82%;padding:16px 18px;border-radius:18px;background:var(--brand);display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;text-align:center}
+#hxRoot .hx-brfr.tall .hx-brcta{flex-direction:column}
+#hxRoot .hx-brcta img{max-height:72px;max-width:100%;border-radius:8px}
+#hxRoot .hx-brcta b{font-size:17px;line-height:1.3}
+#hxRoot .hx-brcta small{font-size:12px;color:#fff;opacity:.85}
+#hxRoot .hx-brgh{display:flex;align-items:center;gap:10px}
+#hxRoot .hx-brgl{border:1px solid var(--hx-box);border-radius:14px;overflow:hidden}
+#hxRoot .hx-brgr{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,2fr) 40px;gap:12px;align-items:center;padding:8px 8px 8px 14px;border-top:1px solid var(--hx-box)}
+#hxRoot .hx-brgr:first-child{border-top:0}
+#hxRoot .hx-brgr span{font-size:13px;color:var(--mut)}
+#hxRoot .hx-brgadd{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#hxRoot .hx-brgadd .hx-fld{min-width:0}
+#hxRoot .hx-brgadd .hx-growf{flex:1 1 220px}
+#hxRoot .hx-brkit{border:1px solid var(--hx-box);border-radius:14px;overflow:hidden}
+#hxRoot .hx-brkr{display:grid;grid-template-columns:24px 110px minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:center;padding:11px 14px;border-top:1px solid var(--hx-box);font-size:13px;cursor:pointer}
+#hxRoot .hx-brkr:first-child{border-top:0}
+#hxRoot .hx-brkr.off{opacity:.55;cursor:default}
+#hxRoot .hx-brkr input{width:18px;height:18px;accent-color:var(--hx-pill)}
+@media (max-width:960px){ #hxRoot .hx-brgrid{grid-template-columns:minmax(0,1fr)} #hxRoot .hx-brpv{position:static;order:-1} }
+@media (max-width:560px){ #hxRoot .hx-brkr{grid-template-columns:24px minmax(0,1fr)} #hxRoot .hx-brkr>span{grid-column:2}
+  #hxRoot .hx-brgr{grid-template-columns:minmax(0,1fr) 40px} #hxRoot .hx-brgr span{grid-column:1} #hxRoot .hx-brgr button{grid-row:1/3;grid-column:2}
+  #hxRoot .hx-brpage>.hx-doch{flex-wrap:wrap} #hxRoot .hx-brpage>.hx-doch>.hx-growf{flex:1 1 100%} }
