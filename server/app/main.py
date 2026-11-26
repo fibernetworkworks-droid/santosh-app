@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.204"   # v0.999.204 TITLES LIKE CLAUDE (owner: "ALSO DO GAME DEV AND HOOLA COMPUTER TITLES"): Game Dev's home greeting in Claude's greeting (Literata 38 / 1.2 at 290, the engine look is always dark) and its page titles in the serif at 28 / 530; Hoola Computer and Connect your PC the same 38 at 330 (dark 290), were sans 32 / 600; 1 test. Previous: v0.999.203 EVERY CHAT LIKE CLAUDE (owner; older stories live in git history.
+APP_VERSION = "0.999.205"   # v0.999.205 PROJECTS, REDESIGNED (built as 0.999.203 / 0.999.204; their EVERY CHAT LIKE CLAUDE and TITLES LIKE CLAUDE took those, all kept; owner: "NOW DO SAME FOR PROJECTS SECTION" -> design claude.ai/artifact/PGZ1YCtgGjMoqZWA1PuxWF -> "GO BUILD"): the Interactive Projects page = this month (made, minutes, credits used - now summed in hub.usage -, drafts waiting, the trash), folders (NEW hub.folder_save / folder_delete, POST + DELETE /hub/folders; a removed folder keeps its videos), a table with tick boxes, search and sort, and many at once (NEW hub.bulk, POST /hub/bulk: move to folder, change voice, change face, duplicate, move to trash; a video being made left out and named), the trash with days left, Bring it back, Delete now (NEW POST /hub/trash/purge) and Empty the trash after a clear warning; Batch / Many names only in Apps. Previous head v0.999.204 TITLES LIKE CLAUDE.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,

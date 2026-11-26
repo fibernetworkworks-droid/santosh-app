@@ -3765,3 +3765,8 @@ Task ID: v0.999.204 TITLES LIKE CLAUDE
 Ask: Game Dev and Hoola Computer titles like Claude
 Built: gamedev.css + computer.css title blocks
 Not verified: on her server
+---
+Task ID: v0.999.205 PROJECTS, REDESIGNED
+Ask: Projects page advanced and premium like the other Interactive pages
+Built: folders, bulk changes, this month incl. credits, trash with days left + delete one now
+Not verified: on her server

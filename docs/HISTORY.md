@@ -12063,3 +12063,25 @@ Owner, after v0.999.203 kept them as they were: "ALSO DO GAME DEV AND HOOLA COMP
 - Test `server/tests/test_v0999_204_titles.py`: the rules, the font links, and a Chromium render of the three titles in light and dark.
 
 NOT VERIFIED: on her server.
+
+## v0.999.205 PROJECTS, REDESIGNED (built as 0.999.203 / 0.999.204; EVERY CHAT LIKE CLAUDE and TITLES LIKE CLAUDE took those, all kept)
+
+Owner: "NOW DO SAME FOR PROJECTS SECTION" -> design canvas claude.ai/artifact/PGZ1YCtgGjMoqZWA1PuxWF (boards: Projects, Trash,
+Phone) -> "GO BUILD". The Studio already lists videos and Apps already makes many, so this page does the jobs neither did.
+
+- Server (`interactive/hub.py`): `folders` on her data (30 at most, a colour each, names unique ignoring case); `folder_save`
+  (make / rename), `folder_delete` (its videos and trashed videos lose the folder, nothing else); `bulk(ids, action, value)` for
+  move / voice / face / duplicate / trash (100 at most; the folder, face and voice checked first; a video being made left out and
+  named; voice and face go through `studio.save`, so a made video keeps its file until it is made again); `purge_one` (one video
+  and its made file out of the trash); `usage` adds this month's credits; the home payload carries `folders`. Routes POST + DELETE
+  /hub/folders, POST /hub/bulk, POST /hub/trash/purge.
+- The page (`interactive.js` projects block, `interactive2.css` PROJECTS block): this month (made, minutes, credits used, drafts
+  waiting, in the trash = opens it), folder cards (All videos, hers with a menu to rename or remove, Not in a folder, New folder),
+  the chosen folder's videos as a table (tick boxes and Choose all, video with its folder, state, language, face and voice,
+  length, changed; search; newest / oldest / by name); a bar for the chosen videos (Move to folder incl. a new folder for them,
+  Change voice, Change face, Duplicate, Move to trash after a question); the trash with days left (orange in the last five),
+  Bring it back, Delete now, Empty the trash with the count and "cannot be undone". Batch / Many names left for Apps. Phone: the
+  month's numbers slide, folders slide, the table keeps video + state.
+- Tests: `test_v0999_204_interactive_projects.py` (4, incl. a Chromium walk at 1440 and 390).
+- NOT VERIFIED: on her server.
+
