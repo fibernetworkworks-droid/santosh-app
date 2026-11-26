@@ -3753,3 +3753,9 @@ Task ID: v0.999.202 LIVE AGENTS, REDESIGNED
 Ask: Live agents page advanced and premium like the other Interactive pages
 Built: question log with known / not known, learn + dismiss routes, list page with this week + misses, four-step builder beside Try it and Questions, website window
 Not verified: on her server with a real model; counts start from the deploy
+
+---
+Task ID: v0.999.203 EVERY CHAT LIKE CLAUDE
+Ask: the last 3 chat updates in every chat panel
+Built: chat kit type + landing for every desk and studio, Interactive / Vocal / Create / Hoola Code / Studio homes, phone thread kit + Hoola Code
+Not verified: on her server

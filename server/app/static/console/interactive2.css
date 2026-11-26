@@ -1348,3 +1348,14 @@
   #hxRoot .hx-lvtry{max-width:none;flex-basis:100%;border-left:0;border-top:1px solid var(--line)} #hxRoot .hx-lvform,#hxRoot .hx-lvhd{padding-left:16px;padding-right:16px}
   #hxRoot .hx-lvfacts{grid-template-columns:minmax(0,1fr)} #hxRoot .hx-lvprev{max-width:none} }
 @media (prefers-reduced-motion:reduce){ #hxRoot .hx-lvc{transition:none} #hxRoot .hx-lvc:hover{transform:none} }
+
+/* v0.999.203 EVERY CHAT LIKE CLAUDE: the main chat's v0.999.197-199 numbers here too - the home greeting Literata 38 / 330
+   (dark 290) / 1.2 at opsz 48, the box text 16 / 430 (dark 400), her message 16 / 430 / 1.4, the reply 16 / 1.5 at 400
+   (dark 360). The weights come from chatkit.css (--hck0-*), so dark mode follows the page. */
+#hxRoot .hx-herob>.hx-serif{font-family:'Literata',Georgia,serif;font-size:clamp(28px,5.4vw,38px);font-weight:var(--hck0-gw,330);line-height:1.2;letter-spacing:normal;font-variation-settings:"opsz" 48}
+#hxRoot .hx-me{font-size:16px;font-weight:var(--hck0-hw,430);line-height:1.4}
+#hxRoot .hx-me.hx-landed{animation:hxLand .2s ease-out both}
+@keyframes hxLand{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#hxRoot .hx-me.hx-landed{animation:none}}
+#hxRoot .hx-ho{font-family:'Literata',Georgia,serif;font-size:16px;line-height:1.5;font-weight:var(--hck0-rw,400)}
+#hxRoot #hxAsk,#hxRoot #hxAsk::placeholder{font-size:16px;font-weight:var(--hck0-hw,430)}
