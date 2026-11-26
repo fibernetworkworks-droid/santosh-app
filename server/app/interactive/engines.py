@@ -139,11 +139,59 @@ def view(tenant: str = "") -> dict[str, Any]:
         price = "free" if hi == 0 else (f"≈ ${lo:g}/min" if lo == hi else f"${lo:g}-{hi:g}/min")
         rows.append({"id": e["id"], "job": e["job"], "label": e["label"], "what": e["what"], "quality": e["quality"],
                      "langs": e["langs"], "price": price, "usd_min": hi, "status": st, "ready": st == "Ready",
-                     "keys": e["keys"], "default": defaults.get(e["job"]) == e["id"], "face": bool(e.get("face"))})
+                     "keys": e["keys"], "default": defaults.get(e["job"]) == e["id"], "face": bool(e.get("face")),
+                     "max_s": e.get("max_s"), "usd_lo": lo, "need": need_of(e["id"])})
     return {"engines": rows, "defaults": defaults,
             "notes": {"video": "Every language works on every face engine: the face follows your Vocal voice.",
                       "live": "The listening and the voice stay Hoola's; only the face is rented.",
                       "broll": "A shot without a person; never your face."}}
+
+
+def need_of(eid: str) -> str:
+    """v0.999.208 what an engine that is not ready needs, in plain words (never a key name)."""
+    e = BY_ID[eid]
+    if e["adapter"] not in BUILT:
+        return "Hoola does not drive this engine yet."
+    if connected(eid):
+        return ""
+    if e["adapter"] == "frames":
+        return "The video drawer is not installed on this server yet. Whoever runs your Hoola server installs it."
+    if e["adapter"] == "gpulab":
+        return "Your own GPU lab is not linked yet. Whoever runs your Hoola server adds its address in the server's settings."
+    return ("Its key is added by whoever runs your Hoola server, in the server's settings. Once it is there, this engine "
+            "turns Ready by itself. Nothing is typed into this page.")
+
+
+LENGTHS = {"video": (15, 30, 60, 180, 300), "live": (60, 300, 900, 1800), "broll": (4, 6, 8)}
+
+
+def prices(job: str, seconds: float, voice_credits: int = 0) -> dict[str, Any]:
+    """v0.999.208 every engine of one job priced for one length, the same way the Make price card prices it."""
+    if job not in JOBS:
+        raise EngineError("Pick videos, live agents or B-roll shots.")
+    secs = max(1.0, min(float(seconds or 0), 3600.0))
+    out = []
+    for e in ENGINES:
+        if e["job"] != job:
+            continue
+        q = quote(e["id"], secs, voice_credits)
+        out.append({"id": e["id"], "credits": q["credits"], "face_credits": q["face_credits"],
+                    "voice_credits": q["voice_credits"], "too_long": bool(e.get("max_s") and secs > e["max_s"])})
+    return {"job": job, "seconds": secs, "voice_credits": int(voice_credits or 0), "engines": out}
+
+
+def ladder(eid: str, voice_for: Callable[[float], int] | None = None) -> list[dict[str, Any]]:
+    """v0.999.208 one engine's price at each usual length (the detail panel's table)."""
+    e = BY_ID.get(eid)
+    if not e:
+        raise EngineError("That engine is not on the list.")
+    rows = []
+    for secs in LENGTHS[e["job"]]:
+        vc = int(voice_for(float(secs)) if (voice_for and e["job"] == "video") else 0)
+        q = quote(eid, float(secs), vc)
+        rows.append({"seconds": secs, "face": q["face_credits"], "voice": q["voice_credits"], "credits": q["credits"],
+                     "too_long": bool(e.get("max_s") and secs > e["max_s"])})
+    return rows
 
 
 # ------------------------------------------------------------------ her defaults ---

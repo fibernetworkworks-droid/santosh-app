@@ -1018,7 +1018,7 @@ window.HoolaInteractive = function (ctx) {
     let w = $('#hxDlg');
     if (!UI.dlg) { if (w) w.remove(); return; }
     if (!w) { w = document.createElement('div'); w.id = 'hxDlg'; w.className = 'hx-dlgw'; ROOT.appendChild(w); }
-    w.innerHTML = `<div class="hx-dlgs" data-a="dlgx" aria-hidden="true"></div>${({save: svBody, pick: pickBody, need: needBody, pjfolder: pjFolderBody, voput: voPutBody, lvweb: lvWebBody, lvlearn: lvLearnBody, avphoto: avPhBody, avai: avAiBody, avtwin: avTwinBody, avren: avRenBody, brkit: brKitBody, brlogodel: brLogoDelBody}[UI.dlg.k] || shBody)()}`;
+    w.innerHTML = `<div class="hx-dlgs" data-a="dlgx" aria-hidden="true"></div>${({save: svBody, pick: pickBody, need: needBody, pjfolder: pjFolderBody, voput: voPutBody, lvweb: lvWebBody, lvlearn: lvLearnBody, avphoto: avPhBody, avai: avAiBody, avtwin: avTwinBody, avren: avRenBody, eng: enOneBody, brkit: brKitBody, brlogodel: brLogoDelBody}[UI.dlg.k] || shBody)()}`;
     const f = w.querySelector('[data-auto]'); if (f && !w.contains(document.activeElement)) f.focus();
     fillMedia();
   }
@@ -1804,6 +1804,121 @@ window.HoolaInteractive = function (ctx) {
   }
   function lvSet(k, v) { const a = lvDraft(); a[k] = v; UI.ldDirty = true; }
 
+  // ---- engines (v0.999.208 ENGINES, REDESIGNED: her three defaults, every engine of a job priced for one length the way
+  // the Make price card prices it, cards with ready / default / not connected said plainly (never a key name), a panel per
+  // engine with its price at each length and her videos on it, the B-roll shot maker with its price first)
+  const ENJOB = [['video', 'Videos'], ['live', 'Live agents'], ['broll', 'B-roll shots']];
+  const ENLEN = {video: [15, 30, 60, 180], live: [60, 300, 900, 1800], broll: [4, 6, 8]};
+  const ENQ = ['', 'Basic', 'Simple', 'Good', 'Very good', 'Best'];
+  const enS = () => UI.en || (UI.en = {len: {video: 30, live: 300, broll: 6}, ready: store.get('hx.enready', false), sort: store.get('hx.ensort', 'price'), p: {}, one: null});
+  const enLen = s => s < 60 ? `${s} s` : `${Math.round(s / 60)} min`;
+  const enLong = e => e.max_s ? enLen(e.max_s) : e.id === 'frames_looks' ? 'Inside your videos' : (e.job === 'video' ? 'Any length' : e.job === 'live' ? 'No limit' : '8 s');
+  const enAll = () => D.engines?.engines || [];
+  async function enPrices(job) {
+    const st = enS(), secs = st.len[job], k = `${job}:${secs}`;
+    if (st.p[k]) return;
+    try { st.p[k] = await api('GET', `${X}/engines/prices?job=${q(job)}&seconds=${secs}&voice=${q(SET.voice || '')}`); }
+    catch { st.p[k] = {engines: [], failed: true}; }
+    if (PAGE === 'engines') draw();
+  }
+  function enPrice(e) {
+    const st = enS(), r = st.p[`${e.job}:${st.len[e.job]}`];
+    return r ? (r.engines || []).find(x => x.id === e.id) || null : undefined;
+  }
+  function enCard(e) {
+    const pr = enPrice(e), ok = e.ready;
+    const offl = e.status === 'Not built yet' ? 'Not built yet' : 'Not connected';
+    const chip = e.default ? `<span class="hx-enchip def">${ok ? 'Default' : `Default · ${offl.toLowerCase()}`}</span>` : ok ? '<span class="hx-enchip ok">Ready</span>' : `<span class="hx-enchip off">${offl}</span>`;
+    const big = pr === undefined ? '<span class="hx-enbig ghost">…</span>' : pr === null ? '<span class="hx-enbig">—</span>'
+      : pr.too_long ? `<span class="hx-enbig">Too long</span><small>this engine stops at ${esc(enLen(e.max_s))}</small>`
+      : !pr.face_credits && !pr.voice_credits ? '<span class="hx-enbig">Free</span><small>nothing to pay</small>'
+      : !pr.face_credits ? `<span class="hx-enbig">Free</span><small>only the voice, about ${esc(cr(pr.voice_credits))}</small>`
+      : `<span class="hx-enbig">${num(pr.face_credits)}</span><small>credits${e.job === 'video' ? ' + voice' : ''}</small>`;
+    const act = e.default && ok ? '<span class="hx-btn s hx-enstatic">Your default</span>'
+      : e.default ? `<button type="button" class="hx-btn s" data-a="enone" data-id="${esc(e.id)}">How to connect</button>`
+      : ok ? `<button type="button" class="hx-btn s dark" data-a="edef" data-id="${esc(e.id)}">Make default</button>`
+      : `<button type="button" class="hx-btn s" data-a="enone" data-id="${esc(e.id)}">How to connect</button>`;
+    return `<article class="hx-encard${e.default ? ' def' : ''}${ok ? '' : ' off'}"><div class="hx-enh"><b>${esc(e.label)}</b>${chip}</div>
+      <p class="hx-enw">${esc(e.what)}</p>
+      <div class="hx-enq" aria-label="Quality ${e.quality} of 5"><span>${[0, 1, 2, 3, 4].map(i => `<i class="${i < e.quality ? 'on' : ''}"></i>`).join('')}</span><small>${ENQ[e.quality] || ''}</small></div>
+      <div class="hx-enp hx-num">${big}</div>
+      <small class="hx-mut">${esc(enLong(e))} · ${esc(e.price === 'free' ? 'free' : e.price.replace('/min', ' a minute'))}</small>
+      <div class="hx-acts">${act}<button type="button" class="hx-btn s" data-a="enone" data-id="${esc(e.id)}">Details</button></div></article>`;
+  }
+  function enPage() {
+    const st = enS(), E = D.engines || {engines: [], defaults: {}, notes: {}}, all = enAll(), job = UI.etab;
+    const of = j => all.filter(e => e.job === j);
+    const defs = ENJOB.map(([j, n]) => { const d = all.find(e => e.job === j && e.default) || of(j)[0] || {}; const rs = of(j).filter(e => e.ready).length;
+      return `<button type="button" class="hx-endef${job === j ? ' on' : ''}" data-a="etab" data-val="${j}"><span class="hx-lab">${n}</span><b>${esc(d.label || '—')}</b><small>${esc(d.what || '')}</small>
+        <span class="hx-mut hx-sm">${num(rs)} of ${num(of(j).length)} ready</span></button>`; }).join('');
+    let rows = of(job);
+    if (st.ready) rows = rows.filter(e => e.ready);
+    const key = e => { const pr = enPrice(e); return pr && !pr.too_long ? pr.credits : 1e12; };
+    rows = rows.slice().sort(st.sort === 'quality' ? (a, b) => b.quality - a.quality || key(a) - key(b)
+      : st.sort === 'ready' ? (a, b) => (b.ready - a.ready) || key(a) - key(b) : (a, b) => key(a) - key(b) || b.quality - a.quality);
+    const rdy = of(job).filter(e => e.ready).length, tot = of(job).length;
+    const sorts = {price: 'Lowest price', quality: 'Best quality', ready: 'Ready first'};
+    const lenLab = {video: 'Price for a video of', live: 'Price for a talk of', broll: 'Price for a shot of'}[job];
+    return `<div class="hx-doc hx-enpage"><div class="hx-doch"><div class="hx-growf"><h2 class="hx-serif">Engines</h2>
+        <p class="hx-mut">Choose who draws the face. The listening, the words and the voice stay Hoola's, so every engine speaks every language your Vocal voices speak.</p></div></div>
+      <section class="hx-endefs" aria-label="Your defaults">${defs}</section>
+      <div class="hx-enbar"><div class="hx-seg" role="radiogroup" aria-label="Kind of engine">${ENJOB.map(([j, n]) => `<button type="button" role="radio" aria-checked="${job === j}" data-a="etab" data-val="${j}">${n} <span class="hx-num">${num(of(j).length)}</span></button>`).join('')}</div>
+        <span class="hx-grow"></span><span class="hx-mut hx-sm">${lenLab}</span>
+        <div class="hx-seg" role="radiogroup" aria-label="${lenLab}">${ENLEN[job].map(n => `<button type="button" role="radio" aria-checked="${st.len[job] === n}" data-a="enlen" data-val="${n}">${enLen(n)}</button>`).join('')}</div>
+        <button type="button" class="hx-chip${st.ready ? ' on' : ''}" data-a="enready" aria-pressed="${!!st.ready}">Ready only</button>
+        <button type="button" class="hx-dd s" data-a="ensort"><span>Sort: ${sorts[st.sort] || sorts.price}</span>${ic('down', 14)}</button></div>
+      <p class="hx-note">${esc(E.notes?.[job] || '')} ${num(rdy)} of ${num(tot)} ${tot === 1 ? 'is' : 'are'} ready on this server.</p>
+      ${rows.length ? `<div class="hx-engrid">${rows.map(enCard).join('')}</div>` : '<p class="hx-mut">No engine is ready for this yet. Switch off Ready only to see them all.</p>'}
+      ${job === 'broll' ? enBroll() : ''}</div>`;
+  }
+  function enBroll() {
+    const br = UI.broll, shots = D.live?.broll || [], g = enAll().find(e => e.id === 'gemini_broll');
+    const ok = !!g?.ready, ql = br.q?.line || '';
+    const tile = s => `<article class="hx-enshot"><div class="hx-enshv${s.aspect === '9:16' ? ' tall' : ''}">${s.status === 'ready' ? `<video class="hx-player" controls playsinline preload="metadata" data-broll="${esc(s.id)}"></video>` : `<span class="hx-enshp" aria-hidden="true">${ic('play', 22)}</span>`}
+        <span class="hx-enchip ${s.status === 'ready' ? 'ok' : s.status === 'failed' ? 'bad' : 'work'}">${s.status === 'ready' ? 'Ready' : s.status === 'failed' ? 'Could not make it' : 'Making it'}</span><span class="hx-enlen hx-num">${num(s.seconds || 6)} s</span></div>
+      <div class="hx-enshb"><span>${esc(s.prompt)}</span><small class="hx-mut">${esc(ago(s.created) || '')}${s.status === 'failed' ? ' · not charged' : s.credits ? ` · ${esc(cr(s.credits))}` : ''}</small>${s.error ? `<small class="hx-why">${esc(scrub(s.error))}</small>` : ''}</div></article>`;
+    return `<div class="hx-enbr"><section class="hx-card hx-form tight hx-enmk"><b class="hx-t">Make a shot</b>
+        <p class="hx-mut hx-sm">A short shot with its own sound for between your scenes: the place, the product, the street. Never a person and never your face.</p>
+        <label class="hx-fld"><span class="hx-lab">What is seen</span><textarea class="hx-in" id="hxBr" rows="3" placeholder="Slow pan over a bakery counter with fresh bread, warm morning light"${ok ? '' : ' disabled'}>${esc(br.prompt)}</textarea></label>
+        <div class="hx-row2"><div class="hx-fld"><span class="hx-lab">Length</span><div class="hx-seg" role="radiogroup">${[4, 6, 8].map(n => `<button type="button" role="radio" aria-checked="${br.seconds === n}" data-a="brs" data-val="${n}">${n} s</button>`).join('')}</div></div>
+          <div class="hx-fld"><span class="hx-lab">Shape</span><div class="hx-seg" role="radiogroup">${[['16:9', 'Wide'], ['9:16', 'Tall']].map(([n, l]) => `<button type="button" role="radio" aria-checked="${br.aspect === n}" data-a="bra" data-val="${n}">${l}</button>`).join('')}</div></div></div>
+        ${ok ? `<div class="hx-enpr"><span class="hx-grow hx-num"><b>${esc(ql ? ql.replace(/ · nothing is spent until you tap$/, '') : 'Pricing the shot…')}</b><br><span class="hx-mut hx-sm">Nothing is spent until you tap</span></span>
+          <button type="button" class="hx-btn dark" data-a="brmake"${br.q ? '' : ' disabled'}>Make the shot</button></div>`
+          : `<p class="hx-note warn">Gemini Omni makes these shots and it is not connected on this server yet. ${esc(g?.need || '')}</p>`}</section>
+      <section class="hx-enshots"><div class="hx-sech"><b>Your shots</b><span class="hx-mut hx-sm">${num(shots.length)} of 30 kept</span></div>
+        ${shots.length ? `<div class="hx-enshg">${shots.map(tile).join('')}</div>` : '<p class="hx-mut hx-sm">No shots yet. The ones you make appear here and in the Studio.</p>'}</section></div>`;
+  }
+  function enOneBody() {
+    const o = enS().one || {}, e = o.r?.engine || enAll().find(x => x.id === o.id) || {};
+    const prices = o.r?.prices || [], vids = o.r?.videos || [], jobn = {video: 'Videos', live: 'Live agents', broll: 'B-roll shots'}[e.job] || '';
+    const kind = e.job === 'video' ? (e.face ? 'talking face' : 'your photo beside the words') : e.job === 'live' ? 'a face that talks live' : 'a shot without a person';
+    const chip = e.default ? '<span class="hx-enchip def">Default</span>' : e.ready ? '<span class="hx-enchip ok">Ready</span>' : '<span class="hx-enchip off">Not connected</span>';
+    const facts = [['Quality', ENQ[e.quality] || ''], ['Longest', enLong(e)], ['Languages', /140|any/i.test(e.langs || '') ? 'Every language' : e.langs], ['Published', e.price === 'free' ? 'Free' : (e.price || '').replace('/min', ' a minute')]];
+    const main = !e.ready ? '' : e.job === 'video' ? `<button type="button" class="hx-btn dark" data-a="enuse" data-id="${esc(e.id)}">Start a video with ${esc(e.label)}</button>`
+      : e.job === 'live' ? '<button type="button" class="hx-btn dark" data-a="go" data-p="live">Open Live agents</button>'
+      : e.id === 'gemini_broll' ? '<button type="button" class="hx-btn dark" data-a="enmkshot">Make a shot</button>' : '';
+    return `<div class="hx-dlg w hx-enone" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><div class="hx-growf"><span class="hx-lab">${esc(jobn)} · ${esc(kind)}</span>
+        <h2 class="hx-serif" id="hxDlgT">${esc(e.label || '')}</h2><p class="hx-mut hx-sm">${esc(e.what || '')}</p></div>${chip}
+        <button type="button" class="hx-ib" data-a="dlgx" aria-label="Close" data-auto="1">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb">${e.ready ? '' : `<div class="hx-note warn"><b>${esc(e.label)} is not connected on this server</b><br>${esc(e.need || '')}</div>`}
+        <div class="hx-enfacts">${facts.map(([k, v]) => `<div><span class="hx-mut hx-sm">${k}</span><b>${esc(v || '')}</b></div>`).join('')}</div>
+        <div class="hx-sech"><b>Price by length</b></div>
+        ${o.r ? `<div class="hx-enlad">${prices.map(p => `<div class="hx-num"><span>${esc(enLen(p.seconds))}</span>${p.too_long ? `<span class="hx-mut">longer than this engine makes</span><b>—</b>`
+          : `<span class="hx-mut">${p.face ? `face ${num(p.face)}` : 'face free'}${e.job === 'video' ? ` · voice ${num(p.voice)}` : ''}</span><b>${p.credits ? esc(cr(p.credits)) : 'Free'}</b>`}</div>`).join('')}</div>
+          <p class="hx-hint">${e.job === 'video' ? "The face from the engine's published price, the voice from Vocal for about that many words." : e.job === 'live' ? 'The face for that long a talk. The voice is priced by Vocal as it speaks.' : "From the engine's published price."} Nothing is spent until you tap Make.</p>`
+          : `<p class="hx-mut">${o.err ? esc(o.err) : 'Pricing…'}</p>`}
+        ${e.job === 'video' ? `<div class="hx-sech"><b>Your videos on ${esc(e.label || '')}</b><span class="hx-mut hx-sm">${num(vids.length)}</span></div>
+          ${vids.length ? `<div class="hx-envids">${vids.map(v => `<div class="hx-envid"><span class="hx-ct"><b>${esc(v.title)}</b><small class="hx-mut">${v.seconds ? esc(secs(v.seconds)) + ' · ' : ''}${esc(v.status === 'ready' ? 'made' : v.status || 'draft')} ${esc(ago(v.updated) || '')}</small></span>
+            <button type="button" class="hx-btn s" data-a="avvid" data-id="${esc(v.id)}">Open</button></div>`).join('')}</div>` : '<p class="hx-mut hx-sm">None yet.</p>'}` : ''}</div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx">Close</button>
+        ${e.ready && !e.default ? `<button type="button" class="hx-btn" data-a="edef" data-id="${esc(e.id)}">Make default</button>` : ''}${main}</div></div>`;
+  }
+  async function enOpen(id) {
+    const st = enS(); st.one = {id}; UI.dlg = {k: 'eng'}; dlgPaint();
+    try { st.one.r = await api('GET', `${X}/engines/one?id=${q(id)}&voice=${q(SET.voice || '')}`); } catch (er) { st.one.err = er.message; }
+    if (UI.dlg?.k === 'eng' && st.one?.id === id) dlgPaint();
+  }
+
   // ---- brand (v0.999.207 BRAND, REDESIGNED: name on screen, colour with a contrast check, the shared logo, the closing card
   //      (line + logo / QR), a preview drawn the way the video draws it, words to keep, and Use my Brand kit)
   const BR_COLORS = ['#5B45E0', '#2E6F8E', '#B4462F', '#2F6B48', '#C27A1A', '#8A2F4E', '#1E293B', '#1A1A19'];
@@ -2018,25 +2133,7 @@ window.HoolaInteractive = function (ctx) {
     live() { return UI.live ? lvEdit() : lvLib(); },
     projects() { return UI.ptab === 'Trash' ? pjTrash() : pjMain(); },
     brand() { return brPage(); },
-    engines() {
-      const E = D.engines || {engines: [], notes: {}}, rows = E.engines.filter(e => e.job === UI.etab);
-      const bars = n => `<span class="hx-q" aria-label="Quality ${n} of 5">${[0, 1, 2, 3, 4].map(i => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
-      const br = UI.broll, shots = D.live?.broll || [];
-      return `<div class="hx-doc"><div class="hx-doch"><div class="hx-growf"><h2 class="hx-serif">Engines</h2><p class="hx-mut">Choose who draws the face. The brain and the voice stay Hoola's.</p></div></div>
-        <div class="hx-tabs" role="tablist">${[['video', 'Videos'], ['live', 'Live agents'], ['broll', 'B-roll shots']].map(([k, n]) => `<button type="button" role="tab" aria-selected="${UI.etab === k}" data-a="etab" data-val="${k}">${n}</button>`).join('')}</div>
-        <p class="hx-note">${esc(E.notes?.[UI.etab] || '')}</p>
-        <div class="hx-tablew hx-card"><table class="hx-table"><thead><tr><th>Engine</th><th>Quality</th><th>Languages</th><th>Cost</th><th>Status</th><th></th></tr></thead><tbody>
-        ${rows.map(e => `<tr><td><b>${esc(e.label)}</b><br><small class="hx-mut">${esc(e.what)}</small></td><td>${bars(e.quality)}</td><td>${esc(e.langs)}</td><td class="hx-num">${esc(e.price)}</td>
-          <td><span class="hx-st ${e.ready ? 'ok' : ''}">${esc(scrub(e.status))}</span></td>
-          <td class="r">${e.default ? '<span class="hx-chip s static on">Default</span>' : `<button type="button" class="hx-btn s" data-a="edef" data-id="${esc(e.id)}"${e.ready ? '' : ' disabled'}>Make default</button>`}</td></tr>`).join('')}</tbody></table></div>
-        ${UI.etab === 'broll' ? `<div class="hx-card hx-form tight"><b class="hx-t">Make a B-roll shot</b>
-          <label class="hx-fld"><span class="hx-lab">What is seen (no people)</span><textarea class="hx-in" id="hxBr" rows="3" placeholder="Slow pan over a sweet shop counter with trays of kaju katli, warm evening light">${esc(br.prompt)}</textarea></label>
-          <div class="hx-row2"><div class="hx-fld"><span class="hx-lab">Length</span><div class="hx-seg" role="radiogroup">${[4, 6, 8].map(n => `<button type="button" role="radio" aria-checked="${br.seconds === n}" data-a="brs" data-val="${n}">${n} s</button>`).join('')}</div></div>
-            <div class="hx-fld"><span class="hx-lab">Shape</span><div class="hx-seg" role="radiogroup">${['16:9', '9:16'].map(n => `<button type="button" role="radio" aria-checked="${br.aspect === n}" data-a="bra" data-val="${n}">${n}</button>`).join('')}</div></div></div>
-          <div class="hx-acts"><span class="hx-price hx-num">${esc(br.q?.line || '')}</span><span class="hx-grow"></span><button type="button" class="hx-btn dark" data-a="brmake">Make the shot</button></div></div>
-          ${shots.length ? `<div class="hx-grid3">${shots.map(s => `<div class="hx-card">${s.status === 'ready' ? `<video class="hx-player" controls playsinline preload="metadata" data-broll="${esc(s.id)}"></video>` : `<span class="hx-st ${s.status === 'failed' ? 'bad' : 'work'}">${s.status === 'failed' ? 'Could not make it' : 'Making it'}</span>`}
-            <p class="hx-hint">${esc(s.prompt)}</p>${s.error ? `<p class="hx-why">${esc(scrub(s.error))}</p>` : ''}</div>`).join('')}</div>` : ''}` : ''}</div>`;
-    },
+    engines() { return enPage(); },
     developers() {
       const A = D.apps || {keys: [], hooks: [], doors: []};
       return `<div class="hx-doc"><h2 class="hx-serif">Developers</h2><p class="hx-mut">Let your own programs make videos with your credits. Keys are shown once.</p>
@@ -2069,7 +2166,7 @@ window.HoolaInteractive = function (ctx) {
     templates() { const t = ARG && tplOf(ARG); if (!t) return; const u = tuState(t); tuEstimate(); if (u.sample) { u.scene = 0; tuPlay(); } },
     studio() { if (ARG) { const p = cur(); if (!p) return; if (p.status === 'making') watchJob(ARG); studioQuote(); if (UI.tool === 'Engine') edCompare(); }
       else (D.projects || []).filter(p => p.status === 'making').forEach(p => watchJob(p.id)); },
-    engines() { if (UI.etab === 'broll') brQuote(); },
+    engines() { enPrices(UI.etab); if (UI.etab === 'broll') brQuote(); },
     brand() { UI.brd = null; Promise.all([brLoad(), langsLoad()]).then(() => { if (PAGE !== 'brand') return; draw(); }); },
   };
   const AFTER = {brand() { brFillLogo(); brCardLoad(); }};
@@ -2382,9 +2479,16 @@ window.HoolaInteractive = function (ctx) {
         if (g.mode === 'as' && (!to || !g.lang)) return toast('Say what it becomes, and in which language.', true);
         try { D.glossary = await api('POST', `${H}/glossary`, {term: t, mode: g.mode, to, lang: g.lang}); draw(); $('#hxGlo')?.focus(); } catch (er) { toast(er.message, true); } return; }
       case 'glodel': try { D.glossary = await api('DELETE', `${H}/glossary?id=${q(id)}`); draw(); } catch (er) { toast(er.message, true); } return;
-      case 'etab': UI.etab = b.dataset.val; draw(); if (UI.etab === 'broll') brQuote(); return;
-      case 'edef': try { await api('PUT', `${X}/engines/default`, {id}); await load(); if (D.engines.engines.find(x => x.id === id)?.job === 'video') { SET.engine = ''; store.set('hx.set', SET); } draw(); } catch (er) { toast(er.message, true); } return;
-      case 'brs': UI.broll.seconds = +b.dataset.val; return brQuote();
+      case 'etab': UI.etab = b.dataset.val; draw(); enPrices(UI.etab); if (UI.etab === 'broll') brQuote(); return;
+      case 'enlen': enS().len[UI.etab] = +b.dataset.val; draw(); return enPrices(UI.etab);
+      case 'enready': { const st = enS(); st.ready = !st.ready; store.set('hx.enready', st.ready); return draw(); }
+      case 'ensort': { const st = enS(), set = v => { st.sort = v; store.set('hx.ensort', v); draw(); };
+        return menu(b, [['price', 'Lowest price'], ['quality', 'Best quality'], ['ready', 'Ready first']].map(([v, l]) => ({label: l, checked: st.sort === v, run: () => set(v)})), {width: 220}); }
+      case 'enone': return enOpen(id);
+      case 'enuse': SET.engine = id; store.set('hx.set', SET); dlgClose(); return go('chat');
+      case 'enmkshot': dlgClose(); UI.etab = 'broll'; draw(); brQuote(); return setTimeout(() => $('#hxBr')?.focus(), 50);
+      case 'edef': try { await api('PUT', `${X}/engines/default`, {id}); await load(); if (D.engines.engines.find(x => x.id === id)?.job === 'video') { SET.engine = ''; store.set('hx.set', SET); } draw(); if (UI.dlg?.k === 'eng') { const r = enS().one?.r; if (r) r.engine = enAll().find(x => x.id === id) || r.engine; dlgPaint(); } toast('Default engine changed.'); } catch (er) { toast(er.message, true); } return;
+      case 'brs': UI.broll.seconds = +b.dataset.val; UI.broll.q = null; draw(); return brQuote();
       case 'bra': UI.broll.aspect = b.dataset.val; return draw();
       case 'brmake': { UI.broll.prompt = ($('#hxBr')?.value || '').trim();
         try { await api('POST', `${X}/broll`, {prompt: UI.broll.prompt, seconds: UI.broll.seconds, aspect: UI.broll.aspect, quote_key: UI.broll.q?.key || ''}); toast('Making the shot. It appears here when ready.'); await load(); draw(); setTimeout(async () => { await load(); if (PAGE === 'engines') draw(); }, 60000); }

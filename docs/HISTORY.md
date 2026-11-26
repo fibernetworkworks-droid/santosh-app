@@ -12121,3 +12121,28 @@ Phone) -> "GO BUILD". Only what a video really draws is on the page.
 - Tests: `test_v0999_207_interactive_brand.py` (4, incl. a Chromium walk at 1440 and 390).
 - NOT VERIFIED: on her server; a real video with the logo / QR closing card not made here.
 
+
+
+## v0.999.208 ENGINES, REDESIGNED (owner: "NOW DO SAME FOR ENGINES SECTION" -> design claude.ai/artifact/QzR1tQ2n8v4zyjxdiTU7yG -> "GO BUILD")
+
+The Interactive Engines page (console `interactive.js` enPage / enCard / enBroll / enOneBody, styles `.hx-en*` in
+`interactive2.css`) rebuilt from a table into the design:
+
+- **Your defaults**: three cards (videos, live agents, B-roll shots), each with its engine and how many are ready; a tap
+  switches the tab.
+- **Price for a length**: 15 s / 30 s / 1 min / 3 min for videos, a talk of 1 / 5 / 15 / 30 min for live agents, a shot of
+  4 / 6 / 8 s. NEW `engines.prices(job, seconds, voice_credits)` + GET `/api/interactive/x/engines/prices` price every engine
+  of the job with the SAME `quote()` the Make price card uses (the voice from Vocal for about that many words, videos only).
+  An engine that stops before that length says "Too long, this engine stops at N".
+- **Cards**: quality bars, what it does, the credits, longest length + published price a minute, Ready / Default /
+  Not connected / Not built yet, Make default / How to connect / Details. Ready only and Sort (lowest price, best
+  quality, ready first) kept in the browser.
+- **One engine** (dialog): facts, NEW `engines.ladder` + GET `/x/engines/one` = its price at each usual length split
+  face / voice, her videos on it (Open), Make default, Start a video with it (sets her engine for new videos and opens the
+  chat). NEW `engines.need_of` = what a not-ready engine needs in plain words, never a key name.
+- **B-roll**: the shot maker (Gemini Omni) with its price before Make the shot, or why it cannot make one here; her shots
+  as tiles with Making it / Ready / Could not make it and their credits.
+
+Tests `test_v0999_208_interactive_engines.py` (4: prices match the Make price, the panel, every drawn button wired,
+a Chromium walk at 1440 and 390). PRE-EXISTING red, not from this: `test_v0747_hoola_interactive.py::test_the_page_in_a_real_browser`
+(fails on the commit before too). NOT VERIFIED on her server.
