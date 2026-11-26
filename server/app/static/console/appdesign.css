@@ -457,3 +457,5 @@ html.appd #app #composer textarea,html.appd #app #composer textarea::placeholder
 html.appd .appunder .uchip,html.appd .appunder .modelb,html.appd #app #composer .modelb,html.appd #app #composer .qc[aria-pressed="true"]{
   font-size:14px;font-weight:var(--hw);line-height:1.4}
 html.appd .appunder .uchip *,html.appd .appunder .modelb *,html.appd #app #composer .modelb *{font-size:inherit;font-weight:inherit}
+/* v0.999.211 NO SESSIONS IN THE SIDEBAR: the Sessions label, its + and its note are gone from the app design */
+html.appd #app .side #projects{display:none}

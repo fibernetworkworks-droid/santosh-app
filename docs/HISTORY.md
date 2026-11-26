@@ -12174,3 +12174,15 @@ Files: server/app/interactive/apps.py, routes2.py, static/console/interactive.js
 ## v0.999.210 SETTINGS, REDESIGNED (owner: "NOW DO SAME FOR SETTINGS SECTION" -> design claude.ai/artifact/LZBJ9AF2Y9LgcZq6sJBywR -> "GO BUILD"): the Interactive Settings page in four tabs = New videos (her starting choices: language, voice, face, face engine, the folder new videos land in, closing card, kind of video, length, with a preview of her next video and its rough price), saved to her account (NEW hub.prefs / prefs_save checked one by one with the refused ones said / prefs_reset, GET/PUT /x/settings + POST /x/settings/reset, /home carries prefs; every change on the page syncs quietly, a browser with no saved choices hands its own over once), Usage (this month vs last, minutes by language, each video with its credits, videos her apps made), Kept & trash (places used of 40, trash with days left, Bring back, Delete all now asks first, her other things) and This server (what works right now in plain words, Check again, the limits). A new draft lands in her chosen folder. Previous head v0.999.209 DEVELOPERS, REDESIGNED.
 
 Files: server/app/interactive/hub.py (PREF_*, prefs, prefs_save, prefs_reset, settings_view; usage recent rows carry credits + language; overview carries prefs), routes2.py (GET/PUT /x/settings, POST /x/settings/reset), studio.py (draft lands in her chosen folder), static/console/interactive.js (stPage + tabs, persist() syncs SET to her account, prefApply on load), interactive2.css (SETTINGS block). Tests: server/tests/test_v0999_210_interactive_settings.py (4, incl. a real-browser walk at 1440 and 390). NOT VERIFIED on her server.
+
+## v0.999.211 NO SESSIONS IN THE SIDEBAR (owner, her sidebar screenshot: "NOW CHECK THE SESSIONS --- REMOVE THAT FROM SIDE BAR")
+
+The app-design console sidebar no longer shows the Sessions part: no "Sessions" label, no + button, no session note and no
+session groups. `chatlist.js` reads sessions for the sidebar through `SIDE_SECS()` (empty in the app design), so a chat that
+sits in a session is listed in Pinned / Recents like any other chat - nothing disappears - and the "Other chats" label is not
+drawn. The chat menu there no longer offers "Add to session" / "Change session" (there is nowhere to see a session from the
+sidebar any more). `appdesign.css` hides `#projects`. Sessions, their instructions, memory and files stay on the server and keep
+applying to their chats; the old console look (app design off) keeps its session groups. Test
+`test_v0999_211_no_sessions_sidebar.py` (shape + a browser walk: a session chat and a plain chat both in Recents, no Sessions
+text, no session item in the chat menu). Pre-existing reds unchanged (test_v0194 / test_v0909 version pins, test_v0288 type
+rules). NOT VERIFIED: on her server.
