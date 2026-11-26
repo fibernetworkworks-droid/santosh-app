@@ -12301,3 +12301,22 @@ On top of v0.999.218 (`creditchat.py`, `creditdesk.*`):
 ## v0.999.220 NO THEME IN THE PROFILE MENU (owner: "NOW REMOVE THE LIGHT DARK AND SYTEM OPTION IN PROFILE SECTION . IT IS ALREADY IN CONSTERIZE SECTION"): the profile (account) menu no longer lists Light / Dark / System; the theme choice stays on the Customize page; 2 tests incl. a browser walk. Console only.
 
 Console only (`static/console/v2.js`). `acctItems()` (the profile / account button's menu) no longer lists Light / Dark / System; the theme choice stays on the Customize page's Appearance cards (`data-theme-set`). Tests: NEW test_v0999_220_no_theme_in_profile.py (shape + a Chromium walk: the profile menu lists Customize and no theme items); test_v0285_menus.py reads the acctItems block (moved there in v0.999.215) and checks the theme items are gone. Already red before this change and left alone: test_v0285::test_claude_look_is_crisp, test_v0973::test_version. NOT VERIFIED: on her server.
+
+## v0.999.221 THE + CARD AND ITS CHIP (owner, her + menu and the chosen Deep research chip: "NOW CHECK + IN CHAT SECTION OPTIONS -- ALL ARE PERFECT -- MAKE THE CARD PREMIUM. ALSO CHECK THE SETECTED CARD OPTIONS HOW APPERING IN CHAT MAKE IT PERFECTLY ALLINED AND MUST BE LIKE HUMAN NATIVE MADE NOT A AI BLUE , PINK COMBINATION")
+
+Measured in a real browser before the fix: after picking Deep research the chip stood about 140 px from the + in the
+middle of the bar, because both the + (#attach) and the chip group (.qchips) had margin-right:auto and split the free
+space; it was drawn in the violet "pri-soft" tint.
+
+The + menu (v2.js plusMenu now opens with cls 'plusm', width 320; appdesign.css end block): a card with a hairline
+border and a soft layered shadow; every choice has its own 32 px tile with the icon in ink, the name at 14 / 500 and
+one line under it at 12.5 in the muted grey; a chosen choice's tile turns ink (paper icon) with a tick on the right
+(the tick had taken the tile's colour, so it was invisible - fixed and tested); the last row ("Everything ... can do")
+ends in an arrow. Light and dark both drawn from the theme's own ink / paper.
+
+The chosen option: right beside the + (8 px), centred on the same line, 32 px tall, ink text and icon on the page's
+paper with a hairline border and an x; hover darkens the border; a tap takes it off. Inside an open chat the row order
+is + , chosen option, mic, call, so it sits beside the + there too. The old console look is unchanged.
+
+Test: test_v0999_221_plus_card.py - the card's class and rows, chip gap 0-10 px and centred within 1 px on the home
+and in a chat, paper background, not the brand violet, the tick in ink, a tap removes the chip. NOT VERIFIED: on her server.

@@ -114,7 +114,7 @@ function plusMenu(b) {
     {label: 'Use Hoola PC', sub: "Do it on Hoola's own cloud computer", icon: 'monitor', checked: on('qPc'), run: () => $('#qPc').click()}];
   if (imp && !imp.hidden) items.push({label: 'Improve my prompt', sub: 'See what Hoola understood first', icon: 'spark', run: () => imp.click()});
   items.push({sep: true}, {label: `Everything ${AV} can do`, icon: 'grid', run: () => go('kaam')});
-  HoolaMenu.open(b, items, {align: 'start', place: 'below', label: 'Add to this message', width: 280});
+  HoolaMenu.open(b, items, {align: 'start', place: 'below', label: 'Add to this message', width: 320, cls: 'plusm'});
 }
 function sessName() { const c = CH?.find(CONV), p = c?.project_id && PJ?.nameOf(c.project_id); return p ? `${p.emoji || ''} ${p.name}`.trim() : ''; }
 function drawSess() { const b = $('#sessBtn'); if (b) b.querySelector('.sl').textContent = sessName() || 'Session'; }

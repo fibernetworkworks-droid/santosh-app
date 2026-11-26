@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.220"   # v0.999.220 NO THEME IN THE PROFILE MENU (owner: "NOW REMOVE THE LIGHT DARK AND SYTEM OPTION IN PROFILE SECTION . IT IS ALREADY IN CONSTERIZE SECTION"): the profile (account) menu no longer lists Light / Dark / System; the theme choice stays on the Customize page; 2 tests incl. a browser walk. Console only. Previous: v0.999.219 CREDIT & LENDING, FULLER (owner; older stories live in git history.
+APP_VERSION = "0.999.221"   # v0.999.221 THE + CARD AND ITS CHIP (owner, her + menu and the chosen Deep research chip: "MAKE THE CARD PREMIUM ... SELECTED CARD OPTIONS ... PERFECTLY ALLINED AND MUST BE LIKE HUMAN NATIVE MADE NOT A AI BLUE, PINK COMBINATION"): the + menu is a card with a soft tile per choice, one line under each, the chosen one in ink with a visible tick, the last row with an arrow; the chosen option sits right beside the + on the same line (it floated mid-bar: the + and the chip group both took the free space), in ink on paper with an x, on the home and inside a chat. Console only (appdesign.css, v2.js). Previous: v0.999.220 NO THEME IN THE PROFILE MENU.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
