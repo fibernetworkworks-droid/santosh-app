@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.217"   # v0.999.217 CUSTOMIZE IN THE PROFILE MENU (owner, after v0.999.215: "UNDO -- I TELL U TO JUST PALCE / MOVE THE CONSTERZE SECTION IN PROPFINE"): v0.999.215 undone - the app-design sidebar has no Customize row any more; Customize is an item of the profile (account) menu, first under her email, and opens the Customize page; its own brush icon; 2 tests incl. a browser walk. Console only. Previous: v0.999.216 CASH & TREASURY DESK (owner; older stories live in git history.
+APP_VERSION = "0.999.218"   # v0.999.218 CREDIT & LENDING DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE CREDIT AND LENDING"): the Credit & Lending employee gets its own section /console/credit + Credit chat (kind credit, `creditchat.py`): Today (owed to you -> behind -> you owe, how late the money owed is, payments in the next 30 days, needs you), Borrowing (the APR by her country's method - remembered, "check this" - or the one she chose, offers side by side on what they really cost, invoice finance, the readiness pack from her own statements and books), Applications (figures each with a source, the borrower's statement, ratios against her policy limits, her own underwriting rules - protected grounds refused, the conditions checklist, a key-facts draft, memo PDF / text; the named person's decision recorded, never made), Loan book (due against paid, days past due month by month, payments that happened, a collections contact checked against her contact rules and logged as planned, never sent), Risk (early warning, the ECL working paper on her own PD / LGD), Settings; team roles from Books; no score, no approve / decline, no payout; 6 tests incl. a browser walk. NOT VERIFIED on her server. Previous: v0.999.217 CUSTOMIZE IN THE PROFILE MENU (owner, after v0.999.215: "UNDO -- I TELL U TO JUST PALCE / MOVE THE CONSTERZE SECTION IN PROPFINE"): v0.999.215 undone - the app-design sidebar has no Customize row any more; Customize is an item of the profile (account) menu, first under her email, and opens the Customize page; its own brush icon; 2 tests incl. a browser walk. Console only. Previous: v0.999.216 CASH & TREASURY DESK (owner; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2124,6 +2124,15 @@ def cash_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/credit")
+@app.get("/console/credit/")
+def credit_desk_page():
+    """CREDIT & LENDING DESK: the Credit & Lending employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "creditdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/money")
 @app.get("/console/money/")
 def money_desk_page():
@@ -2671,6 +2680,8 @@ from . import taxchat as _taxchat_mod                            # noqa: E402  v
 _taxchat_mod.mount(app, current_tenant, require_key)            # /api/tax/*
 from . import cashchat as _cashchat_mod                          # noqa: E402  CASH & TREASURY DESK
 _cashchat_mod.mount(app, current_tenant, require_key)           # /api/cash/*
+from . import creditchat as _creditchat_mod                      # noqa: E402  CREDIT & LENDING DESK
+_creditchat_mod.mount(app, current_tenant, require_key)         # /api/credit/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

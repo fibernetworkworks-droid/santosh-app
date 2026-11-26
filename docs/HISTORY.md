@@ -12259,3 +12259,24 @@ NOT VERIFIED: on her server.
 ## v0.999.217 CUSTOMIZE IN THE PROFILE MENU (owner, after v0.999.215: "UNDO -- I TELL U TO JUST PALCE / MOVE THE CONSTERZE SECTION IN PROPFINE"): v0.999.215 undone - the app-design sidebar has no Customize row any more; Customize is an item of the profile (account) menu, first under her email, and opens the Customize page; its own brush icon; 2 tests incl. a browser walk. Console only.
 
 Console only (`static/console/v2.js`, `menu.js`). v0.999.215 is undone: the sidebar row `['main', 'Customize']`, its `data-acct` button and its click handler are gone, so the app-design sidebar ends with More. `acctItems()` (the profile / account button's menu) gets `Customize` as its first item under her email; it opens the Customize page (view main). HoolaMenu gets a `brush` icon. Tests: test_v0999_215_customize_menu.py removed; NEW test_v0999_217_customize_in_profile.py (shape + a Chromium walk: no Customize row, the profile menu lists Customize, picking it opens the Customize page); sidebar pins in test_v0973 / test_v0975 now end with More. NOT VERIFIED: on her server.
+
+## v0.999.218 CREDIT & LENDING DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE CREDIT AND LENDING")
+
+The Credit & Lending employee (F6 engine `fin/desks/credit.py`, tool `credit_lending`) gets its own section like Payroll, Tax and Cash &
+Treasury: `/console/credit` (`creditdesk.html/.js/.css`, frame + chat on seodesk / moneydesk / cashdesk styles) and the Credit chat
+(Conversation kind `credit`, `server/app/creditchat.py`, `/api/credit/*`), out of every chat list (`convs.py`, `callconv.py`); a turn
+in it gets the desk block and the `lending` family (`agent/santosh.py`). Employees hub, v2.js and the phone open it.
+
+- Desk state in the workspace settings under `credit_desk`: loans (lent / borrowed, monthly schedule, payments that happened, time zone,
+  her PD / LGD), applications (figures each with a source, applicant details, statement rows pasted as date, narration, amount,
+  conditions, the recorded decision), offers, memo policy limits, underwriting rules, her APR method. Contact rules + the contact log
+  stay where the engine keeps them (`settings.credit`).
+- Pages: Today (owed to you -> behind -> you owe, the lateness bar by bucket, payments in 30 days, needs you, open applications),
+  Borrowing (APR calculator by her country's remembered method - said "check this" - or the one she chose; offers side by side, cheapest
+  by total cost; invoice finance; the readiness pack from her own statements and books), Applications (ratios vs her limits, rule hits,
+  statement analysis, conditions with who waived, key-facts draft, memo PDF / text, the decision recorded with who decided), Loan book
+  (due vs paid, days past due month by month, record a payment that happened - never a future one, collections contact checked against
+  her rules + Hoola's floor and logged as planned, CSV), Risk (early warning, ECL working paper only with her PD / LGD), Settings.
+- Guards: no score, no approve / decline / payout (engine refuses those actions; the desk has none); rules and applicant details on
+  protected grounds refused; a figure with no source is refused; viewer / auditor read only.
+- Tests: `server/tests/test_credit_desk.py` (6, incl. a Chromium walk at 1440 and 390 px with screenshots). NOT VERIFIED on her server.
