@@ -174,6 +174,24 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         b = dict(body or {})
         return _wrap(LV.ask, tenant, str(b.get("id") or ""), str(b.get("text") or ""), code=409)
 
+    @r.get("/live/questions")
+    async def live_questions(id: str = "", tenant: str = Depends(current_tenant)):
+        _on()
+        return _wrap(LV.questions, tenant, id)
+
+    @r.post("/live/learn")
+    async def live_learn(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """v0.999.202 her answer to a question it could not answer, added to its facts."""
+        _on()
+        b = dict(body or {})
+        return _wrap(LV.learn, tenant, str(b.get("id") or ""), str(b.get("qid") or ""), str(b.get("answer") or ""))
+
+    @r.post("/live/dismiss")
+    async def live_dismiss(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        _on()
+        b = dict(body or {})
+        return _wrap(LV.dismiss, tenant, str(b.get("id") or ""), str(b.get("qid") or ""))
+
     @r.post("/live/publish")
     async def live_publish(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         _on()

@@ -186,7 +186,7 @@ def test_published_agent_answers_only_on_her_site(ix, monkeypatch):
     a = LV.agent_save("default", {"name": "Shop helper", "knows": "Open 9 am to 9 pm every day of the week.", "lang": "en"})
     pub = LV.publish("default", a["id"], True, ["https://myshop.in/"])
     assert pub["token"].startswith("ia_pub_") and "agent.js" in pub["embed"] and pub["sites"] == ["myshop.in"]
-    monkeypatch.setattr(LV, "answer", lambda agent, q, think=None: "We open at 9 am.")
+    monkeypatch.setattr(LV, "answer_known", lambda agent, q, think=None: ("We open at 9 am.", True))   # v0.999.202 answer + known
     monkeypatch.setattr(LV.VO, "speaker", lambda *a, **k: (lambda t, l: b"RIFF" + b"\x00" * 60))
     with pytest.raises(LV.LiveError, match="its own website"):
         LV.public_ask(pub["token"], "hi", "https://evil.example", "1.2.3.4")

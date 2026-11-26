@@ -3748,3 +3748,8 @@ Task ID: v0.999.201 VOICES, REDESIGNED
 Ask: Voices page advanced and premium like the other Interactive pages
 Built: describe-a-voice search, samples in her language, favourites shared with Vocal, voice panel, put a voice in several videos (new route)
 Not verified: on her server with real voices
+---
+Task ID: v0.999.202 LIVE AGENTS, REDESIGNED
+Ask: Live agents page advanced and premium like the other Interactive pages
+Built: question log with known / not known, learn + dismiss routes, list page with this week + misses, four-step builder beside Try it and Questions, website window
+Not verified: on her server with a real model; counts start from the deploy
