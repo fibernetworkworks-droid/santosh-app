@@ -12280,3 +12280,20 @@ in it gets the desk block and the `lending` family (`agent/santosh.py`). Employe
 - Guards: no score, no approve / decline / payout (engine refuses those actions; the desk has none); rules and applicant details on
   protected grounds refused; a figure with no source is refused; viewer / auditor read only.
 - Tests: `server/tests/test_credit_desk.py` (6, incl. a Chromium walk at 1440 and 390 px with screenshots). NOT VERIFIED on her server.
+
+## v0.999.219 CREDIT & LENDING, FULLER (owner: "DESIGN -- MAKE IT FULLY FUCTIONAL AND ADVANCE AND PREMIUM. ALSO MAKE IT SAME WORKING AS OTHER AI EMPLOYEE SECTION WE DEVLPOED")
+
+On top of v0.999.218 (`creditchat.py`, `creditdesk.*`):
+- `matches` / `confirm_match` / `dismiss_match`: lines in her imported bank statements (`fin.spine.txns`) that look like a loan's payment -
+  the right direction (money in for a loan she lent, out for one she owes), the payment or what is behind to within 1%, not before a month
+  ahead of the first due; "Name matches" when a word of the borrower's / lender's name is in the line, else "Amount only". Nothing is
+  recorded until she confirms; the payment then carries the bank line's id (never twice); a dismissed line is remembered. Today shows the
+  matches and a "needs you" line; the chat block says how many wait.
+- `outlook`: 12 months of what the schedules bring in / take out (late instalments shown as "behind, owed now") - the chart on Today.
+- `schedule`: every instalment (due, payment, interest, principal, balance after, paid / part paid / late / to come) on the loan page; a
+  loan statement PDF (`/api/credit/download?what=loan`).
+- Applications: stage gathering -> with the decider (`stage`), decided = the recorded decision (reopen goes back to with the decider); the
+  list is a three-column board; proposed terms editable; the borrower's statement from a CSV file.
+- Loan book: filters (all / you lent / you owe / behind) + search; the key-facts draft rendered as a table.
+- Tests: `test_credit_desk.py` 7 (new: schedule, bank matches, outlook, stages; the browser walk confirms a match, filters, searches,
+  moves a stage). NOT VERIFIED on her server.

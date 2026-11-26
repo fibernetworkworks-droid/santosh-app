@@ -49,7 +49,7 @@
 
   const ST = {tab: 'today', arg: '', d: null, chat: '', thread: null, bar: null, rows: [], res: null, sending: false, working: false,
     loading: false, drawn: false, seq: 0, ctx: '', side: 'left', folded: false, files: [], timers: [],
-    cmp: null, app: null, appFor: '', risk: null, aprRes: null, aprIn: null, ifRes: null, ifIn: null, ready: null, coll: null};
+    cmp: null, app: null, appFor: '', risk: null, aprRes: null, aprIn: null, ifRes: null, ifIn: null, ready: null, coll: null, sched: null, schedFor: '', schedAll: false, lf: 'all', lq: ''};
   try { ST.side = localStorage.getItem('hoola.credit.side') === 'right' ? 'right' : 'left'; ST.folded = localStorage.getItem('hoola.credit.folded') === '1'; } catch {}
 
   const W = () => (ST.d && ST.d.workspace) || null;
@@ -178,6 +178,10 @@
     $('#crPage').addEventListener('click', onPageClick);
     $('#crPage').addEventListener('submit', onSubmit);
     $('#crPage').addEventListener('change', onChange);
+    $('#crPage').addEventListener('mousemove', onChartMove);
+    $('#crPage').addEventListener('mouseleave', () => { const t = $('#crTip'); if (t) t.hidden = true; }, true);
+    $('#crPage').addEventListener('input', e => { if (e.target.id !== 'crLq') return; ST.lq = e.target.value; const at = e.target.selectionStart;
+      showPage(true); const q = $('#crLq'); if (q) { q.focus(); try { q.setSelectionRange(at, at); } catch {} } });
     window.addEventListener('hashchange', () => { readTab(); paintTabs(); showPage(); });
     stateLine();
   }
@@ -186,7 +190,7 @@
     b.innerHTML = svg(ST.folded ? IC.chat : (ST.side === 'left' ? IC.unfold : IC.fold));
     const t = ST.folded ? 'Open the chat' : 'Fold the chat'; b.setAttribute('aria-label', t); b.title = t;
   }
-  function clearCache() { ST.cmp = null; ST.app = null; ST.appFor = ''; ST.risk = null; ST.ready = null; }
+  function clearCache() { ST.cmp = null; ST.app = null; ST.appFor = ''; ST.risk = null; ST.ready = null; ST.sched = null; ST.schedFor = ''; }
   function stateLine() {
     const d = ST.d, el = $('#crState'); if (!el) return;
     const w = W(), b = B();
@@ -251,6 +255,48 @@
     return `<div class="cr-age">${parts}</div><div class="cr-legs">${leg}</div>`;
   }
 
+  /* the next 12 months: money the schedules bring in (loans she lent) against money going out (loans she owes) */
+  function outlookChart(o) {
+    const ms = (o && o.months) || []; if (!ms.length) return '';
+    const Wd = 760, Hd = 210, L = 52, R = 10, Tp = 12, Bt = 26, iw = Wd - L - R, ih = Hd - Tp - Bt;
+    const hi = Math.max(1, ...ms.map(m => Math.max(m.in + m.late_in, m.out)));
+    const y = v => Tp + ih - (v / hi) * ih, step = iw / ms.length, bw = Math.max(5, Math.min(18, step * 0.3));
+    let g = '';
+    for (let i = 0; i <= 3; i++) { const v = hi * i / 3; g += `<line class="ax" x1="${L}" x2="${Wd - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/><text class="tx" x="${L - 8}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end">${esc(short(v))}</text>`; }
+    ms.forEach((m, i) => {
+      const x = L + step * (i + 0.5), base = Tp + ih;
+      g += `<rect class="hit" data-m="${i}" x="${(L + step * i).toFixed(1)}" y="${Tp}" width="${step.toFixed(1)}" height="${ih}"/><rect class="hl" x="${(L + step * i).toFixed(1)}" y="${Tp}" width="${step.toFixed(1)}" height="${ih}"/>`;
+      if (m.late_in) g += `<rect class="blate" x="${(x - bw - 1).toFixed(1)}" y="${y(m.in + m.late_in).toFixed(1)}" width="${bw}" height="${(base - y(m.late_in)).toFixed(1)}" rx="2"/>`;
+      g += `<rect class="bin" x="${(x - bw - 1).toFixed(1)}" y="${y(m.in).toFixed(1)}" width="${bw}" height="${(base - y(m.in)).toFixed(1)}" rx="2"/>`
+        + `<rect class="bout" x="${(x + 1).toFixed(1)}" y="${y(m.out).toFixed(1)}" width="${bw}" height="${(base - y(m.out)).toFixed(1)}" rx="2"/>`
+        + `<text class="tx" x="${x.toFixed(1)}" y="${Hd - 8}" text-anchor="middle">${esc(mon(m.month))}</text>`;
+    });
+    return `<div class="cs-chart cr-chart"><svg viewBox="0 0 ${Wd} ${Hd}" role="img" aria-label="Repayments over the next 12 months">${g}</svg><div class="cs-tip" id="crTip" hidden></div></div>
+      <div class="cs-legend"><span><i class="in"></i>Coming in to you</span><span><i class="late"></i>Behind, owed to you now</span><span><i class="out"></i>Going out from you</span></div>`;
+  }
+  const mon = ym => { try { return new Date(ym + '-01T00:00').toLocaleDateString(undefined, {month: 'short'}); } catch { return ym; } };
+  const short = v => { const n = Math.abs(Number(v) || 0); return n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'k' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(Math.round(n)); };
+  function onChartMove(e) {
+    const h = e.target.closest && e.target.closest('.hit'), tip = $('#crTip'); if (!tip) return;
+    $('#crPage').querySelectorAll('.cr-chart .hl.on').forEach(x => x.classList.remove('on'));
+    if (!h) { tip.hidden = true; return; }
+    const m = ((K().outlook || {}).months || [])[Number(h.dataset.m)]; if (!m) return;
+    h.nextElementSibling && h.nextElementSibling.classList.add('on');
+    const box = h.closest('.cs-chart').getBoundingClientRect(), r = h.getBoundingClientRect();
+    tip.innerHTML = `<b>${esc(new Date(m.month + '-01T00:00').toLocaleDateString(undefined, {month: 'long', year: 'numeric'}))}</b><br>In ${esc(m2(m.in))}${m.late_in ? ` + ${esc(m2(m.late_in))} behind` : ''}<br>Out ${esc(m2(m.out))}<br>Net <b>${esc(m2(m.in + m.late_in - m.out))}</b>`;
+    tip.style.left = Math.min(box.width - 90, Math.max(90, r.left - box.left + r.width / 2)) + 'px'; tip.style.top = (e.clientY - box.top) + 'px'; tip.hidden = false;
+  }
+  function matchCard(compact) {
+    const ps = ((K().matches || {}).proposals) || [];
+    if (!ps.length) return compact ? '' : `<section class="card"><h2 class="md-h2">Found in your bank statements</h2>${empty('Nothing waiting. When you import a statement in Books & Accounts, Hoola looks for each loan\'s payments there.')}</section>`;
+    const rows = ps.slice(0, compact ? 4 : 50).map(p => `<div class="cs-row cr-match"><span class="mut nw" style="width:96px">${esc(dmy(p.day))}</span>
+      <span style="flex:1;min-width:0"><b>${esc(p.loan)}</b> ${p.named ? '<span class="cs-tag ok">Name matches</span>' : '<span class="cs-tag warn">Amount only</span>'}<div class="mut" style="font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.narration)}</div></span>
+      <span class="num ${p.side === 'lent' ? 'cs-pos' : 'cs-neg'}">${p.side === 'lent' ? '+' : '−'}${esc(m2(p.amount))}</span>
+      ${can() ? `<button class="btn sm" type="button" data-okmatch="${esc(p.txn)}" data-n="${esc(p.n)}">Confirm</button><button class="ib sm" type="button" data-nomatch="${esc(p.txn)}" aria-label="Not this loan">×</button>` : ''}</div>`).join('');
+    return `<section class="card cr-found"><div class="cs-head"><h2 class="md-h2" style="margin:0">Found in your bank statements <span class="cs-tag ok">${esc(ps.length)}</span></h2>${compact && ps.length > 4 ? '<div class="r"><button class="btn soft sm" type="button" data-go="loans">See all</button></div>' : ''}</div>
+      <div style="margin-top:6px">${rows}</div><p class="cs-note">${esc((K().matches || {}).says || '')}</p></section>`;
+  }
+
   function pToday() {
     const k = K(), b = B(), L = b.lent || {}, M = b.borrowed || {};
     const open = appsOf().filter(a => a.status !== 'closed');
@@ -272,6 +318,8 @@
         </div>
         ${L.count ? `<div><div class="cr-sub">How late the money owed to you is</div>${ageBar(L.buckets || {})}</div>` : ''}
       </section>
+      ${matchCard(true)}
+      ${(K().outlook || {}).months && ((K().outlook.total_in || 0) + (K().outlook.total_out || 0)) ? `<section class="card"><div class="cs-head"><h2 class="md-h2" style="margin:0">The next 12 months</h2><div class="r"><span class="mut" style="font-size:13px">${esc(m2(K().outlook.total_in))} in · ${esc(m2(K().outlook.total_out))} out</span></div></div>${outlookChart(K().outlook)}</section>` : ''}
       <div class="md-3 cs-4">
         ${kpi('Open applications', esc(open.length), open.length ? 'Waiting for the decider' : 'None open')}
         ${kpi('Conditions missing', esc(open.reduce((s, a) => s + (((a.checklist || {}).missing) || []).length, 0)), 'Across open applications')}
@@ -377,16 +425,16 @@
     const apps = appsOf();
     const card = a => { const ck = a.checklist || {}, tot = (ck.items || []).length, got = tot - (ck.missing || []).length, late = (ck.items || []).filter(i => i.late).length;
       return `<button class="cr-app" type="button" data-go="apps/${esc(a.n)}">
-        <div class="t"><b>${esc(a.borrower)}</b>${a.status === 'closed' ? '<span class="cs-tag">Decided</span>' : late ? `<span class="cs-tag bad">${esc(late)} late</span>` : '<span class="cs-tag ok">Open</span>'}</div>
+        <div class="t"><b>${esc(a.borrower)}</b>${a.status === 'closed' ? '' : late ? `<span class="cs-tag bad">${esc(late)} late</span>` : tot && got === tot ? '<span class="cs-tag ok">Papers in</span>' : ''}</div>
         <div class="v">${esc(money(a.amount))}</div>
         <div class="mut" style="font-size:13px">${esc(a.purpose || 'No purpose given')}${a.rate !== null && a.rate !== undefined ? ` · ${esc(a.rate)}% over ${esc(a.term)} months` : ''}</div>
         <div class="f"><span>${esc(Object.keys(a.figures || {}).length)} figures</span><span>${esc(a.rows_count || 0)} statement rows</span><span>${tot ? `${esc(got)}/${esc(tot)} conditions` : 'No conditions'}</span></div>
         ${a.status === 'closed' ? `<div class="mut" style="font-size:12.5px">${esc(a.decided_by)}: ${esc(a.outcome)}</div>` : ''}</button>`; };
     const open = apps.filter(a => a.status !== 'closed'), done = apps.filter(a => a.status === 'closed');
+    const col = (key, title, list, note) => `<div class="cr-col"><div class="cr-colh"><b>${esc(title)}</b><span class="cs-tag">${esc(list.length)}</span></div>${list.map(card).join('') || `<div class="cr-colempty">${esc(note)}</div>`}</div>`;
     return `<div class="cs-head"><div><h1 class="sd-h">Applications</h1><p class="lead" style="margin-top:4px">Each borrower's figures with their sources, their statement, your rules, the memo and the key facts. The decision is the named person's.</p></div></div>
       ${can() ? `<section class="card"><h2 class="md-h2">New application</h2><form data-form="app" class="cs-form" style="margin-top:0"><input class="in" name="borrower" placeholder="Borrower" required maxlength="80"><input class="in sm2" name="amount" type="number" step="0.01" min="0" placeholder="Amount asked" required><input class="in" name="purpose" placeholder="What it is for" maxlength="160"><input class="in sm2" name="rate" type="number" step="0.01" min="0" placeholder="Rate % (proposed)"><input class="in sm2" name="term" type="number" min="1" placeholder="Months"><button class="btn" type="submit">Add</button></form></section>` : ''}
-      <div class="cr-apps">${open.map(card).join('') || `<section class="card">${empty('No open application.')}</section>`}</div>
-      ${done.length ? `<h2 class="md-h2" style="margin-top:8px">Decided</h2><div class="cr-apps">${done.map(card).join('')}</div>` : ''}`;
+      <div class="cr-board">${col('gathering', 'Gathering papers', open.filter(a => a.stage !== 'with_decider'), 'Nothing being gathered')}${col('with_decider', 'With the decider', open.filter(a => a.stage === 'with_decider'), 'Nothing waiting for a decision')}${col('decided', 'Decided', done, 'No decision recorded yet')}</div>`;
   }
   function appOne(n) {
     if (ST.appFor !== String(n)) { ST.app = null; ST.appFor = String(n); }
@@ -413,6 +461,10 @@
     return `<div class="cs-head"><div style="min-width:0"><button class="btn soft sm" type="button" data-go="apps">← Applications</button>
         <h1 class="sd-h" style="margin-top:10px">${esc(a.borrower)}</h1><p class="lead" style="margin-top:4px">${esc(money(a.amount, cur(), 2))}${a.purpose ? ' for ' + esc(a.purpose) : ''}${a.rate !== null && a.rate !== undefined ? ` · proposed ${esc(a.rate)}% over ${esc(a.term)} months${a.requested_emi ? `, ${esc(m2(a.requested_emi))} a month` : ''}` : ''}</p></div>
         <div class="r">${memo && !memo.error ? `<button class="btn soft sm" type="button" data-dl="memo">Memo PDF</button><button class="btn soft sm" type="button" data-dl="memo_md">Memo text</button>` : ''}${kfs && !kfs.error ? '<button class="btn soft sm" type="button" data-dl="kfs">Key facts</button>' : ''}<button class="btn soft sm" type="button" data-ask="${esc('Application: ' + a.borrower)}">Ask about it</button></div></div>
+      <section class="card cr-stagebar"><div class="cs-seg" role="group" aria-label="Stage">${[['gathering', 'Gathering papers'], ['with_decider', 'With the decider'], ['decided', 'Decided']].map(([k, l]) => `<button type="button" ${k === 'decided' ? 'disabled' : `data-stage="${k}"`} aria-pressed="${(closed ? 'decided' : (a.stage || 'gathering')) === k}"${!can() || closed ? ' disabled' : ''}>${esc(l)}</button>`).join('')}</div>
+        <span class="mut" style="font-size:13px">${closed ? 'Recorded below.' : a.stage === 'with_decider' ? 'Waiting for the credit officer or committee.' : 'Collecting figures, the statement and the conditions.'}</span>
+        ${ro ? '<button class="btn soft sm" type="button" data-terms="1">Change the terms</button>' : ''}</section>
+      ${ro && ST.terms ? `<section class="card"><h2 class="md-h2">Proposed terms</h2><form data-form="terms" class="cr-grid"><input class="in" name="amount" type="number" step="0.01" min="0" value="${esc(a.amount)}" aria-label="Amount" placeholder="Amount" required><input class="in" name="rate" type="number" step="0.01" min="0" value="${esc(a.rate ?? '')}" aria-label="Rate" placeholder="Rate % a year"><input class="in" name="term" type="number" min="1" value="${esc(a.term ?? '')}" aria-label="Months" placeholder="Months"><input class="in" name="fee_pct" type="number" step="0.01" min="0" value="${esc(a.fee_pct ?? '')}" aria-label="Fee %" placeholder="Fee %"><input class="in" name="purpose" value="${esc(a.purpose || '')}" aria-label="Purpose" placeholder="What it is for" maxlength="160"><button class="btn" type="submit">Save</button></form></section>` : ''}
       ${closed ? `<section class="md-alert" style="border-color:var(--line);background:var(--soft);color:var(--ink)">${svg(IC.info)}<div><div class="t">Decided by ${esc(a.decided_by)}</div><div class="s">${esc(a.outcome)} · recorded by ${esc(a.closed_by)} on ${esc(a.closed_on)}</div></div>${can() ? '<button class="btn soft sm" type="button" data-reopen="1">Reopen</button>' : ''}</section>` : ''}
       <div class="md-2" style="align-items:start">
         <section class="card"><h2 class="md-h2">Figures and where they come from</h2>
@@ -426,7 +478,7 @@
         ${an && !an.error ? `<div class="md-3 cs-4" style="margin-top:12px">${kpi('Money in a month', esc(money((af.average_monthly_in || {}).value)), `${((af.average_monthly_in || {}).rows || []).length} rows`)}${kpi('Debt payments a month', esc(money((af.regular_debt_payments_monthly || {}).value)), `${((af.regular_debt_payments_monthly || {}).rows || []).length} rows seen in 2+ months`)}${kpi('Lowest balance', esc(money((af.lowest_balance || {}).value)), 'From zero at the start')}${kpi('Returned items', esc((af.bounced_items || {}).value || 0), 'Bounced or unpaid', (af.bounced_items || {}).value ? 'bad' : 'ok')}</div>
           ${months ? `<div class="cr-months">${months}</div>` : ''}${(an.bounced || []).length ? `<div class="cr-sub" style="margin-top:12px">Returned items</div>${an.bounced.map(x => `<div class="cs-row"><span class="mut nw" style="width:92px">${esc(dmy(x.day))}</span><span style="flex:1">${esc(x.narration)}</span><span class="num cs-neg">${esc(m2(x.amount))}</span></div>`).join('')}` : ''}<p class="cs-note">${esc(an.says)}</p>`
           : an && an.error ? `<p class="cs-note cs-neg">${esc(an.error)}</p>` : `<p class="mut" style="margin:8px 0 0;font-size:14px">Paste the borrower's statement as date, narration, amount (money out as minus), or drop the file in the chat.</p>`}
-        ${ro ? `<form data-form="rows" style="margin-top:12px"><textarea class="in" name="rows_csv" rows="4" placeholder="2026-06-01, SALES, 9000&#10;2026-06-05, LOAN EMI, -800" style="width:100%;font-family:var(--mono, monospace);font-size:13px"></textarea><div class="md-acts" style="margin-top:8px"><span class="mut" style="font-size:13px">Replaces the rows kept for this application.</span><button class="btn soft sm" type="submit">Read the statement</button></div></form>` : ''}</section>
+        ${ro ? `<form data-form="rows" style="margin-top:12px"><textarea class="in" name="rows_csv" rows="4" placeholder="2026-06-01, SALES, 9000&#10;2026-06-05, LOAN EMI, -800" style="width:100%;font-family:var(--mono, monospace);font-size:13px"></textarea><div class="md-acts" style="margin-top:8px"><span class="mut" style="font-size:13px">Replaces the rows kept for this application. <label class="linkbtn">Choose a CSV file<input type="file" accept=".csv,.txt,text/csv,text/plain" data-rowsfile="1" hidden></label></span><button class="btn soft sm" type="submit">Read the statement</button></div></form>` : ''}</section>
       <div class="md-2" style="align-items:start">
         <section class="card"><h2 class="md-h2">Your rules</h2>
           ${rules === null ? empty('No underwriting rules yet - add yours in Settings.') : rules.error ? `<p class="cs-note cs-neg">${esc(rules.error)}</p>` : (hits || '<div class="cs-row"><span class="cr-st received">✓</span><span>Every rule that could be run is met.</span></div>')}
@@ -439,7 +491,7 @@
           ${ck && ck.says ? `<p class="cs-note">${esc(ck.says)}</p>` : ''}
           ${ro ? `<form data-form="cond" class="cs-form"><input class="in" name="name" placeholder="Signed guarantee" required maxlength="120"><input class="in sm2" type="date" name="due" aria-label="Due"><button class="btn soft sm" type="submit">Add</button></form>` : ''}</section>
       </div>
-      ${kfs && !kfs.error ? `<section class="card"><div class="cs-head"><h2 class="md-h2" style="margin:0">Key facts draft</h2><div class="r"><span class="cs-tag">APR ${esc(pct((kfs.apr || {}).apr_pct))} · ${esc(METH[(kfs.apr || {}).method] || '')}</span></div></div><div class="cr-md textmd">${window.HoolaMD ? HoolaMD.render(S(kfs.kfs_markdown).replace(/^# .*\n/, ''), false) : `<pre>${esc(kfs.kfs_markdown)}</pre>`}</div><p class="cs-note">${esc(kfs.not_checked)} ${esc(kfs.decider)}</p></section>`
+      ${kfs && !kfs.error ? `<section class="card"><div class="cs-head"><h2 class="md-h2" style="margin:0">Key facts draft</h2><div class="r"><span class="cs-tag">APR ${esc(pct((kfs.apr || {}).apr_pct))} · ${esc(METH[(kfs.apr || {}).method] || '')}</span></div></div><div class="cr-md textmd">${window.HoolaMD ? HoolaMD.render(S(kfs.kfs_markdown).replace(/^# .*\n/, '').replace(/\n\|/, '\n\n|').replace(/\|\n([^|\n])/, '|\n\n$1'), false) : `<pre>${esc(kfs.kfs_markdown)}</pre>`}</div><p class="cs-note">${esc(kfs.not_checked)} ${esc(kfs.decider)}</p></section>`
         : `<section class="card"><h2 class="md-h2">Key facts draft</h2>${empty(kfs && kfs.error ? kfs.error : 'Give the proposed rate and term (and choose an APR method in Settings) to draft the key facts.')}</section>`}
       ${can() && !closed ? `<section class="card"><h2 class="md-h2">Record the decision</h2><p class="mut" style="margin:0 0 10px;font-size:14px">Hoola gives no score and does not decide. When the credit officer or committee decides, write down who and what, in their words.</p>
         <form data-form="decide" class="cs-form" style="margin-top:0"><input class="in" name="decided_by" placeholder="Who decided (name or committee)" required maxlength="80"><input class="in" name="outcome" placeholder="What they decided" required maxlength="160"><button class="btn soft sm" type="submit">Record it</button></form>
@@ -449,14 +501,18 @@
   /* ---------------------------------------------------------------- the loan book */
   function pLoans() {
     if (ST.arg) return loanOne(ST.arg);
-    const b = B(), loans = b.loans || [];
+    const b = B(), all = b.loans || [], q = ST.lq.trim().toLowerCase();
+    const loans = all.filter(v => (ST.lf === 'all' || (ST.lf === 'late' ? v.arrears > 0 : v.side === ST.lf)) && (!q || S(v.name).toLowerCase().includes(q)));
+    const cnt = {all: all.length, lent: all.filter(v => v.side === 'lent').length, borrowed: all.filter(v => v.side === 'borrowed').length, late: all.filter(v => v.arrears > 0).length};
     const rows = loans.slice().sort((x, y) => (y.days_past_due - x.days_past_due) || ((x.next_due || '9') < (y.next_due || '9') ? -1 : 1))
       .map(v => `<tr class="cs-wk${v.days_past_due > 30 ? ' under' : ''}" data-go="loans/${esc(v.n)}"><td><b>${esc(v.name)}</b><div>${side(v.side)}</div></td><td class="num">${esc(m2(v.outstanding))}</td><td class="num">${esc(m2(v.payment))}</td>
         <td class="num ${v.arrears ? 'cs-neg' : ''}">${v.arrears ? esc(m2(v.arrears)) : '—'}</td><td>${dpdTag(v)}</td><td class="nw">${esc(dmy(v.next_due))}</td><td class="nw mut">${esc(v.term - v.instalments_left)} / ${esc(v.term)}</td></tr>`).join('');
     return `<div class="cs-head"><div><h1 class="sd-h">Loan book</h1><p class="lead" style="margin-top:4px">What was due against what was paid, for every loan you gave and every loan you took.</p></div>
-        <div class="r">${loans.length ? '<button class="btn soft sm" type="button" data-dl="book">Download CSV</button>' : ''}</div></div>
+        <div class="r">${all.length ? '<button class="btn soft sm" type="button" data-dl="book">Download CSV</button>' : ''}</div></div>
+      ${matchCard(false)}
+      ${all.length ? `<div class="cr-filter"><div class="cs-seg" role="group" aria-label="Show">${[['all', 'All'], ['lent', 'You lent'], ['borrowed', 'You owe'], ['late', 'Behind']].map(([k, l]) => `<button type="button" data-lf="${k}" aria-pressed="${ST.lf === k}">${esc(l)} <span class="mut">${esc(cnt[k])}</span></button>`).join('')}</div><input class="in" type="search" id="crLq" placeholder="Find a loan" value="${esc(ST.lq)}" aria-label="Find a loan"></div>` : ''}
       <section class="card tight"><div style="overflow-x:auto"><table class="tb"><thead><tr><th>Loan</th><th class="num">Still owed</th><th class="num">A month</th><th class="num">Behind</th><th>Status</th><th>Next due</th><th>Paid</th></tr></thead>
-        <tbody>${rows || '<tr><td colspan="7" class="mut">No loans yet.</td></tr>'}</tbody></table></div></section>
+        <tbody>${rows || `<tr><td colspan="7" class="mut">${all.length ? 'No loan matches.' : 'No loans yet.'}</td></tr>`}</tbody></table></div></section>
       ${can() ? `<section class="card"><h2 class="md-h2">Add a loan</h2><form data-form="loan" class="md-form">
         <div class="md-field"><label for="crL1">Borrower (or, for your loan, the lender)</label><input class="in" id="crL1" name="name" required maxlength="80"></div>
         <div class="md-field"><label for="crL2">Which side</label><select class="in" id="crL2" name="side"><option value="lent">You lent it</option><option value="borrowed">You owe it</option></select></div>
@@ -467,6 +523,19 @@
         <div class="md-field"><label for="crL7">Monthly payment (if the agreement fixes it)</label><input class="in" id="crL7" name="payment" type="number" step="0.01" min="0" placeholder="Worked out from the rate"></div>
         <div class="md-field"><label for="crL8">Borrower's time zone</label><input class="in" id="crL8" name="tz" placeholder="Europe/London" maxlength="60"></div>
       </form><div class="md-acts"><span class="mut" style="font-size:13px">Monthly loans. Payments you receive or make are recorded on the loan.</span><button class="btn" type="button" data-addloan="1">Add the loan</button></div></section>` : ''}`;
+  }
+  function schedCard(v) {
+    if (ST.schedFor !== String(v.n)) { ST.sched = null; ST.schedFor = String(v.n); ST.schedAll = false; }
+    if (ST.sched === null) { lazy('sched', 'schedule', {n: Number(v.n)}); return `<section class="card"><h2 class="md-h2">Repayment schedule</h2>${loading()}</section>`; }
+    if (!ST.sched || ST.sched.error) return `<section class="card"><h2 class="md-h2">Repayment schedule</h2>${empty((ST.sched && ST.sched.error) || 'Working it out…')}</section>`;
+    const rows = ST.sched.rows || [], firstOpen = Math.max(0, rows.findIndex(r => r.status !== 'paid'));
+    const show = ST.schedAll ? rows : rows.slice(Math.max(0, firstOpen - 2), Math.max(0, firstOpen - 2) + 8);
+    const SAY = {paid: ['ok', 'Paid'], part: ['warn', 'Part paid'], late: ['bad', 'Late'], upcoming: ['', 'To come']};
+    const tot = rows.reduce((a, r) => a + r.interest, 0);
+    return `<section class="card tight"><div class="cs-head" style="padding:16px 18px 0"><h2 class="md-h2" style="margin:0">Repayment schedule</h2><div class="r"><span class="mut" style="font-size:13px">Interest over the loan ${esc(m2(tot))}</span></div></div>
+      <div style="overflow-x:auto;margin-top:8px"><table class="tb"><thead><tr><th>#</th><th>Due</th><th class="num">Payment</th><th class="num">Interest</th><th class="num">Principal</th><th class="num">Balance after</th><th>Status</th></tr></thead><tbody>
+      ${show.map(r => `<tr class="${r.status === 'late' ? 'cr-late' : ''}"><td class="mut">${esc(r.k)}</td><td class="nw">${esc(dmy(r.due))}</td><td class="num">${esc(m2(r.payment))}</td><td class="num mut">${esc(m2(r.interest))}</td><td class="num">${esc(m2(r.principal))}</td><td class="num">${esc(m2(r.balance))}</td><td><span class="cs-tag ${SAY[r.status][0]}">${esc(SAY[r.status][1])}${r.status === 'part' ? ' · ' + esc(m2(r.paid)) : ''}</span></td></tr>`).join('')}
+      </tbody></table></div>${rows.length > show.length || ST.schedAll ? `<div style="padding:10px 18px 16px"><button class="btn soft sm" type="button" data-schedall="1">${ST.schedAll ? 'Show fewer' : `Show all ${esc(rows.length)} payments`}</button></div>` : ''}</section>`;
   }
   function loanOne(n) {
     const v = loanOf(n);
@@ -480,7 +549,7 @@
     const nowLocal = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 16);
     return `<div class="cs-head"><div style="min-width:0"><button class="btn soft sm" type="button" data-go="loans">← Loan book</button>
         <h1 class="sd-h" style="margin-top:10px">${esc(v.name)} ${side(v.side)}</h1><p class="lead" style="margin-top:4px">${esc(money(v.amount, cur(), 2))} over ${esc(v.term)} months${v.rate ? ` at ${esc(v.rate)}%` : ''} · first due ${esc(dmy(v.start))}</p></div>
-        <div class="r"><button class="btn soft sm" type="button" data-ask="${esc('Loan: ' + v.name)}">Ask about it</button></div></div>
+        <div class="r"><button class="btn soft sm" type="button" data-dl="loan">Statement PDF</button><button class="btn soft sm" type="button" data-ask="${esc('Loan: ' + v.name)}">Ask about it</button></div></div>
       <section class="cs-hero cr-hero"><div class="top">
         <div class="k"><div class="l">Still owed</div><div class="v">${esc(m2(v.outstanding))}</div><div class="s">principal, after the payments made</div></div>
         <div class="k low${v.arrears ? ' bad' : ''}"><div class="l">Behind</div><div class="v">${esc(m2(v.arrears))}</div><div class="s">${v.days_past_due ? `${esc(v.days_past_due)} days past due · since ${esc(dmy(v.oldest_unpaid_due))}` : 'up to date'}</div></div>
@@ -492,6 +561,7 @@
         <section class="card"><h2 class="md-h2">Days past due, month by month</h2>${hist.length ? `<div class="cr-months dpd">${hbars}</div>` : empty('Too early to show.')}
           ${v.rising ? '<p class="cs-note cs-neg">Getting worse: more days past due than at the last month-end.</p>' : ''}</section>
       </div>
+      ${schedCard(v)}
       ${lent ? `<section class="card"><h2 class="md-h2">Before you contact ${esc(v.name)}</h2><p class="mut" style="margin:0 0 12px;font-size:14px">Hoola checks the contact against your contact rules (and its own floor): the hour where the borrower lives, how often, the channel, the words. An allowed contact is logged as planned - the person collecting sends it.</p>
         ${can() ? `<form data-form="collect" class="md-form">
           <div class="md-field"><label for="crC1">Channel</label><select class="in" id="crC1" name="channel">${['call', 'sms', 'email', 'letter', 'whatsapp'].map(x => `<option>${x}</option>`).join('')}</select></div>
@@ -599,6 +669,9 @@
     const go = t.closest('[data-go]'); if (go) { location.hash = '#/' + go.dataset.go; return; }
     const ask = t.closest('[data-ask]'); if (ask) { setCtx(ask.dataset.ask); return; }
     const dl = t.closest('[data-dl]'); if (dl) { download(dl.dataset.dl); return; }
+    const lf = t.closest('[data-lf]'); if (lf) { ST.lf = lf.dataset.lf; showPage(true); return; }
+    if (t.closest('[data-schedall]')) { ST.schedAll = !ST.schedAll; showPage(true); return; }
+    if (t.closest('[data-terms]')) { ST.terms = !ST.terms; showPage(true); return; }
     try {
       if (t.closest('[data-aprgo]')) {
         const fd = formOf('form[data-form=apr]'); if (!fd) return;
@@ -613,6 +686,9 @@
         showPage(true); return;
       }
       if (t.closest('[data-ready]')) { ST.ready = false; showPage(true); try { ST.ready = await run('readiness', {}); } catch (err) { ST.ready = {error: err.message}; } showPage(true); return; }
+      const sg = t.closest('[data-stage]'); if (sg) { await run('stage', {n: Number(ST.arg), stage: sg.dataset.stage}); await changed(sg.dataset.stage === 'with_decider' ? 'Sent to the decider.' : 'Back to gathering.'); return; }
+      const om = t.closest('[data-okmatch]'); if (om) { om.disabled = true; await run('confirm_match', {n: Number(om.dataset.n), txn: om.dataset.okmatch}); await changed('Payment recorded from your bank statement.'); return; }
+      const nm = t.closest('[data-nomatch]'); if (nm) { await run('dismiss_match', {txn: nm.dataset.nomatch}); await changed('Dismissed.'); return; }
       const uo = t.closest('[data-unoffer]'); if (uo) { await run('remove_offer', {n: Number(uo.dataset.unoffer)}); await changed('Removed.'); return; }
       if (t.closest('[data-addloan]')) {
         const fd = formOf('form[data-form=loan]'); if (!fd) return;
@@ -645,6 +721,9 @@
     } catch (err) { toast(err.message, true); }
   }
   async function onChange(e) {
+    const fi = e.target.closest('[data-rowsfile]');
+    if (fi) { const f = fi.files && fi.files[0]; if (!f) return; if (f.size > 2e6) { toast('Up to 2 MB.', true); return; }
+      const ta = $('form[data-form=rows] textarea'); if (ta) ta.value = await f.text(); toast(`${f.name} loaded - press Read the statement.`); return; }
     const s = e.target.closest('[data-cond]'); if (!s) return;
     let a = {n: Number(ST.arg), name: s.dataset.cond, status: s.value};
     const item = ((ST.app && ST.app.checklist) || {}).items?.find(i => i.name === s.dataset.cond);
@@ -662,6 +741,7 @@
     try {
       if (kind === 'offer') { await run('add_offer', {name: g('name'), ...nums(fd, ['amount', 'rate', 'term', 'fee_pct', 'fees_upfront'])}); await changed('Offer added.'); }
       else if (kind === 'app') { const r = await run('add_app', {borrower: g('borrower'), purpose: g('purpose'), ...nums(fd, ['amount', 'rate', 'term'])}); await changed('Application added.'); location.hash = '#/apps/' + r.app.n; }
+      else if (kind === 'terms') { ST.terms = false; await run('edit_app', {n, amount: Number(g('amount')), rate: g('rate'), term: g('term'), fee_pct: g('fee_pct'), purpose: g('purpose')}); await changed('Terms saved.'); }
       else if (kind === 'afig') { await run('app_figure', {n, name: g('name'), value: Number(g('value')), source: g('source')}); await changed('Figure added.'); }
       else if (kind === 'afield') { await run('app_field', {n, field: g('field'), value: g('value')}); await changed('Added.'); }
       else if (kind === 'rows') { await run('edit_app', {n, rows_csv: g('rows_csv')}); await changed('Statement read.'); }

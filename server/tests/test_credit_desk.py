@@ -212,6 +212,53 @@ def _as_role(cr, ws, role, part, a):
         E.access = real
 
 
+def test_schedule_bank_matches_outlook_and_stages(cr):
+    from app.employee import hire
+    from app.fin import spine as SP
+    from app.main import app
+    hire.hire(T, "credit_lending", trust="seekh")
+    ws = _ws()
+    st = _months_ago(3)
+    cr.do(T, "add_loan", {"workspace": ws, "name": "Mia's Cafe Ltd", "side": "lent", "amount": 12000, "rate": 9, "term": 24, "start": st})
+    cr.do(T, "add_loan", {"workspace": ws, "name": "High St Bank", "side": "borrowed", "amount": 6000, "rate": 0, "term": 12, "payment": 500,
+                          "start": st})
+    s1 = cr.do(T, "schedule", {"workspace": ws, "n": 1})["rows"]
+    assert len(s1) == 24 and s1[0]["status"] == "late" and abs(s1[-1]["balance"]) < 0.01
+    assert round(sum(r["principal"] for r in s1), 2) == 12000.0
+    # her imported statement: a line naming the borrower with the payment, one with only the amount, one unrelated
+    d1 = st
+    SP.import_statement(T, ws, f"Date,Narration,Debit,Credit\n{d1},FPS MIAS CAFE REPAYMENT,,548.22\n{d1},DD HIGH ST BANK LOAN,500.00,\n"
+                        f"{d1},CARD SHOP,548.22,\n{d1},TRANSFER IN,,123.00\n", "Current", "GBP")
+    m = cr.do(T, "matches", {"workspace": ws})["proposals"]
+    assert {(x["loan"], x["named"]) for x in m} == {("Mia's Cafe Ltd", True), ("High St Bank", True)}       # the card spend is the wrong way
+    mia = next(x for x in m if x["n"] == 1)
+    v = cr.do(T, "confirm_match", {"workspace": ws, "n": 1, "txn": mia["txn"]})["loan"]
+    assert v["paid_so_far"] == 548.22 and v["paid"][0]["txn"] == mia["txn"]
+    with pytest.raises(cr.CreditDeskError, match="already recorded"):
+        cr.do(T, "confirm_match", {"workspace": ws, "n": 1, "txn": mia["txn"]})
+    bank = next(x for x in m if x["n"] == 2)
+    cr.do(T, "dismiss_match", {"workspace": ws, "txn": bank["txn"]})
+    assert cr.do(T, "matches", {"workspace": ws})["proposals"] == []
+    assert cr.do(T, "schedule", {"workspace": ws, "n": 1})["rows"][0]["status"] == "paid"
+    o = cr.do(T, "outlook", {"workspace": ws})
+    assert len(o["months"]) == 12 and o["months"][0]["late_in"] > 0 and o["total_out"] > 0 and o["months"][1]["in"] == 548.22
+    pdf = TestClient(app).get("/api/credit/download", params={"workspace": ws, "what": "loan", "n": 1})
+    assert pdf.status_code == 200 and pdf.content[:4] == b"%PDF"
+    # stages: gathering -> with the decider -> decided (recorded) -> reopened
+    a = cr.do(T, "add_app", {"workspace": ws, "borrower": "Leaf & Co", "amount": 25000})["app"]
+    assert a["stage"] == "gathering"
+    assert cr.do(T, "stage", {"workspace": ws, "n": a["n"], "stage": "with_decider"})["app"]["stage"] == "with_decider"
+    with pytest.raises(cr.CreditDeskError, match="stage"):
+        cr.do(T, "stage", {"workspace": ws, "n": a["n"], "stage": "approved"})
+    t = cr.do(T, "edit_app", {"workspace": ws, "n": a["n"], "rate": 11, "term": 36, "purpose": "an oven"})["app"]
+    assert t["rate"] == 11 and t["requested_emi"] > 0
+    cr.do(T, "close_app", {"workspace": ws, "n": a["n"], "decided_by": "Ana (credit officer)", "outcome": "Agreed"})
+    with pytest.raises(cr.CreditDeskError, match="reopen"):
+        cr.do(T, "stage", {"workspace": ws, "n": a["n"], "stage": "gathering"})
+    cr.do(T, "reopen_app", {"workspace": ws, "n": a["n"]})
+    assert cr.do(T, "app", {"workspace": ws, "n": a["n"]})["stage"] == "with_decider"
+
+
 def test_routes(cr):
     from app.employee import hire
     from app.main import app
@@ -285,6 +332,8 @@ def test_desk_in_a_real_browser(cr, cr_server):
     cr.do(T, "condition", {"workspace": ws, "n": a["n"], "name": "Insurance", "status": "received"})
     cr.do(T, "add_offer", {"workspace": ws, "name": "Bank A", "amount": 20000, "rate": 8, "term": 36, "fee_pct": 2})
     cr.do(T, "add_offer", {"workspace": ws, "name": "Lender B", "amount": 20000, "rate": 7, "term": 36, "fees_upfront": 900})
+    from app.fin import spine as SP
+    SP.import_statement(T, ws, f"Date,Narration,Debit,Credit\n{_months_ago(1, 2)},FPS OAK JOINERY,,703.33\n", "Current", "GBP")
     shots = os.environ.get("HOOLA_SHOTS")
     errs = []
 
@@ -300,7 +349,8 @@ def test_desk_in_a_real_browser(cr, cr_server):
         pg.goto(base + "/console/credit")
         pg.wait_for_selector("text=Needs you", timeout=20000)
         assert pg.locator(".cr-hero").count() == 1 and pg.locator(".cr-age span").count() >= 2
-        assert pg.locator(".md-kpi").count() == 4
+        assert pg.locator(".md-kpi").count() == 4 and pg.locator(".cr-chart svg .bin").count() == 12
+        assert pg.locator(".cr-found .cr-match").count() == (1 if w == 1440 else 0)
         snap(pg, f"credit-today-{w}")
         pg.goto(base + "/console/credit#/borrow")
         pg.wait_for_selector(".cr-offer.best", timeout=20000)
@@ -314,13 +364,26 @@ def test_desk_in_a_real_browser(cr, cr_server):
         pg.wait_for_selector(".cr-app", timeout=20000)
         pg.click(".cr-app")
         pg.wait_for_selector(".cr-ratio", timeout=20000)
+        if w == 1440:
+            pg.click("[data-stage='with_decider']")
+            pg.wait_for_selector("text=Waiting for the credit officer or committee", timeout=20000)
         assert pg.locator("text=Key facts draft").count() == 1 and pg.locator(".cr-st").count() >= 2
         snap(pg, f"credit-app-{w}")
         pg.goto(base + "/console/credit#/loans")
         pg.wait_for_selector("text=Add a loan" if w == 1440 else ".cs-wk", timeout=20000)
+        if w == 1440:
+            pg.click("[data-okmatch]")
+            pg.wait_for_selector("text=Payment recorded from your bank statement", timeout=20000)
+            pg.click("[data-lf='borrowed']")
+            pg.wait_for_selector(".cs-wk >> text=High St Bank", timeout=20000)
+            assert pg.locator(".cs-wk").count() == 1
+            pg.click("[data-lf='all']")
+            pg.fill("#crLq", "oak")
+            pg.wait_for_function("document.querySelectorAll('.cs-wk').length === 1")
         snap(pg, f"credit-loans-{w}")
         pg.goto(base + "/console/credit#/loans/1")
         pg.wait_for_selector("text=Before you contact", timeout=20000)
+        pg.wait_for_selector("text=Repayment schedule >> xpath=.. >> .. >> table", timeout=20000)
         if w == 1440:
             pg.fill("form[data-form=collect] [name=when]", "2026-12-01T22:30")
             pg.click("[data-collect]")

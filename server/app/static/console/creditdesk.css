@@ -113,3 +113,27 @@
 #crPage table.tb .num{font-family:inherit;font-weight:500}
 .cr-md table{width:100%;border-collapse:collapse;font-size:13.5px}.cr-md td,.cr-md th{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left}.cr-md p{margin:8px 0}
 .cr-months.dpd .pair{height:calc(100% - 38px)}
+
+/* v2: the 12-month chart, bank matches, the pipeline board, filters, the schedule */
+.cr-chart{margin-top:12px}
+.cr-chart .blate{fill:var(--warn);opacity:.55}
+.cs-legend i.late{background:var(--warn);opacity:.6;height:8px}
+.cr-found{border-color:color-mix(in srgb,var(--ok) 45%,var(--line));background:linear-gradient(180deg,var(--oks),var(--bg) 60%)}
+.cr-match .btn{flex:none}
+.cr-board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
+@media (max-width:1100px){.cr-board{grid-template-columns:minmax(0,1fr)}}
+.cr-col{display:flex;flex-direction:column;gap:10px;background:var(--page);border:1px solid var(--line);border-radius:16px;padding:12px;min-width:0}
+.cr-colh{display:flex;align-items:center;justify-content:space-between;padding:2px 4px;font-size:14px}
+.cr-colempty{font-size:13px;color:var(--mut);padding:18px 6px;text-align:center;border:1px dashed var(--line2);border-radius:12px}
+.cr-stagebar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 16px}
+.cr-stagebar .btn{margin-left:auto}
+.cs-seg button:disabled{cursor:default}
+.cs-seg button[aria-pressed="true"]:disabled{opacity:1}
+.cr-filter{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.cr-filter .in{flex:1;min-width:160px;max-width:280px;margin-left:auto}
+@media (max-width:600px){.cr-filter .in{max-width:none;margin-left:0}}
+tr.cr-late td:first-child{box-shadow:inset 3px 0 0 var(--bad)}
+label.linkbtn{display:inline}
+.cr-chart .bin{opacity:.72}.cr-chart .bout{opacity:.62}.cr-chart .blate{opacity:.85}
+#crPage .num,#crPage table.tb .num{font-variant-numeric:normal;font-family:inherit}
+tr.cr-late td:first-child{padding-left:14px}

@@ -128,7 +128,7 @@ def _wsrow(owner: str, ws: str) -> dict[str, Any]:
 
 def _state(owner: str, ws: str) -> dict[str, Any]:
     st = dict((_wsrow(owner, ws).get("settings") or {}).get("credit_desk") or {})
-    for k, v in (("loans", []), ("apps", []), ("offers", []), ("policy", {}), ("uw_rules", []), ("apr", {})):
+    for k, v in (("loans", []), ("apps", []), ("offers", []), ("policy", {}), ("uw_rules", []), ("apr", {}), ("dismissed", [])):
         st.setdefault(k, v)
     return st
 
@@ -493,6 +493,183 @@ def loan_book_csv(b: dict[str, Any], cur: str) -> bytes:
     return buf.getvalue().encode("utf-8")
 
 
+def schedule(loan: dict[str, Any], today: date) -> list[dict[str, Any]]:
+    """Every instalment: its date, interest / principal split, the balance after, and what happened to it (paid in order)."""
+    from .fin.desks import credit as C
+    sv = _servicing(loan, today)
+    pay = float(sv["payment"])
+    i = (loan.get("rate") or 0) / 1200
+    left = sum(float(p["amount"]) for p in loan.get("paid", []) if p["date"] <= today.isoformat())
+    bal = float(loan["amount"])
+    start = date.fromisoformat(loan["start"])
+    rows = []
+    for k in range(int(loan["term"])):
+        due = C._add_months(start, k)   # noqa: SLF001
+        intr = round(bal * i, 2)
+        this = pay if k < int(loan["term"]) - 1 else round(bal + intr, 2)
+        prin = round(this - intr, 2)
+        bal = round(max(0.0, bal - prin), 2)
+        got = min(left, this)
+        left = round(left - got, 2)
+        if got >= this - 0.005:
+            st = "paid"
+        elif due > today:
+            st = "part" if got > 0 else "upcoming"
+        else:
+            st = "part" if got > 0 else "late"
+        rows.append({"k": k + 1, "due": due.isoformat(), "payment": round(this, 2), "interest": intr, "principal": prin,
+                     "balance": bal, "paid": round(got, 2), "status": st})
+    return rows
+
+
+_NOISE = {"the", "and", "ltd", "limited", "llp", "pvt", "private", "inc", "co", "company", "bank", "cafe", "shop", "store", "plc"}
+
+
+def _name_words(name: str) -> list[str]:
+    import re as _re
+    ws = [w for w in _re.findall(r"[a-z0-9]+", name.lower().replace("'s", "")) if len(w) >= 3]
+    keep = [w for w in ws if w not in _NOISE]
+    return keep or ws
+
+
+def matches(owner: str, ws: str) -> dict[str, Any]:
+    """Lines in her imported bank statements that look like a loan's payment: the right direction, the loan's payment (or what is
+    behind) to within 1%, after the loan started. Named = the borrower's / lender's name is in the line too. Nothing is recorded until
+    she confirms one."""
+    from .fin import spine as SP
+    st = _state(owner, ws)
+    loans = st["loans"]
+    if not loans:
+        return {"proposals": [], "read": 0}
+    since = min(x["start"] for x in loans)
+    since = (date.fromisoformat(since) - timedelta(days=31)).isoformat()
+    try:
+        rows = SP.txns(owner, ws, since=since, limit=5000)
+    except Exception:   # noqa: BLE001
+        rows = []
+    used = {p.get("txn") for x in loans for p in x.get("paid", []) if p.get("txn")}
+    skip = set(st.get("dismissed") or [])
+    t = _today()
+    out = []
+    for r in rows:
+        if r["id"] in used or r["id"] in skip:
+            continue
+        amt = float(r["amount"])
+        text = (r.get("narration") or "").lower()
+        best = None
+        for x in loans:
+            if amt == 0 or (x["side"] == "lent") != (amt > 0) or r["day"] < (date.fromisoformat(x["start"]) - timedelta(days=31)).isoformat():
+                continue
+            v = _servicing(x, t)
+            targets = [v["payment"]] + ([v["arrears"]] if v["arrears"] > 0 else [])
+            if not any(abs(abs(amt) - tg) <= max(0.01, tg * 0.01) for tg in targets):
+                continue
+            named = any(w in text for w in _name_words(x["name"]))
+            if best is None or (named and not best[1]):
+                best = (x, named)
+        if best:
+            x, named = best
+            out.append({"txn": r["id"], "day": r["day"], "amount": abs(amt), "narration": (r.get("narration") or "")[:120], "n": x["n"],
+                        "loan": x["name"], "side": x["side"], "named": named})
+    out.sort(key=lambda p: (not p["named"], p["day"]))
+    return {"proposals": out[:100], "read": len(rows),
+            "says": "Lines from your imported bank statements that match a loan's payment. Nothing is recorded until you confirm it."}
+
+
+def confirm_match(owner: str, ws: str, a: dict[str, Any], me: str) -> dict[str, Any]:
+    from .fin import spine as SP
+    txn = str(a.get("txn") or "")
+    st = _state(owner, ws)
+    loan = _find(st["loans"], a.get("n"), "loan")
+    if any(p.get("txn") == txn for x in st["loans"] for p in x.get("paid", [])):
+        raise CreditDeskError("That bank line is already recorded on a loan.")
+    hit = next((r for r in SP.txns(owner, ws, limit=5000) if r["id"] == txn), None)
+    if not hit:
+        raise CreditDeskError("That bank line is not in this business's statements.")
+    amt = abs(float(hit["amount"]))
+    if (loan["side"] == "lent") != (float(hit["amount"]) > 0):
+        raise CreditDeskError("That line goes the wrong way for this loan.")
+    loan["paid"] = sorted(loan.get("paid", []) + [{"date": hit["day"], "amount": amt, "by": me, "on": _now(), "txn": txn,
+                                                    "from": (hit.get("narration") or "")[:120]}], key=lambda x: x["date"])[-1000:]
+    _put(owner, ws, st)
+    return {"loan": loan_view(loan, _today())}
+
+
+def dismiss_match(owner: str, ws: str, a: dict[str, Any]) -> dict[str, Any]:
+    st = _state(owner, ws)
+    st["dismissed"] = (list(st.get("dismissed") or []) + [str(a.get("txn") or "")])[-2000:]
+    _put(owner, ws, st)
+    return {"dismissed": len(st["dismissed"])}
+
+
+def outlook(owner: str, ws: str, months: int = 12) -> dict[str, Any]:
+    """Money the schedules say comes in (loans she lent) and goes out (loans she owes), month by month, from this month on."""
+    t = _today()
+    first = t.replace(day=1)
+    keys = []
+    d = first
+    for _ in range(months):
+        keys.append(d.strftime("%Y-%m"))
+        d = (d + timedelta(days=32)).replace(day=1)
+    out = {k: {"month": k, "in": 0.0, "out": 0.0, "late_in": 0.0} for k in keys}
+    for x in _state(owner, ws)["loans"]:
+        for row in schedule(x, t):
+            if row["status"] == "paid":
+                continue
+            due = row["due"][:7]
+            owed = round(row["payment"] - row["paid"], 2)
+            if row["status"] == "late":
+                if x["side"] == "lent":
+                    out[keys[0]]["late_in"] = round(out[keys[0]]["late_in"] + owed, 2)
+                else:
+                    out[keys[0]]["out"] = round(out[keys[0]]["out"] + owed, 2)
+                continue
+            if due in out:
+                side = "in" if x["side"] == "lent" else "out"
+                out[due][side] = round(out[due][side] + owed, 2)
+    rows = list(out.values())
+    return {"months": rows, "total_in": round(sum(r["in"] + r["late_in"] for r in rows), 2),
+            "total_out": round(sum(r["out"] for r in rows), 2)}
+
+
+def loan_pdf(v: dict[str, Any], sched: list[dict[str, Any]], business: str, cur: str) -> bytes:
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.pdfgen import canvas
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=A4)
+    W, H = A4
+    y = H - 18 * mm
+
+    def line(txt: str, size: float = 10, bold: bool = False, cols: list[tuple[float, str]] | None = None):
+        nonlocal y
+        if y < 18 * mm:
+            c.showPage()
+            y = H - 18 * mm
+        c.setFont("Helvetica-Bold" if bold else "Helvetica", size)
+        if txt:
+            c.drawString(16 * mm, y, str(txt)[:110])
+        for x, tx in cols or []:
+            c.drawRightString(x, y, str(tx))
+        y -= size * 1.6
+
+    line(business, 13, True)
+    line(f"Loan statement - {v['name']} ({'you lent' if v['side'] == 'lent' else 'you owe'}) - {cur} - {_today().isoformat()}", 11, True)
+    line(f"Amount {v['amount']:,.2f} · rate {v.get('rate') or 0}% · {v['term']} monthly payments of {v['payment']:,.2f} · first due {v['start']}")
+    line(f"Due so far {v['due_so_far']:,.2f} · paid {v['paid_so_far']:,.2f} · behind {v['arrears']:,.2f} · {v['days_past_due']} days past due"
+         f" · principal still owed {v['outstanding']:,.2f}")
+    y -= 4
+    xs = [60 * mm, 85 * mm, 110 * mm, 135 * mm, 160 * mm, 190 * mm]
+    line("#", 9, True, list(zip(xs, ["Due", "Payment", "Interest", "Principal", "Balance", "Status"])))
+    for r in sched:
+        line(str(r["k"]), 9, False, list(zip(xs, [r["due"], f"{r['payment']:,.2f}", f"{r['interest']:,.2f}", f"{r['principal']:,.2f}",
+                                              f"{r['balance']:,.2f}", r["status"]])))
+    y -= 6
+    line(FOOT, 8)
+    c.save()
+    return buf.getvalue()
+
+
 # ---------------------------------------------------------------- risk: early warning + ECL
 def risk(owner: str, ws: str, me: str) -> dict[str, Any]:
     b = book(owner, ws)
@@ -543,7 +720,7 @@ def add_app(owner: str, ws: str, a: dict[str, Any], me: str) -> dict[str, Any]:
            "rate": _num(a["rate"], "rate", 0) if a.get("rate") not in (None, "") else None,
            "term": int(_num(a["term"], "term", 1)) if a.get("term") not in (None, "") else None,
            "fee_pct": _num(a["fee_pct"], "fee_pct", 0) if a.get("fee_pct") not in (None, "") else 0.0,
-           "figures": {}, "applicant": {}, "rows": [], "conditions": [], "status": "open", "by": me, "on": _now()}
+           "figures": {}, "applicant": {}, "rows": [], "conditions": [], "status": "open", "stage": "gathering", "by": me, "on": _now()}
     st["apps"].append(row)
     _put(owner, ws, st)
     return {"app": row}
@@ -634,6 +811,23 @@ def set_condition(owner: str, ws: str, a: dict[str, Any], me: str) -> dict[str, 
     return {"app": app_view(owner, ws, row, me)}
 
 
+STAGES = {"gathering": "Gathering papers", "with_decider": "With the decider"}
+
+
+def set_stage(owner: str, ws: str, a: dict[str, Any], me: str) -> dict[str, Any]:
+    st = _state(owner, ws)
+    row = _find(st["apps"], a.get("n"), "application")
+    stage = str(a.get("stage") or "")
+    if stage not in STAGES:
+        raise CreditDeskError("stage: gathering | with_decider (a decision is recorded with close).")
+    if row.get("status") == "closed":
+        raise CreditDeskError("This application is decided - reopen it first.")
+    row["stage"] = stage
+    row["stage_by"], row["stage_on"] = me, _now()
+    _put(owner, ws, st)
+    return {"app": app_view(owner, ws, row, me)}
+
+
 def close_app(owner: str, ws: str, a: dict[str, Any], me: str) -> dict[str, Any]:
     """She records what the named decider decided - Hoola does not decide it."""
     st = _state(owner, ws)
@@ -651,6 +845,7 @@ def reopen_app(owner: str, ws: str, n: Any) -> dict[str, Any]:
     st = _state(owner, ws)
     row = _find(st["apps"], n, "application")
     row["status"] = "open"
+    row["stage"] = "with_decider"
     for k in ("decided_by", "outcome", "closed_by", "closed_on"):
         row.pop(k, None)
     _put(owner, ws, st)
@@ -675,6 +870,7 @@ def _monthly_pay(app: dict[str, Any]) -> float | None:
 def app_view(owner: str, ws: str, app: dict[str, Any], me: str, deep: bool = False) -> dict[str, Any]:
     """One application with what the engine makes of it. deep = the memo, the rule hits, the KFS and the statement analysis."""
     out = {k: v for k, v in app.items() if k != "rows"}
+    out.setdefault("stage", "gathering")
     out["rows_count"] = len(app.get("rows") or [])
     out["requested_emi"] = _monthly_pay(app)
     if app.get("conditions"):
@@ -886,7 +1082,8 @@ def today_view(owner: str, ws: str, me: str) -> dict[str, Any]:
     open_apps = [x for x in apps if x["status"] != "closed"]
     out: dict[str, Any] = {"book": b, "apps": apps, "offers": st["offers"], "policy": st["policy"], "uw_rules": st["uw_rules"],
                            "method": method_view(owner, ws), "contacts": cons,
-                           "contacts_this_week": len([c for c in cons["log"] if c["when"][:10] >= week0])}
+                           "contacts_this_week": len([c for c in cons["log"] if c["when"][:10] >= week0]),
+                           "outlook": outlook(owner, ws), "matches": matches(owner, ws)}
     needs = []
     for v in sorted([v for v in b["loans"] if v["side"] == "lent" and v["arrears"] > 0], key=lambda v: -v["days_past_due"])[:6]:
         needs.append({"say": f"{v['name']} is {v['days_past_due']} days past due ({mo(v['arrears'])} behind)", "go": f"loans/{v['n']}",
@@ -902,6 +1099,9 @@ def today_view(owner: str, ws: str, me: str) -> dict[str, Any]:
         if late:
             needs.append({"say": f"{a['borrower']}: {len(late)} condition(s) past their date ({', '.join(late[:3])})", "go": f"apps/{a['n']}",
                           "bad": False})
+    if out["matches"]["proposals"]:
+        k_ = len(out["matches"]["proposals"])
+        needs.append({"say": f"{k_} payment{'s' if k_ > 1 else ''} found in your bank statements - confirm or dismiss", "go": "loans"})
     rising = [v for v in b["loans"] if v["side"] == "lent" and v["rising"]]
     if rising:
         needs.append({"say": f"Days past due rising on {len(rising)} loan(s): " + ", ".join(v["name"] for v in rising[:3]), "go": "risk"})
@@ -949,7 +1149,7 @@ def summary(tenant: str, want: str = "") -> dict[str, Any]:
     return out
 
 
-READS = {"apr", "compare", "invoice_finance", "readiness", "app", "risk", "contacts", "book"}
+READS = {"apr", "compare", "invoice_finance", "readiness", "app", "risk", "contacts", "book", "schedule", "matches", "outlook"}
 
 
 def do(caller: str, part: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -977,7 +1177,11 @@ def do(caller: str, part: str, a: dict[str, Any]) -> dict[str, Any]:
         "reopen_app": lambda: reopen_app(owner, ws, a.get("n")), "remove_app": lambda: remove_app(owner, ws, a.get("n")),
         "collect": lambda: collect(owner, ws, me, a), "contact_rules": lambda: save_contact_rules(owner, ws, me, a),
         "method": lambda: set_method(owner, ws, a, me), "policy": lambda: set_policy(owner, ws, a, me),
-        "rule": lambda: set_rule(owner, ws, a, me),
+        "rule": lambda: set_rule(owner, ws, a, me), "stage": lambda: set_stage(owner, ws, a, me),
+        "schedule": lambda: {"loan": loan_view(_find(_state(owner, ws)["loans"], a.get("n"), "loan"), _today()),
+                             "rows": schedule(_find(_state(owner, ws)["loans"], a.get("n"), "loan"), _today())},
+        "matches": lambda: matches(owner, ws), "outlook": lambda: outlook(owner, ws),
+        "confirm_match": lambda: confirm_match(owner, ws, a, me), "dismiss_match": lambda: dismiss_match(owner, ws, a),
     }.get(part)
     if f is None:
         raise CreditDeskError("Not a Credit & Lending desk action.")
@@ -1083,13 +1287,16 @@ def block(tenant: str) -> str:
             m = k.get("method") or {}
             loans = "; ".join(f"#{v['n']} {v['name']} ({v['side']}) owed {v['outstanding']:,.2f}, arrears {v['arrears']:,.2f}, "
                               f"{v['days_past_due']} days past due, next due {v['next_due'] or '-'}" for v in (b.get("loans") or [])[:12]) or "none"
-            apps = "; ".join(f"#{x['n']} {x['borrower']} {x['amount']:,.2f} ({x['status']})" for x in (k.get("apps") or [])[:10]) or "none"
+            apps = "; ".join(f"#{x['n']} {x['borrower']} {x['amount']:,.2f} ({'decided' if x['status'] == 'closed' else STAGES.get(x.get('stage'), 'open').lower()})"
+                            for x in (k.get("apps") or [])[:10]) or "none"
+            found = len(((k.get("matches") or {}).get("proposals")) or [])
             txt = (f"\n\n<credit_desk>{RULES}\nBusiness: {w['name']} (workspace {w['id']}), {', '.join(w['countries'])}, currency {w['currency']}."
                    f"\nAPR method: {m.get('method') or 'none'} ({m.get('from')})."
                    f"\nLent: {lent.get('count', 0)} loans, {lent.get('outstanding', 0):,.2f} owed to her, {lent.get('in_arrears', 0)} in arrears "
                    f"({lent.get('arrears', 0):,.2f}). Borrowed: {mine.get('count', 0)} loans, {mine.get('outstanding', 0):,.2f} she owes, "
                    f"{mine.get('monthly', 0):,.2f} a month."
                    f"\nLoans: {loans}.\nApplications: {apps}."
+                   f"\nPayments found in her bank statements waiting for her to confirm on the desk: {found}."
                    f"\nOffers she is comparing: {', '.join(o['name'] for o in k.get('offers') or []) or 'none'}."
                    + (f"\nShe is the {d.get('role')} on this business (someone else owns it): explain from these figures and send her "
                       "to the desk for changes." if d.get("role") not in (None, "owner") else "")
@@ -1157,6 +1364,12 @@ def mount(app, current_tenant, require_key) -> None:
             if what == "book":
                 return Response(loan_book_csv(book(acc["owner"], workspace), biz.get("currency") or ""), media_type="text/csv",
                                 headers={"Content-Disposition": f'attachment; filename="loan-book-{_today().isoformat()}.csv"'})
+            if what == "loan":
+                loan = _find(_state(acc["owner"], workspace)["loans"], n, "loan")
+                v = loan_view(loan, _today())
+                slug_ = "".join(ch if ch.isalnum() else "-" for ch in v["name"].lower())[:40].strip("-") or "loan"
+                return Response(loan_pdf(v, schedule(loan, _today()), biz["name"], biz.get("currency") or ""), media_type="application/pdf",
+                                headers={"Content-Disposition": f'attachment; filename="loan-statement-{slug_}.pdf"'})
             a = app_one(acc["owner"], workspace, me, n)
         except CreditDeskError as e:
             raise HTTPException(400, str(e))
@@ -1176,7 +1389,7 @@ def mount(app, current_tenant, require_key) -> None:
                 raise HTTPException(400, (a.get("kfs") or {}).get("error") or "Give the proposed rate and term first.")
             return Response(a["kfs"]["kfs_markdown"].encode("utf-8"), media_type="text/markdown",
                             headers={"Content-Disposition": f'attachment; filename="key-facts-{slug}.md"'})
-        raise HTTPException(400, "what: book | memo | memo_md | kfs")
+        raise HTTPException(400, "what: book | loan | memo | memo_md | kfs")
 
     @router.put("/api/credit/workspace", dependencies=dep)
     def credit_workspace(body: dict, tenant: str = Depends(current_tenant)):
