@@ -36,9 +36,12 @@ const OPEN_KEY = 'hoola.sessions.v1';
 const openState = () => { try { return JSON.parse(localStorage.getItem(OPEN_KEY) || '{}') || {}; } catch { return {}; } };
 const setOpen = (pid, closed) => { const st = openState(); if (closed) st[pid] = 1; else delete st[pid];
   try { localStorage.setItem(OPEN_KEY, JSON.stringify(st)); } catch {} };
-const secOf = c => c.project_id ? SECS.find(p => p.id === c.project_id) : null;
 /* v0.975 the app design folds Pinned (closed until she opens it, like Claude) and Recents: {pinned, recents} */
 const APPD = () => document.documentElement.classList.contains('appd');
+/* v0.999.211 NO SESSIONS IN THE SIDEBAR (owner: "NOW CHECK THE SESSIONS --- REMOVE THAT FROM SIDE BAR"): the app design
+   draws no session groups; a chat that sits in a session is listed in Pinned / Recents like any other chat */
+const SIDE_SECS = () => APPD() ? [] : SECS;
+const secOf = c => c.project_id ? SIDE_SECS().find(p => p.id === c.project_id) : null;
 const SIDE_KEY = 'hoola.side.v1';
 const sideState = () => { try { return JSON.parse(localStorage.getItem(SIDE_KEY) || '{}') || {}; } catch { return {}; } };
 function sideFlip(k) {
@@ -103,7 +106,7 @@ function draw() {
     $('#archTog').addEventListener('click', () => { ARCH = !ARCH; load(); });
     return;
   }
-  const drag = SECS.length > 0;                   // no sessions yet -> the old plain list, nothing draggable
+  const drag = SIDE_SECS().length > 0;                   // no sessions yet -> the old plain list, nothing draggable
   const pinbox = APPD() ? $('#pinbox') : null;    // v0.975 the app design: Pinned above, Recents without day labels
   const side = sideState();
   if (pinbox) {
@@ -116,7 +119,7 @@ function draw() {
     document.querySelector('.side')?.classList.toggle('rclosed', side.recents === 'closed');
   }
   let html = '';
-  for (const p of SECS) {
+  for (const p of SIDE_SECS()) {
     const rows = LIST.filter(c => c.project_id === p.id);
     const closed = !!openState()[p.id];
     html += secHead(p, rows, closed) + (closed ? '' : rows.map(c => item(c, drag)).join(''));
@@ -188,7 +191,7 @@ function openMenu(id, btn, keyboard) {
   HoolaMenu.open(btn, [
     ...(c.archived ? [] : [{label: c.pinned ? 'Unpin' : 'Pin', icon: c.pinned ? 'unpin' : 'pin', run: go('pin')}]),
     {label: 'Rename', icon: 'pencil', run: go('rename')},
-    ...(ctx.pickProject ? [{label: c.project_id ? 'Change session' : 'Add to session', icon: 'folder', run: go('folder')}] : []),
+    ...(ctx.pickProject && !APPD() ? [{label: c.project_id ? 'Change session' : 'Add to session', icon: 'folder', run: go('folder')}] : []),
     ...(c.archived ? [] : [{label: 'Compact chat', icon: 'compress', run: go('compact')}]),
     {label: c.archived ? 'Restore from archive' : 'Archive', icon: c.archived ? 'restore' : 'archive', run: go('archive')},
     {sep: true},

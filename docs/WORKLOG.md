@@ -3806,3 +3806,12 @@ Task ID: v0.999.210 SETTINGS, REDESIGNED
 What: Interactive Settings redesigned to the approved canvas (claude.ai/artifact/LZBJ9AF2Y9LgcZq6sJBywR): starting choices saved to her account, usage, kept & trash, this server.
 Tests: test_v0999_210_interactive_settings.py 4 passed (browser at 1440 + 390).
 Not verified: on her server.
+
+---
+Task ID: v0.999.211 NO SESSIONS IN THE SIDEBAR
+Agent: Claude (Claude Code session)
+Task: remove the Sessions part from the console sidebar (her screenshot).
+Work Log:
+- chatlist.js SIDE_SECS (no session groups in the app design, session chats in Recents, no Add to session menu item); appdesign.css hides #projects.
+- test_v0999_211_no_sessions_sidebar.py: shape + browser walk; version ritual 0.999.211.
+Stage Summary: shipped to main; not verified on her server.
