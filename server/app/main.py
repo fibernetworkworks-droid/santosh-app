@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.215"   # v0.999.215 CUSTOMIZE = PROFILE MENU (owner, her account-menu screenshot: "CHANGE THE CUSTOMERIZE SECTION TO THIS SHOWN PROFILE OPTIONS"): the app-design sidebar's Customize row opens the same profile menu as the account button, below it (her email, Settings, Credits, Library, Skills, Light / Dark / System, Keyboard shortcuts, Log out; one list `acctItems`), instead of the Customize page; Skills gets its own icon in the menu; 2 tests incl. a browser walk. Console only. Previous: v0.999.214 COLLAPSED SIDEBAR IN ONE LINE (built as 0.999.213; their MAIL NEWS ONLY WHEN ASKED took 0.999.213, both kept; owner, her collapsed-sidebar screenshot; older stories live in git history.
+APP_VERSION = "0.999.216"   # v0.999.216 CASH & TREASURY DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE CASH AND TRESARY ---- MAKE IT FULLY FUCTIONAL SAME AS PAYROLL SECTION. ALSO MAKE DESIGN ADVANCE AND PREMIUM SAME AS OTHER SECTIONS"): the Cash & Treasury employee gets its own section /console/cash + Cash chat (kind cash, `cashchat.py`): Today (cash today -> the lowest point -> after 13 weeks over a weekly cash chart, 30 / 60 / 90 days, spare cash, needs you), Forecast (13 weeks from her open invoices and bills, last payroll and what repeats in her statements, each line with where it came from, money she expects, a what-if on late payers, how good the forecast was on months she lived, PDF + CSV), Spare cash (buffer she chooses), Bank fees, Currencies (her own dated rates, never guessed), Covenants (tested only once a person checked them against the loan agreement; changed terms need checking again), Settings (cash today, minimum, how late customers pay); team roles from Books; moves no money, names no product; 5 tests incl. a browser walk. NOT VERIFIED on her server. Previous: v0.999.215 CUSTOMIZE = PROFILE MENU (owner, her account-menu screenshot: "CHANGE THE CUSTOMERIZE SECTION TO THIS SHOWN PROFILE OPTIONS"): the app-design sidebar's Customize row opens the same profile menu as the account button, below it (her email, Settings, Credits, Library, Skills, Light / Dark / System, Keyboard shortcuts, Log out; one list `acctItems`), instead of the Customize page; Skills gets its own icon in the menu; 2 tests incl. a browser walk. Console only. Previous: v0.999.214 COLLAPSED SIDEBAR IN ONE LINE (built as 0.999.213; their MAIL NEWS ONLY WHEN ASKED took 0.999.213, both kept; owner, her collapsed-sidebar screenshot; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2115,6 +2115,15 @@ def tax_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/cash")
+@app.get("/console/cash/")
+def cash_desk_page():
+    """CASH & TREASURY DESK: the Cash & Treasury employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "cashdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/money")
 @app.get("/console/money/")
 def money_desk_page():
@@ -2660,6 +2669,8 @@ from . import payrollchat as _payrollchat_mod                    # noqa: E402  v
 _payrollchat_mod.mount(app, current_tenant, require_key)        # /api/payroll/*
 from . import taxchat as _taxchat_mod                            # noqa: E402  v0.999.176 TAX DESK
 _taxchat_mod.mount(app, current_tenant, require_key)            # /api/tax/*
+from . import cashchat as _cashchat_mod                          # noqa: E402  CASH & TREASURY DESK
+_cashchat_mod.mount(app, current_tenant, require_key)           # /api/cash/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

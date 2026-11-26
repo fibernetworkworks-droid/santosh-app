@@ -12232,3 +12232,27 @@ opened. NOT VERIFIED: on her server.
 ## v0.999.215 CUSTOMIZE = PROFILE MENU (owner, her account-menu screenshot: "CHANGE THE CUSTOMERIZE SECTION TO THIS SHOWN PROFILE OPTIONS"): the app-design sidebar's Customize row opens the same profile menu as the account button, below it (her email, Settings, Credits, Library, Skills, Light / Dark / System, Keyboard shortcuts, Log out; one list `acctItems`), instead of the Customize page; Skills gets its own icon in the menu; 2 tests incl. a browser walk. Console only.
 
 Console only (`static/console/v2.js`, `menu.js`). The account menu's items moved into `acctItems()`; the account button opens it above itself as before, and the app-design sidebar's Customize row (`data-acct`, was `data-v="main"`) opens it below itself. Settings in the menu still opens the Customize page (view main), which keeps the row marked. Skills had no icon in HoolaMenu; it has one now. Tests: test_v0999_215_customize_menu.py (shape + a Chromium walk: every item with its icon, menu below the row and inside the window, page unchanged until an item is picked). NOT VERIFIED: on her server.
+
+## v0.999.216 CASH & TREASURY DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE CASH AND TRESARY ---- MAKE IT FULLY FUCTIONAL SAME AS PAYROLL SECTION. ALSO MAKE DESIGN ADVANCE AND PREMIUM SAME AS OTHER SECTIONS")
+
+The Cash & Treasury employee (`cash_treasury`, the F5 engine `fin/desks/cash.py`, unchanged) gets its own section like Payroll and Tax.
+
+- `server/app/cashchat.py`: Cash chat = Conversation kind `cash` (out of every chat list via callconv / convs), the desk block `<cash_desk>` and the
+  `treasury` family admitted in that chat and in calls started from it (santosh.py). Desk state in the workspace settings under `cash_desk`:
+  `opening` (cash she says is in the bank, with the day; older than 7 days is said), `items` (money she expects in / out), `checked` (a covenant is
+  tested only once a person checked it against the loan agreement; the check is bound to its terms, so a changed limit needs checking again),
+  `figures` (what her ratios divide, dated), `rates` (her exchange rates, dated; never guessed). Roles from Books (`books_ent.access`): owner /
+  accountant / approver change, auditor / viewer read. Routes `/api/cash/chat`, `/chat/new`, `/chat/{id}/ok`, `/desk`, `/do/{part}`
+  (forecast, backtest, idle, fees, fx, covenants, settings, opening, add_item, remove_item, set_covenant, remove_covenant, check_covenant, figure,
+  rate), `/download` (forecast PDF + CSV, with the what-if), `PUT /workspace`.
+- `static/console/cashdesk.{html,js,css}` at `/console/cash`: Today (hero cash today -> lowest point -> after 13 weeks over an SVG weekly cash chart
+  with in / out bars, the minimum line and hover details; 30 / 60 / 90 days; spare cash; needs you; biggest movements; fees, covenants and
+  currencies at a glance), Forecast (chart, the what-if "customers pay 15 / 30 / 60 days later" as a second line, week table that opens into each
+  line and where it came from, money you expect, how good the forecast was on months she lived, downloads), Spare cash (buffer choice), Bank fees
+  (by kind, by month, every line), Currencies (positions, her rates, a 5 / 10 / 20 % move), Covenants (cards with a gauge, headroom, "I checked it
+  against the agreement", her figures), Settings (cash today, minimum, payment lag, buffer, words to leave out, where the forecast comes from).
+- Wiring: employees.js `cash_treasury: 'cashdesk'`, v2.js redirect to `/console/cash`, phone `hoola_employees.dart` opens `/console/cash`.
+- Tests `server/tests/test_cash_desk.py` (5, incl. a Chromium walk at 1440 / 390); `test_fin_f7.py` own-desk map.
+
+NOT VERIFIED: on her server.
+
