@@ -83,6 +83,7 @@ window.HoolaInteractive = function (ctx) {
   }
   function fillMedia() {
     $$('img[data-av]').forEach(async img => { try { img.src = await blobUrl(`${S}/photo?id=${q(img.dataset.av)}`); } catch { img.remove(); } });
+    $$('img[data-ci]').forEach(async img => { try { img.src = await blobUrl(`/api/create/items/${q(img.dataset.ci)}`); } catch { img.remove(); } });
     $$('video[data-vid]').forEach(async v => { try { v.src = await blobUrl(`${S}/video?id=${q(v.dataset.vid)}`); } catch { /* not ready */ } });
     $$('video[data-broll]').forEach(async v => { try { v.src = await blobUrl(`${X}/broll/file?id=${q(v.dataset.broll)}`); } catch { /* not ready */ } });
   }
@@ -141,7 +142,7 @@ window.HoolaInteractive = function (ctx) {
     t.innerHTML = PAGE === 'chat' ? `${UI.credits != null ? `<button type="button" class="hx-credp hx-num" data-a="credits" title="Your credits">${ic('spark', 14)}${num(UI.credits)} credits</button>` : ''}
       <button type="button" class="hx-ib" data-a="chats" aria-label="Earlier chats" title="Earlier chats">${ic('clock', 18)}</button>
       <button type="button" class="hx-ib" data-a="newchat" aria-label="New chat" title="New chat">${ic('plus', 18)}</button>`
-      : PAGE === 'studio' || PAGE === 'templates' || PAGE === 'apps' ? (UI.credits != null ? `<button type="button" class="hx-credp hx-num" data-a="credits" title="Your credits">${ic('spark', 14)}${num(UI.credits)} credits</button>` : '') : '';
+      : PAGE === 'studio' || PAGE === 'templates' || PAGE === 'apps' || PAGE === 'avatars' ? (UI.credits != null ? `<button type="button" class="hx-credp hx-num" data-a="credits" title="Your credits">${ic('spark', 14)}${num(UI.credits)} credits</button>` : '') : '';
   }
   function go(page, arg) {
     window.HoolaMenu?.close();
@@ -1008,8 +1009,9 @@ window.HoolaInteractive = function (ctx) {
     let w = $('#hxDlg');
     if (!UI.dlg) { if (w) w.remove(); return; }
     if (!w) { w = document.createElement('div'); w.id = 'hxDlg'; w.className = 'hx-dlgw'; ROOT.appendChild(w); }
-    w.innerHTML = `<div class="hx-dlgs" data-a="dlgx" aria-hidden="true"></div>${UI.dlg.k === 'save' ? svBody() : UI.dlg.k === 'pick' ? pickBody() : UI.dlg.k === 'need' ? needBody() : shBody()}`;
+    w.innerHTML = `<div class="hx-dlgs" data-a="dlgx" aria-hidden="true"></div>${({save: svBody, pick: pickBody, need: needBody, avphoto: avPhBody, avai: avAiBody, avtwin: avTwinBody, avren: avRenBody}[UI.dlg.k] || shBody)()}`;
     const f = w.querySelector('[data-auto]'); if (f && !w.contains(document.activeElement)) f.focus();
+    fillMedia();
   }
   function dlgClose() { UI.dlg = null; dlgPaint(); }
   function pickBody() {
@@ -1312,6 +1314,203 @@ window.HoolaInteractive = function (ctx) {
   }
   async function abQuote() { try { UI.broll.q = await api('GET', `${X}/broll/quote?seconds=${UI.broll.seconds}`); } catch { UI.broll.q = null; } if (PAGE === 'apps' && ARG === 'broll') draw(); }
 
+  // ---- avatars (v0.999.176 AVATARS, REDESIGNED: her faces as cards with their consent record, a side panel per face,
+  //      a face from a photo (whose face, size checked), a face made by AI (no real person, priced first), a video twin explained)
+  Object.assign(P, {
+    camera: '<path d="M4 7h3l2-3h6l2 3h3v13H4z"/><circle cx="12" cy="13" r="4"/>',
+    wand: '<path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z"/>',
+    video: '<rect x="3" y="6" width="12" height="12" rx="2"/><path d="M15 10l6-3v10l-6-3z"/>',
+    shield: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
+    pen: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>'});
+  const AVMAX = 12;
+  const avKind = a => (a.kind === 'ai' || a.ai) ? 'ai' : 'photo';
+  const avUses = a => (D.projects || []).filter(p => p.avatar_id === a.id);
+  const avWhen = s => { const d = String(s || '').slice(0, 10); if (!d) return ''; const t = new Date(d + 'T00:00:00');
+    return isNaN(t) ? d : t.toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'}); };
+  const avConsent = a => avKind(a) === 'ai' ? 'Not a real person · marked as AI'
+    : a.who === 'agreed' && a.person ? `${a.person} agreed · ${avWhen(a.consent_at)}` : `Consent · ${avWhen(a.consent_at)}`;
+  const avUsedLine = a => { const n = avUses(a).length; return n ? `In ${num(n)} video${n === 1 ? '' : 's'}` : 'Not used yet'; };
+  const avTint = a => avKind(a) === 'ai' ? 'ai' : ['t1', 't2', 't3', 't4'][[...String(a.id)].reduce((x, c) => x + c.charCodeAt(0), 0) % 4];
+  const avPortrait = (a, cls = '') => `<span class="hx-avp ${avTint(a)} ${cls}"><img data-av="${esc(a.id)}" alt=""><b aria-hidden="true">${esc((a.name || 'H').slice(0, 1).toUpperCase())}</b></span>`;
+  function avTalkers() {
+    const es = (D.engines?.engines || []).filter(e => e.job === 'video');
+    const still = es.find(e => !e.face) || {label: 'Hoola standard (still photo)', ready: true, price: 'free'};
+    return [{label: still.face ? still.label : 'Hoola standard (still photo)', ready: true, price: 'Free'},
+      ...es.filter(e => e.face).map(e => ({label: e.label, ready: e.ready, price: e.ready ? (e.price === 'free' ? 'Free' : e.price.replace('≈ ', 'about ')) : 'Not connected'}))];
+  }
+  function avList() {
+    const st = UI.av || {}, all = D.avatars || [], ql = (st.q || '').trim().toLowerCase();
+    let xs = all.filter(a => (st.kind || 'all') === 'all' || avKind(a) === st.kind).filter(a => !ql || a.name.toLowerCase().includes(ql));
+    if ((st.sort || 'used') === 'used') xs = [...xs].sort((x, y) => avUses(y).length - avUses(x).length);
+    else if (st.sort === 'name') xs = [...xs].sort((x, y) => x.name.localeCompare(y.name));
+    if (!xs.length) return `<div class="hx-empty"><b>No face matches</b><span>Try another word, or show all faces.</span></div>`;
+    return `<div class="hx-avgrid">${xs.map(a => { const on = (UI.av?.sel || all[0]?.id) === a.id, def = SET.face === a.id;
+      return `<button type="button" class="hx-avc2${on ? ' on' : ''}" data-a="avsel" data-id="${esc(a.id)}" aria-pressed="${on}">
+        ${avPortrait(a)}<span class="hx-avk ${avKind(a)}">${avKind(a) === 'ai' ? 'Made by AI' : 'Your photo'}</span>${def ? '<span class="hx-avdef">Default</span>' : ''}
+        <span class="hx-avt"><b>${esc(a.name)}</b><small>${esc(avConsent(a))}</small><small class="hx-mut">${esc(avUsedLine(a))}</small></span></button>`; }).join('')}</div>`;
+  }
+  function avPanel(a) {
+    if (!a) return '';
+    const uses = avUses(a), def = SET.face === a.id, ai = avKind(a) === 'ai';
+    return `<aside class="hx-avside" aria-label="${esc(a.name)}">${avPortrait(a, 'big')}
+      <span class="hx-avk ${avKind(a)} in">${ai ? 'Made by AI' : 'Your photo'}</span>
+      <div class="hx-avsb"><div class="hx-avnm"><h2 class="hx-serif">${esc(a.name)}</h2>
+          <button type="button" class="hx-ib" data-a="avren" data-id="${esc(a.id)}" aria-label="Rename ${esc(a.name)}">${ic('pen', 15)}</button></div>
+        <div class="hx-avrec ${ai ? 'ai' : ''}">${ic(ai ? 'wand' : 'shield', 16)}<span><b>${ai ? 'Not a real person' : 'Consent on record'}</b><br>${ai
+          ? 'Made by AI from your words. Every video with this face carries the AI mark.'
+          : esc(a.who === 'agreed' && a.person ? `${a.person} agreed to be in AI videos, ticked on ${avWhen(a.consent_at)}.` : `Your own face, ticked on ${avWhen(a.consent_at)}.`) + ' Only you can use it.'}</span></div>
+        <div class="hx-avsec"><span class="hx-lab">Can talk with</span>${(() => { const ts = avTalkers(), on = ts.filter(t => t.ready), off = ts.length - on.length;
+          return on.map(t => `<div class="hx-avtk"><i class="ok"></i><span class="hx-grow">${esc(t.label)}</span><span class="hx-mut hx-num">${esc(t.price)}</span></div>`).join('')
+            + (off ? `<button type="button" class="hx-avtk more" data-a="aeng"><i class="no"></i><span class="hx-grow">${num(off)} more face engine${off === 1 ? ' is' : 's are'} not connected on this server</span>${ic('fwd', 14)}</button>` : ''); })()}</div>
+        <div class="hx-avsec"><span class="hx-lab">${uses.length ? `In ${num(uses.length)} video${uses.length === 1 ? '' : 's'}` : 'Not in a video yet'}</span>
+          ${uses.length ? `<div class="hx-avvids">${uses.slice(0, 4).map(p => `<button type="button" class="hx-avvid" data-a="avvid" data-id="${esc(p.id)}" title="${esc(p.title)}">${libThumb(p)}</button>`).join('')}</div>` : ''}</div>
+        <div class="hx-avact"><button type="button" class="hx-btn dark l" data-a="avtest" data-id="${esc(a.id)}"${UI.av?.busy ? ' disabled' : ''}>${UI.av?.busy ? 'Making the draft…' : 'Make a test video'}</button>
+          <div class="hx-acts"><button type="button" class="hx-btn hx-grow" data-a="avdefault" data-id="${esc(a.id)}"${def ? ' aria-pressed="true"' : ''}>${def ? `${ic('check', 14)}Default face` : 'Make it the default'}</button>
+            <button type="button" class="hx-btn danger hx-grow" data-a="avdel" data-id="${esc(a.id)}">Remove</button></div>
+          <span class="hx-mut hx-sm">The test video is a free one-scene draft in the Studio. Making it talk is priced before it runs.</span></div></div></aside>`;
+  }
+  function avPage() {
+    const all = D.avatars || [], st = UI.av || (UI.av = {kind: 'all', q: '', sort: 'used', sel: ''});
+    if (st.sel && !all.some(a => a.id === st.sel)) st.sel = '';
+    const sel = all.find(a => a.id === (st.sel || all[0]?.id)), full = all.length >= AVMAX;
+    const n = k => all.filter(a => k === 'all' || avKind(a) === k).length;
+    const way = (k, icon, name, line, tag, tcls) => `<button type="button" class="hx-avway" data-a="${k}"${full && k !== 'avtwin' ? ' disabled' : ''}>
+      <span class="hx-avwi ${k}">${ic(icon, 22)}</span><span class="hx-ct"><b>${name}</b><small>${line}</small><span class="hx-avtag ${tcls}">${tag}</span></span></button>`;
+    return `<div class="hx-doc hx-avpage"><div class="hx-doch"><div class="hx-growf"><h2 class="hx-serif">Avatars</h2>
+          <p class="hx-mut">The faces in your videos. A real face is used only with consent: it is you, or the person agreed. An AI-made face is no real person and is marked as AI wherever it shows.</p></div>
+        <div class="hx-acts hx-avhd"><span class="hx-avcount hx-num">${num(all.length)} of ${AVMAX} faces</span>
+        <button type="button" class="hx-btn dark" data-a="avadd"${full ? ' disabled' : ''}>${ic('plus', 14)}Add a face</button></div></div>
+      <section class="hx-avways" aria-label="Ways to add a face">
+        ${way('avadd', 'camera', 'From your photo', 'A clear photo facing the camera. You confirm it is you, or the person agreed.', 'Free', 'ok')}
+        ${way('avai', 'wand', 'Made by AI', 'Describe a presenter; pick one of four. No real person, so no consent is needed.', 'Priced first', 'pr')}
+        ${way('avtwin', 'video', 'A video twin', 'A short filmed video of you, read with a consent line, for lips that move.', 'Needs an engine on this server', 'no')}</section>
+      ${full ? `<p class="hx-why">You have ${AVMAX} faces, the most there can be. Remove one to add another.</p>` : ''}
+      ${all.length ? `<div class="hx-avbody"><div class="hx-avmain"><div class="hx-avbar">
+          ${[['all', 'All'], ['photo', 'Your photos'], ['ai', 'Made by AI']].map(([k, l]) => `<button type="button" class="hx-chip${(st.kind || 'all') === k ? ' on' : ''}" data-a="avkind" data-val="${k}">${l} <span class="hx-num">${n(k)}</span></button>`).join('')}
+          <span class="hx-grow"></span><label class="hx-avq">${ic('search', 15)}<span class="hx-sr">Search faces</span><input type="search" id="hxAvq" placeholder="Search faces" value="${esc(st.q || '')}"></label>
+          <button type="button" class="hx-chip" data-a="avsort" aria-haspopup="menu">${{used: 'Most used', name: 'By name', new: 'Newest'}[st.sort || 'used']}${ic('down', 12)}</button></div>
+        <div id="hxAvList">${avList()}</div></div>${avPanel(sel)}</div>`
+        : `<div class="hx-avfirst"><span class="hx-avp t1 big" aria-hidden="true"><b>${ic('user', 40)}</b></span><div><b class="hx-serif">No faces yet</b>
+          <p class="hx-mut">Add your photo and your videos can show you talking, or make a presenter with AI. Videos work without a face too: the words and your voice carry them.</p>
+          <div class="hx-acts"><button type="button" class="hx-btn dark" data-a="avadd">${ic('camera', 14)}Add your photo</button><button type="button" class="hx-btn" data-a="avai">${ic('wand', 14)}Make one with AI</button></div></div></div>`}</div>`;
+  }
+  // the photo window
+  function avPhBody() {
+    const s = UI.dlg, ok = s.file && s.real && s.big && s.consent;
+    const chk = (good, t, d) => `<div class="hx-avck"><span class="hx-anck ${good === true ? 'ok' : good === false ? 'no' : 'i'}">${good === true ? '✓' : good === false ? '!' : 'i'}</span><span><b>${t}</b> <span class="hx-mut">${d}</span></span></div>`;
+    return `<div class="hx-dlg w" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><div class="hx-growf"><h2 class="hx-serif" id="hxDlgT">Add a face from a photo</h2>
+        <span class="hx-mut hx-sm">Free. Nothing is made until you use the face in a video.</span></div><button type="button" class="hx-ib" data-a="dlgx" aria-label="Close">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb"><div class="hx-avph"><div class="hx-avphl">
+          <button type="button" class="hx-avdrop${s.url ? ' has' : ''}" data-a="avpick" aria-label="${s.url ? 'Choose another photo' : 'Choose a photo'}">${s.url ? `<img src="${esc(s.url)}" alt="The chosen photo"><span class="hx-avoval" aria-hidden="true"></span><span class="hx-avre">Choose another</span>`
+            : `${ic('camera', 28)}<b>Choose a photo</b><small>PNG, JPG or WebP · a clear face, facing the camera</small>`}</button>
+          ${s.file ? `<div class="hx-avcks">${chk(s.real, s.real ? 'A real photo.' : 'Not a photo.', s.real ? `${esc(s.type)}, ${s.size >= 1048576 ? (s.size / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(s.size / 1024)) + ' KB'}.` : 'Use a PNG, JPG or WebP picture.')}
+            ${s.real ? chk(s.big, s.big ? 'Big enough.' : 'Too small.', `${num(s.w)} × ${num(s.h)}${s.big ? (Math.min(s.w, s.h) >= 720 ? ', good for a full-screen face.' : ', fine for a face in the corner.') : `. Use one at least 300 pixels on each side.`}`) : ''}
+            ${s.real ? chk(s.h >= s.w ? true : null, s.h >= s.w ? 'Upright.' : 'Wider than tall.', s.h >= s.w ? 'Taller than it is wide, like a portrait.' : 'It works; a portrait photo frames the face better.') : ''}
+            ${chk(null, 'Look at it yourself:', 'one face, facing the camera, nothing covering the mouth.')}</div>` : ''}</div>
+        <div class="hx-avphr"><label class="hx-fld"><span class="hx-lab">Name</span><input class="hx-in" id="hxAvNm" maxlength="40" placeholder="Meghana" value="${esc(s.name || '')}" data-auto="1"></label>
+          <fieldset class="hx-avwho"><legend class="hx-lab">Whose face is this?</legend>
+            <label class="hx-avopt${s.who !== 'agreed' ? ' on' : ''}"><input type="radio" name="hxAvWho" value="me"${s.who !== 'agreed' ? ' checked' : ''}><span><b>Mine</b><small>It is my own face.</small></span></label>
+            <label class="hx-avopt${s.who === 'agreed' ? ' on' : ''}"><input type="radio" name="hxAvWho" value="agreed"${s.who === 'agreed' ? ' checked' : ''}><span><b>Someone who agreed</b><small>A colleague, family member or staff member who said yes to being in AI videos. Their name goes on the record.</small></span></label>
+            ${s.who === 'agreed' ? `<label class="hx-fld"><span class="hx-lab">Their full name</span><input class="hx-in" id="hxAvPer" maxlength="60" value="${esc(s.person || '')}"></label>` : ''}</fieldset>
+          <label class="hx-avok"><input type="checkbox" id="hxAvOk"${s.consent ? ' checked' : ''}><span>I confirm this is me, or the person agreed to be shown speaking in AI videos. It is not a public figure and not anyone under 18. Hoola keeps this confirmation with the date.</span></label>
+          <p class="hx-avnote">Hoola checks that this is a real photo and that it is big enough. It cannot check who is in it: your confirmation is the record.</p></div></div></div>
+      <div class="hx-dlgf"><span class="hx-mut hx-sm hx-grow">You can remove the face any time. Videos already made keep it.</span><button type="button" class="hx-btn" data-a="dlgx">Cancel</button>
+        <button type="button" class="hx-btn dark" data-a="avphsave"${!ok || s.busy ? ' disabled' : ''}>${s.busy ? 'Adding…' : 'Add the face'}</button></div>
+      <input type="file" id="hxAvPh" accept="image/png,image/jpeg,image/webp" hidden></div>`;
+  }
+  function avPhFile(f) {
+    const s = UI.dlg; if (!s || s.k !== 'avphoto' || !f) return;
+    if (s.url) URL.revokeObjectURL(s.url);
+    Object.assign(s, {file: f, size: f.size, type: (f.type.split('/')[1] || '').toUpperCase().replace('JPEG', 'JPG'), real: /^image\/(png|jpeg|webp)$/.test(f.type) && f.size <= 15 * 1048576, w: 0, h: 0, big: false, url: URL.createObjectURL(f)});
+    if (!s.name) s.name = f.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').slice(0, 40);
+    if (!s.real) return dlgPaint();
+    const im = new Image(); im.onload = () => { s.w = im.naturalWidth; s.h = im.naturalHeight; s.big = Math.min(s.w, s.h) >= 300; dlgPaint(); };
+    im.onerror = () => { s.real = false; dlgPaint(); }; im.src = s.url;
+  }
+  async function avPhSave() {
+    const s = UI.dlg; if (!s || s.busy) return;
+    const name = ($('#hxAvNm')?.value || s.name || '').trim(), person = ($('#hxAvPer')?.value || s.person || '').trim();
+    if (!name) return toast('Give the face a name.');
+    if (s.who === 'agreed' && !person) return toast('Write the name of the person who agreed.');
+    if (!s.consent) return toast('Tick that this is you, or that the person agreed.', true);
+    s.busy = true; dlgPaint();
+    try { const up = await upload(s.file); const row = await api('POST', `${S}/avatar`, {file_id: up.file_id, name, consent: true, who: s.who || 'me', person, lang: SET.lang});
+      if (s.url) URL.revokeObjectURL(s.url); UI.dlg = null; dlgPaint(); await load(); (UI.av ||= {}).sel = row.id; draw(); toast('Face added.'); }
+    catch (er) { s.busy = false; dlgPaint(); toast(er.message, true); }
+  }
+  // the AI window
+  const AIROWS = [['age', 'Age', [['20s', '20s'], ['30s', '30s'], ['40s', '40s'], ['50s', '50s +']]],
+    ['look', 'Look', [['warm', 'Warm'], ['formal', 'Formal'], ['casual', 'Casual'], ['expert', 'Doctor or teacher']]],
+    ['behind', 'Behind', [['wall', 'Plain wall'], ['shop', 'A shop'], ['office', 'An office'], ['outdoors', 'Outdoors']]]];
+  function avAiBody() {
+    const s = UI.dlg, q = s.quote, run = s.job && s.status === 'running', items = s.items || [];
+    return `<div class="hx-dlg w x" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><div class="hx-growf"><h2 class="hx-serif" id="hxDlgT">A face made by AI</h2>
+        <span class="hx-mut hx-sm">A presenter who is no real person. Every video with this face carries the AI mark.</span></div><button type="button" class="hx-ib" data-a="dlgx" aria-label="Close">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb"><div class="hx-avph"><div class="hx-avphl">
+          <label class="hx-fld"><span class="hx-lab">Describe the presenter</span><textarea class="hx-in hx-ta" id="hxAiD" rows="4" maxlength="400" placeholder="A friendly woman in her thirties, warm smile, simple teal kurta." data-auto="1">${esc(s.describe || '')}</textarea></label>
+          ${AIROWS.map(([k, l, os]) => `<div class="hx-fld"><span class="hx-lab">${l}</span><div class="hx-acts">${os.map(([v, t]) => `<button type="button" class="hx-chip s${s[k] === v ? ' on' : ''}" data-a="aiopt" data-k="${k}" data-val="${v}" aria-pressed="${s[k] === v}">${t}</button>`).join('')}</div></div>`).join('')}
+          <p class="hx-avwarn">Asking for a real or famous person is refused. The face is made up, so it needs no consent, and it is never passed off as someone real.</p></div>
+        <div class="hx-avphr">${items.length ? `<div class="hx-sech"><b>Pick one</b><span class="hx-mut hx-sm">${num(items.length)} made</span></div>
+            <div class="hx-aipicks">${items.map(it => `<button type="button" class="hx-aipick${s.pick === it.id ? ' on' : ''}" data-a="aipick" data-id="${esc(it.id)}" aria-pressed="${s.pick === it.id}"><img data-ci="${esc(it.id)}" alt="An AI-made face"><span class="hx-avk ai">AI</span>${s.pick === it.id ? `<span class="hx-aion">${ic('check', 14)}</span>` : ''}</button>`).join('')}</div>
+            <label class="hx-fld"><span class="hx-lab">Name the face</span><input class="hx-in" id="hxAiNm" maxlength="40" value="${esc(s.name || '')}" placeholder="Asha (AI)"></label>`
+          : run ? `<div class="hx-aiwait"><span class="hx-spin" aria-hidden="true"></span><b>Making ${num(s.count || 4)} faces…</b><span class="hx-mut hx-sm">${esc(s.step || 'Usually under a minute')}</span></div>`
+          : `<div class="hx-aiwait idle">${ic('wand', 28)}<b>Your four faces appear here</b><span class="hx-mut hx-sm">${s.error ? esc(s.error) : 'Describe the presenter, then make them.'}</span></div>`}</div></div></div>
+      <div class="hx-dlgf"><span class="hx-mut hx-sm hx-grow">${q ? (q.ready ? `4 faces · about ${cr(q.credits)}. Kept in Create › My creations too.` : 'Making faces needs the picture engine on this server.') : 'Checking the price…'}</span>
+        <button type="button" class="hx-btn${items.length ? '' : ' dark'}" data-a="aimake"${run || !q?.ready ? ' disabled' : ''}>${items.length ? 'Make 4 more' : `Make 4 faces${q?.ready ? ' · ' + cr(q.credits) : ''}`}</button>
+        ${items.length ? `<button type="button" class="hx-btn dark" data-a="aikeep"${!s.pick || s.busy ? ' disabled' : ''}>${s.busy ? 'Keeping…' : 'Keep this face'}</button>` : ''}</div></div>`;
+  }
+  let aiT = 0;
+  async function aiMake() {
+    const s = UI.dlg; if (!s || s.k !== 'avai') return;
+    s.describe = ($('#hxAiD')?.value || s.describe || '').trim();
+    if (!s.describe && !s.age && !s.look) return toast('Describe the presenter in a few words.');
+    s.error = ''; s.status = 'running'; s.step = ''; dlgPaint();
+    try { const r = await api('POST', `${S}/avatar/ai`, {describe: s.describe, age: s.age, look: s.look, behind: s.behind, count: 4});
+      s.job = r.job; s.count = r.count; aiPoll(); }
+    catch (er) { s.status = ''; s.error = er.message; dlgPaint(); }
+  }
+  function aiPoll() {
+    clearTimeout(aiT);
+    aiT = setTimeout(async () => { const s = UI.dlg; if (!s || s.k !== 'avai' || !s.job) return;
+      try { const j = await api('GET', `/api/create/jobs/${q(s.job)}`); s.step = j.step ? `Face ${j.step}` : '';
+        if (j.status === 'running') { dlgPaint(); return aiPoll(); }
+        s.status = j.status; if (j.status === 'failed') s.error = j.error || 'The faces could not be made. Nothing was kept.';
+        s.items = [...(j.items || []).filter(i => i.kind === 'image'), ...(s.items || [])].slice(0, 8);
+        if (!s.pick && s.items[0]) s.pick = s.items[0].id; dlgPaint(); }
+      catch (er) { s.status = ''; s.error = er.message; dlgPaint(); } }, 2500);
+  }
+  async function aiKeep() {
+    const s = UI.dlg; if (!s?.pick || s.busy) return;
+    const name = ($('#hxAiNm')?.value || s.name || '').trim(); if (!name) return toast('Give the face a name.');
+    s.busy = true; dlgPaint();
+    try { const row = await api('POST', `${S}/avatar/keep`, {item_id: s.pick, name}); UI.dlg = null; dlgPaint(); await load(); (UI.av ||= {}).sel = row.id; draw(); toast('Face kept.'); }
+    catch (er) { s.busy = false; dlgPaint(); toast(er.message, true); }
+  }
+  function avTwinBody() {
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><span class="hx-avwi avtwin">${ic('video', 22)}</span>
+        <div class="hx-growf"><h2 class="hx-serif" id="hxDlgT">A video twin</h2><span class="hx-ast no"><i></i>Needs an engine on this server</span></div>
+        <button type="button" class="hx-ib" data-a="dlgx" aria-label="Close" data-auto="1">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb"><p>A short video of you, filmed facing the camera, so the face in your videos moves its lips with the words. It needs a face engine that learns from a video, which the owner of this Hoola connects on the server. Nothing is filmed, sent or charged while it is off.</p>
+        <div class="hx-svs-list"><div class="hx-svr"><span class="hx-anck ok">✓</span><div><b>Your consent line</b><p class="hx-mut hx-sm">You will read one sentence on camera saying you agree. That recording is the record.</p></div></div>
+          <div class="hx-svr"><span class="hx-anck no">!</span><div><b>The video face engine</b><p class="hx-mut hx-sm">Not connected on this server yet.</p></div></div></div>
+        <div class="hx-fld"><span class="hx-lab">Meanwhile, these work today</span><div class="hx-acts"><button type="button" class="hx-btn" data-a="avadd">From your photo</button><button type="button" class="hx-btn" data-a="avai">Made by AI</button></div></div></div>
+      <div class="hx-dlgf"><span class="hx-mut hx-sm hx-grow">Your photo face can already talk through the face engines in Engines.</span><button type="button" class="hx-btn" data-a="dlgx">Close</button><button type="button" class="hx-btn dark" data-a="aeng">Open Engines</button></div></div>`;
+  }
+  function avRenBody() {
+    const a = face(UI.dlg.id); if (!a) return '';
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><h2 class="hx-serif hx-growf" id="hxDlgT">Rename ${esc(a.name)}</h2>
+        <button type="button" class="hx-ib" data-a="dlgx" aria-label="Close">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb"><label class="hx-fld"><span class="hx-lab">Name</span><input class="hx-in" id="hxAvRn" maxlength="40" value="${esc(a.name)}" data-auto="1"></label></div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx">Cancel</button><button type="button" class="hx-btn dark" data-a="avrensave">Save</button></div></div>`;
+  }
+  async function avTest(id) {
+    const a = face(id); if (!a || UI.av?.busy) return;
+    UI.av.busy = true; draw();
+    try { const r = await api('POST', `${H}/batch`, {scripts: [`Hello, I am ${a.name}. This is how I look in a Hoola video.`], lang: SET.lang === 'auto' ? 'en' : SET.lang, avatar_id: id});
+      UI.av.busy = false; await load(); const p = (r.made || [])[0]; toast('Test draft ready. Nothing is made until you press Make.'); return p ? go('studio', p.id) : go('studio'); }
+    catch (er) { UI.av.busy = false; draw(); toast(er.message, true); }
+  }
+
   // ------------------------------------------------------------------ pages ---
   const V = {
     chat() {
@@ -1322,21 +1521,7 @@ window.HoolaInteractive = function (ctx) {
     studio() { return ARG ? edPage() : libPage(); },
     templates() { const t = ARG && tplOf(ARG); return t ? tplUse(t) : tplLib(); },
     apps() { return ARG && appOf(ARG) ? appRun(ARG) : appsLib(); },
-    avatars() {
-      const av = D.avatars || [], faces = (D.engines?.engines || []).filter(e => e.job === 'video' && e.face && e.ready).map(e => e.label);
-      return `<div class="hx-doc"><div class="hx-doch"><div class="hx-growf"><h2 class="hx-serif">Avatars</h2><p class="hx-mut">Your faces. A face is used only with consent: it is you, or the person agreed.</p></div>
-          <button type="button" class="hx-btn dark" data-a="avadd">${ic('plus', 14)}Add a face</button></div>
-        <form class="hx-card hx-avform" id="hxAvForm" hidden><b class="hx-t">A new face</b><label class="hx-fld"><span class="hx-lab">Name</span><input class="hx-in" name="name" maxlength="40" placeholder="Meghana"></label>
-          <div class="hx-filerow"><button type="button" class="hx-btn" data-a="avfile">Choose a photo</button><span id="hxAvName" class="hx-mut hx-sm">A clear photo facing the camera (png, jpg or webp)</span></div>
-          <label class="hx-check"><input type="checkbox" name="consent"> <span>This is me, or the person in the photo agreed to be in AI videos. Never a public figure or anyone under 18.</span></label>
-          <div class="hx-acts"><button type="button" class="hx-btn dark" data-a="avsave">Add the face</button><button type="button" class="hx-btn" data-a="avcancel">Cancel</button></div>
-          <input type="file" accept="image/png,image/jpeg,image/webp" id="hxAvFile" hidden></form>
-        ${av.length ? `<div class="hx-grid3">${av.map(a => `<div class="hx-card hx-avc">${avImg(a, 'xl')}<div class="hx-ct"><b>${esc(a.name)}</b><small>Consent on ${esc((a.consent_at || '').slice(0, 10))}</small></div>
-            <p class="hx-hint">Can be made to talk by ${esc(faces.join(', ') || 'Hoola standard (still photo)')}.</p>
-            <div class="hx-acts"><button type="button" class="hx-btn s" data-a="useface" data-id="${esc(a.id)}">Use in my next video</button>
-            <button type="button" class="hx-ib s" data-a="avdel" data-id="${esc(a.id)}" aria-label="Remove ${esc(a.name)}">${ic('trash', 15)}</button></div></div>`).join('')}</div>`
-          : `<div class="hx-empty"><b>No faces yet</b><span>Add your photo, and your videos can show you talking.</span></div>`}</div>`;
-    },
+    avatars() { return avPage(); },
     voices() {
       const Vv = UI.V || {mine: [], library: []};
       const row = v => `<div class="hx-vrow"><span class="hx-ct"><b>${esc(v.name)}</b><small>${esc([v.tone, v.gender, v.tier === 'premium' ? 'Premium' : 'Standard', v.ready ? '' : 'not connected'].filter(Boolean).join(' · '))}</small></span>
@@ -1655,11 +1840,30 @@ window.HoolaInteractive = function (ctx) {
         br.busy = true; draw();
         try { await api('POST', `${X}/broll`, {prompt: br.prompt, seconds: br.seconds, aspect: br.aspect, quote_key: br.q?.key || ''}); br.busy = false; br.prompt = ''; await load(); draw(); abWatch(); toast('Making the shot. It appears here when ready.'); }
         catch (er) { br.busy = false; draw(); toast(er.message, true); } return; }
-      case 'avadd': { const f = $('#hxAvForm'); if (f) f.hidden = false; return; }
-      case 'avcancel': { const f = $('#hxAvForm'); if (f) f.hidden = true; return; }
-      case 'avfile': return $('#hxAvFile')?.click();
-      case 'avsave': return avSave();
-      case 'avdel': if (!confirm('Remove this face? Videos keep working; new ones will not use it.')) return; try { await api('DELETE', `${S}/avatar?id=${q(id)}`); await load(); draw(); } catch (er) { toast(er.message, true); } return;
+      case 'avadd': if ((D.avatars || []).length >= AVMAX) return toast(`You have ${AVMAX} faces. Remove one first.`);
+        UI.dlg = {k: 'avphoto', who: 'me', consent: false}; return dlgPaint();
+      case 'avai': if ((D.avatars || []).length >= AVMAX) return toast(`You have ${AVMAX} faces. Remove one first.`);
+        UI.dlg = {k: 'avai', age: '30s', look: 'warm', behind: 'wall', items: []}; dlgPaint();
+        api('GET', `${S}/avatar/ai/quote?count=4`).then(r => { if (UI.dlg?.k === 'avai') { UI.dlg.quote = r; dlgPaint(); } }).catch(() => { if (UI.dlg?.k === 'avai') { UI.dlg.quote = {ready: false}; dlgPaint(); } }); return;
+      case 'avtwin': UI.dlg = {k: 'avtwin'}; return dlgPaint();
+      case 'avpick': return $('#hxAvPh')?.click();
+      case 'avphsave': return avPhSave();
+      case 'aiopt': if (UI.dlg?.k === 'avai') { const k = b.dataset.k; UI.dlg.describe = $('#hxAiD')?.value ?? UI.dlg.describe; UI.dlg[k] = UI.dlg[k] === b.dataset.val ? '' : b.dataset.val; dlgPaint(); } return;
+      case 'aimake': return aiMake();
+      case 'aipick': if (UI.dlg?.k === 'avai') { UI.dlg.describe = $('#hxAiD')?.value ?? UI.dlg.describe; UI.dlg.name = $('#hxAiNm')?.value ?? UI.dlg.name; UI.dlg.pick = id; dlgPaint(); } return;
+      case 'aikeep': return aiKeep();
+      case 'avsel': (UI.av ||= {}).sel = id; return draw();
+      case 'avkind': (UI.av ||= {}).kind = b.dataset.val; return draw();
+      case 'avsort': return menu(b, [['used', 'Most used'], ['name', 'By name'], ['new', 'Newest']].map(([v, l]) => ({label: l, checked: (UI.av?.sort || 'used') === v, run: () => { (UI.av ||= {}).sort = v; draw(); }})));
+      case 'avvid': return go('studio', id);
+      case 'avren': UI.dlg = {k: 'avren', id}; return dlgPaint();
+      case 'avrensave': { const n = ($('#hxAvRn')?.value || '').trim(); if (!n) return toast('Give the face a name.');
+        try { await api('PATCH', `${S}/avatar`, {id: UI.dlg.id, name: n}); UI.dlg = null; dlgPaint(); await load(); draw(); toast('Renamed.'); } catch (er) { toast(er.message, true); } return; }
+      case 'avdefault': if (SET.face === id) { setPick('face', ''); toast('No default face now. New videos start without one.'); } else { setPick('face', id); toast(`New videos start with ${face(id)?.name || 'this face'}.`); } return;
+      case 'avtest': return avTest(id);
+      case 'avdel': { const a = face(id); const n = avUses(a || {}).length;
+        if (!confirm(`Remove ${a?.name || 'this face'}?${n ? ` ${n} video${n === 1 ? ' uses' : 's use'} it; those drafts lose the face, and videos already made keep it.` : ''} This cannot be undone.`)) return;
+        try { await api('DELETE', `${S}/avatar?id=${q(id)}`); if (SET.face === id) setPick('face', ''); if (UI.av?.sel === id) UI.av.sel = ''; await load(); draw(); toast('Face removed.'); } catch (er) { toast(er.message, true); } return; }
       case 'useface': setPick('face', id); toast('Your next video uses this face.'); return;
       case 'setvoice': setPick('voice', id); return;
       case 'livenew': UI.live = 'new'; UI.liveOut = []; return draw();
@@ -1699,6 +1903,11 @@ window.HoolaInteractive = function (ctx) {
     const t = e.target;
     if (t.dataset.isc != null) { saveLine(t.dataset.id, +t.dataset.isc, t.value); return; }
     if (t.id === 'hxAsk') { C.ask = t.value; t.style.height = 'auto'; t.style.height = Math.min(180, t.scrollHeight) + 'px'; $('.hx-send')?.classList.toggle('on', !!t.value.trim()); return; }
+    if (t.id === 'hxAvq') { (UI.av ||= {}).q = t.value; const l = $('#hxAvList'); if (l) l.innerHTML = avList(); fillMedia(); return; }
+    if (UI.dlg && t.id === 'hxAvNm') { UI.dlg.name = t.value; return; }
+    if (UI.dlg && t.id === 'hxAvPer') { UI.dlg.person = t.value; return; }
+    if (UI.dlg && t.id === 'hxAiD') { UI.dlg.describe = t.value; return; }
+    if (UI.dlg && t.id === 'hxAiNm') { UI.dlg.name = t.value; return; }
     if (t.id === 'hxAq') { UI.aq = t.value; const l = $('#hxAppList'); if (l) l.innerHTML = appsList(); return; }
     if (t.id === 'hxArBr') { UI.broll.prompt = t.value; return; }
     if (t.id === 'hxArNames' || t.id === 'hxArBatch') { const r = arState(); r[t.id === 'hxArNames' ? 'names' : 'scripts'] = t.value;
@@ -1735,17 +1944,11 @@ window.HoolaInteractive = function (ctx) {
     if (t.id === 'hxAready') { UI.aready = t.checked; const l = $('#hxAppList'); if (l) l.innerHTML = appsList(); return; }
     if (t.id === 'hxShFile' && UI.dlg) { const f = t.files?.[0]; if (!f) return; if (f.size > 2 * 1024 * 1024) return toast('That file is larger than 2 MB.', true);
       const rd = new FileReader(); rd.onload = () => { UI.dlg.text = String(rd.result || ''); dlgPaint(); }; rd.readAsText(f); return; }
-    if (t.id === 'hxAvFile') { const f = t.files?.[0]; const n = $('#hxAvName'); if (n) n.textContent = f ? f.name : ''; return; }
+    if (t.id === 'hxAvPh') return avPhFile(t.files?.[0]);
+    if (t.name === 'hxAvWho' && UI.dlg?.k === 'avphoto') { UI.dlg.who = t.value; return dlgPaint(); }
+    if (t.id === 'hxAvOk' && UI.dlg?.k === 'avphoto') { UI.dlg.consent = t.checked; return dlgPaint(); }
     if (t.name === 'peng' && PAGE === 'studio') return save({engine: t.value});
     if (t.name === 'face' && t.closest('#hxLiveF')) { const f = new FormData($('#hxLiveF')); UI._draft = Object.fromEntries(f); }
-  }
-  async function avSave() {
-    const f = $('#hxAvForm'), file = $('#hxAvFile')?.files?.[0], name = f.querySelector('[name=name]').value.trim(), consent = f.querySelector('[name=consent]').checked;
-    if (!name) return toast('Give the face a name.');
-    if (!file) return toast('Choose a photo first.');
-    if (!consent) return toast('Tick that this is you, or that the person agreed.', true);
-    try { const up = await upload(file); await api('POST', `${S}/avatar`, {file_id: up.file_id, name, consent, lang: SET.lang}); await load(); draw(); toast('Face added.'); }
-    catch (er) { toast(er.message, true); }
   }
   async function liveSave() {
     const body = Object.fromEntries(new FormData($('#hxLiveF')));

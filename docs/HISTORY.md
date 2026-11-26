@@ -11965,3 +11965,27 @@ past the screen, follows after her scroll to the end, stops when she scrolls up)
 (phone: lands, holds every frame while a reply streams past the screen, released by her drag; history does not land).
 Full phone suite: no new failures (the 138 screenshot tests fail here before and after - they run on CI).
 NOT VERIFIED: on her server or phone.
+
+## v0.999.200 AVATARS, REDESIGNED
+
+Owner: "NOW DO SAME FOR AVATHAR SECTION - MAKE IT ADVANCE, PREMIUM AND PERECT AS WE DID SAME IN INTERACTIVE SECTION" -> design
+canvas claude.ai/artifact/D5nT24BS35LP5KpAmHKqoy (boards: Avatars, Add from a photo, A face made by AI, Phone) -> "GO BUILD".
+
+- The page (`interactive.js` avatars block, `interactive2.css` v0.999.176 AVATARS block): three ways to add a face (photo, made by
+  AI, video twin), face cards with a portrait, Your photo / Made by AI, the consent line (who agreed and when), how many videos use
+  it, Default; filters All / Your photos / Made by AI, search, sort (most used, name, newest); a first-face page when there are none.
+- The side panel: the consent record, which engines can make it talk (ready ones with their price; the rest folded into one line
+  that opens Engines), the videos that use it, Make a test video (`/hub/batch` one-scene draft with this face, opens in the Studio),
+  Default face (per browser, `SET.face`), Rename (NEW PATCH /api/interactive/studio/avatar), Remove (says how many videos use it).
+- A face from a photo: preview with a face oval; checks read in the browser (a real PNG/JPG/WebP, size, upright) and on the server
+  (`studio.photo_size`, refused below 300 px on a side); whose face (`who` me / agreed + `person`, kept on the row and in the consent
+  text); Add stays off until the consent box is ticked.
+- A face made by AI: describe + age / look / behind -> `studio.ai_face_prompt` -> photogen's own refusal check -> a Create image job
+  of 4 (`POST /avatar/ai`, priced first by `GET /avatar/ai/quote` from photogen's rupee cost and the credit rate) -> pick one ->
+  `POST /avatar/keep` copies it in as kind `ai` (no consent, `consent_at` empty, marked not a real person). Found while testing:
+  Hoola's own first wording ("not a real or famous person") tripped photogen's famous-person filter; reworded and pinned by a test.
+- A video twin: a window saying it needs a video face engine on the server, with what works meanwhile.
+- Tests: `test_v0999_176_interactive_avatars.py` (4, incl. a Chromium walk at 1440 and 390: twin window, a too-small photo refused,
+  a named person who agreed, an AI face made and kept, filters, search, rename, default, a test video). Interactive suites 56 passed.
+- NOT VERIFIED: on her server, with a real picture engine making the AI faces, with her real photos.
+

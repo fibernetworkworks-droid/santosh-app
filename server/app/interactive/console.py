@@ -113,7 +113,66 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         if not Path(row.stored_path).is_file():
             raise HTTPException(404, "That photo was not found - upload it again.")
         return wrap(S.add_avatar, tenant, str(b.get("name") or ""), row.stored_path, lang=str(b.get("lang") or "en"),
-                    consent=bool(b.get("consent")), filename=row.name)
+                    consent=bool(b.get("consent")), filename=row.name, who=str(b.get("who") or "me"),
+                    person=str(b.get("person") or ""))
+
+    @r.patch("/avatar")
+    async def rename_avatar(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """v0.999.176 a new name for a face."""
+        on()
+        b = dict(body or {})
+        return wrap(S.rename_avatar, tenant, str(b.get("id") or ""), str(b.get("name") or ""))
+
+    def _ai_credits(count: int) -> int:
+        from .. import photogen
+        from ..credits import service as cr
+        rate = cr._inr_per_credit() or 0.088
+        return max(1, round(photogen.COST_INR["fast"] * count / rate))
+
+    @r.get("/avatar/ai/quote")
+    async def ai_quote(count: int = 4, tenant: str = Depends(current_tenant)):
+        """v0.999.176 the price of AI-made faces before she asks for them."""
+        on()
+        from ..create import service as cs
+        n = max(1, min(int(count or 4), 4))
+        return {"count": n, "credits": _ai_credits(n), "ready": bool(cs.ready().get("image"))}
+
+    @r.post("/avatar/ai")
+    async def ai_faces(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """v0.999.176 four AI-made presenters (no real person); she keeps one as a face. Refused for real or famous people."""
+        on()
+        from .. import photogen
+        from ..create import jobs, service as cs
+        b = dict(body or {})
+        if not cs.ready().get("image"):
+            raise HTTPException(409, "Making faces needs the picture engine on this server.")
+        prompt = wrap(S.ai_face_prompt, str(b.get("describe") or ""), str(b.get("age") or ""), str(b.get("look") or ""),
+                      str(b.get("behind") or ""))
+        why = photogen.problem(str(b.get("describe") or "")) or photogen.problem(prompt)
+        if why:
+            raise HTTPException(422, why)
+        n = max(1, min(int(b.get("count") or 4), 4))
+        try:
+            j = jobs.start(tenant, "image", {"prompt": prompt, "count": n, "aspect": "4:5", "quality": "fast",
+                                             "title": "AI face"})
+        except jobs.JobError as e:
+            raise HTTPException(400, str(e))
+        return {"job": j.get("id"), "credits": _ai_credits(n), "count": n}
+
+    @r.post("/avatar/keep")
+    async def keep_ai(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """v0.999.176 one of her AI-made pictures kept as a face."""
+        on()
+        from ..create import jobs
+        b = dict(body or {})
+        try:
+            path, it = jobs.item_file(tenant, str(b.get("item_id") or ""))
+        except jobs.JobError:
+            raise HTTPException(404, "That picture was not found.")
+        if it.get("kind") != "image":
+            raise HTTPException(422, "Only a picture can become a face.")
+        return wrap(S.add_ai_avatar, tenant, str(b.get("name") or ""), path.read_bytes(),
+                    prompt=str((it.get("meta") or {}).get("prompt") or ""))
 
     @r.delete("/avatar")
     async def del_avatar(id: str = "", tenant: str = Depends(current_tenant)):

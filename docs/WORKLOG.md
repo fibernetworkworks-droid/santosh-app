@@ -3738,3 +3738,8 @@ Task ID: v0.999.199 SMOOTH LANDING
 Ask: smooth landing of a sent message like Claude
 Built: console + phone top landing, kept room, held view
 Not verified: on her server
+---
+Task ID: v0.999.200 AVATARS, REDESIGNED
+Ask: Avatars page advanced and premium like the other Interactive pages
+Built: face cards + side panel, photo face with whose-face consent and size checks, AI-made face priced first, video twin explained, rename route
+Not verified: on her server, real picture engine

@@ -148,14 +148,33 @@ def photo_path(tenant: str, aid: str) -> Path | None:
 
 
 # ------------------------------------------------------------------ avatars ---
+MIN_FACE_PX = 300          # v0.999.176 a face smaller than this looks soft in every video
+
+
+def photo_size(data: bytes) -> tuple[int, int]:
+    """Width and height of a photo, read from its own bytes (0, 0 when it cannot be read)."""
+    try:
+        import io
+        from PIL import Image
+        with Image.open(io.BytesIO(data)) as im:
+            return int(im.width), int(im.height)
+    except Exception:   # noqa: BLE001
+        return 0, 0
+
+
 def add_avatar(tenant: str, name: str, file_path: str, lang: str = "en", consent: bool = False,
-               filename: str = "") -> dict[str, Any]:
-    """A photo avatar: her picture (or a person who agreed), shown beside the words. Consent is a hard gate."""
+               filename: str = "", who: str = "me", person: str = "") -> dict[str, Any]:
+    """A photo avatar: her picture (or a person who agreed), shown beside the words. Consent is a hard gate.
+    v0.999.176: whose face it is goes on the record (hers, or the named person who agreed), and the photo's size is checked."""
     name = re.sub(r"\s+", " ", str(name or "").strip())[:40]
     if not name:
         raise StudioError("Give the avatar a name.")
     if not consent:
         raise StudioError("Hoola only uses a face with consent: tick that this is you, or that the person agreed.")
+    who = "agreed" if str(who or "") == "agreed" else "me"
+    person = re.sub(r"\s+", " ", str(person or "").strip())[:60]
+    if who == "agreed" and not person:
+        raise StudioError("Write the name of the person who agreed.")
     src = Path(file_path)
     ext = (Path(filename).suffix or src.suffix).lower()   # chat-lane files are stored without an extension
     if ext == ".jpeg":
@@ -165,6 +184,9 @@ def add_avatar(tenant: str, name: str, file_path: str, lang: str = "en", consent
     head = src.read_bytes()[:12]
     if not (head.startswith(b"\x89PNG") or head.startswith(b"\xff\xd8") or (head[:4] == b"RIFF" and head[8:12] == b"WEBP")):
         raise StudioError("That file is not a real photo.")
+    w, h = photo_size(src.read_bytes())
+    if w and h and min(w, h) < MIN_FACE_PX:
+        raise StudioError(f"The photo is too small ({w} x {h}). Use one at least {MIN_FACE_PX} pixels on each side.")
     with _LOCK:
         d = _load(tenant)
         if len(d["avatars"]) >= MAX_AVATARS:
@@ -175,10 +197,73 @@ def add_avatar(tenant: str, name: str, file_path: str, lang: str = "en", consent
         shutil.copyfile(src, folder / f"{aid}{ext}")
         row = {"id": aid, "name": name, "kind": "photo", "photo": f"{aid}{ext}",
                "lang": lang_of(lang), "consent_at": _now_iso(), "created": _now_iso(),
-               "consent": "her own face or a person who agreed (ticked)"}
+               "who": who, "person": person if who == "agreed" else "", "width": w, "height": h,
+               "consent": ("her own face (ticked)" if who == "me" else f"{person} agreed to be in AI videos (ticked)")}
         d["avatars"].insert(0, row)
         _store(tenant, d)
     return row
+
+
+def add_ai_avatar(tenant: str, name: str, data: bytes, prompt: str = "") -> dict[str, Any]:
+    """v0.999.176 a face made by AI: no real person, so no consent; marked AI wherever it is used."""
+    name = re.sub(r"\s+", " ", str(name or "").strip())[:40]
+    if not name:
+        raise StudioError("Give the face a name.")
+    if not data.startswith(b"\x89PNG") and not data.startswith(b"\xff\xd8"):
+        raise StudioError("That picture could not be read.")
+    ext = ".png" if data.startswith(b"\x89PNG") else ".jpg"
+    w, h = photo_size(data)
+    with _LOCK:
+        d = _load(tenant)
+        if len(d["avatars"]) >= MAX_AVATARS:
+            raise StudioError(f"You already have {MAX_AVATARS} avatars - remove one first.")
+        aid = "av_" + uuid.uuid4().hex[:10]
+        folder = _home(tenant) / "avatars"
+        folder.mkdir(exist_ok=True)
+        (folder / f"{aid}{ext}").write_bytes(data)
+        row = {"id": aid, "name": name, "kind": "ai", "photo": f"{aid}{ext}", "lang": "en", "created": _now_iso(),
+               "consent_at": "", "who": "ai", "person": "", "width": w, "height": h, "ai": True,
+               "described": str(prompt or "")[:400], "consent": "made by AI: not a real person"}
+        d["avatars"].insert(0, row)
+        _store(tenant, d)
+    return row
+
+
+def rename_avatar(tenant: str, aid: str, name: str) -> dict[str, Any]:
+    name = re.sub(r"\s+", " ", str(name or "").strip())[:40]
+    if not name:
+        raise StudioError("Give the face a name.")
+    with _LOCK:
+        d = _load(tenant)
+        for a in d["avatars"]:
+            if a["id"] == aid:
+                a["name"] = name
+                _store(tenant, d)
+                return a
+    raise StudioError("This avatar was not found.")
+
+
+AI_AGES = {"20s": "in her or his twenties", "30s": "in their thirties", "40s": "in their forties", "50s": "in their fifties or older"}
+AI_LOOKS = {"warm": "warm and friendly, a gentle smile", "formal": "formal and confident, smart clothes",
+            "casual": "relaxed and casual", "expert": "a calm, trustworthy professional such as a doctor or teacher"}
+AI_BEHIND = {"wall": "a plain soft wall", "shop": "a bright, tidy shop slightly out of focus", "office": "a modern office slightly out of focus",
+             "outdoors": "a sunny street slightly out of focus"}
+
+
+def ai_face_prompt(describe: str, age: str = "", look: str = "", behind: str = "") -> str:
+    """The picture request for an AI-made presenter. The person is made up; a real or famous person is refused by the picture engine."""
+    t = " ".join(str(describe or "").split())[:400]
+    parts = [t] if t else []
+    if AI_AGES.get(age):
+        parts.append(AI_AGES[age])
+    if AI_LOOKS.get(look):
+        parts.append(AI_LOOKS[look])
+    if not parts:
+        raise StudioError("Describe the presenter in a few words.")
+    bg = AI_BEHIND.get(behind, "a plain soft wall")
+    return ("A realistic head-and-shoulders portrait photo of an invented, made-up person who does not exist: "
+            + ", ".join(parts) + f". Looking straight at the camera, mouth closed, face evenly lit and fully visible, nothing covering the face. "
+            f"Background: {bg}. Natural colours, sharp focus, upright portrait framing.")
 
 
 def remove_avatar(tenant: str, aid: str) -> bool:
