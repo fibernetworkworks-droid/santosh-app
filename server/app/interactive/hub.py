@@ -139,7 +139,7 @@ def _clip(v: Any, n: int) -> str:
 def _d(tenant: str) -> dict[str, Any]:
     d = S._load(tenant)
     d.setdefault("brand", {})
-    for k in ("glossary", "templates", "trash", "brains"):
+    for k in ("glossary", "templates", "trash", "brains", "folders"):
         d.setdefault(k, [])
     return d
 
@@ -599,6 +599,106 @@ def restore(tenant: str, pid: str) -> dict[str, Any]:
         return p
 
 
+def purge_one(tenant: str, pid: str) -> bool:
+    """v0.999.204 one video out of the trash for good (its made file too)."""
+    with S._LOCK:
+        d = _d(tenant)
+        if not any(x["id"] == pid for x in d["trash"]):
+            raise S.StudioError("That video is not in the trash.")
+        S.video_path(tenant, pid).unlink(missing_ok=True)
+        d["trash"] = [x for x in d["trash"] if x["id"] != pid]
+        S._store(tenant, d)
+        return True
+
+
+# ------------------------------------------------------------------ folders + many at once (v0.999.204) ---
+MAX_FOLDERS = 30
+FOLDER_COLORS = ("#B07A3A", "#2E4F8A", "#2F6B48", "#8A2F4E", "#4A36C9", "#57564F")
+
+
+def folder_save(tenant: str, name: Any, color: Any = "", fid: Any = "") -> dict[str, Any]:
+    name = _clip(name, 40)
+    if not name:
+        raise S.StudioError("Give the folder a name.")
+    with S._LOCK:
+        d = _d(tenant)
+        fs = d["folders"]
+        if any(f["name"].lower() == name.lower() and f["id"] != fid for f in fs):
+            raise S.StudioError("You already have a folder with that name.")
+        row = next((f for f in fs if f["id"] == fid), None) if fid else None
+        if fid and row is None:
+            raise S.StudioError("That folder was not found.")
+        if row is None:
+            if len(fs) >= MAX_FOLDERS:
+                raise S.StudioError(f"You have {MAX_FOLDERS} folders - remove one first.")
+            row = {"id": "fd_" + uuid.uuid4().hex[:8], "created": S._now_iso(), "color": FOLDER_COLORS[len(fs) % len(FOLDER_COLORS)]}
+            fs.append(row)
+        row["name"] = name
+        if str(color or "") in FOLDER_COLORS:
+            row["color"] = str(color)
+        S._store(tenant, d)
+        return row
+
+
+def folder_delete(tenant: str, fid: str) -> dict[str, Any]:
+    """The folder goes; its videos stay, out of any folder."""
+    with S._LOCK:
+        d = _d(tenant)
+        if not any(f["id"] == fid for f in d["folders"]):
+            raise S.StudioError("That folder was not found.")
+        d["folders"] = [f for f in d["folders"] if f["id"] != fid]
+        n = 0
+        for p in d["projects"] + d["trash"]:
+            if p.get("folder") == fid:
+                p["folder"] = ""
+                n += 1
+        S._store(tenant, d)
+        return {"freed": n}
+
+
+def bulk(tenant: str, ids: list[Any], action: str, value: Any = "") -> dict[str, Any]:
+    """Many videos at once: move to a folder, change the voice or the face (drafts take it; a made video keeps its file until
+    it is made again), duplicate, or move to the trash. A video being made is left out and named."""
+    ids = list(dict.fromkeys(str(x) for x in (ids or [])))[:100]
+    if not ids:
+        raise S.StudioError("Choose at least one video.")
+    if action not in ("move", "voice", "face", "duplicate", "trash"):
+        raise S.StudioError("Choose what to do with them.")
+    value = str(value or "")
+    d = _d(tenant)
+    if action == "move" and value and not any(f["id"] == value for f in d["folders"]):
+        raise S.StudioError("That folder was not found.")
+    if action == "face" and value and not any(a["id"] == value for a in d["avatars"]):
+        raise S.StudioError("That face was not found.")
+    if action == "voice" and value:
+        from . import voice as VO
+        try:
+            VO.voice_info(tenant, value)
+        except VO.VoiceError:
+            raise S.StudioError("That voice was not found.") from None
+    done, skipped = [], []
+    for pid in ids:
+        try:
+            if action == "move":
+                with S._LOCK:
+                    dd = _d(tenant)
+                    p = S._find(dd, pid)
+                    p["folder"] = value
+                    S._store(tenant, dd)
+            elif action == "voice":
+                S.save(tenant, pid, {"voice": value})
+            elif action == "face":
+                S.save(tenant, pid, {"avatar_id": value})
+            elif action == "duplicate":
+                duplicate(tenant, pid)
+            else:
+                trash(tenant, pid)
+            done.append(pid)
+        except S.StudioError as e:
+            skipped.append({"id": pid, "why": str(e)})
+    return {"done": done, "skipped": skipped}
+
+
 def empty_trash(tenant: str) -> int:
     with S._LOCK:
         d = _d(tenant)
@@ -719,6 +819,7 @@ def usage(tenant: str, d: dict[str, Any] | None = None) -> dict[str, Any]:
     for p in rows:
         by[p["lang"]] = by.get(p["lang"], 0.0) + float(p["video"].get("duration") or 0)
     return {"month": month, "videos": len(rows), "minutes": round(secs / 60, 1),
+            "credits": sum(int((p.get("video") or {}).get("credits") or 0) for p in rows),
             "by_language": [{"lang": S.lang_label(k), "minutes": round(v / 60, 1)} for k, v in sorted(by.items(), key=lambda kv: -kv[1])],
             "recent": [{"title": p["title"], "made": p["video"].get("made"), "seconds": round(float(p["video"].get("duration") or 0))}
                        for p in sorted(rows, key=lambda p: str(p["video"].get("made")), reverse=True)[:8]],
@@ -741,7 +842,7 @@ def overview(tenant: str) -> dict[str, Any]:
         if _purge(tenant, d):
             S._store(tenant, d)
     return {"projects": d["projects"], "avatars": d["avatars"], "running": S.running_for(tenant), "brand": d["brand"],
-            "glossary": d["glossary"], "templates": templates(tenant), "trash": d["trash"], "brains": d["brains"],
+            "glossary": d["glossary"], "templates": templates(tenant), "trash": d["trash"], "brains": d["brains"], "folders": d["folders"],
             "usage": usage(tenant, d), "status": status(), "limits": {"batch": MAX_BATCH, "trash_days": TRASH_DAYS}}
 
 

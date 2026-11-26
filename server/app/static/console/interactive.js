@@ -144,7 +144,7 @@ window.HoolaInteractive = function (ctx) {
     t.innerHTML = PAGE === 'chat' ? `${UI.credits != null ? `<button type="button" class="hx-credp hx-num" data-a="credits" title="Your credits">${ic('spark', 14)}${num(UI.credits)} credits</button>` : ''}
       <button type="button" class="hx-ib" data-a="chats" aria-label="Earlier chats" title="Earlier chats">${ic('clock', 18)}</button>
       <button type="button" class="hx-ib" data-a="newchat" aria-label="New chat" title="New chat">${ic('plus', 18)}</button>`
-      : PAGE === 'studio' || PAGE === 'templates' || PAGE === 'apps' || PAGE === 'avatars' || PAGE === 'voices' || PAGE === 'live' ? (UI.credits != null ? `<button type="button" class="hx-credp hx-num" data-a="credits" title="Your credits">${ic('spark', 14)}${num(UI.credits)} credits</button>` : '') : '';
+      : PAGE === 'studio' || PAGE === 'templates' || PAGE === 'apps' || PAGE === 'avatars' || PAGE === 'voices' || PAGE === 'live' || PAGE === 'projects' ? (UI.credits != null ? `<button type="button" class="hx-credp hx-num" data-a="credits" title="Your credits">${ic('spark', 14)}${num(UI.credits)} credits</button>` : '') : '';
   }
   function go(page, arg) {
     window.HoolaMenu?.close();
@@ -1018,7 +1018,7 @@ window.HoolaInteractive = function (ctx) {
     let w = $('#hxDlg');
     if (!UI.dlg) { if (w) w.remove(); return; }
     if (!w) { w = document.createElement('div'); w.id = 'hxDlg'; w.className = 'hx-dlgw'; ROOT.appendChild(w); }
-    w.innerHTML = `<div class="hx-dlgs" data-a="dlgx" aria-hidden="true"></div>${({save: svBody, pick: pickBody, need: needBody, voput: voPutBody, lvweb: lvWebBody, lvlearn: lvLearnBody, avphoto: avPhBody, avai: avAiBody, avtwin: avTwinBody, avren: avRenBody}[UI.dlg.k] || shBody)()}`;
+    w.innerHTML = `<div class="hx-dlgs" data-a="dlgx" aria-hidden="true"></div>${({save: svBody, pick: pickBody, need: needBody, pjfolder: pjFolderBody, voput: voPutBody, lvweb: lvWebBody, lvlearn: lvLearnBody, avphoto: avPhBody, avai: avAiBody, avtwin: avTwinBody, avren: avRenBody}[UI.dlg.k] || shBody)()}`;
     const f = w.querySelector('[data-auto]'); if (f && !w.contains(document.activeElement)) f.focus();
     fillMedia();
   }
@@ -1804,6 +1804,87 @@ window.HoolaInteractive = function (ctx) {
   }
   function lvSet(k, v) { const a = lvDraft(); a[k] = v; UI.ldDirty = true; }
 
+  // ---- projects (v0.999.204 PROJECTS, REDESIGNED: this month, folders, many videos changed at once, a trash with days left)
+  const pjS = () => UI.pj || (UI.pj = {f: 'all', q: '', sort: 'new', sel: []});
+  const pjFolders = () => D.folders || [];
+  const pjFolder = id => pjFolders().find(f => f.id === id);
+  function pjRows() {
+    const st = pjS(), ql = (st.q || '').trim().toLowerCase();
+    let xs = (D.projects || []).filter(p => st.f === 'all' || (st.f === 'none' ? !pjFolder(p.folder) : p.folder === st.f)).filter(p => !ql || String(p.title || '').toLowerCase().includes(ql));
+    xs = [...xs].sort(st.sort === 'name' ? (a, b) => String(a.title).localeCompare(String(b.title)) : st.sort === 'old' ? (a, b) => String(a.updated || '').localeCompare(String(b.updated || '')) : (a, b) => String(b.updated || '').localeCompare(String(a.updated || '')));
+    return xs;
+  }
+  function pjTable() {
+    const st = pjS(), xs = pjRows(), sel = st.sel.filter(id => xs.some(p => p.id === id)), all = xs.length && sel.length === xs.length;
+    if (!xs.length) return `<div class="hx-empty"><b>${st.q ? 'No video matches' : st.f === 'all' ? 'No videos yet' : 'This folder is empty'}</b><span>${st.q ? 'Try another word.' : st.f === 'all' ? 'Start one in the Interactive chat, from a template or in the Studio.' : 'Choose videos in All videos, then Move to folder.'}</span></div>`;
+    return `${sel.length ? `<div class="hx-pjbulk" role="toolbar" aria-label="Change the chosen videos"><b class="hx-num">${num(sel.length)} chosen</b><button type="button" class="hx-lnk" data-a="pjnone">Clear</button><span class="hx-grow"></span>
+        <button type="button" class="hx-pjbb" data-a="pjbulk" data-k="move" aria-haspopup="menu">${ic('folder', 14)}Move to folder</button>
+        <button type="button" class="hx-pjbb" data-a="pjbulk" data-k="voice" aria-haspopup="menu">${ic('mic', 14)}Change voice</button>
+        <button type="button" class="hx-pjbb" data-a="pjbulk" data-k="face" aria-haspopup="menu">${ic('user', 14)}Change face</button>
+        <button type="button" class="hx-pjbb" data-a="pjbulk" data-k="duplicate">${ic('copy', 14)}Duplicate</button>
+        <button type="button" class="hx-pjbb bad" data-a="pjbulk" data-k="trash">${ic('trash', 14)}Move to trash</button></div>` : ''}
+      <div class="hx-pjt" role="table" aria-label="Videos"><div class="hx-pjr hd" role="row"><span role="columnheader"><input type="checkbox" id="hxPjAll" aria-label="Choose all"${all ? ' checked' : ''}></span>
+          <span role="columnheader">Video</span><span role="columnheader">State</span><span role="columnheader">Language</span><span role="columnheader">Face and voice</span><span role="columnheader">Length</span><span role="columnheader">Changed</span></div>
+        ${xs.map(p => { const on = sel.includes(p.id), fd = st.f === 'all' ? pjFolder(p.folder) : null;
+          return `<div class="hx-pjr${on ? ' on' : ''}" role="row"><span role="cell"><input type="checkbox" data-pjsel="${esc(p.id)}" aria-label="Choose ${esc(p.title)}"${on ? ' checked' : ''}></span>
+            <span role="cell" class="hx-pjv"><button type="button" class="hx-pjth" data-a="openp" data-id="${esc(p.id)}" tabindex="-1" aria-hidden="true">${libThumb(p)}</button>
+              <span class="hx-ct"><button type="button" class="hx-lnk hx-pjtt" data-a="openp" data-id="${esc(p.id)}">${esc(p.title)}</button>${fd ? `<small><i style="background:${esc(fd.color)}"></i>${esc(fd.name)}</small>` : ''}</span></span>
+            <span role="cell">${chip(p)}</span><span role="cell" class="hx-sm">${esc(langName(p.lang))}</span>
+            <span role="cell" class="hx-sm hx-pjfv">${esc(face(p.avatar_id)?.name || 'No face')} · ${esc(voiceName(p.voice))}</span>
+            <span role="cell" class="hx-sm hx-num">${clock(total(p))}</span><span role="cell" class="hx-sm hx-mut">${esc(ago(p.updated))}</span></div>`; }).join('')}</div>`;
+  }
+  function pjMain() {
+    const st = pjS(), ps = D.projects || [], u = D.usage || {}, fs = pjFolders();
+    if (st.f !== 'all' && st.f !== 'none' && !pjFolder(st.f)) st.f = 'all';
+    const drafts = ps.filter(p => p.status !== 'ready' && p.status !== 'making').length;
+    const kpi = (l, v, sub) => `<div class="hx-lvk"><span>${l}</span><b class="hx-serif hx-num">${v}</b><small>${sub}</small></div>`;
+    const fchip = (id, name, n, color, extra = '') => `<div class="hx-pjf${st.f === id ? ' on' : ''}"><button type="button" class="hx-pjfb" data-a="pjf" data-id="${esc(id)}" aria-pressed="${st.f === id}"><i style="background:${esc(color)}"></i>
+        ${ic('folder', 20)}<b>${esc(name)}</b><small class="hx-num">${num(n)} video${n === 1 ? '' : 's'}</small></button>${extra}</div>`;
+    const cur = st.f === 'all' ? 'All videos' : st.f === 'none' ? 'Not in a folder' : pjFolder(st.f)?.name;
+    return `<div class="hx-doc hx-pjpage"><div class="hx-doch"><div class="hx-growf"><h2 class="hx-serif">Projects</h2><p class="hx-mut">Keep your videos in folders, change many at once, and see what you made this month.</p></div>
+        <div class="hx-acts hx-avhd"><button type="button" class="hx-btn" data-a="pjnewf">${ic('plus', 14)}New folder</button><button type="button" class="hx-btn dark" data-a="newchat">New video</button></div></div>
+      <section class="hx-lvks hx-pjks" aria-label="This month">${kpi('Made this month', num(u.videos || 0), 'videos')}${kpi('Minutes made', num(u.minutes || 0), 'this month')}
+        ${kpi('Credits used', num(u.credits || 0), 'this month')}${kpi('Drafts waiting', num(drafts), 'not made yet')}
+        <button type="button" class="hx-lvk hx-pjtr" data-a="ptab" data-val="Trash"><span>In the trash</span><b class="hx-serif hx-num">${num((D.trash || []).length)}</b><small>kept 30 days · open</small></button></section>
+      <section class="hx-pjfs" aria-label="Folders">${fchip('all', 'All videos', ps.length, '#57564F')}
+        ${fs.map(f => fchip(f.id, f.name, ps.filter(p => p.folder === f.id).length, f.color, `<button type="button" class="hx-ib xs hx-pjfm" data-a="pjfmenu" data-id="${esc(f.id)}" aria-label="More for ${esc(f.name)}" aria-haspopup="menu">${ic('dots', 15)}</button>`)).join('')}
+        ${fchip('none', 'Not in a folder', ps.filter(p => !pjFolder(p.folder)).length, '#9A988F')}
+        <button type="button" class="hx-pjfadd" data-a="pjnewf">${ic('plus', 18)}<span>New folder</span></button></section>
+      <div class="hx-pjbar"><b>${esc(cur || 'All videos')}</b><span class="hx-grow"></span>
+        <label class="hx-avq">${ic('search', 15)}<span class="hx-sr">Search videos</span><input type="search" id="hxPjq" placeholder="Search videos" value="${esc(st.q || '')}"></label>
+        <button type="button" class="hx-chip" data-a="pjsort" aria-haspopup="menu">${{new: 'Newest first', old: 'Oldest first', name: 'By name'}[st.sort]}${ic('down', 12)}</button></div>
+      <div id="hxPjTable">${pjTable()}</div>
+      <p class="hx-mut hx-sm">Making many at once (a batch, or one video for many names) is in <button type="button" class="hx-lnk" data-a="go" data-p="apps">Apps</button>.</p></div>`;
+  }
+  function pjTrash() {
+    const tr = D.trash || [], now = Date.now() / 1000;
+    return `<div class="hx-doc hx-pjpage"><div class="hx-doch"><div class="hx-growf"><button type="button" class="hx-lnk hx-sm" data-a="ptab" data-val="Videos">${ic('back', 13)} Projects</button><h2 class="hx-serif">Trash</h2>
+          <p class="hx-mut">Removed videos stay here for 30 days, then they are gone for good. Bring one back any time before that.</p></div>
+        ${tr.length ? `<button type="button" class="hx-btn danger" data-a="emptytrash">Empty the trash</button>` : ''}</div>
+      ${tr.length ? `<div class="hx-pjtrl">${tr.map(p => { const left = Math.max(0, 30 - Math.floor((now - (+p.trashed_ts || now)) / 86400)), fd = pjFolder(p.folder);
+          return `<div class="hx-pjtri">${libThumb(p)}<span class="hx-ct"><b>${esc(p.title)}</b><small>Removed ${esc(ago(p.trashed))}${fd ? ` · was in ${esc(fd.name)}` : ''} · ${p.video ? `made, ${clock(total(p))}` : 'draft'}</small></span>
+            <span class="hx-pjleft${left <= 5 ? ' soon' : ''}"><small class="hx-num">${num(left)} day${left === 1 ? '' : 's'} left</small><span class="hx-lvtrack"><i style="width:${Math.round(100 * left / 30)}%"></i></span></span>
+            <button type="button" class="hx-btn dark s" data-a="restore" data-id="${esc(p.id)}">Bring it back</button><button type="button" class="hx-btn danger s" data-a="pjpurge" data-id="${esc(p.id)}">Delete now</button></div>`; }).join('')}</div>`
+        : `<div class="hx-empty"><b>The trash is empty</b><span>Videos you move to the trash wait here for 30 days.</span></div>`}</div>`;
+  }
+  function pjFolderBody() {
+    const s = UI.dlg, colors = ['#B07A3A', '#2E4F8A', '#2F6B48', '#8A2F4E', '#4A36C9', '#57564F'];
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><h2 class="hx-serif hx-growf" id="hxDlgT">${s.id ? 'Rename the folder' : 'A new folder'}</h2>
+        <button type="button" class="hx-ib" data-a="dlgx" aria-label="Close">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb"><label class="hx-fld"><span class="hx-lab">Name</span><input class="hx-in" id="hxPjFn" maxlength="40" value="${esc(s.name || '')}" placeholder="Summer offers" data-auto="1"></label>
+        <div class="hx-fld"><span class="hx-lab">Colour</span><div class="hx-acts" role="radiogroup" aria-label="Colour">${colors.map(c => `<button type="button" class="hx-pjsw${s.color === c ? ' on' : ''}" role="radio" aria-checked="${s.color === c}" data-a="pjcol" data-val="${c}" style="background:${c}" aria-label="Colour ${c}"></button>`).join('')}</div></div>
+        ${s.ids?.length ? `<p class="hx-mut hx-sm">The ${num(s.ids.length)} chosen video${s.ids.length === 1 ? ' goes' : 's go'} into it.</p>` : ''}</div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx">Cancel</button><button type="button" class="hx-btn dark" data-a="pjfsave"${s.busy ? ' disabled' : ''}>${s.id ? 'Save' : 'Make the folder'}</button></div></div>`;
+  }
+  async function pjBulk(action, value) {
+    const st = pjS(), ids = st.sel.filter(id => (D.projects || []).some(p => p.id === id)); if (!ids.length) return;
+    try { const r = await api('POST', `${H}/bulk`, {ids, action, value}); st.sel = action === 'trash' ? [] : st.sel; await load(); draw();
+      const verb = {move: value ? `moved to ${pjFolder(value)?.name || 'the folder'}` : 'taken out of their folder', voice: 'now speak in ' + voiceName(value), face: value ? `now show ${face(value)?.name || 'that face'}` : 'now have no face', duplicate: 'copied', trash: 'moved to the trash for 30 days'}[action];
+      toast(`${num(r.done.length)} video${r.done.length === 1 ? '' : 's'} ${verb}.${r.skipped.length ? ` ${num(r.skipped.length)} left out: ${r.skipped[0].why}` : ''}${(action === 'voice' || action === 'face') && r.done.some(id => (D.projects || []).find(p => p.id === id)?.status === 'ready') ? ' Made videos change when you make them again.' : ''}`, !!r.skipped.length); }
+    catch (er) { toast(er.message, true); }
+  }
+  function pjPaint() { const t = $('#hxPjTable'); if (t) { t.innerHTML = pjTable(); fillMedia(); } }
+
   // ------------------------------------------------------------------ pages ---
   const V = {
     chat() {
@@ -1817,20 +1898,7 @@ window.HoolaInteractive = function (ctx) {
     avatars() { return avPage(); },
     voices() { return voPage(); },
     live() { return UI.live ? lvEdit() : lvLib(); },
-    projects() {
-      const tabs = ['Videos', 'Batch', 'Many names', 'Trash'], t = UI.ptab;
-      const ps = D.projects || [];
-      let body = '';
-      if (t === 'Videos') body = ps.length ? `<div class="hx-tablew hx-card"><table class="hx-table"><thead><tr><th>Video</th><th>Status</th><th></th></tr></thead><tbody>${ps.map(p => `<tr><td><button type="button" class="hx-lnk" data-a="openp" data-id="${esc(p.id)}">${esc(p.title)}</button><br><small class="hx-mut">${esc(langName(p.lang))} · ${esc(ago(p.updated))}</small></td><td>${chip(p)}</td>
-          <td class="r"><button type="button" class="hx-btn s" data-a="dup" data-id="${esc(p.id)}">Duplicate</button> <button type="button" class="hx-btn s" data-a="tplsave" data-id="${esc(p.id)}">Save as template</button> <button type="button" class="hx-ib s" data-a="trash" data-id="${esc(p.id)}" aria-label="Move to trash">${ic('trash', 15)}</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="hx-mut">No videos yet.</p>';
-      if (t === 'Batch') body = `<div class="hx-card hx-form tight"><label class="hx-fld"><span class="hx-lab">One script per block, an empty line between them</span><textarea class="hx-in" id="hxBatch" rows="8"></textarea></label>
-        <button type="button" class="hx-btn dark" data-a="batch">Make the drafts</button><p class="hx-hint">Each becomes a draft; nothing is made until you tap Make on it.</p></div>`;
-      if (t === 'Many names') body = `<div class="hx-card hx-form tight"><div class="hx-fld"><span class="hx-lab">The video</span><button type="button" class="hx-dd" data-a="pnpick"><span id="hxPnName">${esc((ps.find(p => p.id === UI.pn) || {}).title || 'Choose a video with {name} in it')}</span>${ic('down', 14)}</button></div>
-        <label class="hx-fld"><span class="hx-lab">Names, one a line</span><textarea class="hx-in" id="hxNames" rows="6"></textarea></label><button type="button" class="hx-btn dark" data-a="names">Make a draft for each name</button></div>`;
-      if (t === 'Trash') body = (D.trash || []).length ? `<div class="hx-card hx-list">${D.trash.map(p => `<div class="hx-vrow"><span class="hx-ct"><b>${esc(p.title)}</b><small>Removed ${esc(ago(p.trashed))}</small></span><button type="button" class="hx-btn s" data-a="restore" data-id="${esc(p.id)}">Restore</button></div>`).join('')}</div>
-        <button type="button" class="hx-btn danger" data-a="emptytrash">Empty the trash</button>` : '<p class="hx-mut">The trash is empty. Removed videos stay here for 30 days.</p>';
-      return `<div class="hx-doc"><h2 class="hx-serif">Projects</h2><div class="hx-tabs" role="tablist">${tabs.map(x => `<button type="button" role="tab" aria-selected="${x === t}" data-a="ptab" data-val="${x}">${x}</button>`).join('')}</div>${body}</div>`;
-    },
+    projects() { return UI.ptab === 'Trash' ? pjTrash() : pjMain(); },
     brand() {
       const b = D.brand || {};
       return `<div class="hx-doc"><h2 class="hx-serif">Brand</h2><p class="hx-mut">Drawn into every video: your name, your colour, your closing line.</p>
@@ -1989,7 +2057,32 @@ window.HoolaInteractive = function (ctx) {
       case 'dup': return dupP(id);
       case 'trash': return trashP(id);
       case 'restore': try { await api('POST', `${H}/restore`, {id}); await load(); draw(); } catch (er) { toast(er.message, true); } return;
-      case 'emptytrash': if (!confirm('Remove everything in the trash for good?')) return; try { await api('POST', `${H}/trash/empty`); await load(); draw(); } catch (er) { toast(er.message, true); } return;
+      case 'emptytrash': { const n = (D.trash || []).length; if (!confirm(`Empty the trash? ${n} video${n === 1 ? '' : 's'} and their made files are deleted for good. This cannot be undone. Videos you downloaded keep working.`)) return;
+        try { await api('POST', `${H}/trash/empty`); await load(); draw(); toast('The trash is empty.'); } catch (er) { toast(er.message, true); } return; }
+      case 'pjpurge': { const p = (D.trash || []).find(x => x.id === id); if (!confirm(`Delete “${p?.title || 'this video'}” for good? This cannot be undone.`)) return;
+        try { await api('POST', `${H}/trash/purge`, {id}); await load(); draw(); toast('Deleted for good.'); } catch (er) { toast(er.message, true); } return; }
+      case 'pjf': Object.assign(pjS(), {f: id, sel: []}); return draw();
+      case 'pjnone': pjS().sel = []; return pjPaint();
+      case 'pjsort': return menu(b, [['new', 'Newest first'], ['old', 'Oldest first'], ['name', 'By name']].map(([v, l]) => ({label: l, checked: pjS().sort === v, run: () => { pjS().sort = v; pjPaint(); draw(); }})));
+      case 'pjnewf': UI.dlg = {k: 'pjfolder', name: '', color: ['#B07A3A', '#2E4F8A', '#2F6B48', '#8A2F4E', '#4A36C9', '#57564F'][pjFolders().length % 6], ids: b.dataset.k === 'move' ? [...pjS().sel] : []}; return dlgPaint();
+      case 'pjcol': if (UI.dlg) { UI.dlg.name = $('#hxPjFn')?.value ?? UI.dlg.name; UI.dlg.color = b.dataset.val; dlgPaint(); } return;
+      case 'pjfsave': { const s = UI.dlg, n = ($('#hxPjFn')?.value || '').trim(); if (!s) return; if (!n) return toast('Give the folder a name.');
+        s.busy = true; dlgPaint();
+        try { const f = await api('POST', `${H}/folders`, {id: s.id || '', name: n, color: s.color}); UI.dlg = null; dlgPaint();
+          if (s.ids?.length) { await api('POST', `${H}/bulk`, {ids: s.ids, action: 'move', value: f.id}); pjS().sel = []; }
+          await load(); if (!s.id) pjS().f = f.id; draw(); toast(s.id ? 'Folder renamed.' : s.ids?.length ? `Folder made, ${num(s.ids.length)} video${s.ids.length === 1 ? '' : 's'} in it.` : 'Folder made.'); }
+        catch (er) { s.busy = false; dlgPaint(); toast(er.message, true); } return; }
+      case 'pjfmenu': { const f = pjFolder(id); if (!f) return;
+        return menu(b, [{label: 'Rename', icon: 'pen', run: () => { UI.dlg = {k: 'pjfolder', id, name: f.name, color: f.color, ids: []}; dlgPaint(); }},
+          {label: 'Remove the folder', icon: 'trash', danger: true, run: async () => { if (!confirm(`Remove the folder “${f.name}”? Its videos stay, out of any folder.`)) return;
+            try { await api('DELETE', `${H}/folders?id=${q(id)}`); if (pjS().f === id) pjS().f = 'all'; await load(); draw(); toast('Folder removed. Its videos are in Not in a folder.'); } catch (er) { toast(er.message, true); } }}]); }
+      case 'pjbulk': { const k = b.dataset.k, n = pjS().sel.length;
+        if (k === 'move') return menu(b, [{header: `Move ${num(n)} video${n === 1 ? '' : 's'} to`}, ...pjFolders().map(f => ({label: f.name, run: () => pjBulk('move', f.id)})),
+          {label: 'Not in a folder', run: () => pjBulk('move', '')}, {sep: true}, {label: 'A new folder…', icon: 'plus', run: () => { UI.dlg = {k: 'pjfolder', name: '', color: '#2E4F8A', ids: [...pjS().sel]}; dlgPaint(); }}], {width: 260});
+        if (k === 'voice' || k === 'face') return pickMenu(b, k, v => pjBulk(k, v), true);
+        if (k === 'duplicate') return pjBulk('duplicate');
+        if (!confirm(`Move ${n} video${n === 1 ? '' : 's'} to the trash? They stay there for 30 days.`)) return;
+        return pjBulk('trash'); }
       case 'scene': return edScene(+b.dataset.n, true);
       case 'tool': { UI.tool = b.dataset.val; $$('.hx-edtabs [role=tab]').forEach(t => t.setAttribute('aria-selected', String(t.dataset.val === UI.tool)));
         const x = $('#hxEdTool'), p = cur(); if (x && p) x.innerHTML = edTool(p); else draw(); fillMedia(); if (UI.tool === 'Engine') edCompare(); return; }
@@ -2161,11 +2254,6 @@ window.HoolaInteractive = function (ctx) {
         catch (er) { s.busy = false; dlgPaint(); toast(er.message, true); } return; }
       case 'lvdismiss': { const s = UI.dlg; if (!s) return; try { await api('POST', `${X}/live/dismiss`, {id: s.id, qid: s.qid}); UI.dlg = null; dlgPaint(); UI.lvQs = null; await load(); draw(); } catch (er) { toast(er.message, true); } return; }
       case 'ptab': UI.ptab = b.dataset.val; return draw();
-      case 'batch': { const scripts = ($('#hxBatch')?.value || '').split(/\n\s*\n/).map(s => s.trim()).filter(Boolean); if (!scripts.length) return toast('Write at least one script.');
-        try { const r = await api('POST', `${H}/batch`, {scripts, lang: SET.lang, avatar_id: SET.face}); toast(`${r.made.length} drafts made.`); await load(); UI.ptab = 'Videos'; draw(); } catch (er) { toast(er.message, true); } return; }
-      case 'pnpick': return menu(b, (D.projects || []).map(p => ({label: p.title, run: () => { UI.pn = p.id; draw(); }})), {width: 300});
-      case 'names': { const names = ($('#hxNames')?.value || '').split('\n').map(s => s.trim()).filter(Boolean);
-        try { const r = await api('POST', `${H}/personalise`, {project: UI.pn || '', names}); toast(`${r.made.length} drafts made.`); await load(); UI.ptab = 'Videos'; draw(); } catch (er) { toast(er.message, true); } return; }
       case 'brandsave': { const f = new FormData($('#hxBrandF')); try { D.brand = await api('PUT', `${H}/brand`, Object.fromEntries(f)); toast('Saved.'); } catch (er) { toast(er.message, true); } return; }
       case 'gloadd': { const t = ($('#hxGlo')?.value || '').trim(); if (!t) return; try { D.glossary = await api('POST', `${H}/glossary`, {term: t}); draw(); } catch (er) { toast(er.message, true); } return; }
       case 'glodel': try { D.glossary = await api('DELETE', `${H}/glossary?id=${q(id)}`); draw(); } catch (er) { toast(er.message, true); } return;
@@ -2192,6 +2280,7 @@ window.HoolaInteractive = function (ctx) {
         if (n) n.innerHTML = xs.length ? `<span class="hx-mut hx-sm">Numbers it may say:</span>${xs.map(x => `<span class="hx-lvnum hx-num">${esc(x)}</span>`).join('')}` : '<span class="hx-mut hx-sm">No numbers yet. It will not say a price, time or number until you write it here.</span>'; }
       if (k === 'minutes_day') { const m = $('#hxLvMin'); if (m) m.textContent = `${num(+t.value)} min`; }
       return; }
+    if (t.id === 'hxPjq') { pjS().q = t.value; return pjPaint(); }
     if (t.id === 'hxVoq') { Object.assign(UI.vo ||= {}, {q: t.value, more: 0}); const l = $('#hxVoList'); if (l) l.innerHTML = voList(); const sm = t.parentElement?.querySelector('small'); if (sm) sm.textContent = t.value ? 'Best matches first' : ''; return; }
     if (t.id === 'hxAvq') { (UI.av ||= {}).q = t.value; const l = $('#hxAvList'); if (l) l.innerHTML = avList(); fillMedia(); return; }
     if (UI.dlg && t.id === 'hxAvNm') { UI.dlg.name = t.value; return; }
@@ -2235,6 +2324,8 @@ window.HoolaInteractive = function (ctx) {
     if (t.id === 'hxShFile' && UI.dlg) { const f = t.files?.[0]; if (!f) return; if (f.size > 2 * 1024 * 1024) return toast('That file is larger than 2 MB.', true);
       const rd = new FileReader(); rd.onload = () => { UI.dlg.text = String(rd.result || ''); dlgPaint(); }; rd.readAsText(f); return; }
     if (t.dataset?.vop && UI.dlg?.k === 'voput') { const id = t.dataset.vop, ids = UI.dlg.ids; if (t.checked) { if (!ids.includes(id)) ids.push(id); } else UI.dlg.ids = ids.filter(x => x !== id); return dlgPaint(); }
+    if (t.dataset?.pjsel) { const st = pjS(), id = t.dataset.pjsel; st.sel = t.checked ? [...new Set([...st.sel, id])] : st.sel.filter(x => x !== id); return pjPaint(); }
+    if (t.id === 'hxPjAll') { const st = pjS(); st.sel = t.checked ? pjRows().map(p => p.id) : []; return pjPaint(); }
     if (t.id === 'hxAvPh') return avPhFile(t.files?.[0]);
     if (t.name === 'hxAvWho' && UI.dlg?.k === 'avphoto') { UI.dlg.who = t.value; return dlgPaint(); }
     if (t.id === 'hxAvOk' && UI.dlg?.k === 'avphoto') { UI.dlg.consent = t.checked; return dlgPaint(); }
