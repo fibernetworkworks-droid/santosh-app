@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.212"   # v0.999.212 NO LIVE PILL (owner, her sidebar screenshot: "check at bottom a live name at a icon ... Remove that entirely in side bar"): the app-design console sidebar no longer shows the "Live" pill at the bottom - the Live / Studio buttons strip and the connection status line (which loses its hidden class once connected and read "Live") are hidden; the account row stays at the bottom. Console only (appdesign.css). Previous: v0.999.211 NO SESSIONS IN THE SIDEBAR.
+APP_VERSION = "0.999.213"   # v0.999.213 COLLAPSED SIDEBAR IN ONE LINE (owner, her collapsed-sidebar screenshot: "ICON AND TEXT ARRANGEMENT ARE MESSY AND MISPLACED --- FIX THIS PERFECTLY AND MAKE IT ALINED"): the folded app-design sidebar is one column - every button a 40 px square on the rail's exact middle (were at 16 / 22 / 25 px, pushed off by the scrollbar strip), one even step, no Pinned / Recents headers or words, a dot instead of a count; each icon names itself on hover (title + aria-label); open again = unchanged. Console only (appdesign.css, v2.js, v2.html). Previous: v0.999.212 NO LIVE PILL.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,

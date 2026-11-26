@@ -12196,3 +12196,21 @@ only until it connects and then gets the class `conn ok` and reads "Live" on the
 The Live activity panel itself still exists; nothing in the sidebar opens it now. The old console look keeps its Live button.
 Test: `test_v0999_211_no_sessions_sidebar.py` now also checks in a real browser that no sidebar element reads "Live".
 NOT VERIFIED: on her server.
+
+## v0.999.213 COLLAPSED SIDEBAR IN ONE LINE (owner, her collapsed-sidebar screenshot: "CHECK THE SIDE PANEL WHEN COLAPSE THE ICON AND TEXT ARRANGEMENT ARE MESSY AND MISPLACED --- FIX THIS PERFECTLY AND MAKE IT ALINED")
+
+Measured in a real browser before the fix: the folded app-design sidebar (72 px) had icons at three left edges - the
+collapse button at 25 px, New chat at 16 px, the rest at 22 px - all centred near 31 px instead of the rail's middle (36)
+because the sidebar keeps a stable scrollbar strip on its right; the steps between buttons were 42 / 46 / 48 / 44 px;
+and the Pinned and Recents headers stayed on screen as words with their arrows hanging past the rail.
+
+Fix (appdesign.css end block, app design only): folded = no scrollbar strip, padding 8 px top, one 4 px gap; the
+collapse button, New chat, Search and every nav button are 40 x 40 squares centred on the rail; their words, counts,
+shortcut hints, the Pinned / Recents / section headers and the chat lists are hidden; a nav item that carries a count
+shows a small violet dot instead; the account circle sits on the same middle at the bottom. Every icon names itself on
+hover and to screen readers (title + aria-label in v2.js appNav and on New chat in v2.html). Opening the sidebar again
+shows everything as before. The old console look is unchanged.
+
+Test: test_v0999_213_collapsed_sidebar.py - every visible button 40x40 with its middle within 1 px of the rail's
+middle, every icon on that middle, one even step, no words when folded (with a pinned chat present), labels back when
+opened. NOT VERIFIED: on her server.

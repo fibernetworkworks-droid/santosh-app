@@ -3823,3 +3823,13 @@ Task: remove the Live pill at the bottom of the console sidebar.
 Work Log:
 - appdesign.css hides the Live / Studio strip and the connection line in the app design; test extended; version ritual 0.999.212.
 Stage Summary: shipped to main; not verified on her server.
+
+---
+Task ID: v0.999.213 COLLAPSED SIDEBAR IN ONE LINE
+Agent: Claude (Claude Code session)
+Task: the folded console sidebar had icons at three left edges and Pinned / Recents words spilling out - align it.
+Work Log:
+- Measured in Chromium: icons at 16 / 22 / 25 px of a 72 px rail (centre 31 vs 36, the scrollbar strip), uneven steps (42-48 px), "Recents" / "Pinned" text visible.
+- appdesign.css end block: folded = no scrollbar strip, every button 40x40 on the middle, one 44 px step, headers / words / counts hidden (a dot for a count); v2.js + v2.html give each icon a title + aria-label.
+- test_v0999_213_collapsed_sidebar.py: shape + browser walk (light + dark shots); version ritual 0.999.213.
+Stage Summary: shipped to main; not verified on her server.
