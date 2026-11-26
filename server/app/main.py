@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.212"   # v0.999.212 NO LIVE PILL (owner, her sidebar screenshot: "check at bottom a live name at a icon ... Remove that entirely in side bar"): the app-design console sidebar no longer shows the "Live" pill at the bottom - the Live / Studio buttons strip and the connection status line (which loses its hidden class once connected and read "Live") are hidden; the account row stays at the bottom. Console only (appdesign.css). Previous: v0.999.211 NO SESSIONS IN THE SIDEBAR.
+APP_VERSION = "0.999.213"   # v0.999.213 MAIL NEWS ONLY WHEN ASKED (owner, her Hoola updates screenshot: "WHY SHOWING LOT OF UNWANTED EMAIL UPDATE -- WITHOUT USER ASK"): every Google-connected mailbox was watched in mode vip by default since v0.999.181, so Google's own Security alert for each Connect (OTP / security words always announced), company notices Gmail labels important and the same mail in both mailboxes became cards in Hoola updates; now new-mail cards are off until she picks a mode (MailSyncState.chosen, setting mail_watch_default off; her rules still run and a notify rule still tells her), Google's alert about her own app connection is never a card, Gmail important counts only for a person, one card per mail across her mailboxes; phone New-mail news Off / Important / All in English; 5 tests. Old cards stay in the chat. Previous: v0.999.212 NO LIVE PILL (owner, her sidebar screenshot; older stories live in git history.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,

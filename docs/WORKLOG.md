@@ -3823,3 +3823,9 @@ Task: remove the Live pill at the bottom of the console sidebar.
 Work Log:
 - appdesign.css hides the Live / Studio strip and the connection line in the app design; test extended; version ritual 0.999.212.
 Stage Summary: shipped to main; not verified on her server.
+
+---
+Task ID: v0.999.213 MAIL NEWS ONLY WHEN ASKED
+Ask: unwanted email cards in Hoola updates without her asking
+Built: watcher off until she picks a mode, own-access security alerts skipped, one card per mail across mailboxes
+Not verified: on her server

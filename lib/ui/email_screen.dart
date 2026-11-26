@@ -171,7 +171,7 @@ class _EmailScreenState extends State<EmailScreen> {
   }
 
   String get _watchMode {
-    if (_watch.isEmpty) return 'vip';
+    if (_watch.isEmpty) return 'off';
     final off = _watch.where((w) => w['mode'] == 'off').length;
     if (off == _watch.length && _watch.isNotEmpty) return 'off';
     final all = _watch.where((w) => w['mode'] == 'all').length;
@@ -389,7 +389,7 @@ class _EmailScreenState extends State<EmailScreen> {
                   app.g('Gmail ke drafts: dekhna, wahin badalna (attachments bane rehte hain), seedha bhejna — card ke baad.'),
                   app.g('Poore conversations ek saath, aur delete hamesha ke liye tabhi jab card par likha ho.'),
                   app.g('Gmail ki apni settings: vacation auto-reply, signature, send-as aliases (jodna, hatana, unse bhejna), forwarding addresses, IMAP / POP, language, auto-forward — sab aapke tap par.'),
-                  app.g('Nayi mail ki khabar har minute, zaroori ka pehle; OTP codes kabhi nahi batata.'),
+                  app.g('Checks for new mail every minute (news in the chat only when you turn it on); OTP codes are never read out.'),
                   app.g('Settings ke liye Gmail ek baar dobara jodna pade to is screen par “Jodiye” dabaiye — mail pehle jaisi chalti hai.'),
                 ])
                   Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -423,14 +423,14 @@ class _EmailScreenState extends State<EmailScreen> {
               ),
             if (_accounts.isNotEmpty) ...[
               const SizedBox(height: 18),
-              Text(app.g('Nayi mail ki khabar'), style: const TextStyle(fontWeight: FontWeight.w700)),
+              Text(app.g('New-mail news'), style: const TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
-              Text(app.g('Hoola checks your inbox every minute. If an important mail or a mail from your people arrives, it tells you in the chat; '
-                  'newsletters stay quiet. OTP codes are never read out.'),
+              Text(app.g('Off until you turn it on. Important: Hoola tells you in the Hoola updates chat when an important mail or a mail from '
+                  'your people arrives; newsletters stay quiet. All: every new mail. OTP codes are never read out.'),
                   style: const TextStyle(color: C.muted, fontSize: 12.5)),
               const SizedBox(height: 8),
               Wrap(spacing: 6, children: [
-                for (final m in const [('off', 'Shant'), ('vip', 'Important'), ('all', 'Sab')])
+                for (final m in const [('off', 'Off'), ('vip', 'Important'), ('all', 'All')])
                   ChoiceChip(
                     label: Text(app.g(m.$2)),
                     selected: _watchMode == m.$1,
