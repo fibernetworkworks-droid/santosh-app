@@ -277,8 +277,6 @@
       <button class="btn soft" type="submit">${esc(label || 'Add')}</button></form>` : '';
 
   /* ---------------------------------------------------------------- charts (drawn in SVG, no library) */
-
-  /* ---------------------------------------------------------------- charts (drawn in SVG, no library) */
   function ring(parts, mid, sub, label) {
     const rows = parts.filter(p => p[1] > 0), total = rows.reduce((s, p) => s + p[1], 0);
     if (!total) return '';

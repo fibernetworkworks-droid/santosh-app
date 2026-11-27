@@ -102,12 +102,13 @@
     const dot = (busy, on) => `<i class="cx-dot${busy ? ' busy' : on ? ' on' : ''}"></i>`;
     const mineOk = m.on && m.devices.length;
     return `<header class="cx-top">
-      <a class="cx-mark" href="/console/" aria-label="Back to Hoola"><svg viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="12" fill="currentColor"/><circle cx="13" cy="13" r="4.5" fill="#fff"/></svg></a>
+      <a class="cx-mark" href="/console/" aria-label="Hoola - back to Hoola chat">${window.HoolaMark ? HoolaMark.svg() : '<img src="/static/hoola-mark.png" alt="" width="26" height="26">'}</a>
       <a class="cx-title" href="#/"${here === 'home' ? ' aria-current="page"' : ''}>Computer</a>
       <nav class="cx-tabs" aria-label="Computers">
         <a href="#/hoola"${here === 'hoola' ? ' aria-current="page"' : ''}>${dot(!!h.running, h.online)}Hoola PC</a>
         <a href="${mineOk ? '#/mine' : '#/connect'}"${here === 'mine' || here === 'connect' ? ' aria-current="page"' : ''}>${dot(!!m.running, m.online)}${esc(mineOk ? devName() : 'Your PC')}</a>
       </nav>
+      <a class="cx-back" href="/console/">${svg(IC.back)}Back to Hoola chat</a>
       <nav class="cx-links" aria-label="PC tools">
         <a href="/console/pcjobs">All jobs</a><a href="/console/pcjobs#/routines">Routines</a><a href="/console/pcjobs#/rules">Your rules</a>
       </nav>

@@ -276,7 +276,9 @@ button.hc-tile{cursor:pointer}button.hc-tile:hover{border-color:var(--acc)}
 .cx .btn.pri{background:var(--vi);border-color:var(--vi);color:#fff}
 /* the top bar */
 .cx-top{position:sticky;top:0;z-index:5;height:58px;flex:none;display:flex;align-items:center;gap:18px;padding:0 20px;background:color-mix(in srgb,var(--p) 92%,transparent);border-bottom:1px solid var(--ln);backdrop-filter:none}
-.cx-mark{color:var(--vi);display:grid;place-items:center}.cx-mark svg{width:26px;height:26px}
+.cx-mark{color:var(--vi);display:grid;place-items:center}.cx-mark svg,.cx-mark img{width:28px;height:28px;display:block}
+.cx-back{margin-left:auto;display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px 0 8px;border-radius:9px;border:1px solid var(--ln2);color:var(--ik)!important;text-decoration:none;font-size:13px;font-weight:600;white-space:nowrap}
+.cx-back:hover{background:var(--p2)}.cx-back svg{width:16px;height:16px}
 .cx-title{font-family:'Literata',Georgia,serif;font-size:20px;font-weight:450;color:var(--ik)!important;text-decoration:none;font-variation-settings:"opsz" 24}
 .cx-tabs{display:flex;gap:4px;padding:3px;border-radius:12px;background:var(--p2)}
 .cx-tabs a{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px;border-radius:9px;color:var(--ik2)!important;text-decoration:none;font-size:14px;font-weight:500;white-space:nowrap}
@@ -285,7 +287,7 @@ button.hc-tile{cursor:pointer}button.hc-tile:hover{border-color:var(--acc)}
 .cx-dot{width:8px;height:8px;border-radius:50%;background:var(--ln2);flex:none}
 .cx-dot.on{background:var(--gr)}.cx-dot.busy{background:var(--vi);box-shadow:0 0 0 0 color-mix(in srgb,var(--vi) 45%,transparent);animation:cxRing 1.8s ease-out infinite}
 @keyframes cxRing{to{box-shadow:0 0 0 7px transparent}}
-.cx-links{margin-left:auto;display:flex;gap:18px}
+.cx-links{display:flex;gap:18px}
 .cx-links a{font-size:13px;font-weight:500;color:var(--mu)!important;text-decoration:none}.cx-links a:hover{color:var(--ik)!important}
 .cx-body{flex:1;min-height:0;display:flex;flex-direction:column}
 /* the hub */

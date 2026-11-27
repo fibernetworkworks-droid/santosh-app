@@ -347,6 +347,13 @@ def make_router(require_key, current_tenant) -> APIRouter:
         except ValueError as e:
             raise HTTPException(400, str(e))
 
+    @r.post("/routes/{wf_id}/eval")
+    async def route_eval(wf_id: str, body: dict = Body(...), tenant: str = Depends(current_tenant)):
+        """v0.999.237 R3: what a box becomes with the route's newest data (the editor's live result line)."""
+        from . import stepdata as SD
+        return await run(lambda: SD.preview(tenant, _wf_or_404(tenant, wf_id), str((body or {}).get("text") or ""),
+                                            str((body or {}).get("step") or "")))
+
     @r.put("/routes/{wf_id}/pins/{sid}")
     async def route_pin(wf_id: str, sid: str, body: dict = Body(...), tenant: str = Depends(current_tenant)):
         from . import stepdata as SD

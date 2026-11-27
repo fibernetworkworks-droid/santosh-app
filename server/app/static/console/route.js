@@ -75,14 +75,14 @@
   // the engine's error text, said plainly: "step 'x' (tool): route 'Paid online': ..." -> "Paid online › x: ..."
   const human = e => S(e).replace(/route '([^']+)': /g, '$1 › ').replace(/step '([^']+)' \([a-z_]+\): /g, (m, id) => id.replace(/_/g, ' ') + ': ')
     .replace(/^([^›:]+): ([^:]+ › )/, '$2');
-  const KIND_TILE = {approval: 'warm', notify: 'warm', condition: 'flow', router: 'flow', filter: 'flow', loop: 'flow', wait: 'flow',
+  const KIND_TILE = {data: 'data', approval: 'warm', notify: 'warm', condition: 'flow', router: 'flow', filter: 'flow', loop: 'flow', wait: 'flow',
     set: 'data', code: 'data', http: 'core'};
-  function appTile(a, type) {
+  function appTile(a, type, op) {
     a = a || {};
     if (a.kind === 'hoola') return `<span class="ap hoola" title="Hoola">${MARK('#FFFFFF')}</span>`;
     if (a.kind === 'app' && a.slug) return `<span class="ap" title="${esc(appName(a.slug))}"><img src="/api/logo/cmp/${enc(a.slug)}" alt="${esc(appName(a.slug))}" data-fb="${esc(appName(a.slug).split(' ').map(w => w[0]).join('').slice(0, 2))}"></span>`;
     const t = type || a.kind || '';
-    const ic = {condition: IC.router, router: IC.route}[t] || IC[t] || IC.set;
+    const ic = (op && OPIC[op]) || {condition: IC.router, router: IC.route}[t] || IC[t] || IC.set;
     return `<span class="ap k-${KIND_TILE[t] || 'core'}" title="${esc(t)}">${svg(ic)}</span>`;
   }
   const PILL = {ok: 'ok', running: 'v', waiting: 'warn', error: 'bad', stopped: 'bad', off: ''};
@@ -302,7 +302,18 @@
     lt: 'is less than', lte: 'is at most', between: 'is between', before: 'is before', after: 'is after', is_true: 'is true', is_false: 'is false',
     in: 'is one of', not_in: 'is not one of', length_eq: 'has length', length_gt: 'is longer than', length_lt: 'is shorter than'};
   const NO_RIGHT = new Set(['exists', 'not_exists', 'empty', 'not_empty', 'is_true', 'is_false']);
-  const KIND = {tool: 'Uses a tool', http: 'Web request', code: 'Code', wait: 'Wait', notify: 'Tell me', approval: 'Ask me first',
+  // v0.999.237 ROUTE R3: the data steps (engine type "data", told apart by op)
+  const DATAW = {fields: 'Set several fields', sort: 'Sort', limit: 'Limit', dedupe: 'Remove duplicates', aggregate: 'Summarise',
+    split: 'Split out a list', compare: 'Compare two lists', keep_fields: 'Keep or drop fields', rename: 'Rename fields',
+    date: 'Date and time', text: 'Text and formats', file: 'Make or read a file', crypto: 'Hash and IDs'};
+  const OPIC = {sort: '<path d="M7 4v16M4 17l3 3 3-3M14 6h6M14 12h4M14 18h2"/>', limit: '<path d="M4 6h16M4 12h10M4 18h4"/>',
+    dedupe: '<rect x="4" y="4" width="10" height="10" rx="2"/><rect x="10" y="10" width="10" height="10" rx="2"/>',
+    aggregate: '<path d="M18 5H6l6 7-6 7h12"/>', split: '<path d="M12 4v6M12 10l-6 10M12 10l6 10"/>',
+    compare: '<path d="M8 4v16M16 4v16M4 8h4M16 16h4"/>', keep_fields: '<path d="M4 6h16M4 12h16M4 18h9"/><path d="m15 17 2 2 4-4"/>',
+    rename: '<path d="M4 20h4L19 9l-4-4L4 16z"/>', fields: '<path d="M4 7h16M4 12h10M4 17h7"/>',
+    date: '<path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2z"/>', text: '<path d="M4 7V5h16v2M12 5v14M9 19h6"/>',
+    file: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>', crypto: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'};
+  const KIND = {data: 'Data', tool: 'Uses a tool', http: 'Web request', code: 'Code', wait: 'Wait', notify: 'Tell me', approval: 'Ask me first',
     set: 'Set a value', filter: 'Filter', condition: 'If / else', loop: 'Repeat for each', router: 'Switch'};
   const DO = {'': 'Stop the run and show me why', break: 'Try again later, then keep it in Incomplete runs', resume: 'Use a value I give and carry on',
     ignore: 'Skip it and carry on', commit: 'Stop here and keep what was done', rollback: 'Stop the run', tell: 'Tell me and stop the run'};
@@ -325,9 +336,10 @@
     if (t === 'loop') return S(s.items).replace(/\{\{\s*|\s*\}\}/g, '').slice(0, 34);
     if (t === 'router') return `${(s.routes || []).length} ways`;
     if (t === 'code') return 'Python';
+    if (t === 'data') return DATAW[s.op] || S(s.op);
     return '';
   }
-  const titleOfStep = s => S(s.label) || (s.type === 'tool' ? nice(s.name) : KIND[s.type] || s.type);
+  const titleOfStep = s => S(s.label) || (s.type === 'tool' ? nice(s.name) : s.type === 'data' ? (DATAW[s.op] || 'Data') : KIND[s.type] || s.type);
 
   let ED = null;
   function stopEditor() {
@@ -500,7 +512,7 @@
     }
     const s = n.step, st = ED.runSt[s.id];
     return `<div class="nd${sel}${s.type === 'approval' ? ' warmk' : ''}" data-node="${esc(s.id)}" style="left:${n.x}px;top:${n.y}px;width:${n.w}px" tabindex="0" role="button" aria-label="${esc(titleOfStep(s))}">
-      ${appTile(s.app, s.type)}<span class="nt"><b>${esc(titleOfStep(s))}</b><small>${esc(KIND[s.type] || s.type)}${stepWords(s) ? ' · ' + esc(stepWords(s)) : ''}</small></span>
+      ${appTile(s.app, s.type, s.op)}<span class="nt"><b>${esc(titleOfStep(s))}</b><small>${esc(KIND[s.type] || s.type)}${stepWords(s) ? ' · ' + esc(stepWords(s)) : ''}</small></span>
       ${s.on_error ? `<span class="oe" title="${esc(DO[s.on_error.do] || '')}">${esc(s.on_error.do === 'break' ? 'retries' : s.on_error.do)}</span>` : ''}
       ${st ? `<span class="sd ${ST_CLS[st.status] || ''}" title="${esc(st.status)}"></span>` : ''}
       ${ED.data && ED.data.pins && ED.data.pins[s.id] !== undefined ? `<span class="pinb" title="Pinned test data">${svg(IC.pin)}</span>` : ''}
@@ -663,7 +675,7 @@
     if (opts.options) ctl = `<select id="${id}" data-k="${esc(opts.k)}">${opts.options.map(([v, t]) => `<option value="${esc(v)}"${S(value) === S(v) ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>`;
     else if (opts.area) ctl = `<textarea id="${id}" data-k="${esc(opts.k)}" rows="${opts.rows || 3}"${opts.mono ? ' class="mono"' : ''} placeholder="${esc(opts.ph || '')}" spellcheck="${opts.mono ? 'false' : 'true'}">${esc(value)}</textarea>`;
     else ctl = `<input id="${id}" data-k="${esc(opts.k)}" value="${esc(value)}" placeholder="${esc(opts.ph || '')}"${opts.mono ? ' class="mono"' : ''}${opts.num ? ' inputmode="decimal"' : ''}>`;
-    return `<div class="fld"><label for="${id}">${esc(label)}${opts.req ? ' <span class="req">needed</span>' : ''}</label><div class="fc">${ctl}${opts.options ? '' : ref}</div>${help}</div>`;
+    return `<div class="fld"><label for="${id}">${esc(label)}${opts.req ? ' <span class="req">needed</span>' : ''}</label><div class="fc">${ctl}${opts.options ? '' : ref}</div>${help}${opts.ref === false || opts.options ? '' : `<div class="fprev" data-prev="${id}" hidden></div>`}</div>`;
   }
   const TOOLS = {};
   async function toolInfo(name) {
@@ -704,6 +716,60 @@
     return rows.length === 1 && mode === 'all' ? rows[0] : {[mode]: rows};
   }
 
+  const ROWS_HELP = 'A list, like {{steps.rows.output}}';
+  const DATAF = {
+    fields: [['values', 'Fields (name: value)', 'obj']],
+    sort: [['items', 'The list', 'text', ROWS_HELP], ['by', 'Sort by field', 'plain', 'A field name, like total (empty = the items themselves)'],
+      ['order', 'Order', 'sel', [['asc', 'Smallest first (A to Z)'], ['desc', 'Largest first (Z to A)']]]],
+    limit: [['items', 'The list', 'text', ROWS_HELP], ['count', 'How many', 'num'], ['keep', 'Keep', 'sel', [['first', 'The first'], ['last', 'The last']]]],
+    dedupe: [['items', 'The list', 'text', ROWS_HELP], ['by', 'The same when this field matches', 'plain', 'Empty = the whole item']],
+    aggregate: [['items', 'The list', 'text', ROWS_HELP], ['field', 'Field', 'plain', 'Like total; empty counts the items'],
+      ['how', 'Work out', 'sel', [['sum', 'Sum'], ['count', 'Count'], ['avg', 'Average'], ['min', 'Smallest'], ['max', 'Largest'], ['list', 'List of the values'], ['unique', 'Each value once'], ['join', 'Join as text']]],
+      ['sep', 'Join with', 'plain', 'Like , or a new line']],
+    split: [['items', 'The list', 'text', ROWS_HELP], ['field', 'The list inside each item', 'plain', 'Like lines']],
+    compare: [['a', 'The old list', 'text'], ['b', 'The new list', 'text'], ['key', 'Match items by field', 'plain', 'Like id or email']],
+    keep_fields: [['items', 'The list (or one item)', 'text'], ['fields', 'Fields', 'plain', 'With commas, like name, email'],
+      ['mode', 'Keep or drop', 'sel', [['keep', 'Keep only these'], ['drop', 'Drop these']]]],
+    rename: [['items', 'The list (or one item)', 'text'], ['map', 'New names (old: new)', 'obj']],
+    date: [['action', 'Do', 'sel', [['format', 'Format a date'], ['add', 'Add time'], ['subtract', 'Take away time'], ['diff', 'Time between two dates'], ['parse', 'Read a date'], ['now', 'The time now']]],
+      ['value', 'The date', 'text', 'Like {{vars.due}} or 2026-12-01'], ['amount', 'How much', 'num'],
+      ['unit', 'Unit', 'sel', [['days', 'Days'], ['weeks', 'Weeks'], ['months', 'Months'], ['years', 'Years'], ['hours', 'Hours'], ['minutes', 'Minutes']]],
+      ['other', 'The other date', 'text'], ['format', 'Format', 'plain', '%d %b %Y = 05 Dec 2026 · %Y-%m-%d = 2026-12-05 · %H:%M = 14:30'], ['tz', 'Time zone', 'plain', 'Like Europe/London (optional)']],
+    text: [['action', 'Do', 'sel', [['html_text', 'Text of a web page'], ['html_select', 'Pick parts of a web page'], ['xml_to_data', 'Read XML'], ['csv_to_rows', 'CSV text to rows'],
+      ['rows_to_csv', 'Rows to CSV text'], ['json_parse', 'Read JSON text'], ['json_text', 'Turn into JSON text'], ['base64_encode', 'Base64 encode'], ['base64_decode', 'Base64 decode'],
+      ['url_encode', 'Encode for a web address'], ['url_decode', 'Decode a web address part']]],
+      ['value', 'The text', 'area'], ['selector', 'Part to pick (CSS)', 'plain', 'Like h2 or .price'], ['attr', 'Take this attribute', 'plain', 'Like href (empty = the text)'], ['separator', 'Separator', 'plain', 'Like , or ;']],
+    file: [['action', 'Do', 'sel', [['make_xlsx', 'Make an Excel file'], ['make_csv', 'Make a CSV file'], ['make_pdf', 'Make a PDF'], ['read', 'Read a file']]],
+      ['items', 'Rows', 'text', 'A list of objects, like {{steps.rows.output}}'], ['name', 'File name', 'plain'], ['sheet', 'Sheet name', 'plain'],
+      ['title', 'Title', 'text'], ['value', 'Text', 'area'], ['file_id', 'The file', 'text', 'Its file id, like {{steps.mail.output.file_id}}']],
+    crypto: [['action', 'Do', 'sel', [['sha256', 'SHA-256'], ['sha1', 'SHA-1'], ['md5', 'MD5'], ['hmac_sha256', 'HMAC SHA-256 (signed)'], ['uuid', 'A new random id (UUID)'], ['random', 'A random code']]],
+      ['value', 'Value', 'text'], ['secret', 'Secret', 'text'], ['length', 'Length', 'num']],
+  };
+  const A = s => s.action;
+  const SHOWIF = {
+    date: {value: s => A(s) !== 'now', amount: s => ['add', 'subtract'].includes(A(s)), unit: s => ['add', 'subtract', 'diff'].includes(A(s)),
+      other: s => A(s) === 'diff', format: s => A(s) === 'format', tz: s => ['format', 'parse', 'now'].includes(A(s))},
+    text: {selector: s => A(s) === 'html_select', attr: s => A(s) === 'html_select', separator: s => A(s) === 'csv_to_rows'},
+    file: {items: s => ['make_csv', 'make_xlsx'].includes(A(s)), name: s => A(s) !== 'read', sheet: s => A(s) === 'make_xlsx',
+      title: s => A(s) === 'make_pdf', value: s => A(s) === 'make_pdf', file_id: s => A(s) === 'read'},
+    crypto: {value: s => !['uuid', 'random'].includes(A(s)), secret: s => A(s) === 'hmac_sha256', length: s => A(s) === 'random'},
+    aggregate: {sep: s => s.how === 'join'},
+  };
+  // the live result under a box that holds {{ }} (her route's newest data; nothing runs)
+  function previewSoon(el, s) {
+    const out = document.querySelector(`[data-prev="${CSS.escape(el.id)}"]`); if (!out || !ED) return;
+    clearTimeout(el._pv);
+    if (!/\{\{[\s\S]*?\}\}/.test(el.value)) { out.hidden = true; return; }
+    el._pv = setTimeout(async () => {
+      let r; try { r = await api('POST', `/api/route/routes/${enc(ED.r.id)}/eval`, {text: el.value, step: s.id}); } catch { return; }
+      if (!document.body.contains(out)) return;
+      out.hidden = false;
+      if (r.errors && r.errors.length) { out.className = 'fprev bad'; out.textContent = r.errors.map(x => x.error).join(' · '); return; }
+      out.className = 'fprev';
+      const v = r.value, txt = v === null || v === undefined ? 'empty' : typeof v === 'string' ? v : JSON.stringify(v);
+      out.textContent = r.has_data ? `= ${txt.length > 180 ? txt.slice(0, 180) + '…' : txt}` : 'Test the route once to see the result here.';
+    }, 350);
+  }
   async function stepPanel(box) {
     if (!ED.sel) {
       box.innerHTML = `<div class="pempty"><div class="pe-t">Pick a step on the canvas</div><p class="mut sm">Its settings open here. Use the <b>+</b> after a step to add the next one, or ask Hoola to build the route for you.</p>
@@ -718,7 +784,7 @@
     let tinfo = null;
     if (s.type === 'tool') tinfo = await toolInfo(s.name);
     if (!ED || ED.sel !== s.id || (box.id === 'edPanel' ? (ED.tab !== 'step' || ED.modal) : ED.modal !== s.id)) return;
-    if (box.id === 'edPanel') parts.push(`<div class="phead">${appTile(s.app || (tinfo && tinfo.app), s.type)}<div><div class="pk">${esc(KIND[s.type] || s.type)}</div><div class="pt">${esc(titleOfStep(s))}</div></div>
+    if (box.id === 'edPanel') parts.push(`<div class="phead">${appTile(s.app || (tinfo && tinfo.app), s.type, s.op)}<div><div class="pk">${esc(KIND[s.type] || s.type)}</div><div class="pt">${esc(titleOfStep(s))}</div></div>
       <span class="sp"></span><button class="btn s soft" type="button" data-big title="Open with its data (double-click a step)">Open with data</button></div>`);
     parts.push(field('What this step does', s.label || '', {k: 'label', ref: false, ph: 'In your own words, like "Add the order to my sheet"'}));
     if (s.type === 'tool') {
@@ -745,6 +811,19 @@
       parts.push(field('Method', s.method || 'GET', {k: 'method', options: [['GET', 'GET (read)'], ['POST', 'POST (send)']]}));
       parts.push(field('Address', s.url || '', {k: 'url', mono: true, ph: 'https://'}));
       if ((s.method || 'GET') === 'POST') parts.push(field('What it sends', typeof s.body === 'string' ? s.body : JSON.stringify(s.body ?? {}, null, 2), {k: 'body', area: true, mono: true, rows: 5}));
+    } else if (s.type === 'data') {
+      const spec = DATAF[s.op] || [];
+      spec.forEach(([key, lab, kind, extra]) => {
+        const show = (SHOWIF[s.op] || {})[key];
+        if (show && !show(s)) return;
+        const v = s[key];
+        if (kind === 'sel') parts.push(field(lab, v === undefined ? extra[0][0] : v, {k: 'd:' + key, options: extra}));
+        else if (kind === 'obj') parts.push(field(lab, typeof v === 'string' ? v : JSON.stringify(v || {}, null, 2), {k: 'dobj:' + key, area: true, mono: true, rows: 5,
+          help: 'Each line a name and a value; values can use {{ }}'}));
+        else parts.push(field(lab, v === undefined || v === null ? '' : typeof v === 'string' ? v : JSON.stringify(v), {k: 'd:' + key, area: kind === 'area', rows: 4,
+          ref: kind !== 'plain', mono: kind === 'plain' && /field|by|key|attr|selector/.test(key), num: kind === 'num', help: typeof extra === 'string' ? extra : ''}));
+      });
+      if (s.op === 'file') parts.push('<p class="mut sm">A file it makes is kept for 24 hours: send it on in a later step (its file id is {{steps.' + esc(s.id) + '.output.file_id}}).</p>');
     } else if (s.type === 'code') parts.push(field('Python', s.code || '', {k: 'code', area: true, mono: true, rows: 10, help: 'Runs in a locked sandbox. Print what you want the next steps to read.'}));
     else if (s.type === 'wait') { parts.push(field('Seconds to wait', s.duration_s || '', {k: 'duration_s', ref: false, num: true, help: 'Up to 3600, or leave empty and give a time'})); parts.push(field('Or until (HH:MM)', s.until || '', {k: 'until', ref: false, ph: '09:00'})); }
     else if (s.type === 'loop') parts.push(field('A list to go through', typeof s.items === 'string' ? s.items : JSON.stringify(s.items ?? ''), {k: 'items', mono: true, ph: '{{steps.rows.output}}', help: 'The steps inside run once for every item (up to 50).'}));
@@ -800,9 +879,12 @@
       else if (k === 'oe_retries') { s.on_error.retries = Math.max(0, Math.min(10, parseInt(v, 10) || 0)); }
       else if (k === 'oe_wait') { s.on_error.wait_min = Math.max(1, Math.min(1440, parseInt(v, 10) || 1)); }
       else if (k === 'oe_value') s.on_error.value = v;
+      else if (k.startsWith('d:')) { const key = k.slice(2); if (v === '') delete s[key]; else s[key] = /^-?\d+(\.\d+)?$/.test(v.trim()) && ['count', 'amount', 'length'].includes(key) ? Number(v) : v; }
+      else if (k.startsWith('dobj:')) { try { s[k.slice(5)] = v.trim() ? JSON.parse(v) : {}; el.classList.remove('err'); } catch { el.classList.add('err'); return; } }
       else s[k] = v;
       ED.dirty = snap() !== ED.saved; draw(); topState();
-      if (['method', 'oe_do'].includes(k)) stepPanel(box.parentNode);
+      if (['method', 'oe_do', 'd:action', 'd:how', 'd:mode'].includes(k)) stepPanel(box.parentNode);
+      if (el.tagName !== 'SELECT') previewSoon(el, s);
     };
     box.addEventListener('input', e => { if (e.target.dataset.k && e.target.tagName !== 'SELECT') apply(e.target); else if (e.target.closest('.fgroup')) applyFilter(e.target); });
     box.addEventListener('change', e => { if (e.target.dataset.k && e.target.tagName === 'SELECT') apply(e.target); else if (e.target.closest('.fgroup')) applyFilter(e.target, true);
@@ -917,10 +999,10 @@
       let html = '';
       if (!kw) {
         if (!ED.replace) GROUPS.forEach(([g, ic, cls]) => { const ks = kinds.filter(k => k.group === g); if (!ks.length) return;
-          html += `<div class="agrp">${esc(g)}</div>` + ks.map(k => row(`data-kind="${esc(k.type)}"`, `<span class="ap ${cls}">${svg(IC[k.type] || ic)}</span>`, k.title, k.sub)).join(''); });
+          html += `<div class="agrp">${esc(g)}</div>` + ks.map(k => row(`data-kind="${esc(k.key || k.type)}"`, `<span class="ap ${cls}">${svg(OPIC[k.key] || IC[k.type] || ic)}</span>`, k.title, k.sub)).join(''); });
         html += `<div class="agrp">App actions <span class="mut">· every Hoola tool and your connected apps</span></div>` + toolRows.join('');
       } else {
-        html = kinds.map(k => row(`data-kind="${esc(k.type)}"`, `<span class="ap k-${KIND_TILE[k.type] || 'core'}">${svg(IC[k.type] || IC.set)}</span>`, k.title, k.sub, k.group)).join('') + toolRows.join('');
+        html = kinds.map(k => row(`data-kind="${esc(k.key || k.type)}"`, `<span class="ap k-${KIND_TILE[k.type] || 'core'}">${svg(OPIC[k.key] || IC[k.type] || IC.set)}</span>`, k.title, k.sub, k.group)).join('') + toolRows.join('');
         if (!html) html = '<div class="mut sm">Nothing found. Try other words, or ask Hoola.</div>';
       }
       $('#addList').innerHTML = html;
@@ -928,7 +1010,7 @@
     inp.addEventListener('input', () => { clearTimeout(ED.addT); ED.addT = setTimeout(fill, 180); });
     $('#addList').addEventListener('click', e => {
       const b = e.target.closest('.arow'); if (!b || !ED.cat) return;
-      if (b.dataset.kind) { const k = ED.cat.kinds.find(x => x.type === b.dataset.kind); insertStep(makeKind(k)); return; }
+      if (b.dataset.kind) { const k = ED.cat.kinds.find(x => (x.key || x.type) === b.dataset.kind); insertStep(makeKind(k)); return; }
       const t = ED.cat.tools[+b.dataset.tool];
       TOOLS[t.name] = t;
       if (ED.replace) { const h = find(ED.replace); ED.replace = null; if (!h) return; before(); Object.assign(h.step, {name: t.name, app: t.app, args: {}}); if (!h.step.label) h.step.label = t.label;
@@ -1105,7 +1187,7 @@
     const [tt, ts] = trig ? trigWords() : [titleOfStep(s), KIND[s.type] || s.type];
     m.hidden = false;
     m.innerHTML = `<div class="sm-card">
-      <div class="sm-top">${trig ? `<span class="ap k-trig">${svg(IC.bolt)}</span>` : appTile(s.app, s.type)}<div class="sm-t"><div class="pk">${esc(trig ? 'What starts it' : ts)}</div><div class="pt">${esc(tt)}</div></div>
+      <div class="sm-top">${trig ? `<span class="ap k-trig">${svg(IC.bolt)}</span>` : appTile(s.app, s.type, s.op)}<div class="sm-t"><div class="pk">${esc(trig ? 'What starts it' : ts)}</div><div class="pt">${esc(tt)}</div></div>
         <span class="sp"></span>${trig ? '' : `<button class="btn s" type="button" id="smTest">${svg(IC.play)}Test step</button>`}
         <button class="btn s soft ib" type="button" id="smX" aria-label="Close">${svg(IC.x)}</button></div>
       <div class="sm-cols"><section class="sm-in" aria-label="What comes in"></section><section class="sm-mid" aria-label="Settings"></section><section class="sm-out" aria-label="What goes out"></section></div></div>`;

@@ -370,6 +370,10 @@ svg.edges path.ghost{stroke-dasharray:4 4}
 .dropok{border-color:var(--acc)!important;border-style:dashed!important;background:var(--accs)!important}
 .sm-top .btn .dots i{background:var(--onpill)}
 
+/* v0.999.237 R3: the live result of a box's expression */
+.fprev{font:12px/1.45 'JetBrains Mono',ui-monospace,monospace;color:var(--okt);background:var(--oks);border-radius:8px;padding:5px 9px;overflow-wrap:anywhere;max-height:84px;overflow:auto}
+.fprev.bad{color:var(--badt);background:var(--bads);font-family:'Schibsted Grotesk',system-ui,sans-serif}
+
 /* ---------------------------------------------------------------- a smaller screen */
 @media (max-width:1100px){.sm-cols{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)}.sm-out{grid-column:1 / -1;border-left:0;border-top:1px solid var(--line)}.edbody{grid-template-columns:minmax(0,1fr) 330px}.needs{grid-template-columns:1fr}}
 @media (max-width:900px){
