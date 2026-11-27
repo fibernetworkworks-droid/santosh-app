@@ -437,3 +437,6 @@ svg.edges path.ghost{stroke-dasharray:4 4}
 .trow .tc input,.trow .tc select{font:inherit;font-size:13.5px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;min-height:36px;width:100%}
 .trow .chk{font-size:13px;align-self:center}
 .okbox.sm{font-size:13px;padding:10px 12px}
+/* v0.999.246 ROUTE R7 */
+.rtags{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}.rtag{font-size:11.5px;padding:1px 8px;border-radius:999px;background:var(--soft);color:var(--mut)}
+.tchk{display:flex;flex-direction:column;gap:6px}

@@ -156,7 +156,7 @@
     return `<div class="tw"><table class="rt"><thead><tr><th>Route</th><th>Runs when</th><th>Last run</th><th class="nw">Last 7 days</th><th class="c-tog">On</th></tr></thead><tbody>${
       routes.map(r => { const lr = r.last_run ? (LASTW[r.last_run.status] || ['', r.last_run.status]) : null;
         return `<tr>
-        <td class="c-name"><div class="rname">${firstTile(r)}<div><a class="rn" href="#/r/${enc(r.id)}">${esc(nice(r.name))}</a><div class="mut sm">${esc([r.folder, {manual: 'by hand', schedule: 'on a schedule', webhook: 'when data arrives'}[r.trigger]].filter(Boolean).join(' · '))}</div></div></div></td>
+        <td class="c-name"><div class="rname">${firstTile(r)}<div><a class="rn" href="#/r/${enc(r.id)}">${esc(nice(r.name))}</a><div class="mut sm">${esc([r.folder, {manual: 'by hand', schedule: 'on a schedule', webhook: 'when data arrives', event: 'on an app event', form: 'from a form', chat: 'from a chat', error: 'when a route fails', route: 'from another route', tool: 'as a tool'}[r.trigger]].filter(Boolean).join(' · '))}</div>${(r.tags || []).length ? `<div class="rtags">${r.tags.map(t => `<span class="rtag">${esc(t)}</span>`).join('')}</div>` : ''}</div></div></td>
         <td data-l="Runs when">${esc(r.when)}</td>
         <td data-l="Last run" class="nw">${lr ? `<span class="lr ${lr[0]}">${esc(lr[1])}</span> <span class="mut sm">${esc(when(r.last_run.at))}</span>` : `<span class="mut">${esc(r.status.text)}</span>`}</td>
         <td data-l="Last 7 days">${bars(r.days7)}</td>
@@ -224,14 +224,14 @@
     shell(false); setNav('routes');
     const list = await api('GET', '/api/route/routes');
     const folders = [...new Set(list.routes.map(r => r.folder).filter(Boolean))];
-    MAIN.innerHTML = `<div class="top"><h1>All routes</h1><span class="sp"></span><button class="btn" id="newR">${svg(IC.plus)}New route</button></div>
+    MAIN.innerHTML = `<div class="top"><h1>All routes</h1><span class="sp"></span><label class="btn soft" for="impFile">Bring in a file<input type="file" id="impFile" accept=".json,application/json" hidden></label><button class="btn" id="newR">${svg(IC.plus)}New route</button></div>
       <div class="filt"><label class="srch">${svg(IC.search)}<input type="search" id="rq" placeholder="Find a route" aria-label="Find a route"></label>
       <select id="rsort" aria-label="Sort"><option value="changed">Last changed</option><option value="name">Name</option><option value="runs">Most runs</option></select>
       ${folders.length ? `<div class="chips left" id="fchips"><button class="chip" aria-pressed="${!folderPick}" data-f="">All</button>${folders.map(f => `<button class="chip" aria-pressed="${f === folderPick}" data-f="${esc(f)}">${esc(f)}</button>`).join('')}</div>` : ''}</div>
       <section class="card flat" id="rtable"></section>`;
     let folder = folderPick || '';
     const draw = () => { const q = $('#rq').value.trim().toLowerCase(), so = $('#rsort').value;
-      const rs = list.routes.filter(r => (!folder || r.folder === folder) && (!q || (nice(r.name) + ' ' + r.description).toLowerCase().includes(q)));
+      const rs = list.routes.filter(r => (!folder || r.folder === folder) && (!q || (nice(r.name) + ' ' + r.description + ' ' + (r.tags || []).join(' ')).toLowerCase().includes(q)));
       if (so === 'name') rs.sort((a, b) => a.name.localeCompare(b.name)); else if (so === 'runs') rs.sort((a, b) => b.runs_30d - a.runs_30d);
       $('#rtable').innerHTML = routeRows(rs, list.routes.length ? 'No route matches.' : ''); };
     draw();
@@ -240,6 +240,13 @@
     if (fc) fc.addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (!b) return;
       fc.querySelectorAll('[data-f]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); folder = b.dataset.f; draw(); });
     $('#newR').addEventListener('click', () => newRoute('New route', '', folder).catch(err => toast(err.message, true)));
+    $('#impFile').addEventListener('change', async e => {     // v0.999.246 a route file: the engine's own checks, it lands off
+      const f = e.target.files[0]; if (!f) return;
+      try { const dsl = JSON.parse(await f.text()); const out = await api('POST', '/api/route/import', {dsl});
+        toast('Brought in. It is off until you switch it on.'); location.hash = '#/r/' + enc(out.workflow_id); }
+      catch (err) { toast(err.message || 'That is not a route file', true); }
+      e.target.value = '';
+    });
   }
   async function viewNeeds() {
     shell(false); setNav('needs');
@@ -851,6 +858,10 @@
     const parts = [];
     let tinfo = null;
     if (s.type === 'tool') tinfo = await toolInfo(s.name);
+    // v0.999.246 ROUTE R7: which of her accounts a step uses, and the saved sign-in a web request uses
+    if (tinfo && (tinfo.fields || []).some(f => f.name === 'account') && !ED.accts) ED.accts = ((await api('GET', '/api/route/accounts').catch(() => ({}))).accounts) || [];
+    if (s.type === 'http' && !ED.creds) ED.creds = ((await api('GET', '/api/route/credentials').catch(() => ({}))).credentials) || [];
+    if (!ED) return;
     if (!ED || ED.sel !== s.id || (box.id === 'edPanel' ? (ED.tab !== 'step' || ED.modal) : ED.modal !== s.id)) return;
     if (box.id === 'edPanel') parts.push(`<div class="phead">${appTile(s.app || (tinfo && tinfo.app), s.type, s.op)}<div><div class="pk">${esc(KIND[s.type] || s.type)}</div><div class="pt">${esc(titleOfStep(s))}</div></div>
       <span class="sp"></span><button class="btn s soft" type="button" data-big title="Open with its data (double-click a step)">Open with data</button></div>`);
@@ -865,7 +876,8 @@
         const v = args[f.name];
         const txt = v === undefined ? '' : typeof v === 'string' ? v : JSON.stringify(v);
         const lab = f.name.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
-        if (f.enum && f.enum.length) parts.push(field(lab, txt, {k: 'arg:' + f.name, options: [['', '—']].concat(f.enum.map(e => [e, e])), help: f.help, req: f.required}));
+        if (f.name === 'account' && (ED.accts || []).length && !/\{\{/.test(txt)) parts.push(field('Which account', txt, {k: 'arg:account', options: [['', 'The main one']].concat(ED.accts.map(a => [a.value, a.label + (a.ok ? '' : ' (needs connecting again)')])), help: 'The account this step uses'}));
+        else if (f.enum && f.enum.length) parts.push(field(lab, txt, {k: 'arg:' + f.name, options: [['', '—']].concat(f.enum.map(e => [e, e])), help: f.help, req: f.required}));
         else if (f.type === 'boolean') parts.push(field(lab, txt, {k: 'arg:' + f.name, options: [['', '—'], ['true', 'Yes'], ['false', 'No']], help: f.help, req: f.required}));
         else parts.push(field(lab, txt, {k: 'arg:' + f.name + ':' + f.type, area: ['object', 'array'].includes(f.type) || txt.length > 60, mono: ['object', 'array'].includes(f.type), help: f.help, req: f.required,
           ph: ['object', 'array'].includes(f.type) ? (f.type === 'array' ? '[ ]' : '{ }') : ''}));
@@ -878,6 +890,8 @@
     else if (s.type === 'http') {
       parts.push(field('Method', s.method || 'GET', {k: 'method', options: [['GET', 'GET (read)'], ['POST', 'POST (send)']]}));
       parts.push(field('Address', s.url || '', {k: 'url', mono: true, ph: 'https://'}));
+      parts.push(field('Sign in with', s.auth || '', {k: 'auth', options: [['', 'No sign-in']].concat((ED.creds || []).map(c => [c.name, `${c.name} (${c.host})`])),
+        help: (ED.creds || []).length ? 'A saved sign-in is sent only to its own site.' : 'Save one under Sign-ins first.'}));
       if ((s.method || 'GET') === 'POST') parts.push(field('What it sends', typeof s.body === 'string' ? s.body : JSON.stringify(s.body ?? {}, null, 2), {k: 'body', area: true, mono: true, rows: 5}));
     } else if (s.type === 'data' || s.type === 'ai') {
       const spec = (s.type === 'ai' ? AIF : DATAF)[s.op] || [];
@@ -986,6 +1000,7 @@
       else if (k === 'value' || k === 'items') s[k] = v;
       else if (k === 'body') { try { s.body = v.trim() ? JSON.parse(v) : {}; } catch { s.body = v; } }
       else if (k === 'method') s.method = v;
+      else if (k === 'auth') { if (v) s.auth = v; else delete s.auth; }
       else if (k.startsWith('rlabel:')) { const j = +k.split(':')[1]; s.routes[j].label = v; }
       else if (k === 'oe_do') { if (v) s.on_error = Object.assign({}, s.on_error || {}, {do: v}); else delete s.on_error; }
       else if (k === 'oe_retries') { s.on_error.retries = Math.max(0, Math.min(10, parseInt(v, 10) || 0)); }
@@ -1615,7 +1630,7 @@
     const r = await api('GET', `/api/route/routes/${enc(id)}`);
     if (ED && ED.r && ED.r.id !== id) stopEditor();
     shell(true); setNav('routes');
-    if (tab === 'runs' || tab === 'settings') { await viewRouteTab(r, tab); return; }
+    if (tab === 'runs' || tab === 'settings' || tab === 'versions') { await viewRouteTab(r, tab); return; }
     stopEditor();
     ED = {r: null, steps: [], trig: {}, pos: {}, notes: [], sel: null, hist: [], fut: [], z: 1, px: 40, py: 80, dirty: false, runSt: {}, tab: 'ask', chat: null};
     load(r);
@@ -1661,7 +1676,7 @@
     return `<div class="edtop">
       <a class="btn soft s ib" href="#/routes" aria-label="Back to all routes">${svg(IC.back)}</a>
       <div class="edname"><span class="mut sm">${esc(r.folder || 'Routes')} /</span><b title="${esc(nice(r.name))}">${esc(nice(r.name))}</b>${tab === 'editor' ? '<span class="chipst" id="edState">Saved</span>' : ''}</div>
-      <div class="segtabs" role="tablist"><a role="tab" href="#/r/${enc(r.id)}" aria-selected="${tab === 'editor'}">Editor</a><a role="tab" href="#/r/${enc(r.id)}/runs" aria-selected="${tab === 'runs'}">Runs</a><a role="tab" href="#/r/${enc(r.id)}/settings" aria-selected="${tab === 'settings'}">Settings</a></div>
+      <div class="segtabs" role="tablist"><a role="tab" href="#/r/${enc(r.id)}" aria-selected="${tab === 'editor'}">Editor</a><a role="tab" href="#/r/${enc(r.id)}/runs" aria-selected="${tab === 'runs'}">Runs</a><a role="tab" href="#/r/${enc(r.id)}/versions" aria-selected="${tab === 'versions'}">Versions</a><a role="tab" href="#/r/${enc(r.id)}/settings" aria-selected="${tab === 'settings'}">Settings</a></div>
       <span class="sp"></span>
       <label class="onl">${r.enabled ? 'On' : 'Off'}${tog(r.id, r.enabled, r.name)}</label>
       ${tab === 'editor' ? `<button class="btn soft s ib" type="button" id="edUndo" aria-label="Undo" title="Undo (Ctrl Z)">${svg(IC.undo)}</button><button class="btn soft s ib" type="button" id="edRedo" aria-label="Redo" title="Redo (Ctrl Shift Z)">${svg(IC.redo)}</button>
@@ -1777,26 +1792,72 @@
     if (tab === 'runs') {
       const runs = await api('GET', `/api/route/runs?workflow_id=${enc(r.id)}&limit=40`);
       body = `<section class="card flat">${runRows(runs.runs, true, 'No runs yet. Test the route in the editor, or switch it on.')}</section>`;
-    } else {
-      const sp = r.trigger_spec || {}, st = r.settings || {};
-      body = `<div class="setgrid"><section class="card"><div class="hd"><h2>How it runs</h2></div>
-          <div class="kv"><span class="k">Runs when</span><span>${esc(r.when)}</span></div>
-          ${sp.timezone || st.timezone ? `<div class="kv"><span class="k">Time zone</span><span>${esc(sp.timezone || st.timezone)}</span></div>` : ''}
-          ${sp.quiet ? `<div class="kv"><span class="k">Quiet hours</span><span>${esc(sp.quiet.from)}–${esc(sp.quiet.to)}</span></div>` : ''}
-          ${sp.skip_holidays ? `<div class="kv"><span class="k">Skips holidays of</span><span>${esc(sp.skip_holidays)}</span></div>` : ''}
-          ${r.next_due_at ? `<div class="kv"><span class="k">Next run</span><span>${esc(at(r.next_due_at))}</span></div>` : ''}
-          <div class="kv"><span class="k">Switch off after</span><span>${st.stop_after_errors ? esc(st.stop_after_errors) + ' failed runs in a row' : 'Never (not set)'}</span></div>
-          ${st.error_route ? `<div class="kv"><span class="k">Error route</span><span>${esc(nice(st.error_route))}</span></div>` : ''}
-          ${st.runs_per_day ? `<div class="kv"><span class="k">Runs per day, at most</span><span>${esc(st.runs_per_day)}</span></div>` : ''}
-          ${r.trigger === 'webhook' ? `<div class="kv"><span class="k">Address that starts it</span><span class="v" id="addrBox"><span class="mut">Kept secret. Make a new one to see it.</span><br><button class="btn soft s" id="addrNew" type="button">Make a new address</button></span></div>` : ''}
-          <div class="kv"><span class="k">Money and sending</span><span>Always wait for your tap</span></div>
-          <p class="mut sm">To change these, ask Hoola in the editor. More settings come to this page next.</p></section>
-        <section class="card danger"><div class="hd"><h2>Delete this route</h2></div>
-          <p class="mut sm" id="delWords">Its steps and its run history go. This cannot be undone. A route with a run still going cannot be deleted.</p>
-          <div class="crow"><button class="btn soft bad s" id="delAsk" type="button">Delete route</button>
-            <span id="delSure" hidden><span class="sm">Delete <b>${esc(nice(r.name))}</b> for good?</span> <button class="btn s bad solid" id="delGo" type="button">Yes, delete</button> <button class="btn soft s" id="delNo" type="button">Keep it</button></span></div></section></div>`;
+      MAIN.innerHTML = `<div class="ed tabbed">${edTop(r, tab)}<div class="edpage">${body}</div></div>`;
+      return;
     }
+    if (tab === 'versions') { await versionsTab(r); return; }
+    // v0.999.246 ROUTE R7: every setting of the route on the page
+    const st = r.settings || {};
+    const [all, team] = await Promise.all([api('GET', '/api/route/routes').catch(() => ({routes: []})), api('GET', '/api/route/team').catch(() => ({team: []}))]);
+    const others = (all.routes || []).filter(x => x.id !== r.id);
+    let zones = []; try { zones = Intl.supportedValuesOf('timeZone'); } catch {}
+    const shared = new Set(st.shared_with || []);
+    const sh = r.share || {};
+    const sp = r.trigger_spec || {};
+    body = `<div class="setgrid">
+      <section class="card"><div class="hd"><h2>How it runs</h2></div>
+        <div class="kv"><span class="k">Runs when</span><span>${esc(r.when)}</span></div>
+        ${sp.timezone || st.timezone ? `<div class="kv"><span class="k">Time zone</span><span>${esc(sp.timezone || st.timezone)}</span></div>` : ''}
+        ${sp.quiet ? `<div class="kv"><span class="k">Quiet hours</span><span>${esc(sp.quiet.from)}–${esc(sp.quiet.to)}</span></div>` : ''}
+        ${sp.skip_holidays ? `<div class="kv"><span class="k">Skips holidays of</span><span>${esc(sp.skip_holidays)}</span></div>` : ''}
+        ${r.next_due_at ? `<div class="kv"><span class="k">Next run</span><span>${esc(at(r.next_due_at))}</span></div>` : ''}
+        ${r.trigger === 'webhook' ? `<div class="kv"><span class="k">Address that starts it</span><span class="v" id="addrBox"><span class="mut">Kept secret. Make a new one to see it.</span><br><button class="btn soft s" id="addrNew" type="button">Make a new address</button></span></div>` : ''}
+        ${r.public_url ? `<div class="kv"><span class="k">Its page</span><span class="v"><code class="addr">${esc(/^https?:/.test(r.public_url) ? r.public_url : location.origin + r.public_url)}</code></span></div>` : ''}
+        <div class="kv"><span class="k">Money and sending</span><span>Always wait for your tap</span></div>
+        <p class="mut sm">What starts it is changed in the editor (click the first step).</p></section>
+      <section class="card"><div class="hd"><h2>Settings</h2></div><form id="setForm" class="pform">
+        ${field('What it does (one line)', r.description || '', {k: 'description', ref: false})}
+        <div class="two">${field('Folder', st.folder || '', {k: 'folder', ref: false, ph: 'Like Sales'})}${field('Tags (with commas)', (st.tags || []).join(', '), {k: 'tags', ref: false, ph: 'orders, daily'})}</div>
+        <div class="fld"><label for="stTz">Time zone</label><div class="fc"><input id="stTz" data-k="timezone" list="stTzList" value="${esc(st.timezone || '')}" placeholder="${esc(TZ || 'Europe/London')}"></div>
+          <datalist id="stTzList">${zones.map(z => `<option value="${esc(z)}">`).join('')}</datalist><span class="fh">Used by its schedule, its waits and its dates.</span></div>
+        <div class="two">${field('Switch it off after this many failed runs in a row', S(st.stop_after_errors || ''), {k: 'stop_after_errors', ref: false, num: true, help: '1-20; empty = never'})}
+          ${field('At most this many runs a day', S(st.runs_per_day || ''), {k: 'runs_per_day', ref: false, num: true, help: 'Empty = no limit'})}</div>
+        <div class="two">${field('When it fails, run', st.error_route || '', {k: 'error_route', options: [['', 'Nothing'], ...others.map(x => [x.name, nice(x.name)])]})}
+          ${field('Currency', st.currency || '', {k: 'currency', ref: false, ph: 'Like EUR, USD, INR'})}</div>
+        <div class="crow"><button class="btn s" type="submit" id="setSave">Save settings</button><span class="mut sm" id="setNote"></span></div></form></section>
+      <section class="card"><div class="hd"><h2>Share</h2></div>
+        <p class="mut sm">A link to look at this route - its steps in words, without any of its data or sign-ins. It works for 30 days.</p>
+        <div id="shareBox">${sh.on ? `<code class="addr">${esc(/^https?:/.test(sh.url) ? sh.url : location.origin + sh.url)}</code><div class="crow"><button class="btn soft s" type="button" data-copy="${esc(/^https?:/.test(sh.url) ? sh.url : location.origin + sh.url)}">Copy</button><button class="btn soft s bad" type="button" id="shareStop">Stop the link</button></div>`
+          : '<button class="btn soft s" type="button" id="shareMake">Make a link</button>'}</div>
+        <div class="psub">Team members who may run it</div>
+        ${(team.team || []).length ? `<div class="tchk">${team.team.map(m => `<label class="chk"><input type="checkbox" data-member="${esc(m.id)}"${shared.has(m.id) ? ' checked' : ''}${m.active ? '' : ' disabled'}> ${esc(m.name)} <span class="mut sm">(${esc(m.role)})</span></label>`).join('')}</div>
+          <p class="mut sm">They ask their own Hoola to run it. They can run it, never change it.</p>`
+          : '<p class="mut sm">No team yet. Add people in AI Employees &gt; Team, then share routes with them here.</p>'}
+        <div class="psub">As a file</div>
+        <div class="crow"><button class="btn soft s" type="button" id="expFile">Download as a file</button><span class="mut sm">Keys and addresses are left out.</span></div></section>
+      <section class="card danger"><div class="hd"><h2>Delete this route</h2></div>
+        <p class="mut sm" id="delWords">Its steps and its run history go. This cannot be undone. A route with a run still going cannot be deleted.</p>
+        <div class="crow"><button class="btn soft bad s" id="delAsk" type="button">Delete route</button>
+          <span id="delSure" hidden><span class="sm">Delete <b>${esc(nice(r.name))}</b> for good?</span> <button class="btn s bad solid" id="delGo" type="button">Yes, delete</button> <button class="btn soft s" id="delNo" type="button">Keep it</button></span></div></section></div>`;
     MAIN.innerHTML = `<div class="ed tabbed">${edTop(r, tab)}<div class="edpage">${body}</div></div>`;
+    const collect = () => {
+      const o = {};
+      MAIN.querySelectorAll('#setForm [data-k]').forEach(el => { const v = el.value.trim(); if (v) o[el.dataset.k] = v; });
+      if (o.tags) o.tags = o.tags.split(',').map(x => x.trim()).filter(Boolean);
+      ['stop_after_errors', 'runs_per_day'].forEach(k => { if (o[k]) o[k] = parseInt(o[k], 10) || o[k]; });
+      o.description = (MAIN.querySelector('#setForm [data-k="description"]') || {}).value || '';
+      o.shared_with = Array.from(MAIN.querySelectorAll('[data-member]:checked')).map(x => x.dataset.member);
+      return o;
+    };
+    const saveSet = async () => {
+      const b = $('#setSave'); b.disabled = true;
+      try { const nr = await api('PUT', `/api/route/routes/${enc(r.id)}/settings`, collect()); Object.assign(r, nr); toast('Settings saved.'); }
+      catch (err) { toast(err.message, true); }
+      b.disabled = false;
+    };
+    $('#setForm').addEventListener('submit', e => { e.preventDefault(); saveSet(); });
+    MAIN.querySelectorAll('[data-member]').forEach(x => x.addEventListener('change', saveSet));
+    MAIN.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => navigator.clipboard.writeText(b.dataset.copy).then(() => toast('Copied.'), () => toast('Copy it by hand.', true))));
     const an = $('#addrNew');
     if (an) an.addEventListener('click', async () => {
       if (an.dataset.sure !== '1') { an.dataset.sure = '1'; an.textContent = 'The old address stops working. Make a new one?'; return; }
@@ -1808,6 +1869,17 @@
         $('#addrCopy').addEventListener('click', () => navigator.clipboard.writeText(url).then(() => toast('Copied.'), () => toast('Copy it by hand.', true)));
       } catch (err) { toast(err.message, true); an.disabled = false; }
     });
+    const sm = $('#shareMake');
+    if (sm) sm.addEventListener('click', async () => { try { r.share = await api('POST', `/api/route/routes/${enc(r.id)}/share`); viewRouteTab(r, 'settings'); } catch (err) { toast(err.message, true); } });
+    const ss = $('#shareStop');
+    if (ss) ss.addEventListener('click', async () => { try { await api('DELETE', `/api/route/routes/${enc(r.id)}/share`); r.share = {on: false}; toast('The link has stopped.'); viewRouteTab(r, 'settings'); } catch (err) { toast(err.message, true); } });
+    $('#expFile').addEventListener('click', async () => {
+      try {
+        const d = await api('GET', `/api/route/routes/${enc(r.id)}/export`);
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(d, null, 2)], {type: 'application/json'}));
+        a.download = `${r.name}.route.json`; document.body.appendChild(a); a.click(); a.remove();
+      } catch (err) { toast(err.message, true); }
+    });
     const da = $('#delAsk');
     if (da) {
       da.addEventListener('click', () => { $('#delSure').hidden = false; da.hidden = true; });
@@ -1818,6 +1890,74 @@
         catch (err) { toast(err.message, true); $('#delGo').disabled = false; }
       });
     }
+  }
+  async function versionsTab(r) {
+    const v = await api('GET', `/api/route/routes/${enc(r.id)}/versions`);
+    const rows = (v.versions || []).map(x => `<tr><td class="nw">${esc(at(x.at))}</td><td>${esc(x.change)}${x.note ? `<div class="mut sm">${esc(x.note)}</div>` : ''}</td>
+      <td class="num">${fmtN(x.steps)}</td><td class="c-act">${x.current ? '<span class="chipst">Now</span>' : `<button class="btn soft s" type="button" data-restore="${esc(x.id)}">Bring back</button>`}</td></tr>`).join('');
+    MAIN.innerHTML = `<div class="ed tabbed">${edTop(r, 'versions')}<div class="edpage"><section class="card flat">
+      <div class="hd"><h2>Versions</h2><span class="sp"></span><span class="mut sm">Every save is kept (the last 50). Bringing one back saves it as a new version.</span></div>
+      ${rows ? `<div class="tw"><table class="rt"><thead><tr><th>Saved</th><th>What changed</th><th>Steps</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="empty">No versions yet - one is kept every time the route is saved.</div>'}
+      </section></div></div>`;
+    MAIN.querySelectorAll('[data-restore]').forEach(b => b.addEventListener('click', async () => {
+      if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Bring this one back?'; return; }
+      b.disabled = true;
+      try { const nr = await api('POST', `/api/route/routes/${enc(r.id)}/versions/${enc(b.dataset.restore)}/restore`); toast('Brought back. It is the newest version now.'); await versionsTab(nr); }
+      catch (err) { toast(err.message, true); b.disabled = false; }
+    }));
+  }
+  // v0.999.246 ROUTE R7: her variables ({{env.NAME}}) and saved sign-ins, for every route
+  async function viewVariables() {
+    shell(false); setNav('variables');
+    const v = await api('GET', '/api/route/variables');
+    const rows = (v.variables || []).map(x => `<tr><td class="c-name mono">${esc(x.name)}</td><td class="mono sm">${esc(typeof x.value === 'string' ? x.value : JSON.stringify(x.value)).slice(0, 200)}</td>
+      <td class="mut sm">${esc(x.note)}</td><td class="c-act"><button class="btn soft s" type="button" data-vedit="${esc(x.name)}">Change</button><button class="btn soft s bad" type="button" data-vdel="${esc(x.name)}">Delete</button></td></tr>`).join('');
+    MAIN.innerHTML = `<div class="top"><h1>Variables</h1></div><p class="lead">Values every route can read, like <code>{{env.SHOP_NAME}}</code>. Not for passwords or keys - those are sign-ins.</p>
+      <section class="card"><form id="varForm" class="pform"><div class="two">${field('Name', '', {k: 'vname', ref: false, mono: true, ph: 'SHOP_NAME'})}${field('Value', '', {k: 'vvalue', ref: false})}</div>
+        ${field('Note (optional)', '', {k: 'vnote', ref: false})}<div class="crow"><button class="btn s" type="submit">Save the variable</button></div></form></section>
+      <section class="card flat">${rows ? `<div class="tw"><table class="rt"><thead><tr><th>Name</th><th>Value</th><th>Note</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="empty">No variables yet.</div>'}</section>`;
+    const val = k => MAIN.querySelector(`[data-k="${k}"]`);
+    $('#varForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const name = val('vname').value.trim(); let value = val('vvalue').value;
+      if (/^-?\d+(\.\d+)?$/.test(value.trim())) value = Number(value);
+      try { await api('PUT', `/api/route/variables/${enc(name)}`, {value, note: val('vnote').value}); toast('Saved.'); viewVariables(); } catch (err) { toast(err.message, true); }
+    });
+    MAIN.querySelectorAll('[data-vedit]').forEach(b => b.addEventListener('click', () => {
+      const x = v.variables.find(y => y.name === b.dataset.vedit); val('vname').value = x.name;
+      val('vvalue').value = typeof x.value === 'string' ? x.value : JSON.stringify(x.value); val('vnote').value = x.note; val('vvalue').focus();
+    }));
+    MAIN.querySelectorAll('[data-vdel]').forEach(b => b.addEventListener('click', async () => {
+      if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Delete it?'; return; }
+      try { await api('DELETE', `/api/route/variables/${enc(b.dataset.vdel)}`); viewVariables(); } catch (err) { toast(err.message, true); }
+    }));
+  }
+  const CREDW = {bearer: 'A token (Bearer)', header: 'A key in a header', basic: 'A user and a password', query: 'A key in the address', oauth2: 'OAuth2 (app sign-in)'};
+  async function viewSignins(kind) {
+    shell(false); setNav('signins');
+    const c = await api('GET', '/api/route/credentials');
+    kind = kind || 'bearer';
+    const F = {bearer: [['token', 'The token', 1]], header: [['header', 'Header name'], ['value', 'The key', 1]], basic: [['user', 'User'], ['password', 'Password', 1]],
+      query: [['param', 'Its name in the address'], ['value', 'The key', 1]], oauth2: [['token_url', 'Token address (https://)'], ['client_id', 'Client id'], ['client_secret', 'Client secret', 1], ['scope', 'Scope (optional)']]}[kind];
+    const rows = (c.credentials || []).map(x => `<tr><td class="c-name mono">${esc(x.name)}</td><td>${esc(CREDW[x.kind] || x.kind)}</td><td class="mono sm">${esc(x.host)}</td>
+      <td class="mono sm">${esc(x.hint)}</td><td class="mut sm">${x.used_at ? 'Used ' + esc(at(x.used_at)) : 'Not used yet'}</td><td class="c-act"><button class="btn soft s bad" type="button" data-cdel="${esc(x.name)}">Delete</button></td></tr>`).join('');
+    MAIN.innerHTML = `<div class="top"><h1>Sign-ins</h1></div><p class="lead">For web request steps that need a key. Saved locked, never shown again (only the last 4), never seen by the AI, and only ever sent to the site you name.</p>
+      <section class="card"><form id="credForm" class="pform" autocomplete="off">
+        <div class="two">${field('Name', '', {k: 'name', ref: false, mono: true, ph: 'SHOP_API'})}${field('Kind', kind, {k: 'kind', options: Object.entries(CREDW)})}</div>
+        ${field('For this site only', '', {k: 'host', ref: false, mono: true, ph: 'api.example.com'})}
+        ${F.map(([k, lab, secret]) => `<div class="fld"><label for="cr_${k}">${esc(lab)}</label><div class="fc"><input id="cr_${k}" data-k="${k}" ${secret ? 'type="password" autocomplete="new-password"' : ''} class="mono"></div></div>`).join('')}
+        <div class="crow"><button class="btn s" type="submit">Save the sign-in</button></div></form></section>
+      <section class="card flat">${rows ? `<div class="tw"><table class="rt"><thead><tr><th>Name</th><th>Kind</th><th>Site</th><th>Key</th><th>Last use</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="empty">No sign-ins yet.</div>'}</section>`;
+    MAIN.querySelector('#credForm [data-k="kind"]').addEventListener('change', e => viewSignins(e.target.value));
+    $('#credForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const b = {}; MAIN.querySelectorAll('#credForm [data-k]').forEach(el => { b[el.dataset.k] = el.value.trim(); });
+      try { await api('POST', '/api/route/credentials', b); toast('Saved.'); viewSignins(kind); } catch (err) { toast(err.message, true); }
+    });
+    MAIN.querySelectorAll('[data-cdel]').forEach(b => b.addEventListener('click', async () => {
+      if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Delete it?'; return; }
+      try { await api('DELETE', `/api/route/credentials/${enc(b.dataset.cdel)}`); viewSignins(kind); } catch (err) { toast(err.message, true); }
+    }));
   }
 
   // ---------------------------------------------------------------- shared clicks: switches + run actions
@@ -1874,6 +2014,8 @@
       else if (a === 'runs') await viewRuns(b || '');
       else if (a === 'run' && b) await viewRun(decodeURIComponent(b));
       else if (a === 'templates') await viewTemplates();
+      else if (a === 'variables') await viewVariables();
+      else if (a === 'signins') await viewSignins(b || '');
       else await viewHome();
     } catch (err) { shell(false); MAIN.innerHTML = `<div class="errbox">${esc(err.message)}</div>`; }
     needCount();
