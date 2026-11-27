@@ -905,7 +905,25 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
               for (final cp in cps.reversed.take(8))
                 CodeChoiceRow(label: 'Checkpoint ${ci(cp['n'])}', sub: cs(cp['label']), on: false, onTap: () => Navigator.pop(ctx, ci(cp['n']))),
             ]));
-    if (n != null && n > 0) _run('POST', '$_base/rewind', {'n': n});
+    if (n == null || n <= 0 || !mounted) return;
+    // v0.999 Claude Code's /rewind: what goes back - both, the conversation only, or the code only
+    final what = await codeSheet<String>(context, widget.app,
+        title: 'Go back to checkpoint $n',
+        body: (ctx) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Text('What should go back? Your pull request on GitHub is not changed until the next push.',
+                  style: codeSans(HoolaColors.of(ctx), size: 13.5, color: HoolaColors.of(ctx).ink2)),
+              const SizedBox(height: 10),
+              CodeChoiceRow(
+                  label: 'Code and conversation', sub: 'The files and the conversation return to how they were then.', on: false,
+                  onTap: () => Navigator.pop(ctx, 'both')),
+              CodeChoiceRow(
+                  label: 'Conversation only', sub: 'The conversation goes back; the files keep every change made since.', on: false,
+                  onTap: () => Navigator.pop(ctx, 'conversation')),
+              CodeChoiceRow(
+                  label: 'Code only', sub: 'The files go back; the conversation stays as it is.', on: false,
+                  onTap: () => Navigator.pop(ctx, 'code')),
+            ]));
+    if (what != null) _run('POST', '$_base/rewind', {'n': n, 'what': what});
   }
 
   // v0.943 her own look at the working copy; picked lines come back quoted into her next message
@@ -1737,7 +1755,12 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         return _line(c, Icons.bookmark_border_rounded, [TextSpan(text: 'Checkpoint ${ci(s['num'] ?? s['n'])} saved')]);
       case 'rewind':
         return _line(c, Icons.undo_rounded, [
-          TextSpan(text: 'Went back to checkpoint ${ci(s['num'] ?? s['n'])}${ci(s['from']) >= 0 && s.containsKey('from') ? ' - the greyed part above was undone' : ''}')
+          TextSpan(
+              text: cs(s['what']) == 'code'
+                  ? 'Put the files back to checkpoint ${ci(s['num'] ?? s['n'])} - the conversation is unchanged'
+                  : cs(s['what']) == 'conversation'
+                      ? 'Took the conversation back to checkpoint ${ci(s['num'] ?? s['n'])} - the files keep their changes'
+                      : 'Went back to checkpoint ${ci(s['num'] ?? s['n'])}${ci(s['from']) >= 0 && s.containsKey('from') ? ' - the greyed part above was undone' : ''}')
         ]);
       case 'pass':
         {

@@ -778,7 +778,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       case 'compact': case 'ws': return `<div class="hcd-step dim">${svg('list')}<span>${esc(s.text || '')}</span>${at}</div>`;
       case 'wait': return `<div class="hcd-step">${svg('dot')}<span>${esc(s.text || 'Waiting for a free coding slot')}</span>${at}</div>`;
       case 'ckpt': return `<div class="hcd-step dim">${svg('ok')}<span>Checkpoint ${esc(String(s.num ?? s.n))} saved - you can go back to here</span>${at}</div>`;
-      case 'rewind': return `<div class="hcd-step">${svg('list')}<span><b>Went back to checkpoint ${esc(String(s.num ?? s.n))}.</b> The working copy and the conversation are as they were then.</span>${at}</div>`;
+      case 'rewind': return `<div class="hcd-step">${svg('list')}<span><b>${s.what === 'code' ? 'Put the files back' : s.what === 'conversation' ? 'Took the conversation back' : 'Went back'} to checkpoint ${esc(String(s.num ?? s.n))}.</b> ${s.what === 'code' ? 'The conversation is unchanged.' : s.what === 'conversation' ? 'The files keep every change made since.' : 'The working copy and the conversation are as they were then.'}</span>${at}</div>`;
       case 'agent': { /* v0.794 ECC agents (Claude Code-style subagents) */
         if (s.state === 'start') return `<div class="hcd-step">${svg('dot')}<span><b>Asked ${esc(s.title || s.name)}</b> (${esc(s.tools || 'read')}${s.model ? ' · on ' + esc(s.model) : ''}) · ${esc(s.task || '')}</span>${at}</div>`;
         const lab = `<b>${esc(s.title || s.name)}</b> reported · ${plural(s.steps || 0, 'step')}${s.edits ? ` · changed ${plural(s.edits, 'file')}` : ''}${s.secs ? ` · ${esc(String(s.secs))} s` : ''}`;
@@ -1601,9 +1601,15 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       try { const out = await api('POST', `/api/devsahayak/tasks/${tid()}/edit`, {step: n, text});
         if (n < 0 && out && out.id && out.id !== t.id) { await load(); show('session', out.id); } else await again(); } catch (e) { toast(e.message, true); } },
     rewind: async b => { const n = +b.dataset.n;
-      const r = await dialog(`<h2>Go back to checkpoint ${n}?</h2><p class="hcd-mut">The working copy and the conversation return to how they were then. Work after it is dropped here. Your pull request on GitHub is not changed until the next push.</p>
-        <div class="hcd-dlgb"><button class="hcd-btn" value="no" formnovalidate>Cancel</button><button class="hcd-btn pri" value="ok">Go back</button></div>`);
-      if (r !== 'ok') return; await busy(b, async () => { await api('POST', `/api/devsahayak/tasks/${tid()}/rewind`, {n}); await again(); toast(`Back at checkpoint ${n}.`); }); },
+      const r = await dialog(`<h2>Go back to checkpoint ${n}</h2><p class="hcd-mut">What should go back? Your pull request on GitHub is not changed until the next push.</p>
+        <div class="hcd-rwopts">
+          <button class="hcd-rwopt" value="both"><b>Code and conversation</b><span>The files and the conversation return to how they were then.</span></button>
+          <button class="hcd-rwopt" value="conversation"><b>Conversation only</b><span>The conversation goes back; the files keep every change made since.</span></button>
+          <button class="hcd-rwopt" value="code"><b>Code only</b><span>The files go back; the conversation stays as it is.</span></button></div>
+        <div class="hcd-dlgb"><button class="hcd-btn" value="no" formnovalidate>Never mind</button></div>`);
+      if (!['both', 'code', 'conversation'].includes(r)) return;
+      await busy(b, async () => { await api('POST', `/api/devsahayak/tasks/${tid()}/rewind`, {n, what: r}); await again();
+        toast(r === 'code' ? `Files back at checkpoint ${n}. The conversation is unchanged.` : r === 'conversation' ? `Conversation back at checkpoint ${n}. The files keep their changes.` : `Back at checkpoint ${n}.`); }); },
     starter: b => { const l = $('#hcdLine'), st = STARTS[+b.dataset.i]; if (!l || !st) return; l.value = st[2]; l.focus(); l.setSelectionRange(l.value.length, l.value.length); },
     unkind: () => { HOME.kind = 'auto'; drawTray(); },
     unissue: () => { HOME.issue = 0; drawTray(); },
