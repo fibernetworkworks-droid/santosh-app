@@ -123,7 +123,7 @@ def test_web_request_redirects_are_checked_and_sign_ins_stay_home(T, monkeypatch
     from app.agent import scrape_tools as st
     calls = []
 
-    def fake_get(url, headers=None, **kw):
+    def fake_get(method, url, headers=None, **kw):     # v0.999.254: the step calls httpx.request now
         calls.append((url, dict(headers or {})))
         if "api.shop.example" in url:
             return httpx.Response(302, headers={"location": "https://other.example/land"}, request=httpx.Request("GET", url))
@@ -133,7 +133,7 @@ def test_web_request_redirects_are_checked_and_sign_ins_stay_home(T, monkeypatch
         if "169.254" in u or "127.0.0.1" in u:
             raise ToolError("Only public addresses")
         return u
-    monkeypatch.setattr(httpx, "get", fake_get)
+    monkeypatch.setattr(httpx, "request", fake_get)
     monkeypatch.setattr(st, "_guard_url", guard)
     WS.save_credential(T, {"name": "SHOP", "kind": "header", "host": "api.shop.example", "header": "X-Api-Key",
                            "value": "key_secret_9876"})
@@ -144,9 +144,9 @@ def test_web_request_redirects_are_checked_and_sign_ins_stay_home(T, monkeypatch
     assert calls[1][0] == "https://other.example/land" and "X-Api-Key" not in calls[1][1], \
         "the sign-in header used to go to whatever site the redirect named"
 
-    def to_private(url, headers=None, **kw):
+    def to_private(method, url, headers=None, **kw):
         return httpx.Response(302, headers={"location": "http://169.254.169.254/latest"}, request=httpx.Request("GET", url))
-    monkeypatch.setattr(httpx, "get", to_private)
+    monkeypatch.setattr(httpx, "request", to_private)
     _save(T, "hop2", [{"id": "get", "type": "http", "url": "https://public.example/x"}])
     r = _go(T, "hop2")
     assert r["status"] == "failed" and "public" in (r["error"] or "").lower(), "a redirect to a private address was followed"

@@ -230,17 +230,528 @@ FUNCS: dict[str, Any] = {
     "now": now, "today": today, "date_add": date_add, "date_diff": date_diff, "date_format": date_format,
     "to_date": lambda v: _iso(_dt(v)),
 }
+
+# ---------------------------------------------------------------- v0.999.254 MAKE PARITY: Make's own functions
+# The function list of Make's help centre (general, math, text and binary, date and time, array), each under its
+# snake_case name AND Make's own camelCase name, so a formula from Make works as written once its ';' are ','.
+# `if` is a Python word, so if(c, a, b) is read as iff(c, a, b) (rewritten before parsing).
+_MOMENT = re.compile(r"\[[^\]]*\]|YYYY|YY|Y|Qo|Q|MMMM|MMM|MM|Mo|M|DDDD|DDDo|DDD|DD|Do|D|dddd|ddd|dd|do|d|E|"
+                     r"wo|ww|w|Wo|WW|W|gggg|gg|GGGG|GG|HH|H|hh|h|kk|k|A|a|mm|m|ss|s|S{1,9}|ZZ|Z|X|x")
+_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+           "November", "December"]
+_WDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
+
+def _ord(n: int) -> str:
+    return f"{n}{'th' if 10 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
+
+
+def moment_format(d: datetime, fmt: str) -> str:
+    """Make's (Moment.js) date tokens: YYYY-MM-DD HH:mm, Do MMMM, dddd, X ... Text in [brackets] stays as it is."""
+    iso = d.isocalendar()
+    wd = (d.weekday() + 1) % 7                       # 0 = Sunday, Make's d
+    h12 = d.hour % 12 or 12
+    off = d.utcoffset()
+
+    def z(sep: str) -> str:
+        if off is None:
+            return f"+00{sep}00"
+        m = int(off.total_seconds() // 60)
+        sg = "-" if m < 0 else "+"
+        m = abs(m)
+        return f"{sg}{m // 60:02d}{sep}{m % 60:02d}"
+    week = int(d.strftime("%U")) + 1
+    tok = {"YYYY": f"{d.year:04d}", "YY": f"{d.year % 100:02d}", "Y": str(d.year), "Q": str((d.month - 1) // 3 + 1),
+           "Qo": _ord((d.month - 1) // 3 + 1), "MMMM": _MONTHS[d.month - 1], "MMM": _MONTHS[d.month - 1][:3],
+           "MM": f"{d.month:02d}", "Mo": _ord(d.month), "M": str(d.month), "DDDD": f"{d.timetuple().tm_yday:03d}",
+           "DDDo": _ord(d.timetuple().tm_yday), "DDD": str(d.timetuple().tm_yday), "DD": f"{d.day:02d}", "Do": _ord(d.day),
+           "D": str(d.day), "dddd": _WDAYS[wd], "ddd": _WDAYS[wd][:3], "dd": _WDAYS[wd][:2], "do": _ord(wd), "d": str(wd),
+           "E": str(iso[2]), "w": str(week), "wo": _ord(week), "ww": f"{week:02d}", "W": str(iso[1]), "Wo": _ord(iso[1]),
+           "WW": f"{iso[1]:02d}", "gggg": f"{d.year:04d}", "gg": f"{d.year % 100:02d}", "GGGG": f"{iso[0]:04d}",
+           "GG": f"{iso[0] % 100:02d}", "HH": f"{d.hour:02d}", "H": str(d.hour), "hh": f"{h12:02d}", "h": str(h12),
+           "kk": f"{d.hour or 24:02d}", "k": str(d.hour or 24), "A": "AM" if d.hour < 12 else "PM",
+           "a": "am" if d.hour < 12 else "pm", "mm": f"{d.minute:02d}", "m": str(d.minute), "ss": f"{d.second:02d}",
+           "s": str(d.second), "ZZ": z(""), "Z": z(":"),
+           "X": str(int(d.timestamp())), "x": str(int(d.timestamp() * 1000))}
+
+    def one(mm):
+        t = mm.group(0)
+        if t.startswith("["):
+            return t[1:-1]
+        if t.startswith("S"):
+            return f"{d.microsecond:06d}{'0' * 3}"[:len(t)]
+        return tok.get(t, t)
+    return _MOMENT.sub(one, fmt)
+
+
+_STRP = {"YYYY": "%Y", "YY": "%y", "MMMM": "%B", "MMM": "%b", "MM": "%m", "M": "%m", "DD": "%d", "D": "%d", "Do": "%d",
+         "dddd": "%A", "ddd": "%a", "HH": "%H", "H": "%H", "hh": "%I", "h": "%I", "kk": "%H", "k": "%H", "mm": "%M",
+         "m": "%M", "ss": "%S", "s": "%S", "A": "%p", "a": "%p", "ZZ": "%z", "Z": "%z", "SSS": "%f", "SS": "%f", "S": "%f",
+         "DDDD": "%j", "DDD": "%j"}
+
+
+def parse_date(text: Any, fmt: Any = "", tz: Any = "") -> str:
+    """Make's parseDate(text; format; [timezone]). Without a format, any common date is read."""
+    t, f, tz = str(text or "").strip(), str(fmt or ""), str(tz or "")
+    if not f:
+        return _iso(_dt(t, tz))
+    if f.strip() in ("X", "x"):
+        n = float(_num(t)) / (1000 if f.strip() == "x" else 1)
+        d = datetime.fromtimestamp(n, tz=timezone.utc)
+        return _iso(d.astimezone(ZoneInfo(tz)) if tz else d)
+    if "%" in f:
+        py = f
+    else:
+        def one(mm):
+            tk = mm.group(0)
+            if tk.startswith("["):
+                return tk[1:-1].replace("%", "%%")
+            if tk in _STRP:
+                return _STRP[tk]
+            raise ExprError(f"parse_date cannot read the token '{tk}'")
+        py = _MOMENT.sub(one, f)
+        t = re.sub(r"(\d+)(st|nd|rd|th)\b", r"\1", t) if "Do" in f else t
+    try:
+        d = datetime.strptime(t, py)
+    except ValueError:
+        raise ExprError(f"'{t[:40]}' does not match the format '{f[:40]}'")
+    if tz and d.tzinfo is None:
+        d = d.replace(tzinfo=ZoneInfo(tz))
+    return _iso(d)
+
+
+def format_date(v: Any, fmt: Any = "YYYY-MM-DD", tz: Any = "") -> str:
+    """Make's formatDate(date; format; [timezone]): Make tokens (YYYY-MM-DD), or %-codes."""
+    f = str(fmt or "YYYY-MM-DD")
+    if len(f) > 80:
+        raise ExprError("The date format is too long")
+    d = _dt(v, str(tz or ""))
+    return d.strftime(f) if "%" in f else moment_format(d, f)
+
+
+def _date_set(v: Any, what: str, n: Any) -> str:
+    d = _dt(v)
+    if what == "day":                               # Make's setDay: 1 = Sunday .. 7 = Saturday, or a day name
+        if isinstance(n, str) and not n.strip().isdigit():
+            names = [w.lower() for w in _WDAYS]
+            key = n.strip().lower()
+            hit = [i for i, w in enumerate(names) if w.startswith(key[:3])]
+            if not hit:
+                raise ExprError(f"'{n}' is not a day name")
+            want = hit[0]
+        else:
+            want = int(_num(n)) - 1
+        cur = (d.weekday() + 1) % 7
+        return _iso(d + timedelta(days=want - cur))
+    if what == "month" and isinstance(n, str) and not n.strip().isdigit():
+        hit = [i for i, m in enumerate(_MONTHS) if m.lower().startswith(n.strip().lower()[:3])]
+        if not hit:
+            raise ExprError(f"'{n}' is not a month name")
+        n = hit[0] + 1
+    k = int(_num(n))
+    from dateutil.relativedelta import relativedelta
+    if what == "second":
+        return _iso(d.replace(second=0) + timedelta(seconds=k))
+    if what == "minute":
+        return _iso(d.replace(minute=0) + timedelta(minutes=k))
+    if what == "hour":
+        return _iso(d.replace(hour=0) + timedelta(hours=k))
+    if what == "date":
+        return _iso(d.replace(day=1) + timedelta(days=k - 1))
+    if what == "month":
+        return _iso(d.replace(month=1) + relativedelta(months=k - 1))
+    if what == "year":
+        return _iso(d.replace(year=max(1, min(k, 9999))))
+    raise ExprError("Unknown date part")
+
+
+def _iff(cond: Any, a: Any = None, b: Any = None) -> Any:
+    return a if cond else b
+
+
+def _ifempty(a: Any, b: Any) -> Any:
+    return b if a in (None, "", [], {}) else a
+
+
+def _switch(v: Any, *pairs: Any) -> Any:
+    rest = list(pairs)
+    while len(rest) >= 2:
+        k, r = rest.pop(0), rest.pop(0)
+        if v == k or (not isinstance(v, (dict, list)) and str(v) == str(k)):
+            return r
+    return rest[0] if rest else None
+
+
+def _omit(obj: Any, *keys: Any) -> Any:
+    ks = {str(k) for k in keys}
+    return {k: v for k, v in obj.items() if k not in ks} if isinstance(obj, dict) else obj
+
+
+def _pick(obj: Any, *keys: Any) -> Any:
+    ks = [str(k) for k in keys]
+    return {k: obj[k] for k in ks if k in obj} if isinstance(obj, dict) else obj
+
+
+def _set_path(obj: Any, path: Any, value: Any) -> Any:
+    out = json.loads(json.dumps(obj if isinstance(obj, (dict, list)) else {}, default=str))
+    cur = out
+    parts = [p for p in str(path).split(".") if p]
+    if not parts:
+        return value
+    for i, p in enumerate(parts):
+        last = i == len(parts) - 1
+        if isinstance(cur, list) and p.isdigit():
+            j = int(p)
+            while len(cur) <= j:
+                cur.append(None)
+            if last:
+                cur[j] = value
+            else:
+                cur[j] = cur[j] if isinstance(cur[j], (dict, list)) else {}
+                cur = cur[j]
+        elif isinstance(cur, dict):
+            if last:
+                cur[p] = value
+            else:
+                cur[p] = cur.get(p) if isinstance(cur.get(p), (dict, list)) else {}
+                cur = cur[p]
+        else:
+            break
+    return out
+
+
+def _flatten(v: Any, depth: int = 0) -> list:
+    out: list = []
+    for x in _list(v):
+        if isinstance(x, list) and depth < 20:
+            out.extend(_flatten(x, depth + 1))
+        else:
+            out.append(x)
+        if len(out) > LIST_MAX:
+            raise ExprError("The list is too long")
+    return out
+
+
+def _map(v: Any, key: Any, fkey: Any = None, fvals: Any = None) -> list:
+    items = _list(v)
+    if fkey not in (None, ""):
+        want = {s.strip() for s in str(fvals or "").split(",")}
+        items = [x for x in items if str(_get(x, str(fkey))) in want]
+    return [_get(x, str(key)) for x in items]
+
+
+def _sort_make(v: Any, order: Any = "asc", key: Any = "") -> list:
+    o = str(order or "asc").lower()
+    items = list(_list(v))
+    ci = o.endswith(" ci")
+
+    def k(x):
+        y = _get(x, str(key or ""))
+        return (y is None, str(y).lower() if ci else y)
+    try:
+        return sorted(items, key=k, reverse=o.startswith("desc"))
+    except TypeError:
+        return sorted(items, key=lambda x: str(_get(x, str(key or ""))), reverse=o.startswith("desc"))
+
+
+def _distinct(v: Any, key: Any = "") -> list:
+    return _unique(v, str(key or ""))
+
+
+def _to_collection(v: Any, key: Any, value: Any) -> dict:
+    return {str(_get(x, str(key))): _get(x, str(value)) for x in _list(v)}
+
+
+def _to_array(v: Any) -> list:
+    return [{"key": k, "value": x} for k, x in v.items()] if isinstance(v, dict) else _list(v)
+
+
+def _array_diff(a: Any, b: Any) -> list:
+    bb = [json.dumps(x, sort_keys=True, default=str) for x in _list(b)]
+    return [x for x in _list(a) if json.dumps(x, sort_keys=True, default=str) not in bb]
+
+
+def _array_intersect(a: Any, b: Any) -> list:
+    bb = [json.dumps(x, sort_keys=True, default=str) for x in _list(b)]
+    return [x for x in _list(a) if json.dumps(x, sort_keys=True, default=str) in bb]
+
+
+def _merge_arrays(*arrs: Any) -> list:
+    out: list = []
+    for a in arrs:
+        out.extend(_list(a))
+        if len(out) > LIST_MAX:
+            raise ExprError("The list is too long")
+    return out
+
+
+def _shuffle(v: Any) -> list:
+    out = list(_list(v))
+    secrets.SystemRandom().shuffle(out)
+    return out
+
+
+def _nums(a: tuple) -> list:
+    return [_num(x) for x in (_list(a[0]) if len(a) == 1 and isinstance(a[0], list) else a) if x not in (None, "")]
+
+
+def _median(*a: Any) -> float | int:
+    xs = sorted(_nums(a))
+    if not xs:
+        return 0
+    n = len(xs)
+    return xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
+
+
+def _stdev(a: tuple, sample: bool) -> float:
+    xs = _nums(a)
+    n = len(xs)
+    if n < (2 if sample else 1):
+        return 0
+    m = sum(xs) / n
+    return round(math.sqrt(sum((x - m) ** 2 for x in xs) / (n - 1 if sample else n)), 10)
+
+
+def _format_number(v: Any, decimals: Any = 0, dec_sep: Any = ",", thou_sep: Any = ".") -> str:
+    """Make's formatNumber(number; decimals; [decimal separator]; [thousands separator]) - Make's own defaults."""
+    n = int(_num(decimals))
+    s = f"{float(_num(v)):,.{max(0, min(n, 20))}f}"
+    return s.replace(",", "\x00").replace(".", str(dec_sep)).replace("\x00", str(thou_sep))
+
+
+def _parse_number(v: Any, dec_sep: Any = ".") -> float | int:
+    s = str(v).strip()
+    ds = str(dec_sep or ".")
+    other = "," if ds == "." else "."
+    s = s.replace(" ", "").replace(" ", "").replace(other, "").replace(ds, ".")
+    s = re.sub(r"[^0-9.\-+eE]", "", s)
+    return _num(s)
+
+
+def _trunc(v: Any, digits: Any = 0) -> float | int:
+    k = int(_num(digits))
+    f = 10 ** k
+    r = math.trunc(_num(v) * f) / f
+    return int(r) if k <= 0 else r
+
+
+def _regex(pat: str) -> tuple[re.Pattern, bool]:
+    m = re.fullmatch(r"/(.*)/([gimsuy]*)", pat, re.S)
+    if not m:
+        return re.compile(re.escape(pat)), True
+    if len(m.group(1)) > 500:
+        raise ExprError("The pattern is too long")
+    fl = 0
+    for c in m.group(2):
+        fl |= {"i": re.I, "m": re.M, "s": re.S}.get(c, 0)
+    try:
+        return re.compile(m.group(1), fl), "g" in m.group(2)
+    except re.error as e:
+        raise ExprError(f"The pattern is not valid ({e})")
+
+
+def _replace_make(s: Any, search: Any, rep: Any) -> str:
+    """Make's replace: plain text, or /regex/flags with $& and $1 in the replacement."""
+    text, pat = str(s if s is not None else ""), str(search if search is not None else "")
+    rp = str(rep if rep is not None else "")
+    if not re.fullmatch(r"/.*/[gimsuy]*", pat, re.S):
+        return _cap_text(_safe_replace(text, pat, rp))
+    rx, glob = _regex(pat)
+    py = re.sub(r"\$(\d+)", r"\\g<\1>", rp.replace("\\", "\\\\")).replace("$&", r"\g<0>")
+    return _cap_text(rx.sub(py, text, count=0 if glob else 1))
+
+
+def _match(s: Any, pat: Any) -> Any:
+    """The first match of /pattern/ (with its groups), or every match with g."""
+    rx, glob = _regex(str(pat))
+    text = str(s if s is not None else "")[:TEXT_MAX]
+    if glob:
+        return [m.group(0) for m in rx.finditer(text)][:LIST_MAX]
+    m = rx.search(text)
+    return None if m is None else ([m.group(0)] + list(m.groups()))
+
+
+def _ascii(s: Any, strip_marks: Any = False) -> str:
+    t = str(s if s is not None else "")
+    if strip_marks:
+        import unicodedata
+        t = unicodedata.normalize("NFKD", t)
+    return t.encode("ascii", "ignore").decode()
+
+
+def _strip_html(s: Any) -> str:
+    import html as _h
+    return _h.unescape(re.sub(r"<[^>]+>", "", str(s if s is not None else "")))
+
+
+def _escape_md(s: Any) -> str:
+    return re.sub(r"([\\`*_{}\[\]()#+\-.!|>~])", r"\\\1", str(s if s is not None else ""))
+
+
+def _hash(algo: str, s: Any, enc: Any = "hex", key: Any = None) -> str:
+    b = (s if isinstance(s, str) else json.dumps(s, ensure_ascii=False)).encode("utf-8")
+    if key not in (None, ""):
+        dig = hmac.new(str(key).encode("utf-8"), b, getattr(hashlib, algo)).digest()
+    else:
+        dig = hashlib.new(algo, b).digest()
+    e = str(enc or "hex").lower()
+    return base64.b64encode(dig).decode() if e == "base64" else dig.decode("latin1") if e == "latin1" else dig.hex()
+
+
+def _remove_emoji(s: Any) -> str:
+    return re.sub("[\U0001F000-\U0001FAFF\U00002600-\U000027BF\U0001F1E6-\U0001F1FF\uFE0F\u200d]", "",
+                  str(s if s is not None else ""))
+
+
+def _to_binary(v: Any, enc: Any = "") -> str:
+    e = str(enc or "").lower()
+    b = str(v if v is not None else "").encode("utf-8")
+    if e == "base64":
+        return base64.b64decode(str(v)).hex()
+    if e == "hex":
+        return bytes.fromhex(str(v)).hex()
+    return b.hex()
+
+
+def _index_of(s: Any, x: Any, start: Any = 0) -> int:
+    if isinstance(s, list):
+        try:
+            return s.index(x, int(_num(start)))
+        except ValueError:
+            return -1
+    return str(s if s is not None else "").find(str(x), int(_num(start)))
+
+
+def _length(v: Any) -> int:
+    if isinstance(v, (str, list, dict)):
+        return len(v)
+    return 0 if v is None else len(str(v))
+
+
+MAKE_FUNCS: dict[str, Any] = {
+    # general
+    "iff": _iff, "ifempty": _ifempty, "switch": _switch, "omit": _omit, "pick": _pick, "equal": lambda a, b: a == b,
+    "set": _set_path, "get": lambda v, path, d=None: (lambda r: d if r is None else r)(_get(v, str(path))),
+    # math
+    "average": lambda *a: (round(sum(_nums(a)) / len(_nums(a)), 10) if _nums(a) else 0), "median": _median,
+    "stdev_p": lambda *a: _stdev(a, False), "stdev_s": lambda *a: _stdev(a, True), "format_number": _format_number,
+    "parse_number": _parse_number, "trunc": _trunc, "sum": lambda *a: sum(_nums(a)),
+    "max": lambda *a: (max(_nums(a)) if _nums(a) else None), "min": lambda *a: (min(_nums(a)) if _nums(a) else None),
+    # text and binary
+    "ascii": _ascii, "base64": lambda s: base64.b64encode(str(s).encode("utf-8")).decode(),
+    "unbase64": lambda s: base64.b64decode(str(s)).decode("utf-8", "replace"),
+    "capitalize": lambda s: (lambda t: t[:1].upper() + t[1:])(str(s if s is not None else "")),
+    "startcase": lambda s: " ".join(w[:1].upper() + w[1:] for w in str(s if s is not None else "").split(" ")),
+    "decode_url": lambda s: unquote(str(s)), "encode_url": lambda s: quote(str(s), safe=""),
+    "escape_html": lambda s: __import__("html").escape(str(s if s is not None else "")),
+    "escape_json": lambda s: json.dumps(str(s if s is not None else ""), ensure_ascii=False)[1:-1],
+    "escape_markdown": _escape_md, "index_of": _index_of, "length": _length,
+    "md5": lambda s: _hash("md5", s), "sha1": lambda s, e="hex", k=None: _hash("sha1", s, e, k),
+    "sha256": lambda s, e="hex", k=None, ke=None: _hash("sha256", s, e, k),
+    "sha512": lambda s, e="hex", k=None, ke=None: _hash("sha512", s, e, k),
+    "replace": _replace_make, "match": _match, "replace_emoji": _remove_emoji, "strip_html": _strip_html,
+    "substring": lambda s, a=0, b=None: str(s if s is not None else "")[int(_num(a)):(None if b is None else int(_num(b)))],
+    "to_binary": _to_binary, "to_string": lambda v: v if isinstance(v, str) else json.dumps(v, ensure_ascii=False)
+    if isinstance(v, (dict, list)) else ("" if v is None else str(v)),
+    "split": lambda s, sep=",": [x for x in str(s if s is not None else "").split(str(sep))][:LIST_MAX],
+    # date and time
+    "format_date": format_date, "parse_date": parse_date,
+    "add_seconds": lambda d, n: date_add(d, n, "seconds"), "add_minutes": lambda d, n: date_add(d, n, "minutes"),
+    "add_hours": lambda d, n: date_add(d, n, "hours"), "add_days": lambda d, n: date_add(d, n, "days"),
+    "add_months": lambda d, n: date_add(d, n, "months"), "add_years": lambda d, n: date_add(d, n, "years"),
+    "set_second": lambda d, n: _date_set(d, "second", n), "set_minute": lambda d, n: _date_set(d, "minute", n),
+    "set_hour": lambda d, n: _date_set(d, "hour", n), "set_day": lambda d, n: _date_set(d, "day", n),
+    "set_date": lambda d, n: _date_set(d, "date", n), "set_month": lambda d, n: _date_set(d, "month", n),
+    "set_year": lambda d, n: _date_set(d, "year", n), "timestamp": lambda d=None: int((_dt(d) if d not in (None, "")
+    else datetime.now(timezone.utc)).timestamp()),
+    # array
+    "add": lambda arr, *xs: _merge_arrays(arr, list(xs)), "remove": lambda arr, *xs: [x for x in _list(arr) if x not in xs],
+    "array_diff": _array_diff, "array_intersect": _array_intersect, "deduplicate": lambda v: _unique(v),
+    "distinct": _distinct, "flatten": _flatten, "map": _map, "merge": _merge_arrays,
+    "reverse": lambda v: list(reversed(_list(v))) if not isinstance(v, str) else v[::-1], "shuffle": _shuffle,
+    "sort": lambda v, a="", b=None: (_sort_make(v, a, b or "") if str(a).lower() in ("asc", "desc", "asc ci", "desc ci")
+                                     else _sort(v, str(a or ""), b)), "to_array": _to_array, "to_collection": _to_collection,
+    "range": lambda a, b=None, st=1: (lambda r: r if len(r) <= LIST_MAX else (_ for _ in ()).throw(ExprError("The range is too long")))(
+        list(range(int(_num(a)), int(_num(b)), int(_num(st)) or 1)) if b is not None else list(range(int(_num(a))))),
+}
+# Make's own camelCase names (and a few of its spellings) point to the same functions
+for _mk, _ours in {"formatDate": "format_date", "parseDate": "parse_date", "addSeconds": "add_seconds",
+                   "addMinutes": "add_minutes", "addHours": "add_hours", "addDays": "add_days", "addMonths": "add_months",
+                   "addYears": "add_years", "setSecond": "set_second", "setMinute": "set_minute", "setHour": "set_hour",
+                   "setDay": "set_day", "setDate": "set_date", "setMonth": "set_month", "setYear": "set_year",
+                   "formatNumber": "format_number", "parseNumber": "parse_number", "stdevP": "stdev_p",
+                   "stdevS": "stdev_s", "decodeURL": "decode_url", "encodeURL": "encode_url", "escapeHTML": "escape_html",
+                   "escapeJSON": "escape_json", "escapeMarkdown": "escape_markdown", "indexOf": "index_of",
+                   "replaceEmojiCharacters": "replace_emoji", "stripHTML": "strip_html", "toBinary": "to_binary",
+                   "toString": "to_string", "arrayDiff": "array_diff", "arrayIntersect": "array_intersect",
+                   "toArray": "to_array", "toCollection": "to_collection", "dateDifference": "date_diff"}.items():
+    MAKE_FUNCS[_mk] = MAKE_FUNCS.get(_ours) or _ours
+
 _NAMES = {"true": True, "false": False, "null": None, "none": None}
-_ROOTS = ("vars", "steps", "item", "env")   # v0.999.246: env = her route variables
+for _k, _f in MAKE_FUNCS.items():
+    if isinstance(_f, str):
+        _f = FUNCS.get(_f) or MAKE_FUNCS.get(_f)
+    if _k in ("split", "get") and _k in FUNCS:
+        continue                                     # ours already work the same way, with the older argument order
+    FUNCS[_k] = _f
+FUNCS["date_format"] = format_date                   # %-codes as before, and Make's tokens (YYYY-MM-DD)
+FUNCS["if_"] = _iff
+
+
+def _kw_random() -> float:
+    return secrets.SystemRandom().random()
+
+
+# Make's built-in keywords, read without ( ): now, timestamp, uuid, random, pi, newline, space, tab ...
+KEYWORDS: dict[str, Any] = {"now": lambda: now(), "today": lambda: today(), "timestamp": lambda: int(datetime.now(timezone.utc).timestamp()),
+                            "uuid": lambda: str(uuid.uuid4()), "random": _kw_random, "pi": lambda: math.pi,
+                            "newline": lambda: "\n", "space": lambda: " ", "tab": lambda: "\t",
+                            "carriage_return": lambda: "\r", "empty_string": lambda: "", "emptystring": lambda: "",
+                            "empty_array": lambda: [], "emptyarray": lambda: [], "erase": lambda: None}
+
+_ROOTS = ("vars", "steps", "item", "env", "run", "error")   # v0.999.246: env = her route variables
 _BIN = {ast.Add: lambda a, b: a + b, ast.Sub: lambda a, b: a - b, ast.Mult: lambda a, b: a * b, ast.Div: lambda a, b: a / b,
         ast.FloorDiv: lambda a, b: a // b, ast.Mod: lambda a, b: a % b, ast.Pow: lambda a, b: a ** b}
 _CMP = {ast.Eq: lambda a, b: a == b, ast.NotEq: lambda a, b: a != b, ast.Lt: lambda a, b: a < b, ast.LtE: lambda a, b: a <= b,
         ast.Gt: lambda a, b: a > b, ast.GtE: lambda a, b: a >= b, ast.In: lambda a, b: a in b, ast.NotIn: lambda a, b: a not in b}
 
 
+_IF_CALL = re.compile(r"(?<![A-Za-z0-9_.])if\s*\(")
+
+
+def _prep(src: str) -> str:
+    """Make's if(c; a; b) - `if` is a Python word, so it is read as iff( ); everything else stays as written."""
+    out, i, q = [], 0, None
+    s = str(src)
+    while i < len(s):                                # leave text inside quotes alone
+        c = s[i]
+        if q:
+            out.append(c)
+            if c == "\\" and i + 1 < len(s):
+                out.append(s[i + 1])
+                i += 1
+            elif c == q:
+                q = None
+        elif c in "'\"":
+            q = c
+            out.append(c)
+        else:
+            m = _IF_CALL.match(s, i)
+            if m and (i == 0 or not (s[i - 1].isalnum() or s[i - 1] in "_.")):
+                out.append("iff(")
+                i = m.end()
+                continue
+            out.append(c)
+        i += 1
+    return "".join(out)
+
+
 def parse(src: str) -> ast.AST:
+    import warnings
     try:
-        return ast.parse(str(src).strip(), mode="eval").body
+        with warnings.catch_warnings():              # a pattern like "/\d+/" is her text, not a Python warning
+            warnings.simplefilter("ignore")
+            return ast.parse(_prep(str(src).strip()), mode="eval").body
     except SyntaxError as e:
         raise ExprError(f"This is not a valid expression ({e.msg})")
 
@@ -259,9 +770,11 @@ def _ev(n: ast.AST, ctx: dict, budget: list) -> Any:
             return ctx.get(k)
         if k.lower() in _NAMES:
             return _NAMES[k.lower()]
+        if k in KEYWORDS:                            # v0.999.254: Make's keywords (now, uuid, newline ...)
+            return KEYWORDS[k]()
         if k in FUNCS:
             raise ExprError(f"{k} is a function - write {k}( )")
-        raise ExprError(f"Unknown name '{k}' - start with vars, steps, item or env")
+        raise ExprError(f"Unknown name '{k}' - start with vars, steps, item, env or run")
     if isinstance(n, ast.Attribute):
         return _get(_ev(n.value, ctx, budget), n.attr)
     if isinstance(n, ast.Subscript):
@@ -385,8 +898,9 @@ def check(src: str) -> str:
     for n in ast.walk(tree):
         if isinstance(n, ast.Call) and not (isinstance(n.func, ast.Name) and n.func.id in FUNCS):
             return f"Unknown function '{n.func.id if isinstance(n.func, ast.Name) else 'that'}'"
-        if isinstance(n, ast.Name) and n.id not in _ROOTS and n.id.lower() not in _NAMES and n.id not in FUNCS:
-            return f"Unknown name '{n.id}' - start with vars, steps, item or env"
+        if isinstance(n, ast.Name) and n.id not in _ROOTS and n.id.lower() not in _NAMES and n.id not in FUNCS \
+                and n.id not in KEYWORDS:
+            return f"Unknown name '{n.id}' - start with vars, steps, item, env or run"
         if isinstance(n, (ast.Lambda, ast.ListComp, ast.DictComp, ast.SetComp, ast.GeneratorExp, ast.Starred,
                           ast.NamedExpr, ast.JoinedStr, ast.Await, ast.Yield, ast.YieldFrom, ast.Set)):
             return "That is not allowed in an expression"
@@ -399,8 +913,10 @@ OPS = ("sort", "limit", "dedupe", "aggregate", "split", "compare", "keep_fields"
 MERGE_MODES = ("append", "by_key", "by_position", "keep_matches", "keep_non_matches")   # v0.999.239 ROUTE R4
 MERGE_JOINS = ("inner", "left", "outer")
 TEXT_ACTIONS = ("html_text", "html_select", "xml_to_data", "csv_to_rows", "rows_to_csv", "json_parse", "json_text",
-                "base64_encode", "base64_decode", "url_encode", "url_decode")
-FILE_ACTIONS = ("make_csv", "make_xlsx", "make_pdf", "read")
+                "base64_encode", "base64_decode", "url_encode", "url_decode",
+                # v0.999.254 MAKE PARITY: Text parser, XML, table aggregator, Markdown
+                "regex_match", "regex_replace", "data_to_xml", "rows_to_table", "markdown_to_html", "html_to_markdown")
+FILE_ACTIONS = ("make_csv", "make_xlsx", "make_pdf", "read", "zip", "unzip")   # v0.999.254: Make's Archive
 CRYPTO_ACTIONS = ("sha256", "sha1", "md5", "hmac_sha256", "uuid", "random")
 DATE_ACTIONS = ("format", "add", "subtract", "diff", "parse", "now")
 HOW = ("count", "sum", "avg", "min", "max", "list", "join", "unique")
@@ -419,6 +935,12 @@ def validate(step: dict, sid: str) -> None:
         if step.get(k) in (None, "", [], {}):
             raise ToolError(f"Step '{sid}': {op} needs {k}")
     act = str(step.get("action") or "")
+    if op == "text" and act in ("regex_match", "regex_replace") and not str(step.get("pattern") or "").strip():
+        raise ToolError(f"Step '{sid}': give the pattern to look for")
+    if op == "file" and act == "zip" and step.get("items") in (None, "", []):
+        raise ToolError(f"Step '{sid}': give the files to zip (their file ids)")
+    if op == "file" and act == "unzip" and not str(step.get("file_id") or "").strip():
+        raise ToolError(f"Step '{sid}': give the ZIP file to open (its file id)")
     for o, allowed in (("text", TEXT_ACTIONS), ("file", FILE_ACTIONS), ("crypto", CRYPTO_ACTIONS), ("date", DATE_ACTIONS)):
         if op == o and act not in allowed:
             raise ToolError(f"Step '{sid}': {op} action must be one of: {', '.join(allowed)}")
@@ -481,6 +1003,56 @@ def _cell(v: Any) -> Any:
 def _file(tenant: str, step: dict, R) -> Any:
     act = step.get("action")
     name = str(R(step.get("name")) or "").strip()
+    if act in ("zip", "unzip"):                       # v0.999.254 Make's Archive: create / extract a ZIP
+        import zipfile
+        from ..mailbox import service as ms
+        if act == "zip":
+            ids = R(step.get("items"))
+            ids = ids if isinstance(ids, list) else [x.strip() for x in str(ids or "").split(",") if x.strip()]
+            if not ids:
+                raise ExprError("Give the files to put in the ZIP (their file ids)")
+            buf = io.BytesIO()
+            total = 0
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+                used: set[str] = set()
+                for x in ids[:200]:
+                    fid = x.get("file_id") if isinstance(x, dict) else x
+                    try:
+                        f = ms._file_row(tenant, str(fid))
+                        data = open(f.stored_path, "rb").read()
+                    except Exception as e:   # noqa: BLE001
+                        raise ExprError(f"The file {fid} is not there any more ({str(e)[:60]})")
+                    total += len(data)
+                    if total > 25 * 1024 * 1024:
+                        raise ExprError("The files come to more than 25 MB")
+                    nm, k = f.name or "file", 1
+                    while nm in used:
+                        k += 1
+                        nm = re.sub(r"(\.[^.]*)?$", lambda m: f" ({k}){m.group(1) or ''}", f.name or "file", count=1)
+                    used.add(nm)
+                    z.writestr(nm, data)
+            return _store(tenant, (name or "files") + ("" if (name or "").lower().endswith(".zip") else ".zip"), buf.getvalue())
+        fid = str(R(step.get("file_id")) or "").strip()
+        if not fid:
+            raise ExprError("Give the ZIP file to open (its file id)")
+        try:
+            f = ms._file_row(tenant, fid)
+            zf = zipfile.ZipFile(f.stored_path)
+        except zipfile.BadZipFile:
+            raise ExprError("That file is not a ZIP")
+        except Exception as e:   # noqa: BLE001
+            raise ExprError(str(e)[:200])
+        out, total = [], 0
+        with zf:
+            for info in zf.infolist()[:200]:
+                if info.is_dir():
+                    continue
+                total += info.file_size
+                if total > 50 * 1024 * 1024 or (info.compress_size and info.file_size / max(info.compress_size, 1) > 200):
+                    raise ExprError("The ZIP opens to too much data (over 50 MB, or packed suspiciously tight)")
+                base_nm = info.filename.replace("\\", "/").rsplit("/", 1)[-1] or "file"
+                out.append(_store(tenant, base_nm, zf.read(info)))
+        return out
     if act == "read":
         from ..mailbox import service as ms
         fid = str(R(step.get("file_id")) or "").strip()
@@ -545,11 +1117,161 @@ def _file(tenant: str, step: dict, R) -> Any:
     raise ExprError("Unknown file action")
 
 
+def _flag(v: Any) -> bool:
+    return v is True or str(v).strip().lower() in ("true", "yes", "1", "on")
+
+
+def _xml(tag: str, v: Any, depth: int = 0) -> str:
+    from xml.sax.saxutils import escape, quoteattr
+    t = re.sub(r"[^A-Za-z0-9_.-]", "_", str(tag)) or "item"
+    if t[0].isdigit() or t[0] in "-.":
+        t = "_" + t
+    if depth > 30:
+        raise ExprError("The data is nested too deep for XML")
+    if isinstance(v, list):
+        return "".join(_xml(t, x, depth + 1) for x in v)
+    if isinstance(v, dict):
+        attrs = "".join(f" {re.sub(r'[^A-Za-z0-9_.-]', '_', k[1:])}={quoteattr(str(x))}" for k, x in v.items() if str(k).startswith("@"))
+        inner = escape(str(v.get("#text"))) if "#text" in v else ""
+        inner += "".join(_xml(k, x, depth + 1) for k, x in v.items() if not str(k).startswith("@") and k != "#text")
+        return f"<{t}{attrs}>{inner}</{t}>"
+    return f"<{t}>{escape('' if v is None else (str(v).lower() if isinstance(v, bool) else str(v)))}</{t}>"
+
+
+def _md_html(src: str) -> str:
+    """Markdown to HTML (Make's Markdown app): headings, bold, italic, code, links, lists, quotes, paragraphs."""
+    import html as _h
+    out, para, lst = [], [], None
+
+    def inline(t: str) -> str:
+        t = _h.escape(t)
+        t = re.sub(r"`([^`]+)`", r"<code>\1</code>", t)
+        t = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", t)
+        t = re.sub(r"(?<![*\w])\*([^*]+)\*(?![*\w])", r"<em>\1</em>", t)
+        t = re.sub(r"(?<!\w)_([^_]+)_(?!\w)", r"<em>\1</em>", t)
+        t = re.sub(r"\[([^\]]+)\]\((https?://[^)\s]+|mailto:[^)\s]+|/[^)\s]*)\)", r'<a href="\2">\1</a>', t)
+        return t
+
+    def flush():
+        nonlocal para, lst
+        if para:
+            out.append("<p>" + inline(" ".join(para)) + "</p>")
+            para = []
+        if lst:
+            tag, items = lst
+            out.append(f"<{tag}>" + "".join(f"<li>{inline(x)}</li>" for x in items) + f"</{tag}>")
+            lst = None
+    code = None
+    for line in src.splitlines():
+        if line.strip().startswith("```"):
+            if code is None:
+                flush()
+                code = []
+            else:
+                out.append("<pre><code>" + _h.escape("\n".join(code)) + "</code></pre>")
+                code = None
+            continue
+        if code is not None:
+            code.append(line)
+            continue
+        m = re.match(r"^(#{1,6})\s+(.*)$", line)
+        ul = re.match(r"^\s*[-*+]\s+(.*)$", line)
+        ol = re.match(r"^\s*\d+[.)]\s+(.*)$", line)
+        if m:
+            flush()
+            out.append(f"<h{len(m.group(1))}>{inline(m.group(2).strip())}</h{len(m.group(1))}>")
+        elif ul or ol:
+            if para:
+                out.append("<p>" + inline(" ".join(para)) + "</p>")
+                para = []
+            tag = "ul" if ul else "ol"
+            if not lst or lst[0] != tag:
+                flush()
+                lst = (tag, [])
+            lst[1].append((ul or ol).group(1))
+        elif line.startswith(">"):
+            flush()
+            out.append("<blockquote>" + inline(line.lstrip("> ")) + "</blockquote>")
+        elif not line.strip():
+            flush()
+        else:
+            if lst:
+                flush()
+            para.append(line.strip())
+    if code is not None:
+        out.append("<pre><code>" + _h.escape("\n".join(code)) + "</code></pre>")
+    flush()
+    return "\n".join(out)
+
+
+def _html_md(src: str) -> str:
+    try:
+        from markdownify import markdownify
+        return re.sub(r"\n{3,}", "\n\n", markdownify(src, heading_style="ATX")).strip()
+    except ImportError:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(src, "lxml")
+        for tag, mark in (("strong", "**"), ("b", "**"), ("em", "*"), ("i", "*")):
+            for el in soup.find_all(tag):
+                el.replace_with(f"{mark}{el.get_text()}{mark}")
+        for a in soup.find_all("a"):
+            a.replace_with(f"[{a.get_text()}]({a.get('href', '')})")
+        for n in range(1, 7):
+            for h in soup.find_all(f"h{n}"):
+                h.replace_with(f"\n{'#' * n} {h.get_text()}\n")
+        for li in soup.find_all("li"):
+            li.replace_with(f"\n- {li.get_text()}")
+        return re.sub(r"\n{3,}", "\n\n", soup.get_text()).strip()
+
+
 def _text(step: dict, R) -> Any:
     act = step.get("action")
     v = R(step.get("value"))
     s = v if isinstance(v, str) else json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else ("" if v is None else str(v))
     _cap_text(s)
+    if act in ("regex_match", "regex_replace"):     # v0.999.254 Make's Text parser: Match pattern / Replace
+        pat = str(R(step.get("pattern")) or "")
+        if not pat:
+            raise ExprError("Give the pattern to look for")
+        if len(pat) > 500:
+            raise ExprError("The pattern is too long")
+        fl = (0 if _flag(step.get("case_sensitive", True)) else re.I) | (re.M if _flag(step.get("multiline")) else 0) | \
+            (re.S if _flag(step.get("singleline")) else 0)
+        try:
+            rx = re.compile(pat, fl)
+        except re.error as e:
+            raise ExprError(f"The pattern is not valid ({e})")
+        glob = _flag(step.get("global", True))
+        if act == "regex_replace":
+            rep_ = str(R(step.get("replace")) or "")
+            py = re.sub(r"\$(\d+)", r"\\g<\1>", rep_.replace("\\", "\\\\")).replace("$&", r"\g<0>")
+            return _cap_text(rx.sub(py, s, count=0 if glob else 1))
+        found = []
+        for m in (rx.finditer(s) if glob else [x for x in [rx.search(s)] if x]):
+            b: dict[str, Any] = {"$0": m.group(0), "$index": m.start()}
+            for i, g in enumerate(m.groups(), start=1):
+                b[f"${i}"] = g
+            b.update({k: x for k, x in m.groupdict().items()})
+            found.append(b)
+            if len(found) >= LIST_MAX:
+                break
+        if not found and not _flag(step.get("continue_if_none", True)):
+            raise ExprError("The pattern was not found")
+        return found
+    if act == "data_to_xml":                          # Make's XML > Create XML (and aggregate to XML)
+        root = str(R(step.get("root")) or "root")
+        return '<?xml version="1.0" encoding="UTF-8"?>' + _xml(root, v)
+    if act == "rows_to_table":                        # Make's Table aggregator
+        cols, rows = _rows(_list(v, "The rows"))
+        csep = str(R(step.get("column_sep")) if step.get("column_sep") not in (None, "") else "\t").replace("\\t", "\t")
+        rsep = str(R(step.get("row_sep")) if step.get("row_sep") not in (None, "") else "\n").replace("\\n", "\n")
+        lines = ([csep.join(cols)] if _flag(step.get("header", True)) else []) + \
+            [csep.join("" if c is None else str(c) for c in r) for r in rows]
+        return _cap_text(rsep.join(lines))
+    if act == "markdown_to_html":
+        return _md_html(s)
+    if act == "html_to_markdown":
+        return _html_md(s)
     if act in ("html_text", "html_select"):
         from bs4 import BeautifulSoup
         soup = BeautifulSoup(s, "lxml")

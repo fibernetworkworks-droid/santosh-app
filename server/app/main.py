@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.257"   # v0.999.257 CYBER DESK (built as 0.999.256; their HOOLA CODE took 0.999.256, both kept; owner: "100 % Cyber security same as finance desks --- very advance and every aspect and every cyber security tool in it"): the Cyber security employee (cyber) gets its own section /console/cyber + Cyber chat (kind cyber, `cychat.py`, /api/cydesk/*) on the Cyber Suraksha engine + NEW `cyber/program.py`: Today (security score from what is known, needs, alerts by kind and by MITRE ATT&CK tactic, controls by NIST CSF function), Alerts (paste / upload antivirus, firewall, server, Workspace, M365, WAF alerts; the few that matter with why, ATT&CK technique, what to do; 'this is normal' rules; card to block an address), Checks (mail headers + words, links looked up never opened, files by fingerprint only, keys / passwords in pasted code masked), Attack surface (her domains: SPF / DMARC / DKIM / CAA, SSL, headers, exposed files after proof; breaches; software vs NVD / CISA KEV), Incidents (timeline, notice clocks for every country she works in - NOTIFY rows for 20 jurisdictions, only India's checked, the rest 'check this' with their source; 8 playbooks; Word + PDF note; block / disable / wipe cards decided only by her tap with the card hash), Programme (CIS Controls v8 IG1 self-check mapped to NIST CSF 2.0 + ISO 27001:2022 with history, risk register + heat map, access review of her user export, vendor reviews, tabletop drills, training records + quiz, password policy vs NIST SP 800-63B), Settings (country, sector, other countries, her IPs / systems / VIPs / work emails, keys sealed); CERT-In clock starts only for India; 6 tests incl. a browser walk. NOT VERIFIED on her server / with real keys or real exports.
+APP_VERSION = "0.999.258"   # v0.999.258 MAKE PARITY (built as 0.999.254; the other sessions took 0.999.254-0.999.257, all kept; owner: "FIND ALL HOOLA ROUTE TOOL IS FUCTIONATING PERFECTLY SAME AS MAKE OR NOT --- WE WANT ALL MAKE FUCTION IN IT"): Hoola Route compared with Make feature by feature (docs/research/make/00_MAKE_PARITY.md) and the gaps built: Make's functions + keywords in {{ }}, data stores (route/store.py, rollback undoes them), Make's Tools (var step), the repeater and aggregators, error handler routes, the web request at Make's HTTP v4 level (route/http.py), text parser / XML / table / markdown / ZIP, scenario settings, the webhook queue, schedule start date, choose where to start, operations, Make blueprint import (route/makeimport.py) and the Grid (route/grid.py). Previous: v0.999.257 CYBER DESK.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -12640,7 +12640,11 @@ async def dhara_hook(token: str, request: Request):
             body = {"body": body}
     except Exception:
         body = {"raw": raw[:8000].decode("utf-8", "ignore")}
-    out = await dhara_tools.webhook_call(token, body)
+    meta = {"ip": (request.headers.get("cf-connecting-ip") or request.headers.get("x-real-ip")
+                   or (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+                   or (request.client.host if request.client else "")),
+            "headers": dict(request.headers), "method": request.method, "query": dict(request.query_params)}
+    out = await dhara_tools.webhook_call(token, body, meta)
     if out.get("answered"):         # v0.999.239 ROUTE R4: the route's Respond step answers the caller
         ans = out.get("answer")
         code = int(out.get("status") or 200)
