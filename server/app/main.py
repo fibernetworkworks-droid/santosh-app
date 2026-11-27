@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.258"   # v0.999.258 MAKE PARITY (built as 0.999.254; the other sessions took 0.999.254-0.999.257, all kept; owner: "FIND ALL HOOLA ROUTE TOOL IS FUCTIONATING PERFECTLY SAME AS MAKE OR NOT --- WE WANT ALL MAKE FUCTION IN IT"): Hoola Route compared with Make feature by feature (docs/research/make/00_MAKE_PARITY.md) and the gaps built: Make's functions + keywords in {{ }}, data stores (route/store.py, rollback undoes them), Make's Tools (var step), the repeater and aggregators, error handler routes, the web request at Make's HTTP v4 level (route/http.py), text parser / XML / table / markdown / ZIP, scenario settings, the webhook queue, schedule start date, choose where to start, operations, Make blueprint import (route/makeimport.py) and the Grid (route/grid.py). Previous: v0.999.257 CYBER DESK.
+APP_VERSION = "0.999.263"   # v0.999.263 ROUTE WIRING (owner: "NOW GO EXTREED DEEP WIRE ALL BACKED PROPERLY WITH FRONTEND PERFECTLY THUS ALL THIS TOOL CAN FUCTION SMOTHLY"): every Make-parity part of Hoola Route walked through the real page in a browser and the joins fixed - Add a step shows Data store / Variables / Text parser (any new group under More), a step can be added inside an 'If it fails' handler (the page crashed there), every walker on the server and the page sees handler steps (open with data, test step, version diff, duplicate, the shared view, the masked-field restore), Test step inside a repeater gets the repeat number and inside a handler gets the error, a JSON body typed in a web request is sent as JSON (was a quoted string), the field picker offers {{error.*}} / {{run.*}} / collected loop results / store get data, the runs page says queued webhook calls, Delete all records asks on the page (no browser dialog), a checkbox that redraws the panel no longer throws; 8 tests incl. 4 browser walks. NOT VERIFIED on her server. Previous head: v0.999.262 HOOK ANSWERS LIKE CLAUDE CODE (owner: 'Hook answers: Claude Code hooks can reply in JSON ... LETS WORK ON IT'): a repo's hook (or a plugin's) now answers the way Claude Code reads it (`repoconf.hook_answer`): exit 2 = block with its stderr as the reason (JSON ignored); any other non-zero exit = a non-blocking error shown to her; exit 0 with JSON on stdout = PreToolUse `permissionDecision` allow (no prompt, settings deny rules still checked first) / deny (the step does not run, the reason goes to the model) / ask (waits for her yes even in Auto, the reason on the card) + `updatedInput` (the hook's version of the step runs, checked again against the deny rules), the older `decision` approve / block, `decision: block` + reason for PostToolUse / Stop / SubagentStop / UserPromptSubmit, `additionalContext` for SessionStart / UserPromptSubmit / PostToolUse, `continue: false` + `stopReason` (the round ends there, the reason told to her), `systemMessage` (shown to her); plain stdout is context for SessionStart / UserPromptSubmit and shown in the step otherwise. Several hooks on one event: deny beats ask beats allow, the last changed input wins. The hook's stdout and stderr are kept apart in the box. FIXED: hooks were given Hoola's field names (path) - they now get Claude Code's (file_path, notebook_path, cell_number) so a real Claude Code hook script works. WEB + PHONE: the hook row says allowed it / asked you first / changed the step / stopped the step / stopped the work, with its message. 5 tests incl. a full round with fakes. NOT VERIFIED: hooks on real Docker on her server. Previous head: v0.999.261 PRODUCT MANAGER DESK (owner: "Product manager same as finance desks"): the Product manager gets its own section /console/product + Product chat (kind product, `prchat.py`): Today, Backlog (problems with evidence, RICE / ICE on her numbers, Kano, merge, drop, depends), Roadmap (Now / Next / Later vs her capacity, a suggested plan she applies), Specs (Given / When / Then), Releases (English + only the second language she picks, a publish card on her tap with the hash), KPIs & results, Settings (country, money unit, GitHub token sealed); GLOBAL: Hinglish only by default in India; 5 tests incl. a browser walk. NOT VERIFIED on her server. Previous: v0.999.260 AN AGENT'S OWN MODEL.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2196,6 +2196,24 @@ def qa_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/product")
+@app.get("/console/product/")
+def product_desk_page():
+    """PRODUCT DESK: the Product manager's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "prdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/itadmin")
+@app.get("/console/itadmin/")
+def itadmin_desk_page():
+    """IT ADMIN DESK: the IT Admin employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "itdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/cyber")
 @app.get("/console/cyber/")
 def cyber_desk_page():
@@ -2836,6 +2854,10 @@ from . import dvchat as _dvchat_mod                             # noqa: E402  DE
 _dvchat_mod.mount(app, current_tenant, require_key)             # /api/dvdesk/*
 from . import cychat as _cychat_mod                             # noqa: E402  CYBER DESK
 _cychat_mod.mount(app, current_tenant, require_key)             # /api/cydesk/*
+from . import itchat as _itchat_mod                             # noqa: E402  IT ADMIN DESK
+_itchat_mod.mount(app, current_tenant, require_key)             # /api/itdesk/*
+from . import prchat as _prchat_mod                             # noqa: E402  PRODUCT DESK
+_prchat_mod.mount(app, current_tenant, require_key)             # /api/prdesk/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

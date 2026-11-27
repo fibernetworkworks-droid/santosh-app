@@ -107,7 +107,7 @@ def test_hooks_run_in_the_box_with_the_event_on_stdin(ws, monkeypatch):
         return {"rc": 2, "out": "rm is not allowed here", "secs": 0.1, "timed_out": False}
     monkeypatch.setattr(box, "run_in", run_in)
     said = EN.run_hooks(tl, "PreToolUse", "bash", {"command": "rm x"})
-    assert said == {"block": True, "text": "rm is not allowed here"}
+    assert said["block"] is True and said["text"] == "rm is not allowed here"
     cmd, kw = ran[0]
     assert kw["network"] is False and '"tool_name": "Bash"' in cmd and '"command": "rm x"' in cmd
     assert "./scripts/guard.sh" in cmd and "< /tmp/hook_in.json" in cmd

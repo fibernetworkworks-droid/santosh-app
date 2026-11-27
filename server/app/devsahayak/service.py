@@ -4219,7 +4219,7 @@ def repo_commands(tenant: str, ref: str) -> dict[str, Any]:
     try:
         out["commands"] = [{"name": k, "description": v["description"], "hint": v["hint"], "origin": v.get("origin", "repo")}
                            for k, v in sorted(RC.commands(repo, pls).items())]
-        out["agents"] = [{"name": k, "description": v["description"], "tools": v["tools"], "origin": v.get("origin", "repo")}
+        out["agents"] = [{"name": k, "description": v["description"], "tools": v["tools"], "origin": v.get("origin", "repo"), "model": v.get("model", "")}
                          for k, v in sorted(RC.agents(repo, pls).items())]
         conf = RC.settings(repo, pls)
         out["hooks"] = sorted(conf["hooks"])

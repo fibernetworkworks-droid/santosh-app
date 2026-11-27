@@ -766,15 +766,21 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       case 'claudefile': return `<div class="hcd-step dim">${svg('pencil')}<span>You ${s.what === 'deleted' ? 'deleted' : 'changed'} <code>${esc(s.path || '')}</code></span>${at}</div>`;
       case 'cmd': return `<div class="hcd-step dim">${svg('spark')}<span>${s.repo ? 'Ran your command' : 'Started'} <span class="hcd-cmd">/${esc(s.name || '')}</span>${s.repo ? ' from this repo' : ''}</span>${at}</div>`;
       case 'mention': return `<div class="hcd-step">${svg('read')}<span>Read the files you pointed at · ${(s.files || []).map(p).join(', ')}</span>${at}</div>`;
-      case 'hook': return s.text ? fold('h' + i, `This repo\u2019s ${esc(s.event || '')} hook ran${s.tool ? ' for ' + esc(s.tool) : ''}${s.block ? ' · <span class="del">stopped it</span>' : ''}`, `<pre class="hcd-term">${esc(s.text)}</pre>`, 'row', verbose || !!s.block)
-        : `<div class="hcd-step dim">${svg('gear')}<span>This repo\u2019s ${esc(s.event || '')} hook ran</span>${at}</div>`;
+      case 'hook': {   /* v0.999 what the repo's hook decided, Claude Code's JSON answers included */
+        const did = s.stop ? ' · <span class="del">stopped the work</span>' : s.block ? ' · <span class="del">stopped it</span>'
+          : s.decision === 'allow' ? ' · allowed it' : s.decision === 'ask' ? ' · asked you first' : s.changed ? ' · changed the step' : '';
+        const head = s.event === 'stop' ? 'This repo\u2019s hook <span class="del">stopped the work</span>'
+          : `This repo\u2019s ${esc(s.event || '')} hook ran${s.tool ? ' for ' + esc(s.tool) : ''}${did}${s.changed && did.indexOf('changed') < 0 ? ' · changed the step' : ''}`;
+        const msg = s.msg ? `<p class="hcd-hookmsg">${esc(s.msg)}</p>` : '';
+        return s.text || s.msg ? fold('h' + i, head, msg + (s.text ? `<pre class="hcd-term">${esc(s.text)}</pre>` : ''), 'row', verbose || !!s.block || !!s.stop || !!s.msg)
+          : `<div class="hcd-step dim">${svg('gear')}<span>${head}</span>${at}</div>`; }
       case 'gap': return `<div class="hcd-step dim">${svg('list')}<span>${esc(s.text || 'Earlier steps folded')}</span></div>`;
       case 'compact': case 'ws': return `<div class="hcd-step dim">${svg('list')}<span>${esc(s.text || '')}</span>${at}</div>`;
       case 'wait': return `<div class="hcd-step">${svg('dot')}<span>${esc(s.text || 'Waiting for a free coding slot')}</span>${at}</div>`;
       case 'ckpt': return `<div class="hcd-step dim">${svg('ok')}<span>Checkpoint ${esc(String(s.num ?? s.n))} saved - you can go back to here</span>${at}</div>`;
       case 'rewind': return `<div class="hcd-step">${svg('list')}<span><b>Went back to checkpoint ${esc(String(s.num ?? s.n))}.</b> The working copy and the conversation are as they were then.</span>${at}</div>`;
       case 'agent': { /* v0.794 ECC agents (Claude Code-style subagents) */
-        if (s.state === 'start') return `<div class="hcd-step">${svg('dot')}<span><b>Asked ${esc(s.title || s.name)}</b> (${esc(s.tools || 'read')}) · ${esc(s.task || '')}</span>${at}</div>`;
+        if (s.state === 'start') return `<div class="hcd-step">${svg('dot')}<span><b>Asked ${esc(s.title || s.name)}</b> (${esc(s.tools || 'read')}${s.model ? ' · on ' + esc(s.model) : ''}) · ${esc(s.task || '')}</span>${at}</div>`;
         const lab = `<b>${esc(s.title || s.name)}</b> reported · ${plural(s.steps || 0, 'step')}${s.edits ? ` · changed ${plural(s.edits, 'file')}` : ''}${s.secs ? ` · ${esc(String(s.secs))} s` : ''}`;
         return s.report ? fold('a' + i, lab, `<pre class="hcd-term">${esc(s.report)}</pre>`, 'row', verbose) : `<div class="hcd-step ok">${svg('ok')}<span>${lab}</span>${at}</div>`; }
       case 'memory': { /* Hoola Code memory: the repo's notes from earlier sessions */
@@ -1381,7 +1387,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       || (r.skills || []).length || (r.mcp || []).length || (r.env || []).length || r.mode;
     await dialog(`<h2>This repo\u2019s Claude Code setup</h2><p class="hcd-mut">Hoola follows <code>.claude/</code> in this repo, like Claude Code: its commands, agents, hooks and permission rules. Hooks run in the locked box, never on Hoola\u2019s server.</p>
       ${any ? rows('Commands', (r.commands || []).map(c => `<div class="hcd-row"><span><code>/${esc(c.name)}</code></span><b>${esc(c.description || '')}</b></div>`))
-        + rows('Agents', (r.agents || []).map(a => `<div class="hcd-row"><span><code>${esc(a.name)}</code></span><b>${esc(a.description || '')} · ${esc(a.tools)}</b></div>`))
+        + rows('Agents', (r.agents || []).map(a => `<div class="hcd-row"><span><code>${esc(a.name)}</code></span><b>${esc(a.description || '')} · ${esc(a.tools)}${a.model && a.model !== 'inherit' ? ' · model ' + esc(a.model) : ''}</b></div>`))
         + rows('Skills', (r.skills || []).map(k => `<div class="hcd-row"><span><code>${esc(k.name)}</code></span><b>${esc(k.description || '')}</b></div>`))
         + rows('MCP servers', (r.mcp || []).map(m => `<div class="hcd-row"><span><code>${esc(m.name)}</code></span><b>${m.ok ? 'Reachable · asks you before its first use' : esc(m.why || 'Not reachable')}</b></div>`))
         + rows('Hooks', (r.hooks || []).map(h => `<div class="hcd-row"><span>${esc(h)}</span></div>`))

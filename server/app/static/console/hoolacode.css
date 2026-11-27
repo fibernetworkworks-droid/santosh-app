@@ -1273,3 +1273,4 @@ html,body{background:var(--bg)}
 #app .hcd-plug{align-items:flex-start;gap:8px}
 #app .hcd-plug p{margin:2px 0 0;font-size:13px}
 #app .hcd-dlg h3{font-size:14px;font-weight:600;margin:14px 0 6px}
+#app .hcd-hookmsg{margin:0 0 6px;font-size:13px;color:var(--ink)}

@@ -440,8 +440,10 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
           return (
             s['block'] == true ? Icons.block_rounded : Icons.bolt_rounded,
             "This repo's",
-            '${ev.isEmpty ? '' : '$ev '}hook ran${s['block'] == true ? ' and stopped the step' : ''}',
-            _s(s['text']).trim().isNotEmpty
+            ev == 'stop'
+                ? 'hook stopped the work'
+                : '${ev.isEmpty ? '' : '$ev '}hook ran${s['stop'] == true ? ' and stopped the work' : s['block'] == true ? ' and stopped the step' : s['decision'] == 'allow' ? ' and allowed it' : s['decision'] == 'ask' ? ' and asked you first' : s['changed'] == true ? ' and changed the step' : ''}',
+            _s(s['text']).trim().isNotEmpty || _s(s['msg']).trim().isNotEmpty
           );
         }
       case 'new':
@@ -449,7 +451,8 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
       case 'check':
         return (Icons.fact_check_outlined, 'Ran', s['ok'] == true ? 'your tests · passed' : 'your tests · failed', false);
       case 'agent':
-        return (Icons.groups_outlined, 'Asked', _s(s['name']).isNotEmpty ? 'a helper: ${_s(s['name'])}' : 'a helper', false);
+        return (Icons.groups_outlined, 'Asked',
+            (_s(s['name']).isNotEmpty ? 'a helper: ${_s(s['name'])}' : 'a helper') + (_s(s['model']).isNotEmpty ? ' · on ${_s(s['model'])}' : ''), false);
       case 'bgstart':
         {
           final did = _s(s['did']);

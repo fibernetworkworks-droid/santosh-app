@@ -113,6 +113,9 @@ def _all(steps: list, out: list | None = None) -> list:
         for rt in s.get("routes") or []:
             if isinstance(rt, dict):
                 _all(rt.get("steps") or [], out)
+        oe = s.get("on_error")                       # v0.999.258: an error handler's own steps
+        if isinstance(oe, dict) and isinstance(oe.get("steps"), list):
+            _all(oe["steps"], out)
     return out
 
 
@@ -229,9 +232,22 @@ async def test_step(tenant: str, wf: dict, sid: str, use_pins: bool = True, run_
     loop = next((s for s in _all(wf.get("steps") or []) if s.get("type") == "loop"
                  and any(b.get("id") == sid for b in _all(s.get("body") or []))), None)
     if loop is not None:                         # inside "repeat for each": the first item stands in for {{item}}
-        items = D.resolve(loop.get("items"), ctx)
-        if isinstance(items, list) and items:
-            ctx["item"] = items[0]
+        if isinstance(loop.get("repeat"), dict):  # v0.999.258: a repeater's first number
+            rp = D.resolve(loop["repeat"], ctx)
+            try:
+                ctx["item"] = int(rp.get("start") if rp.get("start") not in (None, "") else 1)
+            except (TypeError, ValueError):
+                ctx["item"] = 1
+        else:
+            items = D.resolve(loop.get("items"), ctx)
+            if isinstance(items, list) and items:
+                ctx["item"] = items[0]
+    owner = next((s for s in _all(wf.get("steps") or []) if isinstance(s.get("on_error"), dict)
+                  and any(h.get("id") == sid for h in _all(s["on_error"].get("steps") or []))), None)
+    if owner is not None and "error" not in ctx:  # v0.999.258: inside an error handler, the error stands in too
+        last = (ctx.get("_log") or {}).get(str(owner.get("id"))) if isinstance(ctx.get("_log"), dict) else None
+        ctx["error"] = {"step": str(owner.get("id")), "type": str(owner.get("type")),
+                        "message": str((last or {}).get("error") or f"(a test: the error of '{owner.get('id')}' goes here)")}
     typ = step.get("type")
     t0 = time.time()
     ok, out, err = True, None, ""

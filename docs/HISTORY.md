@@ -13046,3 +13046,82 @@ Bridge. Make's 2,500 app modules come through Hoola tools + Composio, not one mo
 Tests: `server/tests/test_v0999_258_make_parity.py` (47, incl. a Chromium walk at 1440 and 390); older pins moved:
 test_v0502 (a fast second webhook call is queued, not refused), test_v0999_246 / 253 (the web request calls
 httpx.request now). NOT VERIFIED: on her server, with a real Make export of hers, with real app accounts.
+
+
+## v0.999.259 IT ADMIN DESK (built as 0.999.258; their HOOLA ROUTE took 0.999.258, both kept)
+Owner: "IT Admin same as finance desks".
+
+- NEW `server/app/itchat.py` - Conversation kind itadmin, `/api/itdesk/{chat, chat/new, chat/{conv}/ok, desk, do/{part}}`; today_view = engine
+  overview + IT spend (`spend`: a year, a month, a person, by kind, by vendor, due in 90 days, unused seats, auto-renew off / unknown) + access
+  stats (admins without 2-step, open for leavers, shared, never reviewed, by system) + needs; parts for licences, renewals, people, access,
+  checklists, change cards (decide by_tap + hash), access reviews, guides, staff questions, Google / Microsoft links + sync, register file,
+  settings; a password / OTP value refused outside staff questions and guide words; the Entra secret only in ms_save; block `<itadmin_desk>`.
+- Engine: ItadminSettings country + currency; `rules.practices_list(country)` = common ISO 27001 rows + India's CERT-In / DPDP rows (checked)
+  or EU / UK / US rows ('check this') or a 'check with a local adviser' row; `service.money` writes every price in her unit; the DPDP word
+  only for India; a licence's say no longer ends '..'.
+- Wiring: main.py page + mount, convs / callconv kinds, santosh.py block + admission (itadmin + helpdesk), employees.js, v2.js, teamdesks DESK.
+- Console `itdesk.html/.js/.css`: Today, Licences & spend, People & access, Changes, Guides & questions, Settings.
+- Tests `tests/test_it_desk.py` 4 incl. a browser walk at 1440 / 390; test_tech_itadmin 7 still pass.
+- NOT VERIFIED on her server / with real Google Workspace or Microsoft 365 consoles.
+
+
+## v0.999.260 AN AGENT'S OWN MODEL
+(owner: 'Agent model: an agent file can pick its own model in Claude Code ... WORK ON IT SAME AS CLAUDE CODE'): the `model:` line of an agent file (.claude/agents/*.md or a plugin's) is followed like Claude Code - `inherit` or no line = the session's model; `haiku` / `sonnet` / `opus` = that Claude model on whichever brain Hoola Code runs on (Claude: claude-haiku-5-5 ...; through OpenRouter: anthropic/claude-haiku-5.5 ...; a dev_agent_<alias>_<claude|openrouter> setting can change one); a full model id the brain can run; anything else runs on the session's model and the agent's report says why (`subagent.agent_model`). The agent's model is set only while it runs and the coder's own comes back after (an edit agent runs in the coder's thread); on the OpenRouter brain a pinned agent model skips the tier / Box choice for that agent only. The feed says 'on Haiku 5.5' beside the agent, the repo setup lists each agent's model (web + phone). FIXED: when several agents ran in one round, a repo's own EDIT agent could run side by side with others (the one-by-one rule only knew Hoola's built-in agents). 5 tests. NOT VERIFIED: a live agent call on Haiku / Opus on her server.
+
+
+## v0.999.261 PRODUCT MANAGER DESK (owner: "Product manager same as finance desks")
+
+The Product manager (hire key `product`) gets its own desk at /console/product (`prdesk.html/js/css`) with its own chat
+(Conversation kind `product`, `server/app/prchat.py`, routes `/api/prdesk/{chat, chat/new, chat/{conv}/ok, desk, do/{part}}`),
+built on the existing product engine (`server/app/product/`).
+
+- Today: north star, open problems, unscored, publish cards waiting; needs list; highest scores; roadmap vs capacity; problems by source.
+- Backlog: harvest (feedback, support, telecaller), add a problem, paste ideas / competitor notes; each problem opens with its evidence,
+  ideas to solve it, a RICE or ICE score form (her numbers only; the missing number is asked), Kano, place on the roadmap, depends,
+  shipped, merge, drop, write the spec; look-alike pairs with Merge.
+- Roadmap: Now / Next / Later columns with effort against capacity, problems to fix, a suggested plan applied only on her tap, Word /
+  Excel / Markdown files.
+- Specs: stories with Given / When / Then, edge cases, events, open questions, revise, Word / Markdown / .feature files.
+- Releases: notes from her words, shipped items and merged PRs; English plus only the second language she picks; store texts; a
+  publish card (copy / public page / GitHub release) decided by her tap with the card hash; take a page down.
+- KPIs & results: north star + KPIs with readings and a line, shipped items with the 30-day before / after.
+- Settings: product, users, country, money unit, release-note second language, RICE / ICE, cycle, capacity, harvest window, rules;
+  GitHub token only in its own part (sealed, never shown, refused anywhere else).
+- GLOBAL: the engine's prompts no longer say "Indian"; Hinglish notes only by default when the country is India (or when she picks
+  it); no second language is made up without a model; the release check no longer flags the version number itself.
+- Wiring: convs / callconv kinds, santosh block + admission, teamdesks, main page route + mount, v2.js, employees.js.
+- Tests: `server/tests/test_pr_desk.py` (5, incl. a Chromium walk at 1440 and 390 with no sideways scroll); test_tech_product 9/9.
+- NOT VERIFIED on her server.
+
+
+## v0.999.262 HOOK ANSWERS LIKE CLAUDE CODE
+(owner: 'Hook answers: Claude Code hooks can reply in JSON ... LETS WORK ON IT'): a repo's hook (or a plugin's) now answers the way Claude Code reads it (`repoconf.hook_answer`): exit 2 = block with its stderr as the reason (JSON ignored); any other non-zero exit = a non-blocking error shown to her; exit 0 with JSON on stdout = PreToolUse `permissionDecision` allow (no prompt, settings deny rules still checked first) / deny (the step does not run, the reason goes to the model) / ask (waits for her yes even in Auto, the reason on the card) + `updatedInput` (the hook's version of the step runs, checked again against the deny rules), the older `decision` approve / block, `decision: block` + reason for PostToolUse / Stop / SubagentStop / UserPromptSubmit, `additionalContext` for SessionStart / UserPromptSubmit / PostToolUse, `continue: false` + `stopReason` (the round ends there, the reason told to her), `systemMessage` (shown to her); plain stdout is context for SessionStart / UserPromptSubmit and shown in the step otherwise. Several hooks on one event: deny beats ask beats allow, the last changed input wins. The hook's stdout and stderr are kept apart in the box. FIXED: hooks were given Hoola's field names (path) - they now get Claude Code's (file_path, notebook_path, cell_number) so a real Claude Code hook script works. WEB + PHONE: the hook row says allowed it / asked you first / changed the step / stopped the step / stopped the work, with its message. 5 tests incl. a full round with fakes. NOT VERIFIED: hooks on real Docker on her server.
+
+## v0.999.263 ROUTE WIRING (built as 0.999.259 / 0.999.261; the other sessions took 0.999.259-0.999.262, all kept)
+
+Owner: "NOW GO EXTREED DEEP WIRE ALL BACKED PROPERLY WITH FRONTEND PERFECTLY THUS ALL THIS TOOL CAN FUCTION SMOTHLY".
+
+Method: every page api() call mapped to its route (all present; POST /routes/{x}/run and GET versions/{vid} have no own button and are
+reached by Test route and the Versions list), then a real browser walk that BUILDS and RUNS a Make-style route only by clicking.
+
+Fixed (each was found by the walk or the read, not guessed):
+- Add a step had hard-coded groups, so Data store / Variables / Text parser steps were hidden; new groups added and any unknown group
+  shows under "More".
+- Adding a step inside an "If it fails" handler crashed the page (`addWhere` read `h.step.routes`); the on_error path is handled.
+- Walkers that skipped handler steps: route/stepdata.py `_all`, route/api.py `_walk` + `_full().deco`, route/editor.py `_index` +
+  `unmask` (the masked-field restore), route/workspace.py shared view, route.js duplicate (re-ids handler steps) and the change diff.
+- Test step: inside a repeater `{{item}}` is the repeat's start number; inside a handler `{{error}}` is the last run's error of that
+  step, else a clearly marked test error.
+- route/http.py: with body type json a typed body that starts with { or [ is parsed before sending (was sent as a quoted string);
+  bad JSON is refused with a plain line.
+- Field picker (`refsFor`): {{error.message}} / {{error.step}} in a handler, {{run.id}} / {{run.started_at}}, set_many values,
+  loop collect results, store get .data.
+- Runs page: queue / queue_off words for webhook calls waiting in the queue.
+- Delete all records: an in-page box instead of the browser prompt (route.js keeps no prompt( / confirm().
+- A checkbox that redraws the step panel threw "Cannot read properties of null (reading 'id')"; the host is captured first and every
+  `stepPanel(box.parentNode)` is guarded.
+
+Tests: tests/test_v0999_263_route_wiring.py (8): walkers see handler steps, open-with-data + test step in a handler, page source
+rules, a click-only build-and-run of a Make-style route (store, var, repeater with collect, web request with a JSON body, error handler,
+settings, schedule start date, grid, clearing records), every step kind opens its panel and data view, Test step in the data view for
+the new steps, a queued webhook said on the runs page, the version. NOT VERIFIED on her server.
