@@ -26,13 +26,13 @@ JOBS: dict[str, tuple[str, int]] = {
     "cad": ("high", 8000), "cad_look": ("medium", 2500),
     "blender": ("high", 6000), "blender_look": ("medium", 2000),
     "motion": ("medium", 4000), "notebook": ("high", 6000), "studio_plan": ("high", 6000),
-    "page": ("medium", 2000),
+    "page": ("medium", 2000), "langlab": ("high", 8000),
 }
 # v0.999.21 each engine job -> her tier's kind of work at the door (building = the Web Studio's "web" row, the
 # building-board picks; writing for the notebook and the video storyboard)
 TIER_OF: dict[str, str] = {"game_design": "web", "game_code": "web", "game_plan": "web", "game_review": "web",
                            "game_scene": "web", "cad": "web", "cad_look": "web", "blender": "web", "blender_look": "web",
-                           "motion": "web", "page": "web", "design": "web", "notebook": "write", "studio_plan": "write"}
+                           "motion": "web", "page": "web", "design": "web", "langlab": "web", "notebook": "write", "studio_plan": "write"}
 NONSTREAM_CAP = 21000            # the SDK refuses a non-streamed request it expects to run past 10 minutes
 SKILL_CHARS = 2400               # the matched skill's text that rides into an engine's system prompt
 _OFF: set[str] = set()           # fields this API / model refused once: not sent again in this process

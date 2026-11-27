@@ -1020,6 +1020,7 @@ def init_db(url: str | None = None):
     from .agent import team as _harness_team  # noqa: F401  (v0.193.0 HARNESS-3 the background agent crews'
         # agent_teams table - registered HERE on day one AND self-healing via team.ensure_table())
     from .blender3d import service as _blender3d  # noqa: F401  (v0.141 3D Studio)
+    from .langlab import service as _langlab  # noqa: F401  (v0.999.272 the Compiler Construction Engineer)
     from .engineering import service as _engineering  # noqa: F401  (v0.357 Engineering Desk)
     from .bahi import models as _bahi_models  # noqa: F401  (v0.807 BAHI - the GST & Accounts employee, A0)
     from .fin import models as _fin_models  # noqa: F401  (F0 of FINANCE_GLOBAL_PLAN - the finance data spine)

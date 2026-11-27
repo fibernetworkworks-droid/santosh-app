@@ -216,6 +216,9 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "create": ("song", "gaana", "gaane", "jingle", "lyrics", "music studio", "voice-over", "voiceover", "voice over",
                "dub", "dubbing", "create studio", "गाना", "डब"),
     "blender": ("blender", "3d", "three d"),
+    # v0.999.272 the Compiler Construction Engineer: her own language (grammar, parser, interpreter, compiler)
+    "langlab": ("grammar", "parser", "compiler", "interpreter", "dsl", "domain-specific language", "domain specific language",
+                "programming language", "my own language", "own language", "lexer", "tokenizer", "syntax tree", "language lab"),
     # v0.589 KAAN PACK: her words for a transcript job (sunwai stays OUT - it is the vakil desk's court-hearing word;
     # bare "kaan" stays OUT too - "makaan" contains it, the rentdesk lane does not need our family)
     "kaan": ("transcript", "transcribe", "transcription", "kaan se", "kaan tool", "kaan pack", "audio sun",

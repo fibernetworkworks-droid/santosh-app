@@ -1800,6 +1800,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_b3c.block, tenant_id)
     except Exception:
         log.exception("3d desk block failed")
+    try:   # COMPILER DESK: a turn in the Compiler chat (or a call started from it) knows the desk
+        from .. import lcchat as _lcc
+        if _lcc.is_lang(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_lcc.block, tenant_id)
+    except Exception:
+        log.exception("compiler desk block failed")
     _mark("hint")
     return state
 
@@ -2779,6 +2785,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "3d desk chat"
     except Exception:
         log.exception("3d desk chat admission failed")
+    try:   # COMPILER DESK: the language tool in view in the Compiler chat
+        from .. import lcchat as _lcc
+        if adm is not None and _lcc.is_lang(conversation_id):
+            adm.admit_families(_lcc.FAMILIES)
+            for f in _lcc.FAMILIES:
+                adm.why[f] = "compiler desk chat"
+    except Exception:
+        log.exception("compiler desk chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,

@@ -1236,6 +1236,12 @@ from .pgdb_tools import PGDB_HANDLERS, PGDB_LABELS, PGDB_TOOLS  # noqa: E402
 TOOLS.extend(BLENDER_TOOLS)
 TOOL_LABELS.update(BLENDER_LABELS)
 HANDLERS.update(BLENDER_HANDLERS)
+# v0.999.272 the Compiler Construction Engineer (lang_lab)
+from .langlab_tools import LANGLAB_HANDLERS, LANGLAB_LABELS, LANGLAB_TOOLS  # noqa: E402
+
+TOOLS.extend(LANGLAB_TOOLS)
+TOOL_LABELS.update(LANGLAB_LABELS)
+HANDLERS.update(LANGLAB_HANDLERS)
 # v0.357 Engineering Desk: the hired CAD Engineer (cad_part)
 from .eng_tools import ENG_HANDLERS, ENG_LABELS, ENG_TOOLS  # noqa: E402
 
