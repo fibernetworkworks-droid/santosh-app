@@ -27,6 +27,9 @@ class ProductSettings(Base):
     morning_time: Mapped[str] = mapped_column(String(5), default="10:00")
     last_day: Mapped[str] = mapped_column(String(10), default="")
     rules: Mapped[str] = mapped_column(Text, default="")
+    country: Mapped[str | None] = mapped_column(String(2), nullable=True, default="")         # her country; "" = India (as before)
+    currency: Mapped[str | None] = mapped_column(String(3), nullable=True, default="")        # her money unit; "" = INR
+    second_lang: Mapped[str | None] = mapped_column(String(30), nullable=True, default=None)  # release notes' second language; None = Hinglish in India
     seq_opp: Mapped[int] = mapped_column(Integer, default=0)
     seq_spec: Mapped[int] = mapped_column(Integer, default=0)
     seq_rel: Mapped[int] = mapped_column(Integer, default=0)

@@ -1770,6 +1770,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_itc.block, tenant_id)
     except Exception:
         log.exception("it admin desk block failed")
+    try:   # PRODUCT DESK: a turn in the Product chat (or a call started from it) knows the desk
+        from .. import prchat as _prc
+        if _prc.is_product(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_prc.block, tenant_id)
+    except Exception:
+        log.exception("product desk block failed")
     _mark("hint")
     return state
 
@@ -2709,6 +2715,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "it admin desk chat"
     except Exception:
         log.exception("it admin desk chat admission failed")
+    try:   # PRODUCT DESK: the product tools in view in the Product chat
+        from .. import prchat as _prc
+        if adm is not None and _prc.is_product(conversation_id):
+            adm.admit_families(_prc.FAMILIES)
+            for f in _prc.FAMILIES:
+                adm.why[f] = "product desk chat"
+    except Exception:
+        log.exception("product desk chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,
