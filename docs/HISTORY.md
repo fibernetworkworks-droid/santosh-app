@@ -12960,3 +12960,23 @@ Owner: "DevOps same as finance desks". The DevOps employee (key devops) gets its
 - Tests `tests/test_dv_desk.py` 5 incl. a browser walk at 1440 / 390. Pre-existing red, unchanged code:
   test_tech_devops::test_deploy_card_only_her_tap_dispatches_and_rollback (dora successful).
 - NOT VERIFIED on her server / with a real GitHub repo.
+
+
+## v0.999.256 CYBER DESK
+Owner: "100 % Cyber security same as finance desks --- very advance and every aspect and every cyber security tool in it".
+
+- NEW `server/app/cychat.py` - Conversation kind cyber, `/api/cydesk/{chat, chat/new, chat/{conv}/ok, desk, do/{part}, upload}`; today_view =
+  engine overview + programme + needs + notice rows + security score + alerts by kind / ATT&CK tactic; parts for alerts, checks, attack
+  surface, incidents, notify, containment (decide by_tap + hash; a wipe answers 428 when her phone fingerprint is needed), programme,
+  settings and keys (a key only in key_set); OTP / card words refused outside pasted data; paused = reads only; block `<cyber_desk>`.
+- NEW `server/app/cyber/program.py` (table cyber_docs): NOTIFY (20 jurisdictions; India's two rows checked, every other row 'check this'
+  with its source; business days for SEC / LGPD), notify_plan / mark_notify; CIS Controls v8 IG1 (18 controls, 41 questions) -> NIST CSF
+  2.0 + ISO 27001:2022 with history; access review of a user CSV (leavers active, admins without 2-step, stale, shared, too many admins);
+  secrets scan (18 key patterns, masked, text not kept); MITRE ATT&CK per alert kind; risk register; vendor reviews (12 questions, tier,
+  next review); 8 playbooks + tabletop drills; training records + plan + quiz; password policy vs NIST SP 800-63B; overview.
+- Engine: CyberSettings country / sector / extra_countries; the CERT-In clock starts only for India; DPDP shown only for India; alerts carry
+  their ATT&CK technique; the chat tool gains the programme actions and cyber_dekho what=programme.
+- Wiring: main.py page + mount, convs / callconv kinds, santosh.py block + admission, employees.js, v2.js, teamdesks DESK.
+- Console `cydesk.html/.js/.css`: Today, Alerts, Checks, Attack surface, Incidents, Programme (7 sub-pages), Settings.
+- Tests `tests/test_cy_desk.py` 6 incl. a browser walk at 1440 / 390; test_tech_cyber 8 still pass.
+- NOT VERIFIED on her server / with real keys / real user exports.

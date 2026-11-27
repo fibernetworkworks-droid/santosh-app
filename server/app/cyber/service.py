@@ -154,7 +154,8 @@ def settings(tenant: str) -> dict:
     with session() as s:
         r = _st(s, tenant)
         out = {k: _j(getattr(r, k), []) for k in _LIST_KEYS}
-        out.update(link_provider=r.link_provider, morning_time=r.morning_time, rules=r.rules)
+        out.update(link_provider=r.link_provider, morning_time=r.morning_time, rules=r.rules, country=(r.country or ""),
+                   sector=(r.sector or ""), extra_countries=_j(r.extra_countries or "[]", []))
     out["keys"] = key_status(tenant)
     try:
         from ..helpdesk.service import settings as hs
@@ -186,7 +187,23 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             r.morning_time = str(kw["morning_time"])
         if "rules" in kw:
             r.rules = str(kw["rules"] or "")[:2000]
+        if "country" in kw:
+            c = str(kw["country"] or "").strip().upper()
+            if c and not re.fullmatch(r"[A-Z]{2}", c):
+                raise CyberError("Country is two letters (IN, GB, US, DE ...).")
+            r.country = c
+        if "sector" in kw:
+            r.sector = str(kw["sector"] or "")[:40]
+        if "extra_countries" in kw:
+            r.extra_countries = _dump([c.upper() for c in _list(kw["extra_countries"]) if re.fullmatch(r"[A-Za-z]{2}", c)][:20])
     return {**settings(tenant), "say": "Security rules saved."}
+
+
+def country(tenant: str) -> str:
+    """Her country; empty = India (the engine's original behaviour)."""
+    with session() as s:
+        r = s.get(CyberSettings, tenant)
+        return ((r.country if r else "") or "IN").upper()
 
 
 def set_key(tenant: str, provider: str, token: str, extra: str = "") -> dict:
@@ -256,6 +273,11 @@ def _alert_view(tenant: str, a: CyberAlert, full: bool = False) -> dict:
          "level": a.level, "why": _j(a.why, []), "status": a.status, "first_seen": _iso(a.first_seen), "last_seen": _iso(a.last_seen),
          "last_local": _local(tenant, a.last_seen), "incident_id": a.incident_id, "known_benign": bool(a.rule_id),
          "advice": R.advice(a.kind), "never_mute": a.kind in R.NEVER_MUTE}
+    try:
+        from .program import attack_of
+        v["attack"] = attack_of(a.kind)
+    except Exception:   # noqa: BLE001
+        v["attack"] = {}
     if full:
         v["detail"] = a.detail
     return v
@@ -1094,7 +1116,7 @@ def _inc_view(tenant: str, i: CyberIncident, full: bool = True) -> dict:
         v["cert_in_reported"] = hd.get("reported_at", "")
         from ..helpdesk import rules as HR
         dp = HR.dpdp(i.personal_data, today(tenant))
-        v["dpdp"] = dp
+        v["dpdp"] = dp if country(tenant) == "IN" else {}
         with session() as s:
             v["actions"] = [_act_view(a) for a in s.scalars(select(CyberAction).where(CyberAction.tenant_id == tenant,
                                                                                       CyberAction.incident_id == i.id)).all()]
@@ -1161,7 +1183,7 @@ def new_incident(tenant: str, title: str = "", kind: str = "", alert_ids: list |
         helpdesk_inc = next((s.get(CyberCheck, c).helpdesk_incident for c in ck if s.get(CyberCheck, c) and s.get(CyberCheck, c).helpdesk_incident), "")
         i.helpdesk_incident = helpdesk_inc or ""
         _ = first
-    if clock_start and not helpdesk_inc and k in ("phishing", "malware", "ransomware", "account", "data_leak", "intrusion", "payment", "website"):
+    if clock_start and not helpdesk_inc and country(tenant) == "IN" and k in ("phishing", "malware", "ransomware", "account", "data_leak", "intrusion", "payment", "website"):
         cert_in(tenant, iid, actor=actor, conv=conv, **did)
     v = get_incident(tenant, iid)
     say = f"{v['number']} opened: {v['title']}."
@@ -1169,7 +1191,15 @@ def new_incident(tenant: str, title: str = "", kind: str = "", alert_ids: list |
         say += f" CERT-In 6 hours: deadline {v['cert_in_due']} (the draft is on the IT Helpdesk card)."
     elif v.get("cert_in", {}).get("why"):
         say += " CERT-In: " + v["cert_in"]["why"]
-    if v.get("dpdp"):
+    if country(tenant) != "IN":
+        try:
+            from . import program as P
+            nd = P.notify_plan(tenant, iid)
+            if nd.get("say"):
+                say += " " + nd["say"]
+        except Exception:
+            log.exception("notify plan failed")
+    elif v.get("dpdp"):
         say += " " + v["dpdp"]["say"]
     _publish(tenant, "cyber_incident", {"incident": {k2: v[k2] for k2 in ("id", "number", "title", "kind", "status", "detected_local", "cert_in_due")},
                                         "say": say}, conv)

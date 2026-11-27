@@ -54,7 +54,7 @@ def test_hire_chat_block_and_wiring(dd):
     from app.agent.tools import FAMILY_OF
     assert FAMILY_OF["devops"] in dd.FAMILIES
     for f_ in ("callconv.py", "convs.py"):
-        assert '"devops")' in (root / "server/app" / f_).read_text()
+        assert '"devops"' in (root / "server/app" / f_).read_text()
     from app.main import APP_VERSION, app
     r = TestClient(app).get("/console/devops")
     assert r.status_code == 200 and "Content-Security-Policy" in r.headers and "dvdesk.js" in r.text
