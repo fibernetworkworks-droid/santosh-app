@@ -4063,3 +4063,11 @@ Work Log:
 Stage Summary:
 - clean imports 221 -> 408 of 2,057; 1,904 in the library; tests/test_v0999_264_workflow_library.py (11, incl. a browser walk)
 - NOT VERIFIED on her server
+
+---
+Task ID: route-sending-v0999-278 (built as 0.999.275 - 0.999.277)
+Agent: Claude Code (cloud session)
+Task: make the Route's mails and Telegram / Slack / Discord / Mattermost posts really send (owner: "MAKE THIS FUCTIONAL FOR HOOLA ROUTE")
+Work: route/send.py (Send step, Allow sending bound to destinations, limits, record, Telegram bot start), chat-app sign-in kinds,
+importer + library rebuild (1,920), editor Send group / bar / bot box, 14 tests.
+Not verified: a real bot / workspace / mailbox on her server.

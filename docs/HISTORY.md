@@ -13400,3 +13400,45 @@ Tests `tests/test_gx_desk.py` (4): the path tracer + compare + shader check, the
 store + guards, and a browser walk at 1440 / 390 in which Chromium's WebGL2 (SwiftShader) really compiles the starter shader, sets
 the golden picture, fails the test after a colour change and reports a real compile error.
 NOT VERIFIED: on her server; with renders from her own engine; WGSL / HLSL are checked in code only.
+
+## v0.999.278 SENDING (built as 0.999.275 - 0.999.277; their WORKTREES FOR AGENTS, KERNEL DESK and GRAPHICS DESK took those, all kept)
+
+Owner, on the two limits the workflow library said out loud ("Email: where n8n sent mail straight away, Hoola makes a draft that
+waits for your OK" / "Chat apps: posts to Telegram, Slack, Discord or Mattermost become a message to you in Hoola ... A bot that
+answers other people stays a step to redo"): "MAKE THIS FUCTIONAL FOR HOOLA ROUTE".
+
+The house rule (sending -> her tap) is kept per ROUTE instead of per message:
+- New step type `send` (`server/app/route/send.py`): via email (to, cc, bcc, subject, body, account, markdown) from one of her
+  connected mailboxes (the same mailbox code as a chat-sent mail, no draft card, no undo window); telegram (chat, text, photo by
+  https address, format markdown / html, silent) through her bot; slack (incoming webhook, or a bot token + channel + thread);
+  discord (channel webhook, or a bot token + channel id); mattermost (incoming webhook, or server + bot token + channel id; both
+  SSRF-guarded).
+- New sign-in kinds telegram / slack / discord / mattermost in Sign-ins (`workspace._save_messaging`, `messaging_secret`):
+  sealed, last 4 only, used only by a Send step of that app; a web request step refuses them. Format-checked (bot token shape,
+  hooks.slack.com, discord.com/api/webhooks, https Mattermost). A step with no sign-in named uses her only one of that app (two =
+  "pick one"); a Telegram step uses the route's connected bot.
+- Her tap: GET / POST /api/route/routes/{id}/sending. "Allow sending" is bound to a fingerprint of every Send step's
+  destination (way, sign-in, account, to / cc / bcc / chat / channel as written). New words keep it allowed; a new destination
+  stops sending until she allows again. The page's bar lists what the route sends, asks twice ("Yes, let it send these"), shows
+  sent today / per day, and has Stop sending. Unsaved changes must be saved first.
+- Limits: a test run (editor Test route, Test step, pinned data) sends nothing and shows what it would send; 50 sends a run;
+  sends_per_day per route (default 100, max 2,000, route Settings). Every send (and every refusal) written to route_sends
+  (30 days) with its reason.
+- A Telegram bot starts a route: POST / DELETE /api/route/routes/{id}/bot. The route's start must be its web address; Connect
+  the bot mints a new address and calls Telegram's setWebhook (allowed updates message + callback_query) - the bot's update is
+  {{vars.body}}, a reply goes to {{vars.body.message.chat.id}}. Kept in route_bots (not in settings, which a settings save
+  rewrites). Disconnect calls deleteWebhook. Slack / Discord bots that start a route are NOT built (Slack Events need a URL check
+  answer + signing secret, Discord needs a live gateway connection).
+- Importer: Gmail send / Send Email -> Send step (cc / bcc / html kept; a Gmail draft in n8n stays a draft); Telegram (text,
+  photo by URL, parse mode, silent), Slack (channel id / name / user, words only - blocks said), Discord, Mattermost posts -> Send
+  steps with a check to save / pick the sign-in; Telegram Trigger -> a webhook start read as {{vars.body}} ("Connect the bot"); a
+  workflow with two starts uses the one that has steps after it; a note that nothing goes out until Allow sending. Library index
+  rebuilt: 1,920 workflows (139 run as they are, 266 with checks, 1,515 with steps to redo), 81 left out.
+- Editor: a Send group in Add a step (mail, Telegram, Slack, Discord, Mattermost), a field-by-field panel (Send by switches the
+  fields), the Allow sending bar under the top bar, a Telegram bot box on the web-address start panel, chat-app kinds on the
+  Sign-ins page, sends a day in Settings; the Test route note says Send steps send nothing in a test.
+
+Tests: server/tests/test_v0999_278_sending.py (14): the step's checks, nothing before Allow sending, new words vs a new address,
+a test run, the run / day limits, the sign-ins, each app's request, a refusal written down, two sign-ins need a pick, the bot
+start + its reply through the real webhook path, the importer, the routes, a browser walk (desktop + phone width, the bar, the
+panel, the Sign-ins page). NOT VERIFIED with a real Telegram bot, Slack / Discord / Mattermost workspace or mailbox on her server.
