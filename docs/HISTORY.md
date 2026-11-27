@@ -13067,3 +13067,28 @@ Owner: "IT Admin same as finance desks".
 
 ## v0.999.260 AN AGENT'S OWN MODEL
 (owner: 'Agent model: an agent file can pick its own model in Claude Code ... WORK ON IT SAME AS CLAUDE CODE'): the `model:` line of an agent file (.claude/agents/*.md or a plugin's) is followed like Claude Code - `inherit` or no line = the session's model; `haiku` / `sonnet` / `opus` = that Claude model on whichever brain Hoola Code runs on (Claude: claude-haiku-5-5 ...; through OpenRouter: anthropic/claude-haiku-5.5 ...; a dev_agent_<alias>_<claude|openrouter> setting can change one); a full model id the brain can run; anything else runs on the session's model and the agent's report says why (`subagent.agent_model`). The agent's model is set only while it runs and the coder's own comes back after (an edit agent runs in the coder's thread); on the OpenRouter brain a pinned agent model skips the tier / Box choice for that agent only. The feed says 'on Haiku 5.5' beside the agent, the repo setup lists each agent's model (web + phone). FIXED: when several agents ran in one round, a repo's own EDIT agent could run side by side with others (the one-by-one rule only knew Hoola's built-in agents). 5 tests. NOT VERIFIED: a live agent call on Haiku / Opus on her server.
+
+
+## v0.999.261 PRODUCT MANAGER DESK (owner: "Product manager same as finance desks")
+
+The Product manager (hire key `product`) gets its own desk at /console/product (`prdesk.html/js/css`) with its own chat
+(Conversation kind `product`, `server/app/prchat.py`, routes `/api/prdesk/{chat, chat/new, chat/{conv}/ok, desk, do/{part}}`),
+built on the existing product engine (`server/app/product/`).
+
+- Today: north star, open problems, unscored, publish cards waiting; needs list; highest scores; roadmap vs capacity; problems by source.
+- Backlog: harvest (feedback, support, telecaller), add a problem, paste ideas / competitor notes; each problem opens with its evidence,
+  ideas to solve it, a RICE or ICE score form (her numbers only; the missing number is asked), Kano, place on the roadmap, depends,
+  shipped, merge, drop, write the spec; look-alike pairs with Merge.
+- Roadmap: Now / Next / Later columns with effort against capacity, problems to fix, a suggested plan applied only on her tap, Word /
+  Excel / Markdown files.
+- Specs: stories with Given / When / Then, edge cases, events, open questions, revise, Word / Markdown / .feature files.
+- Releases: notes from her words, shipped items and merged PRs; English plus only the second language she picks; store texts; a
+  publish card (copy / public page / GitHub release) decided by her tap with the card hash; take a page down.
+- KPIs & results: north star + KPIs with readings and a line, shipped items with the 30-day before / after.
+- Settings: product, users, country, money unit, release-note second language, RICE / ICE, cycle, capacity, harvest window, rules;
+  GitHub token only in its own part (sealed, never shown, refused anywhere else).
+- GLOBAL: the engine's prompts no longer say "Indian"; Hinglish notes only by default when the country is India (or when she picks
+  it); no second language is made up without a model; the release check no longer flags the version number itself.
+- Wiring: convs / callconv kinds, santosh block + admission, teamdesks, main page route + mount, v2.js, employees.js.
+- Tests: `server/tests/test_pr_desk.py` (5, incl. a Chromium walk at 1440 and 390 with no sideways scroll); test_tech_product 9/9.
+- NOT VERIFIED on her server.
