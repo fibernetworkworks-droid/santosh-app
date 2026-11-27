@@ -46,6 +46,9 @@
     http: '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
     code: '<path d="M8 8l-4 4 4 4M16 8l4 4-4 4"/>', wait: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', notify: '<path d="M4 5h16v11H9l-5 4z"/>',
     router: '<path d="M4 12h6M10 12l6-6M10 12l6 6M10 12h10"/>', filter: '<path d="M4 5h16l-6 8v6l-4-2v-4z"/>', loop: '<path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18 3v4h-4M6 21v-4h4"/>',
+    subroute: '<rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="13" width="8" height="7" rx="1.5"/><path d="M7 11v4a2 2 0 0 0 2 2h4"/>',
+    stop: '<circle cx="12" cy="12" r="9"/><rect x="9" y="9" width="6" height="6" rx="1"/>',
+    respond: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 6 6v4"/>',
     set: '<path d="M4 7h16M4 12h10M4 17h7"/>', approval: '<path d="M15 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM3 21a8 8 0 0 1 16 0"/>',
     bolt: '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>', cal: '<path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2z"/>',
     hook: '<path d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2"/><path d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06"/><path d="m12 6 3.13 5.73C15.66 12.7 16.9 13 18 13a4 4 0 0 1 0 8"/>',
@@ -76,7 +79,7 @@
   const human = e => S(e).replace(/route '([^']+)': /g, '$1 › ').replace(/step '([^']+)' \([a-z_]+\): /g, (m, id) => id.replace(/_/g, ' ') + ': ')
     .replace(/^([^›:]+): ([^:]+ › )/, '$2');
   const KIND_TILE = {data: 'data', approval: 'warm', notify: 'warm', condition: 'flow', router: 'flow', filter: 'flow', loop: 'flow', wait: 'flow',
-    set: 'data', code: 'data', http: 'core'};
+    subroute: 'flow', stop: 'flow', set: 'data', code: 'data', http: 'core', respond: 'core'};
   function appTile(a, type, op) {
     a = a || {};
     if (a.kind === 'hoola') return `<span class="ap hoola" title="Hoola">${MARK('#FFFFFF')}</span>`;
@@ -240,9 +243,17 @@
     MAIN.innerHTML = `<div class="top"><h1>Needs you</h1></div><p class="lead">Approvals your routes are waiting for, and runs that did not finish. Nothing big runs without your yes.</p>${needsList(sum.needs_you)}`;
   }
 
+  // why a run is waiting, in words (v0.999.239 R4: long waits, a call to its link, another route)
+  function pauseWords(x) {
+    if (x.status !== 'sleeping' && x.status !== 'queued') return '';
+    const t = x.next_wake_at ? at(x.next_wake_at) : '';
+    return {retry: t && 'Trying again at ' + t, sleeping: t && 'Goes on at ' + t,
+      waiting_call: 'Waiting for a call to its resume link' + (t ? ' (until ' + t + ')' : ''),
+      waiting_subroute: 'Waiting for another route to finish'}[x.pause_reason] || '';
+  }
   function runRows(runs, inRoute, empty) {
     if (!runs.length) return `<div class="empty">${empty || 'No runs yet.'}</div>`;
-    const note = x => x.pause_reason === 'retry' && x.next_wake_at ? 'Trying again at ' + at(x.next_wake_at) : human(x.error || '');
+    const note = x => pauseWords(x) || human(x.error || '');
     return `<div class="tw"><table class="rt runs"><thead><tr><th>Status</th>${inRoute ? '<th>Run</th>' : '<th>Route</th>'}<th>Steps done</th><th>Started</th><th>Note</th></tr></thead><tbody>${
       runs.map(x => `<tr><td class="c-on">${runPill(x.status)}</td>
         <td class="c-name"><a class="rn" href="#/run/${enc(x.id)}">${inRoute ? 'Open this run' : esc(nice(x.route))}</a></td>
@@ -274,6 +285,7 @@
           <div class="rh-m">${runPill(x.status)}<span class="mut sm">Started ${esc(at(x.at))}</span></div></div>
         <div class="rh-a">${acts.join('')}</div></div>
       ${x.error ? `<div class="errbox"><b>What happened.</b> ${esc(human(x.error))}${x.pause_reason === 'retry' && x.next_wake_at ? `<br>Hoola will try again at ${esc(at(x.next_wake_at))}.` : ''}</div>` : ''}
+      ${!x.error && pauseWords(x) ? `<div class="okbox">${esc(pauseWords(x))}.</div>` : ''}
       <section class="card"><div class="hd"><h2>Step by step</h2><span class="sp"></span>${sm.wall_ms ? `<span class="mut sm">${(sm.wall_ms / 1000).toFixed(1)} s${sm.cost && sm.cost.calls ? ` · ${sm.cost.calls} AI calls` : ''}</span>` : ''}</div>
         <div class="log">${(x.steps_log || []).map(l => {
           const st = {ok: 'done', error: 'failed', approved: 'done', retry: 'queued', skipped: 'stopped'}[l.status] || l.status;
@@ -305,16 +317,18 @@
   // v0.999.237 ROUTE R3: the data steps (engine type "data", told apart by op)
   const DATAW = {fields: 'Set several fields', sort: 'Sort', limit: 'Limit', dedupe: 'Remove duplicates', aggregate: 'Summarise',
     split: 'Split out a list', compare: 'Compare two lists', keep_fields: 'Keep or drop fields', rename: 'Rename fields',
-    date: 'Date and time', text: 'Text and formats', file: 'Make or read a file', crypto: 'Hash and IDs'};
+    date: 'Date and time', text: 'Text and formats', file: 'Make or read a file', crypto: 'Hash and IDs', merge: 'Merge two lists'};
   const OPIC = {sort: '<path d="M7 4v16M4 17l3 3 3-3M14 6h6M14 12h4M14 18h2"/>', limit: '<path d="M4 6h16M4 12h10M4 18h4"/>',
     dedupe: '<rect x="4" y="4" width="10" height="10" rx="2"/><rect x="10" y="10" width="10" height="10" rx="2"/>',
     aggregate: '<path d="M18 5H6l6 7-6 7h12"/>', split: '<path d="M12 4v6M12 10l-6 10M12 10l6 10"/>',
     compare: '<path d="M8 4v16M16 4v16M4 8h4M16 16h4"/>', keep_fields: '<path d="M4 6h16M4 12h16M4 18h9"/><path d="m15 17 2 2 4-4"/>',
     rename: '<path d="M4 20h4L19 9l-4-4L4 16z"/>', fields: '<path d="M4 7h16M4 12h10M4 17h7"/>',
     date: '<path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2z"/>', text: '<path d="M4 7V5h16v2M12 5v14M9 19h6"/>',
+    merge: '<path d="M6 4v5a5 5 0 0 0 5 5h2M18 4v5a5 5 0 0 1-5 5M12 14v6"/>',
     file: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>', crypto: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'};
   const KIND = {data: 'Data', tool: 'Uses a tool', http: 'Web request', code: 'Code', wait: 'Wait', notify: 'Tell me', approval: 'Ask me first',
-    set: 'Set a value', filter: 'Filter', condition: 'If / else', loop: 'Repeat for each', router: 'Switch'};
+    set: 'Set a value', filter: 'Filter', condition: 'If / else', loop: 'Repeat for each', router: 'Switch',
+    subroute: 'Run another route', stop: 'Stop the run', respond: 'Answer the caller'};
   const DO = {'': 'Stop the run and show me why', break: 'Try again later, then keep it in Incomplete runs', resume: 'Use a value I give and carry on',
     ignore: 'Skip it and carry on', commit: 'Stop here and keep what was done', rollback: 'Stop the run', tell: 'Tell me and stop the run'};
   function fltWords(f) {
@@ -324,11 +338,21 @@
     const r = Array.isArray(f.right) ? f.right.join(' – ') : S(f.right);
     return `${S(f.left).replace(/\{\{\s*|\s*\}\}/g, '') || '…'} ${OPW[f.op] || f.op}${r && !NO_RIGHT.has(f.op) ? ' ' + r : ''}`;
   }
+  const UNITW = {seconds: 'second', minutes: 'minute', hours: 'hour', days: 'day', weeks: 'week'};
+  function waitWords(s) {
+    if (s.for === 'call') return 'until its link is called';
+    if (s.amount !== undefined && s.amount !== '') { const n = S(s.amount), u = UNITW[s.unit || 'minutes'] || S(s.unit); return `${n} ${u}${n === '1' ? '' : 's'}`; }
+    if (s.duration_s) return `${s.duration_s} seconds`;
+    return `until ${S(s.until)}`;
+  }
   function stepWords(s) {
     const t = s.type;
     if (t === 'tool') return s.app && s.app.kind === 'app' ? appName(s.app.slug) : nice(s.name);
     if (t === 'http') return `${S(s.method || 'GET')} ${S(s.url).replace(/^https?:\/\//, '').slice(0, 28)}`;
-    if (t === 'wait') return s.duration_s ? `${s.duration_s} seconds` : `until ${S(s.until)}`;
+    if (t === 'wait') return waitWords(s);
+    if (t === 'subroute') return nice(s.route) + (s.wait === false ? ' (goes on)' : '');
+    if (t === 'stop') return (s.as === 'done' ? 'Ends as done' : 'Ends with an error') + (s.message ? ': ' + S(s.message).slice(0, 30) : '');
+    if (t === 'respond') return `Answers ${S(s.status || 200)}`;
     if (t === 'notify') return S(s.text).slice(0, 40);
     if (t === 'approval') return S(s.question).slice(0, 40);
     if (t === 'set') return S(s.name);
@@ -367,6 +391,8 @@
     ED.saved = snap(); ED.dirty = false;
   }
 
+  // a list of steps inside a step (a web request's / an answer's body is data, not steps)
+  const subOf = (s, k) => Array.isArray(s[k]) && (k !== 'body' || s.type === 'loop') ? s[k] : null;
   // every list of steps by its place: [] = the route, [id,'then'] / [id,'else'] / [id,'body'] / [id,'fallback'] / [id,'routes',i]
   function find(id, list, path) {
     list = list || ED.steps; path = path || [];
@@ -374,7 +400,7 @@
       const s = list[i];
       if (s.id === id) return {step: s, list, i, path};
       const subs = [];
-      for (const k of ['then', 'else', 'body', 'fallback']) if (Array.isArray(s[k])) subs.push([s[k], [s.id, k]]);
+      for (const k of ['then', 'else', 'body', 'fallback']) if (subOf(s, k)) subs.push([s[k], [s.id, k]]);
       (s.routes || []).forEach((rt, j) => subs.push([rt.steps || [], [s.id, 'routes', j]]));
       for (const [l, p] of subs) { const hit = find(id, l, p); if (hit) return hit; }
     }
@@ -387,7 +413,7 @@
     h.step[path[1]] = h.step[path[1]] || []; return h.step[path[1]];
   }
   const allSteps = (list, out) => { out = out || []; (list || ED.steps).forEach(s => { out.push(s);
-    ['then', 'else', 'body', 'fallback'].forEach(k => s[k] && allSteps(s[k], out)); (s.routes || []).forEach(r => allSteps(r.steps, out)); }); return out; };
+    ['then', 'else', 'body', 'fallback'].forEach(k => subOf(s, k) && allSteps(s[k], out)); (s.routes || []).forEach(r => allSteps(r.steps, out)); }); return out; };
   const idsUsed = () => new Set(allSteps().map(s => s.id));
   function freshId(base) {
     let b = S(base).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'step';
@@ -610,7 +636,7 @@
     const h = find(id); if (!h) return;
     before();
     const c = clone(h.step);
-    const re = s => { s.id = freshId(s.id); ['then', 'else', 'body', 'fallback'].forEach(k => (s[k] || []).forEach(re)); (s.routes || []).forEach(r => (r.steps || []).forEach(re)); };
+    const re = s => { s.id = freshId(s.id); ['then', 'else', 'body', 'fallback'].forEach(k => (subOf(s, k) || []).forEach(re)); (s.routes || []).forEach(r => (r.steps || []).forEach(re)); };
     re(c); if (c.label) c.label = c.label + ' (copy)';
     h.list.splice(h.i + 1, 0, c); ED.sel = c.id; changed(false);
   }
@@ -728,6 +754,12 @@
       ['sep', 'Join with', 'plain', 'Like , or a new line']],
     split: [['items', 'The list', 'text', ROWS_HELP], ['field', 'The list inside each item', 'plain', 'Like lines']],
     compare: [['a', 'The old list', 'text'], ['b', 'The new list', 'text'], ['key', 'Match items by field', 'plain', 'Like id or email']],
+    merge: [['mode', 'How', 'sel', [['append', 'One after the other'], ['by_key', 'Match by a field (join)'], ['by_position', 'Side by side, by position'],
+      ['keep_matches', 'Keep items of the first that have a match'], ['keep_non_matches', 'Keep items of the first with no match']]],
+      ['a', 'The first list', 'text', ROWS_HELP], ['b', 'The second list', 'text', ROWS_HELP],
+      ['key', 'Field in the first list', 'plain', 'Like email'], ['key_b', 'Field in the second list', 'plain', 'Empty = the same name'],
+      ['join', 'Keep', 'sel', [['inner', 'Only items found in both'], ['left', 'Every item of the first list'], ['outer', 'Every item of both']]],
+      ['keep', 'Length', 'sel', [['', 'As long as the shorter list'], ['all', 'As long as the longer list']]]],
     keep_fields: [['items', 'The list (or one item)', 'text'], ['fields', 'Fields', 'plain', 'With commas, like name, email'],
       ['mode', 'Keep or drop', 'sel', [['keep', 'Keep only these'], ['drop', 'Drop these']]]],
     rename: [['items', 'The list (or one item)', 'text'], ['map', 'New names (old: new)', 'obj']],
@@ -754,6 +786,8 @@
       title: s => A(s) === 'make_pdf', value: s => A(s) === 'make_pdf', file_id: s => A(s) === 'read'},
     crypto: {value: s => !['uuid', 'random'].includes(A(s)), secret: s => A(s) === 'hmac_sha256', length: s => A(s) === 'random'},
     aggregate: {sep: s => s.how === 'join'},
+    merge: {key: s => ['by_key', 'keep_matches', 'keep_non_matches'].includes(s.mode), key_b: s => ['by_key', 'keep_matches', 'keep_non_matches'].includes(s.mode),
+      join: s => s.mode === 'by_key', keep: s => s.mode === 'by_position'},
   };
   // the live result under a box that holds {{ }} (her route's newest data; nothing runs)
   function previewSoon(el, s) {
@@ -825,8 +859,38 @@
       });
       if (s.op === 'file') parts.push('<p class="mut sm">A file it makes is kept for 24 hours: send it on in a later step (its file id is {{steps.' + esc(s.id) + '.output.file_id}}).</p>');
     } else if (s.type === 'code') parts.push(field('Python', s.code || '', {k: 'code', area: true, mono: true, rows: 10, help: 'Runs in a locked sandbox. Print what you want the next steps to read.'}));
-    else if (s.type === 'wait') { parts.push(field('Seconds to wait', s.duration_s || '', {k: 'duration_s', ref: false, num: true, help: 'Up to 3600, or leave empty and give a time'})); parts.push(field('Or until (HH:MM)', s.until || '', {k: 'until', ref: false, ph: '09:00'})); }
-    else if (s.type === 'loop') parts.push(field('A list to go through', typeof s.items === 'string' ? s.items : JSON.stringify(s.items ?? ''), {k: 'items', mono: true, ph: '{{steps.rows.output}}', help: 'The steps inside run once for every item (up to 50).'}));
+    else if (s.type === 'wait') {
+      const mode = s.for === 'call' ? 'call' : s.until ? 'until' : 'time';
+      parts.push(field('Wait', mode, {k: 'wkind', options: [['time', 'For some time'], ['until', 'Until a moment'], ['call', 'Until its link is called']]}));
+      if (mode === 'time') {
+        const amt = s.amount !== undefined ? s.amount : s.duration_s || '', unit = s.amount !== undefined ? (s.unit || 'minutes') : s.duration_s ? 'seconds' : 'minutes';
+        parts.push(`<div class="two">${field('How long', S(amt), {k: 'wamount', num: true, help: 'Up to 30 days'})}${field('Unit', unit, {k: 'wunit', options: [['seconds', 'Seconds'], ['minutes', 'Minutes'], ['hours', 'Hours'], ['days', 'Days'], ['weeks', 'Weeks']]})}</div>`);
+      } else if (mode === 'until') {
+        parts.push(field('Until', s.until || '', {k: 'until', ph: '09:00 or 2026-12-24 18:00', help: 'A time of day (the next one), or a date and time, in the route\'s time zone. Up to 30 days ahead.'}));
+      } else {
+        parts.push('<p class="mut sm">The run waits until someone calls its link: send {{vars.resume_url}} in an earlier step (an email, a message). What the call sends becomes this step\'s result.</p>');
+        parts.push(`<div class="two">${field('Wait at most (hours)', String(Math.round((s.timeout_s || 86400) / 360) / 10), {k: 'wtimeout', ref: false, num: true, help: 'Up to 720 hours (30 days)'})}${field('If nobody calls', s.on_timeout || 'continue', {k: 'on_timeout', options: [['continue', 'Go on anyway'], ['fail', 'Stop the run with an error']]})}</div>`);
+      }
+    }
+    else if (s.type === 'loop') {
+      parts.push(field('A list to go through', typeof s.items === 'string' ? s.items : JSON.stringify(s.items ?? ''), {k: 'items', mono: true, ph: '{{steps.rows.output}}', help: 'The steps inside run once for every item (up to 1,000), as {{item}}.'}));
+      parts.push(field('Also call each item (optional)', s.as || '', {k: 'loopas', ref: false, mono: true, ph: 'order', help: 'A name, so a loop inside this one can still read it as {{vars.' + (s.as || 'order') + '}}'}));
+    }
+    else if (s.type === 'subroute') {
+      parts.push(field('The route to run', s.route || '', {k: 'route', ref: false, ph: 'name of the route', help: 'One of your routes, by its name. It runs even when it is switched off.'}));
+      parts.push(field('Data it starts with (name: value)', typeof s.vars === 'string' ? s.vars : JSON.stringify(s.vars || {}, null, 2), {k: 'svars', area: true, mono: true, rows: 4, help: 'That route reads them as {{vars.…}}'}));
+      parts.push(field('Then', s.wait === false ? 'no' : 'yes', {k: 'swait', options: [['yes', 'Wait for its result, then go on'], ['no', 'Start it and go straight on']]}));
+      parts.push('<p class="mut sm">Its result: {{steps.' + esc(s.id) + '.output.result}} (its last step) and {{steps.' + esc(s.id) + '.output.vars}}.</p>');
+    }
+    else if (s.type === 'stop') {
+      parts.push(field('End the run', s.as || 'error', {k: 'as', options: [['error', 'As an error (it shows as failed)'], ['done', 'As done (nothing went wrong)']]}));
+      parts.push(field('Message', s.message || '', {k: 'message', area: true, help: 'Shown in the run and sent to you.'}));
+    }
+    else if (s.type === 'respond') {
+      parts.push('<p class="mut sm">When an app starts this route through its webhook, it gets this answer (it waits up to 25 seconds). The route goes on after answering.</p>');
+      parts.push(field('Status', S(s.status ?? 200), {k: 'status', num: true, help: '200 = OK, 201 = made, 400 = wrong data'}));
+      parts.push(field('Answer', typeof s.body === 'string' ? s.body : JSON.stringify(s.body ?? {}, null, 2), {k: 'body', area: true, mono: true, rows: 5}));
+    }
     else if (s.type === 'condition' || s.type === 'filter') {
       parts.push(`<div class="psub">${s.type === 'filter' ? 'Goes on only when' : 'Takes “If yes” when'}</div>`);
       parts.push(filterRows(s.filter || (s.op ? {left: s.left, op: s.op, right: s.right} : null), 'main'));
@@ -869,7 +933,16 @@
       else if (k === 'argsjson') { try { const o = v.trim() ? JSON.parse(v) : {}; const known = new Set(((TOOLS[s.name] || {}).fields || []).map(f => f.name));
         Object.keys(s.args || {}).forEach(x => { if (!known.has(x)) delete s.args[x]; }); s.args = Object.assign(s.args || {}, o); el.classList.remove('err'); } catch { el.classList.add('err'); return; } }
       else if (k === 'label') { if (v.trim()) s.label = v; else delete s.label; }
-      else if (k === 'duration_s') { if (v.trim()) s.duration_s = Math.max(1, Math.min(3600, parseInt(v, 10) || 0)); else delete s.duration_s; }
+      else if (k === 'duration_s') { if (v.trim()) s.duration_s = Math.max(1, Math.min(2592000, parseInt(v, 10) || 0)); else delete s.duration_s; }
+      else if (k === 'wkind') { ['for', 'timeout_s', 'on_timeout', 'until', 'amount', 'unit', 'duration_s'].forEach(x => delete s[x]);
+        if (v === 'call') { s.for = 'call'; s.timeout_s = 86400; } else if (v === 'until') s.until = '09:00'; else { s.amount = 10; s.unit = 'minutes'; } }
+      else if (k === 'wamount') { delete s.duration_s; const n = Number(v); s.amount = v.includes('{{') || isNaN(n) || v.trim() === '' ? v : n; s.unit = s.unit || 'minutes'; }
+      else if (k === 'wunit') { if (s.amount === undefined) { s.amount = s.duration_s || 1; delete s.duration_s; } s.unit = v; }
+      else if (k === 'wtimeout') { s.timeout_s = Math.max(60, Math.min(2592000, Math.round((Number(v) || 24) * 3600))); }
+      else if (k === 'loopas') { if (v.trim()) s.as = v.trim(); else delete s.as; }
+      else if (k === 'svars') { try { s.vars = v.trim() ? JSON.parse(v) : {}; el.classList.remove('err'); } catch { el.classList.add('err'); return; } }
+      else if (k === 'swait') { if (v === 'no') s.wait = false; else delete s.wait; }
+      else if (k === 'status') { const n = Number(v); s.status = v.includes('{{') || isNaN(n) ? v : n; }
       else if (k === 'until') { if (v.trim()) s.until = v.trim(); else delete s.until; }
       else if (k === 'value' || k === 'items') s[k] = v;
       else if (k === 'body') { try { s.body = v.trim() ? JSON.parse(v) : {}; } catch { s.body = v; } }
@@ -883,7 +956,7 @@
       else if (k.startsWith('dobj:')) { try { s[k.slice(5)] = v.trim() ? JSON.parse(v) : {}; el.classList.remove('err'); } catch { el.classList.add('err'); return; } }
       else s[k] = v;
       ED.dirty = snap() !== ED.saved; draw(); topState();
-      if (['method', 'oe_do', 'd:action', 'd:how', 'd:mode'].includes(k)) stepPanel(box.parentNode);
+      if (['method', 'oe_do', 'd:action', 'd:how', 'd:mode', 'wkind'].includes(k)) stepPanel(box.parentNode);
       if (el.tagName !== 'SELECT') previewSoon(el, s);
     };
     box.addEventListener('input', e => { if (e.target.dataset.k && e.target.tagName !== 'SELECT') apply(e.target); else if (e.target.closest('.fgroup')) applyFilter(e.target); });
@@ -1097,7 +1170,7 @@
   }
   function showChanges(was) {
     const box = $('#askChange'); if (!box || !was) return;
-    const idx = l => { const o = {}; const w = x => (x || []).forEach(s => { o[s.id] = s; ['then', 'else', 'body', 'fallback'].forEach(k => w(s[k])); (s.routes || []).forEach(r => w(r.steps)); }); w(l); return o; };
+    const idx = l => { const o = {}; const w = x => (x || []).forEach(s => { o[s.id] = s; ['then', 'else', 'body', 'fallback'].forEach(k => w(subOf(s, k))); (s.routes || []).forEach(r => w(r.steps)); }); w(l); return o; };
     const strip = s => { const c = Object.assign({}, s); delete c.app; ['then', 'else', 'body', 'fallback', 'routes'].forEach(k => delete c[k]); return JSON.stringify(c); };
     const A = idx(was.steps), B = idx(ED.steps), rows = [];
     Object.keys(B).forEach(k => { if (!A[k]) rows.push(['+', titleOfStep(B[k])]); else if (strip(A[k]) !== strip(B[k])) rows.push(['~', titleOfStep(B[k])]); });
@@ -1250,7 +1323,7 @@
       return;
     }
     const h = find(ED.modal); if (!h) return;
-    const s = h.step, decides = ['condition', 'router', 'loop', 'filter', 'approval', 'wait'].includes(s.type);
+    const s = h.step, decides = ['condition', 'router', 'loop', 'filter', 'approval', 'wait', 'stop', 'respond'].includes(s.type);
     const pinned = d.pins && d.pins[s.id] !== undefined;
     const res = ED.stepRes && ED.stepRes.id === s.id ? ED.stepRes : null;
     const lg = (d.log || {})[s.id];
@@ -1299,7 +1372,7 @@
   async function testStep(sure) {
     if (!ED || !ED.modal || ED.modal === 'trigger') return;
     const h = find(ED.modal); if (!h) return;
-    const real = !['condition', 'router', 'loop', 'filter', 'approval', 'wait'].includes(h.step.type);
+    const real = !['condition', 'router', 'loop', 'filter', 'approval', 'wait', 'stop', 'respond'].includes(h.step.type);
     if (real && !sure && !ED.realOk) { ED.realAsk = h.step.id; modalOut(); return; }
     if (ED.dirty && !(await save())) return;
     const b = $('#smTest'); if (b) { b.disabled = true; b.innerHTML = `<span class="dots"><i></i><i></i><i></i></span>Testing`; }

@@ -924,7 +924,7 @@ class Settings(BaseSettings):
     scrape_crawl_keep_days: int = 7        # v0.486 finished crawl jobs (and their pages) older than this are forgotten
     dhara_enabled: bool = True             # v0.502 DHARA - her workflows (the n8n lane: save/run/schedule/webhook)
     dhara_max_steps: int = 40              # v0.502 top-level steps per workflow (dhara_save clamps)
-    dhara_loop_max: int = 50               # v0.502 iterations per loop step
+    dhara_loop_max: int = 1000             # v0.502 iterations per loop step (v0.999.239: 50 -> 1000)
     dhara_run_timeout_s: int = 600         # v0.502 one run's wall clock cap
     dhara_max_running: int = 1             # v0.502 runs executing at once, per tenant (politeness first)
     dhara_stale_s: int = 180               # v0.502 a running run without a write this long is resumed from its checkpoint

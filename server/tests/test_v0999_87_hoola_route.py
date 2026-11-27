@@ -137,11 +137,13 @@ def test_router_validation(bz):
         _run(D.dhara_save(CTX, name="bad_router", steps=[{"id": "r", "type": "router", "routes": []}]))
     with pytest.raises(ToolError):
         _run(D.dhara_save(CTX, name="bad_router2", steps=[{"id": "r", "type": "router", "routes": [{"label": "x", "steps": []}]}]))
-    nested = [{"id": "r", "type": "router", "routes": [{"label": "x", "steps": [
-        {"id": "r_in", "type": "router", "routes": [{"label": "y", "steps": [{"id": "z", "type": "set", "name": "z", "value": 1}]}]}]}]}]
+    # v0.999.239 ROUTE R4: routers nest up to three levels; a fourth level is refused
+    leaf = [{"id": "z", "type": "set", "name": "z", "value": 1}]
+    for i in range(4):
+        leaf = [{"id": f"r{i}", "type": "router", "routes": [{"label": "x", "steps": leaf}]}]
     with pytest.raises(ToolError) as e:
-        _run(D.dhara_save(CTX, name="nested_router", steps=nested))
-    assert "one level" in str(e.value)
+        _run(D.dhara_save(CTX, name="nested_router", steps=leaf))
+    assert "3 levels" in str(e.value)
 
 
 def test_filter_step_ends_the_run_cleanly(bz):
@@ -200,7 +202,7 @@ def test_retried_router_never_reruns_a_finished_step(bz, monkeypatch):
         {"id": "send", "type": "tool", "name": "route_test_counter"},
         {**FAIL, "id": "sheet", "on_error": {"do": "break", "retries": 1, "wait_min": 1}}]}]}]
     r = _go("no_double_send", steps)
-    assert r["status"] == "sleeping" and len(calls) == 1 and "rt#0/send" in r["context"]["_done"]
+    assert r["status"] == "sleeping" and len(calls) == 1 and "/rt#0/send" in r["context"]["_done"]
     r = _again(r)
     assert len(calls) == 1, "the message step ran twice on a retry"
     assert r["status"] == "incomplete"

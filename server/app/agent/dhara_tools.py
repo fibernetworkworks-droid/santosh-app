@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import hmac
 import json
 import re
 import secrets
@@ -61,8 +62,17 @@ def _masked(v: Any) -> Any:
 
 _IST = ZoneInfo("Asia/Kolkata")
 _MAX_STEPS = 40          # top-level steps per workflow (config clamps around this)
-_MAX_DEPTH = 1           # condition/loop bodies nest exactly one level
-_LOOP_MAX = 50           # iterations per loop step
+_MAX_DEPTH = 3           # v0.999.239 ROUTE R4: branches / loops nest up to three levels (was one)
+_LOOP_MAX = 1000         # v0.999.239 iterations per loop step (was 50); the run's time limit still applies
+_LOOP_HARD = 5000        # a setting can raise the loop cap only this far
+_SUB_DEPTH = 3           # v0.999.239 a sub-route may start a sub-route, at most 3 deep
+_WAIT_MAX_S = 30 * 86400 # v0.999.239 the longest wait: 30 days (was one hour)
+_WAIT_UNITS = {"seconds": 1, "minutes": 60, "hours": 3600, "days": 86400, "weeks": 7 * 86400}
+_RESPOND_WAIT_S = 25     # a webhook caller waits this long for a Respond step
+_RESPOND_MAX = 100_000   # one response body cap
+_CONTAINERS = ("condition", "router", "loop")
+_SIGNALS = ("__PARK__", "__APPROVE__", "__END__", "__HALT__")
+_RESPONSES: dict[str, dict] = {}   # run id -> the Respond step's answer (the webhook caller waits on it)
 _NOTIFY_MAX = 5          # notify steps that may fire per run
 _GRAPH_CHARS = 64_000    # serialized steps cap
 _EXPR_CHARS = 2_000      # one expression cap
@@ -74,7 +84,7 @@ _RUNNING: set[str] = set()
 _TASKS: set["asyncio.Task"] = set()
 
 _STEP_TYPES = ("tool", "code", "condition", "loop", "wait", "notify", "approval", "set", "http",
-               "router", "filter", "data")      # v0.999.87 HOOLA ROUTE: a router with named routes + a filter gate
+               "router", "filter", "data", "subroute", "stop", "respond")      # v0.999.87 HOOLA ROUTE: a router with named routes + a filter gate
 _COND_OPS = ("eq", "ne", "gt", "lt", "contains", "empty")
 # v0.999.87 HOOLA ROUTE filter language (the Make / n8n filter idea, own code): one condition is
 # {left, op, right, ci?}; groups are {"all": [...]} (AND) / {"any": [...]} (OR), nested up to _FILTER_DEPTH.
@@ -352,6 +362,8 @@ def _walk_steps(steps: list, depth: int = 0) -> "list[tuple[dict, int]]":
         out.append((s, depth))
         for key in ("then", "else", "body", "fallback"):
             sub = s.get(key)
+            if key == "body" and str(s.get("type") or "") != "loop":
+                continue        # v0.999.239: a web request's / an answer's body is data, not steps
             if sub:
                 out.extend(_walk_steps(sub, depth + 1))
         for rt in (s.get("routes") or []) if isinstance(s.get("routes"), list) else []:
@@ -429,7 +441,7 @@ def validate_steps(steps: list) -> list[dict]:
     seen: set[str] = set()
     for st_, depth in _walk_steps(top):
         if depth > _MAX_DEPTH:
-            raise ToolError("Steps inside a condition/loop can go only one level deep (nesting cap 1)")
+            raise ToolError(f"Steps inside branches and loops can go only {_MAX_DEPTH} levels deep")
         sid = str(st_.get("id") or "").strip()
         typ = str(st_.get("type") or "").strip().lower()
         if not sid or not _PATH_RE.match(sid):
@@ -460,9 +472,26 @@ def validate_steps(steps: list) -> list[dict]:
                 raise ToolError(f"Step '{sid}': give a loop a list of body steps")
             if "items" not in st_:
                 raise ToolError(f"Step '{sid}': a loop needs items (an expression that gives a list)")
+            if st_.get("as") not in (None, "") and not _PATH_RE.match(str(st_["as"])):
+                raise ToolError(f"Step '{sid}': as must be a short name (lowercase_with_underscores)")
         elif typ == "wait":
-            if not st_.get("duration_s") and not st_.get("until"):
-                raise ToolError(f"Step '{sid}': give wait a duration_s (<= 3600) or until 'HH:MM'")
+            _validate_wait(st_, sid)
+        elif typ == "subroute":
+            if not str(st_.get("route") or "").strip():
+                raise ToolError(f"Step '{sid}': a sub-route step needs the name of the route to run")
+            if st_.get("vars") not in (None, "") and not isinstance(st_.get("vars"), (dict, str)):
+                raise ToolError(f"Step '{sid}': vars must be an object of name: value")
+        elif typ == "stop":
+            if str(st_.get("as") or "error") not in ("error", "done"):
+                raise ToolError(f"Step '{sid}': stop as must be error or done")
+        elif typ == "respond":
+            stc = st_.get("status", 200)
+            if not isinstance(stc, str) or "{{" not in stc:
+                try:
+                    if not 100 <= int(stc) <= 599:
+                        raise ValueError
+                except (TypeError, ValueError):
+                    raise ToolError(f"Step '{sid}': respond status must be an HTTP code 100-599")
         elif typ == "notify":
             if not str(st_.get("text") or "").strip():
                 raise ToolError(f"Step '{sid}': notify needs text")
@@ -530,6 +559,87 @@ def validate_steps(steps: list) -> list[dict]:
                 _exprs(v)
     _ = loop_max  # loop iteration cap lives in the engine (a graph cannot exceed it anyway)
     return top
+
+
+def _validate_wait(st_: dict, sid: str) -> None:
+    """v0.999.239 ROUTE R4: a wait is some time (duration_s, or amount + unit, up to 30 days), until a moment
+    (HH:MM or a date and time, in the route's time zone), or until someone calls the run's resume link."""
+    if str(st_.get("for") or "") == "call":
+        t = st_.get("timeout_s", 86400)
+        try:
+            if not 60 <= int(t) <= _WAIT_MAX_S:
+                raise ValueError
+        except (TypeError, ValueError):
+            raise ToolError(f"Step '{sid}': a wait for a call needs timeout_s from 60 seconds to 30 days")
+        if str(st_.get("on_timeout") or "continue") not in ("continue", "fail"):
+            raise ToolError(f"Step '{sid}': on_timeout must be continue or fail")
+        return
+    if st_.get("for") not in (None, ""):
+        raise ToolError(f"Step '{sid}': wait for can only be call")
+    if st_.get("amount") not in (None, ""):
+        if str(st_.get("unit") or "minutes") not in _WAIT_UNITS:
+            raise ToolError(f"Step '{sid}': unit must be one of: {', '.join(_WAIT_UNITS)}")
+        a = st_["amount"]
+        if not (isinstance(a, str) and "{{" in a):
+            try:
+                if float(a) * _WAIT_UNITS[str(st_.get("unit") or "minutes")] > _WAIT_MAX_S or float(a) < 0:
+                    raise ValueError
+            except (TypeError, ValueError):
+                raise ToolError(f"Step '{sid}': a wait can be up to 30 days")
+        return
+    d = st_.get("duration_s")
+    if d not in (None, "", 0):
+        if not (isinstance(d, str) and "{{" in d):
+            try:
+                if not 0 < int(d) <= _WAIT_MAX_S:
+                    raise ValueError
+            except (TypeError, ValueError):
+                raise ToolError(f"Step '{sid}': duration_s must be 1 second to 30 days ({_WAIT_MAX_S})")
+        return
+    u = str(st_.get("until") or "").strip()
+    if not u:
+        raise ToolError(f"Step '{sid}': give wait a duration_s, an amount and unit, until 'HH:MM' or a date and "
+                        "time, or for: call")
+    if "{{" not in u and _hm(u) is None:
+        try:
+            datetime.fromisoformat(u.replace(" ", "T"))
+        except ValueError:
+            raise ToolError(f"Step '{sid}': until must be 'HH:MM' or 'YYYY-MM-DD HH:MM'")
+
+
+def _wait_secs(step: dict, ctx: dict) -> int:
+    """How long a wait step waits from now (0 = a moment already past: go straight on)."""
+    if step.get("amount") not in (None, ""):
+        try:
+            a = float(resolve(step.get("amount"), ctx) or 0)
+        except (TypeError, ValueError):
+            raise ToolError("the wait amount is not a number with this data")
+        return int(max(0, min(a * _WAIT_UNITS.get(str(step.get("unit") or "minutes"), 60), _WAIT_MAX_S)))
+    dur = step.get("duration_s")
+    if dur not in (None, "", 0):
+        try:
+            return int(max(0, min(float(resolve(dur, ctx) or 0), _WAIT_MAX_S)))
+        except (TypeError, ValueError):
+            raise ToolError("the wait time is not a number with this data")
+    tz = _tzinfo(str(ctx.get("_tz") or ""))
+    now_i = datetime.now(tz)
+    u = str(resolve(step.get("until") or "", ctx) or "").strip()
+    hm = _hm(u)
+    if hm is not None:
+        target = now_i.replace(hour=hm[0], minute=hm[1], second=0, microsecond=0)
+        if target <= now_i:
+            target += timedelta(days=1)
+    else:
+        try:
+            target = datetime.fromisoformat(u.replace(" ", "T").replace("Z", "+00:00"))
+        except ValueError:
+            raise ToolError(f"'{u[:40]}' is not a time (HH:MM) or a date and time")
+        if target.tzinfo is None:
+            target = target.replace(tzinfo=tz)
+    secs = int((target - now_i).total_seconds())
+    if secs > _WAIT_MAX_S:
+        raise ToolError("that moment is more than 30 days away - a wait can be up to 30 days")
+    return max(0, secs)
 
 
 # --------------------------------------------------------------------------- expressions (safe, never eval)
@@ -762,6 +872,9 @@ def _log_step(run: dict, step_id: str, typ: str, status: str, ms: int, output: A
 
 
 def _save_checkpoint(tenant_id: str, run: dict) -> None:
+    seg = (run.get("context") or {}).get("_seg")    # v0.999.239 the run's working time (waits do not count)
+    if isinstance(seg, list) and len(seg) == 2:
+        run["context"]["_active_s"] = float(seg[1]) + max(0.0, time.time() - float(seg[0]))
     update_run(tenant_id, run["id"], cursor=run["cursor"], context=run["context"],
                steps_log=run["steps_log"], status=run["status"], error=run.get("error") or "",
                next_wake_at=run.get("next_wake_at"), pause_reason=run.get("pause_reason"))
@@ -798,20 +911,66 @@ def _due_park(tenant_id: str, run: dict, run_id: str, note: str) -> dict:
     return run
 
 
+def _pruned(ctx: dict, sid: str) -> None:
+    """A top-level step finished: forget the done marks and decisions of the steps inside it."""
+    pre = f"/{sid}"
+    inside = lambda k: k.startswith(pre) and k[len(pre):len(pre) + 1] in (":", "#", "@", "/")
+    if isinstance(ctx.get("_done"), list):
+        ctx["_done"] = [m for m in ctx["_done"] if not inside(m)]
+    for key in ("_dec", "_subs"):
+        if isinstance(ctx.get(key), dict):
+            ctx[key] = {k: v for k, v in ctx[key].items() if not inside(k)}
+
+
+def _keep_going(tenant_id: str, run_id: str, ctx: dict) -> str:
+    """Inside a long branch or loop: save progress every few seconds (a restart picks up from here) and notice
+    a stop she asked for. Returns an error word or ''."""
+    dl = ctx.get("_deadline")
+    if dl and time.time() > float(dl):
+        return "the run passed its time limit"
+    if not run_id or run_id == "step-test" or time.time() - float(ctx.get("_saved_at") or 0) < 3:
+        return ""
+    ctx["_saved_at"] = time.time()
+    try:
+        r = get_run(tenant_id, run_id)
+        if r is not None and r.get("status") == "stopped":
+            return "__HALT__"
+        if r is not None:
+            update_run(tenant_id, run_id, context=ctx)
+    except Exception:   # noqa: BLE001  (saving is a help, never a reason to fail)
+        pass
+    return ""
+
+
 async def _exec_sublist(tenant_id: str, conv: str, sublist: list, ctx: dict, run_id: str,
-                        soft_parent: bool, done_key: str = "") -> tuple[bool, str]:
+                        soft_parent: bool, scope: str = "") -> tuple[bool, str]:
     """Condition/loop/route bodies: run their steps inline (atomic with the parent step). Returns (ok, error).
     v0.999.87: a step's own on_error ignore / resume is handled here; any other on_error rides up to the
-    top-level step (ctx['_sub_on_error']). With done_key (router routes) a step that already finished in an
-    earlier attempt of this run is NOT run again when the router is retried."""
-    done = ctx.setdefault("_done", []) if done_key else None
+    top-level step (ctx['_sub_on_error']).
+    v0.999.239 ROUTE R4: every finished step leaves a done mark under its scope (the path of the branches and
+    loop rounds above it), so a pause anywhere inside (a wait, an approval, a sub-route still running) parks the
+    whole run and the resume - or a retry - picks up at the same step; a finished step never runs twice. A
+    pause comes back as (True, signal)."""
+    done = ctx.setdefault("_done", [])
     for sub in _flat_steps(sublist):
-        mark = f"{done_key}/{sub.get('id')}" if done_key else ""
-        if done is not None and mark in done:
+        mark = f"{scope}/{sub.get('id')}"
+        if mark in done:
             continue
-        ok, out, err = await _exec_one(tenant_id, conv, sub, ctx, run_id)
-        if err == "__STOP__":           # a filter inside a route closes just that route
+        why = _keep_going(tenant_id, run_id, ctx)
+        if why == "__HALT__":
+            return True, "__HALT__"
+        if why:
+            return False, why
+        ok, out, err = await _exec_one(tenant_id, conv, sub, ctx, run_id, scope=scope)
+        if err == "__STOP__":           # a filter inside a branch closes just that branch (or loop round)
             return True, "__STOP__"
+        if err in _SIGNALS:
+            if err == "__PARK__" and ctx.pop("_park_done", False):
+                done.append(mark)       # the wait IS this step doing its job: the resume goes on after it
+            elif err == "__APPROVE__" and sub.get("type") == "approval":
+                ctx["_wait_mark"] = mark
+                ctx["_wait_q"] = str(resolve(sub.get("question") or "", ctx))[:400]
+            return True, err
         if not ok:
             oe = sub.get("on_error") or {}
             if oe.get("do") == "ignore":
@@ -821,18 +980,21 @@ async def _exec_sublist(tenant_id: str, conv: str, sublist: list, ctx: dict, run
                 ok = True
             elif soft_parent or sub.get("soft"):
                 _log_step({"steps_log": []}, sub.get("id", "?"), sub.get("type", "?"), "error", 0, error=err)
+                done.append(mark)
                 continue
             else:
                 if oe:
                     ctx["_sub_on_error"] = {**oe, "step": str(sub.get("id"))}
                 return False, f"step '{sub.get('id')}' ({sub.get('type')}): {err}"
-        if done is not None and ok:
+        if ok:
             done.append(mark)
     return True, ""
 
 
-async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: str) -> tuple[bool, Any, str]:
-    """One step. Returns (ok, output, error). ctx mutates: ctx['steps'][id]['output'] = output."""
+async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: str,
+                    scope: str = "") -> tuple[bool, Any, str]:
+    """One step. Returns (ok, output, error). ctx mutates: ctx['steps'][id]['output'] = output.
+    scope = the path of the branches / loop rounds this step sits in ('' at the top)."""
     from ..config import get_settings
     s = get_settings()
     sid, typ = str(step.get("id")), str(step.get("type"))
@@ -840,9 +1002,13 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
     # v0.999.234 ROUTE R2: in a test run from the editor, a step with pinned data uses it instead of running
     # (her pinned output; never on a real run - only the editor's test puts _pins in the context)
     pins = ctx.get("_pins")
-    if isinstance(pins, dict) and sid in pins and typ not in ("condition", "router", "loop", "filter", "approval", "wait"):
+    if isinstance(pins, dict) and sid in pins and typ not in ("condition", "router", "loop", "filter", "approval", "wait",
+                                                              "stop", "respond"):
         ctx.setdefault("steps", {})[sid] = {"output": pins[sid]}
         return True, pins[sid], ""
+    base = f"{scope}/{sid}"
+    dec = ctx.setdefault("_dec", {})
+    done = ctx.setdefault("_done", [])
     try:
         if typ == "tool":
             from .tools import HANDLERS
@@ -866,16 +1032,22 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
                 return False, res, str(why)[:300]
             return True, res, ""
         if typ == "condition":
-            if step.get("filter") is not None:           # v0.999.87 the full filter language
+            if base in dec:                              # v0.999.239 a resumed branch takes the same way
+                passed = bool(dec[base])
+            elif step.get("filter") is not None:         # v0.999.87 the full filter language
                 passed = eval_filter(step["filter"], ctx)
             else:
                 passed = _cmp(resolve(step.get("left"), ctx), str(step.get("op")), resolve(step.get("right"), ctx))
+            dec[base] = bool(passed)
             branch = step.get("then") if passed else step.get("else")
             if not isinstance(branch, list):
                 return True, {"branch": "skipped (no steps)"}, ""
-            ok, err = await _exec_sublist(tenant_id, conv, branch, ctx, run_id, bool(step.get("soft")))
+            ok, err = await _exec_sublist(tenant_id, conv, branch, ctx, run_id, bool(step.get("soft")),
+                                          scope=base + (":then" if passed else ":else"))
             if not ok:
                 return False, None, err
+            if err in _SIGNALS:
+                return True, None, err
             ctx["steps"][sid] = {"output": {"branch": "then" if passed else "else"}}
             return True, ctx["steps"][sid]["output"], ""
         if typ == "filter":
@@ -885,62 +1057,118 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
         if typ == "router":
             # Every route whose filter passes runs, in order (a route without a filter always runs); the
             # fallback runs only when no filtered route passed. Each route is atomic with the router step.
+            # v0.999.239: the ways are decided once (a resumed router takes the same ways); a finished way
+            # never runs again when the router is resumed or retried.
+            routes = step.get("routes") or []
+            if base in dec and isinstance(dec[base], list):
+                plan = dec[base]
+            else:
+                plan, matched = [], False
+                for i, rt in enumerate(routes):
+                    has_filter = rt.get("filter") is not None
+                    if has_filter and not eval_filter(rt["filter"], ctx):
+                        continue
+                    matched = matched or has_filter
+                    plan.append(i)
+                if not matched and isinstance(step.get("fallback"), list) and step.get("fallback"):
+                    plan.append("fallback")
+                dec[base] = plan
             taken: list[str] = []
-            matched = False
-            for i, rt in enumerate(step.get("routes") or []):
-                label = str(rt.get("label") or f"route {i + 1}")
-                has_filter = rt.get("filter") is not None
-                if has_filter and not eval_filter(rt["filter"], ctx):
+            for i in plan:
+                fb = i == "fallback"
+                if not fb and not (isinstance(i, int) and 0 <= i < len(routes)):
                     continue
-                matched = matched or has_filter
-                ok, err = await _exec_sublist(tenant_id, conv, rt.get("steps") or [], ctx, run_id,
-                                              bool(step.get("soft")), done_key=f"{sid}#{i}")
-                if not ok:
-                    return False, None, f"route '{label}': {err}"
+                label = "fallback" if fb else str(routes[i].get("label") or f"route {i + 1}")
+                rmark = f"{base}#{i}"
+                if rmark not in done:
+                    ok, err = await _exec_sublist(tenant_id, conv, (step.get("fallback") if fb else routes[i].get("steps")) or [],
+                                                  ctx, run_id, bool(step.get("soft")), scope=rmark)
+                    if not ok:
+                        return False, None, (f"fallback route: {err}" if fb else f"route '{label}': {err}")
+                    if err in _SIGNALS:
+                        return True, None, err
+                    done.append(rmark)
                 taken.append(label)
-            if not matched and isinstance(step.get("fallback"), list) and step.get("fallback"):
-                ok, err = await _exec_sublist(tenant_id, conv, step["fallback"], ctx, run_id,
-                                              bool(step.get("soft")), done_key=f"{sid}#fallback")
-                if not ok:
-                    return False, None, f"fallback route: {err}"
-                taken.append("fallback")
             ctx["steps"][sid] = {"output": {"routes": taken}}
             return True, {"routes": taken}, ""
         if typ == "loop":
-            items = resolve(step.get("items"), ctx)
-            if not isinstance(items, list):
-                return False, None, "the loop items did not give a list"
-            cap = int(getattr(s, "dhara_loop_max", _LOOP_MAX))
-            if len(items) > cap:
-                return False, None, f"loop items {len(items)} > cap {cap}"
-            results = []
-            for item in items[:cap]:
+            if base in dec and isinstance(dec[base], list):
+                items = dec[base]                        # v0.999.239 a resumed loop goes on with the same list
+            else:
+                items = resolve(step.get("items"), ctx)
+                if not isinstance(items, list):
+                    return False, None, "the loop items did not give a list"
+                cap = min(int(getattr(s, "dhara_loop_max", _LOOP_MAX)), _LOOP_HARD)
+                if len(items) > cap:
+                    return False, None, f"the list has {len(items)} items - a loop can go through up to {cap}"
+                dec[base] = items
+            prev, name_as = ctx.get("item"), str(step.get("as") or "")
+            count = 0
+            for i, item in enumerate(items):
+                imark = f"{base}@{i}"
+                if imark in done:
+                    count += 1
+                    continue
                 ctx["item"] = item
+                if name_as:
+                    ctx["vars"][name_as] = item
                 ok, err = await _exec_sublist(tenant_id, conv, step.get("body") or [], ctx, run_id,
-                                              bool(step.get("soft")))
+                                              bool(step.get("soft")), scope=imark)
                 if not ok:
                     return False, None, err
-                results.append(item)
-            ctx["item"] = None
-            ctx["steps"][sid] = {"output": {"iterations": len(results)}}
+                if err in _SIGNALS:
+                    return True, None, err
+                done.append(imark)
+                count += 1
+            ctx["item"] = prev                          # a loop inside a loop gives the outer item back
+            ctx["steps"][sid] = {"output": {"iterations": count}}
             return True, ctx["steps"][sid]["output"], ""
         if typ == "wait":
-            dur = step.get("duration_s")
-            if dur:
-                secs = min(int(resolve(dur, ctx) or 0), 3600)
-            else:
-                hh, mm = str(step.get("until") or "00:00").split(":")[:2]
-                now_i = datetime.now(_IST)
-                target = now_i.replace(hour=int(hh) % 24, minute=int(mm) % 60, second=0, microsecond=0)
-                if target <= now_i:
-                    target += timedelta(days=1)
-                secs = int((target - now_i).total_seconds())
+            if str(step.get("for") or "") == "call":     # v0.999.239 wait until someone calls the resume link
+                return _wait_call(step, ctx, sid, base, run_id)
+            secs = _wait_secs(step, ctx)
             if secs > 5 and not step.get("_test_now"):
                 run_ref = ctx.setdefault("_run", {})
                 run_ref["next_wake_at"] = time.time() + secs
+                ctx["_park_done"] = True                 # the wait IS the step doing its job
+                ctx["_pause"] = "sleeping"
                 return True, {"wait_s": secs}, "__PARK__"
-            await asyncio.sleep(min(secs, 5))
+            if secs > 0:
+                await asyncio.sleep(min(secs, 5))
             return True, {"wait_s": secs}, ""
+        if typ == "subroute":                            # v0.999.239 run another route
+            return await _subroute(tenant_id, step, ctx, sid, base, run_id)
+        if typ == "stop":                                # v0.999.239 end the run here, as an error or as done
+            how = "done" if str(step.get("as") or "error") == "done" else "error"
+            msg = str(resolve(step.get("message") or "", ctx) or "")[:500]
+            ctx["_end"] = {"as": how, "message": msg, "step": sid}
+            ctx["steps"][sid] = {"output": {"stopped": how, "message": msg}}
+            return True, ctx["steps"][sid]["output"], "__END__"
+        if typ == "respond":                             # v0.999.239 answer the webhook caller
+            try:
+                code = int(resolve(step.get("status", 200), ctx) or 200)
+            except (TypeError, ValueError):
+                return False, None, "the answer's status is not a number"
+            if not 100 <= code <= 599:
+                return False, None, "the answer's status must be 100-599"
+            body = resolve(step.get("body"), ctx)
+            try:
+                size = len(json.dumps(body, ensure_ascii=False, default=str))
+            except Exception:   # noqa: BLE001
+                body, size = str(body), len(str(body))
+            if size > _RESPOND_MAX:
+                return False, None, f"the answer is too big ({size} characters; up to {_RESPOND_MAX})"
+            ans = {"status": code, "body": body}
+            if not ctx.get("_response"):                 # the first answer is the one the caller gets
+                ctx["_response"] = ans
+                if run_id and run_id != "step-test" and ctx.get("_caller_waits"):
+                    _RESPONSES[run_id] = ans
+                    try:
+                        update_run(tenant_id, run_id, context=ctx)
+                    except Exception:   # noqa: BLE001
+                        pass
+            ctx["steps"][sid] = {"output": {"answered": code}}
+            return True, ctx["steps"][sid]["output"], ""
         if typ == "notify":
             n_max = _NOTIFY_MAX
             if ctx.get("notify", 0) >= n_max:
@@ -975,6 +1203,161 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
         return False, None, f"{type(e).__name__}: {e}"
     finally:
         _ = t0  # timing is taken by the caller for the log row
+
+
+def _wait_call(step: dict, ctx: dict, sid: str, base: str, run_id: str) -> tuple[bool, Any, str]:
+    """v0.999.239 ROUTE R4: park until someone calls the run's resume link ({{vars.resume_url}}) or the time
+    runs out. The call's data becomes this step's output."""
+    if run_id == "step-test":
+        return True, {"would_wait": "for a call to the run's resume link"}, ""
+    w = ctx.get("_call")
+    if isinstance(w, dict) and w.get("mark") == base:
+        if "body" in w:
+            ctx.pop("_call", None)
+            out = {"called": True, "body": w["body"]}
+            ctx["steps"][sid] = {"output": out}
+            return True, out, ""
+        if time.time() >= float(w.get("until") or 0):
+            ctx.pop("_call", None)
+            if str(step.get("on_timeout") or "continue") == "fail":
+                return False, None, "nobody called the resume link in time"
+            out = {"called": False, "timed_out": True}
+            ctx["steps"][sid] = {"output": out}
+            return True, out, ""
+    else:
+        try:
+            t = max(60, min(int(step.get("timeout_s") or 86400), _WAIT_MAX_S))
+        except (TypeError, ValueError):
+            t = 86400
+        w = {"mark": base, "until": time.time() + t}
+        ctx["_call"] = w
+    ctx.setdefault("_run", {})["next_wake_at"] = float(w["until"])
+    ctx["_pause"] = "waiting_call"
+    return True, {"waiting_for_call": True}, "__PARK__"
+
+
+def _resume_link(ctx: dict, run_id: str) -> None:
+    """The run's resume link, made once per run: {{vars.resume_url}} (send it, then wait for a call)."""
+    if ctx.get("_resume_h") or not run_id or run_id == "step-test":
+        return
+    from ..config import get_settings
+    secret = secrets.token_urlsafe(18)
+    ctx["_resume_h"] = hashlib.sha256(secret.encode()).hexdigest()
+    root = str(getattr(get_settings(), "public_base_url", "") or "").rstrip("/")
+    ctx.setdefault("vars", {})["resume_url"] = f"{root}/api/dhara/resume/{run_id}.{secret}"
+
+
+def _has_call_wait(steps: list) -> bool:
+    try:
+        return any(st.get("type") == "wait" and str(st.get("for") or "") == "call" for st, _ in _walk_steps(steps))
+    except ToolError:
+        return False
+
+
+def resume_call(token: str, body: Any) -> dict:
+    """POST /api/dhara/resume/{run}.{secret}: the call a 'wait for a call' step waits for. Never raises."""
+    rid, _, secret = str(token or "").partition(".")
+    if not re.fullmatch(r"rn_[0-9a-f]{12}", rid) or not secret:
+        return {"ok": False, "status": 404, "error": "This link is not valid"}
+    root = Path("data") / "dhara"
+    for p in sorted(root.glob("*/dhara.db")) if root.is_dir() else []:
+        tenant = p.parent.name
+        r = get_run(tenant, rid)
+        if r is None:
+            continue
+        c = r.get("context") or {}
+        if not hmac.compare_digest(str(c.get("_resume_h") or ""), hashlib.sha256(secret.encode()).hexdigest()):
+            return {"ok": False, "status": 404, "error": "This link is not valid"}
+        w = c.get("_call")
+        if r.get("status") != "sleeping" or not isinstance(w, dict):
+            return {"ok": False, "status": 409, "error": "This route is not waiting for a call now"}
+        if "body" in w:
+            return {"ok": False, "status": 409, "error": "This call was already received"}
+        w["body"] = body
+        update_run(tenant, rid, status="queued", next_wake_at=None, pause_reason=None, context=c)
+        return {"ok": True, "status": 200, "run_id": rid, "tenant": tenant}
+    return {"ok": False, "status": 404, "error": "This link is not valid"}
+
+
+async def resume_call_and_go(token: str, body: Any) -> dict:
+    out = await asyncio.to_thread(resume_call, token, body)
+    if out.get("ok"):
+        _start_now(out["tenant"], out["run_id"])
+    out.pop("tenant", None)
+    return out
+
+
+def _start_now(tenant_id: str, run_id: str) -> bool:
+    from ..config import get_settings
+    if _claim(tenant_id, run_id, int(getattr(get_settings(), "dhara_tries", 3)) + 1):
+        t = asyncio.ensure_future(execute_run(tenant_id, run_id))
+        _TASKS.add(t)
+        t.add_done_callback(lambda _t: _TASKS.discard(_t))
+        return True
+    return False
+
+
+async def _subroute(tenant_id: str, step: dict, ctx: dict, sid: str, base: str, run_id: str) -> tuple[bool, Any, str]:
+    """v0.999.239 ROUTE R4: run another of her routes with the data given. wait (the default) = this run goes
+    on with the other route's result; if the other route pauses (a wait, an approval), this run waits too and
+    looks again every 30 seconds. wait=false = start it and go straight on. Up to 3 deep, never a loop."""
+    subs = ctx.setdefault("_subs", {})
+    cid = subs.get(base)
+    wait = step.get("wait", True) not in (False, "false", "no", 0)
+    if not cid:
+        name = str(resolve(step.get("route"), ctx) or "").strip().lower().replace(" ", "_")
+        wf = get_workflow(tenant_id, name=name)
+        if wf is None:
+            return False, None, f"there is no route named '{name}'"
+        chain = [str(x) for x in (ctx.get("_chain") or [])] + ([str(ctx["_route"])] if ctx.get("_route") else [])
+        if wf["name"] in chain:
+            return False, None, "a route cannot start itself (directly or through other routes)"
+        depth = int(ctx.get("_depth") or 0) + 1
+        if depth > _SUB_DEPTH:
+            return False, None, f"sub-routes can go only {_SUB_DEPTH} deep"
+        vars_ = resolve(step.get("vars") or {}, ctx)
+        if isinstance(vars_, str):
+            try:
+                vars_ = json.loads(vars_)
+            except ValueError:
+                vars_ = None
+        if not isinstance(vars_, dict):
+            return False, None, "the data for the sub-route must be an object of name: value"
+        cid = create_run(tenant_id, wf, vars_=vars_)
+        c = get_run(tenant_id, cid)["context"]
+        c.update({"_parent": run_id, "_depth": depth, "_chain": chain})
+        if not wait:
+            update_run(tenant_id, cid, context=c)
+            out = {"run_id": cid, "route": wf["name"], "started": True}
+            ctx["steps"][sid] = {"output": out}
+            return True, out, ""
+        subs[base] = cid
+        update_run(tenant_id, cid, context=c, status="running")
+        from ..config import get_settings
+        await _execute_run(tenant_id, cid, get_settings(), {})
+    child = get_run(tenant_id, cid)
+    if child is None:
+        subs.pop(base, None)
+        return False, None, "the sub-route's run is gone"
+    st = child.get("status")
+    if st == "done":
+        subs.pop(base, None)
+        cc = child.get("context") or {}
+        outs = [x.get("output") for x in (cc.get("steps") or {}).values() if isinstance(x, dict)]
+        end = cc.get("_end") or {}
+        out = {"run_id": cid, "route": child.get("wf_name"), "status": "done",
+               "vars": {k: v for k, v in (cc.get("vars") or {}).items() if not str(k).startswith("_") and k != "resume_url"},
+               "result": outs[-1] if outs else None}
+        if end.get("message"):
+            out["message"] = end["message"]
+        ctx["steps"][sid] = {"output": out}
+        return True, out, ""
+    if st in ("failed", "stopped", "incomplete"):
+        subs.pop(base, None)
+        return False, None, f"the route '{child.get('wf_name')}' did not finish: {str(child.get('error') or st)[:300]}"
+    ctx.setdefault("_run", {})["next_wake_at"] = time.time() + 30
+    ctx["_pause"] = "waiting_subroute"
+    return True, {"waiting_for": cid}, "__PARK__"
 
 
 async def _http_step(tenant_id: str, step: dict, ctx: dict) -> dict:
@@ -1053,22 +1436,39 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
         steps = _flat_steps(wf["steps"])
         timeout_s = int(getattr(s, "dhara_run_timeout_s", 600))
         update_run(tenant_id, run_id, status="running")
+        # v0.999.239 ROUTE R4: the time limit counts working time only (a wait of days does not use it up)
+        used = float(ctx.get("_active_s") or 0)
+        ctx["_seg"] = [time.time(), used]
+        ctx["_deadline"] = time.time() + max(0.0, timeout_s - used)
+        ctx["_tz"] = str((wf.get("settings") or {}).get("timezone") or "")
+        ctx["_route"] = wf["name"]
+        if _has_call_wait(wf["steps"]):
+            _resume_link(ctx, run_id)
+        child = bool(ctx.get("_parent"))
         err = ""
         while run["cursor"] < len(steps):
-            if time.time() - float(run["started_at"]) > timeout_s:
-                err = f"run wall-clock cap ({timeout_s}s) passed — stopped"
+            if time.time() > float(ctx["_deadline"]):
+                err = f"run wall-clock cap ({timeout_s}s of working time; waits do not count) passed — stopped"
                 break
+            if run["cursor"] and (get_run(tenant_id, run_id) or {}).get("status") == "stopped":
+                return                                  # she stopped it between two steps
             step = steps[run["cursor"]]
             t0 = time.time()
             ok, out, serr = await _exec_one(tenant_id, conv, step, ctx, run_id)
             ms = int((time.time() - t0) * 1000)
+            if serr == "__HALT__":
+                return
             if serr == "__PARK__":
+                done_now = bool(ctx.pop("_park_done", False))
+                why = str(ctx.pop("_pause", "") or "sleeping")
                 _log_step(run, step["id"], step["type"], "sleeping", ms, output=out, version=int(step.get("v") or 1))
                 run["status"] = "sleeping"
-                run["pause_reason"] = "sleeping"          # v0.512: the typed pause reason (Dify's PauseReason idea)
+                run["pause_reason"] = why                 # v0.512: the typed pause reason (Dify's PauseReason idea)
                 run["next_wake_at"] = ctx.get("_run", {}).get("next_wake_at")
-                run["cursor"] += 1  # the wait IS the step doing its job; the wake resumes AFTER it
-                _save_checkpoint(tenant_id, run)
+                if done_now:            # a top-level wait IS the step doing its job; the wake resumes AFTER it
+                    _pruned(ctx, step["id"])
+                    run["cursor"] += 1
+                _save_checkpoint(tenant_id, run)          # a pause inside a branch keeps the cursor: it resumes there
                 return
             if serr == "__APPROVE__":
                 _log_step(run, step["id"], step["type"], "waiting_approval", ms, version=int(step.get("v") or 1))
@@ -1076,9 +1476,23 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
                 run["pause_reason"] = "waiting_approval"  # v0.512: typed, not implied
                 _save_checkpoint(tenant_id, run)
                 hrs = int(getattr(s, "dhara_approval_hours", 24))
-                _notify(conv, f'DHARA "{wf["name"]}" (run {run_id}) is waiting: {str(step.get("question") or "shall I go ahead?")} '
+                q = ctx.get("_wait_q") if ctx.get("_wait_mark") else str(resolve(step.get("question") or "", ctx))
+                _notify(conv, f'DHARA "{wf["name"]}" (run {run_id}) is waiting: {str(q or "shall I go ahead?")} '
                               f'Reply "yes" in the chat (or "stop" to cancel) within {hrs} hours.')
                 return
+            if serr == "__END__":
+                end = ctx.get("_end") or {}
+                _log_step(run, step["id"], step["type"], "stopped", ms, output=out, version=int(step.get("v") or 1))
+                run["cursor"] = len(steps)
+                if end.get("as") == "done":
+                    _save_checkpoint(tenant_id, run)
+                    _finish(tenant_id, run_id, run, len(steps), "done", "", acc)
+                    if end.get("message") and not child:
+                        _notify(conv, f'Route "{wf["name"]}" ended early (run {run_id}): {end["message"][:300]}')
+                    _after_run(tenant_id, wf, "done", "", run_id)
+                    return
+                err = f"stopped by step '{end.get('step') or step['id']}': {end.get('message') or 'stop with an error'}"
+                break
             if serr == "__STOP__":
                 # v0.999.87 a filter step that did not pass: the run ends cleanly here (not an error)
                 _log_step(run, step["id"], step["type"], "filtered", ms, output=out, version=int(step.get("v") or 1))
@@ -1092,8 +1506,10 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
                       version=int(step.get("v") or 1))
             if ok:
                 ctx.pop("_retries_" + str(step["id"]), None)
+                _pruned(ctx, step["id"])
                 run["cursor"] += 1
             elif step.get("soft"):
+                _pruned(ctx, step["id"])
                 run["cursor"] += 1
             else:
                 # v0.999.87 HOOLA ROUTE: the step's error directive decides (a step inside a route may carry its own)
@@ -1101,10 +1517,12 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
                 do = str(oe.get("do") or "")
                 if do == "ignore":
                     run["steps_log"][-1]["status"] = "ignored"
+                    _pruned(ctx, step["id"])
                     run["cursor"] += 1
                 elif do == "resume":
                     ctx["steps"][str(oe.get("step") or step["id"])] = {"output": resolve(oe.get("value"), ctx)}
                     run["steps_log"][-1]["status"] = "resumed"
+                    _pruned(ctx, step["id"])
                     run["cursor"] += 1
                 elif do == "commit":
                     run["steps_log"][-1]["status"] = "committed"
@@ -1151,8 +1569,9 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
         if run["cursor"] >= len(steps) and not err:
             _save_checkpoint(tenant_id, run)
             _finish(tenant_id, run_id, run, len(steps), "done", "", acc)
-            _notify(conv, f'DHARA "{wf["name"]}" is complete ({len(steps)} steps, run {run_id}).'
-                    f'{" (from a missed schedule) " if run.get("missed") else ""}')
+            if not child:                                  # a sub-route's result goes to the route that started it
+                _notify(conv, f'DHARA "{wf["name"]}" is complete ({len(steps)} steps, run {run_id}).'
+                        f'{" (from a missed schedule) " if run.get("missed") else ""}')
             _after_run(tenant_id, wf, "done", "", run_id)
         else:
             run["status"] = "failed"
@@ -1607,7 +2026,47 @@ def webhook_enqueue(token: str, body: dict) -> dict:
     if _over_daily_cap(tenant, wf):
         return {"ok": False, "status": 429, "error": "this route reached its runs-per-day limit"}
     rid = create_run(tenant, wf, vars_={"body": body})
-    return {"ok": True, "status": 202, "run_id": rid, "workflow": wf["name"]}
+    answers = _has_respond(wf.get("steps") or [])
+    if answers:                       # v0.999.239 the caller waits for the route's Respond step
+        c = get_run(tenant, rid)["context"]
+        c["_caller_waits"] = True
+        update_run(tenant, rid, context=c)
+    return {"ok": True, "status": 202, "run_id": rid, "workflow": wf["name"], "tenant": tenant, "answers": answers}
+
+
+def _has_respond(steps: list) -> bool:
+    try:
+        return any(st.get("type") == "respond" for st, _ in _walk_steps(steps))
+    except ToolError:
+        return False
+
+
+async def webhook_call(token: str, body: dict) -> dict:
+    """v0.999.239 ROUTE R4: the webhook. A route with a Respond step starts at once and the caller gets that
+    step's answer (status + body) - or, after 25 seconds, a note that it is still working."""
+    out = await asyncio.to_thread(webhook_enqueue, token, body)
+    tenant, rid = out.pop("tenant", ""), out.get("run_id")
+    if not out.get("ok") or not out.pop("answers", False):
+        out.pop("answers", None)
+        return out
+    _start_now(tenant, rid)
+    t_end = time.time() + _RESPOND_WAIT_S
+    while time.time() < t_end:
+        ans = _RESPONSES.pop(rid, None)
+        if ans is None:
+            r = await asyncio.to_thread(get_run, tenant, rid)
+            if r is not None:
+                ans = (r.get("context") or {}).get("_response")
+                if ans is None and r.get("status") in ("done", "failed", "stopped", "incomplete", "sleeping",
+                                                       "waiting_approval"):
+                    return {**out, "status": 200 if r.get("status") == "done" else 202,
+                            "note": "The route ran but did not send an answer" if r.get("status") == "done"
+                            else "The route is still going (it paused before its answer)"}
+        if ans is not None:
+            _RESPONSES.pop(rid, None)
+            return {**out, "status": int(ans.get("status") or 200), "answer": ans.get("body"), "answered": True}
+        await asyncio.sleep(0.25)
+    return {**out, "status": 202, "note": "The route is still working; it did not answer within 25 seconds"}
 
 
 # --------------------------------------------------------------------------- tools
@@ -1757,9 +2216,16 @@ async def dhara_control(ctx: Ctx, action, name="", workflow_id="", run_id="", **
             return {"run_id": r["id"], "status": r["status"], "note": "This run was not waiting for approval"}
         # her haan = the gate is passed: the cursor moves PAST the approval step, else the resumed run
         # would hit the same gate and park forever (the resume executes from the checkpoint).
-        r["steps_log"].append({"id": str(r["cursor"]), "type": "approval", "status": "approved", "at": time.strftime("%H:%M:%S")})
-        update_run(ctx.tenant_id, r["id"], status="queued", tries=0,
-                   cursor=int(r["cursor"]) + 1, steps_log=r["steps_log"], pause_reason=None)
+        # v0.999.239: an approval inside a branch / loop is marked done instead and the run resumes inside it.
+        c = r.get("context") or {}
+        mark = c.pop("_wait_mark", None)
+        c.pop("_wait_q", None)
+        r["steps_log"].append({"id": str(mark or r["cursor"]), "type": "approval", "status": "approved",
+                               "at": time.strftime("%H:%M:%S")})
+        if mark:
+            c.setdefault("_done", []).append(mark)
+        update_run(ctx.tenant_id, r["id"], status="queued", tries=0, context=c,
+                   cursor=int(r["cursor"]) + (0 if mark else 1), steps_log=r["steps_log"], pause_reason=None)
         t = asyncio.ensure_future(execute_run(ctx.tenant_id, r["id"]))
         _TASKS.add(t)
         t.add_done_callback(lambda _t: _TASKS.discard(_t))
@@ -1906,7 +2372,7 @@ DHARA_TOOLS = [
         "Create or update one of her WORKFLOWS (v0.502, the n8n idea house-sized): a named, saved graph of steps "
         "that runs on a trigger without anyone asking again. Steps (max 40): tool (ANY registered tool by name + args), "
         "code (python in the pylab sandbox), condition (left/op/right with then/else), loop (items + body, cap 50), "
-        "wait (duration_s / until HH:MM), notify (a chat line to her), approval (pauses until SHE says yes), set (a "
+        "wait (duration_s / until HH:MM; see below), notify (a chat line to her), approval (pauses until SHE says yes), set (a "
         "variable), http (SSRF-guarded GET/POST). Expressions like {{steps.get_data.output.total}} / {{vars.x}} / "
         "{{item}} / {{now}}. Triggers: manual | schedule | webhook (token minted once). Validate-first: unknown step "
         "types / caps / unsafe names are refused with the exact problem. "
@@ -1932,7 +2398,16 @@ DHARA_TOOLS = [
         "{{ steps.x.output.total * 1.18 }}, {{ round(vars.a / 3, 2) }}, {{ 'big' if vars.amount > 5000 else 'small' }}, "
         "upper lower title trim len count replace split join slice contains starts_with ends_with text num int round abs "
         "floor ceil min max sum avg default json parse_json keys values first last sort unique pluck get now today "
-        "date_add date_diff date_format to_date; lists by index {{ vars.rows[0].name }}."),
+        "date_add date_diff date_format to_date; lists by index {{ vars.rows[0].name }}. "
+        "v0.999.239 adds FLOW steps: merge (data op) {a, b, mode append|by_key|by_position|keep_matches|keep_non_matches, "
+        "key, key_b, join inner|left|outer}; subroute {route: '<another route name>', vars {..}, wait true|false} -> "
+        "{{steps.x.output.result}} (its last step) and .vars (up to 3 deep, never itself); stop {as error|done, message} "
+        "ends the run; respond {status, body} answers the app that called the webhook (it waits up to 25 s); wait {amount, "
+        "unit seconds|minutes|hours|days|weeks} up to 30 days, or until 'HH:MM' / 'YYYY-MM-DD HH:MM' in the route's time "
+        "zone, or {for: call, timeout_s, on_timeout continue|fail} = wait until someone calls {{vars.resume_url}} (send "
+        "that link in an earlier step; the call's data is the step's output). Approvals and waits work anywhere, also "
+        "inside branches and loops. Loops take up to 1,000 items (as: '<name>' keeps the item as {{vars.<name>}} for a "
+        "loop inside it); branches and loops nest up to 3 levels."),
      "input_schema": {"type": "object", "properties": {
          "name": {"type": "string", "description": "lowercase_with_underscores, unique, e.g. daily_morning_notice_check"},
          "steps": {"type": "array", "description": "The steps: [{id, type, ...}] — see the tool guide for each type's fields"},

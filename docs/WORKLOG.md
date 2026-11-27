@@ -3943,3 +3943,16 @@ Work Log:
 
 Stage Summary:
 - v0.999.237; deploy with Actions > VPS ops > deploy. R4 (flow steps) next on her word.
+
+---
+Task ID: route-flow-r4
+Agent: main
+Task: Hoola Route R4 - flow steps (owner: "GO R4")
+
+Work Log:
+- Fixed nested pauses (approval / wait inside branches and loops) with scoped done marks + remembered decisions.
+- merge, subroute, stop, respond, 30-day waits, wait for a call (resume link), 1,000-item loops, nesting 3; editor forms.
+- Renumbered 238 -> 239 (main moved to the Public Finance desk).
+
+Stage Summary:
+- v0.999.239; deploy with Actions > VPS ops > deploy. R5 (triggers) next on her word.

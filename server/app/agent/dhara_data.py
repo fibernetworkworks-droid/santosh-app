@@ -375,7 +375,10 @@ def check(src: str) -> str:
 
 
 # ---------------------------------------------------------------- the data step
-OPS = ("sort", "limit", "dedupe", "aggregate", "split", "compare", "keep_fields", "rename", "fields", "date", "text", "file", "crypto")
+OPS = ("sort", "limit", "dedupe", "aggregate", "split", "compare", "keep_fields", "rename", "fields", "date", "text", "file", "crypto",
+       "merge")
+MERGE_MODES = ("append", "by_key", "by_position", "keep_matches", "keep_non_matches")   # v0.999.239 ROUTE R4
+MERGE_JOINS = ("inner", "left", "outer")
 TEXT_ACTIONS = ("html_text", "html_select", "xml_to_data", "csv_to_rows", "rows_to_csv", "json_parse", "json_text",
                 "base64_encode", "base64_decode", "url_encode", "url_decode")
 FILE_ACTIONS = ("make_csv", "make_xlsx", "make_pdf", "read")
@@ -391,7 +394,8 @@ def validate(step: dict, sid: str) -> None:
         raise ToolError(f"Step '{sid}': a data step needs op = one of: {', '.join(OPS)}")
     need = {"sort": ("items",), "limit": ("items",), "dedupe": ("items",), "aggregate": ("items",), "split": ("items", "field"),
             "compare": ("a", "b"), "keep_fields": ("items", "fields"), "rename": ("items", "map"), "fields": ("values",),
-            "date": ("action",), "text": ("action", "value"), "file": ("action",), "crypto": ("action",)}[op]
+            "date": ("action",), "text": ("action", "value"), "file": ("action",), "crypto": ("action",),
+            "merge": ("a", "b")}[op]
     for k in need:
         if step.get(k) in (None, "", [], {}):
             raise ToolError(f"Step '{sid}': {op} needs {k}")
@@ -399,6 +403,14 @@ def validate(step: dict, sid: str) -> None:
     for o, allowed in (("text", TEXT_ACTIONS), ("file", FILE_ACTIONS), ("crypto", CRYPTO_ACTIONS), ("date", DATE_ACTIONS)):
         if op == o and act not in allowed:
             raise ToolError(f"Step '{sid}': {op} action must be one of: {', '.join(allowed)}")
+    if op == "merge":
+        mode = str(step.get("mode") or "append")
+        if mode not in MERGE_MODES:
+            raise ToolError(f"Step '{sid}': merge mode must be one of: {', '.join(MERGE_MODES)}")
+        if mode in ("by_key", "keep_matches", "keep_non_matches") and not str(step.get("key") or "").strip():
+            raise ToolError(f"Step '{sid}': merging {mode.replace('_', ' ')} needs the key field")
+        if str(step.get("join") or "inner") not in MERGE_JOINS:
+            raise ToolError(f"Step '{sid}': join must be one of: {', '.join(MERGE_JOINS)}")
     if op == "aggregate" and str(step.get("how") or "count") not in HOW:
         raise ToolError(f"Step '{sid}': how must be one of: {', '.join(HOW)}")
     if op in ("fields", "rename") and not isinstance(step.get("values" if op == "fields" else "map"), (dict, str)):
@@ -592,6 +604,53 @@ def _text(step: dict, R) -> Any:
     raise ExprError("Unknown text action")
 
 
+def _merge(step: dict, R) -> list:
+    """v0.999.239 ROUTE R4: two lists into one - one after the other, matched by a field (like a join),
+    side by side by position, or keep only the rows of the first list that do (not) have a match."""
+    a, b = _list(R(step.get("a")), "The first list"), _list(R(step.get("b")), "The second list")
+    mode = str(step.get("mode") or "append")
+    mix = lambda x, y: ({**x, **y} if isinstance(x, dict) and isinstance(y, dict)
+                        else {"first": x, "second": y})
+    if mode == "append":
+        out = a + b
+    elif mode == "by_position":
+        n = max(len(a), len(b)) if str(step.get("keep") or "") == "all" else min(len(a), len(b))
+        out = [mix(a[i] if i < len(a) else {}, b[i] if i < len(b) else {}) for i in range(n)]
+    else:
+        ka = str(R(step.get("key")) or "")
+        kb = str(R(step.get("key_b")) or "") or ka
+        jk = lambda v: json.dumps(v, sort_keys=True, default=str)
+        index: dict[str, list] = {}
+        for y in b:
+            v = _get(y, kb)
+            if v not in (None, ""):
+                index.setdefault(jk(v), []).append(y)
+        has = lambda x: _get(x, ka) not in (None, "") and jk(_get(x, ka)) in index
+        if mode == "keep_matches":
+            out = [x for x in a if has(x)]
+        elif mode == "keep_non_matches":
+            out = [x for x in a if not has(x)]
+        else:
+            join, out, used = str(step.get("join") or "inner"), [], set()
+            for x in a:
+                v = _get(x, ka)
+                key = jk(v) if v not in (None, "") else None
+                if key is not None and key in index:
+                    used.add(key)
+                    out.extend(mix(x, y) for y in index[key])
+                elif join in ("left", "outer"):
+                    out.append(x)
+                if len(out) > LIST_MAX:
+                    break
+            if join == "outer":
+                for key, ys in index.items():
+                    if key not in used:
+                        out.extend(ys)
+    if len(out) > LIST_MAX:
+        raise ExprError(f"More than {LIST_MAX} items")
+    return out
+
+
 def run(tenant: str, step: dict, ctx: dict, resolve) -> Any:
     """One data step. `resolve` is the engine's own resolve (expressions included)."""
     R = (lambda v: resolve(v, ctx))
@@ -639,6 +698,8 @@ def run(tenant: str, step: dict, ctx: dict, resolve) -> Any:
             same = [kb[k] for k in kb if k in ka and ka[k] == kb[k]]
             return {"added": added, "removed": removed, "changed": changed, "same": same,
                     "counts": {"added": len(added), "removed": len(removed), "changed": len(changed), "same": len(same)}}
+        if op == "merge":
+            return _merge(step, R)
         if op == "keep_fields":
             fs = _fields_list(R(step.get("fields")))
             drop = str(step.get("mode") or "keep") == "drop"

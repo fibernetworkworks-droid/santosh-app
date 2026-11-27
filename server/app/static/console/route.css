@@ -163,6 +163,7 @@ select{height:36px;border:1px solid var(--line);border-radius:10px;background:va
 .rh-m{display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap}
 .rh-a{display:flex;gap:8px;flex-wrap:wrap}
 .errbox{border:1px solid var(--badl);background:var(--bads);color:var(--badt);border-radius:12px;padding:12px 16px;font-size:14px;line-height:1.5}
+.okbox{border:1px solid var(--line);background:var(--soft);border-radius:12px;padding:12px 16px;font-size:14px;line-height:1.5;color:var(--ink)}
 .errt{color:var(--badt);margin-top:4px}
 .log{display:flex;flex-direction:column}
 .lrow{display:flex;gap:14px;padding:12px 0;border-top:1px solid var(--line)}
