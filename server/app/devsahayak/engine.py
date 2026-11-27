@@ -1755,15 +1755,16 @@ def her_blocks(tools: Any, ses: Any, words: str, emit: Any) -> str:
     conf = getattr(tools, "conf", {}) or {}
     if not ses.msg_path.is_file() and RC.hooks_for(conf, "SessionStart"):
         said = run_hooks(tools, "SessionStart", emit=emit)
-        if said.get("text"):
-            parts.append("<session_start_hook>\n" + said["text"][:6000] + "\n</session_start_hook>")
+        if said.get("context"):
+            parts.append("<session_start_hook>\n" + said["context"][:6000] + "\n</session_start_hook>")
     if RC.hooks_for(conf, "UserPromptSubmit"):
         said = run_hooks(tools, "UserPromptSubmit", prompt=words, emit=emit)
-        if said.get("block"):
-            parts.append("<hook_refused>This repo's UserPromptSubmit hook refused her message:\n" + said["text"][:4000]
+        if said.get("block") or said.get("stop"):
+            why = said.get("text") or said.get("stop_reason") or "(no reason given)"
+            parts.append("<hook_refused>This repo's UserPromptSubmit hook refused her message:\n" + why[:4000]
                          + "\nDo NOT do the request. Call done and tell her what the hook said.</hook_refused>")
-        elif said.get("text"):
-            parts.append("<prompt_hook>\n" + said["text"][:6000] + "\n</prompt_hook>")
+        elif said.get("context"):
+            parts.append("<prompt_hook>\n" + said["context"][:6000] + "\n</prompt_hook>")
     body = ""
     if re.match(r"^\s*/security-review\b", words or ""):
         parts.append(SECURITY_REVIEW)
@@ -1801,7 +1802,10 @@ def notify_hook(tools: Any, ask: dict[str, Any]) -> None:
 def run_hooks(tools: Any, event: str, tool: str = "", inp: dict[str, Any] | None = None, out: str = "", prompt: str = "",
               emit: Any = None) -> dict[str, Any]:
     """Run the repo's hook commands for one event IN THE LOCKED BOX (no network, no secret), the event as JSON on
-    stdin. {block: an exit code 2, text: what they printed}. A hook that cannot run never stops the work."""
+    stdin, and read their answers like Claude Code (`repoconf.hook_answer`): exit 2 + stderr, or JSON on stdout
+    (allow / deny / ask a step, a changed input, notes for the model, stop the session, a message for her).
+    {block, text, decision, reason, updated, context, stop, stop_reason, message}. A hook that cannot run never stops
+    the work."""
     from . import repoconf as RC
     cmds = RC.hooks_for(getattr(tools, "conf", {}) or {}, event, tool)
     if not cmds:
@@ -1816,25 +1820,50 @@ def run_hooks(tools: Any, event: str, tool: str = "", inp: dict[str, Any] | None
     from ..devlab import box
     payload = json.dumps(RC.hook_input(event, getattr(tools, "tid", "") or str(tools.s.tid), tool, inp, out, prompt), default=str)
     end = "HOOLA_HOOK_" + _uuid.uuid4().hex
-    texts, block = [], False
+    sep = "HOOLA_HOOK_ERR_" + _uuid.uuid4().hex             # stdout (JSON) and stderr (a block's reason) kept apart
+    said: dict[str, Any] = {"block": False, "text": "", "decision": "", "reason": "", "updated": None, "context": "",
+                            "stop": False, "stop_reason": "", "message": ""}
+    texts, ctxs, msgs, shown, rank = [], [], [], [], {"": 0, "allow": 1, "ask": 2, "deny": 3}
     for cmd, lim in cmds:
-        shell = f"cd {box.WORK}; cat > /tmp/hook_in.json <<'{end}'\n{payload}\n{end}\n( {cmd}\n) < /tmp/hook_in.json"
+        shell = (f"cd {box.WORK}; cat > /tmp/hook_in.json <<'{end}'\n{payload}\n{end}\n"
+                 f"( {cmd}\n) < /tmp/hook_in.json > /tmp/hook_out 2> /tmp/hook_err; rc=$?; cat /tmp/hook_out; "
+                 f"printf '\\n{sep}\\n'; cat /tmp/hook_err; exit $rc")
         try:
             r = box.run_in(img, str(tools.s.repo), shell, timeout=lim, network=False, env=getattr(tools, "env", None) or None)
         except Exception as e:  # noqa: BLE001
             log.info("hoola code hook %s failed: %s", event, e)
             continue
-        txt = scrub(str(r.get("out") or "")).strip()
-        if r.get("rc") == 2:
-            block = True
-        if txt:
-            texts.append(txt[-4000:])
+        raw = str(r.get("out") or "")
+        so, _, se = raw.partition(sep) if sep in raw else (raw, "", raw)
+        a = RC.hook_answer(event, int(r.get("rc") or 0), scrub(so), scrub(se))
+        if a["block"]:
+            said["block"] = True
+        if a["reason"] or a["block"]:
+            texts.append(a["reason"])
+        if rank.get(a["decision"], 0) > rank.get(said["decision"], 0):
+            said["decision"] = a["decision"]
+            said["reason"] = a["reason"]
+        if a["updated"] is not None:
+            said["updated"] = a["updated"]                 # the last hook that changes the input wins
+        if a["context"]:
+            ctxs.append(a["context"])
+        if a["stop"]:
+            said["stop"], said["stop_reason"] = True, said["stop_reason"] or a["stop_reason"]
+        for m in (a["message"], ("This repo's hook failed: " + a["error"]) if a["error"] else ""):
+            if m:
+                msgs.append(m[:1000])
+        if a["shown"]:
+            shown.append(a["shown"])
     STATS["hooks"] = STATS.get("hooks", 0) + len(cmds)
-    said = {"block": block, "text": "\n".join(texts)}
+    said["text"] = "\n".join(t for t in texts if t)[:8000]
+    said["context"] = "\n".join(ctxs)[:8000]
+    said["message"] = "\n".join(msgs)[:2000]
     sink = emit or getattr(tools, "loop_emit", None)
-    if sink and event not in ("PreToolUse",):              # a PreToolUse block is told by the loop itself
-        try:
-            sink({"k": "hook", "event": event, "tool": tool, "block": block, "text": said["text"][:600]})
+    if sink and (event != "PreToolUse" or said["message"] or said["decision"] in ("allow", "ask") or said["updated"] is not None):
+        try:                                               # a PreToolUse deny / block is told by the loop itself
+            sink({"k": "hook", "event": event, "tool": tool, "block": said["block"] or said["decision"] == "deny",
+                  "decision": said["decision"], "changed": said["updated"] is not None, "stop": said["stop"],
+                  "text": (said["text"] or said["context"] or said["stop_reason"] or "\n".join(shown))[:600], "msg": said["message"][:600]})
         except Exception:
             pass
     return said
@@ -2609,6 +2638,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
     clear_at = int(_set("dev_ws_clear_chars", 180000) or 180000)
     compact_at = int(_set("dev_ws_compact_chars", 480000) or 480000)
     t0, steps, nudged, finish = time.time(), 0, 0, None
+    hook_stop = ""                                          # v0.999 a hook's continue:false (its stopReason)
     tid_now = str(getattr(t, "id", "") or "")
     last_text, cut_in_row = "", 0                         # v0.932 her answer is never thrown away
     explain_ask = getattr(t, "kind", "") == "explain"
@@ -2740,7 +2770,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                 if not reality.get("stop_hook") and RC.hooks_for(tools.conf, "Stop"):
                     reality["stop_hook"] = True               # the repo's Stop hook may send it back to work, once a round
                     said = run_hooks(tools, "Stop")
-                    if said.get("block"):
+                    if said.get("block") and not said.get("stop"):   # continue:false outranks "keep working"
                         results.append({"type": "tool_result", "tool_use_id": b["id"], "content":
                                         "Not finished yet - this repo's Stop hook says:\n" + said["text"][:4000]})
                         continue
@@ -2819,15 +2849,35 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content":
                                 "Refused: this repo's .claude/settings.json denies this step. Do it another way, or tell her."})
                 continue
+            hook_says = ""
             if RC.hooks_for(tools.conf, "PreToolUse", b["name"]):
                 said = run_hooks(tools, "PreToolUse", b["name"], inp)
-                if said.get("block"):
-                    emit({"k": "hook", "event": "PreToolUse", "tool": b["name"], "block": True, "text": said["text"][:600]})
-                    results.append({"type": "tool_result", "tool_use_id": b["id"], "content":
-                                    "This repo's PreToolUse hook blocked this step:\n" + said["text"][:4000]})
+                if said.get("stop"):                       # v0.999 continue:false - the whole round stops here
+                    hook_stop = said.get("stop_reason") or "This repo's PreToolUse hook stopped the session."
+                    results.append({"type": "tool_result", "tool_use_id": b["id"], "content": "Stopped by this repo's hook: " + hook_stop})
                     continue
+                if said.get("block") or said.get("decision") == "deny":
+                    why = said.get("text") or said.get("reason") or "(no reason given)"
+                    emit({"k": "hook", "event": "PreToolUse", "tool": b["name"], "block": True, "text": why[:600]})
+                    results.append({"type": "tool_result", "tool_use_id": b["id"], "content":
+                                    "This repo's PreToolUse hook blocked this step:\n" + why[:4000]})
+                    continue
+                if isinstance(said.get("updated"), dict):  # v0.999 updatedInput: the hook's version of the step runs
+                    inp = {**inp, **RC.from_claude_input(b["name"], said["updated"])}
+                    b = {**b, "input": inp}
+                    if RC.decide(tools.conf, b["name"], inp) == "deny":
+                        results.append({"type": "tool_result", "tool_use_id": b["id"], "content":
+                                        "Refused: the step as this repo's hook changed it is denied by .claude/settings.json."})
+                        continue
+                if said.get("decision") == "allow":
+                    rule = "allow"                         # the hook says yes: no prompt (deny rules were checked first)
+                elif said.get("decision") == "ask":
+                    rule = "ask"
+                hook_says = said.get("reason") or ""
             ask = (None if rule == "allow" else
                    needs_ok(tid, "steps" if rule == "ask" else getattr(t, "mode", ""), ses, b["name"], inp, force=rule == "ask"))
+            if ask and hook_says:
+                ask["what"] = (str(ask.get("what") or "") + " · this repo's hook: " + hook_says[:300]).strip(" ·")
             if ask:                                       # v0.999 'Ask each step': this change waits for her yes
                 notify_hook(tools, ask)
                 ans = wait_ok(tid, ask, stopped, emit)
@@ -2856,6 +2906,10 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                 said = run_hooks(tools, "PostToolUse", b["name"], inp, out)
                 if said.get("block") and said["text"].strip():
                     out += "\n\nThis repo's PostToolUse hook says:\n" + said["text"][:4000]
+                if said.get("context"):                    # v0.999 additionalContext: a note for the model
+                    out += "\n\n<post_tool_hook>\n" + said["context"][:4000] + "\n</post_tool_hook>"
+                if said.get("stop"):
+                    hook_stop = said.get("stop_reason") or "This repo's PostToolUse hook stopped the session."
             try:
                 for ev in event(tools, b["name"], inp, out):
                     emit(ev)
@@ -2883,6 +2937,10 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
             results.extend(look_pics)
         msgs.append({"role": "user", "content": results})
         ses.save_messages(msgs)
+        if hook_stop and finish is None:                   # v0.999 continue:false: the round ends, she gets the reason
+            emit({"k": "hook", "event": "stop", "stop": True, "block": True, "text": hook_stop[:600]})
+            finish = {"explain": "This repo's hook stopped the work: " + hook_stop[:1500],
+                      "risk": "A hook in this repo ended the round early - review what was done so far."}
         if finish is not None:
             break
     finished = finish is not None

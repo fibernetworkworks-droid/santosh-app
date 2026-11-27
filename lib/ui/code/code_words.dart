@@ -440,8 +440,10 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
           return (
             s['block'] == true ? Icons.block_rounded : Icons.bolt_rounded,
             "This repo's",
-            '${ev.isEmpty ? '' : '$ev '}hook ran${s['block'] == true ? ' and stopped the step' : ''}',
-            _s(s['text']).trim().isNotEmpty
+            ev == 'stop'
+                ? 'hook stopped the work'
+                : '${ev.isEmpty ? '' : '$ev '}hook ran${s['stop'] == true ? ' and stopped the work' : s['block'] == true ? ' and stopped the step' : s['decision'] == 'allow' ? ' and allowed it' : s['decision'] == 'ask' ? ' and asked you first' : s['changed'] == true ? ' and changed the step' : ''}',
+            _s(s['text']).trim().isNotEmpty || _s(s['msg']).trim().isNotEmpty
           );
         }
       case 'new':

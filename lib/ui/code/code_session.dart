@@ -1624,10 +1624,21 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         }
       case 'hook':
         {
-          final block = s['block'] == true;
-          final txt = cs(s['text']).trim();
+          String hookDid(Map m) => m['stop'] == true
+              ? ' and stopped the work'
+              : m['block'] == true
+                  ? ' and stopped the step'
+                  : m['decision'] == 'allow'
+                      ? ' and allowed it'
+                      : m['decision'] == 'ask'
+                          ? ' and asked you first'
+                          : m['changed'] == true
+                              ? ' and changed the step'
+                              : '';
+          final block = s['block'] == true || s['stop'] == true;
+          final txt = [cs(s['msg']).trim(), cs(s['text']).trim()].where((e) => e.isNotEmpty).join('\n');
           final row = _line(c, block ? Icons.block_rounded : Icons.bolt_rounded, [
-            TextSpan(text: "This repo's ${cs(s['event']).isEmpty ? '' : '${cs(s['event'])} '}hook ran${block ? ' and stopped the step' : ''}"),
+            TextSpan(text: cs(s['event']) == 'stop' ? "This repo's hook stopped the work" : "This repo's ${cs(s['event']).isEmpty ? '' : '${cs(s['event'])} '}hook ran${hookDid(s)}"),
             if (cs(s['tool']).isNotEmpty) TextSpan(text: ' · ${cs(s['tool'])}', style: TextStyle(color: c.ink3)),
           ], iconColor: block ? c.warn : null);
           if (txt.isEmpty) return row;

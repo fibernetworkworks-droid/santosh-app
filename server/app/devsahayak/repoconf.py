@@ -186,12 +186,74 @@ def hooks_for(conf: dict[str, Any], event: str, tool: str = "") -> list[tuple[st
     return out[:8]
 
 
+# v0.999 hook input / output in Claude Code's own field names (a hook script reads .tool_input.file_path, not path)
+FIELD_TO_CLAUDE = {"read": {"path": "file_path"}, "write": {"path": "file_path"}, "edit": {"path": "file_path"},
+                   "multi_edit": {"path": "file_path"}, "notebook_edit": {"path": "notebook_path", "cell": "cell_number"}}
+
+
+def to_claude_input(tool: str, inp: dict[str, Any] | None) -> dict[str, Any]:
+    m = FIELD_TO_CLAUDE.get(tool, {})
+    return {m.get(k, k): v for k, v in (inp or {}).items() if not str(k).startswith("_")}
+
+
+def from_claude_input(tool: str, upd: dict[str, Any]) -> dict[str, Any]:
+    back = {v: k for k, v in FIELD_TO_CLAUDE.get(tool, {}).items()}
+    return {back.get(k, k): v for k, v in (upd or {}).items() if not str(k).startswith("_")}
+
+
+def hook_answer(event: str, rc: int, stdout: str, stderr: str) -> dict[str, Any]:
+    """One hook's answer, read the way Claude Code reads it.
+    exit 2 = block, its stderr is the reason (JSON ignored); exit 0 = stdout may be JSON (continue / stopReason /
+    systemMessage / suppressOutput / decision / reason / hookSpecificOutput: permissionDecision, permissionDecisionReason,
+    updatedInput, additionalContext), or plain text (context for SessionStart / UserPromptSubmit, otherwise only shown);
+    any other exit = a non-blocking error shown to her, the work goes on."""
+    a: dict[str, Any] = {"block": False, "reason": "", "context": "", "decision": "", "updated": None, "stop": False,
+                         "stop_reason": "", "message": "", "shown": "", "error": ""}
+    out, err = (stdout or "").strip(), (stderr or "").strip()
+    if rc == 2:
+        a["block"], a["reason"] = True, (err or out)[-4000:]
+        return a
+    if rc != 0:
+        a["error"] = (err or out)[-1500:]
+        return a
+    j = None
+    if out.startswith("{"):
+        try:
+            j = json.loads(out)
+        except ValueError:
+            j = None
+    if not isinstance(j, dict):
+        if event in ("SessionStart", "UserPromptSubmit"):
+            a["context"] = out[-6000:]
+        else:
+            a["shown"] = out[-1500:]
+        return a
+    if j.get("continue") is False:
+        a["stop"], a["stop_reason"] = True, str(j.get("stopReason") or "")[:1000]
+    a["message"] = str(j.get("systemMessage") or "")[:1000]
+    dec = str(j.get("decision") or "").lower()
+    reason = str(j.get("reason") or "")[:4000]
+    hs = j.get("hookSpecificOutput") if isinstance(j.get("hookSpecificOutput"), dict) else {}
+    if event == "PreToolUse":
+        pd = str(hs.get("permissionDecision") or "").lower() or {"approve": "allow", "block": "deny"}.get(dec, "")
+        if pd in ("allow", "deny", "ask"):
+            a["decision"] = pd
+            a["reason"] = str(hs.get("permissionDecisionReason") or reason or "")[:4000]
+        if isinstance(hs.get("updatedInput"), dict):
+            a["updated"] = hs["updatedInput"]
+    elif dec == "block":
+        a["block"], a["reason"] = True, reason
+    if event in ("SessionStart", "UserPromptSubmit", "PostToolUse") and hs.get("additionalContext"):
+        a["context"] = str(hs["additionalContext"])[:6000]
+    return a
+
+
 def hook_input(event: str, tid: str, tool: str = "", inp: dict[str, Any] | None = None, out: str = "",
                prompt: str = "") -> dict[str, Any]:
     j: dict[str, Any] = {"session_id": tid, "hook_event_name": event, "cwd": "/work"}
     if tool:
         j["tool_name"] = _claude_name(tool)
-        j["tool_input"] = {k: v for k, v in (inp or {}).items() if not str(k).startswith("_")}
+        j["tool_input"] = to_claude_input(tool, inp)
     if event == "PostToolUse":
         j["tool_response"] = out[:20000]
     if prompt:

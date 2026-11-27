@@ -766,8 +766,14 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       case 'claudefile': return `<div class="hcd-step dim">${svg('pencil')}<span>You ${s.what === 'deleted' ? 'deleted' : 'changed'} <code>${esc(s.path || '')}</code></span>${at}</div>`;
       case 'cmd': return `<div class="hcd-step dim">${svg('spark')}<span>${s.repo ? 'Ran your command' : 'Started'} <span class="hcd-cmd">/${esc(s.name || '')}</span>${s.repo ? ' from this repo' : ''}</span>${at}</div>`;
       case 'mention': return `<div class="hcd-step">${svg('read')}<span>Read the files you pointed at · ${(s.files || []).map(p).join(', ')}</span>${at}</div>`;
-      case 'hook': return s.text ? fold('h' + i, `This repo\u2019s ${esc(s.event || '')} hook ran${s.tool ? ' for ' + esc(s.tool) : ''}${s.block ? ' · <span class="del">stopped it</span>' : ''}`, `<pre class="hcd-term">${esc(s.text)}</pre>`, 'row', verbose || !!s.block)
-        : `<div class="hcd-step dim">${svg('gear')}<span>This repo\u2019s ${esc(s.event || '')} hook ran</span>${at}</div>`;
+      case 'hook': {   /* v0.999 what the repo's hook decided, Claude Code's JSON answers included */
+        const did = s.stop ? ' · <span class="del">stopped the work</span>' : s.block ? ' · <span class="del">stopped it</span>'
+          : s.decision === 'allow' ? ' · allowed it' : s.decision === 'ask' ? ' · asked you first' : s.changed ? ' · changed the step' : '';
+        const head = s.event === 'stop' ? 'This repo\u2019s hook <span class="del">stopped the work</span>'
+          : `This repo\u2019s ${esc(s.event || '')} hook ran${s.tool ? ' for ' + esc(s.tool) : ''}${did}${s.changed && did.indexOf('changed') < 0 ? ' · changed the step' : ''}`;
+        const msg = s.msg ? `<p class="hcd-hookmsg">${esc(s.msg)}</p>` : '';
+        return s.text || s.msg ? fold('h' + i, head, msg + (s.text ? `<pre class="hcd-term">${esc(s.text)}</pre>` : ''), 'row', verbose || !!s.block || !!s.stop || !!s.msg)
+          : `<div class="hcd-step dim">${svg('gear')}<span>${head}</span>${at}</div>`; }
       case 'gap': return `<div class="hcd-step dim">${svg('list')}<span>${esc(s.text || 'Earlier steps folded')}</span></div>`;
       case 'compact': case 'ws': return `<div class="hcd-step dim">${svg('list')}<span>${esc(s.text || '')}</span>${at}</div>`;
       case 'wait': return `<div class="hcd-step">${svg('dot')}<span>${esc(s.text || 'Waiting for a free coding slot')}</span>${at}</div>`;

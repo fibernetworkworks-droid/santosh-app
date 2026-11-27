@@ -232,7 +232,7 @@ def _run_one(tools: Any, spec: dict, task: str, files: list[str] | None, emit, s
         from . import repoconf as RC
         if RC.hooks_for(getattr(tools, "conf", {}) or {}, "SubagentStop"):
             said = EN.run_hooks(tools, "SubagentStop")
-            if said.get("block") and said.get("text"):
+            if said.get("block") and said.get("text") and not said.get("stop"):
                 report += "\n\n[This repo's SubagentStop hook says the agent is not done:]\n" + said["text"][:3000]
     except Exception:  # noqa: BLE001
         pass
