@@ -13183,3 +13183,42 @@ server, with a real model or a real GitHub / WordPress publish.
 
 ## v0.999.268 EVERY COMMAND TYPED
 (owner: 'Typing every built-in command --- WORK ON IT'): in a Hoola Code session the message box takes Claude Code's built-in commands, each doing the same job here (web `code.js` BUILTIN, phone lib/ui/code): /help (every command + the repo's own), /clear (a new session on the same repo - this one stays), /compact [what to keep], /context, /init, /review (a careful review of this branch, nothing changed), /security-review, /pr-comments, /export, /rewind (pick the checkpoint, then code / conversation / both), /resume (all sessions), /model (the quality tier that picks the model), /output-style, /cost and /usage (this session's cost, an estimate, + the month), /status, /doctor (status + what is wrong: GitHub, the repo, MCP servers that cannot be used, a full context), /todos, /bashes (the terminal), /agents, /hooks and /permissions (.claude/settings.json, a template when there is none), /memory (CLAUDE.md), /mcp, /plugin, /config, /add-dir, /login /logout /install-github-app (Settings > GitHub). Built-in names win over a repo command of the same name, as in Claude Code; the terminal-only ones (/vim /terminal-setup /statusline /ide /exit /quit /upgrade /bug /release-notes /privacy-settings) say they are not needed here instead of being sent to Hoola. The / picker lists them all. 3 tests incl. a real-browser walk.
+
+## v0.999.269 THE WORKFLOW LIBRARY (built as 0.999.264 / 0.999.268; the other sessions took 0.999.264-0.999.268, all kept)
+
+Owner: "https://github.com/Zie619/n8n-workflows.git -- now this is repo having readymade workflows for n8n ---- make it fully
+fuctional for hoola route -- make a workflow section in sidebar in route tool ---- first read then design and deployment".
+
+Read first:
+- The repo's HEAD is broken for importing: commit 74bdcdc ("Add workflow fixer", 29 Sep 2025) rewrote every workflow and dropped
+  their connections (2,056 of 2,061 came in with no steps). The last whole commit is f8639776 (28 Sep 2025) - Hoola pins to it.
+- History: a DMCA rewrite in Aug 2025 (before the pinned commit); the owner added the MIT licence on 3 Nov 2025.
+- Files can carry written-in keys (tokens in headers, URLs, apiKey fields).
+
+Built:
+- `server/app/route/n8nlib.py`: the index (shipped as `n8nlib_index.json.gz`: id, file, name, category from the repo's own
+  context/search_categories.json, apps, start, steps, sha256, readiness ready / check / partial, description from the first note),
+  search with filters and pages, `raw_of` = fetched from raw.githubusercontent.com at the pinned commit only when opened, refused
+  unless its sha256 matches, kept under data/n8nlib; `scrub` takes out sign-in blocks, pinned data, webhook ids and any written-in
+  key (by field name or by shape: sk-, xox, ghp_, AIza, Bot tokens, Bearer, JWT, AKIA, SendGrid, Resend) into {{env.N8N_...}} and
+  lists them; `preview` / `use` go through the normal importer (`n8n.bring_in`, switched off, a taken name refused).
+- `server/tools/n8nlib_build.py`: rebuilds the index from a checkout; each file goes through Hoola's importer and the route
+  engine's checks, files that fail are left out (97 of 2,057, mostly one-node files), byte-identical duplicates kept once.
+- Routes: GET /api/route/library, GET /api/route/library/{id}, POST /api/route/library/{id}/use.
+- Page: sidebar "Workflows" (#/workflows): search, app / category / start dropdowns, All / Runs now / Runs as it is chips, cards
+  (apps, name, the repo's note, readiness, start, steps, category), pages; a workflow's page: Bring it in with a name, what it
+  becomes (counts, keys taken out, to redo, to check, left out, notes, the steps as a tree), See it on GitHub.
+- Importer (`route/n8n.py`): Google Sheets (read / lookup -> sheet_read / sheet_query, append, update / appendOrUpdate), Gmail +
+  Send Email (email_draft - n8n sent at once, here a draft waits for her OK; said), Gmail read / get / reply, Drive (download,
+  create doc, search, new folder), Calendar (add, read), OpenWeatherMap, Date & Time v1 + v2 (Moment / Luxon formats to Python's),
+  Crypto (MD5 / SHA-1 / SHA-256 / HMAC SHA-256 / UUID / random), HTML (template, picks by CSS selector), Markdown, XML, RSS
+  (web request + read XML), Rename Keys, Compare Datasets (four ways), Item Lists (as their own nodes), Convert to File /
+  Spreadsheet File (CSV / Excel), every web request method with a body, Set in JSON mode, Telegram / Slack / Discord / Mattermost
+  messages -> "tell me" (said; a bot answering people stays a step to redo); a field an earlier node added is read from that node's
+  step; a literal {{ $json.x }} is read as an expression; an expression Hoola cannot read becomes text ([n8n: ...]) and a step's
+  text is kept within 2,000 characters, so a library workflow never lands as a broken route. `sheet_append` takes one row as an object.
+- Measured on the pinned commit: clean imports 221 -> 408 of 2,057, median converted share 57% -> 70%, route check failures 259 -> 87.
+
+Tests: tests/test_v0999_264_workflow_library.py (11): the shipped index, search / filters / pages, sha256 check + server copy,
+keys taken out, the new nodes, a bot reply not turned into a message to her, unreadable expressions, most of the library comes in,
+the three routes, a browser walk (desktop + phone width), the version. NOT VERIFIED on her server (GitHub reachable from it).
