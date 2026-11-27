@@ -49,6 +49,9 @@
     subroute: '<rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="13" width="8" height="7" rx="1.5"/><path d="M7 11v4a2 2 0 0 0 2 2h4"/>',
     stop: '<circle cx="12" cy="12" r="9"/><rect x="9" y="9" width="6" height="6" rx="1"/>',
     respond: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 6 6v4"/>',
+    tform: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+    tchat: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>',
+    terr: '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.5"/>',
     set: '<path d="M4 7h16M4 12h10M4 17h7"/>', approval: '<path d="M15 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM3 21a8 8 0 0 1 16 0"/>',
     bolt: '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>', cal: '<path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2z"/>',
     hook: '<path d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2"/><path d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06"/><path d="m12 6 3.13 5.73C15.66 12.7 16.9 13 18 13a4 4 0 0 1 0 8"/>',
@@ -521,6 +524,12 @@
     const t = ED.trig, sp = t.spec || {};
     if (t.kind === 'webhook') return ['When data arrives', 'A secret web address starts it'];
     if (t.kind === 'manual') return ['By hand', 'When you run or test it'];
+    if (t.kind === 'event') return [EVW[sp.app] || 'An app event', `Looks every ${sp.every_minutes || 15} minutes`];
+    if (t.kind === 'form') return ['From a form', S(sp.title) || 'A form page'];
+    if (t.kind === 'chat') return ['From a chat', S(sp.title) || 'A chat page'];
+    if (t.kind === 'error') return ['When a route fails', (sp.routes || []).length ? (sp.routes || []).map(nice).join(', ') : 'Any route'];
+    if (t.kind === 'route') return ['When another route runs it', (sp.inputs || []).length ? 'Takes ' + sp.inputs.map(x => x.name).join(', ') : 'A building block'];
+    if (t.kind === 'tool') return ['As a tool for AI apps', S(sp.description).slice(0, 40) || 'Offered over MCP'];
     const at = (sp.at || []).join(', ');
     let w = sp.every_minutes ? `Every ${sp.every_minutes} minutes` : sp.every_hours ? `Every ${sp.every_hours} hours`
       : sp.days && sp.days.length ? sp.days.map(d => S(d).slice(0, 3).replace(/^./, c => c.toUpperCase())).join(' ') + (at ? ', ' + at : '')
@@ -532,7 +541,7 @@
     const sel = ED.sel === n.id ? ' sel' : '';
     if (n.kind === 'trigger') {
       const [a, b] = trigWords();
-      const ic = ED.trig.kind === 'schedule' ? IC.cal : ED.trig.kind === 'webhook' ? IC.bolt : IC.hand;
+      const ic = TKIC(ED.trig.kind);
       return `<div class="nd trig${sel}" data-node="trigger" style="left:${n.x}px;top:${n.y}px;width:${n.w}px" tabindex="0" role="button" aria-label="Starts: ${esc(a)}">
         <span class="ap k-trig">${svg(ic)}</span><span class="nt"><b>${esc(a)}</b><small>${esc(b)}</small></span></div>`;
     }
@@ -994,30 +1003,116 @@
     sid.addEventListener('change', () => { const v = sid.value.trim(); if (v === s.id) return; if (!renameStep(s.id, v)) sid.value = s.id; });
   }
 
-  function trigPanel(box) {
+  // v0.999.240 ROUTE R5: every way a route can start
+  const TKINDS = [['manual', 'By hand', 'When you run or test it', 'hand'], ['schedule', 'On a schedule', 'Times, days, every few minutes', 'cal'],
+    ['webhook', 'When data arrives', 'Another app sends to its address', 'bolt'], ['event', 'When something happens in an app', 'New email, sheet row, form answer, feed item…', 'spark'],
+    ['form', 'From a form', 'A form page you share', 'tform'], ['chat', 'From a chat', 'A chat page people write in', 'tchat'],
+    ['error', 'When a route fails', 'Handle failures in one place', 'terr'], ['route', 'When another route runs it', 'Use it as a building block', 'subroute'],
+    ['tool', 'As a tool for AI apps', 'AI apps can call it (MCP)', 'code']];
+  const TKIC = k => IC[(TKINDS.find(x => x[0] === k) || [])[3] || 'hand'] || IC.hand;
+  const EVW = {email: 'New email', sheet_row: 'New row in a sheet', form_answer: 'New answer to a Google form', calendar_event: 'New calendar event',
+    drive_file: 'New file in Drive', rss: 'New item in a feed (RSS / Atom)', app: 'New item in another app'};
+  const FTYPES = [['text', 'Short text'], ['textarea', 'Long text'], ['email', 'Email'], ['number', 'Number'], ['date', 'Date'], ['select', 'A choice'], ['checkbox', 'Tick box'], ['phone', 'Phone']];
+  function trigDefault(k) {
+    const nm = nice(ED.r.name);
+    return {event: {app: 'email', every_minutes: 15}, form: {title: nm, button: 'Send', thanks: 'Thank you - it was sent.',
+      fields: [{name: 'name', label: 'Your name', type: 'text', required: true}, {name: 'email', label: 'Email', type: 'email', required: true}, {name: 'message', label: 'Message', type: 'textarea'}]},
+      chat: {title: nm, greeting: 'Hi! How can I help?'}, error: {routes: []}, route: {inputs: []}, tool: {description: S(ED.r.description), inputs: []}}[k] || {};
+  }
+  function addrBox(kind) {
+    const has = ED.r.trigger === kind;
+    if (!has) return '<span class="mut sm">Save first, then make its address here.</span>';
+    const pub = kind !== 'webhook' && ED.r.public_url ? (/^https?:/.test(ED.r.public_url) ? ED.r.public_url : location.origin + ED.r.public_url) : '';
+    return pub ? `<code class="addr">${esc(pub)}</code><div class="crow"><button class="btn soft s" type="button" data-copy="${esc(pub)}">Copy</button>
+        <a class="btn soft s" href="${esc(pub)}" target="_blank" rel="noopener">Open it</a><button class="btn s soft" type="button" id="addrNew">Make a new address</button></div>`
+      : `<button class="btn s soft" type="button" id="addrNew">${kind === 'webhook' ? 'Make a new address' : 'Make its address'}</button>`;
+  }
+  function rowsEditor(rows, cols, key, addLabel) {
+    return `<div class="trows" data-rows="${key}">${rows.map((r, i) => `<div class="trow">${cols.map(([c, lab, kind, opts]) => kind === 'chk'
+      ? `<label class="chk"><input type="checkbox" data-r="${key}:${i}:${c}"${r[c] ? ' checked' : ''}> ${esc(lab)}</label>`
+      : kind === 'sel' ? `<label class="tc"><span>${esc(lab)}</span><select data-r="${key}:${i}:${c}">${opts.map(([v, t]) => `<option value="${esc(v)}"${S(r[c] || opts[0][0]) === v ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></label>`
+      : `<label class="tc"><span>${esc(lab)}</span><input data-r="${key}:${i}:${c}" value="${esc(Array.isArray(r[c]) ? r[c].join(', ') : S(r[c]))}"${c === 'name' ? ' class="mono"' : ''}></label>`).join('')}
+      <button class="btn s soft bad ib" type="button" data-rdel="${key}:${i}" aria-label="Remove">${svg(IC.trash)}</button></div>`).join('')}
+      <button class="btn s soft" type="button" data-radd="${key}">${svg(IC.plus)}${esc(addLabel)}</button></div>`;
+  }
+  async function trigCat() {
+    if (!ED.trigCat) { try { ED.trigCat = await api('GET', '/api/route/triggers'); } catch { ED.trigCat = {events: [], mcp: {}}; } }
+    return ED.trigCat;
+  }
+  async function trigPanel(box) {
     const t = ED.trig, sp = t.spec || {};
+    const cat = await trigCat();
+    if (!ED) return;
     const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
     const dayW = {mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun'};
     let zones = []; try { zones = Intl.supportedValuesOf('timeZone'); } catch {}
-    box.innerHTML = `<div class="pform"><div class="phead"><span class="ap k-trig">${svg(IC.bolt)}</span><div><div class="pk">What starts it</div><div class="pt">${esc(trigWords()[0])}</div></div></div>
-      <div class="seg" role="radiogroup" aria-label="What starts the route">${[['manual', 'By hand'], ['schedule', 'On a schedule'], ['webhook', 'When data arrives']].map(([k, w]) =>
-        `<button type="button" data-tk="${k}" aria-pressed="${t.kind === k}">${w}</button>`).join('')}</div>
-      ${t.kind === 'manual' ? '<p class="mut sm">It runs when you test it here, run it from a chat, or another route calls for it.</p>' : ''}
-      ${t.kind === 'webhook' ? `<p class="mut sm">Another app starts it by sending data to a secret web address. What it sends is <code>{{vars}}</code> in your steps.</p>
-        <div id="addrBox">${ED.r.trigger === 'webhook' ? '<button class="btn s soft" type="button" id="addrNew">Make a new address</button>' : '<span class="mut sm">Save first, then make its address here.</span>'}</div>` : ''}
-      ${t.kind === 'schedule' ? `
+    let body = '';
+    if (t.kind === 'manual') body = '<p class="mut sm">It runs when you test it here, run it from a chat, or another route calls for it.</p>';
+    else if (t.kind === 'webhook') body = `<p class="mut sm">Another app starts it by sending data to a secret web address. What it sends is <code>{{vars.body}}</code> in your steps. An “Answer the caller” step sends the app an answer.</p><div id="addrBox">${addrBox('webhook')}</div>`;
+    else if (t.kind === 'schedule') body = `
         ${field('At these times (HH:MM, 24-hour)', (sp.at || []).join(', '), {k: 'at', ref: false, ph: '09:00, 17:30'})}
         <div class="fld"><label>On these days <span class="mut sm">(none = every day)</span></label><div class="days">${days.map(d => `<button type="button" data-day="${d}" aria-pressed="${(sp.days || []).includes(d)}">${dayW[d]}</button>`).join('')}</div></div>
         <div class="two">${field('Or every N minutes', sp.every_minutes || '', {k: 'every_minutes', ref: false, num: true, help: '15 or more'})}${field('Or every N hours', sp.every_hours || '', {k: 'every_hours', ref: false, num: true})}</div>
         <div class="fld"><label for="tzIn">Time zone</label><div class="fc"><input id="tzIn" list="tzList" value="${esc(sp.timezone || '')}" placeholder="${esc(TZ || 'Europe/London')}"></div>
           <datalist id="tzList">${zones.map(z => `<option value="${esc(z)}">`).join('')}</datalist></div>
         ${field('Skip the public holidays of', sp.skip_holidays || '', {k: 'skip_holidays', ref: false, ph: 'A country code, like GB, US, DE', help: 'The run waits for the next working day.'})}
-        <div class="two">${field('Quiet from', (sp.quiet || {}).from || '', {k: 'qfrom', ref: false, ph: '22:00'})}${field('Quiet until', (sp.quiet || {}).to || '', {k: 'qto', ref: false, ph: '08:00'})}</div>` : ''}
-      <p class="mut sm">Changes here count once you tap Save.</p></div>`;
+        <div class="two">${field('Quiet from', (sp.quiet || {}).from || '', {k: 'qfrom', ref: false, ph: '22:00'})}${field('Quiet until', (sp.quiet || {}).to || '', {k: 'qto', ref: false, ph: '08:00'})}</div>`;
+    else if (t.kind === 'event') {
+      const app = sp.app || 'email', P = [];
+      P.push(field('When there is', app, {k: 'tg:app', options: Object.entries(EVW)}));
+      if (app === 'email') { P.push(`<div class="two">${field('In this folder', sp.folder || '', {k: 'tg:folder', ref: false, ph: 'inbox'})}${field('Only emails that match', sp.search || '', {k: 'tg:search', ref: false, ph: 'from:shop@ or invoice'})}</div>`);
+        P.push(`<label class="chk"><input type="checkbox" data-tgc="unread_only"${sp.unread_only ? ' checked' : ''}> Only unread emails</label>`); }
+      if (app === 'sheet_row') P.push(`<div class="two">${field('The sheet', sp.spreadsheet || '', {k: 'tg:spreadsheet', ref: false, ph: 'Its name or link', req: true})}${field('Tab', sp.tab || '', {k: 'tg:tab', ref: false, ph: 'The first tab'})}</div>`);
+      if (app === 'form_answer') P.push(field('The Google form', sp.form || '', {k: 'tg:form', ref: false, ph: 'Its name or link', req: true}));
+      if (app === 'calendar_event') P.push(field('Only events with these words', sp.query || '', {k: 'tg:query', ref: false, ph: 'Optional'}));
+      if (app === 'drive_file') P.push(`<div class="two">${field('Files with these words', sp.query || '', {k: 'tg:query', ref: false, ph: 'Optional'})}${field('In this folder', sp.folder || '', {k: 'tg:folder', ref: false, ph: 'Optional'})}</div>`);
+      if (app === 'rss') P.push(field('The feed’s address', sp.url || '', {k: 'tg:url', ref: false, mono: true, ph: 'https://example.com/feed.xml', req: true}));
+      if (app === 'app') {
+        P.push(field('Tool that lists the items', sp.tool || '', {k: 'tg:tool', ref: false, mono: true, ph: 'composio_apps, sheet_read…', help: 'Only a tool or app action that reads (lists, gets, searches). A trigger never sends or changes anything.'}));
+        P.push(field('What it sends (as data)', JSON.stringify(sp.args || {}, null, 2), {k: 'tg:args', ref: false, area: true, mono: true, rows: 4}));
+        P.push(`<div class="two">${field('The list in its answer (optional)', sp.items || '', {k: 'tg:items', ref: false, mono: true, ph: 'data.items'})}${field('Each item’s id field (optional)', sp.id || '', {k: 'tg:id', ref: false, mono: true, ph: 'id'})}</div>`);
+      }
+      P.push(field('Look every (minutes)', S(sp.every_minutes || 15), {k: 'tg:every_minutes', ref: false, num: true, help: `${(cat.every || {}).min || 5} to ${(cat.every || {}).max || 1440}`}));
+      const pl = ED.r.trigger === 'event' ? ED.r.poll : null;
+      const pw = !pl ? 'Not looked yet. The first look only notes what is there - nothing runs for items that were already there.'
+        : pl.error ? `Last look did not work: ${pl.error}` : !pl.looked ? 'It will look soon. The first look only notes what is there.'
+        : `Last looked ${pl.last_at ? at(pl.last_at) : ''} · ${pl.seen} items known · ${pl.last_new} new last time`;
+      P.push(`<p class="mut sm">Each new item starts one run; your steps read it as <code>{{vars.event}}</code>.</p><div class="okbox sm" id="pollBox">${esc(pw)}</div>
+        ${ED.r.trigger === 'event' ? '<div class="crow"><button class="btn s soft" type="button" id="lookNow">Look now</button><span class="mut sm">Each new item starts a run.</span></div>' : ''}`);
+      body = P.join('');
+    } else if (t.kind === 'form') {
+      body = `${field('Title', sp.title || '', {k: 'tg:title', ref: false})}${field('A line under the title', sp.intro || '', {k: 'tg:intro', ref: false, area: true, rows: 2})}
+        <div class="psub">The questions</div>${rowsEditor(sp.fields || [], [['label', 'Question', 'txt'], ['name', 'Name', 'txt'], ['type', 'Kind', 'sel', FTYPES], ['options', 'Choices (with commas)', 'txt'], ['required', 'Needed', 'chk']], 'fields', 'Add a question')}
+        <div class="two">${field('Button', sp.button || 'Send', {k: 'tg:button', ref: false})}${field('After sending, show', sp.thanks || '', {k: 'tg:thanks', ref: false})}</div>
+        <p class="mut sm">Answers are <code>{{vars.form.name}}</code> and so on. An “Answer the caller” step's answer is shown to the person instead of the line above.</p>
+        <div class="psub">Its address</div><div id="addrBox">${addrBox('form')}</div>`;
+    } else if (t.kind === 'chat') {
+      body = `${field('Title', sp.title || '', {k: 'tg:title', ref: false})}${field('First message', sp.greeting || '', {k: 'tg:greeting', ref: false, area: true, rows: 2})}
+        ${field('Box hint', sp.placeholder || '', {k: 'tg:placeholder', ref: false, ph: 'Write a message'})}
+        <p class="mut sm">Each message starts a run with <code>{{vars.message}}</code> and the conversation so far in <code>{{vars.history}}</code>. Put an “Answer the caller” step to reply - its answer (text, or <code>{"reply": …}</code>) is what the person sees.</p>
+        <div class="psub">Its address</div><div id="addrBox">${addrBox('chat')}</div>`;
+    } else if (t.kind === 'error') {
+      body = `${field('Routes to watch (with commas)', (sp.routes || []).join(', '), {k: 'tg:routes', ref: false, ph: 'Empty = any route', help: 'When one of them fails, this route runs.'})}
+        <p class="mut sm">Your steps read <code>{{vars.failed_route}}</code>, <code>{{vars.error}}</code> and <code>{{vars.failed_run}}</code>. A failing error route never starts another one.</p>`;
+    } else if (t.kind === 'route' || t.kind === 'tool') {
+      if (t.kind === 'tool') body += field('What it does (for the AI app)', sp.description || '', {k: 'tg:description', ref: false, area: true, rows: 2, req: true});
+      body += `<div class="psub">What it takes</div>${rowsEditor(sp.inputs || [], [['name', 'Name', 'txt'], ['description', 'What it is', 'txt'], ...(t.kind === 'tool' ? [['type', 'Kind', 'sel', [['string', 'Text'], ['number', 'Number'], ['boolean', 'Yes / no'], ['object', 'Object'], ['array', 'List']]], ['required', 'Needed', 'chk']] : [])], 'inputs', 'Add an input')}
+        <p class="mut sm">Your steps read them as <code>{{vars.name}}</code>.${t.kind === 'route' ? ' Another route runs it with a “Run another route” step.' : ' An answer step sends the AI app its answer; without one it gets the last step\'s result.'}</p>`;
+      if (t.kind === 'tool') {
+        const m = cat.mcp || {};
+        body += `<div class="psub">Your routes as tools</div><p class="mut sm">One address for your account lists every switched-on route that starts “as a tool”. Add it to an AI app as an MCP server.</p>
+          <div id="mcpBox">${m.made ? '<span class="mut sm">Your address is made (shown once). Making a new one stops the old one.</span>' : ''}<button class="btn s soft" type="button" id="mcpNew">${m.made ? 'Make a new address' : 'Make the address'}</button></div>`;
+      }
+    }
+    box.innerHTML = `<div class="pform"><div class="phead"><span class="ap k-trig">${svg(TKIC(t.kind))}</span><div><div class="pk">What starts it</div><div class="pt">${esc(trigWords()[0])}</div></div></div>
+      <div class="tkinds" role="radiogroup" aria-label="What starts the route">${TKINDS.map(([k, w, sub, ic]) =>
+        `<button type="button" data-tk="${k}" role="radio" aria-checked="${t.kind === k}" aria-pressed="${t.kind === k}">${svg(IC[ic] || IC.hand)}<span><b>${esc(w)}</b><small>${esc(sub)}</small></span></button>`).join('')}</div>
+      ${body}<p class="mut sm">Changes here count once you tap Save.</p></div>`;
     box.querySelectorAll('[data-tk]').forEach(b => b.addEventListener('click', () => {
       if (t.kind === b.dataset.tk) return;
       before(); t.kind = b.dataset.tk;
-      if (t.kind === 'schedule' && !Object.keys(t.spec || {}).some(k => ['at', 'every_minutes', 'every_hours', 'days', 'monthdays', 'dates', 'once'].includes(k))) t.spec = {at: ['09:00'], timezone: TZ || ''};
+      if (t.kind === 'schedule') { if (!Object.keys(t.spec || {}).some(k => ['at', 'every_minutes', 'every_hours', 'days', 'monthdays', 'dates', 'once'].includes(k)) || t.spec.app) t.spec = {at: ['09:00'], timezone: TZ || ''}; }
+      else t.spec = ED.r.trigger === t.kind ? clone(ED.r.trigger_spec || {}) : trigDefault(t.kind);
       changed(false); trigPanel(box);
     }));
     const tz = $('#tzIn');
@@ -1027,26 +1122,86 @@
       cur.has(d) ? cur.delete(d) : cur.add(d); const v = days.filter(x => cur.has(x)); if (v.length) t.spec.days = v; else delete t.spec.days;
       changed(false); trigPanel(box);
     }));
-    box.firstElementChild.addEventListener('change', e => {
-      const k = e.target.dataset.k; if (!k) return;
-      const v = e.target.value.trim(); before();
+    const form = box.firstElementChild;
+    form.addEventListener('change', e => {
+      const el = e.target, k = el.dataset.k;
+      if (el.dataset.tgc) { before(); if (el.checked) t.spec[el.dataset.tgc] = true; else delete t.spec[el.dataset.tgc]; changed(false); return; }
+      if (el.dataset.r) {
+        const [key, i, c] = el.dataset.r.split(':'); const row = (t.spec[key] || [])[+i]; if (!row) return; before();
+        if (el.type === 'checkbox') row[c] = el.checked;
+        else if (c === 'options') row.options = el.value.split(',').map(x => x.trim()).filter(Boolean);
+        else row[c] = el.value.trim();
+        if (c === 'label' && key === 'fields' && row._new && !row._named) { row.name = freshName(el.value, t.spec.fields, +i); }
+        if (c === 'name') row._named = true;
+        changed(false); if (c === 'type' || c === 'label') trigPanel(box); return;
+      }
+      if (!k) return;
+      const v = el.value.trim(); before();
       if (k === 'at') { const a = v.split(/[,\s]+/).filter(Boolean); if (a.length) t.spec.at = a; else delete t.spec.at; }
       else if (k === 'every_minutes' || k === 'every_hours') { if (v) t.spec[k] = parseInt(v, 10) || v; else delete t.spec[k]; }
       else if (k === 'skip_holidays') { if (v) t.spec.skip_holidays = v.toUpperCase(); else delete t.spec.skip_holidays; }
       else if (k === 'qfrom' || k === 'qto') { const q = Object.assign({}, t.spec.quiet || {}); q[k === 'qfrom' ? 'from' : 'to'] = v; if (q.from || q.to) t.spec.quiet = q; else delete t.spec.quiet; }
+      else if (k.startsWith('tg:')) {
+        const key = k.slice(3);
+        if (key === 'app') { t.spec = {app: v, every_minutes: t.spec.every_minutes || 15}; changed(false); trigPanel(box); return; }
+        if (key === 'every_minutes') t.spec.every_minutes = parseInt(v, 10) || 15;
+        else if (key === 'args') { try { t.spec.args = v ? JSON.parse(v) : {}; el.classList.remove('err'); } catch { el.classList.add('err'); return; } }
+        else if (key === 'routes') t.spec.routes = v.split(',').map(x => x.trim().toLowerCase().replace(/\s+/g, '_')).filter(Boolean);
+        else if (v) t.spec[key] = el.tagName === 'TEXTAREA' && key !== 'args' ? el.value : v; else delete t.spec[key];
+      }
       changed(false);
     });
+    box.querySelectorAll('[data-radd]').forEach(b => b.addEventListener('click', () => {
+      const key = b.dataset.radd; before(); t.spec[key] = t.spec[key] || [];
+      const n = t.spec[key].length + 1;
+      t.spec[key].push(key === 'fields' ? {name: freshName('question ' + n, t.spec[key], -1), label: 'Question ' + n, type: 'text', _new: true} : {name: 'input_' + n, description: ''});
+      changed(false); trigPanel(box);
+    }));
+    box.querySelectorAll('[data-rdel]').forEach(b => b.addEventListener('click', () => {
+      const [key, i] = b.dataset.rdel.split(':'); before(); (t.spec[key] || []).splice(+i, 1); changed(false); trigPanel(box);
+    }));
+    box.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => navigator.clipboard.writeText(b.dataset.copy).then(() => toast('Copied.'), () => toast('Copy it by hand.', true))));
     const an = $('#addrNew');
     if (an) an.addEventListener('click', async () => {
-      if (an.dataset.sure !== '1') { an.dataset.sure = '1'; an.textContent = 'The old address stops working. Make a new one?'; return; }
+      const had = /new/i.test(an.textContent);
+      if (had && an.dataset.sure !== '1') { an.dataset.sure = '1'; an.textContent = 'The old address stops working. Make a new one?'; return; }
       an.disabled = true;
       try {
         const a = await api('POST', `/api/route/routes/${enc(ED.r.id)}/address`);
         const url = /^https?:/.test(a.url) ? a.url : location.origin + a.url;
-        $('#addrBox').innerHTML = `<code class="addr">${esc(url)}</code><span class="mut sm">${esc(a.note)}</span><button class="btn soft s" type="button" id="addrCopy">Copy</button>`;
+        if (ED.trig.kind !== 'webhook') ED.r.public_url = a.url;
+        $('#addrBox').innerHTML = `<code class="addr">${esc(url)}</code><span class="mut sm">${esc(a.note)}</span><div class="crow"><button class="btn soft s" type="button" id="addrCopy">Copy</button>${ED.trig.kind !== 'webhook' ? `<a class="btn soft s" href="${esc(url)}" target="_blank" rel="noopener">Open it</a>` : ''}</div>`;
         $('#addrCopy').addEventListener('click', () => navigator.clipboard.writeText(url).then(() => toast('Copied.'), () => toast('Copy it by hand.', true)));
       } catch (err) { toast(err.message, true); an.disabled = false; }
     });
+    const mn = $('#mcpNew');
+    if (mn) mn.addEventListener('click', async () => {
+      if ((cat.mcp || {}).made && mn.dataset.sure !== '1') { mn.dataset.sure = '1'; mn.textContent = 'The old address stops working. Make a new one?'; return; }
+      mn.disabled = true;
+      try {
+        const a = await api('POST', '/api/route/mcp');
+        const url = /^https?:/.test(a.url) ? a.url : location.origin + a.url;
+        cat.mcp = {made: true};
+        $('#mcpBox').innerHTML = `<code class="addr">${esc(url)}</code><span class="mut sm">${esc(a.note)}</span><div class="crow"><button class="btn soft s" type="button" id="mcpCopy">Copy</button></div>`;
+        $('#mcpCopy').addEventListener('click', () => navigator.clipboard.writeText(url).then(() => toast('Copied.'), () => toast('Copy it by hand.', true)));
+      } catch (err) { toast(err.message, true); mn.disabled = false; }
+    });
+    const ln = $('#lookNow');
+    if (ln) ln.addEventListener('click', async () => {
+      ln.disabled = true; ln.textContent = 'Looking…';
+      try {
+        const r = await api('POST', `/api/route/routes/${enc(ED.r.id)}/look`);
+        ED.r.poll = r.poll;
+        toast(r.first_look ? `Looked: ${r.noted} items noted. New ones will start a run.` : r.ok === false ? 'The look did not work.' : `${r.new || 0} new, ${r.started || 0} runs started.`, r.ok === false);
+      } catch (err) { toast(err.message, true); }
+      if (ED && ED.sel === 'trigger') trigPanel(box);
+    });
+  }
+  function freshName(label, rows, self) {
+    let b = S(label).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 30) || 'field';
+    if (!/^[a-z_]/.test(b)) b = 'f_' + b;
+    const used = new Set((rows || []).filter((_, j) => j !== self).map(r => r.name));
+    let n = b, i = 2; while (used.has(n)) n = `${b}_${i++}`; return n;
   }
 
   // the add-a-step panel: search + groups (step kinds and Hoola's tools / connected apps)

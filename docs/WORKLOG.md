@@ -3956,3 +3956,15 @@ Work Log:
 
 Stage Summary:
 - v0.999.239; deploy with Actions > VPS ops > deploy. R5 (triggers) next on her word.
+
+---
+Task ID: route-triggers-r5
+Agent: main
+Task: Hoola Route R5 - new triggers (owner: "GO R5")
+
+Work Log:
+- route/triggers.py: app events (polling, first look notes), form + chat pages, error / route / tool kinds, MCP endpoint.
+- Engine wiring (validation everywhere, tick polls, error watchers, start_and_wait); editor trigger panel.
+
+Stage Summary:
+- v0.999.242 (renumbered from 240: main moved to Finance Desk Assistant + Desktop wiring); deploy with Actions > VPS ops > deploy. R6 (AI steps) next on her word.

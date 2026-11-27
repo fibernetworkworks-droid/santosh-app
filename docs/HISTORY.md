@@ -12658,3 +12658,34 @@ NOT VERIFIED on her server.
 
 ## v0.999.241 DESKTOP WIRING
 Desktop wiring. Audit: AST list of every action the server sends (hub.call / call_sync / call_personal / operator._pc) vs `desktop/santosh_desktop/actions.py` do_* and `desktop-linux/agent.py` do_* + AX_ACTIONS; every operator tool run through `_do` on both kinds with fake PCs; wire types (hello / job / result / info / ping / pong) match; desktop / agent / extension HTTP paths all answer. Fixes in `server/app/pc/operator.py`: WINDOWS_ONLY + `_not_windows(op)` (Hoola PC, or os_note says Mac / Linux) filtered in `_tools_for` and refused in `_do`; `Op.bg_jobs`, `run` background remembers the job id, NEW HOOLA tool `run_stop`, `_stop_bg_jobs(op)` called in `_run`'s finally (not on done); CHROME_ONLY + `_chrome_gone(op, name)` for page_hover / page_drag / page_tables on her PC (extension not ready or background job), kind-aware 'older' messages. Tests `test_v0999_241_desktop_wiring.py` (4). NOT VERIFIED on her PC / Hoola PC.
+
+## v0.999.242 NEW TRIGGERS (R5 of the Hoola Route plan; owner: "GO R5"; built as 0.999.240, their FINANCE DESK ASSISTANT and DESKTOP WIRING took 0.999.240-0.999.241, all kept)
+
+- `server/app/route/triggers.py` (new): every trigger kind checked in one place (`validate`, used by dhara_save, the DSL import and
+  the editor's save): manual, schedule, webhook, and new: event, form, chat, error, route, tool.
+- event = an app event looked for every 5-1440 minutes (default 15) by the worker tick (`events_due` -> `poll`): new email
+  (email_check), new sheet row (sheet_read, by row offset), new Google form answer (form_responses), new calendar event
+  (calendar_agenda, 60 days ahead), new Drive file (drive_find), new RSS / Atom item (own reader through the scrape lane's SSRF
+  guard, DOCTYPE refused), or any app's list through a tool that only reads (`read_only`: the tool's name or the app action must
+  list / get / search - a trigger never sends). Items are known by id (`route_seen`, 5,000 kept); the first look, a changed trigger
+  and switching the route on again only note what is there; each new item starts one run with {{vars.event}}, oldest first, at most
+  20 a look, inside the route's runs-per-day; a look that fails 5 times in a row is said once (`route_poll`). Look now on the page.
+- form = a Hoola form page /route-form/<address>: her questions (short / long text, email, number, date, a choice, tick box,
+  phone; needed ones), checked on the server, a robot trap, 30 answers a minute; {{vars.form.<name>}}; the run starts at once
+  and a Respond step's answer is shown to the sender (else her thank-you line). The address is kept to show again (it is meant
+  to be shared; `route_meta.pub`), a new one stops the old one.
+- chat = a Hoola chat page /route-chat/<address> (`static/console/routechat.js`, CSP script-src 'self'): each message starts a run
+  with {{vars.message}}, {{vars.session}} and {{vars.history}} (the last 20 messages; 40 kept a conversation, 7 days); the Respond
+  step (text or {reply}) is what the person sees.
+- error = when another route fails (the routes she names, or any): {{vars.failed_route}}, {{vars.error}}, {{vars.failed_run}}
+  (beside the route setting error_route); a failing error route never starts error routes.
+- route = when another route runs it (its inputs, for the Run another route step).
+- tool = offered as a tool to AI apps: one MCP address per account (`route_keys`, shown once; POST /api/route/mcp) at
+  /mcp/route/<key> (JSON-RPC over HTTP: initialize, ping, tools/list = her switched-on tool routes with their inputs as a schema,
+  tools/call = runs the route and returns its Respond answer, else the last step's result, or that it is still going).
+- Engine: `start_and_wait` / `await_answer` (one wait-for-the-answer for the webhook, forms, chat and AI apps); save_workflow keeps
+  an address for webhook / form / chat; set_enabled re-baselines app events; _after_run starts error-trigger routes.
+- Editor: What starts it = nine choices with their own settings (app + fields + every N minutes + the last look; form questions
+  editor; chat texts; routes to watch; inputs; the MCP address), the address box with Copy / Open it; canvas words and icons.
+- Tests `server/tests/test_v0999_240_route_triggers.py` (10 incl. a Chromium walk: make a form route, open its page, send it,
+  see the route's answer). NOT VERIFIED: on her server, with a real mailbox / sheet / feed, or a real AI app over MCP.

@@ -459,4 +459,4 @@ def test_add_the_flow_steps_in_a_real_browser(br4):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.239"
+    assert APP_VERSION >= "0.999.239"

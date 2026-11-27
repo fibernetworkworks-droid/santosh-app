@@ -86,6 +86,20 @@ def _when(wf: dict) -> str:
     if k == "webhook":
         return "As soon as data arrives"
     sp = wf.get("trigger_spec") or {}
+    if k == "event":                    # v0.999.240 ROUTE R5
+        from .triggers import EVENTS
+        return f"{(EVENTS.get(sp.get('app')) or {}).get('title') or 'An app event'} (looks every {int(sp.get('every_minutes') or 15)} min)"
+    if k == "form":
+        return "When someone sends its form"
+    if k == "chat":
+        return "When someone writes in its chat"
+    if k == "error":
+        rs = sp.get("routes") or []
+        return ("When " + ", ".join(str(r).replace("_", " ") for r in rs[:3]) + " fails") if rs else "When any route fails"
+    if k == "route":
+        return "When another route runs it"
+    if k == "tool":
+        return "When an AI app uses it as a tool"
     tz = sp.get("timezone") or (wf.get("settings") or {}).get("timezone") or ""
     at = ", ".join(sp.get("at") or [])
     if sp.get("once"):
@@ -277,6 +291,10 @@ def make_router(require_key, current_tenant) -> APIRouter:
         out["graph"] = D._masked(deco(steps))
         out["trigger_spec"] = wf.get("trigger_spec") or {}
         out["settings"] = wf.get("settings") or {}
+        from . import triggers as TR                 # v0.999.240 ROUTE R5: what the trigger panel shows
+        out["public_url"] = TR.public_address(tenant, wf)
+        if wf.get("trigger_kind") == "event":
+            out["poll"] = TR.poll_state(tenant, wf["id"])
         m = E.meta(tenant, wf["id"])
         out["layout"] = {"pos": m["pos"], "notes": m["notes"]}
         out["version"] = wf.get("updated_at")
@@ -489,14 +507,12 @@ def make_router(require_key, current_tenant) -> APIRouter:
         from ..config import get_settings
 
         def go():
+            from . import triggers as TR
             wf = _wf_or_404(tenant, wf_id)
-            if wf.get("trigger_kind") != "webhook":
-                raise HTTPException(400, "This route is not started by incoming data")
-            tok = D.webhook_token_reveal(tenant, wf["id"])
-            base = (get_settings().public_base_url or "").rstrip("/")
-            path = f"/api/dhara/hook/{tok}"
-            return {"url": (base + path) if base else path, "path": path,
-                    "note": "Shown only now. The old address has stopped working."}
+            if wf.get("trigger_kind") not in TR.TOKEN_KINDS:
+                raise HTTPException(400, "This route is not started from an address")
+            _ = get_settings
+            return TR.make_address(tenant, wf)       # v0.999.240: a form / chat page's address too
         return await run(go)
 
     @r.delete("/routes/{wf_id}")
@@ -521,6 +537,31 @@ def make_router(require_key, current_tenant) -> APIRouter:
             E.forget(tenant, wf["id"])
             return {"deleted": wf["id"], "name": wf["name"]}
         return await run(go)
+
+    # ---------------------------------------------------------------- v0.999.240 ROUTE R5 triggers
+    @r.get("/triggers")
+    async def route_triggers(tenant: str = Depends(current_tenant)):
+        """What the trigger panel offers: the app events and the MCP address state."""
+        from . import triggers as TR
+        return {"events": [{"key": k, "title": v["title"]} for k, v in TR.EVENTS.items()],
+                "form_types": list(TR.FORM_TYPES), "mcp": await run(TR.mcp_state, tenant),
+                "every": {"min": TR.EVERY_MIN, "max": TR.EVERY_MAX, "default": TR.EVERY_DEFAULT}}
+
+    @r.post("/mcp")
+    async def route_mcp(tenant: str = Depends(current_tenant)):
+        """Her MCP address: her routes started 'as a tool' become tools an AI app can call. Shown once."""
+        from . import triggers as TR
+        return await run(TR.mcp_key, tenant)
+
+    @r.post("/routes/{wf_id}/look")
+    async def route_look(wf_id: str, tenant: str = Depends(current_tenant)):
+        """Look for new items now (an app-event route); the first look only notes what is there."""
+        from . import triggers as TR
+        wf = await run(_wf_or_404, tenant, wf_id)
+        if wf.get("trigger_kind") != "event":
+            raise HTTPException(400, "This route is not started by an app event")
+        out = await TR.poll(tenant, wf)
+        return {**out, "poll": await run(TR.poll_state, tenant, wf["id"])}
 
     @r.get("/templates")
     async def route_templates():
