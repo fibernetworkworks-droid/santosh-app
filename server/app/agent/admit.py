@@ -218,7 +218,7 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "blender": ("blender", "3d", "three d"),
     # v0.999.272 the Compiler Construction Engineer: her own language (grammar, parser, interpreter, compiler)
     # v0.999.274 the Kernel / OS Developer: her kernel words
-    # v0.999.284 the Site Reliability Engineer: her SRE words
+    # v0.999.285 the Site Reliability Engineer: her SRE words
     "sre": ("error budget", "burn rate", "burn-rate", "site reliability", "postmortem", "post-mortem", "post mortem", "alert fatigue",
             "noisy alert", "alertmanager", "alert rules", "prometheus rule", "recording rule", "on-call", "oncall", "pagerduty",
             "opsgenie", "mttr", "mttd", "apdex", "histogram_quantile", "capacity plan", "capacity forecast", "service level objective",

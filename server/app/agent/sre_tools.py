@@ -1,4 +1,4 @@
-"""v0.999.284 sre_desk: the Site Reliability Engineer's tool - SLOs and error budgets, burn rates and the Prometheus rules for
+"""v0.999.285 sre_desk: the Site Reliability Engineer's tool - SLOs and error budgets, burn rates and the Prometheus rules for
 them, alert rules checked and alert noise counted, incidents read into a timeline and a postmortem draft, latency, capacity, queues
 and availability. Nothing changes on her systems."""
 from __future__ import annotations

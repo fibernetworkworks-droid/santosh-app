@@ -13564,3 +13564,36 @@ allowed in this session) - the workflow is the way they get checked.
 
 ## v0.999.284 FIVE FROM OPENCODE
 (owner, after reading anomalyco/opencode: 'GO 1 TO 5'): five things from OpenCode in Hoola Code. (1) EDITS THAT SURVIVE SMALL DIFFERENCES (`engine._apply`): exact first, then the same text with typographic quotes / dashes / odd spaces read as plain ones, then whole lines that differ only in trailing spaces (the result says which); a miss says WHY - 'new_string is already in the file' (the change looks applied) or the closest lines of the file by whitespace-blind line votes, numbered as read shows them - so the model retries without reading the file again. (2) A COMMAND STILL RUNNING AT ITS TIME LIMIT IS NOT KILLED (`box.run_in` move_to_bg): it keeps running as a background command of the session (bash_output / kill_shell, labelled and time-limited like run_in_background ones; not when it uses the network proxy or 3 are already running); the coder is told not to run it again. (3) TOOL INPUTS FIXED AGAINST THE TOOL'S OWN FIELDS (`engine.repair_input`, OpenCode's tool-input repair): a list / object sent as JSON text, '20' for a number, 'true' for a yes / no, a 'null' placeholder for an optional field - and a TEXT field is never touched. That fixed a live bug found while building it: the old blind reading turned the content of a .json file (package.json, tsconfig.json...) into a Python dict and wrote "{'name': 'shop'}" into the file. (4) THE REPO'S OWN FORMATTER AFTER EDITS (`devsahayak/fmt.py`): only a formatter the repo declares (prettier / biome from its node_modules, ruff format or black configured, gofmt for Go, rustfmt for Cargo, clang-format with .clang-format), once per reply for the files it changed, in the locked box; a formatter that would rewrite most of a not-yet-formatted file is put back; the coder sees a short diff. (5) REDO AFTER GOING BACK (`Session.redo`, POST /api/devsahayak/tasks/{id}/redo): a rewind keeps what it throws away (the files as one commit, the conversation, the later checkpoints) until her next message; web Redo in the session card, phone menu 'Undo going back', and the phone stops greying the undone steps. 14 tests (real ruff / gofmt). NOT VERIFIED in the real box or with a real model.
+
+
+## v0.999.285 SRE DESK (built as 0.999.284; their FIVE FROM OPENCODE took 0.999.284, both kept; owner: "Site Reliability Engineer same as finance desks")
+
+The Site Reliability Engineer (hire key `sre`, new in the software group) gets its own section `/console/sre` and its own chat
+(Conversation kind `sre`, `server/app/srechat.py`, routes under `/api/srdesk`), the same shape as the finance desks.
+
+NEW all-code engine `server/app/sredesk/` (no model call):
+- `slo.py`: error budget for a target over a window (allowed minutes, used, burn rate, when it runs out, the nines table); burn
+  rates over her `time, good, total` samples (counters turned into steps) with the Google SRE workbook's multiwindow alerts -
+  page at 14.4x over 1 h + 5 min and 6x over 6 h + 30 min, ticket at 1x over 3 days + 6 h, scaled to her window - and when each
+  would have fired; Prometheus recording + alerting rules from her metric names (validated names and selector; text she adds).
+- `alerts.py`: a rules file checked for what makes alerts noisy or useless (no for, no severity, no summary / runbook, counters
+  compared without rate(), rate windows under 4 scrapes, paging on CPU / memory / disk, == 0 without absent()); not promtool.
+  Alert history CSV counted in her IANA time zone and working hours: pages a week, flapping, short self-clearing alerts, never
+  acknowledged, nights, by hour.
+- `incident.py`: timestamped lines (any zone, past midnight) marked impact start / detected / acknowledged / mitigated / resolved;
+  the times between; follow-ups; lines blaming a person flagged; a blameless postmortem draft in Markdown - the parts only she
+  knows are marked blanks, never filled in.
+- `latency.py`: percentiles, share under her threshold, Apdex from durations / CSV / logs; histogram buckets -> quantiles the way
+  histogram_quantile() interpolates, with the bucket each true value lies in, exact or estimated threshold share.
+- `capacity.py`: least-squares trend of peak use -> the dates it crosses her headroom line and the limit, with r2; M/M/c (Erlang C)
+  utilisation, wait and response, the curve as load rises, and the one-server-down check (N+1).
+- `avail.py`: availability of a tree of parts (all = series, any / need k = redundancy), downtime a month, what each part costs and
+  what a second copy saves; copies counted as independent - said every time.
+- `service.py`: items (`sredesk_items`), settings (`sredesk_settings`: service, SLO, window, time zone, working hours, days off,
+  scrape interval, latency threshold, metric names, selector).
+
+NEW tool `sre_desk` (`agent/sre_tools.py`; registry 707 -> 708). Pages: Today, SLOs, Alerts, Incidents, Capacity (latency /
+histogram / growth / queue / availability), Settings (`static/console/srdesk.*`). Tests `tests/test_sr_desk.py` (5, incl. a
+browser walk). PyYAML added to requirements (it was already used lazily by the architecture desk).
+
+NOT VERIFIED: on her server or with her own monitoring data; the queue and availability results are models, not her system.
