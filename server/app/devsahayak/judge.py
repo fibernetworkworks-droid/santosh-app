@@ -71,6 +71,8 @@ def needs_review(name: str, inp: dict[str, Any]) -> bool:
         while path.startswith("./"):
             path = path[2:]
         return bool(SENSITIVE.search(path.lstrip("/")))
+    if name.startswith("mcp__"):                           # an MCP tool by its own name is always a call
+        return True
     if name == "mcp":
         return str(inp.get("action") or "") == "call"
     return False

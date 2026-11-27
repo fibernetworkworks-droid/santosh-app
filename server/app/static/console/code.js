@@ -767,6 +767,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
         return `<div class="hcd-step${s.ok === false ? ' dim' : ''}">${svg('search')}<span>${s.ok === false ? esc(s.text || 'The language server could not answer') : `${W[s.op] || 'Asked the language server'}${where}${s.num != null ? ' · ' + esc(String(s.num)) : ''}`}</span>${at}</div>`; }
       case 'diagnostics': return fold('dg' + i, `<b>The language server found problems</b> in what was just edited`, `<pre class="hcd-term">${esc(s.text || '')}</pre>`, 'row', verbose);
       case 'websearch': return `<div class="hcd-step">${svg('web')}<span>Searched the web for ${p(s.q || '')} · ${plural(s.num ?? 0, 'result')}</span>${at}</div>`;
+      case 'toolsearch': return `<div class="hcd-step dim">${svg('search')}<span>Loaded MCP tools for ${p(s.q || '')} · ${plural(s.num ?? 0, 'tool')}</span>${at}</div>`;
       case 'mcp': return `<div class="hcd-step">${svg('spark')}<span>${s.action === 'list' ? 'Looked at your MCP servers' : `Used ${esc(s.server || 'an MCP server')} · ${p(s.tool || '')}`}</span>${at}</div>`;
       case 'skill': return `<div class="hcd-step dim">${svg('read')}<span>${s.action === 'list' ? 'Looked at your skills' : `Read the skill ${p(s.name || '')}`}</span>${at}</div>`;
       case 'asked': return `<div class="hcd-step">${svg('dot')}<span>Asked you: <b>${esc(s.question || '')}</b>${s.answer ? ` · you said <i>${esc(s.answer)}</i>` : ' · no answer'}</span>${at}</div>`;

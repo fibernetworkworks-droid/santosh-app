@@ -2165,6 +2165,10 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         return _line(c, Icons.search_rounded, [
           TextSpan(text: 'Searched the web for “${cs(s['q'])}”${s['num'] is num ? ' · ${codeCount(s['num'], 'result')}' : ''}'),
         ]);
+      case 'toolsearch': // v0.999 MCP tools held back, loaded by a search
+        return _line(c, Icons.manage_search_rounded, [
+          TextSpan(text: 'Loaded MCP tools for “${cs(s['q'])}” · ${codeCount(s['num'] is num ? s['num'] : 0, 'tool')}', style: TextStyle(color: c.ink3)),
+        ]);
       case 'mcp':
         return _line(c, Icons.hub_outlined, [
           TextSpan(text: cs(s['action']) == 'list' ? 'Listed your MCP servers' : 'Used ${cs(s['server'])}${cs(s['tool']).isEmpty ? '' : ' · ${cs(s['tool'])}'}'),
