@@ -1260,6 +1260,10 @@ from .dist_tools import DIST_HANDLERS, DIST_LABELS, DIST_TOOLS  # noqa: E402
 TOOLS.extend(DIST_TOOLS)
 TOOL_LABELS.update(DIST_LABELS)
 HANDLERS.update(DIST_HANDLERS)
+from .sre_tools import SRE_HANDLERS, SRE_LABELS, SRE_TOOLS  # noqa: E402
+TOOLS.extend(SRE_TOOLS)
+TOOL_LABELS.update(SRE_LABELS)
+HANDLERS.update(SRE_HANDLERS)
 # v0.357 Engineering Desk: the hired CAD Engineer (cad_part)
 from .eng_tools import ENG_HANDLERS, ENG_LABELS, ENG_TOOLS  # noqa: E402
 
