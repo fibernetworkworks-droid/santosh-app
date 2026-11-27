@@ -174,6 +174,9 @@ def _index(steps: list, out: dict | None = None) -> dict[str, dict]:
         for rt in s.get("routes") or []:
             if isinstance(rt, dict):
                 _index(rt.get("steps") or [], out)
+        oe = s.get("on_error")                       # v0.999.258: an error handler's own steps
+        if isinstance(oe, dict) and isinstance(oe.get("steps"), list):
+            _index(oe["steps"], out)
     return out
 
 
@@ -204,6 +207,9 @@ def unmask(new_steps: list, old_steps: list) -> list:
                 for k, v in s.items():
                     if k in ("then", "else", "fallback", "routes") or (k == "body" and s.get("type") == "loop"):
                         continue
+                    if k == "on_error" and isinstance(v, dict) and isinstance(o.get(k), dict):
+                        d[k] = {kk: (_restore(vv, o[k][kk]) if kk in o[k] and kk != "steps" else vv) for kk, vv in v.items()}
+                        continue
                     if k in o:
                         d[k] = _restore(v, o[k])
             for k in ("then", "else", "body", "fallback"):
@@ -211,6 +217,8 @@ def unmask(new_steps: list, old_steps: list) -> list:
                     d[k] = walk(s[k])
             if isinstance(s.get("routes"), list):
                 d["routes"] = [{**rt, "steps": walk(rt.get("steps"))} if isinstance(rt, dict) else rt for rt in s["routes"]]
+            if isinstance(d.get("on_error"), dict) and isinstance(d["on_error"].get("steps"), list):
+                d["on_error"] = {**d["on_error"], "steps": walk(d["on_error"]["steps"])}
             res.append(d)
         return res
     return walk(new_steps)

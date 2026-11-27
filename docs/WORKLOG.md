@@ -4039,3 +4039,15 @@ Stage Summary:
 - tests/test_v0999_258_make_parity.py (47, incl. a browser walk); route suites 248 green; test_v0999_248 browser walk flaky in a long
   run, green alone (as before)
 - NOT VERIFIED on her server / with her own Make export / real app accounts
+
+---
+Task ID: route-wiring-v0999-263 (built as 0.999.259 / 0.999.261)
+Agent: Claude (cloud session)
+Task: "NOW GO EXTREED DEEP WIRE ALL BACKED PROPERLY WITH FRONTEND PERFECTLY THUS ALL THIS TOOL CAN FUCTION SMOTHLY"
+Work Log:
+- mapped every route.js api() call to a server route; walked the page in Chromium building and running a Make-style route by clicks only
+- fixed: hidden step groups, adding inside 'If it fails', handler steps skipped by 7 walkers (server + page), Test step item / error,
+  JSON body sent as a string, field picker refs, queued-call words, the last browser prompt, a null panel host after redraw
+Stage Summary:
+- tests/test_v0999_263_route_wiring.py (8, incl. 4 browser walks); Route suites green
+- NOT VERIFIED on her server

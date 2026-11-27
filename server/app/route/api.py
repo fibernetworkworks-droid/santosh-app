@@ -61,6 +61,9 @@ def _walk(steps: list) -> list[dict]:
         for rt in s.get("routes") or []:
             if isinstance(rt, dict):
                 out.extend(_walk(rt.get("steps") or []))
+        oe = s.get("on_error")                       # v0.999.258: an error handler's own steps
+        if isinstance(oe, dict) and isinstance(oe.get("steps"), list):
+            out.extend(_walk(oe["steps"]))
     return out
 
 
@@ -295,6 +298,8 @@ def make_router(require_key, current_tenant) -> APIRouter:
                 if s.get("routes"):
                     d["routes"] = [{**{k: v for k, v in rt.items() if k != "steps"}, "steps": deco(rt.get("steps"))}
                                    for rt in s["routes"] if isinstance(rt, dict)]
+                if isinstance(s.get("on_error"), dict) and isinstance(s["on_error"].get("steps"), list):
+                    d["on_error"] = {**s["on_error"], "steps": deco(s["on_error"]["steps"])}
                 res.append(d)
             return res
         out["graph"] = D._masked(deco(steps))

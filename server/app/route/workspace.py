@@ -451,6 +451,9 @@ def view_html(token: str) -> tuple[int, str]:
             for i, rt in enumerate(s.get("routes") or []):
                 if isinstance(rt, dict):
                     sub += f"<li class='br'><b>{e(str(rt.get('label') or f'Way {i + 1}'))}</b>{lst(rt.get('steps'), depth + 1)}</li>"
+            oe = s.get("on_error")
+            if isinstance(oe, dict) and oe.get("steps"):
+                sub += f"<li class='br'><b>If it fails</b>{lst(oe['steps'], depth + 1)}</li>"
             items.append(f"<li>{e(_words(s))}{('<ul>' + sub + '</ul>') if sub else ''}</li>")
         return "<ol>" + "".join(items) + "</ol>"
     style = "<style>ol,ul{padding-left:22px;margin:6px 0}li{margin:6px 0}li.br{list-style:none}li.br b{font-weight:500;color:var(--mut)}</style>"

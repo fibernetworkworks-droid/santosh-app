@@ -260,7 +260,8 @@
     const t = x.next_wake_at ? at(x.next_wake_at) : '';
     return {retry: t && 'Trying again at ' + t, sleeping: t && 'Goes on at ' + t,
       waiting_call: 'Waiting for a call to its resume link' + (t ? ' (until ' + t + ')' : ''),
-      waiting_subroute: 'Waiting for another route to finish'}[x.pause_reason] || '';
+      waiting_subroute: 'Waiting for another route to finish', queue: t ? 'In the queue - runs at ' + t : 'In the queue',
+      queue_off: 'Kept while the route is off - runs when you switch it on'}[x.pause_reason] || '';
   }
   function runRows(runs, inRoute, empty) {
     if (!runs.length) return `<div class="empty">${empty || 'No runs yet.'}</div>`;
@@ -806,7 +807,8 @@
     const h = find(id); if (!h) return;
     before();
     const c = clone(h.step);
-    const re = s => { s.id = freshId(s.id); ['then', 'else', 'body', 'fallback'].forEach(k => (subOf(s, k) || []).forEach(re)); (s.routes || []).forEach(r => (r.steps || []).forEach(re)); };
+    const re = s => { s.id = freshId(s.id); ['then', 'else', 'body', 'fallback'].forEach(k => (subOf(s, k) || []).forEach(re)); (s.routes || []).forEach(r => (r.steps || []).forEach(re));
+      if (s.on_error && Array.isArray(s.on_error.steps)) s.on_error.steps.forEach(re); };
     re(c); if (c.label) c.label = c.label + ' (copy)';
     h.list.splice(h.i + 1, 0, c); ED.sel = c.id; changed(false);
   }
@@ -839,9 +841,16 @@
     const idx = id ? flat.findIndex(s => s.id === id) : flat.length;
     const h = id ? find(id) : null;
     if (h && h.path[1] === 'body') out.push(['The item in this round', '{{item}}']);
+    // v0.999.258: inside an error handler, the error; in any step, this run's own details
+    let up = h;
+    while (up && up.path && up.path.length) { if (up.path[1] === 'on_error') { out.push(['What went wrong', '{{error.message}}'], ['The step that failed', '{{error.step}}']); break; } up = find(up.path[0]); }
+    out.push(['This run\'s id', '{{run.id}}'], ['When this run started', '{{run.started_at}}']);
     if (ED.trig.kind === 'webhook') out.push(['The data that arrived', '{{vars}}']);
     flat.slice(0, idx < 0 ? flat.length : idx).forEach(s => {
       if (s.type === 'set') out.push([`${titleOfStep(s)} (value)`, `{{vars.${s.name}}}`]);
+      else if (s.type === 'var' && s.op === 'set_many') Object.keys(s.values || {}).forEach(k => out.push([`${titleOfStep(s)} (${k})`, `{{vars.${k}}}`]));
+      else if (s.type === 'loop' && s.collect !== undefined) out.push([`What ${titleOfStep(s)} collected`, `{{steps.${s.id}.output.results}}`], [`... as one text`, `{{steps.${s.id}.output.text}}`]);
+      else if (s.type === 'store' && s.op === 'get') out.push([`The record ${titleOfStep(s)} got`, `{{steps.${s.id}.output.data}}`]);
       else if (!['condition', 'router', 'filter', 'wait', 'approval'].includes(s.type)) out.push([`What ${titleOfStep(s)} gave back`, `{{steps.${s.id}.output}}`]);
     });
     return out;
@@ -1220,7 +1229,7 @@
       else if (k.startsWith('dobj:')) { try { s[k.slice(5)] = v.trim() ? JSON.parse(v) : {}; el.classList.remove('err'); } catch { el.classList.add('err'); return; } }
       else s[k] = v;
       ED.dirty = snap() !== ED.saved; draw(); topState();
-      if (['method', 'oe_do', 'd:action', 'd:how', 'd:mode', 'wkind', 'd:memory', 'd:method', 'd:body_type', 'pg:type', 'lkind', 'd:op'].includes(k)) stepPanel(box.parentNode);
+      if (['method', 'oe_do', 'd:action', 'd:how', 'd:mode', 'wkind', 'd:memory', 'd:method', 'd:body_type', 'pg:type', 'lkind', 'd:op'].includes(k)) { if (box.parentNode) stepPanel(box.parentNode); }
       if (el.tagName !== 'SELECT') previewSoon(el, s);
     };
     box.addEventListener('input', e => { if (e.target.dataset.k && e.target.tagName !== 'SELECT') apply(e.target); else if (e.target.closest('.fgroup')) applyFilter(e.target); });
@@ -1233,7 +1242,7 @@
     function applyFilter(el, redraw) {
       const fg = el.closest('.fgroup'); once(); setF(fg, readFilter(fg));
       ED.dirty = snap() !== ED.saved; draw(); topState();
-      if (redraw && el.dataset.fo !== undefined) stepPanel(box.parentNode);
+      if (redraw && el.dataset.fo !== undefined) { if (box.parentNode) stepPanel(box.parentNode); }
     }
     box.addEventListener('click', e => {
       const t = e.target.closest('button'); if (!t) return;
@@ -1253,13 +1262,14 @@
       if (t.dataset.changeTool !== undefined) { const h = find(s.id); ED.replace = s.id; addAt(h.path, h.i); }
     });
     const aw = box.querySelector('[data-aiway]');
-    if (aw) aw.addEventListener('change', () => { before(); if (aw.checked) s.ai = s.ai || {text: ''}; else delete s.ai; changed(false); stepPanel(box.parentNode); });
+    if (aw) aw.addEventListener('change', () => { const host = box.parentNode; before(); if (aw.checked) s.ai = s.ai || {text: ''}; else delete s.ai; changed(false); if (host && document.body.contains(host)) stepPanel(host); });
     const oes = box.querySelector('[data-oesteps]');           // v0.999.254: the error handler's own steps
     if (oes) oes.addEventListener('change', () => {
+      const host = box.parentNode;                              // the panel may be redrawn by changed()
       before();
       if (oes.checked) { s.on_error = Object.assign({do: 'ignore'}, s.on_error || {}); s.on_error.steps = s.on_error.steps || []; }
       else if (s.on_error) { delete s.on_error.steps; }
-      changed(false); stepPanel(box.parentNode);
+      changed(false); if (host && document.body.contains(host)) stepPanel(host);
     });
     const fb = box.querySelector('[data-fallback]');
     if (fb) fb.addEventListener('change', () => { before(); if (fb.checked) s.fallback = s.fallback || []; else delete s.fallback; changed(false); });
@@ -1473,7 +1483,8 @@
   }
 
   // the add-a-step panel: search + groups (step kinds and Hoola's tools / connected apps)
-  const GROUPS = [['AI', IC.ai, 'k-ai'], ['Human in the loop', IC.approval, 'k-warm'], ['Flow', IC.route, 'k-flow'], ['Data', IC.store, 'k-data'], ['Core', IC.http, 'k-core']];
+  const GROUPS = [['AI', IC.ai, 'k-ai'], ['Human in the loop', IC.approval, 'k-warm'], ['Flow', IC.route, 'k-flow'], ['Data', IC.store, 'k-data'],
+    ['Data store', IC.store, 'k-data'], ['Variables', IC.set, 'k-data'], ['Text parser', IC.set, 'k-data'], ['Core', IC.http, 'k-core']];
   async function addPanel(box) {
     const q0 = ED.addQ || '';
     box.innerHTML = `<div class="pform"><div class="phead"><span class="ap k-trig">${svg(IC.plus)}</span><div><div class="pk">${ED.replace ? 'Change the tool' : 'Add a step'}</div><div class="pt">${esc(addWhere())}</div></div>
@@ -1496,6 +1507,9 @@
       if (!kw) {
         if (!ED.replace) GROUPS.forEach(([g, ic, cls]) => { const ks = kinds.filter(k => k.group === g); if (!ks.length) return;
           html += `<div class="agrp">${esc(g)}</div>` + ks.map(k => row(`data-kind="${esc(k.key || k.type)}"`, `<span class="ap ${cls}">${svg(OPIC[k.key] || IC[k.type] || ic)}</span>`, k.title, k.sub)).join(''); });
+        // v0.999.258: a step kind in a group this list does not name still shows (it used to be found only by search)
+        const known = new Set(GROUPS.map(g => g[0])), more = ED.replace ? [] : kinds.filter(k => !known.has(k.group));
+        if (more.length) html += `<div class="agrp">More</div>` + more.map(k => row(`data-kind="${esc(k.key || k.type)}"`, `<span class="ap k-${KIND_TILE[k.type] || 'core'}">${svg(OPIC[k.key] || IC[k.type] || IC.set)}</span>`, k.title, k.sub)).join('');
         html += `<div class="agrp">App actions <span class="mut">· every Hoola tool and your connected apps</span></div>` + toolRows.join('');
       } else {
         html = kinds.map(k => row(`data-kind="${esc(k.key || k.type)}"`, `<span class="ap k-${KIND_TILE[k.type] || 'core'}">${svg(OPIC[k.key] || IC[k.type] || IC.set)}</span>`, k.title, k.sub, k.group)).join('') + toolRows.join('');
@@ -1523,7 +1537,7 @@
     if (!a.path.length) return 'as the first step';
     const h = find(a.path[0]);
     const lab = a.path[1] === 'then' ? 'If yes' : a.path[1] === 'else' ? 'If no' : a.path[1] === 'body' ? 'For each item' : a.path[1] === 'fallback' ? 'Anything else'
-      : ((h && h.step.routes[a.path[2]] || {}).label || 'this way');
+      : a.path[1] === 'on_error' ? 'If it fails' : ((h && (h.step.routes || [])[a.path[2]]) || {}).label || 'this way';
     return `inside “${lab}”`;
   }
 
@@ -1593,8 +1607,10 @@
   }
   function showChanges(was) {
     const box = $('#askChange'); if (!box || !was) return;
-    const idx = l => { const o = {}; const w = x => (x || []).forEach(s => { o[s.id] = s; ['then', 'else', 'body', 'fallback'].forEach(k => w(subOf(s, k))); (s.routes || []).forEach(r => w(r.steps)); }); w(l); return o; };
-    const strip = s => { const c = Object.assign({}, s); delete c.app; ['then', 'else', 'body', 'fallback', 'routes'].forEach(k => delete c[k]); return JSON.stringify(c); };
+    const idx = l => { const o = {}; const w = x => (x || []).forEach(s => { o[s.id] = s; ['then', 'else', 'body', 'fallback'].forEach(k => w(subOf(s, k))); (s.routes || []).forEach(r => w(r.steps));
+      if (s.on_error && Array.isArray(s.on_error.steps)) w(s.on_error.steps); }); w(l); return o; };
+    const strip = s => { const c = Object.assign({}, s); delete c.app; ['then', 'else', 'body', 'fallback', 'routes'].forEach(k => delete c[k]);
+      if (c.on_error && c.on_error.steps) c.on_error = Object.assign({}, c.on_error, {steps: c.on_error.steps.length}); return JSON.stringify(c); };
     const A = idx(was.steps), B = idx(ED.steps), rows = [];
     Object.keys(B).forEach(k => { if (!A[k]) rows.push(['+', titleOfStep(B[k])]); else if (strip(A[k]) !== strip(B[k])) rows.push(['~', titleOfStep(B[k])]); });
     Object.keys(A).forEach(k => { if (!B[k]) rows.push(['−', titleOfStep(A[k])]); });

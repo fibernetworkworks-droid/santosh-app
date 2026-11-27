@@ -127,7 +127,13 @@ async def run(tenant: str, step: dict, ctx: dict, resolve) -> dict:
         bt = "none"
     kw: dict[str, Any] = {}
     if bt == "json":
-        kw["json"] = R(step.get("body"))
+        jb = R(step.get("body"))
+        if isinstance(jb, str) and jb.strip()[:1] in ("{", "["):   # typed in the page's box: the JSON she wrote, as JSON
+            try:
+                jb = json.loads(jb)
+            except ValueError:
+                raise HttpError("The body is not valid JSON - check its brackets and quotes")
+        kw["json"] = jb
     elif bt == "form":
         kw["data"] = {str(k): ("" if v is None else str(v)) for k, v in _obj(R(step.get("form") if step.get("form") not in (None, "") else step.get("body")), "form").items()}
     elif bt == "raw":

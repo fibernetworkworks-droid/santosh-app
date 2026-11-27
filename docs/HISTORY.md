@@ -13096,3 +13096,32 @@ built on the existing product engine (`server/app/product/`).
 
 ## v0.999.262 HOOK ANSWERS LIKE CLAUDE CODE
 (owner: 'Hook answers: Claude Code hooks can reply in JSON ... LETS WORK ON IT'): a repo's hook (or a plugin's) now answers the way Claude Code reads it (`repoconf.hook_answer`): exit 2 = block with its stderr as the reason (JSON ignored); any other non-zero exit = a non-blocking error shown to her; exit 0 with JSON on stdout = PreToolUse `permissionDecision` allow (no prompt, settings deny rules still checked first) / deny (the step does not run, the reason goes to the model) / ask (waits for her yes even in Auto, the reason on the card) + `updatedInput` (the hook's version of the step runs, checked again against the deny rules), the older `decision` approve / block, `decision: block` + reason for PostToolUse / Stop / SubagentStop / UserPromptSubmit, `additionalContext` for SessionStart / UserPromptSubmit / PostToolUse, `continue: false` + `stopReason` (the round ends there, the reason told to her), `systemMessage` (shown to her); plain stdout is context for SessionStart / UserPromptSubmit and shown in the step otherwise. Several hooks on one event: deny beats ask beats allow, the last changed input wins. The hook's stdout and stderr are kept apart in the box. FIXED: hooks were given Hoola's field names (path) - they now get Claude Code's (file_path, notebook_path, cell_number) so a real Claude Code hook script works. WEB + PHONE: the hook row says allowed it / asked you first / changed the step / stopped the step / stopped the work, with its message. 5 tests incl. a full round with fakes. NOT VERIFIED: hooks on real Docker on her server.
+
+## v0.999.263 ROUTE WIRING (built as 0.999.259 / 0.999.261; the other sessions took 0.999.259-0.999.262, all kept)
+
+Owner: "NOW GO EXTREED DEEP WIRE ALL BACKED PROPERLY WITH FRONTEND PERFECTLY THUS ALL THIS TOOL CAN FUCTION SMOTHLY".
+
+Method: every page api() call mapped to its route (all present; POST /routes/{x}/run and GET versions/{vid} have no own button and are
+reached by Test route and the Versions list), then a real browser walk that BUILDS and RUNS a Make-style route only by clicking.
+
+Fixed (each was found by the walk or the read, not guessed):
+- Add a step had hard-coded groups, so Data store / Variables / Text parser steps were hidden; new groups added and any unknown group
+  shows under "More".
+- Adding a step inside an "If it fails" handler crashed the page (`addWhere` read `h.step.routes`); the on_error path is handled.
+- Walkers that skipped handler steps: route/stepdata.py `_all`, route/api.py `_walk` + `_full().deco`, route/editor.py `_index` +
+  `unmask` (the masked-field restore), route/workspace.py shared view, route.js duplicate (re-ids handler steps) and the change diff.
+- Test step: inside a repeater `{{item}}` is the repeat's start number; inside a handler `{{error}}` is the last run's error of that
+  step, else a clearly marked test error.
+- route/http.py: with body type json a typed body that starts with { or [ is parsed before sending (was sent as a quoted string);
+  bad JSON is refused with a plain line.
+- Field picker (`refsFor`): {{error.message}} / {{error.step}} in a handler, {{run.id}} / {{run.started_at}}, set_many values,
+  loop collect results, store get .data.
+- Runs page: queue / queue_off words for webhook calls waiting in the queue.
+- Delete all records: an in-page box instead of the browser prompt (route.js keeps no prompt( / confirm().
+- A checkbox that redraws the step panel threw "Cannot read properties of null (reading 'id')"; the host is captured first and every
+  `stepPanel(box.parentNode)` is guarded.
+
+Tests: tests/test_v0999_263_route_wiring.py (8): walkers see handler steps, open-with-data + test step in a handler, page source
+rules, a click-only build-and-run of a Make-style route (store, var, repeater with collect, web request with a JSON body, error handler,
+settings, schedule start date, grid, clearing records), every step kind opens its panel and data view, Test step in the data view for
+the new steps, a queued webhook said on the runs page, the version. NOT VERIFIED on her server.
