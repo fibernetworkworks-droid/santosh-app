@@ -13313,3 +13313,52 @@ server with a real model (the design / improve paths ran against a fake model).
 
 ## v0.999.275 WORKTREES FOR AGENTS
 (owner: 'GO NEXT - WORKTREES FOR AGENTS'): Claude Code's `isolation: worktree` in Hoola Code (`devsahayak/worktree.py`). An agent can work in ITS OWN copy of the working copy (`agent` isolation=worktree, or `isolation: worktree` in a .claude/agents file): the copy carries her uncommitted edits and the hidden secrets stay hidden; every read, edit and command of that agent goes to the copy, so several editing agents work at the same time and an editing agent can now run in the background. An unchanged copy is removed by itself; a changed one is KEPT and the coder's result says which files changed and that they are not in its working copy yet. The coder's new tool `agent_worktree` lists / shows / applies / discards a copy: apply brings the changes in as one patch, plainly when nothing moved under it, else a three-way merge whose conflicts are marked in the files and named; secret files and paths the coder may not write (CI workflows unless she allowed them) never come in; in 'ask each step' mode she is asked first. She can do the same from the session (web: Show changes / Bring in / Discard on the copy's row; phone: the row's menu; routes GET/POST /api/devsahayak/tasks/{id}/worktrees...). One difference from Claude Code, on purpose: a `git worktree` keeps a .git pointer to a server path the locked box cannot see, so each copy is self-contained (reflink copy + its own git start). Limits: 8 open copies a session, a working copy over 2000 MB gets none, a copy is refused when the disk is too full, kept copies live 7 days, a copy whose agent died with a restart keeps what it changed; ids are reserved at once (found by its own test: two agents started together got the same id). WorktreeCreate / WorktreeRemove hook events. NOT VERIFIED with a real model or in the real box.
+
+
+## v0.999.276 KERNEL DESK (built as 0.999.274; owner: "Kernel / OS Developer same as finance desks")
+
+The Kernel / OS Developer (hire key `kernel_dev`, was a "not live" Hub card) goes live with a NEW engine and its own section like
+the finance desks: `/console/kernel` (`static/console/kddesk.html/.js/.css`) with the Kernel chat (Conversation kind `kernel`,
+`server/app/kdchat.py`, routes `/api/kddesk/{chat, chat/new, chat/{conv}/ok, desk, do/{part}, driver.zip}`). Pages: Today,
+Crashes, Patches, Kernel config, Boot & CI, Drivers, Settings.
+
+THE ENGINE `server/app/kerneldesk/` - all code, no model, nothing run / pushed / sent:
+- `crash.py` - a kernel crash log (Oops, BUG / BUG_ON, panic, WARNING, KASAN, KFENCE, UBSAN, lockdep, hung task, soft / hard
+  lockup, RCU stall, OOM, general protection fault; x86_64 RIP, arm64 pc / lr, riscv64 epc; dmesg / syslog / journal prefixes
+  stripped): the kind, kernel, taint letters decoded, CPU / task, address, where it stopped, the cleaned call trace (unreliable "?"
+  frames marked), modules + out-of-tree ones, KASAN access / object / allocate + free stacks, lockdep lines, OOM victim, poison
+  values (LIST_POISON with an offset, slab poisons). `explain` names the REAL function past the reporting / allocator / scheduler
+  machinery (`NOISE`, clone suffixes like .constprop.0 removed), what the evidence points at by rule (NULL + small address = field
+  offset, freed-in / used-in, the lock a hung task waits on, the link register's module, taint and "fix the first report"), and
+  the commands for HER tree (faddr2line on the .ko or vmlinux, decode_stacktrace.sh, git log -L on a real file:line). `signature`
+  = kind + the first three real frames, so the same bug groups; a crash marked fixed that comes back is said.
+- `patch.py` - Hoola's own patch rules from Documentation/process (not checkpatch.pl, none of its code): subsystem prefix,
+  length, imperative, full stop, a body, 75-column message, Signed-off-by from the author, Fixes: format, Cc stable, Reported-by
+  + Closes:, SPDX on new files, Kconfig help; code rules on added lines (tabs, trailing whitespace, if( spacing, printk without a
+  level, BUG_ON, strcpy / strlcpy / strncpy / sprintf / simple_strto*, short msleep, kmalloc(n * size), packed, volatile,
+  typedef struct, return (x), NULL comparisons, jiffies comparisons, long udelay, extern in .c, #ifdef CONFIG_, the opening brace
+  of a function, line length). Ends with checkpatch.pl / get_maintainer.pl / send-email to run herself.
+- `kconfig.py` - profiles as data with their source (KSPP hardening, QEMU boot test, debugging, container host; "check this"
+  against her version), by architecture; a fragment for merge_config.sh; compare two configs.
+- `bootlog.py` - a boot / serial log: stages reached with times, errors with meaning (driver probe errors with the errno spelled
+  out incl. -517 EPROBE_DEFER and -121 EREMOTEIO, missing firmware, root not mounted, no init, I/O / ext4 errors, panics, Oops),
+  and whether the boot-test marker printed.
+- `scaffold.py` - starter drivers from fixed templates (module with a parameter, misc character device, platform driver with a
+  regmap and DT match, I2C driver), Makefile, Kconfig, a .dtsi node, README; they pass the desk's own style checks.
+- `ci.py` - a GitHub Actions workflow for HER kernel repository: tools, defconfig + her fragment, build, her out-of-tree module
+  built against it, an initramfs whose init is a tiny STATIC C program (compiled with the same cross compiler, so no busybox per
+  architecture; it mounts /proc + /dev, loads every module with finit_module, prints the marker, powers off), boot in QEMU
+  (x86_64 q35 / arm64 virt / riscv64 virt), pass only on the marker, keep the serial log. Inputs checked (no spaces or ..).
+- `service.py` - items (crash / patch / config / boot; numbered C- / P- / K- / B-, statuses, signature groups, 400 kept) and
+  settings (arch, kernel, defconfig, fragment, module folder, branch, line length, author, vendor prefix).
+
+NEW tool `kernel_desk` (agent/kernel_tools.py, family kernel; registry 703 -> 704, 27 count pins moved). Hub entry live with does /
+needs / never; employees.js + v2.js open /console/kernel.
+
+Tests `server/tests/test_kd_desk.py` (5 incl. a browser walk at 1440 and 390) + `tests/kernel_samples.py` (x86_64 NULL deref,
+KASAN use-after-free, arm64 list poison, hung task, boot ok / fail, bad / good patch, .config). The tests check the workflow is
+valid YAML for all three architectures, every shell step passes `bash -n`, the C init compiles with gcc -static -Wall -Werror,
+and every driver template passes the style rules. FOUND AND FIXED while building: taint letters read as the kernel version,
+KASAN / hung-task reports pointing at dump_stack / kasan_save_stack / __schedule instead of the real code, a KASAN function name
+treated as a file path, list poison with an offset missed, one crash counted twice, the init printing a backslash instead of a
+new line. NOT VERIFIED: the workflow has not run on GitHub and no real kernel was built or booted in QEMU here.
