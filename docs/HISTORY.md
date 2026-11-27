@@ -12438,3 +12438,21 @@ right edges line up, every tile on one edge, one tick, no line cut off.
 v0.999.229 INVESTMENTS DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE INVESTMENTS DESK"): the Investments & Wealth employee gets its own section /console/investments + Investments chat (kind investments, `invchat.py`) on any of her finance workspaces (a person up to a fund): Today (value at her prices, unrealised, this tax year, losses she could look at, needs, allocation ring, gains by tax year, largest holdings vs her limit); Portfolio (holdings from a broker CSV, a form or built from her trades, her prices - Hoola fetches none - weights, target mix, losses with the buy-back window from her own buys); Gains & tax lots (broker CSV / form, matched by her country's method or hers, by tax year, wash-sale losses carried, each sale with its lots, CSV for her return - tax not worked out); Plans (fee cost and pot drawdown at HER return / inflation, with charts); Options & futures (most she can lose, break-even, a 1% move, her results); Scam check with history; Fund NAV with history and breaks; Settings (country, method, window, limit, target mix, another portfolio); team roles from Books read or change; never places an order or says what to buy or sell; 5 tests incl. a browser walk. NOT VERIFIED on her server.
 
 Files: server/app/invchat.py (desk state under the workspace settings `investments_desk`: trades, holdings, positions, results, scams, funds, assumptions, plans, targets; routes /api/investments/*), static/console/invdesk.{html,js,css}, wiring in convs.py, callconv.py, agent/santosh.py (block + admission), main.py (page + mount), employees.js, v2.js, lib/ui/shell/hoola_employees.dart; tests server/tests/test_inv_desk.py. The F10 engine (fin/desks/investments.py) is unchanged. Tax years by Hoola's table (GB, IN, AU, NZ, ZA; calendar elsewhere) marked check this.
+
+
+## v0.999.230 MARKETS DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE MARKETS DESK")
+
+The Markets & Post-Trade employee (tool `markets_desk`, engine `fin/desks/markets.py`, F10) gets its own section like Investments,
+Payments and Institution: `/console/markets` (`mktdesk.html/.js/.css`) + the Markets chat (Conversation kind `markets`, `server/app/mktchat.py`,
+`/api/markets/*`), the desk block + family `mktdesk` in view in that chat (agent/santosh.py), kept out of chat lists (convs / callconv).
+
+- Data in the workspace settings under `markets_desk`: books / custodian positions and cash (snapshots: a file replaces the list), trades,
+  confirms, settlements, executions (keyed by id: a re-upload updates, never doubles), dividends, instructions, peers + target, events (corporate
+  actions worked out), margins, period_ends + ir_rules, and HER settings: tolerances, daily penalty bp, slippage limit, treaty rates, claim years,
+  haircuts. CSV columns read by common custodian / broker header names.
+- Pages: Today, Reconcile, Settlement, Corporate actions, Reclaims, Margin, Execution, Instructions, Comps & IR, Settings; SVG charts (match ring,
+  fails by age, diverging slippage, cover bar, comps range, disclosure timeline); downloads breaks / fails / reclaims / calendar CSV.
+- Page reads run the engine without an audit row each redraw; actions she takes go through `core.run_tool` (laws + audit). Roles from Books:
+  owner / accountant / approver change, auditor / viewer read.
+- Hoola never places, changes, cancels, allocates or affirms an order or a trade and sends nothing to a custodian, broker or counterparty; every
+  rate is hers. Tests `server/tests/test_mkt_desk.py` (5, incl. a browser walk at 1440 and 390). NOT VERIFIED on her server.

@@ -1698,6 +1698,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_ivc.block, tenant_id)
     except Exception:
         log.exception("investments desk block failed")
+    try:   # INVESTMENTS DESK: a turn in the Investments chat (or a call started from it) knows the desk
+        from .. import mktchat as _mkc
+        if _mkc.is_markets(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_mkc.block, tenant_id)
+    except Exception:
+        log.exception("markets desk block failed")
     _mark("hint")
     return state
 
@@ -2541,6 +2547,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "investments chat"
     except Exception:
         log.exception("investments chat admission failed")
+    try:   # MARKETS DESK: the markets tool in view in the Markets chat
+        from .. import mktchat as _mkc
+        if adm is not None and _mkc.is_markets(conversation_id):
+            adm.admit_families(_mkc.FAMILIES)
+            for f in _mkc.FAMILIES:
+                adm.why[f] = "markets chat"
+    except Exception:
+        log.exception("markets chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,
