@@ -169,7 +169,7 @@
     $('#csPage').addEventListener('change', onChange);
     $('#csPage').addEventListener('mousemove', onChartMove);
     $('#csPage').addEventListener('mouseleave', () => { const t = $('#csTip'); if (t) t.hidden = true; }, true);
-    window.addEventListener('hashchange', () => { readTab(); paintTabs(); showPage(); });
+    window.addEventListener('hashchange', () => { ST.keepT = null; readTab(); paintTabs(); showPage(); });
     stateLine();
   }
   function clearCache() { ST.fc = null; ST.fcFor = ''; ST.bt = null; ST.idle = null; ST.idleFor = ''; ST.fees = null; ST.fx = null; ST.fxFor = ''; ST.cov = null; }
@@ -204,12 +204,34 @@
   }
 
   /* ---------------------------------------------------------------- pages */
+  // what she is still typing in other boxes survives a save that redraws the page; a form just sent starts clean
+  function keepTyping(box) {
+    const out = [], act = document.activeElement, now = Date.now();
+    box.querySelectorAll('form[data-form]').forEach(f => {
+      if (f.dataset.sent && now - Number(f.dataset.sent) < 30000) return;
+      f.querySelectorAll('input[name], textarea[name], select[name]').forEach(el => {
+        if (el.type === 'checkbox' || el.type === 'radio' || el.type === 'file' || el.type === 'hidden') return;
+        const typed = el.tagName === 'SELECT' ? [...el.options].some(o => o.selected !== o.defaultSelected) : el.value !== el.defaultValue;
+        if (typed) out.push({f: f.dataset.form, n: el.name, v: el.value, focus: el === act, s: el.selectionStart, e: el.selectionEnd});
+      });
+    });
+    return out;
+  }
+  function putTyping(box, kept) {   // returns what could not go back yet (the page is still loading)
+    const later = [];
+    kept.forEach(k => {
+      const el = box.querySelector(`form[data-form="${k.f}"] [name="${k.n}"]`); if (!el) { later.push(k); return; }
+      el.value = k.v;
+      if (k.focus) { el.focus(); try { if (k.s != null) el.setSelectionRange(k.s, k.e); } catch (_) {} }
+    });
+    return later.length ? later : null;
+  }
   function showPage(keep) {
     const box = $('#csPage'); if (!box) return;
     if (!W()) { box.innerHTML = noBiz(); starters(); return; }
     const fn = {today: pToday, forecast: pForecast, spare: pSpare, fees: pFees, currencies: pCurrencies, covenants: pCovenants, settings: pSettings}[ST.tab] || pToday;
     const html = fn();
-    if (typeof html === 'string') box.innerHTML = html;
+    if (typeof html === 'string') { const kept = keepTyping(box).concat(ST.keepT || []); box.innerHTML = html; ST.keepT = putTyping(box, kept); }
     starters();
     if (!keep) $('#sdDesk').scrollTop = 0;
   }
@@ -523,7 +545,7 @@
   }
   function onChange() {}
   async function onSubmit(e) {
-    const form = e.target.closest('form[data-form]'); if (!form) return;
+    const form = e.target.closest('form[data-form]'); if (!form) return; form.dataset.sent = Date.now();
     e.preventDefault();
     const fd = new FormData(form), kind = form.dataset.form, btn = form.querySelector('[type=submit]');
     const g = n => S(fd.get(n)).trim();

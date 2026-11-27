@@ -260,8 +260,10 @@ def test_desk_in_a_real_browser(fm, fm_server):
     snap(pg, "firm-today-1440")
     pg.goto(base + f"/console/firm#/clients/{cid}")
     pg.wait_for_selector("text=Papers asked for", timeout=20000)
+    pg.fill("#fmE2", "2,400 a year")                       # half-typed in another box ...
     pg.click("[data-provide='rq1'][data-item='Bank statements']")
     pg.wait_for_selector("text=Marked as received", timeout=20000)
+    assert pg.input_value("#fmE2") == "2,400 a year"        # ... survives the save that redraws the page
     pg.fill("form[data-form=meeting] [name=text]", "Action: send payslips by 2026-12-05\nDecided: move to quarterly VAT")
     pg.click("form[data-form=meeting] [type=submit]")
     pg.wait_for_selector("text=move to quarterly VAT", timeout=20000)

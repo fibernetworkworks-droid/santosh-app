@@ -12760,3 +12760,78 @@ Hoola Code fix pass. Web `static/console/code.js` (hcdQual, P.rail out of the co
   search; "Bring in a file" on All routes.
 - Tests `server/tests/test_v0999_246_route_workspace.py` (11 incl. a Chromium walk). NOT VERIFIED: on her server, a real OAuth2
   site, a real team member's run.
+
+
+## v0.999.247 FIRM DESK TYPING KEPT (owner: "NOW LETS WORK ON NEXT EMPLOYEE SAME WAY -- FIRM PRACTICE")
+
+The Firm Practice employee already had its own section /console/firm + Firm chat (v0.999.222). Checked end to end with its
+browser walk on: a save on a client page (Mark received, the fact-find, an engagement letter) redraws the page, and a client
+page redraws twice (a "Working it out" step, then the page), so whatever she was half-typing in another box was wiped.
+`firmdesk.js` now keeps typed values (and the cursor) across the redraw and the loading step (`keepTyping` / `putTyping`,
+`ST.keepT`, cleared on navigation); the form just sent starts clean (`dataset.sent`); the toast shows after the redraw.
+The Cash, Credit, Money Safety, Payments and Tax desks had the same redraw with no keeper and get the same helper; the
+newer desks already had their own (`typed` / `retype`). Test: the firm browser walk types into the engagement fee, marks a
+paper received and checks the fee is still there (fails on the old code). NOT VERIFIED on her server.
+
+## v0.999.248 PAST RUNS, INSIGHTS, N8N IMPORT (R8 of the Hoola Route plan, the last phase; owner: "GO R8"; built as 0.999.247, their FIRM DESK TYPING KEPT took 0.999.247, both kept)
+
+The plan canvas (claude.ai/artifact/AfdPogRtMSqNY4ztAZ9dxq) R8 line: debug a past run in the editor, retry from the failed
+step, search runs by a value, keep runs as long as you choose, insights, import an n8n workflow. All of it is built.
+
+**Find runs by a value.** NEW `server/app/route/runs.py` `search` = one SQL LIKE (escaped, so % and _ are text) over a run's
+data, log and error, any case, 2-200 characters; each hit says WHERE it was found (start data / step <id> / variables /
+error) and the text around it. A hit only inside Hoola's own bookkeeping (a pin, a timer) is dropped. Every value is masked
+(ID numbers + card / bank / tax numbers via `pii.mask_sensitive`). GET /api/route/runs?q=; the Runs page has a search box
+(#/runs/find/<value>) with Found in + Around it columns.
+
+**Run again with the same data.** `create_run` now keeps what a run started with as `context._start` (Test route too),
+because a set step changes the variables; older runs fall back to their variables without Hoola's own keys. `rerun` = a NEW
+run of the same route with that data (the old run untouched; the route's runs-a-day limit counts). POST
+/api/route/runs/{id}/rerun; "Run again with the same data" on the run page and in the debug bar. Retry from the failed step
+was already there (it resumes from the checkpoint) and is kept.
+
+**Debug a past run in the editor.** #/r/<route>/debug/<run>: `stepdata.data(run_id=)` gives THAT run's start data, every
+step's output, its log, the failed step and the error (another route's run is refused; tests made since are not laid over
+it); `context_for` / `test_step` / `preview` take run_id too, so a step tested there and the live result under every box
+work on that run's data. A bar says when the run was, its state and where it failed, with Pin this run's data (POST
+/api/route/routes/{id}/pins/from-run: the start data + each step's output, never a step that failed, too-big ones named),
+Run again, Open the run, Back to the newest data. The run page shows What it started with and a Debug in the editor link.
+
+**Keep runs as long as you choose.** Route settings `keep_runs_days` (1-3650) and `keep_runs` (1-20000), checked in
+`validate_settings`; `forget_old_runs` keeps each such route that way (only days = at most 20,000 runs; only a count = up to
+10 years) and the rest share the server default as before. Settings tab fields.
+
+**Insights.** A tally kept at each run's honest end (`_after_run` -> `runs.tally`; tables route_tally by hour, route_step_tally
+by day, route_tallied per run) - so the figures outlive the runs, and a failed run retried to done moves from failed to done,
+never counted twice. `insights(days 1/7/30/90, route, tz)`: runs, failed + failure rate, average working time (waits do not
+count), time saved (new setting `minutes_saved` per route x done runs), each against the period before, runs by day in HER
+time zone (hour buckets, so any zone works), each route, slowest steps, steps that fail most. GET /api/route/insights;
+#/insights page + sidebar row. Runs before R8 are not in the figures (said on the page).
+
+**Bring in an n8n workflow.** NEW `server/app/route/n8n.py` (own code, reads n8n's published export shape: nodes +
+connections). Starts: manual, schedule (minutes / hours / days / weeks / months / simple cron; under 15 minutes raised and
+said), webhook, form (fields + choices; labels become names), chat, error, executeWorkflowTrigger, MCP, RSS / Gmail / Sheets
+/ Drive / Calendar triggers -> app events; one start per route, the others reported. Steps: HTTP Request (GET / POST, query,
+headers, body; other methods become POST and are said; its n8n sign-in never comes - add it under Sign-ins), Set / Edit
+Fields, IF, Filter, Switch (rules + fallback; old shape too), Wait (time / until / webhook), Loop Over Items (body = the
+chain back to the loop; done = what follows), Merge (append / by key with every join / by position / choose branch), Sort,
+Limit, Remove Duplicates, Split Out, Aggregate, Summarize, Respond to Webhook, Stop and Error, Execute Workflow -> sub-route,
+and the AI nodes (agent, LLM chain, summarisation, information extractor, retrieval QA, OpenAI -> AI steps; text classifier
+and sentiment -> an AI step + ways). Graph: a node two ways lead into is a join, placed after the if / switch; a way that goes
+back to the loop goes on to the next item; an empty way before a join ends there (as in n8n). Expressions: $json, $input,
+$('Node') / $node / $items, $env / $vars, $now / $today -> Hoola paths, every result checked by Hoola's own expression
+checker; anything else (JavaScript) becomes the text "[n8n: ...]" and is listed to check. Code / Function nodes, app nodes
+(Slack, Gmail ...) and anything unknown become a named stop step (a placeholder that stops the run with its reason, so nothing
+half-done runs) and are listed to redo; JavaScript is never run or translated. Model / memory / tool sub-nodes are left out
+(Hoola's AI uses its own model). The report: came in / to check / to redo / left out / good to know (incl. "n8n runs a step
+per item, Hoola once per list"). `bring_in` saves through the engine's own checks, SWITCHED OFF, and refuses a name that is
+taken. POST /api/route/import/n8n (save=false = a look only). Page #/import ("Bring in from n8n" on All routes): paste or pick
+the file, Look at it first, then Bring it in.
+
+Files: route/runs.py, route/n8n.py (NEW), agent/dhara_tools.py (create_run _start, forget_old_runs, _after_run tally,
+validate_settings), route/stepdata.py (run_id), route/api.py (runs ?q=, rerun, data ?run_id, pins/from-run, insights,
+import/n8n, run start + failed step), static/console/route.js/.css/.html. Tests: tests/test_v0999_248_route_runs.py (11 incl.
+a browser walk) + tests/data/n8n_orders.json, n8n_leads.json (hand-written exports in n8n's shape).
+
+NOT VERIFIED: on her server; against workflows exported by a real n8n (the test files follow n8n's documented shape; node
+parameter names change between n8n versions, so an unknown shape becomes a placeholder, never a guess).

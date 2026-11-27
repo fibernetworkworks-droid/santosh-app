@@ -355,8 +355,8 @@ def make_router(require_key, current_tenant) -> APIRouter:
         # v0.999.234 R2: a test starts with her pinned test data, and pinned steps give their pinned output
         if (body or {}).get("use_pins", True):
             pc = await run(SD.context_for, tenant, wf, True)
-            ctx = {"vars": vars_ if isinstance(vars_, dict) else (await run(SD.pins, tenant, wf["id"])).get("trigger") or {},
-                   "steps": {}, "notify": 0, "_pins": pc.get("_pins") or {}}
+            v0 = vars_ if isinstance(vars_, dict) else (await run(SD.pins, tenant, wf["id"])).get("trigger") or {}
+            ctx = {"vars": v0, "steps": {}, "notify": 0, "_pins": pc.get("_pins") or {}, "_start": dict(v0)}
             await run(lambda: D.update_run(tenant, rid, context=ctx))
         t = asyncio.ensure_future(D.execute_run(tenant, rid))
         D._TASKS.add(t)
@@ -365,17 +365,26 @@ def make_router(require_key, current_tenant) -> APIRouter:
 
     # ---------------------------------------------------------------- v0.999.234 R2: step data, single-step tests, pins
     @r.get("/routes/{wf_id}/data")
-    async def route_data(wf_id: str, tenant: str = Depends(current_tenant)):
+    async def route_data(wf_id: str, run_id: str = "", tenant: str = Depends(current_tenant)):
+        """The route's newest data, or (R8, ?run_id=) one past run's data for debugging it in the editor."""
         from . import stepdata as SD
-        return await run(lambda: SD.data(tenant, _wf_or_404(tenant, wf_id)))
+
+        def go():
+            try:
+                return D._masked(SD.data(tenant, _wf_or_404(tenant, wf_id), str(run_id or "")[:40]))
+            except ValueError as e:
+                raise HTTPException(404, str(e))
+        return await run(go)
 
     @r.post("/routes/{wf_id}/steps/{sid}/test")
     async def route_step_test(wf_id: str, sid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
-        """Test one step on the route's newest data (and her pins). A step that sends or writes really does it."""
+        """Test one step on the route's newest data (and her pins), or on a past run's data (R8, run_id).
+        A step that sends or writes really does it."""
         from . import stepdata as SD
         wf = await run(_wf_or_404, tenant, wf_id)
         try:
-            return await SD.test_step(tenant, wf, sid, bool((body or {}).get("use_pins", True)))
+            return await SD.test_step(tenant, wf, sid, bool((body or {}).get("use_pins", True)),
+                                      str((body or {}).get("run_id") or "")[:40])
         except ValueError as e:
             raise HTTPException(400, str(e))
 
@@ -383,8 +392,36 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def route_eval(wf_id: str, body: dict = Body(...), tenant: str = Depends(current_tenant)):
         """v0.999.237 R3: what a box becomes with the route's newest data (the editor's live result line)."""
         from . import stepdata as SD
-        return await run(lambda: SD.preview(tenant, _wf_or_404(tenant, wf_id), str((body or {}).get("text") or ""),
-                                            str((body or {}).get("step") or "")))
+
+        def go():
+            try:
+                return SD.preview(tenant, _wf_or_404(tenant, wf_id), str((body or {}).get("text") or ""),
+                                  str((body or {}).get("step") or ""), str((body or {}).get("run_id") or "")[:40])
+            except ValueError as e:
+                raise HTTPException(404, str(e))
+        return await run(go)
+
+    @r.post("/routes/{wf_id}/pins/from-run")
+    async def route_pins_from_run(wf_id: str, body: dict = Body(...), tenant: str = Depends(current_tenant)):
+        """v0.999.248 R8: pin a past run's start data and step outputs, so tests work on that exact data."""
+        from . import runs as RU
+
+        def go():
+            wf = _wf_or_404(tenant, wf_id)
+            steps = (body or {}).get("steps")
+            try:
+                return RU.pin_from_run(tenant, wf, str((body or {}).get("run_id") or ""),
+                                       [str(x) for x in steps] if isinstance(steps, list) else None,
+                                       bool((body or {}).get("trigger", True)))
+            except RU.RunsError as e:
+                raise HTTPException(404, str(e))
+        return await run(go)
+
+    @r.get("/insights")
+    async def route_insights(days: int = 7, route_id: str = "", tz: str = "UTC", tenant: str = Depends(current_tenant)):
+        """v0.999.248 R8: how her routes do - runs, failures, working time, slow and failing steps, time saved."""
+        from . import runs as RU
+        return await run(RU.insights, tenant, days, str(route_id or "")[:40], str(tz or "UTC")[:60])
 
     @r.put("/routes/{wf_id}/pins/{sid}")
     async def route_pin(wf_id: str, sid: str, body: dict = Body(...), tenant: str = Depends(current_tenant)):
@@ -451,15 +488,30 @@ def make_router(require_key, current_tenant) -> APIRouter:
         return await _tool(tenant, D.dhara_run, workflow_id=wf_id)
 
     @r.get("/runs")
-    async def route_runs(workflow_id: str = "", status: str = "", limit: int = 30,
+    async def route_runs(workflow_id: str = "", status: str = "", limit: int = 30, q: str = "",
                          tenant: str = Depends(current_tenant)):
         def go():
+            if str(q or "").strip():          # v0.999.248 R8: runs that hold a value anywhere in their data
+                from . import runs as RU
+                try:
+                    return RU.search(tenant, q, workflow_id, status, limit)
+                except RU.RunsError as e:
+                    raise HTTPException(400, str(e))
             rows = D.list_runs(tenant, wf_id=workflow_id, limit=max(1, min(int(limit or 30), 100)), status=status)
             return {"runs": D._masked([{"id": x["id"], "route": x["wf_name"], "route_id": x["workflow_id"],
                                         "status": x["status"], "steps_done": x["cursor"], "error": (x.get("error") or "")[:300],
                                         "pause_reason": x.get("pause_reason") or "", "summary": x.get("summary"),
                                         "at": x.get("created_at"), "next_wake_at": x.get("next_wake_at")} for x in rows])}
         return await run(go)
+
+    def _start_of(x: dict) -> Any:
+        from . import runs as RU
+        from . import stepdata as SD
+        return SD._view(RU.start_data(x))
+
+    def _failed_of(x: dict) -> str:
+        from . import runs as RU
+        return RU.failed_step(x)
 
     def _outputs(x: dict) -> dict:
         from . import stepdata as SD
@@ -485,8 +537,23 @@ def make_router(require_key, current_tenant) -> APIRouter:
                               "summary": x.get("summary"), "steps_log": (x.get("steps_log") or [])[-80:],
                               # v0.999.234 R2: each step's whole output (the log keeps 600 characters of it)
                               "outputs": _outputs(x), "pinned": sorted(((x.get("context") or {}).get("_pins") or {}).keys()),
+                              # v0.999.248 R8: what it started with + where it failed (Run again / Debug)
+                              "start": _start_of(x), "failed_step": _failed_of(x),
                               "at": x.get("created_at"), "next_wake_at": x.get("next_wake_at")})
         return await run(go)
+
+    @r.post("/runs/{run_id}/rerun")
+    async def route_rerun(run_id: str, tenant: str = Depends(current_tenant)):
+        """v0.999.248 R8: Run again - a new run with the data this run started with (the old one stays)."""
+        from . import runs as RU
+        try:
+            out = await run(RU.rerun, tenant, run_id)
+        except RU.RunsError as e:
+            raise HTTPException(404 if "not found" in str(e).lower() or "gone" in str(e) else 409, str(e))
+        t = asyncio.ensure_future(D.execute_run(tenant, out["run_id"]))
+        D._TASKS.add(t)
+        t.add_done_callback(lambda _t: D._TASKS.discard(_t))
+        return out
 
     @r.post("/runs/{run_id}/{action}")
     async def route_run_act(run_id: str, action: str, tenant: str = Depends(current_tenant)):
@@ -655,6 +722,24 @@ def make_router(require_key, current_tenant) -> APIRouter:
         """The route as a file (keys and addresses left out) to keep or bring into another account."""
         wf = await run(_wf_or_404, tenant, wf_id)
         return await run(D.dsl_export, tenant, wf)
+
+    @r.post("/import/n8n")
+    async def route_import_n8n(body: dict = Body(...), tenant: str = Depends(current_tenant)):
+        """v0.999.248 R8: bring in an n8n workflow. save=false = the route it would become + the report only;
+        save=true = a new route, switched off (a name that is taken is refused, never overwritten)."""
+        from . import n8n as N8
+        raw = (body or {}).get("workflow")
+        if raw in (None, ""):
+            raise HTTPException(400, "Paste the n8n workflow (its exported JSON)")
+
+        def go():
+            try:
+                if not (body or {}).get("save"):
+                    return D._masked(N8.convert(raw))
+                return N8.bring_in(tenant, raw, str((body or {}).get("new_name") or ""))
+            except N8.N8nError as e:
+                raise HTTPException(409 if "already there" in str(e) else 400, str(e))
+        return await run(go)
 
     @r.post("/import")
     async def route_import(body: dict = Body(...), tenant: str = Depends(current_tenant)):

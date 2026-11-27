@@ -167,7 +167,7 @@
     $('#pyPage').addEventListener('click', onPageClick);
     $('#pyPage').addEventListener('submit', onSubmit);
     $('#pyPage').addEventListener('change', onChange);
-    window.addEventListener('hashchange', () => { readTab(); paintTabs(); showPage(); });
+    window.addEventListener('hashchange', () => { ST.keepT = null; readTab(); paintTabs(); showPage(); });
     stateLine();
   }
   function foldIcon() {
@@ -201,12 +201,34 @@
   }
 
   /* ---------------------------------------------------------------- pages */
+  // what she is still typing in other boxes survives a save that redraws the page; a form just sent starts clean
+  function keepTyping(box) {
+    const out = [], act = document.activeElement, now = Date.now();
+    box.querySelectorAll('form[data-form]').forEach(f => {
+      if (f.dataset.sent && now - Number(f.dataset.sent) < 30000) return;
+      f.querySelectorAll('input[name], textarea[name], select[name]').forEach(el => {
+        if (el.type === 'checkbox' || el.type === 'radio' || el.type === 'file' || el.type === 'hidden') return;
+        const typed = el.tagName === 'SELECT' ? [...el.options].some(o => o.selected !== o.defaultSelected) : el.value !== el.defaultValue;
+        if (typed) out.push({f: f.dataset.form, n: el.name, v: el.value, focus: el === act, s: el.selectionStart, e: el.selectionEnd});
+      });
+    });
+    return out;
+  }
+  function putTyping(box, kept) {   // returns what could not go back yet (the page is still loading)
+    const later = [];
+    kept.forEach(k => {
+      const el = box.querySelector(`form[data-form="${k.f}"] [name="${k.n}"]`); if (!el) { later.push(k); return; }
+      el.value = k.v;
+      if (k.focus) { el.focus(); try { if (k.s != null) el.setSelectionRange(k.s, k.e); } catch (_) {} }
+    });
+    return later.length ? later : null;
+  }
   function showPage(keep) {
     const box = $('#pyPage'); if (!box) return;
     if (!W()) { box.innerHTML = noBiz(); starters(); return; }
     const fn = {today: pToday, disputes: pDisputes, reconcile: pReconcile, recurring: pRecurring, firm: pFirm, settings: pSettings}[ST.tab] || pToday;
     const html = fn();
-    if (typeof html === 'string') box.innerHTML = html;
+    if (typeof html === 'string') { const kept = keepTyping(box).concat(ST.keepT || []); box.innerHTML = html; ST.keepT = putTyping(box, kept); }
     starters();
     if (!keep) $('#sdDesk').scrollTop = 0;
   }
@@ -466,7 +488,7 @@
     catch (err) { toast(err.message, true); fi.value = ''; }
   }
   async function onSubmit(e) {
-    const form = e.target.closest('form[data-form]'); if (!form) return;
+    const form = e.target.closest('form[data-form]'); if (!form) return; form.dataset.sent = Date.now();
     e.preventDefault();
     const fd = new FormData(form), kind = form.dataset.form, btn = form.querySelector('[type=submit]'), g = n => val(fd, n);
     if (btn) btn.disabled = true;

@@ -3993,3 +3993,18 @@ Work Log:
 
 Stage Summary:
 - v0.999.246; deploy with Actions > VPS ops > deploy. R8 (runs, insights, n8n import) next on her word.
+
+---
+Task ID: route-r8 (v0.999.248)
+Agent: Claude Code (cloud session)
+Task: Hoola Route R8 (owner: "GO R8") - past runs as working material, insights, n8n import; the last phase of the Route plan.
+Work Log:
+- route/runs.py: search by value (escaped LIKE, where found, masked), start data + rerun, pin from a run, per-route keeping, tally + insights
+- route/n8n.py: n8n export -> Hoola route (starts, steps, joins, loops, ways, AI nodes, expressions), placeholders + report, saved OFF
+- dhara_tools: create_run keeps _start, forget_old_runs per route, _after_run tally, settings keep_runs_days / keep_runs / minutes_saved
+- stepdata + api: run_id for data / step test / live result; runs ?q=, rerun, pins/from-run, insights, import/n8n
+- route.js/.css/.html: Runs search, run page Run again + Debug, debug bar in the editor, Insights page, Bring in from n8n page
+Stage Summary:
+- 11 new tests (tests/test_v0999_248_route_runs.py + tests/data/n8n_*.json) green; route + DHARA suites 175 green before the ritual,
+  the phone-fit walks fixed (All routes header wraps); remaining reds = the 3 pre-existing 0.999.169 pins
+- NOT VERIFIED on her server or with workflows exported by a real n8n
