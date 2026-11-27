@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.239"   # v0.999.239 FLOW STEPS (R4 of the Hoola Route plan; owner: "GO R4"; built as 0.999.238, their PUBLIC FINANCE DESK took 0.999.238, both kept): FIXED an approval or a wait inside an if / else, a switch or a loop that never paused (the steps after it ran) - every step inside a branch or loop round now leaves a done mark, a pause anywhere parks the whole run and the resume (or a retry) goes on from the same step, never running a finished step twice; branches decide their way once; merge two lists (one after the other, by a field like a join, side by side, keep (non-)matches); run another route as a step (wait for its result or start it and go on; up to 3 deep, never itself); stop the run as an error or as done; answer the webhook caller (Respond, the caller waits up to 25 s); waits up to 30 days or until a date and time in the route's time zone (was one hour, India time); wait until someone calls the run's resume link ({{vars.resume_url}}, POST/GET /api/dhara/resume/<link>); loops up to 1,000 items (was 50) with a name for nested loops, branches and loops 3 levels deep (was 1); the run time limit counts working time only; FIXED a web request's body being read as steps; the editor has their forms and run notes; 15 tests incl. a browser walk. NOT VERIFIED: on her server. Previous: v0.999.238 PUBLIC FINANCE DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE PUBLIC FINANCE DESK"): the Public Sector employee gets its own section /console/public + Public Finance chat (kind public, `pbchat.py`) on any finance workspace (a benefits office, a payment agency, a deposit insurer, a supervisor, a development-finance team): Today (cases waiting, the payment run, banks in breach, findings open, needs, cases against the rules, run exceptions, capital ratios); Casework (scheme rules each with its source, a household checked -> meets / misses by how much / cannot tell, evidence missing, amount by HER rule, the caseworker's decision recorded, never made); Overpayments (due vs paid per case and period, CSV); Payment runs (approved list vs payment file vs bank return: paid twice, wrong amount, failed, never sent, not on the list, shared accounts; accounts kept only as a fingerprint + last 4); Deposit cover (depositors up to HER limit, set-off by HER law, records to fix, payout list CSV; names and dates of birth only as a fingerprint); Supervision (returns vs HER thresholds, peers, change since the period before); Inspections (owners, overdue, repeats, Closed); Projects (tranches vs conditions met, budget, eligible categories, indicators); Settings; never pays, awards, refuses or stops anything; 5 tests incl. a browser walk. NOT VERIFIED on her server. Previous: v0.999.237 DATA STEPS + EXPRESSIONS.
+APP_VERSION = "0.999.242"   # v0.999.242 NEW TRIGGERS (R5 of the Hoola Route plan; owner: "GO R5"; built as 0.999.240, their FINANCE DESK ASSISTANT and DESKTOP WIRING took 0.999.240-0.999.241, all kept): a route can start on an app event, looked for every 5-1440 minutes (a new email, sheet row, Google form answer, calendar event, Drive file, RSS / Atom feed item, or any app's list through a tool that only reads - a trigger never sends; the first look only notes what is there and so does switching it on again; each new item starts one run with {{vars.event}}, at most 20 a look, never twice; a look that keeps failing is said once), from a Hoola form page (her questions, checks, a robot trap, 30 a minute; {{vars.form.<field>}}; a Respond step's answer is shown to the sender), from a Hoola chat page ({{vars.message}} + {{vars.history}}, the Respond step is the reply), when another route fails (one she names or any; a failing error route starts none), when another route runs it (its inputs), or as a tool AI apps call over MCP (one address per account, shown once: initialize, tools/list, tools/call); `route/triggers.py`, /route-form/<t>, /route-chat/<t>, /mcp/route/<t>; the editor's What starts it panel has every kind; 10 tests incl. a browser walk. NOT VERIFIED: on her server, with a real mailbox / sheet / feed, or a real AI app. Previous: v0.999.241 DESKTOP WIRING (owner: 'CHECK ALL DESKTOP FUNCTIONS ARE WIRED PROPERLY' -> the audit -> 'GO FIX ALL 3'; frozen-PC exception): the audit ran every PC tool once against a pretend Windows PC and a pretend Hoola PC, matched every action the server sends (72 kinds) to Hoola Desktop's and the Hoola PC agent's handlers, the wire messages and every server address the apps use - all wired except three gaps, now fixed in `pc/operator.py`: (1) the Windows-only setup tools (Win+R alias, PowerToys door, extension install = WINDOWS_ONLY) are no longer offered on Hoola PC or on a Mac / Linux computer of hers (`_not_windows` from the PC's reported OS) and answer NOT AVAILABLE with the reason instead of 'Santosh Desktop is out of date'; (2) a background command on Hoola PC (up to 2 hours) is remembered on the job (`Op.bg_jobs`) and stopped when the job is stopped / fails / ends part-way (`_stop_bg_jobs` in the job's end; a finished job keeps its own), and Hoola can stop one itself (NEW tool `run_stop` -> the agent's existing run_stop); (3) hover / drag / page tables on HER PC run only through her Chrome extension - when it is not connected (or the job works in the background) they say so and point to page_elements / page_click / page_text instead of falling through to Hoola Desktop, and an old version is named correctly (her extension vs Hoola PC). Hoola Desktop and the Hoola PC agent unchanged. 4 tests incl. the whole-tool wiring walk (every tool on both computers sends only actions that computer has). NOT VERIFIED on her PC / Hoola PC. Previous head: v0.999.240 FINANCE DESK ASSISTANT (owner: "NOW LETS WORK ON Finance Desk Assistant SAME WAY"): the Finance Desk Assistant gets its own section /console/finops + Finance Desk chat (kind finops, `fochat.py`) on any finance workspace: Today (owed, owe, bills on hold, to review, needs, ageing ring, bills against orders); Owed & owing (receivables + payables aged by bucket and party, CSV); Three-way match (bills vs orders vs goods received within HER tolerances, the approver's decision recorded); Tax withheld (her books vs the tax office statement, what to ask; India advance tax only, said for other countries); Alerts & screening (transactions on HER cash threshold, accounts as fingerprint + last 4; names against HER own watch list; analyst / compliance decisions recorded); Credit (ratios vs HER policy floors, memo draft, committee decision recorded); Goals (scenarios, never promises); Settings; never pays, files, blocks or approves; 5 tests incl. a browser walk. NOT VERIFIED on her server. Previous: v0.999.239 FLOW STEPS.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2169,6 +2169,15 @@ def public_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/finops")
+@app.get("/console/finops/")
+def finops_desk_page():
+    """FINANCE DESK ASSISTANT: the Finance Desk Assistant employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "fodesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/digital")
 @app.get("/console/digital/")
 def digital_desk_page():
@@ -2770,6 +2779,8 @@ from . import dgchat as _dgchat_mod                            # noqa: E402  DIG
 _dgchat_mod.mount(app, current_tenant, require_key)             # /api/digital/*
 from . import pbchat as _pbchat_mod                            # noqa: E402  PUBLIC FINANCE DESK
 _pbchat_mod.mount(app, current_tenant, require_key)             # /api/public/*
+from . import fochat as _fochat_mod                            # noqa: E402  FINANCE DESK ASSISTANT
+_fochat_mod.mount(app, current_tenant, require_key)             # /api/finops/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through
@@ -12482,6 +12493,72 @@ async def site_app_queue_board(site_id: str):
     except W.AppError:
         return HTMLResponse("<!doctype html><title>Not found</title><p>Not found.</p>", status_code=404)
     return HTMLResponse(LS.board_page(site_id, label), headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex"})
+
+
+# v0.999.240 ROUTE R5: public pages that start a route (a form, a chat) and her routes as tools for AI apps (MCP)
+@app.get("/route-form/{token}", response_class=HTMLResponse)
+async def route_form_page(token: str):
+    from .route import triggers as TR
+    code, page = await TR.form_get(token)
+    return HTMLResponse(page, status_code=code, headers=TR.page_headers())
+
+
+@app.post("/route-form/{token}", response_class=HTMLResponse)
+async def route_form_send(token: str, request: Request):
+    from .route import triggers as TR
+    raw = await request.body()
+    if len(raw) > 200_000:
+        return HTMLResponse("Too large", status_code=413)
+    from urllib.parse import parse_qs
+    data = {k: (v[0] if v else "") for k, v in parse_qs(raw.decode("utf-8", "ignore"), keep_blank_values=True).items()}
+    code, page = await TR.form_post(token, data)
+    return HTMLResponse(page, status_code=code, headers=TR.page_headers())
+
+
+@app.get("/route-chat/{token}", response_class=HTMLResponse)
+async def route_chat_page(token: str):
+    from .route import triggers as TR
+    code, page = await TR.chat_get(token)
+    return HTMLResponse(page, status_code=code, headers=TR.page_headers())
+
+
+@app.post("/api/route-chat/{token}")
+async def route_chat_send(token: str, request: Request):
+    from .route import triggers as TR
+    raw = await request.body()
+    if len(raw) > 20_000:
+        return JSONResponse({"ok": False, "error": "message too long"}, status_code=413)
+    try:
+        body = json.loads(raw or b"{}")
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    if str(body.get("hp") or ""):
+        return JSONResponse({"ok": True, "reply": "Thank you."})
+    out = await TR.chat_send(token, str(body.get("session") or ""), str(body.get("text") or ""))
+    return JSONResponse({k: v for k, v in out.items() if k in ("ok", "reply", "error")}, status_code=int(out.get("status") or 200))
+
+
+@app.post("/mcp/route/{token}")
+async def route_mcp_endpoint(token: str, request: Request):
+    from .route import triggers as TR
+    raw = await request.body()
+    if len(raw) > 256_000:
+        return JSONResponse({"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": "Request too large"}}, status_code=413)
+    try:
+        msg = json.loads(raw or b"null")
+    except Exception:
+        return JSONResponse({"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}}, status_code=400)
+    code, out = await TR.mcp_handle(token, msg)
+    if out is None:
+        return Response(status_code=202)
+    return JSONResponse(out, status_code=code)
+
+
+@app.get("/mcp/route/{token}")
+async def route_mcp_get(token: str):
+    return Response(status_code=405, headers={"Allow": "POST"})
 
 
 @app.post("/api/dhara/hook/{token}")

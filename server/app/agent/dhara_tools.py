@@ -194,8 +194,8 @@ def save_workflow(tenant_id: str, name: str, description: str, trigger_kind: str
     try:
         old = con.execute("SELECT * FROM workflows WHERE name = ?", (name,)).fetchone()
         token_hash = None
-        if trigger_kind == "webhook":
-            if old is not None and old["token_hash"]:
+        if trigger_kind in ("webhook", "form", "chat"):   # v0.999.240: a form / chat page has an address too
+            if old is not None and old["token_hash"] and old["trigger_kind"] == trigger_kind:
                 token_hash = old["token_hash"]
             else:
                 token_hash = hashlib.sha256(secrets.token_urlsafe(24).encode()).hexdigest()
@@ -210,7 +210,7 @@ def save_workflow(tenant_id: str, name: str, description: str, trigger_kind: str
                 con.execute("UPDATE workflows SET settings = ? WHERE id = ?", (json.dumps(settings), wid))
         else:
             wid = old["id"]
-            th = token_hash if trigger_kind == "webhook" else (old["token_hash"] if old["trigger_kind"] == "webhook" else None)
+            th = token_hash if trigger_kind in ("webhook", "form", "chat") else None
             con.execute("UPDATE workflows SET description=?, trigger_kind=?, trigger_spec=?, token_hash=?, steps=?, "
                         "updated_at=? WHERE id=?",
                         (description[:500], trigger_kind, json.dumps(trigger_spec), th, json.dumps(steps), now_, wid))
@@ -250,9 +250,16 @@ def set_enabled(tenant_id: str, wf_id: str, enabled: bool) -> bool:
         cur = con.execute("UPDATE workflows SET enabled = ?, updated_at = ? WHERE id = ?",
                           (1 if enabled else 0, time.time(), wf_id))
         con.commit()
-        return cur.rowcount > 0
+        changed = cur.rowcount > 0
     finally:
         con.close()
+    if changed and enabled:
+        try:                       # v0.999.240: an app-event route switched on looks fresh (old items do not run)
+            from ..route import triggers as TR
+            TR.rebaseline(tenant_id, wf_id)
+        except Exception:   # noqa: BLE001
+            pass
+    return changed
 
 
 def workflows_with_hash(tenant_id: str, token_hash: str) -> dict[str, Any] | None:
@@ -1615,11 +1622,18 @@ def _after_run(tenant_id: str, wf: dict, status: str, err: str, run_id: str) -> 
                     f'Route "{wf["name"]}" was switched off after {n} failed runs in a row. Last error: {err[:200]} '
                     f'Fix the cause, then switch it on again.')
         er = str(st.get("error_route") or "").strip().lower()
+        payload = {"failed_route": wf["name"], "failed_run": run_id, "error": str(err)[:500]}
+        started = set()
         if er and er != wf["name"]:
             target = get_workflow(tenant_id, name=er)
             if target is not None and target.get("enabled"):
-                create_run(tenant_id, target, vars_={"failed_route": wf["name"], "failed_run": run_id,
-                                                     "error": str(err)[:500]})
+                create_run(tenant_id, target, vars_=payload)
+                started.add(target["id"])
+        from ..route import triggers as TR     # v0.999.240 routes started "when a route fails"
+        for w in TR.error_watchers(tenant_id, wf):
+            if w["id"] not in started and not _over_daily_cap(tenant_id, w):
+                create_run(tenant_id, w, vars_=payload)
+                started.add(w["id"])
     except Exception:   # noqa: BLE001
         pass
 
@@ -1725,6 +1739,8 @@ def next_due(wf: dict, from_ts: float | None = None) -> float | None:
     timezone when the spec has none; IST only when neither says), "every_minutes" (>= 15), "days" ["mon".."sun"],
     "monthdays" [1..31], "dates" ["YYYY-MM-DD"], "once" "YYYY-MM-DDTHH:MM", "quiet" {"from":"21:00","to":"08:00"},
     "skip_holidays" "<country code>" (that country's public holidays), "end_date" "YYYY-MM-DD"."""
+    if wf.get("trigger_kind") == "event":       # v0.999.240 an app event: the first look soon after saving
+        return float(from_ts or time.time()) + 20
     spec = wf.get("trigger_spec") or {}
     settings = wf.get("settings") or {}
     modern = any(k in spec for k in ("timezone", "every_minutes", "days", "monthdays", "dates", "once", "quiet",
@@ -1946,6 +1962,11 @@ async def tick() -> int:
                     continue
                 rid = create_run(tenant, wf, missed=missed)
                 started += 1
+            from ..route import triggers as TR      # v0.999.240 app events: each due route looks for new items
+            for wf in TR.events_due(tenant):
+                t_ = asyncio.ensure_future(TR.poll(tenant, wf))
+                _TASKS.add(t_)
+                t_.add_done_callback(lambda _t: _TASKS.discard(_t))
             # wake sleepers whose time came (park them back to queued; the claim below starts them)
             con = _con(tenant)
             try:
@@ -2041,6 +2062,36 @@ def _has_respond(steps: list) -> bool:
         return False
 
 
+async def await_answer(tenant: str, rid: str, wait_s: float = _RESPOND_WAIT_S) -> dict:
+    """Wait for a run's Respond step (or its end, or a pause). {answered, status, answer, run_status, run_id}."""
+    t_end = time.time() + wait_s
+    while True:
+        ans = _RESPONSES.pop(rid, None)
+        r = None
+        if ans is None:
+            r = await asyncio.to_thread(get_run, tenant, rid)
+            if r is not None:
+                ans = (r.get("context") or {}).get("_response")
+        if ans is not None:
+            _RESPONSES.pop(rid, None)
+            return {"answered": True, "status": int(ans.get("status") or 200), "answer": ans.get("body"), "run_id": rid,
+                    "run_status": (r or {}).get("status")}
+        st = (r or {}).get("status")
+        if st in ("done", "failed", "stopped", "incomplete", "sleeping", "waiting_approval") or time.time() >= t_end:
+            return {"answered": False, "run_status": st or "queued", "run_id": rid}
+        await asyncio.sleep(0.25)
+
+
+async def start_and_wait(tenant: str, wf: dict, vars_: dict, wait_s: float = _RESPOND_WAIT_S) -> dict:
+    """v0.999.240: a run started by a form, a chat message or an AI app: start it now and wait for its answer."""
+    rid = await asyncio.to_thread(create_run, tenant, wf, vars_)
+    c = (await asyncio.to_thread(get_run, tenant, rid))["context"]
+    c["_caller_waits"] = True
+    await asyncio.to_thread(update_run, tenant, rid, context=c)
+    _start_now(tenant, rid)
+    return await await_answer(tenant, rid, wait_s)
+
+
 async def webhook_call(token: str, body: dict) -> dict:
     """v0.999.239 ROUTE R4: the webhook. A route with a Respond step starts at once and the caller gets that
     step's answer (status + body) - or, after 25 seconds, a note that it is still working."""
@@ -2050,22 +2101,14 @@ async def webhook_call(token: str, body: dict) -> dict:
         out.pop("answers", None)
         return out
     _start_now(tenant, rid)
-    t_end = time.time() + _RESPOND_WAIT_S
-    while time.time() < t_end:
-        ans = _RESPONSES.pop(rid, None)
-        if ans is None:
-            r = await asyncio.to_thread(get_run, tenant, rid)
-            if r is not None:
-                ans = (r.get("context") or {}).get("_response")
-                if ans is None and r.get("status") in ("done", "failed", "stopped", "incomplete", "sleeping",
-                                                       "waiting_approval"):
-                    return {**out, "status": 200 if r.get("status") == "done" else 202,
-                            "note": "The route ran but did not send an answer" if r.get("status") == "done"
-                            else "The route is still going (it paused before its answer)"}
-        if ans is not None:
-            _RESPONSES.pop(rid, None)
-            return {**out, "status": int(ans.get("status") or 200), "answer": ans.get("body"), "answered": True}
-        await asyncio.sleep(0.25)
+    res = await await_answer(tenant, rid)
+    if res.get("answered"):
+        return {**out, "status": res["status"], "answer": res.get("answer"), "answered": True}
+    st = res.get("run_status")
+    if st == "done":
+        return {**out, "status": 200, "note": "The route ran but did not send an answer"}
+    if st in ("failed", "stopped", "incomplete", "sleeping", "waiting_approval"):
+        return {**out, "status": 202, "note": "The route is still going (it paused before its answer)"}
     return {**out, "status": 202, "note": "The route is still working; it did not answer within 25 seconds"}
 
 
@@ -2095,18 +2138,13 @@ async def dhara_save(ctx: Ctx, name, steps, description="", trigger="manual", tr
     if not nm or not _PATH_RE.match(nm):
         raise ToolError("Give the workflow name in lowercase_with_underscores (like daily_morning_report)")
     kind = str(trigger or "manual").lower()
-    if kind not in ("manual", "schedule", "webhook"):
-        raise ToolError("trigger manual | schedule | webhook (v1)")
-    spec = dict(trigger_spec or {})
+    from ..route import triggers as TR
     st_norm = validate_settings(settings) if settings is not None else None
-    if kind == "schedule":
-        spec = validate_schedule(spec, st_norm)   # v0.999.87: any time zone, days, monthdays, dates, quiet, holidays
-    if kind == "webhook":
-        spec = {}
+    spec = TR.validate(kind, dict(trigger_spec or {}), st_norm)   # v0.999.240: every trigger kind, checked in one place
     norm = validate_steps(steps)
     wf, created = save_workflow(ctx.tenant_id, nm, str(description or ""), kind, spec, norm,
                                 str(ctx.conversation_id or ""), settings=st_norm)
-    if kind == "schedule":
+    if kind in ("schedule", "event"):
         con = _con(ctx.tenant_id)
         try:
             con.execute("UPDATE workflows SET next_due_at = ? WHERE id = ?",
@@ -2123,6 +2161,12 @@ async def dhara_save(ctx: Ctx, name, steps, description="", trigger="manual", tr
         out["webhook_note"] = ("The token is shown only now — keep it safe (it cannot be shown again): "
                                + webhook_token_reveal(ctx.tenant_id, wf["id"])) if created else \
                               "The webhook token is the old one (no new one was made)"
+    if wf["trigger_kind"] in ("form", "chat"):
+        pub = TR.public_address(ctx.tenant_id, wf) or (TR.make_address(ctx.tenant_id, wf)["url"] if created else "")
+        out["address"] = pub or "Make its address on the route's page (What starts it)"
+    if wf["trigger_kind"] == "tool":
+        out["tool_note"] = ("It is offered to AI apps once it is on and her MCP address is made (Hoola Route > "
+                            "Settings > Your routes as tools)")
     return out
 
 
@@ -2334,14 +2378,9 @@ async def dhara_dsl(ctx: Ctx, action: str, name: str = "", workflow_id: str = ""
         if not nm or not _PATH_RE.match(nm):
             raise ToolError("Give the workflow name in lowercase_with_underscores")
         kind = str(dsl.get("trigger") or "manual").lower()
-        if kind not in ("manual", "schedule", "webhook"):
-            raise ToolError("trigger manual | schedule | webhook (v1)")
-        spec = dict(dsl.get("trigger_spec") or {})
-        if kind == "webhook":
-            spec = {}   # a new token is minted here and shown ONCE in this reply
         st_imp = validate_settings(dsl.get("settings") or {})
-        if kind == "schedule":
-            spec = validate_schedule(spec, st_imp)
+        from ..route import triggers as TR
+        spec = TR.validate(kind, dict(dsl.get("trigger_spec") or {}), st_imp)   # a webhook's new token is shown once below
         if get_workflow(ctx.tenant_id, name=nm) is not None:
             return {"ok": False, "already_exists": True, "existing": nm,
                     "note": f"'{nm}' already exists — to bring it in under another name "
@@ -2350,7 +2389,7 @@ async def dhara_dsl(ctx: Ctx, action: str, name: str = "", workflow_id: str = ""
         wf, _created = save_workflow(ctx.tenant_id, nm, str(dsl.get("description") or "")[:500], kind, spec,
                                      norm_steps, str(ctx.conversation_id or ""), settings=st_imp)
         set_enabled(ctx.tenant_id, wf["id"], False)      # imported lands BAND — she reads, she enables
-        if kind == "schedule":
+        if kind in ("schedule", "event"):
             con = _con(ctx.tenant_id)
             try:
                 con.execute("UPDATE workflows SET next_due_at = ? WHERE id = ?", (next_due(wf), wf["id"]))
@@ -2412,8 +2451,11 @@ DHARA_TOOLS = [
          "name": {"type": "string", "description": "lowercase_with_underscores, unique, e.g. daily_morning_notice_check"},
          "steps": {"type": "array", "description": "The steps: [{id, type, ...}] — see the tool guide for each type's fields"},
          "description": {"type": "string", "description": "One line: what it does"},
-         "trigger": {"type": "string", "enum": ["manual", "schedule", "webhook"], "description": "Default manual"},
-         "trigger_spec": {"type": "object", "description": "schedule: {timezone: 'Europe/London', days: ['mon','fri'], at: ['09:30'], quiet: {from: '21:00', to: '08:00'}, skip_holidays: 'GB'} or {every_minutes: 30} or {every_hours: 24, at: ['09:30']}; webhook: none"},
+         "trigger": {"type": "string", "enum": ["manual", "schedule", "webhook", "event", "form", "chat", "error", "route", "tool"],
+                     "description": "Default manual. event = an app event (new email / sheet row / form answer / calendar event / "
+                                    "Drive file / feed item / any app's list); form = a Hoola form page; chat = a Hoola chat page; "
+                                    "error = when a route fails; route = called by another route; tool = offered to AI apps (MCP)"},
+         "trigger_spec": {"type": "object", "description": "schedule: {timezone: 'Europe/London', days: ['mon','fri'], at: ['09:30'], quiet: {from: '21:00', to: '08:00'}, skip_holidays: 'GB'} or {every_minutes: 30} or {every_hours: 24, at: ['09:30']}; webhook: none; event: {app: email|sheet_row|form_answer|calendar_event|drive_file|rss|app, every_minutes (5-1440, default 15), folder/search/account (email), spreadsheet/tab (sheet_row), form (form_answer), query (calendar_event / drive_file), url (rss), tool + args + items + id (app: a tool that only reads)} -> each new item runs with {{vars.event}}; form: {title, intro, fields: [{name, label, type text|textarea|email|number|date|select|checkbox|phone, required, options}], button, thanks} -> {{vars.form.<name>}}, a respond step's answer is shown to the sender; chat: {title, greeting, placeholder} -> {{vars.message}}, {{vars.history}}, reply with a respond step; error: {routes: [names], empty = any} -> {{vars.failed_route}} {{vars.error}}; route: {inputs: [{name, description}]}; tool: {description, inputs: [{name, description, type, required}]}"},
          "settings": {"type": "object", "description": "Route settings: {folder, timezone, stop_after_errors (1-20), error_route (another route's name), runs_per_day, currency}"}},
          "required": ["name", "steps"]}},
     {"name": "dhara_run", "description": (

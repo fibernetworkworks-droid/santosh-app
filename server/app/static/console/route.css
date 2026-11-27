@@ -421,3 +421,18 @@ svg.edges path.ghost{stroke-dasharray:4 4}
   .sm-in{border-right:0;border-bottom:1px solid var(--line)}.sm-out{border-left:0;border-top:1px solid var(--line)}
 }
 @media (prefers-reduced-motion: reduce){.tog span,.addaf{transition:none}.dots i{animation:none;opacity:.7}}
+/* v0.999.240 ROUTE R5: what starts a route */
+.tkinds{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.tkinds button{display:flex;gap:10px;align-items:flex-start;text-align:left;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:12px;padding:10px 12px;cursor:pointer;min-height:44px;font:inherit}
+.tkinds button .i{flex:none;width:18px;height:18px;margin-top:2px;color:var(--mut)}
+.tkinds button span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.tkinds button b{font-size:13.5px;font-weight:500}.tkinds button small{font-size:12px;color:var(--mut);line-height:1.35}
+.tkinds button[aria-pressed="true"]{border-color:var(--acc);background:var(--accs)}
+.tkinds button[aria-pressed="true"] .i{color:var(--acc)}
+.tkinds button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.trows{display:flex;flex-direction:column;gap:8px}
+.trow{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;border:1px solid var(--line);border-radius:12px;padding:10px}
+.trow .tc{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mut);flex:1 1 130px;min-width:0}
+.trow .tc input,.trow .tc select{font:inherit;font-size:13.5px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;min-height:36px;width:100%}
+.trow .chk{font-size:13px;align-self:center}
+.okbox.sm{font-size:13px;padding:10px 12px}

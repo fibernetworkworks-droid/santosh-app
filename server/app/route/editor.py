@@ -30,6 +30,10 @@ def _con(tenant: str):
     con = D._con(tenant)
     con.execute("CREATE TABLE IF NOT EXISTS route_meta (workflow_id TEXT PRIMARY KEY, layout TEXT DEFAULT '{}', "
                 "chat TEXT DEFAULT '', updated_at REAL)")
+    try:                                  # v0.999.240 the form / chat page's address, kept to show again
+        con.execute("ALTER TABLE route_meta ADD COLUMN pub TEXT DEFAULT ''")
+    except Exception:   # noqa: BLE001  (already there)
+        pass
     return con
 
 
@@ -68,6 +72,19 @@ def set_chat(tenant: str, wf_id: str, conv: str) -> None:
     _upsert(tenant, wf_id, chat=str(conv or "")[:64])
 
 
+def set_public(tenant: str, wf_id: str, path: str) -> None:
+    _upsert(tenant, wf_id, pub=str(path or "")[:200])
+
+
+def public_of(tenant: str, wf_id: str) -> str:
+    con = _con(tenant)
+    try:
+        r = con.execute("SELECT pub FROM route_meta WHERE workflow_id = ?", (wf_id,)).fetchone()
+        return (r["pub"] if r is not None else "") or ""
+    finally:
+        con.close()
+
+
 def route_of_chat(tenant: str, conv: str) -> str:
     con = _con(tenant)
     try:
@@ -84,6 +101,11 @@ def forget(tenant: str, wf_id: str) -> None:
         con.commit()
     finally:
         con.close()
+    try:
+        from . import triggers as TR
+        TR.forget(tenant, wf_id)
+    except Exception:   # noqa: BLE001
+        pass
 
 
 def _num(v: Any) -> float:
@@ -206,20 +228,16 @@ def save_graph(tenant: str, wf: dict, body: dict) -> dict:
         raise ToolError("steps must be a list")
     steps = unmask(strip_deco(steps), wf.get("steps") or [])
     kind = str(body.get("trigger") or wf.get("trigger_kind") or "manual").lower()
-    if kind not in ("manual", "schedule", "webhook"):
-        raise ToolError("A route starts by hand, on a schedule, or when data arrives")
     spec = body.get("trigger_spec") if body.get("trigger_spec") is not None else (wf.get("trigger_spec") or {})
-    if kind == "schedule":
-        spec = D.validate_schedule(dict(spec or {}), wf.get("settings") or {})
-    else:
-        spec = {}
+    from . import triggers as TR                # v0.999.240 ROUTE R5: every trigger kind, checked by the engine's rules
+    spec = TR.validate(kind, dict(spec or {}) if isinstance(spec, dict) else {}, wf.get("settings") or {})
     desc = str(body["description"]) if body.get("description") is not None else str(wf.get("description") or "")
     norm = D.validate_steps(steps)
     new, _ = D.save_workflow(tenant, wf["name"], desc[:500], kind, spec, norm, settings=None)
     con = D._con(tenant)
     try:
         con.execute("UPDATE workflows SET next_due_at = ? WHERE id = ?",
-                    (D.next_due(new) if kind == "schedule" else None, new["id"]))
+                    (D.next_due(new) if kind in ("schedule", "event") else None, new["id"]))
         con.commit()
     finally:
         con.close()
