@@ -572,7 +572,7 @@ Future<void> showCodeRepoSetup(BuildContext context, Santosh app, String id) asy
           if (agents.isNotEmpty) ...[
             CodeSection('Agents · ${agents.length}'),
             for (final a in agents)
-              item(cs(a['name']), [cs(a['description']), _toolsLevel(a), from(a)].where((e) => e.isNotEmpty).join(' · '), mono: false),
+              item(cs(a['name']), [cs(a['description']), _toolsLevel(a), if (cs(a['model']).isNotEmpty && cs(a['model']) != 'inherit') 'model ${cs(a['model'])}', from(a)].where((e) => e.isNotEmpty).join(' · '), mono: false),
           ],
           if (skills.isNotEmpty) ...[
             CodeSection('Skills · ${skills.length}'),

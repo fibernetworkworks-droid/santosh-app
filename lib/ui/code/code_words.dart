@@ -449,7 +449,8 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
       case 'check':
         return (Icons.fact_check_outlined, 'Ran', s['ok'] == true ? 'your tests · passed' : 'your tests · failed', false);
       case 'agent':
-        return (Icons.groups_outlined, 'Asked', _s(s['name']).isNotEmpty ? 'a helper: ${_s(s['name'])}' : 'a helper', false);
+        return (Icons.groups_outlined, 'Asked',
+            (_s(s['name']).isNotEmpty ? 'a helper: ${_s(s['name'])}' : 'a helper') + (_s(s['model']).isNotEmpty ? ' · on ${_s(s['model'])}' : ''), false);
       case 'bgstart':
         {
           final did = _s(s['did']);

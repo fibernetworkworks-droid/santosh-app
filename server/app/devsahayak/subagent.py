@@ -16,6 +16,7 @@ from __future__ import annotations
 import concurrent.futures as cf
 import contextvars
 import copy
+import re
 import logging
 import time
 from typing import Any, Callable
@@ -101,6 +102,37 @@ def _child(tools: Any) -> Any:
     return c
 
 
+# v0.999 AN AGENT'S OWN MODEL, Claude Code's way: the `model:` line of an agent file - `inherit` (or none) = the session's
+# model, `haiku` / `sonnet` / `opus` = that Claude model on whichever brain Hoola Code runs on, or a full model id the
+# brain can run. Anything else runs on the session's model and the agent's report says so.
+ALIASES = {
+    "claude": {"haiku": "claude-haiku-5-5", "sonnet": "claude-sonnet-5-5", "opus": "claude-opus-5-5"},
+    "openrouter": {"haiku": "anthropic/claude-haiku-5.5", "sonnet": "anthropic/claude-sonnet-5.5", "opus": "anthropic/claude-opus-5.5"},
+}
+
+
+def agent_model(want: str) -> tuple[str, str]:
+    """(the model this agent runs on - '' = the session's, a note when its `model:` line could not be used)."""
+    w = str(want or "").strip()
+    if not w or w.lower() in ("inherit", "default"):
+        return "", ""
+    lane = "openrouter" if B.brain_name() == "qwen" else "claude"
+    own = _set(f"dev_agent_{w.lower()}_{lane}", "") if w.lower() in ALIASES[lane] else ""
+    if w.lower() in ALIASES[lane]:
+        return str(own or ALIASES[lane][w.lower()]), ""
+    if lane == "claude" and re.fullmatch(r"claude-[a-z0-9.-]{3,60}", w):
+        return w, ""
+    if lane == "openrouter" and re.fullmatch(r"[a-z0-9_.-]{2,40}/[a-z0-9_.:-]{2,80}", w):
+        return w, ""
+    return "", f"its model line '{w[:60]}' cannot run here, so it ran on this session's model"
+
+
+def model_label(m: str) -> str:
+    """claude-haiku-5-5 / anthropic/claude-haiku-5.5 -> Haiku 5.5 (the rest as written)."""
+    x = re.search(r"claude-(haiku|sonnet|opus|fable)-(\d+)[.-](\d+)", m or "")
+    return f"{x.group(1).title()} {x.group(2)}.{x.group(3)}" if x else (m or "")
+
+
 def run_one(tools: Any, name: str, task: str, files: list[str] | None = None,
             emit: Callable[[dict[str, Any]], None] | None = None, stopped: Callable[[], bool] | None = None,
             pick: tuple[str, str] = ("", ""), part: dict | None = None) -> str:
@@ -113,7 +145,19 @@ def run_one(tools: Any, name: str, task: str, files: list[str] | None = None,
     task = str(task or "").strip()
     if len(task) < 15:
         return "Refused: give the agent a whole task (what to look at, what changed, what to report)."
-    B.PICK.model, B.PICK.effort = pick                     # the session's model / effort, also in a worker thread
+    own, why = agent_model(spec.get("model", ""))
+    before = (getattr(B.PICK, "model", ""), getattr(B.PICK, "effort", ""), getattr(B.PICK, "agent", False))
+    B.PICK.model, B.PICK.effort = (own or pick[0]), pick[1]   # the agent's own model, else the session's (also in a worker thread)
+    B.PICK.agent = bool(own)
+    try:
+        return _run_one(tools, spec, task, files, emit, stopped, part, own, why)
+    finally:
+        B.PICK.model, B.PICK.effort, B.PICK.agent = before   # an edit agent runs in the coder's own thread: give its model back
+
+
+def _run_one(tools: Any, spec: dict, task: str, files: list[str] | None, emit, stopped, part: dict | None,
+             own: str, why: str) -> str:
+    from . import engine as EN
     if part:
         B.adopt(part)                                      # v0.999.17 her tier + session, also in a worker thread
     say = emit or (lambda ev: None)
@@ -128,7 +172,7 @@ def run_one(tools: Any, name: str, task: str, files: list[str] | None = None,
              + (f"Start from: {', '.join(flist)}\n" if flist else "")
              + f"Repo: {tools.s.meta.get('repo', '')}. Your tools: {', '.join(sorted(allowed - {'report'}))}, report.")
     msgs: list[dict[str, Any]] = [{"role": "user", "content": first}]
-    say({"k": "agent", "state": "start", "name": spec["name"], "title": spec["title"], "tools": level,
+    say({"k": "agent", "state": "start", "name": spec["name"], "title": spec["title"], "tools": level, "model": model_label(own),
          "task": task[:300]})
     max_steps = max(3, int(_set("dev_agent_steps", 30) or 30))
     minutes = float(_set("dev_agent_minutes", 12) or 12)
@@ -183,7 +227,7 @@ def run_one(tools: Any, name: str, task: str, files: list[str] | None = None,
     tools.trail.extend(f"  {spec['name']}: {x}" for x in child.trail[-20:] if not x.startswith(("read ", "grep ", "glob ", "ls ")))
     say({"k": "agent", "state": "done", "name": spec["name"], "title": spec["title"], "steps": steps,
          "edits": edits, "secs": round(time.time() - t0, 1), "report": report[:1500]})
-    head = f"[{spec['title']} - {steps} steps" + (f", changed {edits} file(s): re-read before you edit them" if edits else "") + "]\n"
+    head = f"[{spec['title']}" + (f" on {model_label(own)}" if own else "") + (f" ({why})" if why else "") + f" - {steps} steps" + (f", changed {edits} file(s): re-read before you edit them" if edits else "") + "]\n"
     try:                                                   # v0.999 the repo's SubagentStop hook may add its word
         from . import repoconf as RC
         if RC.hooks_for(getattr(tools, "conf", {}) or {}, "SubagentStop"):
@@ -225,7 +269,8 @@ def run_many(tools: Any, calls: list[dict[str, Any]], emit=None, stopped=None) -
             return f"The agent could not finish: {e.__class__.__name__}: {str(e)[:300]}"
 
     def level(c: dict[str, Any]) -> str:
-        a = ecc.get(str((c.get("input") or {}).get("type") or ""))
+        n = str((c.get("input") or {}).get("type") or "")
+        a = (getattr(tools, "repo_agents", None) or {}).get(n.lower()) or ecc.get(n)   # the repo's own agents too
         return a["tools"] if a else "read"
     side = [c for c in todo if level(c) != "edit"]
     serial = [c for c in todo if level(c) == "edit"]
