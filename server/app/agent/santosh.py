@@ -1806,6 +1806,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_lcc.block, tenant_id)
     except Exception:
         log.exception("compiler desk block failed")
+    try:   # KERNEL DESK: a turn in the Kernel chat (or a call started from it) knows the desk
+        from .. import kdchat as _kdc
+        if _kdc.is_kernel(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_kdc.block, tenant_id)
+    except Exception:
+        log.exception("kernel desk block failed")
     _mark("hint")
     return state
 
@@ -2793,6 +2799,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "compiler desk chat"
     except Exception:
         log.exception("compiler desk chat admission failed")
+    try:   # KERNEL DESK: the kernel tool in view in the Kernel chat
+        from .. import kdchat as _kdc
+        if adm is not None and _kdc.is_kernel(conversation_id):
+            adm.admit_families(_kdc.FAMILIES)
+            for f in _kdc.FAMILIES:
+                adm.why[f] = "kernel desk chat"
+    except Exception:
+        log.exception("kernel desk chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,

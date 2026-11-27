@@ -1242,6 +1242,12 @@ from .langlab_tools import LANGLAB_HANDLERS, LANGLAB_LABELS, LANGLAB_TOOLS  # no
 TOOLS.extend(LANGLAB_TOOLS)
 TOOL_LABELS.update(LANGLAB_LABELS)
 HANDLERS.update(LANGLAB_HANDLERS)
+# v0.999.274 the Kernel / OS Developer (kernel_desk)
+from .kernel_tools import KERNEL_HANDLERS, KERNEL_LABELS, KERNEL_TOOLS  # noqa: E402
+
+TOOLS.extend(KERNEL_TOOLS)
+TOOL_LABELS.update(KERNEL_LABELS)
+HANDLERS.update(KERNEL_HANDLERS)
 # v0.357 Engineering Desk: the hired CAD Engineer (cad_part)
 from .eng_tools import ENG_HANDLERS, ENG_LABELS, ENG_TOOLS  # noqa: E402
 

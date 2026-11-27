@@ -2196,6 +2196,15 @@ def qa_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/kernel")
+@app.get("/console/kernel/")
+def kernel_desk_page():
+    """KERNEL DESK: the Kernel / OS Developer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "kddesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/compiler")
 @app.get("/console/compiler/")
 def compiler_desk_page():
@@ -2913,6 +2922,8 @@ from . import b3chat as _b3chat_mod                             # noqa: E402  3D
 _b3chat_mod.mount(app, current_tenant, require_key)             # /api/b3desk/*
 from . import lcchat as _lcchat_mod                             # noqa: E402  COMPILER DESK
 _lcchat_mod.mount(app, current_tenant, require_key)             # /api/lcdesk/*
+from . import kdchat as _kdchat_mod                             # noqa: E402  KERNEL DESK
+_kdchat_mod.mount(app, current_tenant, require_key)             # /api/kddesk/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

@@ -217,6 +217,9 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                "dub", "dubbing", "create studio", "गाना", "डब"),
     "blender": ("blender", "3d", "three d"),
     # v0.999.272 the Compiler Construction Engineer: her own language (grammar, parser, interpreter, compiler)
+    # v0.999.274 the Kernel / OS Developer: her kernel words
+    "kernel": ("kernel", "oops", "kasan", "lockdep", "dmesg", "kernel panic", "call trace", "device driver", "kernel module",
+               "defconfig", ".config", "checkpatch", "device tree", "qemu", "insmod", "hung task", "soft lockup", "kconfig"),
     "langlab": ("grammar", "parser", "compiler", "interpreter", "dsl", "domain-specific language", "domain specific language",
                 "programming language", "my own language", "own language", "lexer", "tokenizer", "syntax tree", "language lab"),
     # v0.589 KAAN PACK: her words for a transcript job (sunwai stays OUT - it is the vakil desk's court-hearing word;
