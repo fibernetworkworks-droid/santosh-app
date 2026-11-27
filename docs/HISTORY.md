@@ -12984,8 +12984,71 @@ Owner: "100 % Cyber security same as finance desks --- very advance and every as
 - Tests `tests/test_cy_desk.py` 6 incl. a browser walk at 1440 / 390; test_tech_cyber 8 still pass.
 - NOT VERIFIED on her server / with real keys / real user exports.
 
+## v0.999.258 MAKE PARITY (built as 0.999.254; the other sessions took 0.999.254-0.999.257, all kept)
 
-## v0.999.258 IT ADMIN DESK
+Owner: "NOW GET EXTREEM DEEP FIND ALL HOOLA ROUTE TOOL IS FUCTIONATING PERFECTLY SAME AS MAKE OR NOT --- WE WANT ALL
+MAKE FUCTION IN IT. WITH END TO END FUCTIONING". Hoola Route compared with Make feature by feature from Make's own help
+centre (function pages, scenario settings, error handling, HTTP v4, pricing) - the full table with Had / Built / Not
+and the reasons is `docs/research/make/00_MAKE_PARITY.md`.
+
+Built, each through the real engine:
+- **Make's functions** in `{{ }}` (`agent/dhara_data.py` MAKE_FUNCS): general (if, ifempty, switch, omit, pick, set,
+  equal), math (average, median, stdevP/S, formatNumber, parseNumber, trunc ...), text (substring, indexOf, startcase,
+  stripHTML, escapeHTML/JSON/Markdown, sha1/256/512 with a key, replace with /regex/flags + $1/$&, match ...), dates
+  (formatDate / parseDate with Make's Moment tokens, addX, setX, setDay by name), arrays (map, flatten, merge,
+  distinct, toCollection, toArray, arrayDiff/Intersect, sort asc/desc/ci + key ...), under Make's camelCase names and
+  snake_case; keywords now / timestamp / uuid / random / pi / newline / space / tab / emptystring / emptyarray;
+  `if(` read as `iff(`; system variables `{{run.id}}`, `{{run.route}}`, `{{run.started_at}}`, `{{run.attempt}}`.
+- **Data stores** (`route/store.py`, tables ds_stores / ds_records in dhara.db): typed structure with required fields,
+  step type `store` ops add / update / get / exists / delete / delete_all (needs confirm) / search (filter, sort, 3,200)
+  / count / increment; 1 MB default, 10 MB max, 64 KB a record, 50 stores; CSV in (all or nothing) and out; the run
+  keeps an undo list so **Rollback really takes this run's writes back**, Commit / auto_commit keep them.
+- **Tools**: step type `var` - set_many / get / get_many / increment (never or per run; ds_counters) / save (a route
+  variable, `{{env.NAME}}`).
+- **Repeater** (`loop.repeat {times, start, step}`) and **aggregators** (`loop.collect` -> output.results, `join` ->
+  output.text; a filtered round adds nothing).
+- **Error handler routes**: `on_error.steps` run first with `{{error.message}}` / `{{error.step}}`, then the directive;
+  no directive = ignore; drawn under the step on the canvas ("If it fails"); waits / approvals refused inside one.
+- **The web request at Make's HTTP v4 level** (`route/http.py`): GET HEAD POST PUT PATCH DELETE OPTIONS, query,
+  body JSON / form / multipart with files / raw + content type, parse on / off, fail_on_error, timeout 1-300 s,
+  redirects on / off (10 hops, each guarded), share cookies in the run, compressed, pagination offset / page / next link
+  (also the Link header) / cursor with items path and limit, Download a file, Resolve URL. Sign-ins as before.
+- **Text parser and more** (data step): regex_match (global, case, multiline, singleline -> $1, $2, named groups),
+  regex_replace, data_to_xml, rows_to_table (Make's table aggregator), markdown_to_html / html_to_markdown, ZIP make /
+  open (50 MB, zip-bomb guard).
+- **Scenario settings**: in_order (one run at a time, oldest first, none while one is Incomplete), confidential (the log
+  keeps no data), keep_incomplete false (fail + roll back), auto_commit, queue_when_off, queue_max, allow_ips.
+- **Webhook queue**: a call that comes inside 6 s of the last is no longer refused with 429 - it waits its turn (Make's
+  queue, 667 by default) and runs in order; calls kept while the route is off run when it is switched on; IP
+  allow-list (403); the caller's headers (never Authorization / Cookie), method and query in `{{vars.request}}`.
+- **Schedule start_date**; app events "choose where to start": now / all / since a date.
+- **Operations** counted per run (`summary.operations`, on the run page).
+- **Make blueprint import** (`route/makeimport.py`, POST /api/route/import/make, "Bring in from Make"): webhook / app
+  watch starts, filters, routers, iterators + their aggregator, repeater, set / get / increment / switch / compose,
+  JSON / XML / CSV / text parser / markdown, HTTP (all modules), webhook response, the eight data store modules,
+  archive, error handler routes, scenario settings; formulas `{{1.x}}` -> `{{steps.y.output.x}}`, `;` -> `,`,
+  Make's 1-based `[1]` -> `[0]`; anything else a named "Redo" stop step + a report; lands switched OFF.
+- **The Grid** (`route/grid.py`, GET /api/route/grid, page #/grid): routes, starts, data stores, apps, web addresses
+  and the links (runs, on error, writes / reads, uses, calls).
+- Page: Data stores page (fields, records, find, CSV, delete all by typing its name), Grid page, Make import on the
+  import page, the new steps in Add a step (Data store, Variables, Text parser, Repeater, Repeat and collect, Make
+  XML, table text, ZIP, Download a file, Resolve), field-by-field panels for store / var / http, loop repeat and
+  collect fields, error-handler checkbox, the new settings, start-from, schedule start / end dates.
+
+Found and fixed on the way: a box holding only `{{a}}|{{b}}` was read as ONE expression and left as written (old bug);
+the import report's "To check" list showed one word per line (a `.ck` class clash, the n8n import too); the data store
+page header squeezed its title on a phone (`.rh-t` now wraps).
+
+Not built, said in the table: mutual TLS / client certificates / proxy, a mailhook address per route, Make's 1-minute
+schedules (kept 15 minutes; app events 5), cycles per run, commit trigger last, symmetric encryption, custom apps SDK /
+Bridge. Make's 2,500 app modules come through Hoola tools + Composio, not one module per action.
+
+Tests: `server/tests/test_v0999_258_make_parity.py` (47, incl. a Chromium walk at 1440 and 390); older pins moved:
+test_v0502 (a fast second webhook call is queued, not refused), test_v0999_246 / 253 (the web request calls
+httpx.request now). NOT VERIFIED: on her server, with a real Make export of hers, with real app accounts.
+
+
+## v0.999.259 IT ADMIN DESK (built as 0.999.258; their HOOLA ROUTE took 0.999.258, both kept)
 Owner: "IT Admin same as finance desks".
 
 - NEW `server/app/itchat.py` - Conversation kind itadmin, `/api/itdesk/{chat, chat/new, chat/{conv}/ok, desk, do/{part}}`; today_view = engine

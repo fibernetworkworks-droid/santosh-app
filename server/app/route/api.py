@@ -786,6 +786,102 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def route_templates():
         return {"templates": TEMPLATES}
 
+    # ---------------------------------------------------------------- v0.999.254 MAKE PARITY: data stores
+    from . import store as DS
+
+    def _ds(fn, *a, **kw):
+        try:
+            return fn(*a, **kw)
+        except DS.StoreError as e:
+            raise HTTPException(404 if "There is no data store" in str(e) else 400, str(e))
+
+    @r.get("/stores")
+    async def ds_list(tenant: str = Depends(current_tenant)):
+        return {"stores": await run(DS.stores, tenant), "types": list(DS.TYPES),
+                "limits": {"stores": DS.STORES_MAX, "max_kb": DS.SIZE_MAX_KB, "record_kb": DS.RECORD_MAX // 1024}}
+
+    @r.put("/stores/{name}")
+    async def ds_save(name: str, body: dict = Body(...), tenant: str = Depends(current_tenant)):
+        b = body or {}
+        return await run(_ds, DS.save_store, tenant, name, b.get("structure"), b.get("max_kb"), str(b.get("note") or ""))
+
+    @r.delete("/stores/{name}")
+    async def ds_drop(name: str, tenant: str = Depends(current_tenant)):
+        await run(_ds, DS.drop_store, tenant, name)
+        return {"deleted": name}
+
+    @r.get("/stores/{name}/records")
+    async def ds_records(name: str, q: str = "", sort: str = "", order: str = "asc", limit: int = 100, offset: int = 0,
+                         tenant: str = Depends(current_tenant)):
+        def go():
+            s = DS.get_store(tenant, name)
+            if s is None:
+                raise HTTPException(404, "There is no such data store")
+            rows, total = _ds(DS.records, tenant, name, None, sort, order, DS.SEARCH_MAX, 0)
+            if q.strip():
+                ql = q.strip().lower()
+                rows = [x for x in rows if ql in x["key"].lower() or ql in json.dumps(x["data"], ensure_ascii=False).lower()]
+                total = len(rows)
+            return {"store": s, "records": rows[max(0, offset):max(0, offset) + max(1, min(limit, 500))], "total": total}
+        return await run(go)
+
+    @r.put("/stores/{name}/records/{key}")
+    async def ds_put(name: str, key: str, body: dict = Body(...), tenant: str = Depends(current_tenant)):
+        return await run(_ds, DS.put, tenant, name, key, (body or {}).get("data") or {})
+
+    @r.post("/stores/{name}/records")
+    async def ds_add(name: str, body: dict = Body(...), tenant: str = Depends(current_tenant)):
+        import uuid as _u
+        k = str((body or {}).get("key") or "").strip() or str(_u.uuid4())
+        return await run(_ds, DS.put, tenant, name, k, (body or {}).get("data") or {})
+
+    @r.delete("/stores/{name}/records/{key}")
+    async def ds_del(name: str, key: str, tenant: str = Depends(current_tenant)):
+        return {"deleted": await run(_ds, DS.remove, tenant, name, key)}
+
+    @r.post("/stores/{name}/clear")
+    async def ds_clear(name: str, body: dict = Body(...), tenant: str = Depends(current_tenant)):
+        if str((body or {}).get("confirm") or "") != name:
+            raise HTTPException(400, "Type the data store's name to delete every record")
+        return {"deleted": await run(_ds, DS.clear, tenant, name)}
+
+    @r.get("/stores/{name}/csv")
+    async def ds_csv(name: str, tenant: str = Depends(current_tenant)):
+        from fastapi.responses import Response as _R
+        text = await run(_ds, DS.export_csv, tenant, name)
+        return _R(text, media_type="text/csv; charset=utf-8",
+                  headers={"Content-Disposition": f'attachment; filename="{DS._name(name)}.csv"'})
+
+    @r.post("/stores/{name}/csv")
+    async def ds_csv_in(name: str, body: dict = Body(...), tenant: str = Depends(current_tenant)):
+        return await run(_ds, DS.import_csv, tenant, name, str((body or {}).get("csv") or ""))
+
+    # ---------------------------------------------------------------- v0.999.254: a Make blueprint, and the Grid
+    @r.post("/import/make")
+    async def route_import_make(body: dict = Body(...), tenant: str = Depends(current_tenant)):
+        """Bring in a Make scenario (its blueprint JSON). save=false = the route it would become + the report;
+        save=true = a new route, switched off."""
+        from . import makeimport as MI
+        raw = (body or {}).get("blueprint")
+        if raw in (None, ""):
+            raise HTTPException(400, "Paste the Make scenario (Export blueprint, its JSON)")
+
+        def go():
+            try:
+                if not (body or {}).get("save"):
+                    return D._masked(MI.convert(raw))
+                return MI.bring_in(tenant, raw, str((body or {}).get("new_name") or ""))
+            except MI.MakeError as e:
+                raise HTTPException(409 if "already there" in str(e) else 400, str(e))
+        return await run(go)
+
+    @r.get("/grid")
+    async def route_grid(tenant: str = Depends(current_tenant)):
+        """Make Grid: every route and what it touches - the routes it runs, its error route, the routes that start it,
+        its data stores, apps and webhooks - as nodes and links for the map page."""
+        from . import grid as G
+        return await run(G.build, tenant)
+
     return r
 
 

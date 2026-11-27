@@ -494,9 +494,10 @@ def test_webhook_enqueues_with_body_and_refuses_bad_tokens():
     run = D.get_run(CTX.tenant_id, out["run_id"])
     assert run["context"]["vars"]["body"] == {"order_id": "A-1"}
     assert D.webhook_enqueue("wrong-token", {})["status"] == 401
-    # throttle: a second run of the SAME workflow inside 6 s is refused (10/min ceiling)
+    # v0.999.254 MAKE PARITY: a second call inside 6 s is no longer refused - it waits in the route's queue (Make's
+    # webhook queue) and runs in its turn, one run per 6 s at most (10/min ceiling kept)
     second = D.webhook_enqueue(tok, {"again": True})
-    assert second["status"] == 429
+    assert second["status"] == 202 and D.get_run(CTX.tenant_id, second["run_id"])["pause_reason"] == "queue"
     # disabled workflow: the token stops working
     _run(D.dhara_control(CTX, action="disable", name="hooked"))
     time.sleep(6.2)  # past the throttle window so we test the DISABLED path, not the throttle

@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.258"   # v0.999.258 IT ADMIN DESK (owner: "IT Admin same as finance desks"): the IT Admin employee (it_admin) gets its own section /console/itadmin + IT Admin chat (kind itadmin, `itchat.py`, /api/itdesk/*) on the IT Admin engine: Today (IT spend a year, unused-seat cost, renewals in 30 days, changes waiting, needs, access at a glance, spend by kind, coming up incl. device warranty / AMC, what staff keep asking), Licences & spend (add / edit with seats, price, per seat, renewal, auto-renew; seat bars, I renewed it, register as Excel, spend by vendor), People & access (people, access records never a password with 2-step state, joiner / mover / leaver checklists, Turn off = a change card, access review keep / remove), Changes (cards with steps, meaning and undo; yes / no by her tap with the card hash; I did it), Guides & questions (guides from her words, publish, Word, versions; staff questions answered from guides or a ticket), Settings (office, country, money unit, renewal windows, good practice by country, Google Workspace / Microsoft 365 read links, the Entra secret only in its own part); GLOBAL: the CERT-In / DPDP practice rows only for India, other countries 'check this', every price in her own money unit; 4 tests incl. a browser walk. NOT VERIFIED on her server / with real Google or Microsoft consoles.
+APP_VERSION = "0.999.259"   # v0.999.259 IT ADMIN DESK (built as 0.999.258; their HOOLA ROUTE took 0.999.258, both kept; owner: "IT Admin same as finance desks"): the IT Admin employee (it_admin) gets its own section /console/itadmin + IT Admin chat (kind itadmin, `itchat.py`, /api/itdesk/*) on the IT Admin engine: Today (IT spend a year, unused-seat cost, renewals in 30 days, changes waiting, needs, access at a glance, spend by kind, coming up incl. device warranty / AMC, what staff keep asking), Licences & spend (add / edit with seats, price, per seat, renewal, auto-renew; seat bars, I renewed it, register as Excel, spend by vendor), People & access (people, access records never a password with 2-step state, joiner / mover / leaver checklists, Turn off = a change card, access review keep / remove), Changes (cards with steps, meaning and undo; yes / no by her tap with the card hash; I did it), Guides & questions (guides from her words, publish, Word, versions; staff questions answered from guides or a ticket), Settings (office, country, money unit, renewal windows, good practice by country, Google Workspace / Microsoft 365 read links, the Entra secret only in its own part); GLOBAL: the CERT-In / DPDP practice rows only for India, other countries 'check this', every price in her own money unit; 4 tests incl. a browser walk. NOT VERIFIED on her server / with real Google or Microsoft consoles.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -12651,7 +12651,11 @@ async def dhara_hook(token: str, request: Request):
             body = {"body": body}
     except Exception:
         body = {"raw": raw[:8000].decode("utf-8", "ignore")}
-    out = await dhara_tools.webhook_call(token, body)
+    meta = {"ip": (request.headers.get("cf-connecting-ip") or request.headers.get("x-real-ip")
+                   or (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+                   or (request.client.host if request.client else "")),
+            "headers": dict(request.headers), "method": request.method, "query": dict(request.query_params)}
+    out = await dhara_tools.webhook_call(token, body, meta)
     if out.get("answered"):         # v0.999.239 ROUTE R4: the route's Respond step answers the caller
         ans = out.get("answer")
         code = int(out.get("status") or 200)

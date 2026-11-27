@@ -4022,3 +4022,20 @@ Work Log:
 Stage Summary:
 - 17 new tests (tests/test_v0999_253_route_check.py) incl. a browser walk; the 3 old 0.999.169 pins now accept newer versions
 - NOT VERIFIED on her server
+
+---
+Task ID: make-parity-v0999-258 (built as 0.999.254)
+Agent: Claude (cloud session)
+Task: "GET EXTREEM DEEP FIND ALL HOOLA ROUTE TOOL IS FUCTIONATING PERFECTLY SAME AS MAKE OR NOT --- WE WANT ALL MAKE FUCTION IN IT"
+Work Log:
+- read Make's own help pages (functions, date tokens, scenario settings, error handling, HTTP v4, pricing) and mapped every Make feature
+  to Route: docs/research/make/00_MAKE_PARITY.md (Had / Built / Not with the reason)
+- built: Make functions + keywords + {{run.*}}, data stores (route/store.py, rollback undo), var step, repeater + collect aggregators,
+  error handler routes, HTTP v4 (route/http.py), text parser / XML / table / markdown / ZIP, scenario settings, webhook queue / kept while
+  off / IP allow-list / caller headers, schedule start_date, event start now|all|since, operations, Make blueprint import
+  (route/makeimport.py), the Grid (route/grid.py); page: Data stores, Grid, Make import, new steps + panels, error handler lane, settings
+- found + fixed: "{{a}}|{{b}}" read as one expression (old bug); the import report's '.ck' class clash; phone title squeeze on rhead
+Stage Summary:
+- tests/test_v0999_258_make_parity.py (47, incl. a browser walk); route suites 248 green; test_v0999_248 browser walk flaky in a long
+  run, green alone (as before)
+- NOT VERIFIED on her server / with her own Make export / real app accounts
