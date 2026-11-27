@@ -49,6 +49,7 @@
     subroute: '<rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="13" width="8" height="7" rx="1.5"/><path d="M7 11v4a2 2 0 0 0 2 2h4"/>',
     stop: '<circle cx="12" cy="12" r="9"/><rect x="9" y="9" width="6" height="6" rx="1"/>',
     respond: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 6 6v4"/>',
+    ai: '<path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"/><path d="M19 15l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/>',
     tform: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
     tchat: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>',
     terr: '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.5"/>',
@@ -82,7 +83,7 @@
   const human = e => S(e).replace(/route '([^']+)': /g, '$1 › ').replace(/step '([^']+)' \([a-z_]+\): /g, (m, id) => id.replace(/_/g, ' ') + ': ')
     .replace(/^([^›:]+): ([^:]+ › )/, '$2');
   const KIND_TILE = {data: 'data', approval: 'warm', notify: 'warm', condition: 'flow', router: 'flow', filter: 'flow', loop: 'flow', wait: 'flow',
-    subroute: 'flow', stop: 'flow', set: 'data', code: 'data', http: 'core', respond: 'core'};
+    subroute: 'flow', stop: 'flow', ai: 'ai', set: 'data', code: 'data', http: 'core', respond: 'core'};
   function appTile(a, type, op) {
     a = a || {};
     if (a.kind === 'hoola') return `<span class="ap hoola" title="Hoola">${MARK('#FFFFFF')}</span>`;
@@ -331,7 +332,28 @@
     file: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>', crypto: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'};
   const KIND = {data: 'Data', tool: 'Uses a tool', http: 'Web request', code: 'Code', wait: 'Wait', notify: 'Tell me', approval: 'Ask me first',
     set: 'Set a value', filter: 'Filter', condition: 'If / else', loop: 'Repeat for each', router: 'Switch',
-    subroute: 'Run another route', stop: 'Stop the run', respond: 'Answer the caller'};
+    subroute: 'Run another route', stop: 'Stop the run', respond: 'Answer the caller', ai: 'AI'};
+  // v0.999.243 ROUTE R6: the AI steps (engine type "ai", told apart by op)
+  const AIW = {write: 'Ask AI', summarise: 'Summarise', classify: 'Sort into categories', extract: 'Pull out fields',
+    sentiment: 'How it feels', answer: 'Answer from my files', agent: 'AI agent'};
+  const YN = [['', 'No'], ['true', 'Yes']];
+  const QUAL = ['quality', 'Model', 'sel', [['fast', 'Fast (the everyday model)'], ['best', 'Best (the strongest model)']]];
+  const INSTR = ['instructions', 'Extra instructions (optional)', 'area', 'Like: answer in Spanish, keep it formal'];
+  const AIF = {
+    write: [['prompt', 'Ask', 'area', 'Use values from earlier steps, like {{vars.form.message}}'], INSTR, QUAL],
+    summarise: [['text', 'Text to summarise', 'area'], ['length', 'Length', 'sel', [['short', 'Short (1-2 sentences)'], ['medium', 'A paragraph'], ['long', 'Longer'], ['points', 'As points']]],
+      ['language', 'In this language (optional)', 'plain', 'Empty = the text\'s own language'], INSTR, QUAL],
+    classify: [['text', 'Text', 'area'], ['categories', 'Categories (with commas)', 'plain', 'Like: question, complaint, order, spam'],
+      ['multi', 'More than one may fit', 'sel', YN], INSTR, QUAL],
+    extract: [['text', 'Text', 'area'], ['fields', 'Fields to pull out (name: what it is)', 'obj'], INSTR, QUAL],
+    sentiment: [['text', 'Text', 'area'], INSTR, QUAL],
+    answer: [['question', 'Question', 'area'], ['files', 'From these files (file ids, with commas)', 'text', 'Like {{steps.mail.output.attachments[0].file_id}}'],
+      ['text', 'Or from this text', 'area'], ['knowledge', 'Also from my Hoola Knowledge', 'sel', YN], INSTR, QUAL],
+    agent: [['prompt', 'The task', 'area', 'What it should do, with values from earlier steps'], ['tools', 'Tools it may use (names, with commas)', 'plain', 'Like sheet_read, email_check - only these'],
+      ['max_steps', 'At most this many steps', 'num'], ['memory', 'Remember earlier runs', 'sel', [['none', 'No'], ['on', 'Yes']]],
+      ['memory_key', 'Remember per (optional)', 'text', 'Like {{vars.session}} - one memory for each chat; empty = one for the route'], INSTR, QUAL],
+  };
+  const AISHOW = {agent: {memory_key: s => s.memory === 'on'}};
   const DO = {'': 'Stop the run and show me why', break: 'Try again later, then keep it in Incomplete runs', resume: 'Use a value I give and carry on',
     ignore: 'Skip it and carry on', commit: 'Stop here and keep what was done', rollback: 'Stop the run', tell: 'Tell me and stop the run'};
   function fltWords(f) {
@@ -342,6 +364,7 @@
     return `${S(f.left).replace(/\{\{\s*|\s*\}\}/g, '') || '…'} ${OPW[f.op] || f.op}${r && !NO_RIGHT.has(f.op) ? ' ' + r : ''}`;
   }
   const UNITW = {seconds: 'second', minutes: 'minute', hours: 'hour', days: 'day', weeks: 'week'};
+  const _toolsN = s => (Array.isArray(s.tools) ? s.tools : S(s.tools).split(',')).filter(x => S(x).trim()).length;
   function waitWords(s) {
     if (s.for === 'call') return 'until its link is called';
     if (s.amount !== undefined && s.amount !== '') { const n = S(s.amount), u = UNITW[s.unit || 'minutes'] || S(s.unit); return `${n} ${u}${n === '1' ? '' : 's'}`; }
@@ -364,9 +387,11 @@
     if (t === 'router') return `${(s.routes || []).length} ways`;
     if (t === 'code') return 'Python';
     if (t === 'data') return DATAW[s.op] || S(s.op);
+    if (t === 'ai') return s.op === 'agent' ? `${_toolsN(s)} tools` : s.op === 'classify' ? S(s.categories).slice(0, 34) : AIW[s.op] || S(s.op);
+    if (t === 'router' && s.ai) return `AI picks of ${(s.routes || []).length} ways`;
     return '';
   }
-  const titleOfStep = s => S(s.label) || (s.type === 'tool' ? nice(s.name) : s.type === 'data' ? (DATAW[s.op] || 'Data') : KIND[s.type] || s.type);
+  const titleOfStep = s => S(s.label) || (s.type === 'tool' ? nice(s.name) : s.type === 'data' ? (DATAW[s.op] || 'Data') : s.type === 'ai' ? (AIW[s.op] || 'AI') : KIND[s.type] || s.type);
 
   let ED = null;
   function stopEditor() {
@@ -854,10 +879,10 @@
       parts.push(field('Method', s.method || 'GET', {k: 'method', options: [['GET', 'GET (read)'], ['POST', 'POST (send)']]}));
       parts.push(field('Address', s.url || '', {k: 'url', mono: true, ph: 'https://'}));
       if ((s.method || 'GET') === 'POST') parts.push(field('What it sends', typeof s.body === 'string' ? s.body : JSON.stringify(s.body ?? {}, null, 2), {k: 'body', area: true, mono: true, rows: 5}));
-    } else if (s.type === 'data') {
-      const spec = DATAF[s.op] || [];
+    } else if (s.type === 'data' || s.type === 'ai') {
+      const spec = (s.type === 'ai' ? AIF : DATAF)[s.op] || [];
       spec.forEach(([key, lab, kind, extra]) => {
-        const show = (SHOWIF[s.op] || {})[key];
+        const show = ((s.type === 'ai' ? AISHOW : SHOWIF)[s.op] || {})[key];
         if (show && !show(s)) return;
         const v = s[key];
         if (kind === 'sel') parts.push(field(lab, v === undefined ? extra[0][0] : v, {k: 'd:' + key, options: extra}));
@@ -904,8 +929,13 @@
       parts.push(`<div class="psub">${s.type === 'filter' ? 'Goes on only when' : 'Takes “If yes” when'}</div>`);
       parts.push(filterRows(s.filter || (s.op ? {left: s.left, op: s.op, right: s.right} : null), 'main'));
     } else if (s.type === 'router') {
-      parts.push('<div class="psub">Ways, tested in order</div>');
-      (s.routes || []).forEach((rt, j) => parts.push(`<div class="way" data-way="${j}">${field('Name of this way', rt.label || '', {k: 'rlabel:' + j, ref: false})}${filterRows(rt.filter, 'r' + j)}
+      parts.push(`<label class="chk"><input type="checkbox" data-aiway${s.ai ? ' checked' : ''}> Let AI pick the way (it reads a text and picks one way by its name)</label>`);
+      if (s.ai) {
+        parts.push(field('The text it reads', S(s.ai.text), {k: 'aiw:text', area: true, ph: '{{vars.message}}'}));
+        parts.push(field('How to choose (optional)', S(s.ai.instructions), {k: 'aiw:instructions', area: true, rows: 2, ph: 'Like: orders go to Sales, problems to Support'}));
+      }
+      parts.push(`<div class="psub">${s.ai ? 'Ways (named clearly, so the AI can pick)' : 'Ways, tested in order'}</div>`);
+      (s.routes || []).forEach((rt, j) => parts.push(`<div class="way" data-way="${j}">${field('Name of this way', rt.label || '', {k: 'rlabel:' + j, ref: false})}${s.ai ? '' : filterRows(rt.filter, 'r' + j)}
         <button class="btn s soft bad" type="button" data-wdel="${j}"${(s.routes || []).length < 2 ? ' disabled' : ''}>Remove this way</button></div>`));
       parts.push(`<div class="crow"><button class="btn s soft" type="button" data-wadd${(s.routes || []).length >= 8 ? ' disabled' : ''}>${svg(IC.plus)}Add a way</button>
         <label class="chk"><input type="checkbox" data-fallback${Array.isArray(s.fallback) ? ' checked' : ''}> “Anything else” way</label></div>`);
@@ -961,11 +991,13 @@
       else if (k === 'oe_retries') { s.on_error.retries = Math.max(0, Math.min(10, parseInt(v, 10) || 0)); }
       else if (k === 'oe_wait') { s.on_error.wait_min = Math.max(1, Math.min(1440, parseInt(v, 10) || 1)); }
       else if (k === 'oe_value') s.on_error.value = v;
-      else if (k.startsWith('d:')) { const key = k.slice(2); if (v === '') delete s[key]; else s[key] = /^-?\d+(\.\d+)?$/.test(v.trim()) && ['count', 'amount', 'length'].includes(key) ? Number(v) : v; }
+      else if (k.startsWith('d:')) { const key = k.slice(2); if (v === '') delete s[key]; else if (v === 'true') s[key] = true;
+        else s[key] = /^-?\d+(\.\d+)?$/.test(v.trim()) && ['count', 'amount', 'length', 'max_steps', 'max_tokens'].includes(key) ? Number(v) : v; }
+      else if (k.startsWith('aiw:')) { s.ai = Object.assign({}, s.ai || {}); if (v) s.ai[k.slice(4)] = v; else delete s.ai[k.slice(4)]; }
       else if (k.startsWith('dobj:')) { try { s[k.slice(5)] = v.trim() ? JSON.parse(v) : {}; el.classList.remove('err'); } catch { el.classList.add('err'); return; } }
       else s[k] = v;
       ED.dirty = snap() !== ED.saved; draw(); topState();
-      if (['method', 'oe_do', 'd:action', 'd:how', 'd:mode', 'wkind'].includes(k)) stepPanel(box.parentNode);
+      if (['method', 'oe_do', 'd:action', 'd:how', 'd:mode', 'wkind', 'd:memory'].includes(k)) stepPanel(box.parentNode);
       if (el.tagName !== 'SELECT') previewSoon(el, s);
     };
     box.addEventListener('input', e => { if (e.target.dataset.k && e.target.tagName !== 'SELECT') apply(e.target); else if (e.target.closest('.fgroup')) applyFilter(e.target); });
@@ -997,6 +1029,8 @@
       }
       if (t.dataset.changeTool !== undefined) { const h = find(s.id); ED.replace = s.id; addAt(h.path, h.i); }
     });
+    const aw = box.querySelector('[data-aiway]');
+    if (aw) aw.addEventListener('change', () => { before(); if (aw.checked) s.ai = s.ai || {text: ''}; else delete s.ai; changed(false); stepPanel(box.parentNode); });
     const fb = box.querySelector('[data-fallback]');
     if (fb) fb.addEventListener('change', () => { before(); if (fb.checked) s.fallback = s.fallback || []; else delete s.fallback; changed(false); });
     const sid = box.querySelector('[data-sid]');
@@ -1205,7 +1239,7 @@
   }
 
   // the add-a-step panel: search + groups (step kinds and Hoola's tools / connected apps)
-  const GROUPS = [['Human in the loop', IC.approval, 'k-warm'], ['Flow', IC.route, 'k-flow'], ['Data', IC.store, 'k-data'], ['Core', IC.http, 'k-core']];
+  const GROUPS = [['AI', IC.ai, 'k-ai'], ['Human in the loop', IC.approval, 'k-warm'], ['Flow', IC.route, 'k-flow'], ['Data', IC.store, 'k-data'], ['Core', IC.http, 'k-core']];
   async function addPanel(box) {
     const q0 = ED.addQ || '';
     box.innerHTML = `<div class="pform"><div class="phead"><span class="ap k-trig">${svg(IC.plus)}</span><div><div class="pk">${ED.replace ? 'Change the tool' : 'Add a step'}</div><div class="pt">${esc(addWhere())}</div></div>
