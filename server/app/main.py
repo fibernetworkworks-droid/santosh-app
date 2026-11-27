@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.230"   # v0.999.230 MARKETS DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE MARKETS DESK"): the Markets & Post-Trade employee gets its own section /console/markets + Markets chat (kind markets, `mktchat.py`) on any of her finance workspaces (a broker, an asset manager, a custodian, a listed company): Today (reconciliation breaks, unconfirmed trades, failed settlements and their penalty, tax she can reclaim, needs, the match ring, fails by age, the disclosure dates coming up, worst slippage); Reconcile (her books and the custodian's file by CSV or form, cash too, every break with its difference, CSV); Settlement (trades vs confirmations, field differences, unconfirmed and orphan confirmations, fails by age at HER daily penalty rate, Mark settled, due in 5 days); Corporate actions (split / consolidation / dividends / bonus / rights on her positions at the record date, fractions and cash in lieu, a history); Reclaims (withholding vs HER treaty rates, claim-by dates from HER periods, by country, CSV); Margin (collateral after HER haircuts, shortfall, notice text, history); Execution (slippage vs benchmark, diverging chart, her limit); Instructions (missing parts, BIC / IBAN checks, a changed instruction = call-back); Comps & IR (multiples, implied range for a target, the disclosure calendar from HER rules); Settings; team roles from Books read or change; never places, cancels, allocates or affirms a trade and sends nothing; 5 tests incl. a browser walk. NOT VERIFIED on her server. Previous: v0.999.229 INVESTMENTS DESK.
+APP_VERSION = "0.999.231"   # v0.999.231 COMMUNITY FINANCE DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE COMMUNITY FINANCE DESK"): the Community, Inclusive & Islamic Finance employee gets its own section /console/community + Community chat (kind community, `cmchat.py`) on any finance workspace: Today (cash in hand, the group's box, who owes, repayments or the next payout, needs, coming up, charts); Cash book (lines typed or said like "sold tea 250", unread lines said back, day by day, where the money went, CSV); Savings group (members, every meeting - a meeting cannot lend what the box holds, the counted cash vs the book, who owes, the share-out to the last cent, close the cycle, earlier cycles); Rotating group (payout order, dates, rounds paid out, auction bids and each member's gain, safety signs); Loans (true yearly cost of each, repayments vs HER income and limit, check an offer); Collections (collection sheet, arrears, loan book by lateness, PAR30 vs HER limit); Farm (crop plan, break-even, crop-insurance claim in HER scheme's terms); Send money (what arrives with each provider, mobile-money fee bands, scam signs); Zakat & Islamic (at HER prices and school, kept for next year; murabaha / ijara / diminishing musharaka / mudaraba worked out); Settings; FIXED the finance gate refusing the community tool's remit comparison as moving money; never collects, lends or sends money; 6 tests incl. a browser walk. NOT VERIFIED on her server. Previous: v0.999.230 MARKETS DESK.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2160,6 +2160,15 @@ def markets_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/community")
+@app.get("/console/community/")
+def community_desk_page():
+    """COMMUNITY FINANCE DESK: the Community, Inclusive & Islamic Finance employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "cmdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/institution")
 @app.get("/console/institution/")
 def institution_desk_page():
@@ -2737,6 +2746,8 @@ from . import invchat as _invchat_mod                           # noqa: E402  IN
 _invchat_mod.mount(app, current_tenant, require_key)            # /api/investments/*
 from . import mktchat as _mktchat_mod                           # noqa: E402  MARKETS DESK
 _mktchat_mod.mount(app, current_tenant, require_key)            # /api/markets/*
+from . import cmchat as _cmchat_mod                            # noqa: E402  COMMUNITY FINANCE DESK
+_cmchat_mod.mount(app, current_tenant, require_key)             # /api/community/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

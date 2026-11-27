@@ -1704,6 +1704,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_mkc.block, tenant_id)
     except Exception:
         log.exception("markets desk block failed")
+    try:   # COMMUNITY FINANCE DESK: a turn in the Community chat (or a call started from it) knows the desk
+        from .. import cmchat as _cmc
+        if _cmc.is_community(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_cmc.block, tenant_id)
+    except Exception:
+        log.exception("community desk block failed")
     _mark("hint")
     return state
 
@@ -2555,6 +2561,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "markets chat"
     except Exception:
         log.exception("markets chat admission failed")
+    try:   # COMMUNITY FINANCE DESK: the community tool in view in the Community chat
+        from .. import cmchat as _cmc
+        if adm is not None and _cmc.is_community(conversation_id):
+            adm.admit_families(_cmc.FAMILIES)
+            for f in _cmc.FAMILIES:
+                adm.why[f] = "community chat"
+    except Exception:
+        log.exception("community chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,

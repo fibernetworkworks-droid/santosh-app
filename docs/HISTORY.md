@@ -12456,3 +12456,24 @@ Payments and Institution: `/console/markets` (`mktdesk.html/.js/.css`) + the Mar
   owner / accountant / approver change, auditor / viewer read.
 - Hoola never places, changes, cancels, allocates or affirms an order or a trade and sends nothing to a custodian, broker or counterparty; every
   rate is hers. Tests `server/tests/test_mkt_desk.py` (5, incl. a browser walk at 1440 and 390). NOT VERIFIED on her server.
+
+## v0.999.231 COMMUNITY FINANCE DESK
+
+Owner: "NOW LETS WORK ON NEXT EMPLOYEE COMMUNITY FINANCE DESK". The Community, Inclusive & Islamic Finance employee (tool
+`community_finance`, engine `fin/desks/community.py`, F11) gets its own section like the other finance desks.
+
+- `server/app/cmchat.py`: Community chat (Conversation kind `community`, out of chat lists), desk block + tool family `commfin` in view,
+  state in the workspace settings under `community_desk`: cash (lines + opening), members / group rules / meetings / closed cycles,
+  rosca (members in order, contribution, frequency, start, auction, fee, bids, paid rounds, safety answers), loans + income + her limit,
+  collections / portfolio (+ PAR limit), crops, remit + providers, mobile-money tariff, zakat inputs + results, Islamic structures.
+  Routes `/api/community/{chat,chat/new,chat/{id}/ok,desk,setup,do/{part},download,workspace}`; team roles from Books read or change
+  (accountant = Treasurer, approver = Chair). Page reads run the engine with no audit row; actions go through `core.run_tool`.
+- Guards: a meeting the books cannot carry (lending more than the box holds) is refused and not kept; removing a meeting that later
+  ones depend on is refused; a member in this cycle's meetings stays until the cycle closes; the share value and opening balances are
+  fixed once the cycle has meetings; closing a cycle needs every loan repaid; an auction bid below the organiser's fee is refused.
+- `static/console/cmdesk.{html,js,css}`: Today, Cash book, Savings group, Rotating group, Loans, Collections, Farm, Send money, Zakat &
+  Islamic, Settings; SVG charts (line, bars, repayment gauge, nisab bar), the chat beside; `/console/community`, employees.js +
+  v2.js + the phone route open it.
+- FIXED: `fin/laws._ACT_WORDS` refused the F11 tool's own `remit` action (a fee comparison) as "moving money", so the chat could never
+  compare remittance providers; the words are now `remit_now|send_remittance` (send_money / pay / transfer still refused).
+- Tests `server/tests/test_cm_desk.py` (6, incl. a Chromium walk at 1440 and 390). NOT VERIFIED on her server.
