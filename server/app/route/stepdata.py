@@ -209,6 +209,11 @@ async def test_step(tenant: str, wf: dict, sid: str, use_pins: bool = True) -> d
                 passed = D._cmp(D.resolve(step.get("left"), ctx), str(step.get("op")), D.resolve(step.get("right"), ctx))
             out = {"passed": bool(passed), "way": ("If yes" if passed else "If no") if typ == "condition" else
                    ("goes on" if passed else "stops here")}
+        elif typ == "router" and step.get("ai"):     # v0.999.243: the AI picks the way (a real model call)
+            from . import aistep as AS
+            pick = await AS.choose(step, ctx, D.resolve)
+            out = {"way": pick or ("Anything else" if isinstance(step.get("fallback"), list) else "none - it goes straight on"),
+                   "why": (ctx.get("_ai_why") or {}).get(sid, "")}
         elif typ == "router":
             way = None
             for j, rt in enumerate(step.get("routes") or []):

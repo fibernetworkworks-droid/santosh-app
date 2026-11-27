@@ -12690,8 +12690,29 @@ Desktop wiring. Audit: AST list of every action the server sends (hub.call / cal
 - Tests `server/tests/test_v0999_240_route_triggers.py` (10 incl. a Chromium walk: make a form route, open its page, send it,
   see the route's answer). NOT VERIFIED: on her server, with a real mailbox / sheet / feed, or a real AI app over MCP.
 
+## v0.999.243 AI STEPS (R6 of the Hoola Route plan; owner: "GO R6")
 
-## v0.999.243 RISK DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE RISK DESK SAME WAY")
+- `server/app/route/aistep.py` (new): step type `ai`, told apart by op - write {prompt} -> {text}; summarise {text, length
+  short|medium|long|points, language} -> {summary}; classify {text, categories, multi} -> {category, matched, reason} (the answer
+  is matched to HER categories in code; anything else = matched false); extract {text, fields} -> exactly those fields (numbers
+  coerced, missing = null); sentiment -> {label positive|neutral|negative|mixed, score -1..1}; answer {question, files, text,
+  knowledge} -> {answer, found, sources} (only from what is given; the model must say NOT_IN_SOURCES, shown as "The files do not
+  say."); agent {prompt, tools (only these, up to 15, never dhara_* / ask_form / kaam_plan), max_steps 1-10, memory none|on,
+  memory_key} -> {answer, used} - each tool call runs as actor routine (the tool's own guards), a tool she did not list is refused
+  to the model, out of steps = it answers with what it has; memory = route_ai_memory (20 kept per route + key). Every op:
+  instructions, quality fast (the chat's cheap brain) | best (Claude's strong model).
+- Router `ai {text, instructions, quality}`: the AI picks ONE way by its label (memoised like any decision; "none" = the
+  Anything else way); the reason is in the step's output (why). A failed AI call fails the step with its reason.
+- One model seam `_call` (llm.openai_create on the cheap brain, else door.acreate on Claude, tools passed through). What the AI
+  reads is wrapped in <data> (data, never instructions); ID numbers (`_masked`) and card / Aadhaar / bank / PAN / CVV numbers
+  (`pii.mask_sensitive`) are masked first, tool results too.
+- Engine: type ai in _STEP_TYPES, validate (AS.validate, router ai), _exec_one; a single-step test runs it for real (AI pick on a
+  Switch too). Editor: an AI group in Add a step (AI agent, Ask AI, Summarise, Sort into categories, Pull out fields, How it feels,
+  Answer from my files, AI picks the way), a form per op (AIF), "Let AI pick the way" on a Switch; dhara_save and the route chat
+  know them.
+- Tests `server/tests/test_v0999_243_route_ai.py` (9 incl. a Chromium walk; the model is a scripted fake). NOT VERIFIED: with a
+  real model on her server.
+## v0.999.244 RISK DESK (built as 0.999.243; owner: "NOW LETS WORK ON NEXT EMPLOYEE RISK DESK SAME WAY")
 
 The Risk Desk employee (`risk_desk`, the v0.603 riskdesk engine) gets its own section like the Finance Desk / Public Finance desks:
 `/console/risk` (`rkdesk.html/.js/.css`) + the Risk Desk chat (Conversation kind `risk`, `server/app/rkchat.py`, routes `/api/riskdesk/*`).

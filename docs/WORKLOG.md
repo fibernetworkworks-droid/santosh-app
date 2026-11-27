@@ -3968,3 +3968,15 @@ Work Log:
 
 Stage Summary:
 - v0.999.242 (renumbered from 240: main moved to Finance Desk Assistant + Desktop wiring); deploy with Actions > VPS ops > deploy. R6 (AI steps) next on her word.
+
+---
+Task ID: route-ai-r6
+Agent: main
+Task: Hoola Route R6 - AI steps (owner: "GO R6")
+
+Work Log:
+- route/aistep.py: write / summarise / classify / extract / sentiment / answer / agent + AI-picked Switch; one model seam; masking.
+- Engine + editor wiring (AI group, forms, Let AI pick the way).
+
+Stage Summary:
+- v0.999.243; deploy with Actions > VPS ops > deploy. R7 (accounts, variables, settings, versions, sharing) next on her word.
