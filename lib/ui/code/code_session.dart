@@ -452,6 +452,13 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
             : (conf.isEmpty ? "Brought $id's changes into the working copy." : 'Brought in $id - settle the conflicts in ${conf.join(', ')}.'))));
   }
 
+  /// v0.999 undo the last going-back (OpenCode's staged revert), possible until her next message.
+  Future<void> _redo() async {
+    final r = await _run('POST', '$_base/redo');
+    if (!mounted || r == null) return;
+    codeToast(context, 'Back as it was before you went back.');
+  }
+
   bool _canRevise(Map<String, dynamic> t) => codeCanRevise.contains(cs(t['status'])) || t['can_continue'] == true;
 
   /// note | answer | plan | revise | off
@@ -914,6 +921,8 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
               row(ctx, Icons.ios_share_rounded, 'Export the conversation', 'export'),
               row(ctx, Icons.call_split_rounded, 'Fork this session', 'fork'),
               if (!codeRunning(t) && cps.length > 1) row(ctx, Icons.undo_rounded, 'Go back to an earlier checkpoint', 'rewind'),
+              if (!codeRunning(t) && cm(t['ws'])['redo'] != null)
+                row(ctx, Icons.redo_rounded, 'Undo going back to checkpoint ${ci(cm(cm(t['ws'])['redo'])['n'])}', 'redo'),
               if (cs(t['status']) == 'plan_wait') row(ctx, Icons.close_rounded, 'Cancel this job', 'cancel'),
               row(ctx, Icons.add_rounded, 'New session', 'new'),
               row(ctx, Icons.archive_outlined, t['archived'] == true ? 'Bring back from the archive' : 'Archive', 'archive'),
@@ -954,6 +963,8 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         _fork(cps);
       case 'rewind':
         _rewind(cps);
+      case 'redo':
+        _redo();
       case 'cancel':
         _run('POST', '$_base/cancel');
       case 'new':
@@ -1441,8 +1452,10 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
 
     // v0.945 what a "go back to a checkpoint" undid stays readable but greyed out
     final undone = <(int, int)>[
-      for (final s in steps)
-        if (cs(s['k']) == 'rewind' && ci(s['from']) >= 0 && s.containsKey('from')) (ci(s['from']), _stepN(s, -1)),
+      for (var i = 0; i < steps.length; i++)
+        if (cs(steps[i]['k']) == 'rewind' && ci(steps[i]['from']) >= 0 && steps[i].containsKey('from') &&
+            !steps.skip(i + 1).any((x) => cs(x['k']) == 'redo')) // v0.999 a redo undid that going-back: nothing greyed
+          (ci(steps[i]['from']), _stepN(steps[i], -1)),
     ];
     var dimFrom = out.length;
     var dimOn = false;
@@ -2186,6 +2199,21 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         return _line(c, Icons.hourglass_empty_rounded, [TextSpan(text: cs(s['text']).isEmpty ? 'Waiting for a free coding slot' : cs(s['text']))]);
       case 'ckpt':
         return _line(c, Icons.bookmark_border_rounded, [TextSpan(text: 'Checkpoint ${ci(s['num'] ?? s['n'])} saved')]);
+      case 'format': // v0.999 the repo's own formatter tidied what the reply changed
+        return _line(c, Icons.auto_fix_high_rounded, [
+          TextSpan(
+              text: "The repo's formatter tidied ${(s['files'] is List ? (s['files'] as List).join(', ') : '').isEmpty ? 'the edited files' : (s['files'] as List).join(', ')}",
+              style: TextStyle(color: c.ink3)),
+        ]);
+      case 'redo':
+        return _line(c, Icons.redo_rounded, [
+          TextSpan(text: 'Undid going back to checkpoint ${ci(s['n'])}.'),
+          TextSpan(
+              text: cs(s['what']) == 'code'
+                  ? ' The files have every later change again.'
+                  : (cs(s['what']) == 'conversation' ? ' The conversation is whole again.' : ' The files and the conversation are as they were before.'),
+              style: TextStyle(color: c.ink3)),
+        ]);
       case 'rewind':
         return _line(c, Icons.undo_rounded, [
           TextSpan(

@@ -753,6 +753,26 @@ def ws_rewind(tenant: str, ref: str, n: int, what: str = "both") -> dict[str, An
     return out
 
 
+def ws_redo(tenant: str, ref: str) -> dict[str, Any]:
+    """v0.999 undo the last 'go back to a checkpoint' (OpenCode's staged revert), until her next message."""
+    from . import engine as EN
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        if t.id in _RUNNING:
+            raise DevError("Hoola is working in this session right now - stop it first.")
+        tid = t.id
+    try:
+        r = EN.redo(tid)
+    except ValueError as e:
+        raise DevError(str(e))
+    _Step(tid).event({"k": "redo", "n": r.get("n"), "what": r.get("what")})
+    with session() as s:
+        row = s.get(DevTask, tid)
+        _log(row, f"undid going back to checkpoint {r.get('n')}")
+        out = task_view(row, full=True)
+    return out
+
+
 def ws_worktrees(tenant: str, ref: str, wid: str = "", action: str = "list") -> dict[str, Any]:
     """v0.999 the agents' own copies of one session (Claude Code's worktrees): list | show | apply | discard. Bringing one
     in or throwing it away waits while Hoola works in the session (it would change the copy under it)."""
