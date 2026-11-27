@@ -223,6 +223,10 @@ class Settings(BaseSettings):
     dev_judge_modes: str = "auto"           # ... in these session modes (comma list)
     dev_judge_model: str = "haiku"          # ... on this model (an alias or a full id)
     dev_bg_agents_max: int = 4              # v0.999 background agents running at once in one session
+    dev_agent_worktrees: bool = True        # v0.999 an agent may work in its own copy (isolation=worktree, Claude Code's worktrees)
+    dev_worktree_max: int = 8               # ... open copies per session at most
+    dev_worktree_max_mb: int = 2000         # ... a working copy bigger than this gets no copy
+    dev_worktree_days: int = 7              # ... a kept copy nobody brought in is removed after this
     dev_parallel_reads: bool = True         # v0.999 read-only calls of one reply run side by side (Claude Code's concurrency-safe tools)
     dev_parallel_width: int = 8
     dev_idle_compact: bool = True           # v0.999 a long session idle just under the 5-min prompt cache is summarised through its own cached request

@@ -606,7 +606,10 @@ AGENTS_HOWTO = """WORKING WITH SPECIALIST AGENTS (the `agent` tool), the way Cla
   you can confirm in the code; a finding you can show is wrong, you leave and say why in risk.
 - Write each task so it stands alone (the agent cannot see this conversation): the files / functions, what changed
   and why, what to check, what to report. Verify what an agent reports before you act on it.
-- Do small things yourself: never hand a one-line change or a single file read to an agent."""
+- Do small things yourself: never hand a one-line change or a single file read to an agent.
+- Two or more separate changes that do not touch the same files: give each editing agent isolation=worktree (its own
+  copy) and ask for them in ONE reply - they work at the same time. Their changes wait in their copies: look at each
+  with agent_worktree show, bring the good ones in with apply (settle any conflict it names), discard the rest."""
 
 
 def ecc_system(paths: list[str], request: str = "") -> str:
@@ -682,6 +685,9 @@ def tools_for_round() -> list[dict[str, Any]]:
         if SA.on():
             extra.append(SA.AGENT_TOOL)
             extra += SA.BG_TOOLS                          # v0.999 background agents: check / message / stop
+            from . import worktree as WT
+            if WT.on():
+                extra.append(WT.TOOL)                     # v0.999 the agents' own copies: show / apply / discard
     except Exception:
         pass
     try:
@@ -3365,6 +3371,28 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                 continue
             if b["name"] == "agent":
                 out = agent_out.get(b["id"], "Agents are switched off on this server - do the work yourself.")
+                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out[:60000]})
+                continue
+            if b["name"] == "agent_worktree":             # v0.999 an agent's own copy: list / show / apply / discard
+                from . import worktree as WT
+                if str(inp.get("action") or "") == "apply" and (PERM_MODE.get(tid) or getattr(t, "mode", "")) == "steps" \
+                        and not (ses.meta.get("allow") or {}).get("edits"):
+                    try:
+                        rec = WT._rec(ses, str(inp.get("id") or ""))
+                    except WT.WTError:
+                        rec = {}
+                    fl = [str(x).split(" ", 1)[-1] for x in (rec.get("files") or [])]
+                    ask = {"tool": "agent_worktree", "what": f"Bring in {rec.get('agent') or 'the agent'}'s changes from its own copy "
+                           f"{inp.get('id')} ({len(fl)} file(s): {', '.join(fl[:6])})", "path": ", ".join(fl[:6])}
+                    ans = wait_ok(tid, ask, stopped, emit)
+                    if ans.get("answer") == "no":
+                        results.append({"type": "tool_result", "tool_use_id": b["id"], "content":
+                                        "She said no to bringing these changes in." + (f" Her words: {ans.get('text')}" if ans.get("text") else "")})
+                        continue
+                out = WT.tool(tools, inp)
+                if str(inp.get("action") or "") in ("apply", "discard") and not out.startswith("Could not"):
+                    emit({"k": "worktree", "id": str(inp.get("id") or ""), "state": "applied" if inp.get("action") == "apply" else "discarded",
+                          "text": out[:600]})
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out[:60000]})
                 continue
             if b["name"] in ("agent_output", "send_message", "kill_agent"):   # v0.999 background agents

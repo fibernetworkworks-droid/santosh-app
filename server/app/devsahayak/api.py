@@ -548,6 +548,18 @@ def make_router(require_key, current_tenant) -> APIRouter:
         b = _b(body)
         return await run(S.ws_rewind, tenant, tid, int(b.get("n") or 0), str(b.get("what") or "both"))
 
+    @r.get("/tasks/{tid}/worktrees")
+    async def ws_worktrees(tid: str, tenant: str = Depends(current_tenant)):
+        return await run(S.ws_worktrees, tenant, tid)
+
+    @r.get("/tasks/{tid}/worktrees/{wid}")
+    async def ws_worktree_diff(tid: str, wid: str, tenant: str = Depends(current_tenant)):
+        return await run(S.ws_worktrees, tenant, tid, wid, "show")
+
+    @r.post("/tasks/{tid}/worktrees/{wid}/{action}")
+    async def ws_worktree_act(tid: str, wid: str, action: str, tenant: str = Depends(current_tenant)):
+        return await run(S.ws_worktrees, tenant, tid, wid, action)
+
     @r.get("/tasks/{tid}/made/{mid}")
     async def made_detail(tid: str, mid: str, v: int = 0, tenant: str = Depends(current_tenant)):
         """v0.939 one thing it made: versions, the document / sheet preview, a signed link to the file."""

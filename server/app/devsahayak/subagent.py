@@ -43,15 +43,18 @@ AGENT_TOOL = {
                                                   "why, what to check, and what to report back"},
         "files": {"type": "array", "items": {"type": "string"}, "description": "optional: the files it should start from"},
         "run_in_background": {"type": "boolean", "description": "true = start it and keep working; its report arrives by "
-                              "itself between your steps (or use agent_output). Read / run agents only - an agent that edits "
-                              "runs in the foreground. Use it for long exploration or a review while you work."}},
+                              "itself between your steps (or use agent_output). An agent that edits can run in the background "
+                              "only with isolation=worktree. Use it for long exploration or a review while you work."},
+        "isolation": {"type": "string", "enum": ["worktree"], "description": "worktree = the agent works in ITS OWN copy of "
+                      "your working copy: its edits do not touch yours until you bring them in (agent_worktree apply), so "
+                      "several editing agents can work at once, or in the background. An unchanged copy is removed by itself."}},
         "required": ["type", "task"]},
 }
 
 # v0.999 BACKGROUND AGENTS, Claude Code's run_in_background + SendMessage: an agent keeps working while the coder does;
 # its report arrives by itself between the coder's steps; the coder can check / wait (agent_output), message a running
 # agent or wake a finished one with its whole conversation (send_message), or stop it (kill_agent). Read / run agents
-# only: an editing agent beside the coder would change the same working copy under it (no worktrees here yet).
+# only - unless it works in its own copy (v0.999 isolation=worktree, worktree.py): then an editing agent can run beside it too.
 BG_TOOLS = [
     {"name": "agent_output", "description": "A background agent's state and, when it has finished, its report. wait_s (up to "
      "300) waits for it to finish. With no id: every background agent of this session.",
@@ -158,7 +161,8 @@ def model_label(m: str) -> str:
 
 def run_one(tools: Any, name: str, task: str, files: list[str] | None = None,
             emit: Callable[[dict[str, Any]], None] | None = None, stopped: Callable[[], bool] | None = None,
-            pick: tuple[str, str] = ("", ""), part: dict | None = None, keep: dict | None = None) -> str:
+            pick: tuple[str, str] = ("", ""), part: dict | None = None, keep: dict | None = None,
+            isolation: str = "", wid: str = "") -> str:
     """One agent, start to report. Returns the text the coder gets as the tool result."""
     from . import engine as EN
     spec = (getattr(tools, "repo_agents", None) or {}).get(str(name or "").lower()) or ecc.get(name)   # v0.999 the repo's own first
@@ -168,24 +172,73 @@ def run_one(tools: Any, name: str, task: str, files: list[str] | None = None,
     task = str(task or "").strip()
     if len(task) < 15:
         return "Refused: give the agent a whole task (what to look at, what changed, what to report)."
+    copy_ = None
+    if isolated(spec, isolation):                          # v0.999 Claude Code's isolation: worktree - its own copy
+        from . import worktree as WT
+        if keep is not None and keep.get("copy") is not None and keep["copy"].dir.is_dir():
+            copy_ = keep["copy"]                           # woken by a message: back in the same copy
+            WT._update(copy_.parent, copy_.wid, status="working")
+        else:
+            try:
+                copy_ = WT.make(tools, WT.new_id(tools.s, wid), spec["name"])
+            except WT.WTError as e:
+                return f"[{spec['title']} did not start: it could not get its own copy - {e}. Run it without isolation, or later.]"
+            if keep is not None:
+                keep["copy"] = copy_
     own, why = agent_model(spec.get("model", ""))
     before = (getattr(B.PICK, "model", ""), getattr(B.PICK, "effort", ""), getattr(B.PICK, "agent", False))
     B.PICK.model, B.PICK.effort = (own or pick[0]), pick[1]   # the agent's own model, else the session's (also in a worker thread)
     B.PICK.agent = bool(own)
     try:
-        return _run_one(tools, spec, task, files, emit, stopped, part, own, why, keep=keep)
+        out = _run_one(tools, spec, task, files, emit, stopped, part, own, why, keep=keep, copy_=copy_)
     finally:
         B.PICK.model, B.PICK.effort, B.PICK.agent = before   # an edit agent runs in the coder's own thread: give its model back
+        if copy_ is not None:
+            out_copy = _end_copy(tools, copy_, spec, emit)
+    if copy_ is not None:
+        out = out_copy + out
+    return out
+
+
+def isolated(spec: dict, isolation: str = "") -> bool:
+    try:
+        from . import worktree as WT
+        if not WT.on():
+            return False
+    except Exception:  # noqa: BLE001
+        return False
+    return str(isolation or spec.get("isolation") or "").lower() == "worktree"
+
+
+def _end_copy(tools: Any, cp: Any, spec: dict, emit) -> str:
+    """The agent ended: its copy goes (unchanged) or stays for the coder (changed). The line in front of its report."""
+    from . import worktree as WT
+    try:
+        r = WT.finish(tools, cp, spec["name"])
+    except Exception as e:  # noqa: BLE001
+        log.warning("agent copy %s finish failed: %s", cp.wid, e)
+        return f"[Its own copy {cp.wid} could not be checked: {e}. agent_worktree action=show id={cp.wid} shows it.]\n"
+    (emit or (lambda ev: None))({"k": "worktree", "id": cp.wid, "agent": spec["name"], "title": spec["title"],
+                                 "state": "kept" if r["kept"] else "removed", "files": r["files"][:40],
+                                 "added": r.get("added", 0), "removed": r.get("removed", 0)})
+    if not r["kept"]:
+        return f"[{spec['title']} worked in its own copy {cp.wid}; it changed nothing, so the copy was removed.]\n"
+    shown = ", ".join(x.split(" ", 1)[-1] for x in r["files"][:12]) + (f" and {len(r['files']) - 12} more" if len(r["files"]) > 12 else "")
+    return (f"[{spec['title']} worked in its own copy {cp.wid} and changed {len(r['files'])} file(s): {shown} "
+            f"(+{r.get('added', 0)} -{r.get('removed', 0)}). These changes are NOT in your working copy yet: "
+            f"agent_worktree action=show id={cp.wid} shows the diff, apply brings them in, discard throws them away.]\n")
 
 
 def _run_one(tools: Any, spec: dict, task: str, files: list[str] | None, emit, stopped, part: dict | None,
-             own: str, why: str, keep: dict | None = None) -> str:
+             own: str, why: str, keep: dict | None = None, copy_: Any = None) -> str:
     from . import engine as EN
     if part:
         B.adopt(part)                                      # v0.999.17 her tier + session, also in a worker thread
     say = emit or (lambda ev: None)
     STATS["agents"] += 1
     child = _child(tools)
+    if copy_ is not None:
+        child.s = copy_                                    # every read, edit and command goes to its own copy
     level = spec["tools"]
     specs = tool_specs(level)
     allowed = {t["name"] for t in specs}
@@ -193,7 +246,9 @@ def _run_one(tools: Any, spec: dict, task: str, files: list[str] | None, emit, s
     flist = [str(f)[:200] for f in (files or [])][:30]
     first = (f"<task>\n{task[:12000]}\n</task>\n"
              + (f"Start from: {', '.join(flist)}\n" if flist else "")
-             + f"Repo: {tools.s.meta.get('repo', '')}. Your tools: {', '.join(sorted(allowed - {'report'}))}, report.")
+             + f"Repo: {tools.s.meta.get('repo', '')}. Your tools: {', '.join(sorted(allowed - {'report'}))}, report."
+             + (f"\nYou work in YOUR OWN copy of the working copy ({copy_.wid}): your edits stay there until the coder brings "
+                "them in. Say in your report what you changed and why." if copy_ is not None else ""))
     try:                                                   # v0.999 SubagentStart: the repo's hook may stop it or add notes
         from . import repoconf as RC
         if spec.get("name") != "hook-check" and RC.hooks_for(getattr(tools, "conf", {}) or {}, "SubagentStart"):
@@ -210,7 +265,8 @@ def _run_one(tools: Any, spec: dict, task: str, files: list[str] | None, emit, s
         msgs = list(keep["msgs"]) + [{"role": "user", "content": "<message_from_the_coder>\n" + task[:12000]
                                       + "\n</message_from_the_coder>\nWork on it, then call report again."}]
     say({"k": "agent", "state": "start", "name": spec["name"], "title": spec["title"], "tools": level, "model": model_label(own),
-         "task": task[:300], "background": bool(keep is not None), "id": (keep or {}).get("id", "")})
+         "task": task[:300], "background": bool(keep is not None), "id": (keep or {}).get("id", ""),
+         "worktree": copy_.wid if copy_ is not None else ""})
     max_steps = max(3, int(_set("dev_agent_steps", 30) or 30))
     minutes = float(_set("dev_agent_minutes", 12) or 12)
     t0, steps, edits, report, nudged = time.time(), 0, 0, "", 0
@@ -255,7 +311,7 @@ def _run_one(tools: Any, spec: dict, task: str, files: list[str] | None, emit, s
                 if ev.get("k") in ("edit", "new", "bash", "refused"):
                     if ev.get("k") in ("edit", "new"):
                         edits += 1
-                    say({**ev, "by": spec["name"]})
+                    say({**ev, "by": spec["name"], **({"wt": copy_.wid} if copy_ is not None else {})})
             results.append({"type": "tool_result", "tool_use_id": b["id"], "content": str(out)[:40000]})
         msgs.append({"role": "user", "content": results})
         if report:
@@ -273,7 +329,8 @@ def _run_one(tools: Any, spec: dict, task: str, files: list[str] | None, emit, s
     say({"k": "agent", "state": "done", "name": spec["name"], "title": spec["title"], "steps": steps,
          "edits": edits, "secs": round(time.time() - t0, 1), "report": report[:1500], "background": bool(keep is not None),
          "id": (keep or {}).get("id", "")})
-    head = f"[{spec['title']}" + (f" on {model_label(own)}" if own else "") + (f" ({why})" if why else "") + f" - {steps} steps" + (f", changed {edits} file(s): re-read before you edit them" if edits else "") + "]\n"
+    head = (f"[{spec['title']}" + (f" on {model_label(own)}" if own else "") + (f" ({why})" if why else "") + f" - {steps} steps"
+            + (f", changed {edits} file(s): re-read before you edit them" if edits and copy_ is None else "") + "]\n")
     try:                                                   # v0.999 the repo's SubagentStop hook may add its word
         from . import repoconf as RC
         if spec.get("name") != "hook-check" and RC.hooks_for(getattr(tools, "conf", {}) or {}, "SubagentStop"):
@@ -300,9 +357,10 @@ def start_bg(tools: Any, inp: dict[str, Any], emit=None, stopped=None, rec: dict
     spec = _spec_of(tools, name)
     if spec is None:
         return f"Unknown agent '{name}'."
-    if spec["tools"] == "edit":
-        return (f"Refused: {name} edits files, so it cannot run in the background beside you (it would change the working "
-                "copy under you). Run it without run_in_background.")
+    iso = (rec or {}).get("isolation") or str(inp.get("isolation") or "")
+    if spec["tools"] == "edit" and not isolated(spec, iso):
+        return (f"Refused: {name} edits files, so it cannot run in the background beside you in your working copy. Give it "
+                "isolation=worktree (its own copy), or run it without run_in_background.")
     task = str(inp.get("task") or "").strip()
     if len(task) < 15:
         return "Refused: give the agent a whole task (what to look at, what changed, what to report)."
@@ -314,7 +372,7 @@ def start_bg(tools: Any, inp: dict[str, Any], emit=None, stopped=None, rec: dict
         if rec is None:
             aid = f"bg{len(mine) + 1}"
             rec = {"id": aid, "type": name, "title": spec["title"], "task": task[:300], "msgs": None, "notes": [],
-                   "report": "", "started": time.time()}
+                   "report": "", "started": time.time(), "isolation": iso}
             mine[aid] = rec
         rec.update(status="running", finished=None, cancel=threading.Event())
     pick = (getattr(B.PICK, "model", "") or "", getattr(B.PICK, "effort", "") or "")
@@ -325,7 +383,8 @@ def start_bg(tools: Any, inp: dict[str, Any], emit=None, stopped=None, rec: dict
         def halt() -> bool:
             return rec["cancel"].is_set() or bool(stop_round and stop_round())
         try:
-            out = run_one(tools, name, task, inp.get("files"), emit=emit, stopped=halt, pick=pick, part=part, keep=rec)
+            out = run_one(tools, name, task, inp.get("files"), emit=emit, stopped=halt, pick=pick, part=part, keep=rec,
+                          isolation=iso, wid=rec["id"])
             rec["report"], rec["status"] = out, "done"
         except Exception as e:  # noqa: BLE001
             from . import engine as EN
@@ -379,7 +438,7 @@ def bg_tool(tools: Any, name: str, inp: dict[str, Any], emit=None, stopped=None)
             return f"Sent to {r['id']} - it reads it at its next step."
         if not r.get("msgs"):
             return f"{r['id']} cannot be woken (it never got started)."
-        return start_bg(tools, {"task": msg, "type": r["type"]}, emit=emit, stopped=stopped, rec=r).replace(
+        return start_bg(tools, {"task": msg, "type": r["type"], "isolation": r.get("isolation", "")}, emit=emit, stopped=stopped, rec=r).replace(
             "Started", "Woke", 1)
     if name == "kill_agent":
         r = mine.get(str(inp.get("id") or ""))
@@ -451,7 +510,7 @@ def run_many(tools: Any, calls: list[dict[str, Any]], emit=None, stopped=None) -
         inp = c.get("input") or {}
         try:
             return run_one(tools, str(inp.get("type") or ""), str(inp.get("task") or ""), inp.get("files"),
-                           emit=emit, stopped=stopped, pick=pick, part=part)
+                           emit=emit, stopped=stopped, pick=pick, part=part, isolation=str(inp.get("isolation") or ""))
         except Exception as e:
             from . import engine as EN
             if isinstance(e, EN.Stopped):
@@ -462,6 +521,8 @@ def run_many(tools: Any, calls: list[dict[str, Any]], emit=None, stopped=None) -
     def level(c: dict[str, Any]) -> str:
         n = str((c.get("input") or {}).get("type") or "")
         a = (getattr(tools, "repo_agents", None) or {}).get(n.lower()) or ecc.get(n)   # the repo's own agents too
+        if a and a["tools"] == "edit" and isolated(a, str((c.get("input") or {}).get("isolation") or "")):
+            return "edit-own"                             # v0.999 in its own copy: it can work beside the others
         return a["tools"] if a else "read"
     side = [c for c in todo if level(c) != "edit"]
     serial = [c for c in todo if level(c) == "edit"]

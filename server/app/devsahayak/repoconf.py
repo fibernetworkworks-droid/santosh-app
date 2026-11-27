@@ -32,7 +32,8 @@ HOOK_EVENTS = ("PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", 
                "SessionEnd", "Notification",
                # v0.999 the rest of Claude Code's events that mean something in Hoola Code
                "SubagentStart", "PermissionRequest", "PermissionDenied", "PostToolUseFailure", "PostToolBatch", "PostCompact",
-               "StopFailure", "InstructionsLoaded", "UserPromptExpansion", "TaskCreated", "TaskCompleted")
+               "StopFailure", "InstructionsLoaded", "UserPromptExpansion", "TaskCreated", "TaskCompleted",
+               "WorktreeCreate", "WorktreeRemove")              # v0.999 an agent's own copy made / removed
 HOOK_TYPES = ("command", "prompt", "agent", "http", "mcp_tool")
 MENTION = re.compile(r"(?<![\w/])@((?:[\w.-]+/)*[\w.-]+\.[\w]+|(?:[\w.-]+/)+[\w.-]+)")
 MENTION_MAX = 5
@@ -404,7 +405,8 @@ def agents(repo: Path, plugins: list[Path] | tuple = ()) -> dict[str, dict[str, 
             out[name] = {"name": name, "title": name.replace("-", " ").replace("_", " ").title(), "tools": level,
                          "prompt": f"THIS {'REPO' if origin == 'repo' else origin.upper()}'S OWN AGENT (from " + str(f.relative_to(rel_to)) + "):\n" + body.strip()[:20000],
                          "description": meta.get("description", "")[:300], "repo": "1", "origin": origin,
-                         "model": str(meta.get("model", "") or "").strip()[:80]}       # v0.999 Claude Code's `model:` line
+                         "model": str(meta.get("model", "") or "").strip()[:80],       # v0.999 Claude Code's `model:` line
+                         "isolation": "worktree" if str(meta.get("isolation", "") or "").strip().lower() == "worktree" else ""}
     return out
 
 

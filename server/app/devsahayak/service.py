@@ -753,6 +753,44 @@ def ws_rewind(tenant: str, ref: str, n: int, what: str = "both") -> dict[str, An
     return out
 
 
+def ws_worktrees(tenant: str, ref: str, wid: str = "", action: str = "list") -> dict[str, Any]:
+    """v0.999 the agents' own copies of one session (Claude Code's worktrees): list | show | apply | discard. Bringing one
+    in or throwing it away waits while Hoola works in the session (it would change the copy under it)."""
+    from . import engine as EN
+    from . import worktree as WT
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        tid, running = t.id, t.id in _RUNNING
+    if not EN.exists(tid):
+        return {"rows": []}
+    ses = EN.Session(tid)
+    try:
+        if action == "list":
+            return {"rows": WT.listing(ses)}
+        if action == "show":
+            return {"id": wid, "diff": WT.show(ses, wid, limit=200000)}
+        if action not in ("apply", "discard"):
+            raise DevError("Choose list, show, apply or discard.")
+        if running or tid in EN.LIVE:
+            raise DevError("Hoola is working in this session right now - stop it first, or let Hoola bring it in.")
+        if action == "apply":
+            r = WT.apply(None, ses, wid, _cfg(tenant).allow_workflows)
+            ev = {"k": "worktree", "id": wid, "state": "applied", "by_her": True, "files": r["files"][:40],
+                  "conflicts": r["conflicts"], "text": r["how"]}
+        else:
+            WT.discard(None, ses, wid)
+            r, ev = {"ok": True}, {"k": "worktree", "id": wid, "state": "discarded", "by_her": True}
+    except WT.WTError as e:
+        raise DevError(str(e)[:1].upper() + str(e)[1:] + ".")
+    _Step(tid).event(ev)
+    if action == "apply" and r.get("ok"):
+        ses.meta["pending_note"] = ((ses.meta.get("pending_note") or "") + f" She brought agent copy {wid}'s changes into the "
+                                    f"working copy ({', '.join(r['files'][:12])}). Read those files again before you edit them."
+                                    + (f" CONFLICT markers wait in {', '.join(r['conflicts'])}." if r["conflicts"] else "")).strip()
+        ses.save_meta()
+    return {**r, "rows": WT.listing(ses)}
+
+
 def _env_label(t: DevTask) -> dict[str, Any]:
     """v0.878 the session's environment chip: Auto, or the environment's name."""
     if not getattr(t, "env_id", None):
