@@ -13157,3 +13157,25 @@ carry their download url. Guards: hire gate (paused = reads only), no token / pa
 
 ## v0.999.266 REWIND LIKE CLAUDE CODE
 (owner: 'Rewind just the code or just the conversation --- WORK ON IT'): going back to a checkpoint now asks WHAT goes back, Claude Code's /rewind choices - Code and conversation (as before), Conversation only (the conversation returns to that checkpoint, the files keep every change made since), Code only (the files return, the conversation stays), Never mind. `Session.rewind(n, what)`, `engine.rewind`, `service.ws_rewind(..., what)`, POST /tasks/{id}/rewind {n, what}. A partial rewind keeps the later checkpoints, so she can go forward to one again; the next round is told once what changed under the conversation (`pending_note` -> <rewind_note> in her next message: re-read files before editing / run git diff to see the kept changes). The feed row says which it was ('Put the files back', 'Took the conversation back'). WEB: a choice dialog with the three options; PHONE: checkpoint, then the three choices. 6 tests incl. a real git working copy and a real-browser walk.
+
+
+## v0.999.267 TECHNICAL WRITER DESK (owner: "Technical writer same as finance desks")
+
+The Technical writer (hire key `docs_writer`) gets its own section like the finance desks: `/console/docs` (`static/console/dwdesk.html/.js/.css`)
+with the Docs chat (Conversation kind `docs`, `server/app/dwchat.py`, routes `/api/dwdesk/{chat, chat/new, chat/{conv}/ok, desk, do/{part}}`) beside
+the desk's pages, on the existing Docs engine (`server/app/docwriter`):
+- Today: needs (publish cards waiting, docs out of date, docs with a must-fix, products not verified, no product / no doc, English only), tiles,
+  docs by kind and by language, latest docs.
+- Write a doc: the kind (quick start / how-to / manual / FAQ / admin guide / API reference) as cards, product, language, title, her words; release
+  notes by version.
+- Docs: list with a filter; one doc = checks (must-fix / warnings with a jump to the section), publish card on her tap (asked twice on the page, no
+  browser dialog) with the hash, the public link + take it down, translate, change the whole doc, Word + PDF + Markdown, delete, each section with
+  its text (a small safe Markdown view, [blank] marked) and screenshots (fetched with the key, shown from a blob), her own edits (kept through syncs),
+  earlier versions.
+- Sources: products with verification (meta / file / DNS), read again, bring the docs in step, remove; connect a product.
+- Screenshots: step lists run in a real browser on her own verified site, re-shoot.
+- Settings: product name, readers, tone, support contact, the languages of her users, words never translated, her rules, glossary, GitHub token.
+GLOBAL: `docwriter.rules` gains 46 world languages (`_WORLD`: es, fr, de, pt, ar, ja, zh ...; lang_of takes names or codes), `RTL` (the docs page /
+PDF printed right to left), a phone pattern for any country in the privacy mask; Hinglish is never a default. Guards: hire gate (paused = reads only),
+no token / password / OTP outside the GitHub part. Tests `server/tests/test_dw_desk.py` (5 incl. a browser walk at 1440 and 390). NOT VERIFIED on her
+server, with a real model or a real GitHub / WordPress publish.
