@@ -13245,3 +13245,22 @@ mobile as 10 digits and any other number as +country code, `_mask_phone` / `_tel
 company", "BSNL / the ISP you are a franchise of"); the change risk line in English ("Affects N customers", was "Asar"). Tool `noc action=settings` and
 PUT /api/ispnoc/settings take `country`. Tests `server/tests/test_nc_desk.py` (5 incl. a browser walk at 1440 and 390). NOT VERIFIED on her server, with
 a real OLT or a real collector.
+
+
+## v0.999.271 3D STUDIO DESK (owner: "3D Studio same as finance desks")
+
+The 3D Studio artist (hire key `blender_3d`) gets its own section like the finance desks: `/console/3d` (`static/console/b3desk.html/.js/.css`)
+with the 3D chat (Conversation kind `studio3d`, `server/app/b3chat.py`, routes `/api/b3desk/{chat, chat/new, chat/{conv}/ok, desk, do/{part}}`) beside
+the desk's pages, on the existing 3D Studio engine (`server/app/blender3d`, real Blender in a locked box):
+- Today: models, being built (live bar), Blender ready or not, sizes unit, needs (Blender missing, a model that could not be built, open edges before
+  printing, first model, usual choices), files by format, latest models as cards.
+- Make a model: six idea cards that fill the brief, name, files (GLB / STL / OBJ / FBX / USDZ / .blend), up to 4 views, quality, picture shape, style,
+  background, 360 degree video, 3D print, transparent.
+- Models: cards with a filter; one model = the build bar + Stop while it builds (the page follows it every 4 s), renders, the spin video, size in her
+  units, parts, triangles, print check, downloads (signed links), what to look at, change it in words (a new version) or new files / views without
+  words, earlier versions, the Blender script, delete (asked twice on the page).
+- Settings: sizes in mm / cm or inches, her usual choices (used for every new model, her choice on a job wins), Blender on the server, what Hoola never makes.
+Engine: NEW `blender3d.service.B3Settings` (table `blender3d_settings`: defaults, units) + `settings` / `save_settings`; `start` merges her defaults;
+the stage word and the result line English ("ready", was "taiyaar"), the tool says "AI-generated" (was "AI se bana"). Tests `server/tests/test_b3_desk.py`
+(4 incl. a browser walk at 1440 and 390). PRE-EXISTING red, not this release: `test_v141_blender.py::test_tool_and_refusals` expects the old Hinglish
+word 'suraksha' (fails on untouched main too). NOT VERIFIED on her server with real Blender.
