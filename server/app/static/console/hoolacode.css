@@ -1246,3 +1246,30 @@ html,body{background:var(--bg)}
 #app .hcd-modechip:hover{background:var(--sunk);color:var(--ink)}
 #app .hcd-modechip .hcd-ic{width:12px;height:12px}
 @media (prefers-reduced-motion:reduce){#app .hcd-rs.now .hcd-rsd{animation:none}}
+
+/* v0.999 the last gaps: the context meter, the @ / slash picker, the question card */
+#app .hcd-ctx{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 8px;border:0;border-radius:999px;background:transparent;color:var(--mut);font:500 12px var(--fd);cursor:pointer;font-variant-numeric:tabular-nums;margin-right:auto}
+#app .hcd-ctx:hover{background:var(--sunk);color:var(--ink)}
+#app .hcd-ctx i{width:12px;height:12px;border-radius:50%;background:conic-gradient(var(--pri) calc(var(--p) * 1%),var(--hair2,#E4E4EA) 0)}
+#app .hcd-ctx.hi{color:var(--warn)}
+#app .hcd-ctx.hi i{background:conic-gradient(var(--warn) calc(var(--p) * 1%),var(--hair2,#E4E4EA) 0)}
+#app .hcd-cp{position:relative}
+#app .hcd-pick{position:absolute;left:0;right:0;bottom:calc(100% + 6px);z-index:30;display:flex;flex-direction:column;max-height:320px;overflow:auto;padding:6px;border:1px solid var(--line);border-radius:12px;background:var(--surface,#FFF);box-shadow:0 12px 30px -18px rgba(23,23,28,.45)}
+#app .hcd-pickr{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr) auto;align-items:center;gap:10px;min-height:36px;padding:0 10px;border:0;border-radius:8px;background:transparent;text-align:left;font:400 13.5px var(--fd);color:var(--ink);cursor:pointer}
+#app .hcd-pickr:first-child,#app .hcd-pickr:hover,#app .hcd-pickr:focus-visible{background:var(--sunk)}
+#app .hcd-pickr b{font-weight:600}
+#app .hcd-pickr code{font-family:var(--mono);font-size:12.5px}
+#app .hcd-pickr small{color:var(--mut);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#app .hcd-pickr em{font-style:normal;font-size:12px;color:var(--pri-ink);background:var(--pri-soft);padding:1px 7px;border-radius:999px}
+#app .hcd-qrow{display:flex;gap:8px;align-items:center;width:100%}
+#app .hcd-qrow input{flex:1;min-width:0;height:36px;padding:0 12px;border:1px solid var(--line);border-radius:10px;font:400 14px var(--fd);background:var(--surface,#FFF);color:var(--ink)}
+/* v0.999 CLAUDE CODE, THE LAST TEN: the .claude file editor, plugins, the wider dialog while editing */
+#app .hcd-dlg:has(.hcd-cfed){width:min(720px,calc(100vw - 32px))}
+#app .hcd-cflist{display:flex;flex-direction:column;gap:2px;max-height:260px;overflow:auto;margin:6px 0 4px}
+#app .hcd-cfrow{width:100%;border:0;background:transparent;color:var(--ink);padding:8px 10px;border-radius:8px;cursor:pointer;text-align:left;font:inherit}
+#app .hcd-cfrow:hover,#app .hcd-cfrow:focus-visible{background:var(--hover,rgb(0 0 0 / .05))}
+#app .hcd-cfrow svg{width:14px;height:14px;opacity:.6}
+#app .hcd-cfed{width:100%;min-height:320px;font-family:var(--mono);font-size:13px;line-height:1.5;tab-size:2;resize:vertical;white-space:pre;overflow:auto}
+#app .hcd-plug{align-items:flex-start;gap:8px}
+#app .hcd-plug p{margin:2px 0 0;font-size:13px}
+#app .hcd-dlg h3{font-size:14px;font-weight:600;margin:14px 0 6px}

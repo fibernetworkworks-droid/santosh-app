@@ -25,6 +25,23 @@ class CyberSettings(Base):
     action_seq: Mapped[int] = mapped_column(Integer, default=0)
     incident_seq: Mapped[int] = mapped_column(Integer, default=0)
     rules: Mapped[str] = mapped_column(Text, default="")
+    country: Mapped[str | None] = mapped_column(String(2), nullable=True, default="")      # her country (notification clocks); "" = India as before
+    sector: Mapped[str | None] = mapped_column(String(40), nullable=True, default="")      # health / finance / public / other (notification rules)
+    extra_countries: Mapped[str | None] = mapped_column(Text, nullable=True, default="[]")  # where her customers / data also are
+
+
+class CyberDoc(Base):
+    """The security programme: controls answers, risks, access reviews, vendor reviews, tabletops, training, notification marks, policy."""
+    __tablename__ = "cyber_docs"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cd"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    kind: Mapped[str] = mapped_column(String(16), index=True)        # controls | risk | access | vendor | tabletop | training | notify | policy | secrets
+    ref: Mapped[str] = mapped_column(String(60), default="")         # number (RK-0001) / incident id for notify
+    title: Mapped[str] = mapped_column(String(240), default="")
+    data: Mapped[str] = mapped_column(Text, default="{}")
+    status: Mapped[str] = mapped_column(String(12), default="open")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
 class CyberKey(Base):

@@ -188,6 +188,7 @@ def settings(tenant: str) -> dict[str, Any]:
         st = _st(s, tenant)
         return {"github": {"joined": bool(st.gh_sealed), "login": st.gh_login, "checked": _iso(st.gh_checked)},
                 "team": st.team, "morning_time": st.morning_time, "rules": st.rules,
+                "country": (st.country or "IN").upper(), "log_days": st.log_days,
                 "last_sync": _iso(st.last_sync), "last_sync_local": _local(tenant, st.last_sync)}
 
 
@@ -203,7 +204,24 @@ def save_settings(tenant: str, **kw) -> dict[str, Any]:
             st.morning_time = v
         if "rules" in kw:
             st.rules = str(kw["rules"] or "")[:2000]
+        if kw.get("country"):
+            cc = str(kw["country"]).strip().upper()
+            if not re.fullmatch(r"[A-Z]{2}", cc):
+                raise DevopsError("Country: two letters, like GB.")
+            st.country = cc
+        if "log_days" in kw:
+            v = str(kw["log_days"] or "").strip()
+            if v and (not v.isdigit() or not 1 <= int(v) <= 3650):
+                raise DevopsError("Days to keep logs: a number from 1 to 3650, or blank.")
+            st.log_days = int(v) if v else None
     return {**settings(tenant), "say": "Rules saved."}
+
+
+def _here(tenant: str) -> tuple[str, int | None]:
+    """(her country, her log-keeping days) - '' country = India."""
+    with session() as s:
+        st = s.get(DevopsSettings, tenant)
+        return ((st.country if st else "") or "IN").upper(), (st.log_days if st else None)
 
 
 def connect_github(tenant: str, token: str) -> dict[str, Any]:
@@ -727,11 +745,15 @@ def set_cluster(tenant: str, cid: str, status: str) -> dict[str, Any]:
                                                      "seen": "Marked as seen.", "new": "Reopened."}[status]}
 
 
-def runbook(rid: str) -> dict[str, Any]:
+def runbook(rid: str, tenant: str = "") -> dict[str, Any]:
     rb = R.RUNBOOKS.get(rid)
     if not rb:
         raise DevopsError("Runbook not found.")
-    return {"id": rid, **rb, "note": "You / your team run these steps. Hoola runs nothing on your server."}
+    out = {"id": rid, **rb, "note": "You / your team run these steps. Hoola runs nothing on your server."}
+    if tenant:
+        cc, ld = _here(tenant)
+        out["steps"] = [R.localise(x, cc, ld) for x in rb.get("steps", [])]
+    return out
 
 
 def forget_logs(tenant: str, older_days: int = 0) -> dict[str, Any]:
@@ -901,6 +923,11 @@ def make_script(tenant: str, kind: str, params: dict[str, Any] | None = None, as
     if R.has_secret(ask) or R.has_secret(_dump(params)):
         raise DevopsError("Do not put a token / key in chat (rotate that one). A script carries the secret's NAME, not its value.")
     if kind in T.KINDS:
+        if kind == "logrotate":
+            cc, ld = _here(tenant)
+            params.setdefault("_country", cc)
+            if ld and not params.get("keep_days"):
+                params["keep_days"] = ld
         name, lang, content = T.render(kind, params)
     elif kind in ("custom", "other", ""):
         if not ask.strip():
@@ -982,7 +1009,8 @@ def make_checklist(tenant: str, kind: str = "deploy", deploy_id: str = "", conv:
     with session() as s:
         st = _st(s, tenant)
         extra = [x.strip("-• ").strip() for x in (st.rules or "").split("\n") if x.strip()][:10] if kind == "deploy" else []
-        title, items = R.checklist_items(kind, extra)
+        cc, ld = ((st.country or "IN").upper(), st.log_days)
+        title, items = R.checklist_items(kind, extra, cc, ld)
         c = DevopsChecklist(tenant_id=tenant, kind=kind, title=title, items=_dump(items), deploy_id=deploy_id[:40])
         s.add(c)
         s.flush()
@@ -1548,7 +1576,7 @@ def dora(tenant: str, days: int = 30, repo: str = "") -> dict[str, Any]:
         ds = [{"at": r.ended_at or r.started_at, "ok": r.conclusion == "success", "commit_at": r.commit_at, "rollback": r.is_rollback,
                "title": r.title, "branch": r.branch} for r in latest.values() if r.conclusion in ("success",) + FAILED]
     out = R.dora(ds, days, clock())
-    out["source"] = "Production deploy workflow ke runs (GitHub Actions)."
+    out["source"] = "Runs of the production deploy workflow (GitHub Actions)."
     return out
 
 

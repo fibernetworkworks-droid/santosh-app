@@ -83,7 +83,7 @@
   const human = e => S(e).replace(/route '([^']+)': /g, '$1 › ').replace(/step '([^']+)' \([a-z_]+\): /g, (m, id) => id.replace(/_/g, ' ') + ': ')
     .replace(/^([^›:]+): ([^:]+ › )/, '$2');
   const KIND_TILE = {data: 'data', approval: 'warm', notify: 'warm', condition: 'flow', router: 'flow', filter: 'flow', loop: 'flow', wait: 'flow',
-    subroute: 'flow', stop: 'flow', ai: 'ai', set: 'data', code: 'data', http: 'core', respond: 'core'};
+    subroute: 'flow', stop: 'flow', ai: 'ai', set: 'data', code: 'data', http: 'core', respond: 'core', store: 'data', var: 'data'};
   function appTile(a, type, op) {
     a = a || {};
     if (a.kind === 'hoola') return `<span class="ap hoola" title="Hoola">${MARK('#FFFFFF')}</span>`;
@@ -224,7 +224,7 @@
     shell(false); setNav('routes');
     const list = await api('GET', '/api/route/routes');
     const folders = [...new Set(list.routes.map(r => r.folder).filter(Boolean))];
-    MAIN.innerHTML = `<div class="top"><h1>All routes</h1><span class="sp"></span><a class="btn soft" href="#/import">Bring in from n8n</a><label class="btn soft" for="impFile">Bring in a file<input type="file" id="impFile" accept=".json,application/json" hidden></label><button class="btn" id="newR">${svg(IC.plus)}New route</button></div>
+    MAIN.innerHTML = `<div class="top"><h1>All routes</h1><span class="sp"></span><a class="btn soft" href="#/import">Bring in from n8n</a><a class="btn soft" href="#/import/make">Bring in from Make</a><label class="btn soft" for="impFile">Bring in a file<input type="file" id="impFile" accept=".json,application/json" hidden></label><button class="btn" id="newR">${svg(IC.plus)}New route</button></div>
       <div class="filt"><label class="srch">${svg(IC.search)}<input type="search" id="rq" placeholder="Find a route" aria-label="Find a route"></label>
       <select id="rsort" aria-label="Sort"><option value="changed">Last changed</option><option value="name">Name</option><option value="runs">Most runs</option></select>
       ${folders.length ? `<div class="chips left" id="fchips"><button class="chip" aria-pressed="${!folderPick}" data-f="">All</button>${folders.map(f => `<button class="chip" aria-pressed="${f === folderPick}" data-f="${esc(f)}">${esc(f)}</button>`).join('')}</div>` : ''}</div>
@@ -322,7 +322,7 @@
       ${x.error ? `<div class="errbox"><b>What happened.</b> ${esc(human(x.error))}${x.pause_reason === 'retry' && x.next_wake_at ? `<br>Hoola will try again at ${esc(at(x.next_wake_at))}.` : ''}</div>` : ''}
       ${!x.error && pauseWords(x) ? `<div class="okbox">${esc(pauseWords(x))}.</div>` : ''}
       ${x.start && Object.keys(x.start).length ? `<section class="card"><details><summary><b>What it started with</b></summary><pre>${esc(JSON.stringify(x.start, null, 2))}</pre></details></section>` : ''}
-      <section class="card"><div class="hd"><h2>Step by step</h2><span class="sp"></span>${sm.wall_ms ? `<span class="mut sm">${(sm.wall_ms / 1000).toFixed(1)} s${sm.cost && sm.cost.calls ? ` · ${sm.cost.calls} AI calls` : ''}</span>` : ''}</div>
+      <section class="card"><div class="hd"><h2>Step by step</h2><span class="sp"></span>${sm.wall_ms ? `<span class="mut sm">${(sm.wall_ms / 1000).toFixed(1)} s${sm.operations ? ` · ${fmtN(sm.operations)} operation${sm.operations === 1 ? '' : 's'}` : ''}${sm.cost && sm.cost.calls ? ` · ${sm.cost.calls} AI calls` : ''}</span>` : ''}</div>
         <div class="log">${nestLog(x.steps_log).map(l => {
           const st = {ok: 'done', error: 'failed', approved: 'done', retry: 'queued', skipped: 'stopped', filtered: 'stopped', ignored: 'done', resumed: 'done'}[l.status] || l.status;
           const word = {approved: 'You approved', retry: 'Tried again', skipped: 'Skipped', filtered: 'Did not pass', ignored: 'Failed, went on', resumed: 'Failed, used a value'}[l.status];
@@ -372,12 +372,19 @@
   }
 
   // ---------------------------------------------------------------- v0.999.248 R8: bring in an n8n workflow
-  async function viewImport() {
+  async function viewImport(from) {
     shell(false); setNav('routes');
+    // v0.999.254 MAKE PARITY: the same screen brings in a Make scenario (its blueprint)
+    const MK = from === 'make';
+    const SRC = MK ? {t: 'Bring in from Make', h: 'In Make: open the scenario, its menu (…) > Export Blueprint. Paste the file here.',
+      lab: 'The Make blueprint (its JSON)', ph: '{"name": "...", "flow": [...], "metadata": {...}}', url: '/api/route/import/make', key: 'blueprint'}
+      : {t: 'Bring in from n8n', h: 'In n8n: open the workflow, then Download (or select all nodes and copy). Paste it here.',
+      lab: 'The n8n workflow (its JSON)', ph: '{"name": "...", "nodes": [...], "connections": {...}}', url: '/api/route/import/n8n', key: 'workflow'};
     MAIN.innerHTML = `<div class="rhead"><a class="btn soft s ib" href="#/routes" aria-label="Back to all routes">${svg(IC.back)}</a>
-        <div class="rh-t"><h1 class="rtitle">Bring in from n8n</h1><div class="rh-m mut sm">In n8n: open the workflow, then Download (or select all nodes and copy). Paste it here.</div></div></div>
+        <div class="rh-t"><h1 class="rtitle">${SRC.t}</h1><div class="rh-m mut sm">${SRC.h}</div></div>
+        <span class="sp"></span><a class="btn soft s" href="${MK ? '#/import' : '#/import/make'}">${MK ? 'From n8n instead' : 'From Make instead'}</a></div>
       <section class="card"><form id="n8nForm" class="pform">
-        <div class="fld"><label for="n8nText">The n8n workflow (its JSON)</label><div class="fc"><textarea id="n8nText" rows="10" class="mono" placeholder='{"name": "...", "nodes": [...], "connections": {...}}'></textarea></div>
+        <div class="fld"><label for="n8nText">${SRC.lab}</label><div class="fc"><textarea id="n8nText" rows="10" class="mono" placeholder='${SRC.ph}'></textarea></div>
           <span class="fh">Or pick the file: <input type="file" id="n8nFile" accept=".json,application/json"></span></div>
         <div class="crow"><button class="btn s" type="submit">Look at it first</button><span class="mut sm">Nothing is saved yet.</span></div></form></section>
       <div id="n8nOut"></div>`;
@@ -387,14 +394,14 @@
     $('#n8nForm').addEventListener('submit', async e => {
       e.preventDefault(); raw = $('#n8nText').value.trim();
       if (!raw) { toast('Paste the workflow first.', true); return; }
-      let p; try { p = await api('POST', '/api/route/import/n8n', {workflow: raw}); } catch (err) { toast(err.message, true); return; }
+      let p; try { p = await api('POST', SRC.url, {[SRC.key]: raw}); } catch (err) { toast(err.message, true); return; }
       const R = p.report, c = p.counts;
       $('#n8nOut').innerHTML = `<section class="card"><div class="hd"><h2>What it becomes</h2></div>
           <div class="stats"><div class="stat"><span class="k">Came in</span><b>${c.converted}</b></div><div class="stat"><span class="k">To check</span><b>${c.check}</b></div>
             <div class="stat"><span class="k">To redo in Hoola</span><b>${c.placeholders}</b></div><div class="stat"><span class="k">Left out</span><b>${c.skipped}</b></div></div>
           <p class="sm">It starts: <b>${esc(((TKINDS.find(k => k[0] === p.trigger) || [])[1]) || p.trigger)}</b> · ${fmtN(p.steps.length)} step${p.steps.length === 1 ? '' : 's'} at the top level.</p>
           ${c.placeholders ? `<div class="psub">To redo in Hoola</div><p class="mut sm">Each one is a step that stops the run with its reason, so nothing half-done runs. Replace it in the editor.</p><ul class="rep">${list(R.placeholders, 'ph')}</ul>` : ''}
-          ${c.check ? `<div class="psub">To check</div><ul class="rep">${list(R.check, 'ck')}</ul>` : ''}
+          ${c.check ? `<div class="psub">To check</div><ul class="rep">${list(R.check, 'tocheck')}</ul>` : ''}
           ${c.skipped ? `<div class="psub">Left out</div><ul class="rep">${list(R.skipped, 'sk')}</ul>` : ''}
           ${R.notes.length ? `<div class="psub">Good to know</div><ul class="rep">${R.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
           <details><summary class="sm">Came in as</summary><ul class="rep">${list(R.converted, 'ok')}</ul></details>
@@ -403,7 +410,7 @@
       $('#n8nSave').addEventListener('submit', async ev => {
         ev.preventDefault();
         const nm = (MAIN.querySelector('[data-k="n8nname"]') || {}).value || p.name;
-        try { const o = await api('POST', '/api/route/import/n8n', {workflow: raw, save: true, new_name: nm.trim().toLowerCase().replace(/\s+/g, '_')});
+        try { const o = await api('POST', SRC.url, {[SRC.key]: raw, save: true, new_name: nm.trim().toLowerCase().replace(/\s+/g, '_')});
           toast('Brought in. It is off until you switch it on.'); location.hash = '#/r/' + enc(o.workflow_id); }
         catch (err) { toast(err.message, true); }
       });
@@ -444,7 +451,7 @@
     file: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>', crypto: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'};
   const KIND = {data: 'Data', tool: 'Uses a tool', http: 'Web request', code: 'Code', wait: 'Wait', notify: 'Tell me', approval: 'Ask me first',
     set: 'Set a value', filter: 'Filter', condition: 'If / else', loop: 'Repeat for each', router: 'Switch',
-    subroute: 'Run another route', stop: 'Stop the run', respond: 'Answer the caller', ai: 'AI'};
+    subroute: 'Run another route', stop: 'Stop the run', respond: 'Answer the caller', ai: 'AI', store: 'Data store', var: 'Variables'};
   // v0.999.243 ROUTE R6: the AI steps (engine type "ai", told apart by op)
   const AIW = {write: 'Ask AI', summarise: 'Summarise', classify: 'Sort into categories', extract: 'Pull out fields',
     sentiment: 'How it feels', answer: 'Answer from my files', agent: 'AI agent'};
@@ -486,7 +493,9 @@
   function stepWords(s) {
     const t = s.type;
     if (t === 'tool') return s.app && s.app.kind === 'app' ? appName(s.app.slug) : nice(s.name);
-    if (t === 'http') return `${S(s.method || 'GET')} ${S(s.url).replace(/^https?:\/\//, '').slice(0, 28)}`;
+    if (t === 'http') return `${s.action === 'download' ? 'Download' : s.action === 'resolve' ? 'Resolve' : S(s.method || 'GET')} ${S(s.url).replace(/^https?:\/\//, '').slice(0, 28)}`;
+    if (t === 'store') return `${STOREW[s.op] || S(s.op)} · ${S(s.store)}`;
+    if (t === 'var') return s.op === 'set_many' ? Object.keys(s.values || {}).join(', ').slice(0, 34) : `${VARW[s.op] || S(s.op)} ${S(s.name || '')}`;
     if (t === 'wait') return waitWords(s);
     if (t === 'subroute') return nice(s.route) + (s.wait === false ? ' (goes on)' : '');
     if (t === 'stop') return (s.as === 'done' ? 'Ends as done' : 'Ends with an error') + (s.message ? ': ' + S(s.message).slice(0, 30) : '');
@@ -495,7 +504,7 @@
     if (t === 'approval') return S(s.question).slice(0, 40);
     if (t === 'set') return S(s.name);
     if (t === 'filter' || t === 'condition') return s.filter ? fltWords(s.filter).slice(0, 40) : `${S(s.left)} ${OPW[s.op] || s.op || ''} ${S(s.right)}`.slice(0, 40);
-    if (t === 'loop') return S(s.items).replace(/\{\{\s*|\s*\}\}/g, '').slice(0, 34);
+    if (t === 'loop') return s.repeat ? `${S(s.repeat.times)} times` : S(s.items).replace(/\{\{\s*|\s*\}\}/g, '').slice(0, 34) + (s.collect !== undefined ? ' · collects' : '');
     if (t === 'router') return `${(s.routes || []).length} ways`;
     if (t === 'code') return 'Python';
     if (t === 'data') return DATAW[s.op] || S(s.op);
@@ -520,6 +529,7 @@
       if (s.type === 'condition') { s.then = Array.isArray(s.then) ? s.then : []; s.else = Array.isArray(s.else) ? s.else : []; norm(s.then); norm(s.else); }
       if (s.type === 'loop') { s.body = Array.isArray(s.body) ? s.body : []; norm(s.body); }
       if (s.type === 'router') { (s.routes || []).forEach(r => { r.steps = Array.isArray(r.steps) ? r.steps : []; norm(r.steps); }); if (s.fallback) norm(s.fallback); }
+      if (s.on_error && Array.isArray(s.on_error.steps)) norm(s.on_error.steps);   // v0.999.254 the error handler's own steps
     });
     return list;
   }
@@ -542,6 +552,7 @@
       const subs = [];
       for (const k of ['then', 'else', 'body', 'fallback']) if (subOf(s, k)) subs.push([s[k], [s.id, k]]);
       (s.routes || []).forEach((rt, j) => subs.push([rt.steps || [], [s.id, 'routes', j]]));
+      if (s.on_error && Array.isArray(s.on_error.steps)) subs.push([s.on_error.steps, [s.id, 'on_error']]);
       for (const [l, p] of subs) { const hit = find(id, l, p); if (hit) return hit; }
     }
     return null;
@@ -550,10 +561,12 @@
     if (!path || !path.length) return ED.steps;
     const h = find(path[0]); if (!h) return null;
     if (path[1] === 'routes') { const rt = (h.step.routes || [])[path[2]]; if (!rt) return null; rt.steps = rt.steps || []; return rt.steps; }
+    if (path[1] === 'on_error') { h.step.on_error = h.step.on_error || {do: 'ignore'}; h.step.on_error.steps = h.step.on_error.steps || []; return h.step.on_error.steps; }
     h.step[path[1]] = h.step[path[1]] || []; return h.step[path[1]];
   }
   const allSteps = (list, out) => { out = out || []; (list || ED.steps).forEach(s => { out.push(s);
-    ['then', 'else', 'body', 'fallback'].forEach(k => subOf(s, k) && allSteps(s[k], out)); (s.routes || []).forEach(r => allSteps(r.steps, out)); }); return out; };
+    ['then', 'else', 'body', 'fallback'].forEach(k => subOf(s, k) && allSteps(s[k], out)); (s.routes || []).forEach(r => allSteps(r.steps, out));
+    if (s.on_error && Array.isArray(s.on_error.steps)) allSteps(s.on_error.steps, out); }); return out; };
   const idsUsed = () => new Set(allSteps().map(s => s.id));
   function freshId(base) {
     let b = S(base).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'step';
@@ -636,7 +649,8 @@
         if (s.type === 'condition') branches = [['If yes', [s.id, 'then'], s.then], ['If no', [s.id, 'else'], s.else]];
         else if (s.type === 'router') { branches = (s.routes || []).map((rt, j) => [rt.label || ('Way ' + (j + 1)), [s.id, 'routes', j], rt.steps || []]);
           if (Array.isArray(s.fallback)) branches.push(['Anything else', [s.id, 'fallback'], s.fallback]); }
-        else if (s.type === 'loop') branches = [['For each item', [s.id, 'body'], s.body]];
+        else if (s.type === 'loop') branches = [[s.repeat ? 'Each time' : 'For each item', [s.id, 'body'], s.body]];
+        const nodeX = p.x;
         if (branches) {
           let by = y, mx = nx, bends = [];
           branches.forEach(([lab, bp, bl]) => {
@@ -648,6 +662,10 @@
           maxY = Math.max(maxY, by - GY);
           cx = mx; ends = [...new Set(bends.length ? bends : [s.id])];
         } else { cx = nx; ends = [s.id]; }
+        if (s.on_error && Array.isArray(s.on_error.steps)) {       // v0.999.254: Make's error handler route, drawn under its step
+          const r = lane(s.on_error.steps, nodeX + 40, maxY + GY, [s.id, 'on_error'], [s.id], 'If it fails');
+          maxY = Math.max(maxY, r.y);
+        }
       });
       adds.push({path, i: list.length, x: cx, y: y + 8, from: ends, end: true});
       ends.forEach(e => edges.push({from: e, toAdd: adds.length - 1}));
@@ -921,9 +939,15 @@
       ['other', 'The other date', 'text'], ['format', 'Format', 'plain', '%d %b %Y = 05 Dec 2026 · %Y-%m-%d = 2026-12-05 · %H:%M = 14:30'], ['tz', 'Time zone', 'plain', 'Like Europe/London (optional)']],
     text: [['action', 'Do', 'sel', [['html_text', 'Text of a web page'], ['html_select', 'Pick parts of a web page'], ['xml_to_data', 'Read XML'], ['csv_to_rows', 'CSV text to rows'],
       ['rows_to_csv', 'Rows to CSV text'], ['json_parse', 'Read JSON text'], ['json_text', 'Turn into JSON text'], ['base64_encode', 'Base64 encode'], ['base64_decode', 'Base64 decode'],
-      ['url_encode', 'Encode for a web address'], ['url_decode', 'Decode a web address part']]],
-      ['value', 'The text', 'area'], ['selector', 'Part to pick (CSS)', 'plain', 'Like h2 or .price'], ['attr', 'Take this attribute', 'plain', 'Like href (empty = the text)'], ['separator', 'Separator', 'plain', 'Like , or ;']],
-    file: [['action', 'Do', 'sel', [['make_xlsx', 'Make an Excel file'], ['make_csv', 'Make a CSV file'], ['make_pdf', 'Make a PDF'], ['read', 'Read a file']]],
+      ['url_encode', 'Encode for a web address'], ['url_decode', 'Decode a web address part'],
+      ['regex_match', 'Match a pattern'], ['regex_replace', 'Replace by a pattern'], ['data_to_xml', 'Make XML'], ['rows_to_table', 'Rows as a text table'],
+      ['markdown_to_html', 'Markdown to HTML'], ['html_to_markdown', 'HTML to Markdown']]],
+      ['value', 'The text', 'area'], ['selector', 'Part to pick (CSS)', 'plain', 'Like h2 or .price'], ['attr', 'Take this attribute', 'plain', 'Like href (empty = the text)'], ['separator', 'Separator', 'plain', 'Like , or ;'],
+      ['pattern', 'Pattern (regular expression)', 'plain', 'Like (\\d+) or [A-Z]{3}-\\d{4}; groups come out as $1, $2'], ['replace', 'Replace with', 'text', '$1 = the first group, $& = the whole match'],
+      ['global', 'Every match', 'sel', [['true', 'Yes - every match'], ['false', 'Only the first']]], ['case_sensitive', 'Capital letters count', 'sel', [['true', 'Yes'], ['false', 'No']]],
+      ['multiline', '^ and $ match each line', 'sel', YN], ['singleline', '. also matches a new line', 'sel', YN],
+      ['root', 'Outer tag', 'plain', 'Like data'], ['column_sep', 'Between columns', 'plain', 'Like | or a tab'], ['row_sep', 'Between rows', 'plain', 'Empty = a new line']],
+    file: [['action', 'Do', 'sel', [['make_xlsx', 'Make an Excel file'], ['make_csv', 'Make a CSV file'], ['make_pdf', 'Make a PDF'], ['read', 'Read a file'], ['zip', 'Make a ZIP'], ['unzip', 'Open a ZIP']]],
       ['items', 'Rows', 'text', 'A list of objects, like {{steps.rows.output}}'], ['name', 'File name', 'plain'], ['sheet', 'Sheet name', 'plain'],
       ['title', 'Title', 'text'], ['value', 'Text', 'area'], ['file_id', 'The file', 'text', 'Its file id, like {{steps.mail.output.file_id}}']],
     crypto: [['action', 'Do', 'sel', [['sha256', 'SHA-256'], ['sha1', 'SHA-1'], ['md5', 'MD5'], ['hmac_sha256', 'HMAC SHA-256 (signed)'], ['uuid', 'A new random id (UUID)'], ['random', 'A random code']]],
@@ -933,14 +957,63 @@
   const SHOWIF = {
     date: {value: s => A(s) !== 'now', amount: s => ['add', 'subtract'].includes(A(s)), unit: s => ['add', 'subtract', 'diff'].includes(A(s)),
       other: s => A(s) === 'diff', format: s => A(s) === 'format', tz: s => ['format', 'parse', 'now'].includes(A(s))},
-    text: {selector: s => A(s) === 'html_select', attr: s => A(s) === 'html_select', separator: s => A(s) === 'csv_to_rows'},
-    file: {items: s => ['make_csv', 'make_xlsx'].includes(A(s)), name: s => A(s) !== 'read', sheet: s => A(s) === 'make_xlsx',
-      title: s => A(s) === 'make_pdf', value: s => A(s) === 'make_pdf', file_id: s => A(s) === 'read'},
+    text: {selector: s => A(s) === 'html_select', attr: s => A(s) === 'html_select', separator: s => A(s) === 'csv_to_rows',
+      pattern: s => ['regex_match', 'regex_replace'].includes(A(s)), replace: s => A(s) === 'regex_replace', global: s => ['regex_match', 'regex_replace'].includes(A(s)),
+      case_sensitive: s => ['regex_match', 'regex_replace'].includes(A(s)), multiline: s => ['regex_match', 'regex_replace'].includes(A(s)),
+      singleline: s => ['regex_match', 'regex_replace'].includes(A(s)), root: s => A(s) === 'data_to_xml', column_sep: s => A(s) === 'rows_to_table', row_sep: s => A(s) === 'rows_to_table'},
+    file: {items: s => ['make_csv', 'make_xlsx', 'zip'].includes(A(s)), name: s => !['read', 'unzip'].includes(A(s)), sheet: s => A(s) === 'make_xlsx',
+      title: s => A(s) === 'make_pdf', value: s => A(s) === 'make_pdf', file_id: s => ['read', 'unzip'].includes(A(s))},
     crypto: {value: s => !['uuid', 'random'].includes(A(s)), secret: s => A(s) === 'hmac_sha256', length: s => A(s) === 'random'},
     aggregate: {sep: s => s.how === 'join'},
     merge: {key: s => ['by_key', 'keep_matches', 'keep_non_matches'].includes(s.mode), key_b: s => ['by_key', 'keep_matches', 'keep_non_matches'].includes(s.mode),
       join: s => s.mode === 'by_key', keep: s => s.mode === 'by_position'},
   };
+  // v0.999.254 MAKE PARITY: data store, variables and the web request, field by field
+  const STOREW = {add: 'Add or replace', update: 'Update', get: 'Get', exists: 'Is it there', delete: 'Delete', delete_all: 'Delete all', search: 'Search', count: 'Count', increment: 'Add to'};
+  const VARW = {set_many: 'Set', get: 'Get', get_many: 'Get', increment: 'Counter', save: 'Save'};
+  const STOREK = ['store', 'Data store', 'plain', 'One of yours (Data stores page), like customers'];
+  const STOREF = {
+    add: [STOREK, ['key', 'Key', 'text', 'Empty = a new id; the same key replaces that record'], ['data', 'The record (field: value)', 'obj'],
+      ['overwrite', 'If the key is already there', 'sel', [['', 'Replace it'], ['false', 'Stop with an error']]]],
+    update: [STOREK, ['key', 'Key', 'text'], ['data', 'Fields to change (field: value)', 'obj'], ['insert_missing', 'If there is no such record', 'sel', [['', 'Stop with an error'], ['true', 'Make it']]]],
+    get: [STOREK, ['key', 'Key', 'text', 'Its result: {{steps.<name>.output.data}} and .exists']],
+    exists: [STOREK, ['key', 'Key', 'text']],
+    delete: [STOREK, ['key', 'Key', 'text']],
+    delete_all: [STOREK],
+    search: [STOREK, ['filter', 'Records whose fields pass (field, op, value)', 'obj'], ['sort', 'Sort by field', 'plain', 'Like created or key'],
+      ['order', 'Order', 'sel', [['asc', 'Smallest first'], ['desc', 'Largest first']]], ['limit', 'At most', 'num']],
+    count: [STOREK, ['filter', 'Only records that pass (optional)', 'obj']],
+    increment: [STOREK, ['key', 'Key', 'text'], ['field', 'Number field', 'plain', 'Like stock or visits'], ['by', 'Add', 'num', 'Use a minus number to take away']],
+  };
+  const VARF = {
+    set_many: [['values', 'Values (name: value)', 'obj']],
+    get: [['name', 'Value name', 'plain']],
+    get_many: [['names', 'Value names (with commas)', 'plain']],
+    increment: [['name', 'Counter name', 'plain'], ['reset', 'Starts again', 'sel', [['never', 'Never - it keeps counting across runs'], ['run', 'At every run']]]],
+    save: [['name', 'Variable name', 'plain', 'Every route reads it as {{env.NAME}} (in capitals)'], ['value', 'Value', 'text']],
+  };
+  const HTTPF = [['action', 'Do', 'sel', [['request', 'Make a request'], ['download', 'Download a file'], ['resolve', 'Resolve a web address']]],
+    ['method', 'Method', 'sel', [['GET', 'GET (read)'], ['POST', 'POST (send)'], ['PUT', 'PUT (replace)'], ['PATCH', 'PATCH (change)'], ['DELETE', 'DELETE (remove)'], ['HEAD', 'HEAD (headers only)'], ['OPTIONS', 'OPTIONS']]],
+    ['url', 'Address', 'text', 'https://'], ['query', 'Query (name: value)', 'obj'], ['headers', 'Headers (name: value)', 'obj'],
+    ['body_type', 'Body', 'sel', [['', 'Nothing'], ['json', 'JSON'], ['form', 'A form (urlencoded)'], ['multipart', 'A form with files (multipart)'], ['raw', 'Text I write (with its content type)']]],
+    ['body', 'What it sends', 'area'], ['form', 'Form fields (name: value)', 'obj'], ['files', 'Files ([{field, file_id}])', 'obj'], ['content_type', 'Content type', 'plain', 'Like application/xml'],
+    ['name', 'Name the file (optional)', 'plain'],
+    ['timeout', 'Wait at most (seconds)', 'num', '1-300; empty = 40'], ['parse', 'Read the answer', 'sel', [['', 'Yes (JSON / XML become data)'], ['false', 'No - keep it as text']]],
+    ['fail_on_error', 'If the site answers 400 or more', 'sel', [['', 'The step fails'], ['false', 'Go on (read the status)']]],
+    ['redirects', 'Follow redirects', 'sel', [['', 'Yes (up to 10)'], ['false', 'No']]], ['share_cookies', 'Share cookies with this run\'s other web requests', 'sel', YN],
+    ['compressed', 'Ask for a compressed answer', 'sel', YN],
+    ['pg:type', 'Pages', 'sel', [['', 'One answer'], ['offset', 'By offset (offset + limit)'], ['page', 'By page number'], ['url', 'By the next page link'], ['cursor', 'By a cursor / token']]],
+    ['pg:items', 'Where the list is in each answer', 'plain', 'Like data.items'], ['pg:param', 'Its name in the address', 'plain', 'Like offset, page or cursor'],
+    ['pg:start', 'First value', 'plain'], ['pg:size_param', 'Page size name', 'plain', 'Like limit'], ['pg:size', 'Page size', 'num'],
+    ['pg:next', 'Where the next link / cursor is', 'plain', 'Like next or meta.next_cursor'], ['pg:limit', 'At most this many items', 'num', 'Up to 10,000']];
+  const HTTPSHOW = {method: s => (s.action || 'request') !== 'download' && (s.action || 'request') !== 'resolve',
+    query: s => (s.action || 'request') !== 'resolve', body_type: s => (s.action || 'request') === 'request' && !['GET', 'HEAD'].includes(S(s.method || 'GET').toUpperCase()),
+    body: s => ['json', 'raw'].includes(s.body_type), form: s => ['form', 'multipart'].includes(s.body_type), files: s => s.body_type === 'multipart',
+    content_type: s => s.body_type === 'raw', name: s => s.action === 'download', parse: s => (s.action || 'request') === 'request',
+    'pg:type': s => (s.action || 'request') === 'request', 'pg:items': s => !!(s.pagination && s.pagination.type) && s.pagination.type !== 'url' || !!(s.pagination && s.pagination.type === 'url'),
+    'pg:param': s => !!(s.pagination && ['offset', 'page', 'cursor'].includes(s.pagination.type)), 'pg:start': s => !!(s.pagination && ['offset', 'page', 'cursor'].includes(s.pagination.type)),
+    'pg:size_param': s => !!(s.pagination && ['offset', 'page'].includes(s.pagination.type)), 'pg:size': s => !!(s.pagination && ['offset', 'page'].includes(s.pagination.type)),
+    'pg:next': s => !!(s.pagination && ['url', 'cursor'].includes(s.pagination.type)), 'pg:limit': s => !!(s.pagination && s.pagination.type)};
   // the live result under a box that holds {{ }} (her route's newest data; nothing runs)
   function previewSoon(el, s) {
     const out = document.querySelector(`[data-prev="${CSS.escape(el.id)}"]`); if (!out || !ED) return;
@@ -998,25 +1071,36 @@
     } else if (s.type === 'notify') parts.push(field('Message to you', s.text || '', {k: 'text', area: true}));
     else if (s.type === 'approval') parts.push(field('The question', s.question || '', {k: 'question', area: true, help: 'The run waits here until you tap Approve.'}));
     else if (s.type === 'set') { parts.push(field('Value name', s.name || '', {k: 'name', ref: false, mono: true, help: 'Later steps read it as {{vars.' + (s.name || 'name') + '}}'})); parts.push(field('Value', typeof s.value === 'string' ? s.value : JSON.stringify(s.value ?? ''), {k: 'value', area: true})); }
-    else if (s.type === 'http') {
-      parts.push(field('Method', s.method || 'GET', {k: 'method', options: [['GET', 'GET (read)'], ['POST', 'POST (send)']]}));
-      parts.push(field('Address', s.url || '', {k: 'url', mono: true, ph: 'https://'}));
-      parts.push(field('Sign in with', s.auth || '', {k: 'auth', options: [['', 'No sign-in']].concat((ED.creds || []).map(c => [c.name, `${c.name} (${c.host})`])),
-        help: (ED.creds || []).length ? 'A saved sign-in is sent only to its own site.' : 'Save one under Sign-ins first.'}));
-      if ((s.method || 'GET') === 'POST') parts.push(field('What it sends', typeof s.body === 'string' ? s.body : JSON.stringify(s.body ?? {}, null, 2), {k: 'body', area: true, mono: true, rows: 5}));
-    } else if (s.type === 'data' || s.type === 'ai') {
-      const spec = (s.type === 'ai' ? AIF : DATAF)[s.op] || [];
+    else if (s.type === 'http' || s.type === 'data' || s.type === 'ai' || s.type === 'store' || s.type === 'var') {
+      // v0.999.254: one field-by-field panel for the data, AI, data store, variables and web request steps
+      const spec = s.type === 'http' ? HTTPF : ({ai: AIF, data: DATAF, store: STOREF, var: VARF}[s.type] || {})[s.op] || [];
+      const showOf = s.type === 'http' ? HTTPSHOW : ((s.type === 'ai' ? AISHOW : s.type === 'data' ? SHOWIF : {})[s.op] || {});
+      if (s.type === 'store' && !ED.stores) { ED.stores = []; api('GET', '/api/route/stores').then(o => { if (!ED) return; ED.stores = o.stores || []; if (ED.sel === s.id) stepPanel(box); }).catch(() => {}); }
       spec.forEach(([key, lab, kind, extra]) => {
-        const show = ((s.type === 'ai' ? AISHOW : SHOWIF)[s.op] || {})[key];
+        const show = showOf[key];
         if (show && !show(s)) return;
-        const v = s[key];
+        if (key.startsWith('pg:') && key !== 'pg:type' && !(s.pagination && s.pagination.type)) return;
+        if (s.type === 'store' && key === 'store' && (ED.stores || []).length) {
+          parts.push(field(lab, S(s.store), {k: 'd:store', options: [['', '- pick one -']].concat(ED.stores.map(x => [x.name, `${x.name} (${fmtN(x.records)} records)`]))
+            .concat(s.store && !ED.stores.some(x => x.name === s.store) ? [[s.store, s.store + ' (not made yet)']] : []), help: 'Make one on the Data stores page'}));
+          return;
+        }
+        const v = key.startsWith('pg:') ? (s.pagination || {})[key.slice(3)] : s[key];
+        if (key.startsWith('pg:')) {
+          if (kind === 'sel') parts.push(field(lab, v === undefined ? '' : S(v), {k: key, options: extra}));
+          else parts.push(field(lab, v === undefined || v === null ? '' : S(v), {k: key, ref: kind !== 'plain', num: kind === 'num', mono: true, help: typeof extra === 'string' ? extra : ''}));
+          return;
+        }
         if (kind === 'sel') parts.push(field(lab, v === undefined ? extra[0][0] : v, {k: 'd:' + key, options: extra}));
         else if (kind === 'obj') parts.push(field(lab, typeof v === 'string' ? v : JSON.stringify(v || {}, null, 2), {k: 'dobj:' + key, area: true, mono: true, rows: 5,
           help: 'Each line a name and a value; values can use {{ }}'}));
         else parts.push(field(lab, v === undefined || v === null ? '' : typeof v === 'string' ? v : JSON.stringify(v), {k: 'd:' + key, area: kind === 'area', rows: 4,
           ref: kind !== 'plain', mono: kind === 'plain' && /field|by|key|attr|selector/.test(key), num: kind === 'num', help: typeof extra === 'string' ? extra : ''}));
       });
-      if (s.op === 'file') parts.push('<p class="mut sm">A file it makes is kept for 24 hours: send it on in a later step (its file id is {{steps.' + esc(s.id) + '.output.file_id}}).</p>');
+      if (s.type === 'data' && s.op === 'file') parts.push('<p class="mut sm">A file it makes is kept for 24 hours: send it on in a later step (its file id is {{steps.' + esc(s.id) + '.output.file_id}}).</p>');
+      if (s.type === 'http') parts.push(field('Sign in with', s.auth || '', {k: 'auth', options: [['', 'No sign-in']].concat((ED.creds || []).map(c => [c.name, `${c.name} (${c.host})`])),
+        help: (ED.creds || []).length ? 'A saved sign-in (Basic, API key, token, OAuth2) is sent only to its own site.' : 'Save one under Sign-ins first.'}));
+      if (s.type === 'store' && s.op === 'delete_all') parts.push('<p class="mut sm">Every record of this data store is deleted when the step runs. A Rollback (If this step fails) brings them back.</p>');
     } else if (s.type === 'code') parts.push(field('Python', s.code || '', {k: 'code', area: true, mono: true, rows: 10, help: 'Runs in a locked sandbox. Print what you want the next steps to read.'}));
     else if (s.type === 'wait') {
       const mode = s.for === 'call' ? 'call' : s.until ? 'until' : 'time';
@@ -1032,7 +1116,12 @@
       }
     }
     else if (s.type === 'loop') {
-      parts.push(field('A list to go through', typeof s.items === 'string' ? s.items : JSON.stringify(s.items ?? ''), {k: 'items', mono: true, ph: '{{steps.rows.output}}', help: 'The steps inside run once for every item (up to 1,000), as {{item}}.'}));
+      parts.push(field('Go through', s.repeat ? 'repeat' : 'list', {k: 'lkind', options: [['list', 'A list (each item)'], ['repeat', 'A number of times (a repeater)']]}));
+      if (s.repeat) parts.push(`<div class="two">${field('Times', S(s.repeat.times), {k: 'rp:times', num: true, help: 'Up to 10,000'})}${field('Start at', S(s.repeat.start ?? 1), {k: 'rp:start', num: true})}</div>`
+        + field('Step', S(s.repeat.step ?? 1), {k: 'rp:step', num: true, help: 'Each round {{item}} is the number: start, start + step ...'}));
+      else parts.push(field('A list to go through', typeof s.items === 'string' ? s.items : JSON.stringify(s.items ?? ''), {k: 'items', mono: true, ph: '{{steps.rows.output}}', help: 'The steps inside run once for every item (up to 1,000), as {{item}}.'}));
+      parts.push(field('Collect from each round (optional)', S(s.collect ?? ''), {k: 'collect', ph: '{{item.total}}', help: 'Like Make\'s aggregators: the list is {{steps.' + esc(s.id) + '.output.results}}'}));
+      parts.push(field('Also join what it collects as text with (optional)', S(s.join ?? ''), {k: 'join', ref: false, ph: ', or \\n', help: 'Gives {{steps.' + esc(s.id) + '.output.text}} (the text aggregator)'}));
       parts.push(field('Also call each item (optional)', s.as || '', {k: 'loopas', ref: false, mono: true, ph: 'order', help: 'A name, so a loop inside this one can still read it as {{vars.' + (s.as || 'order') + '}}'}));
     }
     else if (s.type === 'subroute') {
@@ -1070,6 +1159,7 @@
     parts.push(field('Then', oe.do || '', {k: 'oe_do', options: Object.entries(DO)}));
     if (oe.do === 'break') parts.push(`<div class="two">${field('Tries', oe.retries ?? 3, {k: 'oe_retries', ref: false, num: true})}${field('Minutes apart', oe.wait_min ?? 10, {k: 'oe_wait', ref: false, num: true})}</div>`);
     if (oe.do === 'resume') parts.push(field('Value to use', typeof oe.value === 'string' ? oe.value : JSON.stringify(oe.value ?? ''), {k: 'oe_value'}));
+    parts.push(`<label class="chk"><input type="checkbox" data-oesteps${Array.isArray(oe.steps) ? ' checked' : ''}> Run steps first (an error handler: they read {{error.message}}, then the choice above decides)</label>`);
     parts.push('<div class="psub">Name</div>');
     const sidId = fid();
     parts.push(`<div class="fld"><label for="${sidId}">Step name (later steps read its result by this)</label><div class="fc"><input id="${sidId}" data-sid class="mono" value="${esc(s.id)}"></div></div>`);
@@ -1118,12 +1208,19 @@
       else if (k === 'oe_wait') { s.on_error.wait_min = Math.max(1, Math.min(1440, parseInt(v, 10) || 1)); }
       else if (k === 'oe_value') s.on_error.value = v;
       else if (k.startsWith('d:')) { const key = k.slice(2); if (v === '') delete s[key]; else if (v === 'true') s[key] = true;
-        else s[key] = /^-?\d+(\.\d+)?$/.test(v.trim()) && ['count', 'amount', 'length', 'max_steps', 'max_tokens'].includes(key) ? Number(v) : v; }
+        else if (v === 'false' && ['overwrite', 'parse', 'fail_on_error', 'redirects', 'global', 'case_sensitive'].includes(key)) s[key] = false;
+        else s[key] = /^-?\d+(\.\d+)?$/.test(v.trim()) && ['count', 'amount', 'length', 'max_steps', 'max_tokens', 'timeout', 'limit', 'by'].includes(key) ? Number(v) : v; }
       else if (k.startsWith('aiw:')) { s.ai = Object.assign({}, s.ai || {}); if (v) s.ai[k.slice(4)] = v; else delete s.ai[k.slice(4)]; }
+      else if (k.startsWith('pg:')) { const pk = k.slice(3); s.pagination = Object.assign({}, s.pagination || {});
+        if (v === '') delete s.pagination[pk]; else s.pagination[pk] = /^-?\d+$/.test(v.trim()) && ['size', 'limit', 'start'].includes(pk) ? Number(v) : v;
+        if (!s.pagination.type) delete s.pagination; }
+      else if (k.startsWith('rp:')) { s.repeat = Object.assign({}, s.repeat || {}); s.repeat[k.slice(3)] = /^-?\d+$/.test(v.trim()) ? Number(v) : v; }
+      else if (k === 'lkind') { if (v === 'repeat') { s.repeat = s.repeat || {times: 3, start: 1, step: 1}; delete s.items; } else { delete s.repeat; s.items = s.items || ''; } }
+      else if (k === 'collect' || k === 'join') { if (v === '') delete s[k]; else s[k] = v; }
       else if (k.startsWith('dobj:')) { try { s[k.slice(5)] = v.trim() ? JSON.parse(v) : {}; el.classList.remove('err'); } catch { el.classList.add('err'); return; } }
       else s[k] = v;
       ED.dirty = snap() !== ED.saved; draw(); topState();
-      if (['method', 'oe_do', 'd:action', 'd:how', 'd:mode', 'wkind', 'd:memory'].includes(k)) stepPanel(box.parentNode);
+      if (['method', 'oe_do', 'd:action', 'd:how', 'd:mode', 'wkind', 'd:memory', 'd:method', 'd:body_type', 'pg:type', 'lkind', 'd:op'].includes(k)) stepPanel(box.parentNode);
       if (el.tagName !== 'SELECT') previewSoon(el, s);
     };
     box.addEventListener('input', e => { if (e.target.dataset.k && e.target.tagName !== 'SELECT') apply(e.target); else if (e.target.closest('.fgroup')) applyFilter(e.target); });
@@ -1157,6 +1254,13 @@
     });
     const aw = box.querySelector('[data-aiway]');
     if (aw) aw.addEventListener('change', () => { before(); if (aw.checked) s.ai = s.ai || {text: ''}; else delete s.ai; changed(false); stepPanel(box.parentNode); });
+    const oes = box.querySelector('[data-oesteps]');           // v0.999.254: the error handler's own steps
+    if (oes) oes.addEventListener('change', () => {
+      before();
+      if (oes.checked) { s.on_error = Object.assign({do: 'ignore'}, s.on_error || {}); s.on_error.steps = s.on_error.steps || []; }
+      else if (s.on_error) { delete s.on_error.steps; }
+      changed(false); stepPanel(box.parentNode);
+    });
     const fb = box.querySelector('[data-fallback]');
     if (fb) fb.addEventListener('change', () => { before(); if (fb.checked) s.fallback = s.fallback || []; else delete s.fallback; changed(false); });
     const sid = box.querySelector('[data-sid]');
@@ -1216,7 +1320,8 @@
         <div class="fld"><label for="tzIn">Time zone</label><div class="fc"><input id="tzIn" list="tzList" value="${esc(sp.timezone || '')}" placeholder="${esc(TZ || 'Europe/London')}"></div>
           <datalist id="tzList">${zones.map(z => `<option value="${esc(z)}">`).join('')}</datalist></div>
         ${field('Skip the public holidays of', sp.skip_holidays || '', {k: 'skip_holidays', ref: false, ph: 'A country code, like GB, US, DE', help: 'The run waits for the next working day.'})}
-        <div class="two">${field('Quiet from', (sp.quiet || {}).from || '', {k: 'qfrom', ref: false, ph: '22:00'})}${field('Quiet until', (sp.quiet || {}).to || '', {k: 'qto', ref: false, ph: '08:00'})}</div>`;
+        <div class="two">${field('Quiet from', (sp.quiet || {}).from || '', {k: 'qfrom', ref: false, ph: '22:00'})}${field('Quiet until', (sp.quiet || {}).to || '', {k: 'qto', ref: false, ph: '08:00'})}</div>
+        <div class="two">${field('Not before (optional)', sp.start_date || '', {k: 'tg:start_date', ref: false, ph: '2026-12-01', help: 'The first day it may run'})}${field('Not after (optional)', sp.end_date || '', {k: 'tg:end_date', ref: false, ph: '2027-03-31', help: 'The last day it may run'})}</div>`;
     else if (t.kind === 'event') {
       const app = sp.app || 'email', P = [];
       P.push(field('When there is', app, {k: 'tg:app', options: Object.entries(EVW)}));
@@ -1233,6 +1338,8 @@
         P.push(`<div class="two">${field('The list in its answer (optional)', sp.items || '', {k: 'tg:items', ref: false, mono: true, ph: 'data.items'})}${field('Each item’s id field (optional)', sp.id || '', {k: 'tg:id', ref: false, mono: true, ph: 'id'})}</div>`);
       }
       P.push(field('Look every (minutes)', S(sp.every_minutes || 15), {k: 'tg:every_minutes', ref: false, num: true, help: `${(cat.every || {}).min || 5} to ${(cat.every || {}).max || 1440}`}));
+      // v0.999.254 MAKE PARITY: "choose where to start"
+      P.push(`<div class="two">${field('Where to start', sp.start || 'now', {k: 'tg:start', options: [['now', 'From now on (only new ones)'], ['all', 'With the ones there now too'], ['since', 'From a date']]})}${sp.start === 'since' ? field('Since', sp.since || '', {k: 'tg:since', ref: false, ph: '2026-11-01'}) : ''}</div>`);
       const pl = ED.r.trigger === 'event' ? ED.r.poll : null;
       const pw = !pl ? 'Not looked yet. The first look only notes what is there - nothing runs for items that were already there.'
         : pl.error ? `Last look did not work: ${pl.error}` : !pl.looked ? 'It will look soon. The first look only notes what is there.'
@@ -1305,6 +1412,7 @@
         const key = k.slice(3);
         if (key === 'app') { t.spec = {app: v, every_minutes: t.spec.every_minutes || 15}; changed(false); trigPanel(box); return; }
         if (key === 'every_minutes') t.spec.every_minutes = parseInt(v, 10) || 15;
+        else if (key === 'start') { if (v && v !== 'now') t.spec.start = v; else { delete t.spec.start; delete t.spec.since; } changed(false); trigPanel(box); return; }
         else if (key === 'args') { try { t.spec.args = v ? JSON.parse(v) : {}; el.classList.remove('err'); } catch { el.classList.add('err'); return; } }
         else if (key === 'routes') t.spec.routes = v.split(',').map(x => x.trim().toLowerCase().replace(/\s+/g, '_')).filter(Boolean);
         else if (v) t.spec[key] = el.tagName === 'TEXTAREA' && key !== 'args' ? el.value : v; else delete t.spec[key];
@@ -1974,6 +2082,14 @@
         <div class="two">${field('Keep its runs for (days)', S(st.keep_runs_days || ''), {k: 'keep_runs_days', ref: false, num: true, help: '1-3650; empty = the server default'})}
           ${field('Keep at most this many runs', S(st.keep_runs || ''), {k: 'keep_runs', ref: false, num: true, help: 'Empty = the server default'})}</div>
         ${field('Minutes one run saves you', S(st.minutes_saved || ''), {k: 'minutes_saved', ref: false, num: true, help: 'Used for Time saved in Insights; empty = not counted'})}
+        <div class="psub">How runs go (Make's scenario settings)</div>
+        <div class="two">${field('Process in order', st.in_order ? 'true' : '', {k: 'in_order', options: [['', 'No - runs may overlap'], ['true', 'Yes - one at a time, oldest first']], help: 'And none while one waits in Incomplete runs'})}
+          ${field('Keep its data confidential', st.confidential ? 'true' : '', {k: 'confidential', options: [['', 'No - show what each step made'], ['true', 'Yes - the run log keeps no data']]})}</div>
+        <div class="two">${field('A run that cannot finish after its retries', st.keep_incomplete === false ? 'false' : '', {k: 'keep_incomplete', options: [['', 'Keep it in Incomplete runs'], ['false', 'Fail it and roll back its data store changes']]})}
+          ${field('Data store changes', st.auto_commit ? 'true' : '', {k: 'auto_commit', options: [['', 'Kept when the run ends (a rollback can undo them)'], ['true', 'Kept after each step']]})}</div>
+        ${r.trigger === 'webhook' ? `<div class="two">${field('Calls while it is off', st.queue_when_off ? 'true' : '', {k: 'queue_when_off', options: [['', 'Refused'], ['true', 'Kept - they run when you switch it on']]})}
+          ${field('Calls that may wait in its queue', S(st.queue_max || ''), {k: 'queue_max', ref: false, num: true, help: '1-10,000; empty = 667'})}</div>
+          ${field('Only these addresses may call it (optional)', (st.allow_ips || []).join(', '), {k: 'allow_ips', ref: false, mono: true, ph: '203.0.113.7, 198.51.100.0/24'})}` : ''}
         <div class="crow"><button class="btn s" type="submit" id="setSave">Save settings</button><span class="mut sm" id="setNote"></span></div></form></section>
       <section class="card"><div class="hd"><h2>Share</h2></div>
         <p class="mut sm">A link to look at this route - its steps in words, without any of its data or sign-ins. It works for 30 days.</p>
@@ -1994,7 +2110,10 @@
       const o = {};
       MAIN.querySelectorAll('#setForm [data-k]').forEach(el => { const v = el.value.trim(); if (v) o[el.dataset.k] = v; });
       if (o.tags) o.tags = o.tags.split(',').map(x => x.trim()).filter(Boolean);
-      ['stop_after_errors', 'runs_per_day', 'keep_runs_days', 'keep_runs'].forEach(k => { if (o[k]) o[k] = parseInt(o[k], 10) || o[k]; });
+      ['stop_after_errors', 'runs_per_day', 'keep_runs_days', 'keep_runs', 'queue_max'].forEach(k => { if (o[k]) o[k] = parseInt(o[k], 10) || o[k]; });
+      ['in_order', 'confidential', 'auto_commit', 'queue_when_off'].forEach(k => { if (o[k]) o[k] = o[k] === 'true'; });
+      if (o.keep_incomplete) o.keep_incomplete = o.keep_incomplete !== 'false';
+      if (o.allow_ips) o.allow_ips = o.allow_ips.split(/[,\s]+/).filter(Boolean);
       if (o.minutes_saved) o.minutes_saved = parseFloat(o.minutes_saved) || o.minutes_saved;
       o.description = (MAIN.querySelector('#setForm [data-k="description"]') || {}).value || '';
       o.shared_with = Array.from(MAIN.querySelectorAll('[data-member]:checked')).map(x => x.dataset.member);
@@ -2058,6 +2177,129 @@
     }));
   }
   // v0.999.246 ROUTE R7: her variables ({{env.NAME}}) and saved sign-ins, for every route
+  // ---------------------------------------------------------------- v0.999.254 MAKE PARITY: data stores
+  const DSTYPES = [['text', 'Text'], ['number', 'Number'], ['boolean', 'Yes / no'], ['date', 'Date'], ['array', 'List'], ['collection', 'Object'], ['any', 'Anything']];
+  async function viewStores(name) {
+    shell(false); setNav('stores');
+    const L = await api('GET', '/api/route/stores');
+    if (!name) {
+      const rows = (L.stores || []).map(x => `<tr><td class="c-name"><a href="#/stores/${enc(x.name)}" class="mono">${esc(x.name)}</a></td>
+        <td class="num">${fmtN(x.records)}</td><td class="sm">${esc(String(x.used_kb))} KB of ${fmtN(x.max_kb)} KB</td>
+        <td class="sm mut">${(x.structure || []).length ? esc(x.structure.map(f => f.name).join(', ')) : 'Any fields'}</td></tr>`).join('');
+      MAIN.innerHTML = `<div class="top"><div><h1>Data stores</h1><p class="lead sm">Your own small tables that every route can read and write between runs - customers, stock, what was already sent. A route uses one with a <b>Data store</b> step.</p></div></div>
+        <section class="card"><form id="dsNew" class="pform"><div class="two">${field('Name', '', {k: 'dsname', ref: false, mono: true, ph: 'customers'})}${field('Size (KB)', '1024', {k: 'dskb', ref: false, num: true, help: 'Up to ' + fmtN(L.limits.max_kb) + ' KB'})}</div>
+          <div class="crow"><button class="btn s" type="submit">${svg(IC.plus)}Make a data store</button><span class="mut sm">You can add its fields (its structure) next.</span></div></form></section>
+        <section class="card flat">${rows ? `<div class="tw"><table class="rt"><thead><tr><th>Data store</th><th>Records</th><th>Used</th><th>Fields</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="empty">No data stores yet.</div>'}</section>`;
+      $('#dsNew').addEventListener('submit', async e => {
+        e.preventDefault();
+        const n = MAIN.querySelector('[data-k="dsname"]').value.trim().toLowerCase().replace(/[\s-]+/g, '_');
+        try { await api('PUT', `/api/route/stores/${enc(n)}`, {max_kb: MAIN.querySelector('[data-k="dskb"]').value, structure: []}); location.hash = '#/stores/' + enc(n); }
+        catch (err) { toast(err.message, true); }
+      });
+      return;
+    }
+    const D0 = await api('GET', `/api/route/stores/${enc(name)}/records?limit=200`);
+    const st = D0.store, F = st.structure || [];
+    const cols = F.length ? F.map(f => f.name) : [...new Set((D0.records || []).flatMap(r => Object.keys(r.data || {})))].slice(0, 12);
+    const cell = v => v === null || v === undefined ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+    const rows = (D0.records || []).map(r => `<tr><td class="mono sm">${esc(r.key)}</td>${cols.map(c => `<td class="sm">${esc(cell((r.data || {})[c])).slice(0, 120)}</td>`).join('')}
+      <td class="c-act"><button class="btn soft s" type="button" data-redit="${esc(r.key)}">Change</button><button class="btn soft s bad" type="button" data-rdel="${esc(r.key)}">Delete</button></td></tr>`).join('');
+    MAIN.innerHTML = `<div class="rhead"><a class="btn soft s ib" href="#/stores" aria-label="Back to data stores">${svg(IC.back)}</a>
+        <div class="rh-t"><h1 class="rtitle mono">${esc(st.name)}</h1><div class="rh-m mut sm">${fmtN(st.records)} records · ${esc(String(st.used_kb))} KB of ${fmtN(st.max_kb)} KB</div></div>
+        <span class="sp"></span><a class="btn soft s" href="/api/route/stores/${enc(st.name)}/csv" data-dl>Download CSV</a>
+        <label class="btn soft s" for="dsCsv">Bring in a CSV<input type="file" id="dsCsv" accept=".csv,text/csv" hidden></label></div>
+      <section class="card"><div class="hd"><h2>Its fields</h2></div><p class="mut sm">With fields, every record is checked against them (a number stays a number, required ones must be there). With none, a record can hold anything.</p>
+        <div id="dsF">${F.map((f, i) => `<div class="two dsf" data-i="${i}">${field('Field', f.name, {k: 'fname', ref: false, mono: true})}<div class="two">${field('Type', f.type, {k: 'ftype', options: DSTYPES})}${field('Required', f.required ? 'true' : '', {k: 'freq', options: [['', 'No'], ['true', 'Yes']]})}</div></div>`).join('')}</div>
+        <div class="crow"><button class="btn soft s" type="button" id="dsAddF">${svg(IC.plus)}Add a field</button><button class="btn s" type="button" id="dsSaveF">Save the fields</button>
+          <span class="sp"></span><button class="btn soft s bad" type="button" id="dsDrop">Delete this data store</button></div></section>
+      <section class="card"><div class="hd"><h2>A record</h2></div><form id="dsRec" class="pform"><div class="two">${field('Key', '', {k: 'rkey', ref: false, mono: true, ph: 'Empty = a new id', help: 'One record per key'})}</div>
+        ${field('Its data', '{}', {k: 'rdata', ref: false, area: true, mono: true, rows: 5, help: 'An object of field: value'})}
+        <div class="crow"><button class="btn s" type="submit">Save the record</button></div></form></section>
+      <section class="card flat"><div class="crow"><input id="dsQ" class="sm" placeholder="Find a record" aria-label="Find a record"><span class="mut sm">${fmtN(D0.total)} records</span>
+        <span class="sp"></span><button class="btn soft s bad" type="button" id="dsClear"${D0.total ? '' : ' disabled'}>Delete all records</button></div>
+        <div class="crow" id="dsClearBox" hidden><label class="sm" for="dsClearIn">To delete all ${fmtN(D0.total)} records, type <b class="mono">${esc(st.name)}</b></label>
+          <input id="dsClearIn" class="mono sm" autocomplete="off"><button class="btn s bad solid" type="button" id="dsClearGo">Delete them</button><button class="btn soft s" type="button" id="dsClearNo">Keep them</button></div>
+        ${rows ? `<div class="tw"><table class="rt"><thead><tr><th>Key</th>${cols.map(c => `<th>${esc(c)}</th>`).join('')}<th></th></tr></thead><tbody id="dsBody">${rows}</tbody></table></div>` : '<div class="empty">No records yet.</div>'}</section>`;
+    const val = k => MAIN.querySelector(`[data-k="${k}"]`);
+    const fieldRow = (i) => `<div class="two dsf" data-i="${i}">${field('Field', '', {k: 'fname', ref: false, mono: true})}<div class="two">${field('Type', 'text', {k: 'ftype', options: DSTYPES})}${field('Required', '', {k: 'freq', options: [['', 'No'], ['true', 'Yes']]})}</div></div>`;
+    $('#dsAddF').addEventListener('click', () => $('#dsF').insertAdjacentHTML('beforeend', fieldRow($('#dsF').children.length)));
+    $('#dsSaveF').addEventListener('click', async () => {
+      const fs = [...MAIN.querySelectorAll('.dsf')].map(r => ({name: r.querySelector('[data-k="fname"]').value.trim(), type: r.querySelector('[data-k="ftype"]').value,
+        required: r.querySelector('[data-k="freq"]').value === 'true'})).filter(f => f.name);
+      try { await api('PUT', `/api/route/stores/${enc(st.name)}`, {structure: fs, max_kb: st.max_kb, note: st.note}); toast('Saved.'); viewStores(st.name); } catch (err) { toast(err.message, true); }
+    });
+    $('#dsDrop').addEventListener('click', async e => {
+      const b = e.currentTarget; if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Delete it and its records?'; return; }
+      try { await api('DELETE', `/api/route/stores/${enc(st.name)}`); location.hash = '#/stores'; } catch (err) { toast(err.message, true); }
+    });
+    $('#dsRec').addEventListener('submit', async e => {
+      e.preventDefault();
+      let data; try { data = JSON.parse(val('rdata').value || '{}'); } catch { toast('The data is not a valid object.', true); return; }
+      const k = val('rkey').value.trim();
+      try { if (k) await api('PUT', `/api/route/stores/${enc(st.name)}/records/${enc(k)}`, {data}); else await api('POST', `/api/route/stores/${enc(st.name)}/records`, {data});
+        toast('Saved.'); viewStores(st.name); } catch (err) { toast(err.message, true); }
+    });
+    MAIN.querySelectorAll('[data-redit]').forEach(b => b.addEventListener('click', () => {
+      const r = D0.records.find(x => x.key === b.dataset.redit); val('rkey').value = r.key; val('rdata').value = JSON.stringify(r.data || {}, null, 2); val('rdata').focus();
+    }));
+    MAIN.querySelectorAll('[data-rdel]').forEach(b => b.addEventListener('click', async () => {
+      if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Delete it?'; return; }
+      try { await api('DELETE', `/api/route/stores/${enc(st.name)}/records/${enc(b.dataset.rdel)}`); viewStores(st.name); } catch (err) { toast(err.message, true); }
+    }));
+    $('#dsClear').addEventListener('click', () => { $('#dsClearBox').hidden = false; $('#dsClearIn').focus(); });
+    $('#dsClearNo').addEventListener('click', () => { $('#dsClearBox').hidden = true; $('#dsClearIn').value = ''; });
+    $('#dsClearGo').addEventListener('click', async () => {
+      try { const o = await api('POST', `/api/route/stores/${enc(st.name)}/clear`, {confirm: $('#dsClearIn').value.trim()}); toast(`Deleted ${o.deleted} records.`); viewStores(st.name); } catch (err) { toast(err.message, true); }
+    });
+    $('#dsQ').addEventListener('input', e => { const q = e.target.value.trim().toLowerCase();
+      MAIN.querySelectorAll('#dsBody tr').forEach(tr => { tr.hidden = !!q && !tr.textContent.toLowerCase().includes(q); }); });
+    $('#dsCsv').addEventListener('change', async e => {
+      const f = e.target.files[0]; if (!f) return;
+      try { const o = await api('POST', `/api/route/stores/${enc(st.name)}/csv`, {csv: await f.text()}); toast(`Brought in ${o.imported} records.`); viewStores(st.name); } catch (err) { toast(err.message, true); }
+    });
+    const dl = MAIN.querySelector('[data-dl]');
+    dl.addEventListener('click', async e => {
+      e.preventDefault();
+      try { const r = await fetch(dl.getAttribute('href'), {headers: {Authorization: 'Bearer ' + TOKEN}, credentials: 'omit', cache: 'no-store'}); if (!r.ok) throw new Error('Could not download it');
+        const u = URL.createObjectURL(await r.blob()); const a = document.createElement('a'); a.href = u; a.download = st.name + '.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(u), 4000); }
+      catch (err) { toast(err.message, true); }
+    });
+  }
+
+  // ---------------------------------------------------------------- v0.999.254 MAKE PARITY: the Grid
+  async function viewGrid() {
+    shell(false); setNav('grid');
+    const G = await api('GET', '/api/route/grid');
+    // only the columns that have something in them (no empty "Starts" column)
+    const want = [['door', 'Starts'], ['route', 'Routes'], ['store', 'Data stores'], ['app', 'Apps and web']];
+    const used = want.filter(([k]) => G.nodes.some(n => (n.kind === 'web' ? 'app' : n.kind) === k));
+    const colOf = {}; used.forEach(([k], i) => { colOf[k] = i; }); colOf.web = colOf.app;
+    const W = 220, H = 52, GX = 120, GY = 18;
+    const byCol = used.map(() => []);
+    G.nodes.forEach(n => byCol[colOf[n.kind] ?? 0].push(n));
+    const pos = {};
+    byCol.forEach((list, c) => list.forEach((n, i) => { pos[n.id] = {x: 20 + c * (W + GX), y: 60 + i * (H + GY)}; }));
+    const height = Math.max(240, ...byCol.map(l => 60 + l.length * (H + GY)));
+    const KW = {route: 'Route', store: 'Data store', app: 'App', web: 'Web address', door: 'Starts it'};
+    const LW = {runs: 'runs', on_error: 'if it fails', on_error_any: 'if it fails', writes: 'writes', reads: 'reads', uses: 'uses', calls: 'calls', starts: 'starts'};
+    const lines = G.links.map(l => { const a = pos[l.from], b = pos[l.to]; if (!a || !b) return '';
+      const same = Math.abs(a.x - b.x) < 5;
+      const A = same ? {x: a.x + W, y: a.y + H / 2} : {x: a.x + (b.x > a.x ? W : 0), y: a.y + H / 2}, B = same ? {x: b.x + W, y: b.y + H / 2} : {x: b.x + (b.x > a.x ? 0 : W), y: b.y + H / 2};
+      const d = same ? `M${A.x} ${A.y} C ${A.x + 80} ${A.y}, ${B.x + 80} ${B.y}, ${B.x} ${B.y}` : edgePath(A, B);
+      return `<path d="${d}" class="gl ${esc(l.kind)}${l.missing ? ' miss' : ''}"><title>${esc(l.from.split(':').slice(1).join(':'))} ${esc(LW[l.kind] || l.kind)} ${esc(l.to.split(':').slice(1).join(':'))}</title></path>`; }).join('');
+    const box = n => { const p = pos[n.id]; const href = n.kind === 'route' && n.route_id ? `#/r/${enc(n.route_id)}` : n.kind === 'store' ? `#/stores/${enc(n.name)}` : '';
+      const tag = href ? 'a' : 'div';
+      return `<${tag} class="gn k-${esc(n.kind)}${n.missing ? ' miss' : ''}${n.kind === 'route' && !n.enabled ? ' off' : ''}" ${href ? `href="${href}"` : ''} style="left:${p.x}px;top:${p.y}px;width:${W}px;height:${H}px">
+        <small>${esc(KW[n.kind] || n.kind)}${n.kind === 'route' ? (n.missing ? ' · not found' : n.enabled ? ' · on' : ' · off') : ''}${n.records !== undefined ? ' · ' + fmtN(n.records) + ' records' : ''}</small><b>${esc(n.kind === 'route' ? nice(n.name) : n.name)}</b></${tag}>`; };
+    const c = G.counts;
+    MAIN.innerHTML = `<div class="top"><div><h1>Grid</h1><p class="lead sm">All your routes on one map, and what each one touches: the routes it runs, where it goes when it fails, its data stores, apps and web addresses. Nothing here changes a route.</p></div></div>
+      <div class="stats"><div class="stat"><span class="k">Routes</span><b>${fmtN(c.route)}</b></div><div class="stat"><span class="k">Data stores</span><b>${fmtN(c.store)}</b></div>
+        <div class="stat"><span class="k">Apps and addresses</span><b>${fmtN(c.app + c.web)}</b></div><div class="stat"><span class="k">Links</span><b>${fmtN(G.links.length)}</b></div></div>
+      <section class="card flat gridwrap">${G.nodes.length ? `<div class="gworld" style="height:${height}px;width:${40 + used.length * W + (used.length - 1) * GX}px">
+        ${used.map(([k, lab], i) => `<div class="gcol" style="left:${20 + i * (W + GX)}px">${lab}</div>`).join('')}
+        <svg class="gedges" width="${40 + used.length * W + (used.length - 1) * GX}" height="${height}" aria-hidden="true">${lines}</svg>${G.nodes.map(box).join('')}</div>` : '<div class="empty">No routes yet.</div>'}</section>`;
+  }
+
   async function viewVariables() {
     shell(false); setNav('variables');
     const v = await api('GET', '/api/route/variables');
@@ -2164,7 +2406,9 @@
       else if (a === 'needs') await viewNeeds();
       else if (a === 'runs') await viewRuns(b === 'find' ? '' : (b || ''), b === 'find' ? decodeURIComponent(c || '') : '');
       else if (a === 'insights') await viewInsights(b || '');
-      else if (a === 'import') await viewImport();
+      else if (a === 'import') await viewImport(b || '');
+      else if (a === 'stores') await viewStores(b ? decodeURIComponent(b) : '');
+      else if (a === 'grid') await viewGrid();
       else if (a === 'run' && b) await viewRun(decodeURIComponent(b));
       else if (a === 'templates') await viewTemplates();
       else if (a === 'variables') await viewVariables();

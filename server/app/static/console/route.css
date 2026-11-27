@@ -159,7 +159,7 @@ select{height:36px;border:1px solid var(--line);border-radius:10px;background:va
 
 /* runs */
 .rhead{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.rh-t{flex:1;min-width:0}
+.rh-t{flex:1 1 220px;min-width:0}
 .rtitle{font-size:28px;overflow-wrap:anywhere}
 .rh-m{display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap}
 .rh-a{display:flex;gap:8px;flex-wrap:wrap}
@@ -467,10 +467,31 @@ td.found{max-width:420px;overflow-wrap:anywhere}
 ul.rep{margin:6px 0 12px;padding-left:18px;font-size:13.5px;line-height:1.5}
 ul.rep li{margin:2px 0}
 ul.rep li.ph b{color:var(--badt)}
-ul.rep li.ck b{color:var(--warn)}
+ul.rep li.tocheck b{color:var(--warn)}
 #n8nText{width:100%;min-height:180px}
 @media (max-width:640px){.stats{grid-template-columns:1fr 1fr}.stat b{font-size:20px}.bars{height:110px}}
 @media (max-width:640px){.top{flex-wrap:wrap}.top .sp{flex-basis:100%;height:0}.top>.btn,.top>label.btn{flex:1 1 auto;justify-content:center}}
 /* v0.999.253 ROUTE CHECK: steps inside a branch or loop, under their parent in the run log */
 .lrow.inner{margin-left:28px;padding-left:12px;border-left:2px solid var(--line)}
 @media (max-width:640px){.lrow.inner{margin-left:10px}}
+
+/* v0.999.254 MAKE PARITY: the Grid map and the data store fields */
+.gridwrap{overflow:auto;padding:12px}
+.gworld{position:relative;min-width:100%}
+.gcol{position:absolute;top:18px;font-size:12px;color:var(--dim);font-weight:500}
+svg.gedges{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
+svg.gedges path{fill:none;stroke:var(--line2);stroke-width:1.6;pointer-events:stroke}
+svg.gedges path.runs,svg.gedges path.starts{stroke:var(--acc)}
+svg.gedges path.on_error,svg.gedges path.on_error_any{stroke:var(--bad);stroke-dasharray:5 4}
+svg.gedges path.writes{stroke:var(--warnl)}
+svg.gedges path.miss{stroke-dasharray:2 4;opacity:.7}
+.gn{position:absolute;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:2px;padding:6px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);text-decoration:none;overflow:hidden}
+.gn b{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gn small{font-size:12px;color:var(--dim)}
+a.gn:hover,a.gn:focus-visible{border-color:var(--acc);outline:none}
+.gn.k-route{border-left:3px solid var(--acc)}
+.gn.k-route.off{border-left-color:var(--line2)}
+.gn.k-store{border-left:3px solid var(--warnl)}
+.gn.miss{border-style:dashed;color:var(--dim)}
+.dsf{align-items:end}
+.lrow .opcount{color:var(--dim)}

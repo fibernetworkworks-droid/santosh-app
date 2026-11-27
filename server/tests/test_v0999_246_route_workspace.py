@@ -96,10 +96,10 @@ def test_a_web_request_signs_in_with_a_saved_sign_in(bz, monkeypatch):
     _wipe(t)
     seen = {}
 
-    def fake_get(url, headers=None, **kw):
+    def fake_get(method, url, headers=None, **kw):     # v0.999.254: the step calls httpx.request now
         seen["url"], seen["headers"] = url, headers
         return httpx.Response(200, json={"ok": True}, request=httpx.Request("GET", url))
-    monkeypatch.setattr(httpx, "get", fake_get)
+    monkeypatch.setattr(httpx, "request", fake_get)
     monkeypatch.setattr(st, "_guard_url", lambda u: u)
     try:
         WS.save_credential(t, {"name": "SHOP_API", "kind": "bearer", "host": "api.shop.example", "token": "tok_secret_abcd"})

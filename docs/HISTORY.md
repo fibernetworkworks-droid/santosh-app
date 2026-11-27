@@ -12939,3 +12939,110 @@ back to initials (the 404s were the test server's empty logo cache).
 The three old exact pins (`0.999.169`) now accept any newer version. Tests: 17 new (incl. a browser walk at 1440 + 390).
 NOT VERIFIED: on her server.
 
+
+
+## v0.999.254 CLAUDE CODE'S REPO SETUP
+Claude Code's repo setup. NEW `devsahayak/repoconf.py` (settings, rule_matches, decide, hooks_for, hook_input, commands, expand_command, agents, mentions, find_files, _clean). `devsahayak/engine.py` (TOOLS ask_user + notebook_edit, t_ask_user, _nb, t_notebook_edit, t_read for .ipynb, SECURITY_REVIEW, her_text, her_blocks, run_hooks, CTX, rule / PreToolUse / PostToolUse / Stop in the loop, needs_ok force, give_ok answer, wait_ok asked event, repo agents in the prompt), `subagent.py` (repo agents first), `service.py` (_ctx, find_files, repo_commands, on_mention), `api.py` (/find, /commands), `events.py` (MENTION, issue_comment / pull_request_review_comment, _mention). Web `static/console/code.js` (ctxHTML, question askHTML, pickFor / pickShow / pickTake, answerQ, repoSetup, new step cases) + `hoolacode.css`. Phone `lib/ui/code/code_assist.dart` (NEW), `code_session.dart`, `code_words.dart`. Tests `test_v0999_254_claude_code_setup.py`; test_v0962 moved.
+
+
+## v0.999.255 DEVOPS DESK
+Owner: "DevOps same as finance desks". The DevOps employee (key devops) gets its own section like the finance desks.
+
+- NEW `server/app/dvchat.py` - Conversation kind devops, `/api/dvdesk/{chat, chat/new, chat/{conv}/ok, desk, do/{part}}`; today_view =
+  overview + build health + needs + the template list; parts github (the ONLY part that takes a token), repo_add / remove, sync, diagnose,
+  rerun (by_tap), explain_log, deploy, rollback, decide (by_tap + the card hash; a reason when checks are not green), reject_github, cancel,
+  logs (no chat alert), cluster, forget_logs, runbook, collector (secret shown once) / revoke, endpoint_add / remove, watch, script,
+  check_script, script_view, reviewed, checklist, tick, settings; OTP / PIN / card words refused; paused = reads only; block `<devops_desk>`.
+- Wiring: main.py page + mount, convs / callconv kinds, santosh.py block + admission, employees.js, v2.js, teamdesks DESK.
+- GLOBAL: DevopsSettings.country + log_days; `devops/rules.localise` keeps the CERT-In 180-day / NTP lines only for India, her own log days or
+  "check this" elsewhere in checklists and runbooks; logrotate keeps her days (default 180).
+- Console `dvdesk.html/.js/.css`: Today, Builds, Deploys, Servers & logs, Scripts & checklists, Settings.
+- Tests `tests/test_dv_desk.py` 5 incl. a browser walk at 1440 / 390. Pre-existing red, unchanged code:
+  test_tech_devops::test_deploy_card_only_her_tap_dispatches_and_rollback (dora successful).
+- NOT VERIFIED on her server / with a real GitHub repo.
+
+
+## v0.999.256 CLAUDE CODE, THE LAST TEN
+(owner: 'NOW CHECK AGAIN HOOLA CODE IS 100% SAME AS CLAUDE CODE' -> the 10 gaps -> 'GO ALL'): the repo's SKILLS (`.claude/skills/*/SKILL.md`, read before her built-in ones, extra files listed); the repo's `.mcp.json` - remote https servers reachable through the `mcp` tool as pack_id repo:<name> (a ${SECRET} header is never sent, a server that runs a program on her computer or plain http is named and not reachable) and her OK before its first call, 'always' covers the session; CLAUDE.md `@path` imports (5 deep, inside the repo, each file once - a loop is read once), CLAUDE.local.md, and a folder's own CLAUDE.md / AGENTS.md added the first time work moves into that folder (`Tools._folder_rules`); settings.json `env` (secret-looking names dropped, hers win) and `permissions.defaultMode` (default / acceptEdits = ask each step with edits allowed, plan = plan first, dontAsk = auto) and `outputStyle`; four more hook events: SubagentStop (after an agent reports; a block sends its words back), PreCompact, SessionEnd (archive / delete), Notification (when Hoola waits for her); `/compact <what to keep>`; `/export` = the conversation as a Markdown file; NEW `devsahayak/plugins.py` - Claude Code plugins and marketplaces added by their public GitHub link (copied once to her plugin shelf, no links, 20 MB / 20 plugins, on / off / remove): their commands, agents, skills, hooks and MCP servers join every session of hers, hooks still in the locked box; the repo's Claude Code files changed from the screen (agents, commands, skills, output styles, settings.json, .mcp.json, CLAUDE.md; JSON checked, keys refused, empty = delete; the change rides in the session's pull request); output styles (default / explanatory / learning / the repo's `.claude/output-styles`), per session. Routes /export, /claude-file, /style, /plugins. WEB - session menu: Export, Output style, Edit Claude Code files (list + templates + editor), Plugins; the setup dialog shows skills, MCP servers, starting mode, variables and plugins; slash menu /export /style /plugins; Settings > Plugins. PHONE - the same in lib/ui/code. FIXED: an import like @../CLAUDE.md was not normalised, so a loop was read 3 times. 9 tests incl. a real-browser walk. NOT VERIFIED: a real plugin from GitHub, a real repo MCP server, hooks on real Docker, the phone (compiles first on CI).
+
+## v0.999.257 CYBER DESK (built as 0.999.256; their HOOLA CODE took 0.999.256, both kept)
+Owner: "100 % Cyber security same as finance desks --- very advance and every aspect and every cyber security tool in it".
+
+- NEW `server/app/cychat.py` - Conversation kind cyber, `/api/cydesk/{chat, chat/new, chat/{conv}/ok, desk, do/{part}, upload}`; today_view =
+  engine overview + programme + needs + notice rows + security score + alerts by kind / ATT&CK tactic; parts for alerts, checks, attack
+  surface, incidents, notify, containment (decide by_tap + hash; a wipe answers 428 when her phone fingerprint is needed), programme,
+  settings and keys (a key only in key_set); OTP / card words refused outside pasted data; paused = reads only; block `<cyber_desk>`.
+- NEW `server/app/cyber/program.py` (table cyber_docs): NOTIFY (20 jurisdictions; India's two rows checked, every other row 'check this'
+  with its source; business days for SEC / LGPD), notify_plan / mark_notify; CIS Controls v8 IG1 (18 controls, 41 questions) -> NIST CSF
+  2.0 + ISO 27001:2022 with history; access review of a user CSV (leavers active, admins without 2-step, stale, shared, too many admins);
+  secrets scan (18 key patterns, masked, text not kept); MITRE ATT&CK per alert kind; risk register; vendor reviews (12 questions, tier,
+  next review); 8 playbooks + tabletop drills; training records + plan + quiz; password policy vs NIST SP 800-63B; overview.
+- Engine: CyberSettings country / sector / extra_countries; the CERT-In clock starts only for India; DPDP shown only for India; alerts carry
+  their ATT&CK technique; the chat tool gains the programme actions and cyber_dekho what=programme.
+- Wiring: main.py page + mount, convs / callconv kinds, santosh.py block + admission, employees.js, v2.js, teamdesks DESK.
+- Console `cydesk.html/.js/.css`: Today, Alerts, Checks, Attack surface, Incidents, Programme (7 sub-pages), Settings.
+- Tests `tests/test_cy_desk.py` 6 incl. a browser walk at 1440 / 390; test_tech_cyber 8 still pass.
+- NOT VERIFIED on her server / with real keys / real user exports.
+
+## v0.999.258 MAKE PARITY (built as 0.999.254; the other sessions took 0.999.254-0.999.257, all kept)
+
+Owner: "NOW GET EXTREEM DEEP FIND ALL HOOLA ROUTE TOOL IS FUCTIONATING PERFECTLY SAME AS MAKE OR NOT --- WE WANT ALL
+MAKE FUCTION IN IT. WITH END TO END FUCTIONING". Hoola Route compared with Make feature by feature from Make's own help
+centre (function pages, scenario settings, error handling, HTTP v4, pricing) - the full table with Had / Built / Not
+and the reasons is `docs/research/make/00_MAKE_PARITY.md`.
+
+Built, each through the real engine:
+- **Make's functions** in `{{ }}` (`agent/dhara_data.py` MAKE_FUNCS): general (if, ifempty, switch, omit, pick, set,
+  equal), math (average, median, stdevP/S, formatNumber, parseNumber, trunc ...), text (substring, indexOf, startcase,
+  stripHTML, escapeHTML/JSON/Markdown, sha1/256/512 with a key, replace with /regex/flags + $1/$&, match ...), dates
+  (formatDate / parseDate with Make's Moment tokens, addX, setX, setDay by name), arrays (map, flatten, merge,
+  distinct, toCollection, toArray, arrayDiff/Intersect, sort asc/desc/ci + key ...), under Make's camelCase names and
+  snake_case; keywords now / timestamp / uuid / random / pi / newline / space / tab / emptystring / emptyarray;
+  `if(` read as `iff(`; system variables `{{run.id}}`, `{{run.route}}`, `{{run.started_at}}`, `{{run.attempt}}`.
+- **Data stores** (`route/store.py`, tables ds_stores / ds_records in dhara.db): typed structure with required fields,
+  step type `store` ops add / update / get / exists / delete / delete_all (needs confirm) / search (filter, sort, 3,200)
+  / count / increment; 1 MB default, 10 MB max, 64 KB a record, 50 stores; CSV in (all or nothing) and out; the run
+  keeps an undo list so **Rollback really takes this run's writes back**, Commit / auto_commit keep them.
+- **Tools**: step type `var` - set_many / get / get_many / increment (never or per run; ds_counters) / save (a route
+  variable, `{{env.NAME}}`).
+- **Repeater** (`loop.repeat {times, start, step}`) and **aggregators** (`loop.collect` -> output.results, `join` ->
+  output.text; a filtered round adds nothing).
+- **Error handler routes**: `on_error.steps` run first with `{{error.message}}` / `{{error.step}}`, then the directive;
+  no directive = ignore; drawn under the step on the canvas ("If it fails"); waits / approvals refused inside one.
+- **The web request at Make's HTTP v4 level** (`route/http.py`): GET HEAD POST PUT PATCH DELETE OPTIONS, query,
+  body JSON / form / multipart with files / raw + content type, parse on / off, fail_on_error, timeout 1-300 s,
+  redirects on / off (10 hops, each guarded), share cookies in the run, compressed, pagination offset / page / next link
+  (also the Link header) / cursor with items path and limit, Download a file, Resolve URL. Sign-ins as before.
+- **Text parser and more** (data step): regex_match (global, case, multiline, singleline -> $1, $2, named groups),
+  regex_replace, data_to_xml, rows_to_table (Make's table aggregator), markdown_to_html / html_to_markdown, ZIP make /
+  open (50 MB, zip-bomb guard).
+- **Scenario settings**: in_order (one run at a time, oldest first, none while one is Incomplete), confidential (the log
+  keeps no data), keep_incomplete false (fail + roll back), auto_commit, queue_when_off, queue_max, allow_ips.
+- **Webhook queue**: a call that comes inside 6 s of the last is no longer refused with 429 - it waits its turn (Make's
+  queue, 667 by default) and runs in order; calls kept while the route is off run when it is switched on; IP
+  allow-list (403); the caller's headers (never Authorization / Cookie), method and query in `{{vars.request}}`.
+- **Schedule start_date**; app events "choose where to start": now / all / since a date.
+- **Operations** counted per run (`summary.operations`, on the run page).
+- **Make blueprint import** (`route/makeimport.py`, POST /api/route/import/make, "Bring in from Make"): webhook / app
+  watch starts, filters, routers, iterators + their aggregator, repeater, set / get / increment / switch / compose,
+  JSON / XML / CSV / text parser / markdown, HTTP (all modules), webhook response, the eight data store modules,
+  archive, error handler routes, scenario settings; formulas `{{1.x}}` -> `{{steps.y.output.x}}`, `;` -> `,`,
+  Make's 1-based `[1]` -> `[0]`; anything else a named "Redo" stop step + a report; lands switched OFF.
+- **The Grid** (`route/grid.py`, GET /api/route/grid, page #/grid): routes, starts, data stores, apps, web addresses
+  and the links (runs, on error, writes / reads, uses, calls).
+- Page: Data stores page (fields, records, find, CSV, delete all by typing its name), Grid page, Make import on the
+  import page, the new steps in Add a step (Data store, Variables, Text parser, Repeater, Repeat and collect, Make
+  XML, table text, ZIP, Download a file, Resolve), field-by-field panels for store / var / http, loop repeat and
+  collect fields, error-handler checkbox, the new settings, start-from, schedule start / end dates.
+
+Found and fixed on the way: a box holding only `{{a}}|{{b}}` was read as ONE expression and left as written (old bug);
+the import report's "To check" list showed one word per line (a `.ck` class clash, the n8n import too); the data store
+page header squeezed its title on a phone (`.rh-t` now wraps).
+
+Not built, said in the table: mutual TLS / client certificates / proxy, a mailhook address per route, Make's 1-minute
+schedules (kept 15 minutes; app events 5), cycles per run, commit trigger last, symmetric encryption, custom apps SDK /
+Bridge. Make's 2,500 app modules come through Hoola tools + Composio, not one module per action.
+
+Tests: `server/tests/test_v0999_258_make_parity.py` (47, incl. a Chromium walk at 1440 and 390); older pins moved:
+test_v0502 (a fast second webhook call is queued, not refused), test_v0999_246 / 253 (the web request calls
+httpx.request now). NOT VERIFIED: on her server, with a real Make export of hers, with real app accounts.

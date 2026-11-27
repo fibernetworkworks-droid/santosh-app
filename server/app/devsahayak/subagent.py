@@ -106,9 +106,9 @@ def run_one(tools: Any, name: str, task: str, files: list[str] | None = None,
             pick: tuple[str, str] = ("", ""), part: dict | None = None) -> str:
     """One agent, start to report. Returns the text the coder gets as the tool result."""
     from . import engine as EN
-    spec = ecc.get(name)
+    spec = (getattr(tools, "repo_agents", None) or {}).get(str(name or "").lower()) or ecc.get(name)   # v0.999 the repo's own first
     if spec is None:
-        known = ", ".join(sorted(ecc.catalog()))
+        known = ", ".join(sorted(list(ecc.catalog()) + list(getattr(tools, "repo_agents", None) or {})))
         return f"Unknown agent '{name}'. Use one of: {known}."
     task = str(task or "").strip()
     if len(task) < 15:
@@ -184,6 +184,14 @@ def run_one(tools: Any, name: str, task: str, files: list[str] | None = None,
     say({"k": "agent", "state": "done", "name": spec["name"], "title": spec["title"], "steps": steps,
          "edits": edits, "secs": round(time.time() - t0, 1), "report": report[:1500]})
     head = f"[{spec['title']} - {steps} steps" + (f", changed {edits} file(s): re-read before you edit them" if edits else "") + "]\n"
+    try:                                                   # v0.999 the repo's SubagentStop hook may add its word
+        from . import repoconf as RC
+        if RC.hooks_for(getattr(tools, "conf", {}) or {}, "SubagentStop"):
+            said = EN.run_hooks(tools, "SubagentStop")
+            if said.get("block") and said.get("text"):
+                report += "\n\n[This repo's SubagentStop hook says the agent is not done:]\n" + said["text"][:3000]
+    except Exception:  # noqa: BLE001
+        pass
     return head + report[:30000]
 
 

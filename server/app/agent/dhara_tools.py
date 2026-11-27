@@ -41,7 +41,7 @@ import secrets
 import sqlite3
 import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -84,7 +84,8 @@ _RUNNING: set[str] = set()
 _TASKS: set["asyncio.Task"] = set()
 
 _STEP_TYPES = ("tool", "code", "condition", "loop", "wait", "notify", "approval", "set", "http",
-               "router", "filter", "data", "subroute", "stop", "respond", "ai")   # v0.999.243 ROUTE R6: AI steps      # v0.999.87 HOOLA ROUTE: a router with named routes + a filter gate
+               "router", "filter", "data", "subroute", "stop", "respond", "ai",
+               "store", "var")   # v0.999.254 MAKE PARITY: data stores + Make's variable tools   # v0.999.243 ROUTE R6: AI steps      # v0.999.87 HOOLA ROUTE: a router with named routes + a filter gate
 _COND_OPS = ("eq", "ne", "gt", "lt", "contains", "empty")
 # v0.999.87 HOOLA ROUTE filter language (the Make / n8n filter idea, own code): one condition is
 # {left, op, right, ci?}; groups are {"all": [...]} (AND) / {"any": [...]} (OR), nested up to _FILTER_DEPTH.
@@ -97,6 +98,8 @@ _FILTER_ITEMS = 20
 _ROUTES_MAX = 8
 # v0.999.87 per-step error handling (the Make directives, own code): what a failed step does to its run.
 _ON_ERROR = ("break", "resume", "ignore", "commit", "rollback", "tell")
+_VAR_OPS = ("set_many", "get", "get_many", "increment", "save")     # v0.999.254 Make's Tools: variables + counter
+_REPEAT_MAX = 10_000
 _RETRY_MAX = 10
 _DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 # Turn-shaped tools that make no sense inside a background run (they need the live turn to carry
@@ -262,6 +265,20 @@ def set_enabled(tenant_id: str, wf_id: str, enabled: bool) -> bool:
     finally:
         con.close()
     if changed and enabled:
+        try:                       # v0.999.254: calls kept while it was off now run, oldest first, 6 s apart
+            con = _con(tenant_id)
+            try:
+                rows = con.execute("SELECT id FROM runs WHERE workflow_id = ? AND status = 'sleeping' AND "
+                                   "pause_reason = 'queue_off' ORDER BY created_at", (wf_id,)).fetchall()
+                t0 = time.time()
+                for i, r in enumerate(rows):
+                    con.execute("UPDATE runs SET pause_reason = 'queue', next_wake_at = ? WHERE id = ?",
+                                (t0 + i * _TOKEN_MIN_RATE_S, r["id"]))
+                con.commit()
+            finally:
+                con.close()
+        except Exception:   # noqa: BLE001
+            pass
         try:                       # v0.999.240: an app-event route switched on looks fresh (old items do not run)
             from ..route import triggers as TR
             TR.rebaseline(tenant_id, wf_id)
@@ -280,7 +297,7 @@ def workflows_with_hash(tenant_id: str, token_hash: str) -> dict[str, Any] | Non
 
 
 def create_run(tenant_id: str, wf: dict, vars_: dict | None = None, missed: bool = False,
-               extra: dict | None = None) -> str:
+               extra: dict | None = None, park: tuple | None = None) -> str:
     """extra (v0.999.253): more context written WITH the run (a test's pinned data), so the worker can never pick
     the run up before it is there."""
     now_ = time.time()
@@ -295,6 +312,9 @@ def create_run(tenant_id: str, wf: dict, vars_: dict | None = None, missed: bool
                     "started_at, missed, created_at, updated_at) VALUES (?,?,?,?,0,?,?,0,?,?,?,?)",
                     (rid, wf["id"], wf["name"], "queued", json.dumps(ctx0, ensure_ascii=False),
                      "[]", now_ if not missed else None, 1 if missed else 0, now_, now_))
+        if park:                      # v0.999.254: written asleep in one go - the worker never sees it queued
+            con.execute("UPDATE runs SET status = 'sleeping', pause_reason = ?, next_wake_at = ? WHERE id = ?",
+                        (str(park[0]), float(park[1]), rid))
         con.commit()
     finally:
         con.close()
@@ -415,6 +435,9 @@ def _walk_steps(steps: list, depth: int = 0) -> "list[tuple[dict, int]]":
         for rt in (s.get("routes") or []) if isinstance(s.get("routes"), list) else []:
             if isinstance(rt, dict) and rt.get("steps"):
                 out.extend(_walk_steps(rt["steps"], depth + 1))
+        oe = s.get("on_error")                       # v0.999.254: an error handler's own steps (Make's handler route)
+        if isinstance(oe, dict) and isinstance(oe.get("steps"), list) and oe["steps"]:
+            out.extend(_walk_steps(oe["steps"], depth + 1))
     return out
 
 
@@ -457,9 +480,19 @@ def validate_on_error(oe: Any, sid: str) -> dict | None:
     if not isinstance(oe, dict):
         raise ToolError(f"Step '{sid}': on_error must be like {{do: 'break', retries: 3, wait_min: 10}}")
     do = str(oe.get("do") or "").lower()
+    hsteps = oe.get("steps")
+    if hsteps not in (None, []) and not isinstance(hsteps, list):
+        raise ToolError(f"Step '{sid}': the error handler's steps must be a list")
+    if not do and hsteps:
+        do = "ignore"                                # Make: a handler route with no directive at its end = ignore
     if do not in _ON_ERROR:
         raise ToolError(f"Step '{sid}': on_error do must be one of: {', '.join(_ON_ERROR)}")
     out: dict[str, Any] = {"do": do}
+    if hsteps:
+        bad = [str(x.get("id")) for x, _d in _walk_steps(hsteps) if str(x.get("type")) in ("wait", "approval", "respond")]
+        if bad:
+            raise ToolError(f"Step '{sid}': an error handler cannot wait or ask (step {bad[0]}) - it runs straight through")
+        out["steps"] = hsteps
     if do == "break":
         try:
             out["retries"] = max(0, min(int(oe.get("retries", 3)), _RETRY_MAX))
@@ -519,7 +552,20 @@ def validate_steps(steps: list) -> list[dict]:
         elif typ == "loop":
             if not isinstance(st_.get("body"), list) or not st_.get("body"):
                 raise ToolError(f"Step '{sid}': give a loop a list of body steps")
-            if "items" not in st_:
+            rp = st_.get("repeat")                   # v0.999.254 Make's Repeater: a loop over a counted range
+            if rp is not None:
+                if not isinstance(rp, dict) or rp.get("times") in (None, ""):
+                    raise ToolError(f"Step '{sid}': repeat needs times (and start / step if you like)")
+                for kk in ("times", "start", "step"):
+                    vv = rp.get(kk)
+                    if vv not in (None, "") and "{{" not in str(vv):
+                        try:
+                            int(vv)
+                        except (TypeError, ValueError):
+                            raise ToolError(f"Step '{sid}': repeat {kk} must be a whole number")
+                if "{{" not in str(rp["times"]) and not 0 <= int(rp["times"]) <= _REPEAT_MAX:
+                    raise ToolError(f"Step '{sid}': repeat times is 0-{_REPEAT_MAX}")
+            elif "items" not in st_:
                 raise ToolError(f"Step '{sid}': a loop needs items (an expression that gives a list)")
             if st_.get("as") not in (None, "") and not _PATH_RE.match(str(st_["as"])):
                 raise ToolError(f"Step '{sid}': as must be a short name (lowercase_with_underscores)")
@@ -578,13 +624,22 @@ def validate_steps(steps: list) -> list[dict]:
         elif typ == "ai":                                # v0.999.243 ROUTE R6
             from ..route import aistep as AS
             AS.validate(st_, sid)
-        elif typ == "http":
-            if not str(st_.get("url") or "").strip():
-                raise ToolError(f"Step '{sid}': http needs a url")
-            if str(st_.get("method") or "GET").upper() not in ("GET", "POST"):
-                raise ToolError(f"Step '{sid}': http method can be only GET or POST (v1)")
-            if st_.get("auth") not in (None, "") and not re.match(r"^[A-Za-z_][A-Za-z0-9_]{0,49}$", str(st_["auth"])):
-                raise ToolError(f"Step '{sid}': auth must be the name of a saved sign-in")
+        elif typ == "store":                             # v0.999.254 MAKE PARITY: data stores
+            from ..route import store as DS
+            DS.validate(st_, sid)
+        elif typ == "var":
+            op_ = str(st_.get("op") or "")
+            if op_ not in _VAR_OPS:
+                raise ToolError(f"Step '{sid}': a variables step needs op = one of: {', '.join(_VAR_OPS)}")
+            if op_ == "set_many" and not isinstance(st_.get("values"), (dict, str)):
+                raise ToolError(f"Step '{sid}': set_many needs values - an object of name: value")
+            if op_ in ("get", "increment", "save") and not _PATH_RE.match(str(st_.get("name") or "")):
+                raise ToolError(f"Step '{sid}': give the variable a name (lowercase_with_underscores)")
+            if op_ == "increment" and str(st_.get("reset") or "never") not in ("never", "run"):
+                raise ToolError(f"Step '{sid}': increment reset is never (keeps counting across runs) or run")
+        elif typ == "http":                              # v0.999.254: Make's HTTP app (every method, body, page)
+            from ..route import http as HT
+            HT.validate(st_, sid)
         if "on_error" in st_:
             st_["on_error"] = validate_on_error(st_.get("on_error"), sid)
             if st_["on_error"] is None:
@@ -718,7 +773,7 @@ def _one_value(inner: str, ctx: dict, raw: str) -> Any:
     """v0.999.237: the value of one {{ }}: a plain path as before; else a safe expression; one that fails stays as written."""
     from . import dhara_data as DD
     inner = inner.strip()
-    if _PATH_RE.match(inner):
+    if _PATH_RE.match(inner) and not (inner in DD.KEYWORDS and inner not in ctx):
         return _dig(ctx, inner)
     try:
         return DD.evaluate(inner, ctx)
@@ -731,6 +786,8 @@ def _resolve_one(expr: Any, ctx: dict) -> Any:
     v0.999.237: {{ }} may hold an expression with maths and functions (dhara_data) - a whole-string one returns its value."""
     if isinstance(expr, str):
         whole = _ANY_EXPR_RE.fullmatch(expr.strip())
+        if whole and ("}}" in whole.group(1) or "{{" in whole.group(1)):
+            whole = None                     # v0.999.254: "{{a}}|{{b}}" is two values in a text, not one expression
         if whole:
             return _one_value(whole.group(1), ctx, expr)
 
@@ -880,6 +937,9 @@ def _summary(run: dict, steps_total: int, err: str, acc: dict | None = None) -> 
     s: dict[str, Any] = {"steps_total": int(steps_total), "steps_ran": int(run.get("cursor") or 0),
                          "parks": sum(1 for e in logs if e.get("status") in ("sleeping", "waiting_approval")),
                          "tries": int(run.get("tries") or 0),
+                         # v0.999.254 MAKE PARITY: Make's operations - every step that ran, inner steps too
+                         "operations": sum(1 for e in logs if e.get("id") != "..." and e.get("status") not in
+                                           ("sleeping", "waiting_approval", "retry_wait")),
                          "wall_ms": int((time.time() - float(run.get("started_at") or time.time())) * 1000)}
     if err:
         s["fail_error"] = str(err)[:200]
@@ -920,6 +980,9 @@ def _log_step(run: dict, step_id: str, typ: str, status: str, ms: int, output: A
         entry["v"] = int(version)
     if error:
         entry["error"] = error[:400]
+    if (run.get("context") or {}).get("_confidential"):    # v0.999.254 Make: keep data confidential
+        output = None
+        entry["hidden"] = True
     if output is not None:
         try:
             text = output if isinstance(output, str) else json.dumps(output, ensure_ascii=False)
@@ -1040,7 +1103,7 @@ def _note_inner(ctx: dict, sub: dict, scope: str, status: str, ms: int, output: 
     if len(lg) >= _SUBLOG_CAP * 2:
         ctx["_sublog_more"] = int(ctx.get("_sublog_more") or 0) + 1
         return
-    tmp = {"steps_log": []}
+    tmp = {"steps_log": [], "context": {"_confidential": ctx.get("_confidential")}}
     _log_step(tmp, str(sub.get("id", "?")), str(sub.get("type", "?")), status, ms, output=output, error=error,
               version=int(sub.get("v") or 1))
     entry = tmp["steps_log"][0]
@@ -1059,6 +1122,41 @@ def _flush_inner(run: dict) -> None:
         run["steps_log"].append({"id": "...", "type": "note", "status": "ok", "ms": 0,
                                  "at": time.strftime("%H:%M:%S"), "in": "...",
                                  "output": f"{more} more inner steps not listed"})
+
+
+async def _run_handler(tenant_id: str, conv: str, step: dict, oe: dict, ctx: dict, run_id: str, err: str,
+                       scope: str = "") -> tuple[bool, str]:
+    """v0.999.254 MAKE PARITY: an error handler route - the steps on a step's on_error run first, with the error in
+    {{error.message}} / {{error.step}}, then its directive decides. A handler that fails itself ends the run."""
+    hs = oe.get("steps") if isinstance(oe, dict) else None
+    if not hs:
+        return True, ""
+    hscope = f"{scope}/{step.get('id')}!err"
+    ctx["_done"] = [m for m in (ctx.get("_done") or []) if not str(m).startswith(hscope + "/")]
+    prev = ctx.get("error")
+    ctx["error"] = {"step": str(step.get("id")), "type": str(step.get("type")), "message": str(err)[:800]}
+    try:
+        ok, herr = await _exec_sublist(tenant_id, conv, hs, ctx, run_id, False, scope=hscope)
+    finally:
+        if prev is None:
+            ctx.pop("error", None)
+        else:
+            ctx["error"] = prev
+    if not ok:
+        return False, f"the error handler of '{step.get('id')}' failed too: {herr}"
+    return True, ""
+
+
+def _rollback_stores(tenant_id: str, ctx: dict) -> int:
+    """Make's Rollback: take back this run's data store writes. The rest (a sent message) cannot be undone."""
+    undo = ctx.pop("_store_undo", None) or []
+    if not undo:
+        return 0
+    try:
+        from ..route import store as DS
+        return DS.undo_all(tenant_id, undo)
+    except Exception:   # noqa: BLE001
+        return 0
 
 
 async def _exec_sublist(tenant_id: str, conv: str, sublist: list, ctx: dict, run_id: str,
@@ -1097,6 +1195,12 @@ async def _exec_sublist(tenant_id: str, conv: str, sublist: list, ctx: dict, run
             return True, err
         if not ok:
             oe = sub.get("on_error") or {}
+            if oe.get("steps"):                          # v0.999.254: the handler route runs first
+                h_ok, h_err = await _run_handler(tenant_id, conv, sub, oe, ctx, run_id, err, scope)
+                if not h_ok:
+                    _note_inner(ctx, sub, scope, "error", ms_in, error=err)
+                    return False, h_err
+                oe = {**oe, "_handled": True}
             if oe.get("do") == "ignore":
                 ok = True
             elif oe.get("do") == "resume":
@@ -1234,6 +1338,17 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
         if typ == "loop":
             if base in dec and isinstance(dec[base], list):
                 items = dec[base]                        # v0.999.239 a resumed loop goes on with the same list
+            elif isinstance(step.get("repeat"), dict):   # v0.999.254 Make's Repeater: i = start, start+step, ...
+                rp = resolve(step["repeat"], ctx)
+                try:
+                    n_, a_, d_ = int(rp.get("times")), int(rp.get("start") if rp.get("start") not in (None, "") else 1), \
+                        int(rp.get("step") if rp.get("step") not in (None, "") else 1)
+                except (TypeError, ValueError):
+                    return False, None, "repeat times / start / step did not give whole numbers"
+                if not 0 <= n_ <= _REPEAT_MAX:
+                    return False, None, f"repeat can go 0 to {_REPEAT_MAX} times (got {n_})"
+                items = [a_ + d_ * k for k in range(n_)]
+                dec[base] = items
             else:
                 items = resolve(step.get("items"), ctx)
                 if not isinstance(items, list):
@@ -1242,6 +1357,8 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
                 if len(items) > cap:
                     return False, None, f"the list has {len(items)} items - a loop can go through up to {cap}"
                 dec[base] = items
+            coll_key = base + "~collect"                 # v0.999.254 Make's array / text aggregator over the rounds
+            collected = ctx.setdefault("_dec", {}).setdefault(coll_key, []) if step.get("collect") is not None else None
             prev, name_as = ctx.get("item"), str(step.get("as") or "")
             count = 0
             for i, item in enumerate(items):
@@ -1258,10 +1375,23 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
                     return False, None, err
                 if err in _SIGNALS:
                     return True, None, err
+                if collected is not None and err != "__STOP__":
+                    try:
+                        collected.append(resolve(step.get("collect"), ctx))
+                    except ToolError:
+                        collected.append(None)
                 done.append(imark)
                 count += 1
             ctx["item"] = prev                          # a loop inside a loop gives the outer item back
-            ctx["steps"][sid] = {"output": {"iterations": count}}
+            outp: dict[str, Any] = {"iterations": count}
+            if collected is not None:
+                outp["results"] = list(collected)
+                if step.get("join") is not None:          # the text aggregator: the results as one text
+                    sep = str(resolve(step.get("join"), ctx)).replace("\\n", "\n")
+                    outp["text"] = sep.join("" if x is None else (x if isinstance(x, str) else json.dumps(x, ensure_ascii=False))
+                                            for x in collected)
+                dec.pop(coll_key, None)
+            ctx["steps"][sid] = {"output": outp}
             return True, ctx["steps"][sid]["output"], ""
         if typ == "wait":
             if str(step.get("for") or "") == "call":     # v0.999.239 wait until someone calls the resume link
@@ -1276,6 +1406,20 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
             if secs > 0:
                 await asyncio.sleep(min(secs, 5))
             return True, {"wait_s": secs}, ""
+        if typ == "store":                               # v0.999.254 MAKE PARITY: data stores
+            from ..route import store as DS
+            try:
+                out = await asyncio.to_thread(DS.run, tenant_id, step, ctx, resolve)
+            except DS.StoreError as e:
+                return False, None, str(e)[:300]
+            ctx["steps"][sid] = {"output": out}
+            return True, out, ""
+        if typ == "var":                                 # v0.999.254 Make's Tools: variables and the increment function
+            out = await asyncio.to_thread(_var_step, tenant_id, step, ctx)
+            if isinstance(out, dict) and out.get("_error"):
+                return False, None, out["_error"]
+            ctx["steps"][sid] = {"output": out}
+            return True, out, ""
         if typ == "ai":                                  # v0.999.243 ROUTE R6: summarise, classify, extract, agent ...
             from ..route import aistep as AS
             try:
@@ -1338,11 +1482,19 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
             ctx["vars"][str(step.get("name"))] = resolve(step.get("value"), ctx)
             return True, {"set": str(step.get("name"))}, ""
         if typ == "http":
-            body = await _http_step(tenant_id, step, ctx)
-            ctx["steps"][sid] = {"output": body}
+            from ..route import http as HT
+            try:
+                body = await _http_step(tenant_id, step, ctx)
+            except HT.HttpError as e:
+                return False, None, str(e)[:300]
+            fail = body.pop("_fail", None) if isinstance(body, dict) else None
             code = int((body or {}).get("status") or 0) if isinstance(body, dict) else 0
-            if code >= 400:      # v0.999.128: a refused / broken answer is a failed step (it was counted as done)
-                return False, body, f"the site answered {code}"
+            if fail is None and code >= 400 and step.get("fail_on_error") is not False and \
+                    str(step.get("fail_on_error")).lower() != "false":
+                fail = f"the site answered {code}"
+            ctx["steps"][sid] = {"output": body}
+            if fail:             # v0.999.128: a refused / broken answer is a failed step (unless she turned that off)
+                return False, body, fail
             return True, body, ""
         return False, None, f"unknown step type '{typ}'"
     except ToolError as e:
@@ -1518,53 +1670,68 @@ async def _subroute(tenant_id: str, step: dict, ctx: dict, sid: str, base: str, 
     return True, {"waiting_for": cid}, "__PARK__"
 
 
-async def _http_step(tenant_id: str, step: dict, ctx: dict) -> dict:
-    import httpx
-    from . import scrape_tools as st
-    url = str(resolve(step.get("url") or "", ctx)).strip()
-    guard = await asyncio.to_thread(st._guard_url, url)
-    method = str(step.get("method") or "GET").upper()
-    headers = {str(k): str(v) for k, v in (resolve(step.get("headers") or {}, ctx) or {}).items()}
-    plain = dict(headers)                    # her own headers, without the saved sign-in
-    if step.get("auth"):                     # v0.999.246 ROUTE R7: a saved sign-in, only for its own site
-        from ..route import workspace as WS
-        try:
-            guard, headers = await asyncio.to_thread(WS.apply_auth, tenant_id, str(step["auth"]), guard, headers)
-        except WS.WorkspaceError as e:
-            raise ToolError(str(e))
-    body = resolve(step.get("body"), ctx) if method == "POST" else None
-    timeout = httpx.Timeout(15.0)
-    from urllib.parse import urljoin, urlsplit
-
-    def go():
-        # v0.999.253 ROUTE CHECK: redirects followed by hand - every hop passes the private-address guard again,
-        # and a saved sign-in (or her Authorization / Cookie) is never carried to another site
-        url_now, meth, hdrs, data = guard, method, dict(headers), body
-        home = (urlsplit(guard).hostname or "").lower()
-        for _hop in range(6):
-            if meth == "POST":
-                r = httpx.post(url_now, json=data, headers=hdrs, timeout=timeout, follow_redirects=False)
-            else:
-                r = httpx.get(url_now, headers=hdrs, timeout=timeout, follow_redirects=False)
-            loc = r.headers.get("location")
-            if r.status_code not in (301, 302, 303, 307, 308) or not loc:
-                break
-            nxt = st._guard_url(urljoin(url_now, loc))
-            if (urlsplit(nxt).hostname or "").lower() != home:
-                hdrs = {k: v for k, v in plain.items() if k.lower() not in ("authorization", "cookie")}
-            if r.status_code in (301, 302, 303) and meth == "POST":
-                meth, data = "GET", None
-            url_now = nxt
+def _var_step(tenant_id: str, step: dict, ctx: dict) -> Any:
+    """v0.999.254 MAKE PARITY - Make's Tools: Set multiple variables, Get variable(s), Increment function, and
+    Update a custom variable (her route variable, kept between runs, read as {{env.NAME}})."""
+    op = str(step.get("op"))
+    vs = ctx.setdefault("vars", {})
+    if op == "set_many":
+        vals = step.get("values")
+        if isinstance(vals, str):
+            try:
+                vals = json.loads(vals)
+            except ValueError:
+                return {"_error": "values must be an object of name: value"}
+        out = {}
+        for k, v in (vals or {}).items():
+            if not _PATH_RE.match(str(k)):
+                return {"_error": f"'{k}' is not a variable name (lowercase_with_underscores)"}
+            out[str(k)] = vs[str(k)] = resolve(v, ctx)
+        return out
+    if op == "get":
+        return vs.get(str(step.get("name")))
+    if op == "get_many":
+        names = step.get("names")
+        names = names if isinstance(names, list) else [x.strip() for x in str(names or "").split(",") if x.strip()]
+        return {str(n): vs.get(str(n)) for n in names}
+    name = str(step.get("name"))
+    if op == "increment":
+        if str(step.get("reset") or "never") == "run":
+            v = int(ctx.setdefault("_counters", {}).get(name) or 0) + 1
+            ctx["_counters"][name] = v
         else:
-            raise ToolError("the site sent the request round more than 5 redirects")
-        text = r.text[:_HTTP_CHARS]
+            wf_id = str((ctx.get("run") or {}).get("route_id") or ctx.get("_route") or "")
+            con = _con(tenant_id)
+            try:
+                con.execute("CREATE TABLE IF NOT EXISTS ds_counters (route_id TEXT, name TEXT, value INTEGER, "
+                            "updated_at REAL, PRIMARY KEY (route_id, name))")
+                con.execute("BEGIN IMMEDIATE")
+                r = con.execute("SELECT value FROM ds_counters WHERE route_id = ? AND name = ?", (wf_id, name)).fetchone()
+                v = int(r[0] if r is not None else 0) + 1
+                con.execute("INSERT INTO ds_counters (route_id, name, value, updated_at) VALUES (?, ?, ?, ?) "
+                            "ON CONFLICT(route_id, name) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+                            (wf_id, name, v, time.time()))
+                con.commit()
+            finally:
+                con.close()
+        vs[name] = v
+        return {"value": v}
+    if op == "save":
+        from ..route import workspace as WS
+        val = resolve(step.get("value"), ctx)
         try:
-            parsed = r.json()
-        except Exception:
-            parsed = None
-        return {"status": r.status_code, "json": parsed, "text": None if parsed is not None else text[:2000]}
+            WS.set_variable(tenant_id, name.upper(), val, note="set by a route")
+        except Exception as e:   # noqa: BLE001
+            return {"_error": str(e)[:200]}
+        ctx.setdefault("env", {})[name.upper()] = val
+        return {"name": name.upper(), "value": val}
+    return {"_error": "unknown variables step"}
 
-    return await asyncio.to_thread(go)
+
+async def _http_step(tenant_id: str, step: dict, ctx: dict) -> dict:
+    """v0.999.254: the web request is route/http.py now (Make's HTTP app); this name stays the engine's one door."""
+    from ..route import http as HT
+    return await HT.run(tenant_id, step, ctx, resolve)
 
 
 async def execute_run(tenant_id: str, run_id: str) -> None:
@@ -1624,6 +1791,11 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
         ctx["_deadline"] = time.time() + max(0.0, timeout_s - used)
         ctx["_tz"] = str((wf.get("settings") or {}).get("timezone") or "")
         ctx["_route"] = wf["name"]
+        ctx["_confidential"] = bool((wf.get("settings") or {}).get("confidential"))
+        # v0.999.254 MAKE PARITY: Make's system variables, read as {{run.id}}, {{run.route}}, {{run.started_at}} ...
+        ctx["run"] = {"id": run_id, "route": wf["name"], "route_id": wf["id"], "trigger": wf.get("trigger_kind") or "",
+                      "started_at": datetime.fromtimestamp(float(run["started_at"]), timezone.utc).isoformat(timespec="seconds"),
+                      "attempt": int(run.get("tries") or 0) + 1, "test": bool(ctx.get("_pins") is not None or ctx.get("_test"))}
         try:                                     # v0.999.246 ROUTE R7: her variables, read as {{env.NAME}}
             from ..route import workspace as WS
             ctx["env"] = WS.env(tenant_id)
@@ -1700,12 +1872,20 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
                 ctx.pop("_retries_" + str(step["id"]), None)
                 _pruned(ctx, step["id"])
                 run["cursor"] += 1
+                if (wf.get("settings") or {}).get("auto_commit"):
+                    ctx.pop("_store_undo", None)               # Make: commit after each module
             elif step.get("soft"):
                 _pruned(ctx, step["id"])
                 run["cursor"] += 1
             else:
                 # v0.999.87 HOOLA ROUTE: the step's error directive decides (a step inside a route may carry its own)
                 oe = ctx.pop("_sub_on_error", None) or step.get("on_error") or {}
+                if oe.get("steps") and not oe.get("_handled"):     # v0.999.254: the handler route runs first
+                    h_ok, h_err = await _run_handler(tenant_id, conv, step, oe, ctx, run_id, serr)
+                    _flush_inner(run)
+                    if not h_ok:
+                        oe = {}
+                        serr = h_err
                 do = str(oe.get("do") or "")
                 if do == "ignore":
                     run["steps_log"][-1]["status"] = "ignored"
@@ -1717,6 +1897,7 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
                     _pruned(ctx, step["id"])
                     run["cursor"] += 1
                 elif do == "commit":
+                    ctx.pop("_store_undo", None)               # v0.999.254: data store writes are kept
                     run["steps_log"][-1]["status"] = "committed"
                     run["cursor"] = len(steps)
                     _save_checkpoint(tenant_id, run)
@@ -1741,6 +1922,11 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
                         update_run(tenant_id, run_id, tries=0)   # a retry wait is not a failed claim
                         return
                     err = f"step '{step['id']}' ({step['type']}): {serr}"
+                    if not (wf.get("settings") or {}).get("keep_incomplete", True):
+                        n_back = _rollback_stores(tenant_id, ctx)       # Make: no incomplete runs = a rollback
+                        err += (f" (retries used; the run is not kept - {n_back} data store change"
+                                f"{'s' if n_back != 1 else ''} taken back)")
+                        break
                     run["status"] = "incomplete"
                     run["error"] = err
                     _save_checkpoint(tenant_id, run)
@@ -1753,7 +1939,9 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
                 else:
                     err = f"step '{step['id']}' ({step['type']}): {serr}"
                     if do == "rollback":
-                        err += " (rolled back: the run is marked failed; steps that already ran, like a sent message, cannot be undone)"
+                        n_back = _rollback_stores(tenant_id, ctx)
+                        err += (f" (rolled back: {n_back} data store change{'s' if n_back != 1 else ''} taken back; "
+                                "steps outside Hoola, like a sent message, cannot be undone)")
                     break
             _save_checkpoint(tenant_id, run)
             if polite_s:
@@ -1855,6 +2043,23 @@ def _claim(tenant_id: str, run_id: str, tries_max: int, stale_s: int | None = No
             from ..config import get_settings
             stale_s = int(getattr(get_settings(), "dhara_stale_s", 180))
         cut = time.time() - max(30, int(stale_s))
+        # v0.999.254 MAKE PARITY: 'process data in order' - one run of the route at a time, oldest first, and none
+        # while one waits in Incomplete runs or on its own retry
+        me = con.execute("SELECT r.workflow_id, r.created_at, w.settings FROM runs r LEFT JOIN workflows w "
+                         "ON w.id = r.workflow_id WHERE r.id = ?", (run_id,)).fetchone()
+        if me is not None and me["settings"]:
+            try:
+                in_order = bool(json.loads(me["settings"] or "{}").get("in_order"))
+            except ValueError:
+                in_order = False
+            if in_order:
+                busy = con.execute("SELECT 1 FROM runs WHERE workflow_id = ? AND id != ? AND ("
+                                   "(status = 'running' AND updated_at >= ?) OR status = 'incomplete' OR "
+                                   "(status = 'sleeping' AND pause_reason = 'retry') OR "
+                                   "(status = 'queued' AND created_at < ?)) LIMIT 1",
+                                   (me["workflow_id"], run_id, cut, me["created_at"])).fetchone()
+                if busy is not None:
+                    return False
         cur = con.execute("UPDATE runs SET tries = tries + 1, status = 'running', updated_at = ? "
                           "WHERE id = ? AND tries < ? AND (status IN ('queued','sleeping') OR "
                           "(status = 'running' AND updated_at < ?))",
@@ -1962,8 +2167,17 @@ def next_due(wf: dict, from_ts: float | None = None) -> float | None:
         return float(from_ts or time.time()) + 20
     spec = wf.get("trigger_spec") or {}
     settings = wf.get("settings") or {}
+    if spec.get("start_date"):                   # v0.999.254 Make's advanced scheduling: not before this date
+        try:
+            st_d = datetime.fromisoformat(str(spec["start_date"])[:16])
+            st_d = st_d.replace(tzinfo=_tzinfo(spec.get("timezone") or settings.get("timezone") or "")) \
+                if st_d.tzinfo is None else st_d
+            if float(from_ts or time.time()) < st_d.timestamp():
+                from_ts = st_d.timestamp() - 1
+        except (TypeError, ValueError):
+            pass
     modern = any(k in spec for k in ("timezone", "every_minutes", "days", "monthdays", "dates", "once", "quiet",
-                                      "skip_holidays", "end_date")) or bool(settings.get("timezone"))
+                                      "skip_holidays", "end_date", "start_date")) or bool(settings.get("timezone"))
     if not modern:
         try:
             every_h = int(spec.get("every_hours") or 24)
@@ -2095,6 +2309,11 @@ def validate_schedule(spec: dict, settings: dict | None = None) -> dict:
     for md in spec.get("monthdays") or []:
         if not str(md).isdigit() or not 1 <= int(md) <= 31:
             raise ToolError(f"Day of month '{md}' must be 1-31")
+    if spec.get("start_date"):
+        try:
+            datetime.fromisoformat(str(spec["start_date"])[:16])
+        except ValueError:
+            raise ToolError("start_date must be YYYY-MM-DD (or YYYY-MM-DDTHH:MM)")
     for dt in list(spec.get("dates") or []) + ([spec["end_date"]] if spec.get("end_date") else []):
         try:
             datetime.fromisoformat(str(dt)[:10])
@@ -2178,6 +2397,27 @@ def validate_settings(st: Any, tenant_id: str = "") -> dict:
             if bad:
                 raise ToolError("Share only with people in your team (AI Employees > Team)")
         out["shared_with"] = list(dict.fromkeys(ids))[:50]
+    # v0.999.254 MAKE PARITY - Make's scenario settings: process data in order, keep data confidential, store
+    # incomplete executions, commit after each module, webhook queue while off, IP restrictions
+    for key in ("in_order", "confidential", "keep_incomplete", "auto_commit", "queue_when_off"):
+        if st.get(key) not in (None, ""):
+            v = st[key]
+            out[key] = v if isinstance(v, bool) else str(v).strip().lower() in ("true", "yes", "1", "on")
+    if st.get("queue_max") not in (None, ""):
+        try:
+            out["queue_max"] = max(1, min(int(st["queue_max"]), 10000))
+        except (TypeError, ValueError):
+            raise ToolError("queue_max must be a number 1-10000")
+    if st.get("allow_ips") not in (None, "", []):
+        import ipaddress
+        ips = st["allow_ips"] if isinstance(st["allow_ips"], list) else re.split(r"[,\s]+", str(st["allow_ips"]))
+        good = []
+        for x in [str(i).strip() for i in ips if str(i).strip()][:50]:
+            try:
+                good.append(str(ipaddress.ip_network(x, strict=False)))
+            except ValueError:
+                raise ToolError(f"'{x}' is not an IP address or range (like 203.0.113.7 or 203.0.113.0/24)")
+        out["allow_ips"] = good
     return out
 
 
@@ -2276,8 +2516,26 @@ async def drain() -> None:
 
 # --------------------------------------------------------------------------- webhook
 
-def webhook_enqueue(token: str, body: dict) -> dict:
-    """POST /api/dhara/hook/{token}. Returns an honest dict; never raises (route maps ok=False)."""
+def _ip_ok(ip: str, allow: list) -> bool:
+    import ipaddress
+    try:
+        a = ipaddress.ip_address(str(ip or "").strip())
+    except ValueError:
+        return False
+    for net in allow or []:
+        try:
+            if a in ipaddress.ip_network(str(net), strict=False):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
+def webhook_enqueue(token: str, body: dict, meta: dict | None = None) -> dict:
+    """POST /api/dhara/hook/{token}. Returns an honest dict; never raises (route maps ok=False).
+    v0.999.254 MAKE PARITY: calls that come faster than one per 6 s wait in the route's queue (Make's webhook queue,
+    up to queue_max, default 667) and run in turn - none is lost; a route that is off keeps them when its setting
+    queue_when_off is on; allow_ips limits who may call; the caller's headers, method and query ride along."""
     from ..config import get_settings
     s = get_settings()
     if not getattr(s, "dhara_enabled", True) or not getattr(s, "dhara_webhook_enabled", True):
@@ -2290,22 +2548,48 @@ def webhook_enqueue(token: str, body: dict) -> dict:
         for p in sorted(root.glob("*/dhara.db")):
             t = p.parent.name
             hit = workflows_with_hash(t, th)
-            if hit is not None and hit.get("trigger_kind") == "webhook" and hit.get("enabled", 0):
+            if hit is not None and hit.get("trigger_kind") == "webhook" and (
+                    hit.get("enabled", 0) or (hit.get("settings") or {}).get("queue_when_off")):
                 wf, tenant = hit, t
                 break
     if wf is None:
         return {"ok": False, "status": 401, "error": "token not found / workflow is off"}
+    st = wf.get("settings") or {}
+    meta = dict(meta or {})
+    if st.get("allow_ips") and not _ip_ok(str(meta.get("ip") or ""), st["allow_ips"]):
+        return {"ok": False, "status": 403, "error": "this address is not allowed to call the route"}
+    vars0 = {"body": body}
+    if meta:
+        hdr = {str(k).lower(): str(v)[:2000] for k, v in (meta.get("headers") or {}).items()
+               if str(k).lower() not in ("authorization", "cookie", "x-api-key", "proxy-authorization")}
+        vars0["request"] = {"method": str(meta.get("method") or "POST"), "headers": hdr,
+                            "query": dict(meta.get("query") or {}), "ip": str(meta.get("ip") or "")}
+    off = not wf.get("enabled", 0)
     con = _con(tenant)
     try:
         last = con.execute("SELECT created_at FROM runs WHERE workflow_id = ? ORDER BY created_at DESC LIMIT 1",
                            (wf["id"],)).fetchone()
+        q = con.execute("SELECT COUNT(*), MAX(next_wake_at) FROM runs WHERE workflow_id = ? AND status = 'sleeping' "
+                        "AND pause_reason IN ('queue', 'queue_off')", (wf["id"],)).fetchone()
     finally:
         con.close()
-    if last is not None and time.time() - float(last["created_at"]) < _TOKEN_MIN_RATE_S:
-        return {"ok": False, "status": 429, "error": "webhook throttle (10/min per workflow)"}
     if _over_daily_cap(tenant, wf):
         return {"ok": False, "status": 429, "error": "this route reached its runs-per-day limit"}
-    rid = create_run(tenant, wf, vars_={"body": body})
+    waiting, latest = int(q[0] or 0), float(q[1] or 0)
+    soon = last is not None and time.time() - float(last["created_at"]) < _TOKEN_MIN_RATE_S
+    if off or soon or waiting:
+        if waiting >= int(st.get("queue_max") or 667):
+            return {"ok": False, "status": 429, "error": f"the route's queue is full ({waiting} calls are waiting)"}
+        if off:                                   # kept until she switches the route on
+            rid = create_run(tenant, wf, vars_=vars0, park=("queue_off", time.time() + 10 * 365 * 86400))
+            return {"ok": True, "status": 202, "run_id": rid, "workflow": wf["name"], "tenant": tenant, "answers": False,
+                    "note": "The route is off - the call is kept and runs when it is switched on"}
+        slot = max(time.time(), float(last["created_at"]) + _TOKEN_MIN_RATE_S if last is not None else 0, latest + _TOKEN_MIN_RATE_S)
+        rid = create_run(tenant, wf, vars_=vars0, park=("queue", slot))
+        return {"ok": True, "status": 202, "run_id": rid, "workflow": wf["name"], "tenant": tenant, "answers": False,
+                "note": f"Waiting its turn in the route's queue ({waiting + 1} waiting) - it runs in about "
+                        f"{max(1, int(slot - time.time()))} seconds"}
+    rid = create_run(tenant, wf, vars_=vars0)
     answers = _has_respond(wf.get("steps") or [])
     if answers:                       # v0.999.239 the caller waits for the route's Respond step
         c = get_run(tenant, rid)["context"]
@@ -2351,10 +2635,10 @@ async def start_and_wait(tenant: str, wf: dict, vars_: dict, wait_s: float = _RE
     return await await_answer(tenant, rid, wait_s)
 
 
-async def webhook_call(token: str, body: dict) -> dict:
+async def webhook_call(token: str, body: dict, meta: dict | None = None) -> dict:
     """v0.999.239 ROUTE R4: the webhook. A route with a Respond step starts at once and the caller gets that
     step's answer (status + body) - or, after 25 seconds, a note that it is still working."""
-    out = await asyncio.to_thread(webhook_enqueue, token, body)
+    out = await asyncio.to_thread(webhook_enqueue, token, body, meta)
     tenant, rid = out.pop("tenant", ""), out.get("run_id")
     if not out.get("ok") or not out.pop("answers", False):
         out.pop("answers", None)
@@ -2722,7 +3006,26 @@ DHARA_TOOLS = [
         "memory_key} -> {answer, used}. A router may carry ai {text, instructions}: the AI picks ONE way by its label. "
         "v0.999.246: her variables {{env.NAME}}; an http step may carry auth '<sign-in name>' (saved on the Route page under "
         "Sign-ins - never ask for a key in chat; it is only sent to its own site); settings also take tags [..] and "
-        "shared_with [team member ids] (they may run it, never change it); every save is kept as a version."),
+        "shared_with [team member ids] (they may run it, never change it); every save is kept as a version. "
+        "v0.999.254 MAKE PARITY: DATA STORES {type: store, op add|update|get|exists|delete|delete_all|search|count|increment, "
+        "store '<name>', key, data {field: value}, overwrite, insert_missing, filter {field, op, value} (or all/any), sort, "
+        "order, limit (<=3200), field, by, confirm true (delete_all)} - her own tables kept between runs (made on the Route "
+        "page under Data stores; a rollback takes this run's writes back); VARIABLES {type: var, op set_many {values} | get "
+        "{name} | get_many {names} | increment {name, reset never|run} -> {value} | save {name, value} (her route variable "
+        "{{env.NAME}})}; a loop may be a REPEATER {repeat: {times, start, step}} (item = the number) and may collect "
+        "{collect: '{{...}}', join: ', '} -> output.results / output.text (Make's array / text aggregator); on_error may "
+        "carry steps: [...] that run first with {{error.message}} / {{error.step}} (Make's error handler route; no do = "
+        "ignore); http {action request|download|resolve, method GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS, url, headers, "
+        "query, body_type json|form|multipart|raw|none, body, form, files [{field, file_id}], content_type, timeout 1-300, "
+        "redirects, share_cookies, compressed, parse, fail_on_error, pagination {type offset|page|url|cursor, items, param, "
+        "size, size_param, start, next, limit}}; text actions regex_match {pattern, global, case_sensitive, multiline, "
+        "singleline} | regex_replace {pattern, replace} | data_to_xml {root} | rows_to_table {column_sep, row_sep} | "
+        "markdown_to_html | html_to_markdown; file actions zip {items [file ids]} | unzip {file_id}. Make's FUNCTIONS work "
+        "in {{ }} under their own names (formatDate parseDate addDays setDay if ifempty switch omit pick map flatten merge "
+        "distinct toCollection toArray formatNumber parseNumber trunc median substring indexOf startcase stripHTML sha256 "
+        "replace with /regex/g ...) and its keywords (now timestamp uuid random newline space tab emptystring); {{run.id}} "
+        "{{run.route}} {{run.started_at}}. settings also take in_order, confidential, keep_incomplete, auto_commit, "
+        "queue_when_off, queue_max, allow_ips; a schedule may have start_date; an app event start now|all|since."),
      "input_schema": {"type": "object", "properties": {
          "name": {"type": "string", "description": "lowercase_with_underscores, unique, e.g. daily_morning_notice_check"},
          "steps": {"type": "array", "description": "The steps: [{id, type, ...}] — see the tool guide for each type's fields"},

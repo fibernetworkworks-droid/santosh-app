@@ -239,7 +239,7 @@ def test_mode_switch_permit_compact_and_fork(dev, ws, monkeypatch):  # noqa: F81
     ses = _session(EN, tid)
     ses.save_messages([{"role": "user", "content": "x" * 3000}, {"role": "assistant", "content": "y" * 3000}] * 3)
     cp = ses.checkpoint("first round", 6)
-    monkeypatch.setattr(EN, "compact", lambda msgs, keep_tail=8: [{"role": "user", "content": "summary"}])
+    monkeypatch.setattr(EN, "compact", lambda msgs, keep_tail=8, focus="": [{"role": "user", "content": "summary"}])
     v = S.compact_now(T, tid)
     assert EN.Session(tid).messages() == [{"role": "user", "content": "summary"}]
     assert any(x.get("k") == "compact" and "Summarised on your word" in x.get("text", "") for x in v["steps"])

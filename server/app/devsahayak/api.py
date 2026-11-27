@@ -615,6 +615,14 @@ def make_router(require_key, current_tenant) -> APIRouter:
         b = _b(body)
         return await run(S.permit, tenant, tid, str(b.get("id") or ""), str(b.get("answer") or ""), str(b.get("note") or ""))
 
+    @r.get("/tasks/{tid}/find")
+    async def find_files(tid: str, q: str = "", tenant: str = Depends(current_tenant)):
+        return await run(S.find_files, tenant, tid, q)
+
+    @r.get("/tasks/{tid}/commands")
+    async def repo_commands(tid: str, tenant: str = Depends(current_tenant)):
+        return await run(S.repo_commands, tenant, tid)
+
     @r.get("/tasks/{tid}/terminal")
     async def terminal(tid: str, tenant: str = Depends(current_tenant)):
         return await run(S.terminal, tenant, tid)
@@ -624,8 +632,43 @@ def make_router(require_key, current_tenant) -> APIRouter:
         return await run(S.stop_shell, tenant, tid, bid)
 
     @r.post("/tasks/{tid}/compact")
-    async def compact_now(tid: str, tenant: str = Depends(current_tenant)):
-        return await run(S.compact_now, tenant, tid)
+    async def compact_now(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return await run(S.compact_now, tenant, tid, str(_b(body).get("focus") or ""))
+
+    @r.get("/tasks/{tid}/export")
+    async def export_md(tid: str, tenant: str = Depends(current_tenant)):
+        out = await run(S.export, tenant, tid)
+        return Response(out["text"], media_type="text/markdown; charset=utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="{out["name"]}"'})
+
+    @r.get("/tasks/{tid}/claude-file")
+    async def claude_file(tid: str, path: str = "", tenant: str = Depends(current_tenant)):
+        return await run(S.claude_file, tenant, tid, path)
+
+    @r.put("/tasks/{tid}/claude-file")
+    async def claude_write(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await run(S.claude_write, tenant, tid, str(b.get("path") or ""), str(b.get("text") or ""))
+
+    @r.put("/tasks/{tid}/style")
+    async def set_style(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return await run(S.set_style, tenant, tid, str(_b(body).get("style") or ""))
+
+    @r.get("/plugins")
+    async def plugins_list(tenant: str = Depends(current_tenant)):
+        return await run(S.plugins_list, tenant)
+
+    @r.post("/plugins")
+    async def plugin_add(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return await run(S.plugin_add, tenant, str(_b(body).get("url") or ""))
+
+    @r.patch("/plugins/{name}")
+    async def plugin_set(name: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return await run(S.plugin_set, tenant, name, bool(_b(body).get("enabled")))
+
+    @r.delete("/plugins/{name}")
+    async def plugin_remove(name: str, tenant: str = Depends(current_tenant)):
+        return await run(S.plugin_set, tenant, name, None, True)
 
     @r.post("/tasks/{tid}/init")
     async def init_rules(tid: str, tenant: str = Depends(current_tenant)):

@@ -141,6 +141,18 @@ def validate(kind: str, spec: Any, settings: dict | None = None) -> dict:
         if not EVERY_MIN <= every <= EVERY_MAX:
             _err(f"An app event is looked for every {EVERY_MIN} to {EVERY_MAX} minutes")
         out: dict[str, Any] = {"app": app, "every_minutes": every}
+        st_ = str(sp.get("start") or "now")
+        if st_ not in ("now", "all", "since"):
+            _err("Where to start is now (only new items), all (the ones there now too) or since (from a date)")
+        if st_ != "now":
+            out["start"] = st_
+        if st_ == "since":
+            from ..agent.dhara_data import _dt
+            try:
+                _dt(sp.get("since"))
+            except Exception:   # noqa: BLE001
+                _err("Since needs a date, like 2026-11-01")
+            out["since"] = str(sp.get("since"))[:40]
         if app == "email":
             for k in ("folder", "search", "account"):
                 if sp.get(k):
@@ -485,12 +497,27 @@ async def poll(tenant: str, wf: dict) -> dict:
             # all); the rest - more than 20 at once, or the day's run limit reached - start at the next look.
             # They used to be marked seen and lost.
             go: list = []
+            # v0.999.254 MAKE PARITY - "Choose where to start": from now (the first look only notes), all of them, or
+            # the items since a date she gives
+            start = str(sp.get("start") or "now")
+            first_run = not baselined and start in ("all", "since")
+            if first_run:
+                pool = new if start == "all" else [(i, x) for i, x in new if _since_ok(x, sp.get("since"))]
+                for i, x in pool[:RUNS_PER_POLL]:
+                    if D._over_daily_cap(tenant, wf):
+                        break
+                    go.append((i, x))
+                old_ids = {i for i, _x in new} - {i for i, _x in pool}
+                baselined_like = True
+            else:
+                old_ids = set()
+                baselined_like = baselined
             if baselined:
                 for i, x in new[:RUNS_PER_POLL]:
                     if D._over_daily_cap(tenant, wf):
                         break
                     go.append((i, x))
-            mark = new if not baselined else go
+            mark = go + [(i, x) for i, x in new if i in old_ids] if first_run else (new if not baselined else go)
             now_ = time.time()
             con.executemany("INSERT OR IGNORE INTO route_seen (workflow_id, item, at) VALUES (?, ?, ?)",
                             [(wf["id"], i, now_) for i, _ in mark])
@@ -504,13 +531,43 @@ async def poll(tenant: str, wf: dict) -> dict:
             con.commit()
         finally:
             con.close()
-        if not baselined:
+        if not baselined_like:
             return {"ok": True, "first_look": True, "noted": len(ids)}
         for _i, x in go:
             D.create_run(tenant, wf, vars_={"event": x, "app": sp.get("app")})
         return {"ok": True, "new": len(new), "started": len(go), "waiting": len(new) - len(go)}
     finally:
         _POLLING.discard(key)
+
+
+def _since_ok(item: Any, since: Any) -> bool:
+    """An item is on or after `since` by its first date-like field (date, created, published, updated, time)."""
+    if not since or not isinstance(item, dict):
+        return False
+    from ..agent.dhara_data import _dt
+    try:
+        cut = _dt(since)
+    except Exception:   # noqa: BLE001
+        return False
+    for k in ("date", "created", "created_at", "createdTime", "published", "updated", "updated_at", "modifiedTime",
+              "time", "timestamp", "start", "received", "internalDate", "submitted_at"):
+        v = item.get(k)
+        if isinstance(v, dict):
+            v = v.get("dateTime") or v.get("date")
+        if v in (None, ""):
+            continue
+        try:
+            if isinstance(v, (int, float)) and v > 1e11:
+                v = v / 1000
+            d = _dt(v)
+            if (d.tzinfo is None) != (cut.tzinfo is None):
+                d, c = d.replace(tzinfo=None), cut.replace(tzinfo=None)
+            else:
+                c = cut
+            return d >= c
+        except Exception:   # noqa: BLE001
+            continue
+    return False
 
 
 def events_due(tenant: str) -> list[dict]:

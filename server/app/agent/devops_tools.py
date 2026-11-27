@@ -152,7 +152,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
         if what == "clusters":
             return {"clusters": S.clusters(t, _s(a.get("status") or "open"), _s(a.get("source")))}
         if what == "runbook":
-            return S.runbook(_s(a.get("id")))
+            return S.runbook(_s(a.get("id")), t)
         if what == "scripts":
             return {"scripts": S.scripts(t)}
         if what == "script":

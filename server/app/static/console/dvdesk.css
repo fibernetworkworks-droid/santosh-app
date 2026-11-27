@@ -1,0 +1,61 @@
+/* DEVOPS DESK (dvdesk.js). The QA desk's rules (qadesk.css) are loaded first and repeated here for #dvPage; only this desk's own parts are new:
+   the delivery numbers, the deploy card grid, commit lists, the code view and checklist items. */
+#dvPage{display:flex;flex-direction:column;gap:20px;padding-top:4px}
+#dvPage .r{text-align:right}
+#dvPage table.tb,#dvPage .md-kpi .v,#dvPage .cs-hero .v{font-variant-numeric:normal}
+#dvPage td.r,#dvPage th.r{text-align:right}
+#dvPage table.tb td{vertical-align:middle}
+#dvPage .cr-grid{align-items:end}#dvPage .cr-grid .wide{grid-column:1/-1}
+#dvPage .cr-grid>.in:not(textarea),#dvPage .cr-grid>.btn{height:42px;min-height:0;box-sizing:border-box}
+#dvPage .iv-add{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:end}
+#dvPage .iv-add>*{flex:1 1 150px;min-width:0}
+#dvPage .iv-add>.btn{flex:0 0 auto;padding:0 18px}
+#dvPage .iv-add .in{height:42px;min-height:0;box-sizing:border-box;width:100%}
+#dvPage .md-kpi .v.warn{color:var(--warn)}#dvPage .cs-pos{color:var(--okt,var(--ok))}
+#dvPage .mk-list td,#dvPage .mk-list th{padding-top:7px;padding-bottom:7px}#dvPage td.nw{white-space:nowrap}
+@media (max-width:600px){#dvPage .iv-kpis.mk-k2{grid-template-columns:repeat(2,minmax(0,1fr))!important}#dvPage td.nw{white-space:normal}}
+#dvPage .qa-code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12.5px;word-break:break-all;white-space:normal}
+#dvPage details.qa-case,#dvPage details.qa-bug{border-top:1px solid var(--line)}
+#dvPage details.qa-case:first-of-type,#dvPage details.qa-bug:first-of-type{border-top:0}
+#dvPage details.qa-case>summary,#dvPage details.qa-bug>summary{display:flex;align-items:center;gap:10px;padding:11px 2px;cursor:pointer;list-style:none;font-size:14.5px}
+#dvPage details.qa-case>summary::-webkit-details-marker,#dvPage details.qa-bug>summary::-webkit-details-marker{display:none}
+#dvPage details>summary:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:8px}
+#dvPage .qa-body{padding:2px 2px 14px 2px;font-size:14px}
+#dvPage .qa-body ol{margin:4px 0 0;padding-left:20px}#dvPage .qa-body li{margin:2px 0}
+#dvPage .qa-pr{flex:0 0 auto;font-size:11.5px;font-weight:600;padding:2px 7px;border-radius:6px;background:var(--soft)}
+#dvPage .qa-pr.P1{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}
+#dvPage .qa-pr.P2{background:color-mix(in srgb,var(--warn) 18%,transparent);color:color-mix(in srgb,var(--warn) 70%,var(--ink))}
+#dvPage .qa-ea{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+#dvPage .qa-ea>div{border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13.5px}
+#dvPage .qa-ea span{display:block;font-size:12px;margin-bottom:2px}
+@media (max-width:600px){#dvPage .qa-ea{grid-template-columns:1fr}}
+#dvPage .qa-shot{display:block;max-width:100%;max-height:340px;margin-top:10px;border:1px solid var(--line);border-radius:10px}
+#dvPage .qa-con{margin:8px 0 0;padding:8px 10px;border-radius:8px;background:var(--soft);font-size:12px;white-space:pre-wrap;word-break:break-word;max-height:140px;overflow:auto}
+#dvPage .qa-res{padding:12px 0;border-top:1px solid var(--line)}#dvPage .qa-res:first-of-type{border-top:0}
+#dvPage .qa-res .cs-head{align-items:baseline}
+#dvPage .qa-live{display:flex;align-items:center;gap:10px}
+#dvPage .qa-spin{width:12px;height:12px;border-radius:50%;background:var(--acc);opacity:.85}
+#dvPage .qa-meter{display:flex;height:12px;border-radius:999px;overflow:hidden;margin-top:12px;background:var(--soft)}
+#dvPage .qa-meter b{display:block;height:100%}
+@media (max-width:600px){
+#dvPage table.in-cards thead{display:none}#dvPage table.in-cards,#dvPage table.in-cards tbody{display:block;width:100%}
+#dvPage table.in-cards tr{display:flex;flex-wrap:wrap;gap:4px 12px;padding:12px 0;border-bottom:1px solid var(--line)}
+#dvPage table.in-cards td{display:block;border:0;padding:0!important;text-align:left!important}
+#dvPage table.in-cards td:first-child{flex:1 1 100%}}
+#dvPage .cs-head .r{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+#dvPage .cs-head .r select.in,#dvPage .md-acts select.in{width:auto;max-width:240px;flex:0 0 auto}
+#dvPage .md-acts .mk-ask{flex:0 0 auto}
+#dvPage .qa-chips{display:flex;flex-wrap:wrap;gap:6px}#dvPage .qa-shot{max-height:260px}
+#dvPage .dv-dora{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:4px}
+#dvPage .dv-dora>div{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+#dvPage .dv-dora span{font-size:12.5px}#dvPage .dv-dora b{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+#dvPage .dv-bad{background:var(--bad)}
+#dvPage .dv-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;margin-top:10px;font-size:14px}
+#dvPage .dv-commits{margin:6px 0 0;padding-left:18px;font-size:13.5px}#dvPage .dv-commits li{margin:2px 0}
+#dvPage .dv-commits code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px}
+#dvPage .dv-code{margin:10px 0 0;padding:12px 14px;border-radius:10px;background:var(--soft);font:12.5px/1.55 'JetBrains Mono',ui-monospace,monospace;white-space:pre;overflow:auto;max-height:520px}
+#dvPage .dv-item{display:flex;gap:10px;align-items:flex-start;padding:7px 0;font-size:14px;border-top:1px solid var(--line);cursor:pointer}
+#dvPage .dv-item:first-child{border-top:0}#dvPage .dv-item input{margin-top:3px;flex:0 0 auto}
+#dvPage .fo-rat{grid-template-columns:110px minmax(0,1fr) auto;margin-top:6px}
+@media (max-width:600px){#dvPage .dv-dora{grid-template-columns:repeat(2,minmax(0,1fr))}#dvPage .dv-grid{grid-template-columns:1fr}#dvPage .fo-rat{grid-template-columns:80px minmax(0,1fr) auto}}
+#dvPage .dv-step{font-size:13.5px;overflow-wrap:anywhere;word-break:normal}

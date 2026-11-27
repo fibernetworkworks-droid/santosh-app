@@ -22,6 +22,8 @@ class DevopsSettings(Base):
     last_watch: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     deploy_seq: Mapped[int] = mapped_column(Integer, default=0)
     rules: Mapped[str] = mapped_column(Text, default="")
+    country: Mapped[str | None] = mapped_column(String(2), nullable=True, default="")      # '' = India (older desks): CERT-In lines
+    log_days: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)    # how long HER rules keep logs
 
 
 class DevopsRepo(Base):

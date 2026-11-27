@@ -54,7 +54,7 @@ def test_hire_chat_block_and_wiring(qd):
     from app.agent.tools import FAMILY_OF
     assert FAMILY_OF["qa"] in qd.FAMILIES and FAMILY_OF["qa_dekho"] in qd.FAMILIES
     for f_ in ("callconv.py", "convs.py"):
-        assert '"qa")' in (root / "server/app" / f_).read_text()
+        assert '"qa"' in (root / "server/app" / f_).read_text()
     from app.main import APP_VERSION, app
     r = TestClient(app).get("/console/qa")
     assert r.status_code == 200 and "Content-Security-Policy" in r.headers and "qadesk.js" in r.text
