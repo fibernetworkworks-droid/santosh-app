@@ -12562,3 +12562,7 @@ Owner: "NOW LETS WORK ON NEXT EMPLOYEE DIGITAL ASSETS DESK". The Digital Assets 
 - `static/console/dgdesk.{html,js,css}`: Today, Gains, Wallets & safety, Stablecoin pay, Token checks, Reserve, Custody, Transfers,
   Surveillance, Settings; charts in SVG; `/console/digital`, employees.js + v2.js + the phone route open it.
 - Tests `server/tests/test_dg_desk.py` (5, incl. a Chromium walk at 1440 and 390). NOT VERIFIED on her server.
+
+
+## v0.999.236 COMPUTER LOGO + BACK
+Computer logo + back. `static/console/computer.js` topbar(): .cx-mark draws HoolaMark.svg() (fallback /static/hoola-mark.png), NEW .cx-back link to /console/ with the back arrow; `computer.css`: .cx-back pill (margin-left:auto, stays visible at 860 px where .cx-links hide). `test_v0999_233_computer_v2.py` checks the svg.hm-svg mark and the link. NOT VERIFIED on her server.
