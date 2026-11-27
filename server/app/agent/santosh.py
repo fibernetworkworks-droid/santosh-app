@@ -1716,6 +1716,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_rtc.block, tenant_id, conversation_id)
     except Exception:
         log.exception("route editor block failed")
+    try:   # DIGITAL ASSETS DESK: a turn in the Digital Assets chat (or a call started from it) knows the desk
+        from .. import dgchat as _dgc
+        if _dgc.is_digital(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_dgc.block, tenant_id)
+    except Exception:
+        log.exception("digital desk block failed")
     _mark("hint")
     return state
 
@@ -2583,6 +2589,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "route editor chat"
     except Exception:
         log.exception("route chat admission failed")
+    try:   # DIGITAL ASSETS DESK: the digital-assets tool in view in the Digital Assets chat
+        from .. import dgchat as _dgc
+        if adm is not None and _dgc.is_digital(conversation_id):
+            adm.admit_families(_dgc.FAMILIES)
+            for f in _dgc.FAMILIES:
+                adm.why[f] = "digital assets chat"
+    except Exception:
+        log.exception("digital chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,

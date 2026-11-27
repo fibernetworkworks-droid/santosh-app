@@ -12547,3 +12547,18 @@ Owner: "GO R2". Built as 0.999.233; their COMPUTER V2 took 0.999.233 on main, bo
 
 Files: `server/app/route/stepdata.py` (new), `route/api.py`, `agent/dhara_tools.py` (_exec_one pins), `static/console/route.js|css`.
 Tests: `server/tests/test_v0999_234_route_stepdata.py` (3, incl. a browser walk at 1440 and 390). NOT VERIFIED: on her server.
+
+## v0.999.235 DIGITAL ASSETS DESK (built as 0.999.232; their ROUTE EDITOR, COMPUTER V2 and STEPS YOU CAN TEST took 0.999.232-0.999.234, all kept)
+
+Owner: "NOW LETS WORK ON NEXT EMPLOYEE DIGITAL ASSETS DESK". The Digital Assets employee (tool `digital_assets`, engine
+`fin/desks/digital.py`, F11) gets its own section like the other finance desks.
+
+- `server/app/dgchat.py`: Digital Assets chat (Conversation kind `digital`, out of chat lists), desk block + tool family `digiasset` in
+  view; state in the workspace settings under `digital_desk`: events (buys / sells / swaps / income / fees / own transfers; exchange
+  CSVs with title lines skipped, common column and type names mapped), wallets (public addresses, shape-checked before saving), address
+  checks, stablecoin pay settings + peg prices, token checks, reserve rules + assets, client ledger + wallet balances, transfers
+  (accounts / IDs kept as their last 4: the desk only checks the detail is there), trades + linked accounts. Gains also by HER tax-year
+  start. Routes `/api/digital/*`, downloads gains / custody / returns. A key named like a seed phrase or private key is refused anywhere.
+- `static/console/dgdesk.{html,js,css}`: Today, Gains, Wallets & safety, Stablecoin pay, Token checks, Reserve, Custody, Transfers,
+  Surveillance, Settings; charts in SVG; `/console/digital`, employees.js + v2.js + the phone route open it.
+- Tests `server/tests/test_dg_desk.py` (5, incl. a Chromium walk at 1440 and 390). NOT VERIFIED on her server.
