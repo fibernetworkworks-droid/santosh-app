@@ -14,6 +14,7 @@ class QaSettings(Base):
     tenant_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     team_name: Mapped[str] = mapped_column(String(120), default="")
     rules: Mapped[str] = mapped_column(Text, default="")                    # her own testing rules (shown to the model)
+    country: Mapped[str | None] = mapped_column(String(2), nullable=True, default="")   # '' = India (older desks): the accessibility law shown
     target_seq: Mapped[int] = mapped_column(Integer, default=0)
     case_seq: Mapped[int] = mapped_column(Integer, default=0)
     run_seq: Mapped[int] = mapped_column(Integer, default=0)

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
@@ -495,8 +496,10 @@ def make_router(require_key, current_tenant) -> APIRouter:
             out = await run(S.archive, tenant, tid, bool(b.get("archived")))
         if "auto_fix" in b:
             out = await run(S.set_auto_fix, tenant, tid, bool(b.get("auto_fix")))
+        if "mode" in b:                                    # v0.999 her mode, switched while the session runs
+            out = await run(S.set_mode, tenant, tid, str(b.get("mode") or ""))
         if out is None:
-            raise HTTPException(400, "title | archived | auto_fix")
+            raise HTTPException(400, "title | archived | auto_fix | mode")
         return out
 
     @r.delete("/tasks/{tid}")
@@ -567,7 +570,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         async def gen():
             last: dict[str, Any] = {}
             quiet = 0.0
-            yield f"data: {json.dumps({'id': 0, 'kind': 'code_open', 'payload': S.live_state(real)}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'id': 0, 'kind': 'code_open', 'payload': {**S.live_state(real), 'srv': round(time.time(), 2)}}, ensure_ascii=False)}\n\n"
             last = S.live_state(real)
             while True:
                 if await request.is_disconnected():
@@ -605,6 +608,37 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.post("/tasks/{tid}/begin")
     async def begin(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         return await run(S.begin, tenant, tid, str(_b(body).get("repo") or ""))
+
+    # ---- v0.999 the rest of Claude Code's session controls
+    @r.post("/tasks/{tid}/permit")
+    async def permit(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await run(S.permit, tenant, tid, str(b.get("id") or ""), str(b.get("answer") or ""), str(b.get("note") or ""))
+
+    @r.get("/tasks/{tid}/terminal")
+    async def terminal(tid: str, tenant: str = Depends(current_tenant)):
+        return await run(S.terminal, tenant, tid)
+
+    @r.post("/tasks/{tid}/terminal/{bid}/stop")
+    async def terminal_stop(tid: str, bid: str, tenant: str = Depends(current_tenant)):
+        return await run(S.stop_shell, tenant, tid, bid)
+
+    @r.post("/tasks/{tid}/compact")
+    async def compact_now(tid: str, tenant: str = Depends(current_tenant)):
+        return await run(S.compact_now, tenant, tid)
+
+    @r.post("/tasks/{tid}/init")
+    async def init_rules(tid: str, tenant: str = Depends(current_tenant)):
+        return await run(S.init_rules, tenant, tid)
+
+    @r.post("/tasks/{tid}/edit")
+    async def edit_message(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        b = _b(body)
+        return await run(S.edit_message, tenant, tid, int(b.get("step") if b.get("step") is not None else -1), str(b.get("text") or ""))
+
+    @r.post("/tasks/{tid}/fork")
+    async def fork(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return await run(S.fork, tenant, tid, int(_b(body).get("checkpoint") or 0))
 
     @r.post("/tasks/{tid}/revise")
     async def revise(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):

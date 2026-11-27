@@ -12835,3 +12835,107 @@ a browser walk) + tests/data/n8n_orders.json, n8n_leads.json (hand-written expor
 
 NOT VERIFIED: on her server; against workflows exported by a real n8n (the test files follow n8n's documented shape; node
 parameter names change between n8n versions, so an unknown shape becomes a placeholder, never a guess).
+
+
+## v0.999.249 CLAUDE CODE FEED
+Claude Code feed. Server `devsahayak/engine.py` (`_snap` before write/edit/multi_edit, `real_hunk` + `_real_change` -> step `hunk` rows [kind, old, new, text], `grep_counts`, `glob_count`, `did_words` -> bash `did`, `_NowMap` NOW_STEP sets NOW_AT / clears NOW_TOOL + LIVE_OUT, t_bash `on_line`, think `secs`, SYSTEM reply rules), `devlab/box.py` (`_run_stream`, run_in on_line), `devsahayak/brain.py` (`_claude_stream` when TEXT_SINK is set), `devsahayak/service.py` (`_now_more` out/t0/tool in live_state + live_delta + task_view now_info, srv_now), `devsahayak/api.py` (srv in code_open). Web `static/console/code.js` (liveOpen / liveEvent / liveRefresh / stepClock / liveOut, hunkHTML, srch, openFirst, todo last, look/made/server/gap, Esc stop, summary words) + `hoolacode.css` (.hcd-diff.num, .hcd-out) + `hoolacode.js` (api signal). Phone `lib/ui/code/code_words.dart` (did rows, codeMatches, codeCount, CodeHunk, reply font) + `code_session.dart` (now_info from the stream, `_liveOut`, rows). Tests `test_v0999_249_claude_feed.py`; test_chatkit_code_auto / v0768 / v0794 / v0928 / v0936 / v0937 / v0962 moved to the new words. NOT VERIFIED on her server or phone.
+
+
+## v0.999.250 INSURANCE AGENT DESK (owner: "now insurance agent assistant --- make it very poerfull and advnce like other employee")
+
+The insurance agent's coworker existed since v0.98 (Bima Sahayak, `app/insure`, tools bima / bima_dekho) with no desk of its own and
+India-only rules. Now the Hub employee `insurance_agent` (Finance) opens /console/insurance with its own Insurance chat (kind
+`insurance`, `inschat.py`, out of every chat list; the desk block + the `insure` family in view) beside seven pages:
+- Today: in force, due soon, cover at risk (premium a year), open claims, persistency; Needs you; book by type; 12-month premiums
+  as monthly columns; grace / lapsed; birthdays with drafted wishes.
+- Customers: list with cover gaps and search; a customer page = cover they need (life / health gap bars), details, family, policies
+  (Remind / Paid), quotes compared, claims.
+- Renewals: the insurer's renewal list (CSV) read in; grace / past due, due soon, lapsed and still revivable; WhatsApp links with
+  the message she sends (only customers who agreed), Reminded, Paid.
+- Cover & quotes: gaps across the book (CSV), quotes compared (cheapest per unit of cover, then claims paid) and kept as the advice
+  record, "Yes, prepare the message" -> the draft + WhatsApp link; proposal papers by type and age.
+- Claims: start a claim, document ticks, the settlement clock against her country's time, the complaint ladder, closed claims.
+- Commission: expected commission on premiums recorded as paid vs the insurer's statement (CSV), short / missing / extra, by
+  insurer, 12 months ahead (new table `ins_commission`).
+- Settings: her name, code, reminder days, morning time; country + currency; the servicing rules.
+GLOBAL: `insure/packs.py` = country packs (IN checked from the IRDAI 2024 circulars; GB, US, AE, SG, AU, CA, ZA, KE from memory).
+A rule marked "check this" is shown with its suggested value and never used until she taps "Use this value" or types her own
+(`InsSettings.country / currency / rules`); without a grace period a past-due premium is "Past due", nothing assumed; claim clocks
+run only on her settlement time; health-cover rule of thumb is hers outside India; GST lines only for India; engine money words
+become her currency (`packs.localise`). India behaves exactly as before (test_v098_insurance unchanged). Also fixed: a quote message
+carried the agent's own note ("Yearly income is not known: tell me...") to the customer; Hinglish engine lines in English; a policy
+with no due date was shown "Paid up" (now "No due date" + a need). Tests: test_ins_desk.py 5 incl. a browser walk at 1440 / 390.
+NOT VERIFIED on her server; country packs other than India are unchecked.
+
+
+## v0.999.251 CLAUDE CODE, THE REST
+Claude Code, the rest. `devlab/box.py` (start_bg / bg_state / bg_output / bg_kill / bg_sweep, run_in share_with), `devsahayak/engine.py` (TOOLS bash run_in_background + bash_output + kill_shell, WEB_FETCH_TOOL / WEB_SEARCH_TOOL / MCP_TOOL / SKILL_TOOL in tools_for_round behind dev_web / dev_mcp / dev_skills, `_arun`, Tools._bg / _bg_running / _start_bg / t_bash_output / t_kill_shell / t_web_fetch / t_web_search / t_mcp / t_skill, PERMIT / PERM_MODE / cmd_prefix / needs_ok / wait_ok / give_ok / asking, gate in the tool loop, events bgstart / bgout / bgkill / perm / web / websearch / mcp / skill, terminal / stop_shell, forget sweeps bg, SYSTEM lines), `devsahayak/service.py` (MODES + steps, _asking in live_state / delta / task_view, set_mode, permit, terminal, stop_shell, compact_now, init_rules INIT_WORDS, edit_message, fork), `devsahayak/api.py` (PATCH mode, /permit, /terminal, /terminal/{bid}/stop, /compact, /init, /edit, /fork). Web `static/console/code.js` (askHTML, sessModeMenu, termHTML / openTerm / termLoad, compactNow / initNow / forkNow, editable + editmsg, forkcp, new step cases, yesPill, 'The run' rail, stages Plan / Own review / GitHub checks / Merge, home headline) + `hoolacode.css` (v0.999 CLAUDE CODE, THE REST block). Phone `lib/ui/code/code_session.dart`, `code_words.dart` (CodeTerm, CodeTermBox, CodeEditCard, codeHost), `code_home.dart`, `code_start.dart`, NEW `code_terminal.dart`; `lib/ui/hoola_theme.dart` HoolaTerminal. Tests `test_v0999_251_claude_code_all.py`; moved: test_v0748 / v0768 / v0807 / v0924 / v0999_206 / v0999_249 / v0962 / chatkit.
+
+
+## v0.999.252 QA DESK (owner: "App tester (QA) same as finace desks")
+
+Software & Systems check first (owner: "check the existing code and AI employees available"): 22 employees, 12 working; nine of them
+(QA, DevOps, Cyber, IT Admin, Product, App reviewer, Technical writer, NOC, 3D Studio) had full engines, server routes and phone
+screens but opened only the generic Department desk on the console. QA is the first to get its own section.
+- /console/qa (`qadesk.html/.js/.css`) + QA chat (kind `qa`, `qachat.py`, out of every chat list; desk block + family qa in view).
+- Pages: Today (targets, open bugs by severity ring, fixes to check, last run pass rate, release readiness per target, runs as
+  stacked pass / fail / blocked columns, Needs you); What I test (add a Hoola website / app design / Android preview or her own site
+  by address; proof by DNS TXT / meta tag / file with Check now; name, who it is for, daily test time, government-facing; test
+  accounts sealed, never shown; stop testing); Test cases (write from a real-browser look + her requirements, filter, priority, by
+  hand cases marked pass / fail, run one, retire, CSV); Runs (start all / smoke / regression / failing / one type in the background;
+  a run page with failures first: expected vs actual, the step, the screenshot fetched with her key; passes as one line); Bugs
+  (filter, steps, expected vs actual, page, console, screenshot, history; It is fixed -> Test it again; Will not fix / Close need a
+  reason; severity; Prepare a GitHub issue -> a card filed only on her tap); Release (verdict, cases by result meter, blockers,
+  risks, the accessibility law); Settings (team name, her testing rules, country).
+- Guards: nothing tested before proof; no OTP / CVV / PIN / card number anywhere; a password only into a test account.
+- GLOBAL: `qa/rules.standard(country, sector, govt)` - India's sector table checked, GB / US / EU members / DE / FR / CA / AU / AE / SG
+  / JP from memory as "check this", others WCAG 2.2 AA + check this; readiness says "your accessibility law" outside India; daily
+  runs (`qa.tick`) and the register file date in HER time zone (were India time); `QaSettings.country`.
+- Tests: test_qa_desk.py 5 incl. a browser walk at 1440 / 390. Two older QA engine tests (tools tick wording, crash reports) fail the
+  same way before this change. NOT VERIFIED on her server.
+
+## v0.999.253 ROUTE CHECK (built as 0.999.251 / 0.999.252; their CLAUDE CODE, THE REST and QA DESK took those, all kept; owner: "NOW CHECK THE ENTIRE ROUTE END TO END")
+
+After R1-R8 every Hoola Route page was walked in a real Chromium (computer 1440 + phone 390, light + dark, 28 pages incl. every
+route, run and past-run debug view) against a server seeded with every kind of route, and a separate reviewer read the whole
+engine (dhara_tools, dhara_data, route/*). Baseline before: 185 route tests green, 3 old exact-version pins red.
+
+Engine faults fixed (each pinned in `server/tests/test_v0999_253_route_check.py`):
+- Stop pressed while a step ran: `_save_checkpoint` wrote status 'running' back over 'stopped' and the run ended 'done'.
+  `update_run(_keep_stop=True)` (WHERE status != 'stopped') for the engine's own saves + `_finish`; `_after_run` skips a stopped run.
+- A run cut by a restart stayed 'running' for ever: `_claimants` listed it but `_claim` took only queued / sleeping. `_claim` now
+  also takes a 'running' run nobody wrote for dhara_stale_s (never one in this process's `_RUNNING`); one cut too many times fails.
+- `every_hours: "2h"` passed validation, was stored, then `next_due` raised inside `_scheduled_due` every tick and the whole
+  account's tick stopped. `validate_schedule` checks it (1-720); `_scheduled_due` handles each route on its own and tells her.
+- Web request redirects: followed by httpx with the private-address guard only on the first address, and a header sign-in went to
+  the redirect's site. `_http_step` follows up to 5 redirects by hand, `_guard_url` on every hop, the sign-in (and her
+  Authorization / Cookie) dropped when the host changes, 301/302/303 after POST become GET.
+- App events: every new item was marked seen but only 20 started (or fewer at the day's cap) - the rest lost. Only started items
+  are marked now; the rest start at the next look (`waiting` in the poll answer).
+- Runs started with ensure_future and no claim (dhara_run, approve, retry, rerun, Test route) could run twice; Test route wrote its
+  pins after the run existed. All go through `_start_now` (claim first); `create_run(extra=)` writes the pins with the run.
+- Context / log stored with json ensure_ascii - 'Priyā' never matched in search. Stored as UTF-8 now; search also matches the old
+  escaped form.
+- n8n: `int()` on an expression ('={{ $json.n }}') raised ValueError -> 500. A node whose settings cannot be read becomes a named
+  placeholder; an unreadable start becomes by hand with a check line.
+- A tool step could be dhara_run (a route starting itself, no daily cap); error routes A <-> B failed into each other for ever.
+  dhara_* tools other than dhara_list / dhara_runs refused as steps, dhara_run keeps runs_per_day, error-route chains stop after 3
+  (`_error_chain` in the payload), the error route keeps its daily cap.
+- The reply link (`/api/dhara/resume/...`): a GET answered the wait (email link checkers open links) and two calls at once both
+  went through. A browser GET gets a page with a Send button; the write is conditional (one caller wins, the second 409).
+- Steps inside branches and loops were never logged. `_note_inner` / `_flush_inner`: each inner step is a log line with `in`
+  ("each: round 2", "big: if yes"), capped at 60 a top-level step (errors always kept), flushed just before the parent's line;
+  `failed_step` names the inner step; `stepdata._log_of` keeps a step failed if any round failed.
+- Needs you showed an approval question with `{{vars.a}}` - now filled with the run's data.
+- on / off moved `updated_at`, so an open editor's next save got 409 'changed since you opened it'. It no longer does.
+- `replace` / `join` built the whole text before the 2 MB check; the size is worked out first now.
+
+Page faults fixed: the past-run (debug) bar ran 265 px off a phone (now wraps), the failing step of a past run is marked red on the
+canvas (`logStates`, `.nd.fail`), "It failed at boom: boom: ValueError" says the step once (`dropStep`), routes started by a form,
+chat, error, another route or as a tool show their own icon in the lists, run page shows inner steps under their parent (`nestLog`).
+Not changed on purpose: a long route opens at a readable zoom from its start (the mini-map shows the rest); missing app logos fall
+back to initials (the 404s were the test server's empty logo cache).
+
+The three old exact pins (`0.999.169`) now accept any newer version. Tests: 17 new (incl. a browser walk at 1440 + 390).
+NOT VERIFIED: on her server.
+

@@ -10,7 +10,7 @@ from .tools import Ctx, ToolError
 
 INSURE_TOOLS = [
     {"name": "bima", "description": (
-        "Insurance agent's coworker (LIC / private life, health, motor): client book, policies, renewals, needs, claims. "
+        "Insurance agent's coworker in any country (life, health, motor, home, travel): client book, policies, renewals, needs, claims. "
         "action=client: name or client (to update), phone, dob, gender, city, income (yearly), family [{name, relation, dob}], "
         "liabilities, goals, savings, whatsapp_ok, notes. action=policy: client, insurer, plan, type term|endowment|ulip|pension|"
         "health|topup|pa|critical|motor|home|travel, number, start, mode monthly|quarterly|half_yearly|yearly|single, premium, "
@@ -22,10 +22,13 @@ INSURE_TOOLS = [
         "advice_id, approve: ONLY when she says it may go to the client. action=claim: policy, kind death|health_cashless|"
         "health_reimbursement|motor|other, event_on, amount. action=claim_update: claim_id, have [documents received], "
         "status open|filed|query|settled|rejected, insurer_ref, filed_on, settled_amount, note. action=book_file (Excel). "
-        "action=settings: agent_name, agent_code, remind_days, morning_time."),
+        "action=commission: rows [{number, period YYYY-MM, amount, insurer}] from the insurer's commission statement. "
+        "action=settings: agent_name, agent_code, remind_days, morning_time, country (two letters), currency, rules {free_look_days, "
+        "grace_monthly_days, grace_other_days, revival_years, revival_years_ulip, death_claim_days, death_investigated_days, "
+        "reimbursement_days, cashless_hours, health_base, health_member} - her own country rules (only India's are built in and checked)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["client", "policy", "import", "paid", "reminders", "reminded", "recommend", "approve",
-                                               "claim", "claim_update", "book_file", "settings"]},
+                                               "claim", "claim_update", "book_file", "commission", "settings"]},
          "name": {"type": "string"}, "client": {"type": "string"}, "phone": {"type": "string"}, "dob": {"type": "string"},
          "gender": {"type": "string"}, "city": {"type": "string"}, "income": {"type": "number"},
          "family": {"type": "array", "items": {"type": "object"}}, "liabilities": {"type": "number"}, "goals": {"type": "number"},
@@ -39,7 +42,9 @@ INSURE_TOOLS = [
          "approve": {"type": "boolean"}, "kind": {"type": "string"}, "event_on": {"type": "string"}, "amount": {"type": "number"},
          "claim_id": {"type": "string"}, "have": {"type": "array", "items": {"type": "string"}}, "insurer_ref": {"type": "string"},
          "filed_on": {"type": "string"}, "settled_amount": {"type": "number"}, "agent_name": {"type": "string"},
-         "agent_code": {"type": "string"}, "remind_days": {"type": "integer"}, "morning_time": {"type": "string"}},
+         "agent_code": {"type": "string"}, "remind_days": {"type": "integer"}, "morning_time": {"type": "string"},
+         "rows": {"type": "array", "items": {"type": "object"}}, "country": {"type": "string"}, "currency": {"type": "string"},
+         "rules": {"type": "object"}},
          "required": ["action"]}},
     {"name": "bima_dekho", "description": (
         "Read insurance work (nothing changes). what=clients | policies (client, state due|grace|lapsed) | renewals (days) | "
@@ -100,12 +105,14 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action == "claim_update":
             return S.update_claim(t, _s(a.get("claim_id")), a.get("have"), _s(a.get("status")), _s(a.get("insurer_ref")),
                                   _s(a.get("filed_on")), a.get("settled_amount"), _s(a.get("note")))
+        if action == "commission":
+            return S.commission_add(t, a.get("rows") or [], "chat")
         if action == "book_file":
             return S.book_file(t, conv)
         if action == "settings":
             if not _owner(ctx):
                 raise ToolError("Owner only.")
-            keys = ("agent_name", "agent_code", "remind_days", "morning_time")
+            keys = ("agent_name", "agent_code", "remind_days", "morning_time", "country", "currency", "rules")
             return S.save_settings(t, **{k: a[k] for k in keys if k in a})
     except (S.InsError, ValueError) as ex:
         raise ToolError(str(ex))
@@ -137,6 +144,10 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             k = _s(a.get("kind"))
             return {"kind": k, "documents": R.CLAIM_DOCS.get(k, R.CLAIM_DOCS["other"])}
         if what == "tax":
+            from ..insure import packs as PK
+            if not PK.is_india(S.country_rules(t)[0]):
+                return {"say": "The health-premium tax deduction built in is India's (Sec 126, old regime). For your country: "
+                               + PK.pack(S.country_rules(t)[0])["tax"]}
             return R.health_deduction(float(a.get("self_premium") or 0), float(a.get("parents_premium") or 0),
                                       bool(a.get("self_senior")), bool(a.get("parents_senior")))
         if what == "settings":
@@ -146,12 +157,25 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     raise ToolError("invalid what")
 
 
+def _local(ctx: Ctx, out: Any) -> Any:
+    """Money words in her country's currency (the engine writes Indian rupees)."""
+    try:
+        from ..insure import packs as PK
+        from ..insure import service as S
+        cc = S.country_rules(ctx.tenant_id)[0]
+        if PK.is_india(cc):
+            return out
+        return PK.localise(out, S.settings(ctx.tenant_id)["currency"])
+    except Exception:   # noqa: BLE001
+        return out
+
+
 async def bima(ctx: Ctx, action, **a: Any):
-    return await asyncio.to_thread(_act, ctx, str(action), a)
+    return _local(ctx, await asyncio.to_thread(_act, ctx, str(action), a))
 
 
 async def bima_dekho(ctx: Ctx, what, **a: Any):
-    return await asyncio.to_thread(_read, ctx, str(what), a)
+    return _local(ctx, await asyncio.to_thread(_read, ctx, str(what), a))
 
 
 INSURE_HANDLERS = {"bima": bima, "bima_dekho": bima_dekho}

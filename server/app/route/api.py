@@ -141,23 +141,31 @@ def _status(wf: dict, last: dict | None) -> dict[str, str]:
 def _waiting_question(wf: dict, run: dict) -> str:
     """The question of the approval step this run is parked on (the cursor's step), not just any approval step.
     v0.999.239: an approval inside a branch or loop is named by the run itself (its question, with the data)."""
+    c: dict = {}
     try:
         c = run.get("context")
         c = json.loads(c) if isinstance(c, str) else (c or {})
         if c.get("_wait_mark") and c.get("_wait_q"):
             return str(c["_wait_q"])
     except Exception:   # noqa: BLE001
-        pass
+        c = {}
     top = [s for s in (wf.get("steps") or []) if isinstance(s, dict)]
     try:
         cur = int(run.get("cursor") or 0)
     except (TypeError, ValueError):
         cur = 0
+    def filled(q: str) -> str:
+        # v0.999.253: the question with the run's own data ("Send 50 payment?", not "Send {{vars.a}} payment?")
+        try:
+            from ..agent import dhara_tools as D
+            return str(D.resolve(q, c if isinstance(c, dict) else {}))[:400]
+        except Exception:   # noqa: BLE001
+            return q
     if 0 <= cur < len(top) and top[cur].get("type") == "approval":
-        return str(top[cur].get("question") or "")
+        return filled(str(top[cur].get("question") or ""))
     for st in _walk(top[cur:] if 0 <= cur < len(top) else top):   # an approval inside a branch at the cursor
         if st.get("type") == "approval":
-            return str(st.get("question") or "")
+            return filled(str(st.get("question") or ""))
     return ""
 
 
@@ -351,16 +359,17 @@ def make_router(require_key, current_tenant) -> APIRouter:
         from . import stepdata as SD
         wf = await run(_wf_or_404, tenant, wf_id)
         vars_ = (body or {}).get("vars")
-        rid = await run(D.create_run, tenant, wf, vars_ if isinstance(vars_, dict) else {})
+        v0 = vars_ if isinstance(vars_, dict) else {}
+        extra = None
         # v0.999.234 R2: a test starts with her pinned test data, and pinned steps give their pinned output
+        # v0.999.253: written WITH the run - the worker could pick it up in between and run real steps unpinned
         if (body or {}).get("use_pins", True):
             pc = await run(SD.context_for, tenant, wf, True)
-            v0 = vars_ if isinstance(vars_, dict) else (await run(SD.pins, tenant, wf["id"])).get("trigger") or {}
-            ctx = {"vars": v0, "steps": {}, "notify": 0, "_pins": pc.get("_pins") or {}, "_start": dict(v0)}
-            await run(lambda: D.update_run(tenant, rid, context=ctx))
-        t = asyncio.ensure_future(D.execute_run(tenant, rid))
-        D._TASKS.add(t)
-        t.add_done_callback(lambda _t: D._TASKS.discard(_t))
+            if not isinstance(vars_, dict):
+                v0 = (await run(SD.pins, tenant, wf["id"])).get("trigger") or {}
+            extra = {"_pins": pc.get("_pins") or {}}
+        rid = await run(lambda: D.create_run(tenant, wf, v0, extra=extra))
+        D._start_now(tenant, rid)               # claimed first (on the event loop: it starts the task)
         return {"run_id": rid, "status": "queued"}
 
     # ---------------------------------------------------------------- v0.999.234 R2: step data, single-step tests, pins
@@ -534,7 +543,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
                 raise HTTPException(404, "Run not found")
             return D._masked({"id": x["id"], "route": x["wf_name"], "route_id": x["workflow_id"], "status": x["status"],
                               "error": x.get("error") or "", "pause_reason": x.get("pause_reason") or "",
-                              "summary": x.get("summary"), "steps_log": (x.get("steps_log") or [])[-80:],
+                              "summary": x.get("summary"), "steps_log": (x.get("steps_log") or [])[-300:],
                               # v0.999.234 R2: each step's whole output (the log keeps 600 characters of it)
                               "outputs": _outputs(x), "pinned": sorted(((x.get("context") or {}).get("_pins") or {}).keys()),
                               # v0.999.248 R8: what it started with + where it failed (Run again / Debug)
@@ -550,9 +559,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
             out = await run(RU.rerun, tenant, run_id)
         except RU.RunsError as e:
             raise HTTPException(404 if "not found" in str(e).lower() or "gone" in str(e) else 409, str(e))
-        t = asyncio.ensure_future(D.execute_run(tenant, out["run_id"]))
-        D._TASKS.add(t)
-        t.add_done_callback(lambda _t: D._TASKS.discard(_t))
+        D._start_now(tenant, out["run_id"])     # v0.999.253: claimed first, never twice
         return out
 
     @r.post("/runs/{run_id}/{action}")

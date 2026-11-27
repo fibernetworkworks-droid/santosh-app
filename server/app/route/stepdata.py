@@ -148,7 +148,7 @@ def data(tenant: str, wf: dict, run_id: str = "") -> dict:
                 "steps": {k: {"output": _view((v or {}).get("output")), "from": "run", "at": x.get("updated_at")}
                           for k, v in (ctx.get("steps") or {}).items() if isinstance(v, dict) and k in live},
                 "pins": {k: _view(v) for k, v in p.items()},
-                "log": {l.get("id"): {k: l.get(k) for k in ("status", "ms", "error")} for l in (x.get("steps_log") or [])}}
+                "log": _log_of(x.get("steps_log"))}
     last = D.latest_run(tenant, wf["id"])
     vars_, steps, src, at = {}, {}, "", 0.0
     if last is not None:
@@ -165,8 +165,19 @@ def data(tenant: str, wf: dict, run_id: str = "") -> dict:
     live = {s["id"] for s in _all(wf.get("steps") or [])}
     return {"vars": _view(vars_), "steps": {k: {**x, "output": _view(x.get("output"))} for k, x in steps.items() if k in live},
             "pins": {k: _view(v) for k, v in p.items()}, "run_id": src,
-            "status": (last or {}).get("status"), "log": {l.get("id"): {k: l.get(k) for k in ("status", "ms", "error")}
-                                                          for l in ((last or {}).get("steps_log") or [])}}
+            "status": (last or {}).get("status"), "log": _log_of((last or {}).get("steps_log"))}
+
+
+def _log_of(steps_log) -> dict:
+    """Each step's state in a run (v0.999.253: a step that failed in any loop round stays failed)."""
+    out: dict = {}
+    for lg in steps_log or []:
+        if not isinstance(lg, dict) or not lg.get("id"):
+            continue
+        if (out.get(lg["id"]) or {}).get("status") == "error":
+            continue
+        out[lg["id"]] = {k: lg.get(k) for k in ("status", "ms", "error")}
+    return out
 
 
 def _keep(tenant: str, wf_id: str, sid: str, output: Any) -> None:

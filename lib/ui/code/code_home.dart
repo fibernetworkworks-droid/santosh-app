@@ -390,5 +390,6 @@ class CodeDraft extends ChangeNotifier {
 const codeModes = [
   ('ask', 'Ask first', 'Hoola shows the change, you open the pull request'),
   ('plan', 'Plan first', 'A plan to check before any file is touched'),
+  ('steps', 'Ask each step', 'Hoola asks before every command and every file edit'),
   ('auto', 'On its own', 'Works and opens the pull request by itself'),
 ];

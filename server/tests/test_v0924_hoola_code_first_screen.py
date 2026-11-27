@@ -14,7 +14,7 @@ API = (ROOT / "server/app/devsahayak/api.py").read_text()
 
 def test_the_first_screen_is_the_design():
     assert "class CodeNewSessionPage extends StatefulWidget" in START
-    assert "'New session'" in START and "'Ready when you are'" in START
+    assert "'New session'" in START and "'What should we build today?'" in START
     assert "HoolaMark(size: 58)" in START                    # Hoola's own mark, not anyone else's character
     assert "'Type or hold to talk'" in START
     assert "'Add repository'" in START and "CodeGitHubIcon" in START   # the repository chip

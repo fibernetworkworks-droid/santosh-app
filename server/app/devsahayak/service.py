@@ -29,7 +29,9 @@ from __future__ import annotations
 import json
 import logging
 import re
+import shutil
 import threading
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
@@ -818,8 +820,8 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
          "updated": _aware(t.updated_at).isoformat() if t.updated_at else "",
          "run_at": _RUN_AT.get(t.id, ""),
          "live": _live_text(t.id),
-         "now": _now_step(t.id),
-         "model_label": _model_label(t)}
+         "now": _now_step(t.id), "now_info": _now_more(t.id), "ask": _asking(t.id),
+         "model_label": _model_label(t), "srv_now": round(time.time(), 2)}
     v["risky_files"] = risky_files([f["path"] for f in v["files"]], ch)   # v0.943 files that change how tools / CI / agents run
     try:                                # G9: the card says what the facts back, never only the model's words
         from . import truth as TR
@@ -926,7 +928,7 @@ def made_restore(tenant: str, ref: str, mid: str, v: int) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------- Phase 3: the composer (mode, model, branch, attachments, cost)
-MODES = ("ask", "auto", "plan")
+MODES = ("ask", "auto", "plan", "steps")   # v0.999 steps = ask before each command / edit
 EFFORTS = ("low", "medium", "high")
 _IMG = ((b"\x89PNG\r\n\x1a\n", "image/png", "png"), (b"\xff\xd8\xff", "image/jpeg", "jpg"), (b"GIF8", "image/gif", "gif"))
 MAX_IMAGES, MAX_IMAGE_BYTES, MAX_DOCS, MAX_DOC_CHARS = 3, 3_000_000, 3, 12000
@@ -1246,7 +1248,30 @@ def live_state(tid: str) -> dict[str, Any]:
     """v0.962 what the live stream sends: the words being written, the step working now, the newest step number and
     whether a round runs. All in this process's memory - read ten times a second, no database."""
     return {"live": _live_text(tid), "now": _now_step(tid) if tid in _RUNNING else "", "n": STEP_N.get(tid, -1),
-            "running": tid in _RUNNING}
+            "running": tid in _RUNNING, **_now_more(tid), "ask": _asking(tid)}
+
+
+def _asking(tid: str) -> dict[str, Any] | None:
+    """v0.999 the step waiting for her yes ('Ask each step'), or None."""
+    if tid not in _RUNNING:
+        return None
+    try:
+        from . import engine as EN
+        return EN.asking(tid)
+    except Exception:
+        return None
+
+
+def _now_more(tid: str) -> dict[str, Any]:
+    """v0.999 the running step's clock start, its tool and the last lines its command printed (her live terminal)."""
+    if tid not in _RUNNING:
+        return {"out": [], "t0": 0, "tool": ""}
+    try:
+        from . import engine as EN
+        return {"out": list(EN.LIVE_OUT.get(tid) or [])[-EN.LIVE_OUT_LINES:], "t0": round(float(EN.NOW_AT.get(tid) or 0), 2),
+                "tool": EN.NOW_TOOL.get(tid, "")}
+    except Exception:
+        return {"out": [], "t0": 0, "tool": ""}
 
 
 def live_delta(last: dict[str, Any], cur: dict[str, Any]) -> dict[str, Any]:
@@ -1259,7 +1284,7 @@ def live_delta(last: dict[str, Any], cur: dict[str, Any]) -> dict[str, Any]:
             ev["add"] = now_live[len(was):]
         else:
             ev["live"] = now_live
-    for k in ("now", "n", "running"):
+    for k in ("now", "n", "running", "out", "t0", "tool", "ask"):
         if cur.get(k) != last.get(k):
             ev[k] = cur.get(k)
     return ev
@@ -2133,7 +2158,7 @@ def start_bg(tenant: str, kind: str, text: str, repo: str = "", issue: int = 0, 
         raise DevError("Describe the change, or paste the error.")
     mode = (mode or "").strip().lower()
     if mode and mode not in MODES:
-        raise DevError("mode = ask | auto | plan")
+        raise DevError("mode = ask | auto | plan | steps")
     effort = (effort or "").strip().lower()
     if effort and effort not in EFFORTS:
         raise DevError("effort = low | medium | high")
@@ -2453,7 +2478,7 @@ def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_p
         row.hash = R.card_hash(row.id, row.repo, row.branch, base_sha, *[c["path"] + c["new"] for c in prep["changes"]])
         # Phase 3: 'ask' = this session waits for her PR tap, 'auto' = it does not (a PUBLIC repo always asks), no mode = her setting
         # v0.946 work that is not finished never goes out by itself: it waits for her look, with the reason
-        if unfinished or public or ask_pr or (t.mode or "") == "ask" or ((t.mode or "") != "auto" and cfg.ask_before_pr):
+        if unfinished or public or ask_pr or (t.mode or "") in ("ask", "steps") or ((t.mode or "") != "auto" and cfg.ask_before_pr):
             row.status = "ready"
             _log(row, "not finished: waiting for her" if unfinished else "waiting for your approval to open the PR")
             s.flush()
@@ -3977,3 +4002,161 @@ def tick(at: datetime | None = None) -> None:
             _follow_deploy(a.tenant_id, a, gh(a.tenant_id))
         except (DevError, GhError) as e:
             log.info("devsahayak deploy follow %s: %s", a.id, e)
+
+
+# ---------------------------------------------------------------- v0.999 the rest of Claude Code's session controls
+INIT_WORDS = ("<her_command>/init</her_command>\nRead this repository and write its rules file for coding agents: "
+              "AGENTS.md at the root (if CLAUDE.md or AGENTS.md exists, improve that file instead and keep what is "
+              "there). Put in it: what the project is, how to install, build, run, test and lint it (the real commands "
+              "you checked), the layout (which folder holds what), the code style the repo really uses, and rules a "
+              "newcomer must not break. Short, accurate, no guesses - run the commands to check them. Change no other file.")
+
+
+def set_mode(tenant: str, ref: str, mode: str) -> dict[str, Any]:
+    """Her mode for this session (ask / auto / plan / steps). A running session takes it from its next step."""
+    mode = (mode or "").strip().lower()
+    if mode and mode not in MODES:
+        raise DevError("mode = ask | auto | plan | steps")
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        t.mode = mode or None
+        tid = t.id
+        s.flush()
+        out = task_view(t)
+    try:
+        from . import engine as EN
+        EN.PERM_MODE[tid] = mode
+    except Exception:
+        pass
+    return out
+
+
+def permit(tenant: str, ref: str, pid: str, answer: str, note: str = "") -> dict[str, Any]:
+    """Her answer to the step waiting for her: yes (once), always (this session: edits, or this command), no (+ words)."""
+    clean, _ = _clean_text(note or "")
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    from . import engine as EN
+    if not EN.give_ok(tid, str(pid or ""), str(answer or "").lower(), clean):
+        raise DevError("That step is not waiting any more.")
+    return {"ok": True}
+
+
+def terminal(tenant: str, ref: str) -> dict[str, Any]:
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    from . import engine as EN
+    return EN.terminal(tid)
+
+
+def stop_shell(tenant: str, ref: str, bid: str) -> dict[str, Any]:
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    from . import engine as EN
+    if not EN.stop_shell(tid, str(bid or "")):
+        raise DevError("No such background command.")
+    _Step(tid).event({"k": "bgkill", "id": str(bid), "by": "you"})
+    return EN.terminal(tid)
+
+
+def compact_now(tenant: str, ref: str) -> dict[str, Any]:
+    """/compact: the session's conversation summarised now (her words kept whole), so the next message starts light."""
+    from . import engine as EN
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        if t.id in _RUNNING:
+            raise DevError("Hoola is working right now - compact after this round.")
+        tid = t.id
+    if not EN.exists(tid):
+        raise DevError("This session has no conversation to compact yet.")
+    ses = EN.Session(tid)
+    msgs = ses.messages()
+    if len(msgs) < 4:
+        raise DevError("The conversation is still short - nothing to compact.")
+    before = sum(len(json.dumps(m)) for m in msgs)
+    try:
+        new = EN.compact(msgs)
+    except Exception as e:  # noqa: BLE001
+        raise DevError(f"Could not summarise it now: {str(e)[:200]}")
+    ses.save_messages(new)
+    after = sum(len(json.dumps(m)) for m in new)
+    _Step(tid).event({"k": "compact", "text": f"Summarised on your word ({before // 1000}k -> {after // 1000}k characters)"})
+    with session() as s:
+        return task_view(s.get(DevTask, tid), full=True)
+
+
+def init_rules(tenant: str, ref: str) -> dict[str, Any]:
+    """/init: Hoola writes (or improves) the repo's AGENTS.md as the next round of this session."""
+    return in_background(tenant, ref, "revise", words=INIT_WORDS)
+
+
+def edit_message(tenant: str, ref: str, step: int, words: str) -> dict[str, Any]:
+    """Edit one of her earlier messages and ask again: the session goes back to the checkpoint just before that
+    message (files + conversation) and her new words go in its place. Her first message = a new session."""
+    clean, _ = _clean_text(words)
+    if not clean:
+        raise DevError("Write the new message.")
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        if t.id in _RUNNING:
+            raise DevError("Hoola is working right now - stop it first.")
+        steps = _j(t.steps or "", [])
+        tid, repo, kind, base = t.id, t.repo, t.kind, t.base
+        mode, model, effort, conv = t.mode or "", t.model or "", t.effort or "", t.conv or ""
+    if int(step) < 0:                                      # her first message: the work starts again, as a new session
+        return start_bg(tenant, kind, clean, repo=repo, base=base, mode=mode, model=model, effort=effort, conv=conv)
+    mine = next((x for x in steps if isinstance(x, dict) and int(x.get("n", -1)) == int(step)
+                 and x.get("k") == "note" and x.get("her")), None)
+    if mine is None:
+        raise DevError("That message is not one of yours in this session.")
+    cp = next((int(x.get("num", -1)) for x in reversed(steps) if isinstance(x, dict) and x.get("k") == "ckpt"
+               and int(x.get("n", -1)) < int(step)), -1)
+    if cp < 1:
+        raise DevError("There is no saved point before that message to go back to.")
+    ws_rewind(tenant, ref, cp)
+    return in_background(tenant, ref, "revise", words=clean)
+
+
+def fork(tenant: str, ref: str, checkpoint: int = 0) -> dict[str, Any]:
+    """A copy of this session to try another way: the same repo, the working copy and conversation as they are now
+    (or at a checkpoint), its own branch and pull request later. The original is not touched."""
+    from . import engine as EN
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        if t.id in _RUNNING:
+            raise DevError("Hoola is working right now - fork after this round.")
+        src = t
+        steps = _j(t.steps or "", [])
+        if checkpoint:
+            at = next((int(x.get("n", -1)) for x in steps if isinstance(x, dict) and x.get("k") == "ckpt"
+                       and int(x.get("num", -1)) == int(checkpoint)), None)
+            if at is None:
+                raise DevError("There is no such checkpoint.")
+            steps = [x for x in steps if isinstance(x, dict) and int(x.get("n", -1)) <= at]
+        number = _next_number(tenant)
+        new = DevTask(tenant_id=tenant, number=number, kind=src.kind, repo=src.repo, text=src.text, issue=src.issue,
+                      base=src.base, base_sha=src.base_sha, explain=src.explain, found=src.found, changes=src.changes,
+                      status="explained", conv=src.conv, mode=src.mode, model=src.model, effort=src.effort,
+                      attach=src.attach, refs=src.refs, env_id=src.env_id, tier=src.tier,
+                      title=("Fork of " + (src.title or src.pr_title or src.text[:60] or src.number))[:200],
+                      steps=json.dumps(steps + [{"k": "ws", "text": f"Forked from {src.number}"
+                                                 + (f" at checkpoint {checkpoint}" if checkpoint else ""),
+                                                 "at": now().isoformat(), "n": (max([int(x.get("n", -1)) for x in steps] or [-1]) + 1)}]))
+        _log(new, f"forked from {src.number}")
+        s.add(new)
+        s.flush()
+        nid, sid = new.id, src.id
+    if EN.exists(sid):
+        try:
+            shutil.copytree(EN.folder(sid), EN.folder(nid), symlinks=True)
+            ses = EN.Session(nid)
+            ses.tid = nid
+            ses.meta.pop("bg", None)                       # the original's background commands stay the original's
+            ses.meta.pop("pushed", None)
+            ses.save_meta()
+            if checkpoint:
+                ses.rewind(int(checkpoint))
+        except Exception as e:  # noqa: BLE001
+            log.warning("fork copy failed: %s", e)
+    with session() as s:
+        return task_view(s.get(DevTask, nid), full=True)

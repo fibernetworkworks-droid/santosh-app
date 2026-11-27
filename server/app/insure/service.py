@@ -32,6 +32,7 @@ from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..db import Base, new_id, now, session
+from . import packs as PK
 from . import rules as R
 
 log = logging.getLogger("santosh.insure")
@@ -51,6 +52,22 @@ class InsSettings(Base):
     remind_days: Mapped[int] = mapped_column(Integer, default=15)
     morning_time: Mapped[str] = mapped_column(String(5), default="09:15")
     last_morning: Mapped[str] = mapped_column(String(10), default="")
+    country: Mapped[str | None] = mapped_column(String(2), nullable=True, default="")       # '' = India (older desks)
+    currency: Mapped[str | None] = mapped_column(String(3), nullable=True, default="")
+    rules: Mapped[str | None] = mapped_column(Text, nullable=True, default="{}")           # her country rules + rules of thumb
+
+
+class InsCommission(Base):
+    """Commission the insurer says it paid her (from its statement): matched against what her book expects."""
+    __tablename__ = "ins_commission"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("im"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    insurer: Mapped[str] = mapped_column(String(80), default="")
+    number: Mapped[str] = mapped_column(String(40), default="", index=True)
+    period: Mapped[str] = mapped_column(String(7), default="")                              # YYYY-MM
+    amount: Mapped[float] = mapped_column(Float, default=0.0)
+    source: Mapped[str] = mapped_column(String(120), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
 class InsClient(Base):
@@ -200,11 +217,39 @@ def _st(s, tenant: str) -> InsSettings:
     return r
 
 
+_CR: dict[str, tuple[str, dict]] = {}
+
+
+def country_rules(tenant: str) -> tuple[str, dict]:
+    """(country, her rules) - '' country = India, the desk's first country."""
+    hit = _CR.get(tenant)
+    if hit is not None:
+        return hit
+    with session() as s:
+        r = s.get(InsSettings, tenant)
+        cc = ((r.country if r else "") or "IN").upper()
+        mine = _j((r.rules if r else "") or "{}", {})
+    _CR[tenant] = (cc, mine)
+    return cc, mine
+
+
+def _grace_rev(tenant: str, mode: str, ptype: str) -> tuple:
+    """(grace, revival years) for premium_state: India with no own values = exactly the old rule (-1, -1)."""
+    cc, mine = country_rules(tenant)
+    if PK.is_india(cc) and not any(mine.get(k) not in (None, "") for k in ("grace_monthly_days", "grace_other_days", "revival_years", "revival_years_ulip")):
+        return -1, -1
+    g = PK.usable(cc, mine, "grace_monthly_days" if R.mode_of(mode) == "monthly" else "grace_other_days")
+    rv = PK.usable(cc, mine, "revival_years_ulip" if ptype == "ulip" else "revival_years")
+    return (None if g is None else int(g)), rv
+
+
 def settings(tenant: str) -> dict:
     with session() as s:
         r = _st(s, tenant)
+        cc = (r.country or "IN").upper()
         return {"enabled": r.enabled, "agent_name": r.agent_name, "agent_code": r.agent_code, "remind_days": r.remind_days,
-                "morning_time": r.morning_time}
+                "morning_time": r.morning_time, "country": cc, "currency": (r.currency or PK.pack(cc)["currency"] or "").upper(),
+                "rules": _j(r.rules or "{}", {})}
 
 
 def save_settings(tenant: str, **kw: Any) -> dict:
@@ -219,6 +264,28 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             r.morning_time = str(kw["morning_time"]).zfill(5)[:5]
         if "enabled" in kw:
             r.enabled = bool(kw["enabled"])
+        if kw.get("country"):
+            cc = str(kw["country"]).strip().upper()
+            if not re.fullmatch(r"[A-Z]{2}", cc):
+                raise InsError("Country: two letters, like GB.")
+            r.country = cc
+        if kw.get("currency"):
+            cu = str(kw["currency"]).strip().upper()
+            if not re.fullmatch(r"[A-Z]{3}", cu):
+                raise InsError("Currency: three letters, like GBP.")
+            r.currency = cu
+        if isinstance(kw.get("rules"), dict):
+            mine = _j(r.rules or "{}", {})
+            try:
+                mine.update(PK.clean_rules(kw["rules"]))
+            except ValueError as e:
+                raise InsError(str(e))
+            for k in ("health_base", "health_member", "life_multiple"):
+                if k in kw["rules"]:
+                    v = kw["rules"][k]
+                    mine[k] = None if v in (None, "") else _f(v)
+            r.rules = json.dumps({k: v for k, v in mine.items() if v is not None})
+    _CR.pop(tenant, None)
     return settings(tenant)
 
 
@@ -304,12 +371,17 @@ def clients(tenant: str) -> list[dict]:
 # ---------------------------------------------------------------- policies
 def _pview(p: InsPolicy, c: InsClient | None, on: date) -> dict:
     due = _date(p.next_due)
-    st = R.premium_state(due, p.mode, p.ptype, on) if p.status in ("inforce", "lapsed") else {"state": p.status, "label": p.status}
+    g, rv = _grace_rev(p.tenant_id, p.mode, p.ptype)
+    if p.status in ("inforce", "lapsed") and not due and R.mode_of(p.mode) != "single":
+        st = {"state": "no_due", "label": "Next due date not known - add it"}
+    else:
+        st = R.premium_state(due, p.mode, p.ptype, on, g, rv) if p.status in ("inforce", "lapsed") else {"state": p.status, "label": p.status}
+    india = PK.is_india(country_rules(p.tenant_id)[0])
     return {"id": p.id, "client_id": p.client_id, "client": c.name if c else "", "phone": c.phone if c else "", "insurer": p.insurer,
             "plan": p.plan, "type": p.ptype, "type_label": R.TYPES.get(p.ptype, p.ptype), "number": p.number, "start": p.start,
             "term_years": p.term_years, "ppt_years": p.ppt_years, "mode": p.mode, "premium": p.premium, "cover": p.cover,
             "next_due": p.next_due, "status": p.status, "premium_state": st, "nominee": p.nominee, "commission_pct": p.commission_pct,
-            "group": p.group, "members": _j(p.members, []), "gst_pct": R.gst_on(p.ptype, p.group), "pay_link": p.pay_link,
+            "group": p.group, "members": _j(p.members, []), "gst_pct": R.gst_on(p.ptype, p.group) if india else None, "pay_link": p.pay_link,
             "log": _j(p.log, [])[-10:]}
 
 
@@ -333,7 +405,7 @@ def save_policy(tenant: str, client: str, insurer: str = "", plan: str = "", pty
                 commission_pct=None, group: bool | None = None, members: list | None = None, pay_link: str = "", policy: str = "",
                 status: str = "", by: str = "owner") -> dict:
     if pay_link and not str(pay_link).startswith("https://"):
-        raise InsError("Payment link sirf insurer ka https link ho.")
+        raise InsError("The payment link must be the insurer's own https page.")
     on = today(tenant)
     with _LOCK, session() as s:
         if policy:
@@ -392,8 +464,9 @@ def save_policy(tenant: str, client: str, insurer: str = "", plan: str = "", pty
             p.next_due = nd.isoformat()
         elif new and p.start and p.mode != "single":
             # assume paid up to date: the due that is coming, or still inside grace
-            p.next_due = R.next_due_after(_date(p.start), p.mode, on - timedelta(days=R.grace_days(p.mode))).isoformat()
-        _plog(p, ("Policy jodi" if new else "Policy update") + f": {p.insurer} {p.plan} {p.number}", by)
+            g0, _rv = _grace_rev(tenant, p.mode, p.ptype)
+            p.next_due = R.next_due_after(_date(p.start), p.mode, on - timedelta(days=R.grace_days(p.mode) if g0 == -1 else (g0 or 0))).isoformat()
+        _plog(p, ("Policy added" if new else "Policy update") + f": {p.insurer} {p.plan} {p.number}", by)
         s.flush()
         v = _pview(p, c, on)
     warn = []
@@ -401,11 +474,11 @@ def save_policy(tenant: str, client: str, insurer: str = "", plan: str = "", pty
         warn.append("No nominee is recorded: ask the customer to name one (needed for a claim).")
     if v["premium_state"]["state"] in ("grace", "lapsed"):
         warn.append(v["premium_state"]["label"] + ".")
-    say = f"{'Policy jodi' if new else 'Update'}: {v['client']} - {v['insurer']} {v['plan']} ({v['type_label']}), premium {_rs(v['premium'])} {v['mode']}, cover {_lakh(v['cover'])}."
+    say = f"{'Policy added' if new else 'Update'}: {v['client']} - {v['insurer']} {v['plan']} ({v['type_label']}), premium {_rs(v['premium'])} {v['mode']}, cover {_lakh(v['cover'])}."
     if v["next_due"]:
-        say += f" Agla premium {v['next_due']}."
+        say += f" Next premium {v['next_due']}."
     if warn:
-        say += " Dhyaan: " + " ".join(warn)
+        say += " Note: " + " ".join(warn)
     return {"policy": v, "say": say}
 
 
@@ -440,7 +513,7 @@ def premium_paid(tenant: str, policy: str, paid_on: str = "", by: str = "owner")
         _plog(p, f"Premium due {due.isoformat()} was paid on {pd.isoformat()} (by the customer to the insurer)", by)
         c = s.get(InsClient, p.client_id)
         v = _pview(p, c, on)
-    return {"policy": v, "say": f"{v['client']} ka premium note: agla {v['next_due']}. Commission ~{_rs(v['premium'] * v['commission_pct'] / 100)}."}
+    return {"policy": v, "say": f"{v['client']}: premium recorded as paid; next due {v['next_due']}. Commission ~{_rs(v['premium'] * v['commission_pct'] / 100)}."}
 
 
 _PH = {"client": ("customer name", "client name", "name", "policy holder", "policyholder", "proposer", "life assured"),
@@ -506,12 +579,15 @@ def renewals(tenant: str, days: int | None = None) -> dict:
     due = [p for p in pol if p["premium_state"]["state"] == "due" and p["premium_state"]["days"] <= days]
     grace = [p for p in pol if p["premium_state"]["state"] == "grace"]
     lapsed = [p for p in pol if p["premium_state"]["state"] == "lapsed"]
+    overdue = [p for p in pol if p["premium_state"]["state"] == "overdue"]      # past due, grace not set for her country
+    grace = grace + overdue
     total = sum(p["premium"] for p in due + grace)
     comm = sum(p["premium"] * p["commission_pct"] / 100 for p in due + grace)
     say = (f"Next {days} days: {len(due)} premiums ({_rs(sum(p['premium'] for p in due))}); {len(grace)} in grace"
-           + (f" (ends soonest: {min(grace, key=lambda x: x['premium_state']['days_left'])['client']})" if grace else "")
+           + (f" (ends soonest: {min([g for g in grace if 'days_left' in g['premium_state']], key=lambda x: x['premium_state']['days_left'])['client']})"
+              if any('days_left' in g['premium_state'] for g in grace) else "")
            + f"; lapsed {len(lapsed)}. Commission expected ~{_rs(comm)}.")
-    return {"due": due, "grace": grace, "lapsed": lapsed, "premium_total": round(total), "commission": round(comm), "say": say}
+    return {"due": due, "grace": grace, "lapsed": lapsed, "overdue": len(overdue), "premium_total": round(total), "commission": round(comm), "say": say}
 
 
 def reminder_drafts(tenant: str, days: int | None = None) -> dict:
@@ -529,12 +605,16 @@ def reminder_drafts(tenant: str, days: int | None = None) -> dict:
         first = p["client"].split()[0] if p["client"] else ""
         if ps["state"] == "due":
             body = f"The {_rs(p['premium'])} premium for {p['insurer']} policy {p['number']} ({p['plan']}) is due on {ps['due']}."
+        elif ps["state"] == "overdue":
+            body = (f"The {_rs(p['premium'])} premium for {p['insurer']} policy {p['number']} was due on {ps['due']}. Please pay it soon "
+                    "so the cover does not stop.")
         elif ps["state"] == "grace":
             body = (f"The {_rs(p['premium'])} premium for {p['insurer']} policy {p['number']} was due on {ps['due']}; the grace period "
                     f"ends on {ps['grace_end']}, after which the policy will lapse.")
         else:
-            body = (f"{p['insurer']} policy {p['number']} has lapsed. It can be revived until {ps['revive_by']} (pending premium + interest, "
-                    "sometimes a health declaration). Shall I help restart the cover?")
+            body = (f"{p['insurer']} policy {p['number']} has lapsed. "
+                    + (f"It can be revived until {ps['revive_by']} " if ps.get("revive_by") else "It may still be revived ")
+                    + "(pending premium + interest, sometimes a health declaration). Shall I help restart the cover?")
         pay = f" To pay: {p['pay_link']}" if p["pay_link"] else f" You can pay through the {p['insurer']} app / website / branch."
         out.append({"policy_id": p["id"], "client": p["client"], "to": p["phone"], "state": ps["state"],
                     "text": f"Hello {first}, {body}{pay} Let me know if you have any questions. - {agent}"})
@@ -557,7 +637,8 @@ def mark_lapsed(tenant: str) -> int:
     n = 0
     with session() as s:
         for p in s.scalars(select(InsPolicy).where(InsPolicy.tenant_id == tenant, InsPolicy.status == "inforce")).all():
-            st = R.premium_state(_date(p.next_due), p.mode, p.ptype, on)
+            g, rv = _grace_rev(tenant, p.mode, p.ptype)
+            st = R.premium_state(_date(p.next_due), p.mode, p.ptype, on, g, rv)
             if st["state"] in ("lapsed", "lapsed_final"):
                 p.status = "lapsed"
                 _plog(p, f"Grace ended: lapsed (due {p.next_due})")
@@ -579,14 +660,26 @@ def needs(tenant: str, client: str) -> dict:
                                                                          "beta", "beti", "child", "father", "mother", "papa", "maa"))
     ages = [R.age_on(_date(m.get("dob")), on) for m in fam if m.get("dob")] + ([cv["age"]] if cv["age"] else [])
     life = R.life_cover_need(cv["income"], cv["age"], cv["liabilities"], cv["goals"], life_existing, cv["savings"]) if cv["income"] else None
-    health = R.health_cover_need(members, cv["metro"], max([a for a in ages if a is not None], default=None), health_existing)
+    cc, mine = country_rules(tenant)
+    eldest = max([a for a in ages if a is not None], default=None)
+    if PK.is_india(cc) and not mine.get("health_base"):
+        health = R.health_cover_need(members, cv["metro"], eldest, health_existing)
+    elif mine.get("health_base"):
+        hn = float(mine["health_base"]) + max(0, members - 2) * float(mine.get("health_member") or 0)
+        hn = hn * 1.5 if eldest and eldest >= 55 else hn
+        health = {"need": round(hn), "existing": round(health_existing), "gap": round(max(0.0, hn - health_existing)),
+                  "tip": "From your own rule of thumb (Settings)."}
+    else:
+        health = None
     gaps = []
     if life and life["gap"] > 0:
         gaps.append(f"Term life cover is short: needs ~{_lakh(life['need'])}, has {_lakh(life_existing)} (gap {_lakh(life['gap'])}).")
     if not cv["income"]:
         gaps.append("Yearly income is not known: tell me to work out the life cover.")
-    if health["gap"] > 0:
-        gaps.append(f"Health cover is short: for {members} people it needs ~{_lakh(health['need'])}, has {_lakh(health_existing)}.")
+    if health is None:
+        gaps.append("Set your own health-cover rule of thumb in Settings to see the health gap (no country default is assumed).")
+    elif health["gap"] > 0:
+        gaps.append(f"Health cover is short: for {members} {'person' if members == 1 else 'people'} it needs ~{_lakh(health['need'])}, has {_lakh(health_existing)}.")
     if not any(p["type"] == "pa" for p in pols) and cv["income"]:
         gaps.append("No personal accident cover (cheap and important for the earning member).")
     no_nominee = [p["number"] for p in pols if not p["nominee"]]
@@ -636,7 +729,7 @@ def approve_advice(tenant: str, advice_id: str, approve: bool = True) -> dict:
             raise InsError("Advice record not found.")
         if not approve:
             a.status = "ready"
-            return {"say": "Roka."}
+            return {"say": "Held back: nothing goes to the customer."}
         a.status = "approved"
         c = s.get(InsClient, a.client_id)
         st = _st(s, tenant)
@@ -645,9 +738,16 @@ def approve_advice(tenant: str, advice_id: str, approve: bool = True) -> dict:
     lines = [f"{i}. {r['insurer']} {r['plan']}: cover {_lakh(r['cover'])}, premium {_rs(r['premium'])}"
              + (f", claim settlement {r['csr']}%" if r.get("csr") else "") + (f" ({r['features']})" if r["features"] else "")
              for i, r in enumerate(rows[:4], 1)]
-    text = (f"Hello {c.name.split()[0]}, based on your needs: " + " ".join(needs_.get("gaps", [])[:2]) + "\n" + "\n".join(lines)
-            + "\nThere is no GST on individual life / health premiums now. If you do not like the policy within 30 days of getting it (free-look), you can return it. "
-            "Please fill in the proposal form and health details yourself, truthfully. - " + (st.agent_name or "your advisor"))
+    cc, mine = country_rules(tenant)
+    fl = PK.usable(cc, mine, "free_look_days")
+    shown = [g for g in needs_.get("gaps", []) if "short" in g or g.startswith("No ")][:2]     # cover gaps only, never a note to her
+    text = (f"Hello {c.name.split()[0]}, " + ("based on your needs: " + " ".join(shown) if shown else "here are the options we discussed:") + "\n" + "\n".join(lines)
+            + ("\nThere is no GST on individual life / health premiums now." if PK.is_india(cc) else "")
+            + (f"\nIf you do not like the policy within {int(fl)} days of getting it (free-look), you can return it." if fl else
+               "\nAsk me about the cooling-off period in which you can return the policy.")
+            + " Please fill in the proposal form and health details yourself, truthfully. - " + (st.agent_name or "your advisor"))
+    if not PK.is_india(cc):
+        text = PK.localise(text, settings(tenant)["currency"])
     return {"draft": text, "to": c.phone, "say": "Approved: message draft ready for the customer (you send it)."}
 
 
@@ -688,6 +788,8 @@ def start_claim(tenant: str, policy: str, kind: str, event_on: str = "", amount=
          "health_cashless": "Cashless approval within 1 hour, discharge within 3 hours (IRDAI).",
          "health_reimbursement": "Should be settled within 15 days of all documents being submitted.",
          "motor": "A surveyor will inspect; tell the insurer before repairing the vehicle.", "other": "Tell the insurer at once."}[k]
+    if not PK.is_india(country_rules(tenant)[0]) and k in ("death", "health_cashless", "health_reimbursement"):
+        t = "The claim timeline is the insurer's and your regulator's: set it in Settings so the desk can watch the clock."
     return {"claim_id": cid, "documents": R.CLAIM_DOCS[k],
             "say": f"{c.name}'s {insurer} claim ({num}) started. Tell the insurer at once. Documents: {', '.join(R.CLAIM_DOCS[k])}. {t}"}
 
@@ -734,14 +836,77 @@ def claims(tenant: str, open_only: bool = True) -> list[dict]:
         out = []
         for cl in s.scalars(q).all():
             p = pols.get(cl.policy_id)
-            days_limit = {"death": 15, "health_reimbursement": 15}.get(cl.kind)
             fd = _date(cl.filed_on)
-            overdue = bool(fd and days_limit and cl.status == "filed" and (on - fd).days > (45 if cl.kind == "death" else days_limit))
+            lim = claim_limit(tenant, cl.kind)
+            overdue = bool(fd and lim and cl.status in ("filed", "query") and (on - fd).days > lim)
             out.append({"id": cl.id, "kind": cl.kind, "client": cs[p.client_id].name if p and p.client_id in cs else "", "insurer": p.insurer if p else "",
                         "policy": p.number if p else "", "status": cl.status, "filed_on": cl.filed_on, "insurer_ref": cl.insurer_ref,
                         "missing": [d for d, ok in _j(cl.docs, {}).items() if not ok], "overdue": overdue,
-                        "escalate": ("The insurer's grievance cell, then Bima Bharosa (IRDAI) and the Insurance Ombudsman." if overdue else "")})
+                        "event_on": cl.event_on, "amount": cl.amount, "settled_amount": cl.settled_amount,
+                        "docs": _j(cl.docs, {}), "limit_days": lim, "days_since_filed": (on - fd).days if fd else None,
+                        "escalate": (", then ".join(PK.pack(country_rules(tenant)[0])["ladder"]) + "." if overdue else "")})
         return out
+
+
+def claim_limit(tenant: str, kind: str) -> float | None:
+    """Days within which the insurer should settle a filed claim, by her country's rule (None = not set: no clock)."""
+    cc, mine = country_rules(tenant)
+    key = {"death": "death_investigated_days", "health_reimbursement": "reimbursement_days"}.get(kind)
+    return PK.usable(cc, mine, key) if key else None
+
+
+# ---------------------------------------------------------------- commission
+def commission_add(tenant: str, rows: list[dict], source: str = "") -> dict:
+    """Commission lines from the insurer's statement (policy number, period, amount). A line for the same policy + period replaces."""
+    n = 0
+    with _LOCK, session() as s:
+        for r in rows:
+            num = str(r.get("number") or r.get("policy") or "").strip()[:40]
+            per = str(r.get("period") or "").strip()[:7]
+            if not re.fullmatch(r"\d{4}-\d{2}", per):
+                d = _date(r.get("period") or r.get("date"))
+                per = d.isoformat()[:7] if d else ""
+            if not num or not per:
+                continue
+            amt = _f(r.get("amount"))
+            old = s.scalars(select(InsCommission).where(InsCommission.tenant_id == tenant, InsCommission.number == num,
+                                                        InsCommission.period == per)).first()
+            if old is None:
+                old = InsCommission(tenant_id=tenant, number=num, period=per)
+                s.add(old)
+            old.insurer = str(r.get("insurer") or "")[:80]
+            old.amount = amt
+            old.source = str(source)[:120]
+            n += 1
+    return {"saved": n}
+
+
+def commission_lines(tenant: str) -> list[dict]:
+    with session() as s:
+        return [{"id": c.id, "insurer": c.insurer, "number": c.number, "period": c.period, "amount": c.amount, "source": c.source}
+                for c in s.scalars(select(InsCommission).where(InsCommission.tenant_id == tenant).order_by(InsCommission.period)).all()]
+
+
+def commission_clear(tenant: str) -> dict:
+    with session() as s:
+        n = 0
+        for c in s.scalars(select(InsCommission).where(InsCommission.tenant_id == tenant)).all():
+            s.delete(c)
+            n += 1
+    return {"removed": n}
+
+
+def paid_premiums(tenant: str) -> list[dict]:
+    """Premiums she recorded as paid (from each policy's log): {number, insurer, due, paid_on, premium, commission_pct}."""
+    out = []
+    with session() as s:
+        for p in s.scalars(select(InsPolicy).where(InsPolicy.tenant_id == tenant)).all():
+            for e in _j(p.log, []):
+                m = re.match(r"Premium due (\d{4}-\d{2}-\d{2}) was paid on (\d{4}-\d{2}-\d{2})", str(e.get("what") or ""))
+                if m:
+                    out.append({"policy_id": p.id, "number": p.number, "insurer": p.insurer, "due": m.group(1), "paid_on": m.group(2),
+                                "premium": p.premium, "commission_pct": p.commission_pct})
+    return out
 
 
 # ---------------------------------------------------------------- book, greetings, morning
@@ -795,7 +960,7 @@ def book_file(tenant: str, conv: str = "") -> dict:
     wb.save(bio)
     f = chatfiles.store(tenant, "Insurance_book.xlsx", bio.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "insure", "title": "Insurance book"}, conv)
-    return {"file": f, "say": "Poori policy book Excel mein."}
+    return {"file": f, "say": "The whole policy book as an Excel file."}
 
 
 def due_mornings() -> list[str]:
@@ -834,7 +999,7 @@ def send_morning(tenant: str) -> dict:
         parts.append(f"{len(cl)} claims with work pending")
     if not parts:
         return {"text": ""}
-    text = "Bima: " + "; ".join(parts) + "."
+    text = "Insurance: " + "; ".join(parts) + "."
     conv = home_conv(tenant)
     try:
         notify(conv, text)

@@ -4008,3 +4008,17 @@ Stage Summary:
 - 11 new tests (tests/test_v0999_248_route_runs.py + tests/data/n8n_*.json) green; route + DHARA suites 175 green before the ritual,
   the phone-fit walks fixed (All routes header wraps); remaining reds = the 3 pre-existing 0.999.169 pins
 - NOT VERIFIED on her server or with workflows exported by a real n8n
+
+---
+Task ID: route-check-v0999-253 (built as 0.999.251 / 0.999.252)
+Agent: Claude (cloud session)
+Task: "NOW CHECK THE ENTIRE ROUTE END TO END" - Hoola Route after R1-R8
+Work Log:
+- browser walk of 28 Route pages (every route / run / past-run debug view) at 1440 light + dark and 390, seeded with every kind of route
+- an independent reviewer read the whole engine (dhara_tools, dhara_data, route/*): 10 bugs, each re-checked in the code before fixing
+- fixed: Stop undone mid-step, stuck 'running' runs, bad every_hours stopping all schedules, redirect guard + sign-in leak, lost app items,
+  unclaimed starts, non-English search, n8n expression numbers, self-starting / ping-pong routes, reply link GET + race, branch/loop steps in
+  the log, {{vars.a}} in Needs you, on/off 409, replace/join size; page: phone debug bar, failing step on canvas, step name once, start icons
+Stage Summary:
+- 17 new tests (tests/test_v0999_253_route_check.py) incl. a browser walk; the 3 old 0.999.169 pins now accept newer versions
+- NOT VERIFIED on her server

@@ -254,8 +254,9 @@ def list_workflows(tenant_id: str, limit: int = 25) -> list[dict[str, Any]]:
 def set_enabled(tenant_id: str, wf_id: str, enabled: bool) -> bool:
     con = _con(tenant_id)
     try:
-        cur = con.execute("UPDATE workflows SET enabled = ?, updated_at = ? WHERE id = ?",
-                          (1 if enabled else 0, time.time(), wf_id))
+        # v0.999.253: on / off is not an edit of the route - it no longer moves updated_at, so an editor left open
+        # does not get "this route changed since you opened it" on its next save
+        cur = con.execute("UPDATE workflows SET enabled = ? WHERE id = ?", (1 if enabled else 0, wf_id))
         con.commit()
         changed = cur.rowcount > 0
     finally:
@@ -278,16 +279,21 @@ def workflows_with_hash(tenant_id: str, token_hash: str) -> dict[str, Any] | Non
         con.close()
 
 
-def create_run(tenant_id: str, wf: dict, vars_: dict | None = None, missed: bool = False) -> str:
+def create_run(tenant_id: str, wf: dict, vars_: dict | None = None, missed: bool = False,
+               extra: dict | None = None) -> str:
+    """extra (v0.999.253): more context written WITH the run (a test's pinned data), so the worker can never pick
+    the run up before it is there."""
     now_ = time.time()
     rid = "rn_" + uuid.uuid4().hex[:12]
+    ctx0 = {"vars": dict(vars_ or {}), "steps": {}, "notify": 0,
+            "_start": dict(vars_ or {})}             # v0.999.248 R8: what it started with, for Run again
+    if isinstance(extra, dict):
+        ctx0.update(extra)
     con = _con(tenant_id)
     try:
         con.execute("INSERT INTO runs (id, workflow_id, wf_name, status, cursor, context, steps_log, tries, "
                     "started_at, missed, created_at, updated_at) VALUES (?,?,?,?,0,?,?,0,?,?,?,?)",
-                    (rid, wf["id"], wf["name"], "queued", json.dumps({"vars": dict(vars_ or {}), "steps": {}, "notify": 0,
-                                                         # v0.999.248 R8: what it started with, for Run again
-                                                         "_start": dict(vars_ or {})}),
+                    (rid, wf["id"], wf["name"], "queued", json.dumps(ctx0, ensure_ascii=False),
                      "[]", now_ if not missed else None, 1 if missed else 0, now_, now_))
         con.commit()
     finally:
@@ -334,19 +340,22 @@ def list_runs(tenant_id: str, wf_id: str = "", limit: int = 10, status: str = ""
         con.close()
 
 
-def update_run(tenant_id: str, run_id: str, **fields) -> None:
+def update_run(tenant_id: str, run_id: str, _keep_stop: bool = False, **fields) -> bool:
+    """_keep_stop (v0.999.253): the engine's own writes never undo a Stop she pressed while a step was running."""
     if not fields:
-        return
+        return False
     if "context" in fields and not isinstance(fields["context"], str):
-        fields["context"] = json.dumps(fields["context"])
+        fields["context"] = json.dumps(fields["context"], ensure_ascii=False)   # v0.999.253: findable in any language
     if "steps_log" in fields and not isinstance(fields["steps_log"], str):
-        fields["steps_log"] = json.dumps(fields["steps_log"])
+        fields["steps_log"] = json.dumps(fields["steps_log"], ensure_ascii=False)
     fields.setdefault("updated_at", time.time())  # an explicit updated_at (tests backdate) wins
     sets = ", ".join(f"{k} = ?" for k in fields)
     con = _con(tenant_id)
     try:
-        con.execute(f"UPDATE runs SET {sets} WHERE id = ?", (*fields.values(), run_id))
+        guard = " AND status != 'stopped'" if _keep_stop else ""
+        cur = con.execute(f"UPDATE runs SET {sets} WHERE id = ?{guard}", (*fields.values(), run_id))
         con.commit()
+        return cur.rowcount > 0
     finally:
         con.close()
 
@@ -494,6 +503,9 @@ def validate_steps(steps: list) -> list[dict]:
                 raise ToolError(f"Step '{sid}': a tool step needs a tool name")
             if name in _TOOL_STEP_DENY:
                 raise ToolError(f"Step '{sid}': {name} is a same-turn card — it cannot run in a background run")
+            if name.startswith("dhara_") and name not in ("dhara_list", "dhara_runs"):
+                # v0.999.253: a route that starts / changes routes could run for ever (reading them is fine)
+                raise ToolError(f"Step '{sid}': a route cannot use {name} - use a 'Run another route' step instead")
         elif typ == "code":
             if not str(st_.get("code") or "").strip():
                 raise ToolError(f"Step '{sid}': give a code step python code")
@@ -891,7 +903,8 @@ def _finish(tenant_id: str, run_id: str, run: dict, steps_total: int, status: st
     fields: dict[str, Any] = {"status": status, "pause_reason": None, **extra}
     if getattr(s, "dhara_summaries_enabled", True):
         fields["summary"] = json.dumps(_summary(run, steps_total, err, acc), ensure_ascii=False)
-    update_run(tenant_id, run_id, **fields)
+    if not update_run(tenant_id, run_id, _keep_stop=(status != "stopped"), **fields):
+        run["status"] = "stopped"           # v0.999.253: a Stop that came while the last step ran stays a stop
 
 
 # --------------------------------------------------------------------------- engine
@@ -920,9 +933,12 @@ def _save_checkpoint(tenant_id: str, run: dict) -> None:
     seg = (run.get("context") or {}).get("_seg")    # v0.999.239 the run's working time (waits do not count)
     if isinstance(seg, list) and len(seg) == 2:
         run["context"]["_active_s"] = float(seg[1]) + max(0.0, time.time() - float(seg[0]))
-    update_run(tenant_id, run["id"], cursor=run["cursor"], context=run["context"],
-               steps_log=run["steps_log"], status=run["status"], error=run.get("error") or "",
-               next_wake_at=run.get("next_wake_at"), pause_reason=run.get("pause_reason"))
+    if not update_run(tenant_id, run["id"], _keep_stop=True, cursor=run["cursor"], context=run["context"],
+                      steps_log=run["steps_log"], status=run["status"], error=run.get("error") or "",
+                      next_wake_at=run.get("next_wake_at"), pause_reason=run.get("pause_reason")):
+        # she pressed Stop while a step ran: keep 'stopped', but keep the log of what did run
+        update_run(tenant_id, run["id"], steps_log=run["steps_log"], context=run["context"])
+        run["status"] = "stopped"
 
 
 def _runs_tell(tenant_id: str, where: str, args: tuple, line: str) -> None:
@@ -987,6 +1003,64 @@ def _keep_going(tenant_id: str, run_id: str, ctx: dict) -> str:
     return ""
 
 
+_SUBLOG_CAP = 60      # v0.999.253: steps inside branches / loops kept in the run log per top-level step
+
+
+def _where(scope: str) -> str:
+    """The path of branches / ways / loop rounds a step sits in, in words ('big: if yes > each: round 2')."""
+    out = []
+    for part in [p for p in str(scope or "").split("/") if p]:
+        m = re.match(r"^([^:#@]+)(?::(then|else)|#(\d+)|@(\d+))?$", part)
+        if not m:
+            out.append(part)
+            continue
+        sid, br, way, rnd = m.groups()
+        if br:
+            out.append(f"{sid}: if {'yes' if br == 'then' else 'no'}")
+        elif way is not None:
+            out.append(f"{sid}: way {int(way) + 1}")
+        elif rnd is not None:
+            out.append(f"{sid}: round {int(rnd) + 1}")
+        else:
+            out.append(sid)
+    return " > ".join(out)
+
+
+def _note_inner(ctx: dict, sub: dict, scope: str, status: str, ms: int, output: Any = None, error: str = "") -> None:
+    """v0.999.253 ROUTE CHECK: a step inside a branch or loop leaves a line in the run's step log too (they were
+    invisible). Kept in ctx['_sublog'] until the top-level step is logged; capped, errors always kept."""
+    if not isinstance(ctx, dict) or ctx.get("_no_sublog"):
+        return
+    lg = ctx.setdefault("_sublog", [])
+    if not isinstance(lg, list):
+        return
+    if len(lg) >= _SUBLOG_CAP and status == "ok":
+        ctx["_sublog_more"] = int(ctx.get("_sublog_more") or 0) + 1
+        return
+    if len(lg) >= _SUBLOG_CAP * 2:
+        ctx["_sublog_more"] = int(ctx.get("_sublog_more") or 0) + 1
+        return
+    tmp = {"steps_log": []}
+    _log_step(tmp, str(sub.get("id", "?")), str(sub.get("type", "?")), status, ms, output=output, error=error,
+              version=int(sub.get("v") or 1))
+    entry = tmp["steps_log"][0]
+    entry["in"] = _where(scope)
+    lg.append(entry)
+
+
+def _flush_inner(run: dict) -> None:
+    """Move the inner-step lines into the run log, just before the top-level step's own line."""
+    ctx = run.get("context") or {}
+    lg = ctx.pop("_sublog", None)
+    more = int(ctx.pop("_sublog_more", 0) or 0)
+    if isinstance(lg, list) and lg:
+        run["steps_log"].extend(lg)
+    if more:
+        run["steps_log"].append({"id": "...", "type": "note", "status": "ok", "ms": 0,
+                                 "at": time.strftime("%H:%M:%S"), "in": "...",
+                                 "output": f"{more} more inner steps not listed"})
+
+
 async def _exec_sublist(tenant_id: str, conv: str, sublist: list, ctx: dict, run_id: str,
                         soft_parent: bool, scope: str = "") -> tuple[bool, str]:
     """Condition/loop/route bodies: run their steps inline (atomic with the parent step). Returns (ok, error).
@@ -1006,8 +1080,11 @@ async def _exec_sublist(tenant_id: str, conv: str, sublist: list, ctx: dict, run
             return True, "__HALT__"
         if why:
             return False, why
+        t_in = time.time()
         ok, out, err = await _exec_one(tenant_id, conv, sub, ctx, run_id, scope=scope)
+        ms_in = int((time.time() - t_in) * 1000)
         if err == "__STOP__":           # a filter inside a branch closes just that branch (or loop round)
+            _note_inner(ctx, sub, scope, "filtered", ms_in)
             return True, "__STOP__"
         if err in _SIGNALS:
             if err == "__PARK__" and ctx.pop("_park_done", False):
@@ -1015,6 +1092,8 @@ async def _exec_sublist(tenant_id: str, conv: str, sublist: list, ctx: dict, run
             elif err == "__APPROVE__" and sub.get("type") == "approval":
                 ctx["_wait_mark"] = mark
                 ctx["_wait_q"] = str(resolve(sub.get("question") or "", ctx))[:400]
+            if err in ("__PARK__", "__APPROVE__"):
+                _note_inner(ctx, sub, scope, "waiting_approval" if err == "__APPROVE__" else "sleeping", ms_in)
             return True, err
         if not ok:
             oe = sub.get("on_error") or {}
@@ -1024,14 +1103,19 @@ async def _exec_sublist(tenant_id: str, conv: str, sublist: list, ctx: dict, run
                 ctx["steps"][str(sub.get("id"))] = {"output": resolve(oe.get("value"), ctx)}
                 ok = True
             elif soft_parent or sub.get("soft"):
-                _log_step({"steps_log": []}, sub.get("id", "?"), sub.get("type", "?"), "error", 0, error=err)
+                _note_inner(ctx, sub, scope, "error", ms_in, error=err)
                 done.append(mark)
                 continue
             else:
+                _note_inner(ctx, sub, scope, "error", ms_in, error=err)
                 if oe:
                     ctx["_sub_on_error"] = {**oe, "step": str(sub.get("id"))}
                 return False, f"step '{sub.get('id')}' ({sub.get('type')}): {err}"
+            _note_inner(ctx, sub, scope, "ignored" if oe.get("do") == "ignore" else "resumed", ms_in)
+            done.append(mark)
+            continue
         if ok:
+            _note_inner(ctx, sub, scope, "ok", ms_in, output=out)
             done.append(mark)
     return True, ""
 
@@ -1338,7 +1422,17 @@ def resume_call(token: str, body: Any) -> dict:
         if "body" in w:
             return {"ok": False, "status": 409, "error": "This call was already received"}
         w["body"] = body
-        update_run(tenant, rid, status="queued", next_wake_at=None, pause_reason=None, context=c)
+        con = _con(tenant)            # v0.999.253: only one caller wins (two calls at once both used to)
+        try:
+            cur = con.execute("UPDATE runs SET status = 'queued', next_wake_at = NULL, pause_reason = NULL, context = ?, "
+                              "updated_at = ? WHERE id = ? AND status = 'sleeping'",
+                              (json.dumps(c, ensure_ascii=False), time.time(), rid))
+            con.commit()
+            won = cur.rowcount > 0
+        finally:
+            con.close()
+        if not won:
+            return {"ok": False, "status": 409, "error": "This call was already received"}
         return {"ok": True, "status": 200, "run_id": rid, "tenant": tenant}
     return {"ok": False, "status": 404, "error": "This link is not valid"}
 
@@ -1431,6 +1525,7 @@ async def _http_step(tenant_id: str, step: dict, ctx: dict) -> dict:
     guard = await asyncio.to_thread(st._guard_url, url)
     method = str(step.get("method") or "GET").upper()
     headers = {str(k): str(v) for k, v in (resolve(step.get("headers") or {}, ctx) or {}).items()}
+    plain = dict(headers)                    # her own headers, without the saved sign-in
     if step.get("auth"):                     # v0.999.246 ROUTE R7: a saved sign-in, only for its own site
         from ..route import workspace as WS
         try:
@@ -1439,12 +1534,29 @@ async def _http_step(tenant_id: str, step: dict, ctx: dict) -> dict:
             raise ToolError(str(e))
     body = resolve(step.get("body"), ctx) if method == "POST" else None
     timeout = httpx.Timeout(15.0)
+    from urllib.parse import urljoin, urlsplit
 
     def go():
-        if method == "POST":
-            r = httpx.post(guard, json=body, headers=headers, timeout=timeout, follow_redirects=True)
+        # v0.999.253 ROUTE CHECK: redirects followed by hand - every hop passes the private-address guard again,
+        # and a saved sign-in (or her Authorization / Cookie) is never carried to another site
+        url_now, meth, hdrs, data = guard, method, dict(headers), body
+        home = (urlsplit(guard).hostname or "").lower()
+        for _hop in range(6):
+            if meth == "POST":
+                r = httpx.post(url_now, json=data, headers=hdrs, timeout=timeout, follow_redirects=False)
+            else:
+                r = httpx.get(url_now, headers=hdrs, timeout=timeout, follow_redirects=False)
+            loc = r.headers.get("location")
+            if r.status_code not in (301, 302, 303, 307, 308) or not loc:
+                break
+            nxt = st._guard_url(urljoin(url_now, loc))
+            if (urlsplit(nxt).hostname or "").lower() != home:
+                hdrs = {k: v for k, v in plain.items() if k.lower() not in ("authorization", "cookie")}
+            if r.status_code in (301, 302, 303) and meth == "POST":
+                meth, data = "GET", None
+            url_now = nxt
         else:
-            r = httpx.get(guard, headers=headers, timeout=timeout, follow_redirects=True)
+            raise ToolError("the site sent the request round more than 5 redirects")
         text = r.text[:_HTTP_CHARS]
         try:
             parsed = r.json()
@@ -1536,6 +1648,7 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
             if serr == "__PARK__":
                 done_now = bool(ctx.pop("_park_done", False))
                 why = str(ctx.pop("_pause", "") or "sleeping")
+                _flush_inner(run)
                 _log_step(run, step["id"], step["type"], "sleeping", ms, output=out, version=int(step.get("v") or 1))
                 run["status"] = "sleeping"
                 run["pause_reason"] = why                 # v0.512: the typed pause reason (Dify's PauseReason idea)
@@ -1546,6 +1659,7 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
                 _save_checkpoint(tenant_id, run)          # a pause inside a branch keeps the cursor: it resumes there
                 return
             if serr == "__APPROVE__":
+                _flush_inner(run)
                 _log_step(run, step["id"], step["type"], "waiting_approval", ms, version=int(step.get("v") or 1))
                 run["status"] = "waiting_approval"
                 run["pause_reason"] = "waiting_approval"  # v0.512: typed, not implied
@@ -1557,6 +1671,7 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
                 return
             if serr == "__END__":
                 end = ctx.get("_end") or {}
+                _flush_inner(run)
                 _log_step(run, step["id"], step["type"], "stopped", ms, output=out, version=int(step.get("v") or 1))
                 run["cursor"] = len(steps)
                 if end.get("as") == "done":
@@ -1570,12 +1685,14 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
                 break
             if serr == "__STOP__":
                 # v0.999.87 a filter step that did not pass: the run ends cleanly here (not an error)
+                _flush_inner(run)
                 _log_step(run, step["id"], step["type"], "filtered", ms, output=out, version=int(step.get("v") or 1))
                 run["cursor"] = len(steps)
                 _save_checkpoint(tenant_id, run)
                 _finish(tenant_id, run_id, run, len(steps), "done", "", acc)
                 _after_run(tenant_id, wf, "done", "", run_id)
                 return
+            _flush_inner(run)
             _log_step(run, step["id"], step["type"], "ok" if ok else "error", ms,
                       output=(out if ok and out is not None else None), error="" if ok else serr,
                       version=int(step.get("v") or 1))
@@ -1668,6 +1785,12 @@ def _after_run(tenant_id: str, wf: dict, status: str, err: str, run_id: str) -> 
     """v0.999.87 HOOLA ROUTE, after every honest end: count failed runs in a row, switch the route OFF after
     settings.stop_after_errors of them (and say so once), and start the route's error route with the details.
     Never raises (the run's own result is already saved)."""
+    try:                                   # v0.999.253: she stopped it while a step ran - not a done / failed run
+        r_now = get_run(tenant_id, run_id) if run_id else None
+        if r_now is not None and r_now.get("status") == "stopped":
+            return
+    except Exception:   # noqa: BLE001
+        pass
     try:
         from ..route import runs as RU
         RU.tally(tenant_id, wf["id"], status, run_id)       # v0.999.248 R8 insights
@@ -1695,11 +1818,19 @@ def _after_run(tenant_id: str, wf: dict, status: str, err: str, run_id: str) -> 
                     f'Route "{wf["name"]}" was switched off after {n} failed runs in a row. Last error: {err[:200]} '
                     f'Fix the cause, then switch it on again.')
         er = str(st.get("error_route") or "").strip().lower()
-        payload = {"failed_route": wf["name"], "failed_run": run_id, "error": str(err)[:500]}
+        chain = 0
+        try:                         # v0.999.253: error routes failing into each other stop after 3 hops
+            prev = (get_run(tenant_id, run_id) or {}).get("context") or {}
+            chain = int((prev.get("vars") or {}).get("_error_chain") or 0)
+        except Exception:   # noqa: BLE001
+            chain = 0
+        if chain >= 3:
+            return
+        payload = {"failed_route": wf["name"], "failed_run": run_id, "error": str(err)[:500], "_error_chain": chain + 1}
         started = set()
         if er and er != wf["name"]:
             target = get_workflow(tenant_id, name=er)
-            if target is not None and target.get("enabled"):
+            if target is not None and target.get("enabled") and not _over_daily_cap(tenant_id, target):
                 create_run(tenant_id, target, vars_=payload)
                 started.add(target["id"])
         from ..route import triggers as TR     # v0.999.240 routes started "when a route fails"
@@ -1713,12 +1844,21 @@ def _after_run(tenant_id: str, wf: dict, status: str, err: str, run_id: str) -> 
 
 # --------------------------------------------------------------------------- claim + tick (crawl-jobs shape)
 
-def _claim(tenant_id: str, run_id: str, tries_max: int) -> bool:
+def _claim(tenant_id: str, run_id: str, tries_max: int, stale_s: int | None = None) -> bool:
+    """Take a run to start it: queued / sleeping, or (v0.999.253) a 'running' run nobody has written for stale_s
+    (cut by a restart or a crash; it used to stay 'running' for ever). Never one this process is running."""
+    if f"{tenant_id}:{run_id}" in _RUNNING:
+        return False
     con = _con(tenant_id)
     try:
+        if stale_s is None:
+            from ..config import get_settings
+            stale_s = int(getattr(get_settings(), "dhara_stale_s", 180))
+        cut = time.time() - max(30, int(stale_s))
         cur = con.execute("UPDATE runs SET tries = tries + 1, status = 'running', updated_at = ? "
-                          "WHERE id = ? AND status IN ('queued','sleeping') AND tries < ?",
-                          (time.time(), run_id, int(tries_max)))
+                          "WHERE id = ? AND tries < ? AND (status IN ('queued','sleeping') OR "
+                          "(status = 'running' AND updated_at < ?))",
+                          (time.time(), run_id, int(tries_max), cut))
         con.commit()
         return cur.rowcount > 0
     finally:
@@ -1747,7 +1887,13 @@ def _scheduled_due(tenant_id: str) -> list[dict]:
                            "AND next_due_at IS NOT NULL AND next_due_at <= ? LIMIT 10", (now_,)).fetchall()
         for r in rows:
             wf = _wf_row(r)
-            nxt = next_due(wf, from_ts=now_)
+            try:
+                nxt = next_due(wf, from_ts=now_)
+            except Exception:   # noqa: BLE001  v0.999.253: one broken schedule never stops the other routes
+                con.execute("UPDATE workflows SET next_due_at = NULL WHERE id = ?", (wf["id"],))
+                _notify(wf.get("conversation_id") or "", f'Route "{wf["name"]}" has a schedule Hoola cannot read, so '
+                        'it will not start by itself. Open its start in the editor and set the time again.')
+                continue
             missed = now_ - float(wf["next_due_at"]) > 3600
             con.execute("UPDATE workflows SET next_due_at = ? WHERE id = ?", (nxt, wf["id"]))   # None = no next time
             out.append((wf, missed))
@@ -1934,6 +2080,12 @@ def validate_schedule(spec: dict, settings: dict | None = None) -> dict:
                 raise ToolError("every_minutes must be 15 or more (the fastest a schedule may run)")
         except (TypeError, ValueError):
             raise ToolError("every_minutes must be a whole number")
+    if spec.get("every_hours") is not None:     # v0.999.253: '2h' used to break every route's schedule
+        try:
+            if not 1 <= int(spec["every_hours"]) <= 24 * 30:
+                raise ToolError("every_hours must be 1 to 720")
+        except (TypeError, ValueError):
+            raise ToolError("every_hours must be a whole number of hours")
     for at in spec.get("at") or []:
         if _hm(at) is None:
             raise ToolError(f"Time '{at}' is not HH:MM (24-hour)")
@@ -2092,7 +2244,7 @@ async def tick() -> int:
             for rid in _claimants(tenant, stale_s):
                 if budget <= 0:
                     break
-                if _claim(tenant, rid, tries_max):
+                if _claim(tenant, rid, tries_max, stale_s):
                     t = asyncio.ensure_future(execute_run(tenant, rid))
                     _TASKS.add(t)
                     t.add_done_callback(lambda _t: _TASKS.discard(_t))
@@ -2104,6 +2256,10 @@ async def tick() -> int:
             try:
                 con.execute("UPDATE runs SET status = 'failed', error = 'tries used up (dhara_tries) — run dropped', "
                             "updated_at = ? WHERE status = 'queued' AND tries >= ?", (time.time(), int(tries_max)))
+                # v0.999.253: a run cut by restarts again and again ends honestly instead of 'running' for ever
+                con.execute("UPDATE runs SET status = 'failed', error = 'the run was cut off (the server restarted) "
+                            "too many times - run it again', updated_at = ? WHERE status = 'running' AND tries >= ? "
+                            "AND updated_at < ?", (time.time(), int(tries_max), time.time() - max(30, int(stale_s))))
                 con.commit()
             finally:
                 con.close()
@@ -2308,11 +2464,11 @@ async def dhara_run(ctx: Ctx, name="", workflow_id="", vars=None, **_):
             raise ToolError("This route is not shared with this team member")
     if not wf.get("enabled", 0):
         raise ToolError(f'"{wf["name"]}" is disabled right now — turn it on with dhara_control action=enable')
+    if _over_daily_cap(ctx.tenant_id, wf):    # v0.999.253: the route's runs-a-day limit holds here too
+        raise ToolError(f'"{wf["name"]}" already ran as many times today as its settings allow (runs a day)')
     v = dict(vars) if isinstance(vars, dict) else {}
     rid = create_run(ctx.tenant_id, wf, vars_=v)
-    t = asyncio.ensure_future(execute_run(ctx.tenant_id, rid))
-    _TASKS.add(t)
-    t.add_done_callback(lambda _t: _TASKS.discard(_t))
+    _start_now(ctx.tenant_id, rid)             # v0.999.253: claimed first, so it can never run twice
     return {"run_id": rid, "workflow": wf["name"], "status": "queued",
             "note": "Run started — see every step's status with dhara_runs run_id=" + rid + ""}
 
@@ -2384,9 +2540,7 @@ async def dhara_control(ctx: Ctx, action, name="", workflow_id="", run_id="", **
             c.setdefault("_done", []).append(mark)
         update_run(ctx.tenant_id, r["id"], status="queued", tries=0, context=c,
                    cursor=int(r["cursor"]) + (0 if mark else 1), steps_log=r["steps_log"], pause_reason=None)
-        t = asyncio.ensure_future(execute_run(ctx.tenant_id, r["id"]))
-        _TASKS.add(t)
-        t.add_done_callback(lambda _t: _TASKS.discard(_t))
+        _start_now(ctx.tenant_id, r["id"])     # v0.999.253: claimed first, so it can never run twice
         return {"run_id": r["id"], "status": "queued", "note": "Her approval is received — the run continued from the same place"}
     if act == "retry":
         # v0.512 (the Dify node-retry idea): a failed/stopped run re-queues FROM ITS CURSOR — the
@@ -2411,9 +2565,7 @@ async def dhara_control(ctx: Ctx, action, name="", workflow_id="", run_id="", **
                                "at": time.strftime("%H:%M:%S")})
         update_run(ctx.tenant_id, r["id"], status="queued", tries=0, error="", pause_reason=None,
                    steps_log=r["steps_log"], context=ctx_r)
-        t = asyncio.ensure_future(execute_run(ctx.tenant_id, r["id"]))
-        _TASKS.add(t)
-        t.add_done_callback(lambda _t: _TASKS.discard(_t))
+        _start_now(ctx.tenant_id, r["id"])     # v0.999.253: claimed first, so it can never run twice
         return {"run_id": r["id"], "status": "queued",
                 "note": "Resumed from the checkpoint — the steps already done will not run again"}
     raise ToolError("action: enable | disable | stop | approve | retry")

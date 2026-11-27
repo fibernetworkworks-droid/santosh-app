@@ -1,0 +1,54 @@
+/* QA DESK - the App tester (QA)'s own section. Everything shared comes from the earlier desks (seodesk ... rkdesk); the page-scoped
+   rules are repeated here for #qaPage. Only this desk's own parts are new: case and bug rows that open, expected vs actual, run
+   columns, screenshots and the release meter. */
+#qaPage{display:flex;flex-direction:column;gap:20px;padding-top:4px}
+#qaPage .r{text-align:right}
+#qaPage table.tb,#qaPage .md-kpi .v,#qaPage .cs-hero .v{font-variant-numeric:normal}
+#qaPage td.r,#qaPage th.r{text-align:right}
+#qaPage table.tb td{vertical-align:middle}
+#qaPage .cr-grid{align-items:end}#qaPage .cr-grid .wide{grid-column:1/-1}
+#qaPage .cr-grid>.in:not(textarea),#qaPage .cr-grid>.btn{height:42px;min-height:0;box-sizing:border-box}
+#qaPage .iv-add{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:end}
+#qaPage .iv-add>*{flex:1 1 150px;min-width:0}
+#qaPage .iv-add>.btn{flex:0 0 auto;padding:0 18px}
+#qaPage .iv-add .in{height:42px;min-height:0;box-sizing:border-box;width:100%}
+#qaPage .md-kpi .v.warn{color:var(--warn)}#qaPage .cs-pos{color:var(--okt,var(--ok))}
+#qaPage .mk-list td,#qaPage .mk-list th{padding-top:7px;padding-bottom:7px}#qaPage td.nw{white-space:nowrap}
+@media (max-width:600px){#qaPage .iv-kpis.mk-k2{grid-template-columns:repeat(2,minmax(0,1fr))!important}#qaPage td.nw{white-space:normal}}
+#qaPage .qa-code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12.5px;word-break:break-all;white-space:normal}
+#qaPage details.qa-case,#qaPage details.qa-bug{border-top:1px solid var(--line)}
+#qaPage details.qa-case:first-of-type,#qaPage details.qa-bug:first-of-type{border-top:0}
+#qaPage details.qa-case>summary,#qaPage details.qa-bug>summary{display:flex;align-items:center;gap:10px;padding:11px 2px;cursor:pointer;list-style:none;font-size:14.5px}
+#qaPage details.qa-case>summary::-webkit-details-marker,#qaPage details.qa-bug>summary::-webkit-details-marker{display:none}
+#qaPage details>summary:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:8px}
+#qaPage .qa-body{padding:2px 2px 14px 2px;font-size:14px}
+#qaPage .qa-body ol{margin:4px 0 0;padding-left:20px}#qaPage .qa-body li{margin:2px 0}
+#qaPage .qa-pr{flex:0 0 auto;font-size:11.5px;font-weight:600;padding:2px 7px;border-radius:6px;background:var(--soft)}
+#qaPage .qa-pr.P1{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}
+#qaPage .qa-pr.P2{background:color-mix(in srgb,var(--warn) 18%,transparent);color:color-mix(in srgb,var(--warn) 70%,var(--ink))}
+#qaPage .qa-ea{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+#qaPage .qa-ea>div{border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13.5px}
+#qaPage .qa-ea span{display:block;font-size:12px;margin-bottom:2px}
+@media (max-width:600px){#qaPage .qa-ea{grid-template-columns:1fr}}
+#qaPage .qa-shot{display:block;max-width:100%;max-height:340px;margin-top:10px;border:1px solid var(--line);border-radius:10px}
+#qaPage .qa-con{margin:8px 0 0;padding:8px 10px;border-radius:8px;background:var(--soft);font-size:12px;white-space:pre-wrap;word-break:break-word;max-height:140px;overflow:auto}
+#qaPage .qa-res{padding:12px 0;border-top:1px solid var(--line)}#qaPage .qa-res:first-of-type{border-top:0}
+#qaPage .qa-res .cs-head{align-items:baseline}
+#qaPage .qa-live{display:flex;align-items:center;gap:10px}
+#qaPage .qa-spin{width:12px;height:12px;border-radius:50%;background:var(--acc);opacity:.85}
+.qa-p{fill:var(--ok);background:var(--ok)}.qa-f{fill:var(--bad);background:var(--bad)}.qa-b{fill:var(--warn);background:var(--warn)}
+.qa-m{background:color-mix(in srgb,var(--acc) 55%,var(--page))}.qa-n{background:color-mix(in srgb,var(--ink) 18%,var(--page))}
+#qaPage .qa-meter{display:flex;height:12px;border-radius:999px;overflow:hidden;margin-top:12px;background:var(--soft)}
+#qaPage .qa-meter b{display:block;height:100%}
+.iv-dleg i.qa-p,.iv-dleg i.qa-f,.iv-dleg i.qa-b{display:inline-block}
+.iv-seg.qa-s0{stroke:var(--bad)}.iv-seg.qa-s1{stroke:color-mix(in srgb,var(--bad) 55%,var(--warn))}.iv-seg.qa-s2{stroke:var(--warn)}.iv-seg.qa-s3{stroke:color-mix(in srgb,var(--ink) 30%,var(--page))}
+.iv-dleg i.qa-s0{background:var(--bad)}.iv-dleg i.qa-s1{background:color-mix(in srgb,var(--bad) 55%,var(--warn))}.iv-dleg i.qa-s2{background:var(--warn)}.iv-dleg i.qa-s3{background:color-mix(in srgb,var(--ink) 30%,var(--page))}
+@media (max-width:600px){
+#qaPage table.in-cards thead{display:none}#qaPage table.in-cards,#qaPage table.in-cards tbody{display:block;width:100%}
+#qaPage table.in-cards tr{display:flex;flex-wrap:wrap;gap:4px 12px;padding:12px 0;border-bottom:1px solid var(--line)}
+#qaPage table.in-cards td{display:block;border:0;padding:0!important;text-align:left!important}
+#qaPage table.in-cards td:first-child{flex:1 1 100%}}
+#qaPage .cs-head .r{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+#qaPage .cs-head .r select.in,#qaPage .md-acts select.in{width:auto;max-width:240px;flex:0 0 auto}
+#qaPage .md-acts .mk-ask{flex:0 0 auto}
+#qaPage .qa-chips{display:flex;flex-wrap:wrap;gap:6px}#qaPage .qa-shot{max-height:260px}

@@ -85,9 +85,16 @@ def search(tenant: str, q: str, wf_id: str = "", status: str = "", limit: int = 
     if len(q) < SEARCH_MIN:
         raise RunsError(f"Search for at least {SEARCH_MIN} characters")
     q = q[:SEARCH_MAX]
-    like = "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
-    where = ["(context LIKE ? ESCAPE '\\' OR steps_log LIKE ? ESCAPE '\\' OR error LIKE ? ESCAPE '\\')"]
+    def pat(x: str) -> str:
+        return "%" + x.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+    like = pat(q)
+    one = "(context LIKE ? ESCAPE '\\' OR steps_log LIKE ? ESCAPE '\\' OR error LIKE ? ESCAPE '\\')"
+    where = [one]
     args: list[Any] = [like, like, like]
+    esc = json.dumps(q)[1:-1]
+    if esc != q:     # v0.999.253: runs saved before kept 'Priyā' as 'Priy\u0101' - match that form too
+        where = ["(" + one + " OR " + one + ")"]
+        args += [pat(esc)] * 3
     if wf_id:
         where.append("workflow_id = ?"); args.append(wf_id)
     if status:
@@ -123,8 +130,17 @@ def start_data(run: dict) -> dict:
 
 
 def failed_step(run: dict) -> str:
-    for e in reversed(run.get("steps_log") or []):
-        if str(e.get("status") or "") in ("failed", "error"):
+    """The step that failed - v0.999.253: the step inside a branch or loop when there is one (it is logged just
+    before its parent), not only the parent."""
+    log = run.get("steps_log") or []
+    for i in range(len(log) - 1, -1, -1):
+        e = log[i]
+        if str(e.get("status") or "") in ("failed", "error") and e.get("id") != "...":
+            j = i - 1
+            while j >= 0 and log[j].get("in") is not None:
+                if str(log[j].get("status") or "") in ("failed", "error"):
+                    return str(log[j].get("id") or "")
+                j -= 1
             return str(e.get("id") or "")
     return ""
 
@@ -157,7 +173,11 @@ def pin_from_run(tenant: str, wf: dict, run_id: str, steps: list | None = None, 
     live = {s["id"]: s for s in SD._all(wf.get("steps") or [])}
     want = set(steps) if steps else None
     pinned, skipped = [], []
-    last = {str(e.get("id")): str(e.get("status") or "") for e in old.get("steps_log") or []}
+    last: dict = {}
+    for e in old.get("steps_log") or []:      # a step that failed in any loop round counts as failed
+        k = str(e.get("id"))
+        if last.get(k) not in ("error", "failed"):
+            last[k] = str(e.get("status") or "")
     if trigger:
         try:
             SD.set_pin(tenant, wf, "trigger", start_data(old))
@@ -239,7 +259,7 @@ def tally(tenant: str, wf_id: str, status: str, run_id: str) -> None:
             seen = set()
             for e in reversed(run.get("steps_log") or []):    # a retried run's steps count once, as they ended
                 sid, st = str(e.get("id") or ""), str(e.get("status") or "")
-                if not sid or st == "retry" or sid in seen or (old is not None and st == "ok"):
+                if not sid or sid == "..." or st == "retry" or sid in seen or (old is not None and st == "ok"):
                     continue
                 seen.add(sid)
                 con.execute("INSERT OR IGNORE INTO route_step_tally (workflow_id, day, step) VALUES (?, ?, ?)",

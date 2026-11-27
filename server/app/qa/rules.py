@@ -47,6 +47,35 @@ STANDARDS = {
     "edu": "School / college: WCAG 2.2 AA; GIGW 3.0 if it is a government institution.",
 }
 
+# Accessibility law by country (QA DESK, every AI employee is GLOBAL). India's sector table above was read from the sources in
+# the docstring and is CHECKED; these are from memory and are shown as 'check this' - the desk never says one applies for sure.
+COUNTRY_STANDARDS = {
+    "GB": "Equality Act 2010 (reasonable adjustments); public sector: Public Sector Bodies Accessibility Regulations 2018 (WCAG 2.2 AA + an accessibility statement).",
+    "US": "ADA Title III (courts apply WCAG 2.x AA to websites); federal: Section 508; state and local government: ADA Title II rule (WCAG 2.1 AA).",
+    "EU": "European Accessibility Act (from 28 Jun 2025, EN 301 549 / WCAG 2.1 AA) for e-commerce, banking, transport and more; public sector: Web Accessibility Directive.",
+    "DE": "Barrierefreiheitsstärkungsgesetz (the European Accessibility Act, from 28 Jun 2025): EN 301 549 / WCAG 2.1 AA; public sector: BITV 2.0.",
+    "FR": "European Accessibility Act (from 28 Jun 2025); public sector: RGAA (WCAG based) with an accessibility statement.",
+    "CA": "Accessible Canada Act (federally regulated); Ontario: AODA (WCAG 2.0 AA); other provinces have their own acts.",
+    "AU": "Disability Discrimination Act 1992; government: WCAG 2.1 / 2.2 AA (Digital Service Standard).",
+    "AE": "UAE federal law on the rights of people with disabilities; government sites follow WCAG 2.x AA.",
+    "SG": "Singapore government digital services follow WCAG 2.1 AA (Digital Service Standards); no general private-sector web law.",
+    "JP": "Act for Eliminating Discrimination against Persons with Disabilities (reasonable accommodation, private sector from Apr 2024); JIS X 8341-3 (WCAG 2.0).",
+}
+EU = ("AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE")
+
+
+def standard(country: str, sector: str = "general", govt_facing: bool = False) -> dict[str, str]:
+    """{text, source}: India = the checked sector table; other countries = a 'check this' line; WCAG 2.2 AA is always good practice."""
+    cc = (country or "IN").upper()
+    if cc == "IN":
+        return {"text": STANDARDS.get("govt" if govt_facing else sector, STANDARDS["general"]), "source": "checked"}
+    line = COUNTRY_STANDARDS.get(cc) or (COUNTRY_STANDARDS["EU"] if cc in EU else "")
+    if not line:
+        return {"text": "WCAG 2.2 AA (= ISO/IEC 40500:2025) is good practice everywhere. Check which accessibility law applies in your country.",
+                "source": "check this"}
+    return {"text": line + " WCAG 2.2 AA is good practice everywhere.", "source": "check this"}
+
+
 PAY_HOSTS = ("razorpay.com", "paytm.com", "paytm.in", "phonepe.com", "payu.in", "payumoney.com", "cashfree.com", "stripe.com",
              "ccavenue.com", "billdesk.com", "instamojo.com", "juspay.in", "paypal.com", "easebuzz.in")
 SECRET_WORDS = re.compile(r"\b(otp|cvv|cvc|upi ?pin|atm ?pin|card ?number|card no|expiry|net ?banking|m-?pin)\b", re.I)
@@ -160,7 +189,7 @@ def pay_host(host: str) -> bool:
 
 # ---------------------------------------------------------------- release readiness
 def readiness(cases: list[dict[str, Any]], bugs: list[dict[str, Any]], kind: str = "url", govt_facing: bool = False,
-              stale_days: int = 7) -> dict[str, Any]:
+              stale_days: int = 7, country: str = "IN") -> dict[str, Any]:
     active = [c for c in cases if c.get("status") == "active"]
     by = {"pass": 0, "fail": 0, "blocked": 0, "manual": 0, "error": 0, "not_run": 0, "skipped": 0}
     blockers, risks = [], []
@@ -172,7 +201,7 @@ def readiness(cases: list[dict[str, Any]], bugs: list[dict[str, Any]], kind: str
         if c["priority"] == "P1" and r in ("not_run", "manual", "blocked"):
             (blockers if kind == "apk" else risks).append(f"{c['number']} P1 not run / checked yet")
         if c["type"] == "accessibility" and r == "fail":
-            (blockers if govt_facing else risks).append(f"{c['number']} accessibility fail" + (" (GIGW / IS 17802 required)" if govt_facing else ""))
+            (blockers if govt_facing else risks).append(f"{c['number']} accessibility fail" + ((" (GIGW / IS 17802 required)" if (country or "IN").upper() == "IN" else " (your accessibility law applies)") if govt_facing else ""))
         if (c.get("age_days") or 0) > stale_days and r == "pass":
             risks.append(f"{c['number']} not run for {stale_days} days")
     openb = [b for b in bugs if b.get("status") in ("open", "reopened", "fixed")]

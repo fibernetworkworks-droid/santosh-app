@@ -122,7 +122,7 @@ def test_import_claims_morning(ins):
     S.save_client(T, client="Mohan", dob=DAY.replace(year=1970).isoformat())
     assert S.birthdays(T, 0)["birthdays"][0]["client"] == "Mohan Das"
     m = S.send_morning(T)
-    assert "Bima" in m["text"] and "Mohan Das" in m["text"]
+    assert "Insurance:" in m["text"] and "Mohan Das" in m["text"]
     f = S.book_file(T)
     assert f["file"]["name"].endswith(".xlsx")
 
