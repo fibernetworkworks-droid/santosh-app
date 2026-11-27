@@ -1812,6 +1812,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_kdc.block, tenant_id)
     except Exception:
         log.exception("kernel desk block failed")
+    try:   # GRAPHICS DESK: a turn in the Graphics chat (or a call started from it) knows the desk
+        from .. import gfxchat as _gxc
+        if _gxc.is_graphics(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_gxc.block, tenant_id)
+    except Exception:
+        log.exception("graphics desk block failed")
     _mark("hint")
     return state
 
@@ -2807,6 +2813,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "kernel desk chat"
     except Exception:
         log.exception("kernel desk chat admission failed")
+    try:   # GRAPHICS DESK: the graphics tool in view in the Graphics chat
+        from .. import gfxchat as _gxc
+        if adm is not None and _gxc.is_graphics(conversation_id):
+            adm.admit_families(_gxc.FAMILIES)
+            for f in _gxc.FAMILIES:
+                adm.why[f] = "graphics desk chat"
+    except Exception:
+        log.exception("graphics desk chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,

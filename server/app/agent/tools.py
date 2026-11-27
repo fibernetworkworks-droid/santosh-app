@@ -1248,6 +1248,10 @@ from .kernel_tools import KERNEL_HANDLERS, KERNEL_LABELS, KERNEL_TOOLS  # noqa: 
 TOOLS.extend(KERNEL_TOOLS)
 TOOL_LABELS.update(KERNEL_LABELS)
 HANDLERS.update(KERNEL_HANDLERS)
+from .gfx_tools import GFX_HANDLERS, GFX_LABELS, GFX_TOOLS  # noqa: E402
+TOOLS.extend(GFX_TOOLS)
+TOOL_LABELS.update(GFX_LABELS)
+HANDLERS.update(GFX_HANDLERS)
 # v0.357 Engineering Desk: the hired CAD Engineer (cad_part)
 from .eng_tools import ENG_HANDLERS, ENG_LABELS, ENG_TOOLS  # noqa: E402
 

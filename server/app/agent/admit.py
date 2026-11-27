@@ -218,6 +218,10 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "blender": ("blender", "3d", "three d"),
     # v0.999.272 the Compiler Construction Engineer: her own language (grammar, parser, interpreter, compiler)
     # v0.999.274 the Kernel / OS Developer: her kernel words
+    # v0.999.277 the Graphics Engine Programmer: her rendering words
+    "gfx": ("shader", "glsl", "hlsl", "wgsl", "vulkan", "direct3d", "d3d12", "metal api", "opengl", "webgpu", "spir-v", "vuid",
+            "validation layer", "renderer", "rendering", "ray tracing", "path tracing", "frame time", "presentmon", "fps drop", "gpu pass",
+            "psnr", "ssim", "render pass"),
     "kernel": ("kernel", "oops", "kasan", "lockdep", "dmesg", "kernel panic", "call trace", "device driver", "kernel module",
                "defconfig", ".config", "checkpatch", "device tree", "qemu", "insmod", "hung task", "soft lockup", "kconfig"),
     "langlab": ("grammar", "parser", "compiler", "interpreter", "dsl", "domain-specific language", "domain specific language",

@@ -485,6 +485,7 @@ function go(v, arg) {
   if (v === 'b3desk') { location.assign('/console/3d'); return; }   // 3D STUDIO DESK: its own section
   if (v === 'lcdesk') { location.assign('/console/compiler'); return; }   // COMPILER DESK: its own section
   if (v === 'kddesk') { location.assign('/console/kernel'); return; }   // KERNEL DESK: its own section
+  if (v === 'gxdesk') { location.assign('/console/graphics'); return; }   // GRAPHICS DESK: its own section
   if (v === 'ncdesk') { location.assign('/console/noc'); return; }   // NOC DESK: its own section
   if (v === 'dwdesk') { location.assign('/console/docs'); return; }   // TECHNICAL WRITER DESK: its own section
   if (v === 'ardesk') { location.assign('/console/appreview'); return; }   // APP REVIEWER DESK: its own section

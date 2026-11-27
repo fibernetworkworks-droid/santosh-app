@@ -13362,3 +13362,41 @@ and every driver template passes the style rules. FOUND AND FIXED while building
 KASAN / hung-task reports pointing at dump_stack / kasan_save_stack / __schedule instead of the real code, a KASAN function name
 treated as a file path, list poison with an offset missed, one crash counted twice, the init printing a backslash instead of a
 new line. NOT VERIFIED: the workflow has not run on GitHub and no real kernel was built or booted in QEMU here.
+
+
+## v0.999.277 GRAPHICS DESK (owner: "Graphics Engine Programmer same as finance desks")
+
+The Hub's `graphics_eng` card goes live, built like the finance desks: its own page `/console/graphics` (`static/console/gxdesk.{html,js,css}`)
+and its own chat (Conversation kind `graphics`, `app/gfxchat.py`, routes `/api/gxdesk/*`), kept out of every Hoola chat list
+(callconv / convs), with the desk block + the `gfx` tool family in view in that chat and in a call started from it.
+
+Engine `app/gfxdesk/` - all code, no model, no money:
+- `pathtrace.py`: a numpy CPU path tracer (spheres, planes, boxes; diffuse / metal / glass / light; sky gradient; ACES or clamp;
+  fixed seed = the same picture every time), limits checked (512 x 512 pixels, 64 samples worth of work, 64 objects). Three
+  reference scenes: the white furnace (an albedo-1 sphere under a uniform sky must vanish - mean 0.5, deviation 0, energy
+  conserved), three materials, a closed box with a ceiling lamp (noisy at 32 samples; compare with a blur of 2 or by SSIM).
+- `compare.py`: PSNR, SSIM (luminance, 7 x 7 box windows), mean / max error, share of pixels over her threshold, optional blur,
+  a heat map PNG, the worst regions.
+- `shaders.py`: a GLSL / WGSL / HLSL check in code (not a compiler): GLSL ES 3.00 removals (gl_FragColor, texture2D, varying),
+  missing precision / out vec4 / main, #version placement, unused uniforms, float ==, NaN traps, brace balance. The real compile is
+  her browser: the page compiles the fragment shader with WebGL2 (u_res, u_time), shows the driver's own error lines, and takes the
+  golden picture / the test picture at u_time = 1.0; the server compares them against her limits.
+- `vklog.py`: Vulkan validation (VUIDs, SYNC-HAZARD, BestPractices), D3D12 debug layer (#id NAME), Metal API validation
+  assertions and OpenGL debug messages - grouped by ID, counted, errors first, categorised (synchronization, layouts / resource
+  state, descriptors, render pass, pipeline, memory, lifetime, performance) with the usual fix and the Vulkan spec link; handles
+  masked.
+- `frames.py`: PresentMon CSV (MsBetweenPresents / FrameTime + CPUBusy / GPUBusy) or plain milliseconds -> average FPS, median,
+  p95 / p99, 1% / 0.1% lows, stutters (over twice the rolling median and over budget), share over the budget, CPU- or GPU-bound;
+  GPU pass timings -> share of the frame and of the budget.
+- `service.py`: items (shader / compare / vklog / frames / passes, numbered S- / I- / V- / F- / G-), shader versions (30 kept) +
+  golden picture, settings (API, engine, GPU, target FPS, PSNR / SSIM limits, pixel threshold, blur).
+
+Tool `gfx_desk` (`agent/gfx_tools.py`, family gfx, registry 704 -> 705). Pages: Today, Shaders (editor + WebGL2 preview, Run /
+Play / Set golden / Test, compiler log, versions), Images (reference scenes rendered on demand, compare form), Validation, Frame
+times (chart against the budget, histogram, stutters, CPU vs GPU), Settings. Guards: paused = reads only, secrets refused outside
+the data fields, logs and shaders are data. Hoola never runs anything on her machines, pushes or ships a build.
+
+Tests `tests/test_gx_desk.py` (4): the path tracer + compare + shader check, the validation / frame readers, hire + chat + wiring +
+store + guards, and a browser walk at 1440 / 390 in which Chromium's WebGL2 (SwiftShader) really compiles the starter shader, sets
+the golden picture, fails the test after a colour change and reports a real compile error.
+NOT VERIFIED: on her server; with renders from her own engine; WGSL / HLSL are checked in code only.
