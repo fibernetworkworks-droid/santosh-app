@@ -13129,3 +13129,27 @@ the new steps, a queued webhook said on the runs page, the version. NOT VERIFIED
 
 ## v0.999.264 MCP SERVERS THAT RUN AS A PROGRAM
 (owner: 'MCP servers that run as a program --- WORK ON IT'): a .mcp.json server with `command` + `args` (Claude Code's stdio servers: npx ..., uvx ..., node ./x.js, python -m x) - in the repo or in one of her plugins - now WORKS: it runs inside the session's locked box, like her commands, with the repo's own network setting (no network = none; package registries / her hosts through the allow-list proxy), and a small driver (`engine.MCP_DRIVER`, Python, in the box) speaks MCP to it over stdin / stdout: initialize, initialized, then ONE tools/list (up to 5 pages) or tools/call, answers 'not supported' to anything the server asks the client (roots / sampling), returns the answer + the program's log, and stops it (`Tools._stdio_mcp`, timeout `dev_mcp_stdio_s` 180 s, answer wait `dev_mcp_stdio_wait_s` 60 s). `repoconf.stdio_spec`: ${VAR} / ${VAR:-default} expanded only from what Hoola has (CLAUDE_PROJECT_DIR = /work), a command naming a variable Hoola lacks is not started, env values naming a missing variable or secret-looking names (TOKEN / KEY / SECRET...) are left out and listed, a plugin server that runs a file inside the plugin's own folder (${CLAUDE_PLUGIN_ROOT}) is said to be out of the box's reach. Her OK comes first for ANY repo-named server, now even to list its tools (it starts a program); 'always' covers the session. A server that never answers says so plainly with its output, and names the fix when it needed to download its package (network for package registries, or the repo's setup command). The setup dialog says 'Runs in the locked box' + the program (web + phone). 5 tests incl. a REAL stdio MCP server spoken to over pipes. NOT VERIFIED: on real Docker on her server (the base image has Python; npx / uvx servers need Node / uv in the repo's image and the network to fetch them); a server is started fresh for each request (no long-running server yet).
+
+
+## v0.999.265 APP REVIEWER DESK (owner: "App reviewer same as finance desks")
+
+The App reviewer (hire key `app_review`) gets its own section like the finance desks: `/console/appreview` (`static/console/ardesk.html/.js/.css`)
+with the App review chat (Conversation kind `appreview`, `server/app/archat.py`, routes `/api/ardesk/{chat, chat/new, chat/{conv}/ok, desk, do/{part}}`)
+beside the desk's pages, on the existing App Review engine (`server/app/appreview`, v0.1xx):
+- Today: needs (fix-list cards waiting, an app below Google Play's target API, critical / serious risks open, a review older than 30 days, websites
+  not verified, country not set), tiles, open risks by severity (ring), a card per app / site with its score, severity counts and score over reviews.
+- Review something: upload an APK / AAB / XAPK / source ZIP (the engine's own `/api/appreview/upload`), a GitHub repo (private through the sealed
+  read-only token), a website.
+- Reviews: list + one review (score, what changed since the last review, what Hoola read, risks with evidence, fix, snippet, sources; mark as
+  intended with a reason (needed for a critical); report PDF + Excel + fix list files).
+- Fix lists: the tasks, copy as text, a card to the Developer Assistant or her developer - sent only on her tap with the card hash; earlier cards.
+- Websites: add, the DNS TXT / file record to prove it is hers, Verify now; website reviews.
+- What is checked: the Play target API table, laws by country (checked / check this), every check by area, sources with dates, what Hoola never does.
+- Settings: country, stack, children, iPhone version, developer's name; GitHub token (sealed, never shown again).
+GLOBAL: `AppReviewSettings.country` (new nullable column; "" = India as before). `appreview.rules.law(country)` names the privacy, children and payment
+law per country (IN checked; EU / GB / US / CA / BR / AU / SG / AE / SA / ZA / NG / KE / JP / ID named as a starting point; any other = generic),
+`rules.localise` rewrites the India-only risks (dpdp_notice, dpdp_children, rbi_payment, rbi_card_fields) for another country with `check: true` and
+no sources. The tool `app_review action=settings` and `PUT /api/appreview/settings` take `country`. New `service.handoffs(tenant)`; report files now
+carry their download url. Guards: hire gate (paused = reads only), no token / password / OTP outside the GitHub part. Tests
+`server/tests/test_ar_desk.py` (5 incl. a browser walk at 1440 and 390). PRE-EXISTING red, not this release: `test_tech_appreview.py::test_tick_and_api`
+(date-dependent upload cleanup; fails on untouched main too). NOT VERIFIED on her server or with a real APK from her.
