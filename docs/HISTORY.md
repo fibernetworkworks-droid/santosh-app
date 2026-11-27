@@ -12839,3 +12839,30 @@ parameter names change between n8n versions, so an unknown shape becomes a place
 
 ## v0.999.249 CLAUDE CODE FEED
 Claude Code feed. Server `devsahayak/engine.py` (`_snap` before write/edit/multi_edit, `real_hunk` + `_real_change` -> step `hunk` rows [kind, old, new, text], `grep_counts`, `glob_count`, `did_words` -> bash `did`, `_NowMap` NOW_STEP sets NOW_AT / clears NOW_TOOL + LIVE_OUT, t_bash `on_line`, think `secs`, SYSTEM reply rules), `devlab/box.py` (`_run_stream`, run_in on_line), `devsahayak/brain.py` (`_claude_stream` when TEXT_SINK is set), `devsahayak/service.py` (`_now_more` out/t0/tool in live_state + live_delta + task_view now_info, srv_now), `devsahayak/api.py` (srv in code_open). Web `static/console/code.js` (liveOpen / liveEvent / liveRefresh / stepClock / liveOut, hunkHTML, srch, openFirst, todo last, look/made/server/gap, Esc stop, summary words) + `hoolacode.css` (.hcd-diff.num, .hcd-out) + `hoolacode.js` (api signal). Phone `lib/ui/code/code_words.dart` (did rows, codeMatches, codeCount, CodeHunk, reply font) + `code_session.dart` (now_info from the stream, `_liveOut`, rows). Tests `test_v0999_249_claude_feed.py`; test_chatkit_code_auto / v0768 / v0794 / v0928 / v0936 / v0937 / v0962 moved to the new words. NOT VERIFIED on her server or phone.
+
+
+## v0.999.250 INSURANCE AGENT DESK (owner: "now insurance agent assistant --- make it very poerfull and advnce like other employee")
+
+The insurance agent's coworker existed since v0.98 (Bima Sahayak, `app/insure`, tools bima / bima_dekho) with no desk of its own and
+India-only rules. Now the Hub employee `insurance_agent` (Finance) opens /console/insurance with its own Insurance chat (kind
+`insurance`, `inschat.py`, out of every chat list; the desk block + the `insure` family in view) beside seven pages:
+- Today: in force, due soon, cover at risk (premium a year), open claims, persistency; Needs you; book by type; 12-month premiums
+  as monthly columns; grace / lapsed; birthdays with drafted wishes.
+- Customers: list with cover gaps and search; a customer page = cover they need (life / health gap bars), details, family, policies
+  (Remind / Paid), quotes compared, claims.
+- Renewals: the insurer's renewal list (CSV) read in; grace / past due, due soon, lapsed and still revivable; WhatsApp links with
+  the message she sends (only customers who agreed), Reminded, Paid.
+- Cover & quotes: gaps across the book (CSV), quotes compared (cheapest per unit of cover, then claims paid) and kept as the advice
+  record, "Yes, prepare the message" -> the draft + WhatsApp link; proposal papers by type and age.
+- Claims: start a claim, document ticks, the settlement clock against her country's time, the complaint ladder, closed claims.
+- Commission: expected commission on premiums recorded as paid vs the insurer's statement (CSV), short / missing / extra, by
+  insurer, 12 months ahead (new table `ins_commission`).
+- Settings: her name, code, reminder days, morning time; country + currency; the servicing rules.
+GLOBAL: `insure/packs.py` = country packs (IN checked from the IRDAI 2024 circulars; GB, US, AE, SG, AU, CA, ZA, KE from memory).
+A rule marked "check this" is shown with its suggested value and never used until she taps "Use this value" or types her own
+(`InsSettings.country / currency / rules`); without a grace period a past-due premium is "Past due", nothing assumed; claim clocks
+run only on her settlement time; health-cover rule of thumb is hers outside India; GST lines only for India; engine money words
+become her currency (`packs.localise`). India behaves exactly as before (test_v098_insurance unchanged). Also fixed: a quote message
+carried the agent's own note ("Yearly income is not known: tell me...") to the customer; Hinglish engine lines in English; a policy
+with no due date was shown "Paid up" (now "No due date" + a need). Tests: test_ins_desk.py 5 incl. a browser walk at 1440 / 390.
+NOT VERIFIED on her server; country packs other than India are unchecked.

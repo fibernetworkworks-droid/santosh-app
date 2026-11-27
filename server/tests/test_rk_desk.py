@@ -58,7 +58,7 @@ def test_hire_setup_chat_block_and_wiring(rk):
     from app.agent.tools import FAMILY_OF
     assert FAMILY_OF["risk_desk"] in rk.FAMILIES
     for f_ in ("callconv.py", "convs.py"):
-        assert '"risk")' in (root / "server/app" / f_).read_text()
+        assert '"risk"' in (root / "server/app" / f_).read_text()
     from app.main import APP_VERSION, app
     r = TestClient(app).get("/console/risk")
     assert r.status_code == 200 and "Content-Security-Policy" in r.headers and "rkdesk.js" in r.text

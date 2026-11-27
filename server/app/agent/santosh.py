@@ -1740,6 +1740,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_rkc.block, tenant_id)
     except Exception:
         log.exception("risk desk block failed")
+    try:   # INSURANCE AGENT DESK: a turn in the Insurance chat (or a call started from it) knows the desk
+        from .. import inschat as _insc
+        if _insc.is_insurance(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_insc.block, tenant_id)
+    except Exception:
+        log.exception("insurance desk block failed")
     _mark("hint")
     return state
 
@@ -2639,6 +2645,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "risk desk chat"
     except Exception:
         log.exception("risk desk chat admission failed")
+    try:   # INSURANCE AGENT DESK: the insurance tools in view in the Insurance chat
+        from .. import inschat as _insc
+        if adm is not None and _insc.is_insurance(conversation_id):
+            adm.admit_families(_insc.FAMILIES)
+            for f in _insc.FAMILIES:
+                adm.why[f] = "insurance desk chat"
+    except Exception:
+        log.exception("insurance desk chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,
