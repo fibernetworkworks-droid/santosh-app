@@ -13484,3 +13484,47 @@ NOT VERIFIED: on her server or with her own database; the lab is SQLite on gener
 
 ## v0.999.281 MCP TOOLS ONE BY ONE
 (owner: 'GO NEXT - MCP TOOLS LISTED ONE BY ONE'): Claude Code's way of showing MCP servers in Hoola Code (`devsahayak/mcptools.py`). Before, the coder had ONE `mcp` tool (list, then call with pack_id + tool + args) and never saw a tool's real fields; now every tool of her connected MCP servers and of the repo's `.mcp.json` / plugin servers she already allowed is a tool of its own, named mcp__<server>__<tool> (64 characters at most, never two with one name), with the server's own input schema and description (a tool that changes something says it becomes a confirm card on her phone). A repo server's tool list is read once, after her OK, and kept for a day; listing it loads its tools into the running round at once. Past 60 tools or 40,000 characters of definitions they are held back like Claude Code's tool search: the coder sees their names and `mcp_tool_search` (keywords, or select:<name>,<name>) loads the ones it needs. Every call still runs through the same doors (her connector layer and its phone cards; the repo's box or allowed address); the repo's permission rules (mcp__server__tool, mcp__server, mcp__server__*), hook matchers (mcp__notion__.*), the 'ask each step' questions and the Auto-mode safety reviewer all see the real name. The old `mcp` tool stays for listing and for servers not yet allowed. Web + phone rows name the server and tool; a 'Loaded MCP tools' row for the search. NOT VERIFIED against a live MCP server or a real model.
+
+## v0.999.282 EVERY PAGE ALIGNED
+
+Owner: "NOW GO DEEP ON EVERY PAGE OF ROUTE AND ALINE AND MAKE EVERY SECTION PERFCTLY FIXED".
+
+How: a seeded account (8 routes of every start, runs done / failed / waiting, a data store with records, a variable, two sign-ins,
+a library workflow) and every Route page - Home, All routes, Needs you, Runs, a run, Insights, Bring in, Templates, Workflows + one,
+Variables, Sign-ins, Data stores + one, Grid, the editor (plain, a step, the start, Add a step), the route's Runs / Versions /
+Settings - opened in Chromium at 1440, 1024 and 390 px in light and dark (144 views). Each view measured in code (sideways scroll,
+anything past the page edge, cut text, controls side by side with different heights or middles, controls under 26 px, page errors)
+and looked at by eye. 74 views had findings; after the fixes none (the home's 36 px round send button beside 32 px chips stays, on
+the same middle line, by design).
+
+Fixed (route.css end block "v0.999.282 EVERY PAGE ALIGNED" + route.js):
+- a form inside a card was padded twice (Variables, Sign-ins, Data stores, a record, Settings, Bring in) - once now;
+- a heading inside a table card sat on the card's edge (Insights "Each route", Versions) - padded, with a line under it;
+- the line under a page title sat 28 px away on some pages and 6 px on others - 8 px everywhere;
+- drop-downs were the browser's own and file pickers a grey "Choose File" - the house look (chevron, pill button);
+- toolbars mixed 32 / 36 / 38 px controls (Runs: Find, Workflows: Search, Data store search) - 36, chips 32 on the same middle;
+- three different number-card styles (Home serif, Insights wide figures, Grid sans) - the Home serif everywhere; number columns
+  use plain figures (the font's table figures put wide gaps round a decimal point: "0 . 0 s");
+- links in tables were the browser's colour - read as names (ink, underline on hover); "Set it" keeps the accent;
+- row buttons (Change / Delete) touched and floated mid-row - at the end of the row with a gap;
+- phone list cards (routes, runs, insights) had values starting at different places - one label column;
+- phone bar: "New route" broke onto two lines - one line, the bar fades where it scrolls on;
+- home on a phone: the send button dropped under its chips - on their line;
+- Data store page: the record search was an unstyled box on the card edge, the field rows repeated their labels and touched,
+  the title was in a code font - a styled search, labels once, rows apart, the page's title font;
+- Grid: the fourth column (Apps and web) was cut off at full desktop width - the columns fit the page (narrower columns, closer)
+  before it scrolls; app names read nicely;
+- the route's Runs / Versions / Settings pages were pinned left with an empty half - centred; the three daily limits on one row;
+  "Money and sending: Always wait for your tap" replaced by the true sending state (none / allowed + sent today / waits for Allow
+  sending) and Money on its own line;
+- the editor: the sending bar took three lines - one line (wraps when long); what starts a route was a long one-per-line list - two
+  across; the Fit button now fits the whole route (the first view stays readable from the start); on a phone the back button sat
+  alone on a line - back, name and its state on one line, the controls under it; on a phone a tapped step's settings opened out of
+  view below the canvas - scrolled into view; hint texts that were cut shortened;
+- a workflow's page: the back button floated at the middle of a tall title block and a stray "·" ended the meta line - top-aligned,
+  no stray dot; a run that a Stop step ended said "stopped by step 'boom': ..." - "Stopped at boom: ...", every error starts with a
+  capital letter.
+
+Tests: server/tests/test_v0999_282_route_aligned.py - the rules, and a walk of 22 page views at 1440 and 390 px in light and in
+dark that fails on sideways scroll, anything past the edge, cut text, mismatched controls, tiny controls or a page error.
+NOT VERIFIED on her server.
