@@ -2196,6 +2196,15 @@ def qa_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/3d")
+@app.get("/console/3d/")
+def studio3d_desk_page():
+    """3D STUDIO DESK: the 3D Studio artist's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "b3desk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/noc")
 @app.get("/console/noc/")
 def noc_desk_page():
@@ -2891,6 +2900,8 @@ from . import dwchat as _dwchat_mod                             # noqa: E402  TE
 _dwchat_mod.mount(app, current_tenant, require_key)             # /api/dwdesk/*
 from . import ncchat as _ncchat_mod                             # noqa: E402  NOC DESK
 _ncchat_mod.mount(app, current_tenant, require_key)             # /api/ncdesk/*
+from . import b3chat as _b3chat_mod                             # noqa: E402  3D STUDIO DESK
+_b3chat_mod.mount(app, current_tenant, require_key)             # /api/b3desk/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

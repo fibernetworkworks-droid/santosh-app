@@ -1794,6 +1794,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_ncc.block, tenant_id)
     except Exception:
         log.exception("noc desk block failed")
+    try:   # 3D STUDIO DESK: a turn in the 3D chat (or a call started from it) knows the desk
+        from .. import b3chat as _b3c
+        if _b3c.is_3d(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_b3c.block, tenant_id)
+    except Exception:
+        log.exception("3d desk block failed")
     _mark("hint")
     return state
 
@@ -2765,6 +2771,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "noc desk chat"
     except Exception:
         log.exception("noc desk chat admission failed")
+    try:   # 3D STUDIO DESK: the 3D tool in view in the 3D chat
+        from .. import b3chat as _b3c
+        if adm is not None and _b3c.is_3d(conversation_id):
+            adm.admit_families(_b3c.FAMILIES)
+            for f in _b3c.FAMILIES:
+                adm.why[f] = "3d desk chat"
+    except Exception:
+        log.exception("3d desk chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,
