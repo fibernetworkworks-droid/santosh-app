@@ -56,7 +56,7 @@ def test_hire_setup_chat_block_and_wiring(dg):
     from app.agent.tools import FAMILY_OF
     assert FAMILY_OF["digital_assets"] in dg.FAMILIES
     for f_ in ("callconv.py", "convs.py"):
-        assert '"digital")' in (root / "server/app" / f_).read_text()
+        assert '"digital"' in (root / "server/app" / f_).read_text()
     from app.main import APP_VERSION, app
     r = TestClient(app).get("/console/digital")
     assert r.status_code == 200 and "Content-Security-Policy" in r.headers and "dgdesk.js" in r.text
@@ -205,13 +205,14 @@ def test_desk_in_a_real_browser(dg, dg_server, tmp_path):
     def up(pg, kind, name, text, wait):
         f = tmp_path / name
         f.write_text(text)
-        for tries in (1, 2):     # a redraw that lands between the pick and its change event takes the file box away: pick again
+        for tries in (1, 2, 3):  # a redraw that lands between the pick and its change event takes the file box away: pick again
+            pg.wait_for_timeout(250)
             pg.set_input_files(f"form[data-kind={kind}] input[type=file]", str(f))
             try:
-                pg.wait_for_selector(wait, timeout=10000 if tries == 1 else 20000)
+                pg.wait_for_selector(wait, timeout=10000 if tries < 3 else 20000)
                 break
             except Exception:
-                if tries == 2:
+                if tries == 3:
                     raise
 
     ctx = browser.new_context(viewport={"width": 1440, "height": 900})

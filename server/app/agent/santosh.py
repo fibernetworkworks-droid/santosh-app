@@ -1722,6 +1722,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_dgc.block, tenant_id)
     except Exception:
         log.exception("digital desk block failed")
+    try:   # PUBLIC FINANCE DESK: a turn in the Public Finance chat (or a call started from it) knows the desk
+        from .. import pbchat as _pbc
+        if _pbc.is_public(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_pbc.block, tenant_id)
+    except Exception:
+        log.exception("public desk block failed")
     _mark("hint")
     return state
 
@@ -2597,6 +2603,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "digital assets chat"
     except Exception:
         log.exception("digital chat admission failed")
+    try:   # PUBLIC FINANCE DESK: the public-sector tool in view in the Public Finance chat
+        from .. import pbchat as _pbc
+        if adm is not None and _pbc.is_public(conversation_id):
+            adm.admit_families(_pbc.FAMILIES)
+            for f in _pbc.FAMILIES:
+                adm.why[f] = "public finance chat"
+    except Exception:
+        log.exception("public chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,

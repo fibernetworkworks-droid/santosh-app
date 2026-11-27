@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.237"   # v0.999.237 DATA STEPS + EXPRESSIONS (R3 of the Hoola Route plan; owner: "GO R3"; built as 0.999.235, their DIGITAL ASSETS DESK and COMPUTER TOP BAR took 0.999.235-0.999.236, all kept): expressions in {{ }} do maths, comparisons, x if c else y, list indexes and a fixed list of functions (text, numbers, lists, dates: upper, round, sum, pluck, date_add, date_format, default ...) on her data only - parsed by Python's parser and walked by agent/dhara_data.py, nothing of Python reachable, capped; a plain {{a.b}} unchanged, a failing one stays as written, a malformed one refused at save; a new step type data: sort, limit, remove duplicates, summarise, split out, compare two lists, keep / drop / rename fields, set several fields, date and time, text formats (HTML pick / text, XML, CSV, JSON, Base64, URL), make or read files (Excel, CSV, PDF - kept 24 h, its file id goes on to later steps) and hashes / HMAC / ids; Add a step lists them with their own forms; every box shows its result live from the route's newest data (POST /api/route/routes/<id>/eval); dhara_save and the route chat know them; 8 tests incl. a browser walk. NOT VERIFIED: on her server. Previous: v0.999.236 COMPUTER LOGO + BACK (owner, on the new Computer page: 'just put hoola logo there and a back to hoola chat for going to hoola main chat page'): the Computer top bar's plain violet circle is now the real Hoola mark (HoolaMark.svg from mark.js, the PNG if the script is missing) and a 'Back to Hoola chat' button (to /console/) sits on the right of the top bar on every Computer view, also at phone width where the tool links hide; the browser walk checks both. NOT VERIFIED on her server. Previous head: v0.999.235 DIGITAL ASSETS DESK (built as 0.999.232; their ROUTE EDITOR, COMPUTER V2 and STEPS YOU CAN TEST took 0.999.232-0.999.234, all kept) (owner: "NOW LETS WORK ON NEXT EMPLOYEE DIGITAL ASSETS DESK"): the Digital Assets employee gets its own section /console/digital + Digital Assets chat (kind digital, `dgchat.py`) on any finance workspace (her own coins up to an exchange, custodian or stablecoin issuer): Today (net gain this tax year, holdings at cost, custody, reserve cover, needs, gains by tax year, holdings ring, the firm); Gains (an exchange export with its title lines skipped, matched by HER country's method or hers, by HER tax year, holdings, coin income, each disposal, CSV for the return); Wallets & safety (her public addresses, an address checked before sending: checksum, a look-alike of hers, draining-scam signs); Stablecoin pay (coins for an invoice at HER rate, the peg against HER tolerance); Token checks; Reserve (coverage by HER eligible list, by type and holder vs HER limit); Custody (client ledger vs wallet balances); Transfers (travel rule above HER threshold, accounts kept as their last 4, counts for a licensing return); Surveillance (self-trades, round trips, volume spikes); Settings; never holds a key, signs or sends, and refuses a seed phrase or private key; 5 tests incl. a browser walk. NOT VERIFIED on her server.
+APP_VERSION = "0.999.238"   # v0.999.238 PUBLIC FINANCE DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE PUBLIC FINANCE DESK"): the Public Sector employee gets its own section /console/public + Public Finance chat (kind public, `pbchat.py`) on any finance workspace (a benefits office, a payment agency, a deposit insurer, a supervisor, a development-finance team): Today (cases waiting, the payment run, banks in breach, findings open, needs, cases against the rules, run exceptions, capital ratios); Casework (scheme rules each with its source, a household checked -> meets / misses by how much / cannot tell, evidence missing, amount by HER rule, the caseworker's decision recorded, never made); Overpayments (due vs paid per case and period, CSV); Payment runs (approved list vs payment file vs bank return: paid twice, wrong amount, failed, never sent, not on the list, shared accounts; accounts kept only as a fingerprint + last 4); Deposit cover (depositors up to HER limit, set-off by HER law, records to fix, payout list CSV; names and dates of birth only as a fingerprint); Supervision (returns vs HER thresholds, peers, change since the period before); Inspections (owners, overdue, repeats, Closed); Projects (tranches vs conditions met, budget, eligible categories, indicators); Settings; never pays, awards, refuses or stops anything; 5 tests incl. a browser walk. NOT VERIFIED on her server. Previous: v0.999.237 DATA STEPS + EXPRESSIONS.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2160,6 +2160,15 @@ def markets_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/public")
+@app.get("/console/public/")
+def public_desk_page():
+    """PUBLIC FINANCE DESK: the Public Sector employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "pbdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/digital")
 @app.get("/console/digital/")
 def digital_desk_page():
@@ -2759,6 +2768,8 @@ from . import cmchat as _cmchat_mod                            # noqa: E402  COM
 _cmchat_mod.mount(app, current_tenant, require_key)             # /api/community/*
 from . import dgchat as _dgchat_mod                            # noqa: E402  DIGITAL ASSETS DESK
 _dgchat_mod.mount(app, current_tenant, require_key)             # /api/digital/*
+from . import pbchat as _pbchat_mod                            # noqa: E402  PUBLIC FINANCE DESK
+_pbchat_mod.mount(app, current_tenant, require_key)             # /api/public/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

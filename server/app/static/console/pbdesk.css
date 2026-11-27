@@ -1,0 +1,71 @@
+/* PUBLIC FINANCE DESK - the Public Sector employee's own section. Everything shared comes from the earlier desks (seodesk ... cmdesk,
+   dgdesk); the page-scoped rules are repeated here for #pbPage. Only this desk's own parts are new: scheme rules and case results, the
+   payment-run exceptions, the deposit cover bars, the capital-ratio chart, the project budget bars. */
+   #pbPage. Only the digital desk's own parts are new: the coin colours, the gains-by-year bars, the address verdict, custody owed vs held. */
+#pbPage{display:flex;flex-direction:column;gap:20px;padding-top:4px}
+#pbPage table.tb .num{font-variant-numeric:normal}
+#pbPage .r{text-align:right}
+#pbPage table.tb,#pbPage .md-kpi .v,#pbPage .cs-hero .v{font-variant-numeric:normal}
+#pbPage td.r,#pbPage th.r{text-align:right;font-variant-numeric:normal}
+#pbPage table.tb td{vertical-align:middle}
+#pbPage form[data-form=prices]+.ins-drop,#pbPage .md-acts+.ins-drop{margin-top:14px}
+#pbPage .cr-grid{align-items:end}
+#pbPage .cr-grid>.in:not(textarea),#pbPage .cr-grid .ins-lab .in:not(textarea),#pbPage .cr-grid>.btn{height:42px;min-height:0;box-sizing:border-box}
+#pbPage .iv-add{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+#pbPage .iv-add>*{flex:1 1 130px;min-width:0}
+#pbPage .iv-add>.btn{flex:0 0 auto;padding:0 18px}
+#pbPage .iv-add>.btn.wide{flex:1 1 100%}
+#pbPage .iv-add>.ins-lab{flex:1 1 130px}
+#pbPage .cr-grid .wide{grid-column:1/-1}
+#pbPage .iv-grid .in{height:42px;min-height:0;box-sizing:border-box;width:100%}
+#pbPage .md-kpi .v.warn{color:var(--warn)}
+#pbPage .mk-list td,#pbPage .mk-list th{padding-top:7px;padding-bottom:7px}
+#pbPage .mk-add .in{height:40px;min-height:0;box-sizing:border-box;width:100%}
+#pbPage .cs-pos{color:var(--okt,var(--ok))}
+#pbPage .cm-grid5 .in{height:42px;min-height:0;box-sizing:border-box;width:100%}
+#pbPage table.cm-meet td{padding-top:5px;padding-bottom:5px}
+#pbPage table.cm-meet .in{height:36px;min-height:0;width:100%;min-width:64px;box-sizing:border-box}
+#pbPage .dg-check .in{height:42px;min-height:0;box-sizing:border-box;width:100%}
+@media (max-width:600px){#pbPage .iv-kpis.mk-k2{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+
+/* scheme rules and case results */
+.pb-scheme{border-top:1px solid var(--line);padding:10px 0;display:flex;flex-direction:column;gap:6px}.pb-scheme:first-of-type{border-top:0;padding-top:0}
+.pb-scheme .h,.pb-res .h{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.pb-scheme .h .mut{font-size:13px}
+.pb-tests{display:flex;flex-wrap:wrap;gap:6px}
+.pb-tests code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12.5px;padding:3px 8px;border-radius:8px;background:var(--soft);color:var(--ink2)}
+.pb-tests code.ok{background:color-mix(in srgb,var(--ok) 14%,transparent);color:var(--okt,var(--ok))}
+.pb-tests code.bad{background:var(--bads);color:var(--badt)}.pb-tests code.warn{background:var(--warns);color:var(--warnt,var(--ink2))}
+.pb-res{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:7px;margin-top:8px}
+.pb-res.ok{border-color:color-mix(in srgb,var(--ok) 50%,var(--line))}.pb-res.bad{border-color:color-mix(in srgb,var(--bad) 40%,var(--line))}
+.pb-amt{margin-left:auto;font-size:18px;font-weight:600}
+.pb-chips{display:inline-flex;flex-wrap:wrap;gap:4px;font-weight:400}
+.pb-hh{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}.pb-hh span{border:1px solid var(--line);border-radius:10px;padding:4px 9px;font-size:13px}
+.pb-hh em{font-style:normal;color:var(--mut);margin-right:6px}
+.pb-dec{margin:8px 0;padding:8px 12px;border-radius:10px;background:var(--page);font-size:14px}
+.pb-done{opacity:.6}
+
+/* payment run */
+.pb-exs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
+.pb-ex{border:1px solid var(--line);border-radius:12px;padding:8px 12px}.pb-ex .h{display:flex;justify-content:space-between;margin-bottom:2px}
+.pb-three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.pb-three .ins-drop{margin:0}.pb-three .ins-drop+.ins-drop{margin-top:0}
+
+/* deposit cover */
+.pb-cov{display:flex;flex-direction:column;gap:8px}
+.pb-cov>div{display:grid;grid-template-columns:110px minmax(0,1fr) auto;gap:10px;align-items:center;font-size:13px}
+.pb-cov i{position:relative;display:flex;height:12px;border-radius:999px;background:var(--soft);overflow:visible}
+.pb-cov i b{display:block;height:100%}.pb-cov i b.c{background:var(--ok);border-radius:999px 0 0 999px}.pb-cov i b.a{background:var(--bad);opacity:.7}
+.pb-cov i u{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink)}
+.pb-cov em{font-style:normal;font-variant-numeric:tabular-nums}
+.cs-legend i.pb-c{background:var(--ok)}.cs-legend i.pb-a{background:var(--bad)}
+
+/* capital ratio */
+.pb-car rect.ok{fill:var(--ok);opacity:.8}.pb-car rect.bad{fill:var(--bad);opacity:.8}.pb-car .tx{font-size:12px;fill:var(--mut)}
+
+/* project budget */
+.pb-bud{display:flex;flex-direction:column;gap:10px}
+.pb-bud>div{display:flex;flex-direction:column;gap:4px}.pb-bud span{display:flex;justify-content:space-between;font-size:13.5px}.pb-bud em{font-style:normal;color:var(--mut)}
+.pb-bud i{display:block;height:10px;border-radius:999px;background:var(--soft)}.pb-bud i b{display:block;height:100%;border-radius:999px}
+.pb-bud b.ok{background:var(--acc)}.pb-bud b.bad{background:var(--bad)}
+
+.sd-id>div{min-width:0}.sd-name,.sd-site{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:700px){.pb-exs,.pb-three{grid-template-columns:minmax(0,1fr)}.pb-cov>div{grid-template-columns:80px minmax(0,1fr) auto}}

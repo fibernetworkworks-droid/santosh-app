@@ -12592,3 +12592,19 @@ Owner: "GO R3". Built as 0.999.235; their DIGITAL ASSETS DESK (0.999.235) and CO
 - dhara_save's description and the route chat's rules tell Hoola about data steps and expressions.
 
 Tests: `server/tests/test_v0999_237_route_data.py` (8, incl. a browser walk). NOT VERIFIED: on her server.
+
+## v0.999.238 PUBLIC FINANCE DESK
+
+Owner: "NOW LETS WORK ON NEXT EMPLOYEE PUBLIC FINANCE DESK". The Public Sector employee (tool `public_finance`, engine
+`fin/desks/public.py`, F12) gets its own section like the other finance desks.
+
+- `server/app/pbchat.py`: Public Finance chat (Conversation kind `public`, out of chat lists), desk block + tool family `pubfin` in view;
+  state in the workspace settings under `public_desk`: scheme rules (each needs a source), cases (checked result + the caseworker's
+  decision in her words, recorded by her tap), due / paid, the payment run's three files, deposit accounts / loans / depositors + the
+  insurer's limit and set-off rule, bank returns + the period before + thresholds, findings + earlier findings, projects + spending.
+  Account numbers are kept only as a salted one-way fingerprint + the last 4 (shared accounts still found; a 16-digit account no longer
+  trips the card-number guard); a depositor's name + date of birth only as a fingerprint. Routes `/api/public/*`, downloads g2p /
+  deposit / overpay / findings.
+- `static/console/pbdesk.{html,js,css}`: Today, Casework, Overpayments, Payment runs, Deposit cover, Supervision, Inspections, Projects,
+  Settings; `/console/public`, employees.js + v2.js + the phone route open it.
+- Tests `server/tests/test_pb_desk.py` (5, incl. a Chromium walk at 1440 and 390). NOT VERIFIED on her server.
