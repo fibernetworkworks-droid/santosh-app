@@ -479,9 +479,21 @@ async def poll(tenant: str, wf: dict) -> dict:
         try:
             seen = {row[0] for row in con.execute("SELECT item FROM route_seen WHERE workflow_id = ?", (wf["id"],))}
             new = [(i, x) for i, x in ids if i not in seen]
+            if newest_first:
+                new.reverse()               # the oldest new item runs first
+            # v0.999.253 ROUTE CHECK: only items that really start a run are marked seen (the first look notes them
+            # all); the rest - more than 20 at once, or the day's run limit reached - start at the next look.
+            # They used to be marked seen and lost.
+            go: list = []
+            if baselined:
+                for i, x in new[:RUNS_PER_POLL]:
+                    if D._over_daily_cap(tenant, wf):
+                        break
+                    go.append((i, x))
+            mark = new if not baselined else go
             now_ = time.time()
             con.executemany("INSERT OR IGNORE INTO route_seen (workflow_id, item, at) VALUES (?, ?, ?)",
-                            [(wf["id"], i, now_) for i, _ in new])
+                            [(wf["id"], i, now_) for i, _ in mark])
             extra = con.execute("SELECT COUNT(*) FROM route_seen WHERE workflow_id = ?", (wf["id"],)).fetchone()[0] - SEEN_MAX
             if extra > 0:
                 con.execute("DELETE FROM route_seen WHERE rowid IN (SELECT rowid FROM route_seen WHERE workflow_id = ? "
@@ -494,15 +506,9 @@ async def poll(tenant: str, wf: dict) -> dict:
             con.close()
         if not baselined:
             return {"ok": True, "first_look": True, "noted": len(ids)}
-        if newest_first:
-            new.reverse()               # the oldest new item runs first
-        started = 0
-        for _i, x in new[:RUNS_PER_POLL]:
-            if D._over_daily_cap(tenant, wf):
-                break
+        for _i, x in go:
             D.create_run(tenant, wf, vars_={"event": x, "app": sp.get("app")})
-            started += 1
-        return {"ok": True, "new": len(new), "started": started}
+        return {"ok": True, "new": len(new), "started": len(go), "waiting": len(new) - len(go)}
     finally:
         _POLLING.discard(key)
 

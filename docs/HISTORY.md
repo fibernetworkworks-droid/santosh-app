@@ -12893,3 +12893,49 @@ screens but opened only the generic Department desk on the console. QA is the fi
   runs (`qa.tick`) and the register file date in HER time zone (were India time); `QaSettings.country`.
 - Tests: test_qa_desk.py 5 incl. a browser walk at 1440 / 390. Two older QA engine tests (tools tick wording, crash reports) fail the
   same way before this change. NOT VERIFIED on her server.
+
+## v0.999.253 ROUTE CHECK (built as 0.999.251 / 0.999.252; their CLAUDE CODE, THE REST and QA DESK took those, all kept; owner: "NOW CHECK THE ENTIRE ROUTE END TO END")
+
+After R1-R8 every Hoola Route page was walked in a real Chromium (computer 1440 + phone 390, light + dark, 28 pages incl. every
+route, run and past-run debug view) against a server seeded with every kind of route, and a separate reviewer read the whole
+engine (dhara_tools, dhara_data, route/*). Baseline before: 185 route tests green, 3 old exact-version pins red.
+
+Engine faults fixed (each pinned in `server/tests/test_v0999_253_route_check.py`):
+- Stop pressed while a step ran: `_save_checkpoint` wrote status 'running' back over 'stopped' and the run ended 'done'.
+  `update_run(_keep_stop=True)` (WHERE status != 'stopped') for the engine's own saves + `_finish`; `_after_run` skips a stopped run.
+- A run cut by a restart stayed 'running' for ever: `_claimants` listed it but `_claim` took only queued / sleeping. `_claim` now
+  also takes a 'running' run nobody wrote for dhara_stale_s (never one in this process's `_RUNNING`); one cut too many times fails.
+- `every_hours: "2h"` passed validation, was stored, then `next_due` raised inside `_scheduled_due` every tick and the whole
+  account's tick stopped. `validate_schedule` checks it (1-720); `_scheduled_due` handles each route on its own and tells her.
+- Web request redirects: followed by httpx with the private-address guard only on the first address, and a header sign-in went to
+  the redirect's site. `_http_step` follows up to 5 redirects by hand, `_guard_url` on every hop, the sign-in (and her
+  Authorization / Cookie) dropped when the host changes, 301/302/303 after POST become GET.
+- App events: every new item was marked seen but only 20 started (or fewer at the day's cap) - the rest lost. Only started items
+  are marked now; the rest start at the next look (`waiting` in the poll answer).
+- Runs started with ensure_future and no claim (dhara_run, approve, retry, rerun, Test route) could run twice; Test route wrote its
+  pins after the run existed. All go through `_start_now` (claim first); `create_run(extra=)` writes the pins with the run.
+- Context / log stored with json ensure_ascii - 'Priyā' never matched in search. Stored as UTF-8 now; search also matches the old
+  escaped form.
+- n8n: `int()` on an expression ('={{ $json.n }}') raised ValueError -> 500. A node whose settings cannot be read becomes a named
+  placeholder; an unreadable start becomes by hand with a check line.
+- A tool step could be dhara_run (a route starting itself, no daily cap); error routes A <-> B failed into each other for ever.
+  dhara_* tools other than dhara_list / dhara_runs refused as steps, dhara_run keeps runs_per_day, error-route chains stop after 3
+  (`_error_chain` in the payload), the error route keeps its daily cap.
+- The reply link (`/api/dhara/resume/...`): a GET answered the wait (email link checkers open links) and two calls at once both
+  went through. A browser GET gets a page with a Send button; the write is conditional (one caller wins, the second 409).
+- Steps inside branches and loops were never logged. `_note_inner` / `_flush_inner`: each inner step is a log line with `in`
+  ("each: round 2", "big: if yes"), capped at 60 a top-level step (errors always kept), flushed just before the parent's line;
+  `failed_step` names the inner step; `stepdata._log_of` keeps a step failed if any round failed.
+- Needs you showed an approval question with `{{vars.a}}` - now filled with the run's data.
+- on / off moved `updated_at`, so an open editor's next save got 409 'changed since you opened it'. It no longer does.
+- `replace` / `join` built the whole text before the 2 MB check; the size is worked out first now.
+
+Page faults fixed: the past-run (debug) bar ran 265 px off a phone (now wraps), the failing step of a past run is marked red on the
+canvas (`logStates`, `.nd.fail`), "It failed at boom: boom: ValueError" says the step once (`dropStep`), routes started by a form,
+chat, error, another route or as a tool show their own icon in the lists, run page shows inner steps under their parent (`nestLog`).
+Not changed on purpose: a long route opens at a readable zoom from its start (the mini-map shows the rest); missing app logos fall
+back to initials (the 404s were the test server's empty logo cache).
+
+The three old exact pins (`0.999.169`) now accept any newer version. Tests: 17 new (incl. a browser walk at 1440 + 390).
+NOT VERIFIED: on her server.
+

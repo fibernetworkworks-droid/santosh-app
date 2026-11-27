@@ -404,7 +404,7 @@ def test_route_page_is_served_in_house_style(bz):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.169")
+    assert tuple(int(x) for x in APP_VERSION.split(".")) >= (0, 999, 169)   # v0.999.253: no longer one exact number
 
 
 # ---------------------------------------------------------------- a real browser walk

@@ -469,7 +469,17 @@ class _Conv:
         return [], prev, join
 
     def node(self, name: str, prev: str, stop: set) -> tuple[list[dict], str, str]:
-        """One node -> (steps, ref of its output, next node)."""
+        """One node -> (steps, ref of its output, next node). v0.999.253: a setting Hoola cannot read (a number
+        written as an n8n expression, an odd shape) makes the node a placeholder instead of a failed import."""
+        try:
+            return self._node(name, prev, stop)
+        except (ValueError, TypeError, KeyError, AttributeError) as e:
+            self.report["converted"] = [c for c in self.report["converted"] if c.get("node") != name]
+            why = ("a number in it was an n8n expression - type the number in Hoola" if "invalid literal" in str(e)
+                   else "one of its settings could not be read")
+            return self.placeholder(name, why, prev, stop)
+
+    def _node(self, name: str, prev: str, stop: set) -> tuple[list[dict], str, str]:
         n = self.nodes[name]
         t = _short(n.get("type"))
         p = n.get("parameters") or {}
@@ -910,7 +920,15 @@ class _Conv:
 
     # ------------------------------------------------------------------ the whole workflow
     def run(self) -> dict:
-        tname, kind, spec, settings = self.trigger()
+        try:
+            tname, kind, spec, settings = self.trigger()
+        except (ValueError, TypeError, KeyError, AttributeError):   # v0.999.253: an unreadable start = by hand
+            heads = [n for n in self.nodes if n not in self.inc]
+            tname = heads[0] if heads else ""
+            kind, spec, settings = "manual", {}, {}
+            if tname:
+                self.done.add(tname)
+                self.check(tname, "its start could not be read - the route starts by hand now; set its start again")
         steps: list[dict] = []
         if tname:
             more, prev, cur = self.follow(tname, self.refs.get(tname, "vars"), set())

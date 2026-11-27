@@ -221,6 +221,7 @@ svg.edges path.ghost{stroke-dasharray:4 4}
 .nd .oe{position:absolute;top:-9px;left:12px;font-size:10.5px;padding:1px 7px;border-radius:999px;background:var(--soft);border:1px solid var(--line);color:var(--mut)}
 .nd .sd{position:absolute;right:9px;top:9px}
 .sd{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--line2)}
+.nd.fail{box-shadow:0 0 0 2px var(--bad)}
 .sd.ok{background:#16A34A}.sd.bad{background:var(--bad)}.sd.skip{background:var(--line2)}.sd.run{background:var(--acc)}
 .addaf{position:absolute;right:-13px;top:19px;width:26px;height:26px;border-radius:50%;border:1px solid var(--line2);background:var(--bg);display:grid;place-items:center;cursor:pointer;opacity:0;transition:opacity .12s;color:var(--ink2);padding:0}
 .addaf .i{width:13px;height:13px;stroke-width:2.2}
@@ -461,7 +462,8 @@ td.found{max-width:420px;overflow-wrap:anywhere}
 .edbanner.debug{background:var(--accs);color:var(--acct);flex-wrap:wrap}
 .edbanner .dbg{display:flex;gap:8px;align-items:flex-start;min-width:240px}
 .edbanner .dbg svg{width:16px;height:16px;flex:none;margin-top:2px}
-.edbanner .crow{flex:none;display:flex;gap:6px;flex-wrap:wrap}
+.edbanner .crow{flex:0 1 auto;min-width:0;display:flex;gap:6px;flex-wrap:wrap}
+@media (max-width:760px){.edbanner .crow{flex:1 1 100%}.edbanner .crow .btn{flex:1 1 auto;justify-content:center}}
 ul.rep{margin:6px 0 12px;padding-left:18px;font-size:13.5px;line-height:1.5}
 ul.rep li{margin:2px 0}
 ul.rep li.ph b{color:var(--badt)}
@@ -469,3 +471,6 @@ ul.rep li.ck b{color:var(--warn)}
 #n8nText{width:100%;min-height:180px}
 @media (max-width:640px){.stats{grid-template-columns:1fr 1fr}.stat b{font-size:20px}.bars{height:110px}}
 @media (max-width:640px){.top{flex-wrap:wrap}.top .sp{flex-basis:100%;height:0}.top>.btn,.top>label.btn{flex:1 1 auto;justify-content:center}}
+/* v0.999.253 ROUTE CHECK: steps inside a branch or loop, under their parent in the run log */
+.lrow.inner{margin-left:28px;padding-left:12px;border-left:2px solid var(--line)}
+@media (max-width:640px){.lrow.inner{margin-left:10px}}

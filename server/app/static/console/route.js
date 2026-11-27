@@ -147,7 +147,7 @@
   const bars = d => `<span class="d7" aria-label="Last 7 days">${(d || []).map(x => {
     const n = x.ok + x.bad; const h = n ? Math.min(22, 6 + n * 3) : 3;
     return `<i class="${x.bad ? 'bad' : n ? 'ok' : ''}" style="height:${h}px" title="${n ? `${x.ok} went well, ${x.bad} did not` : 'No runs'}"></i>`; }).join('')}</span>`;
-  const firstTile = r => (r.apps && r.apps[0]) ? appTile(r.apps[0]) : `<span class="ap k-core">${svg(r.trigger === 'schedule' ? IC.cal : r.trigger === 'webhook' ? IC.bolt : IC.hand)}</span>`;
+  const firstTile = r => (r.apps && r.apps[0]) ? appTile(r.apps[0]) : `<span class="ap k-core">${svg(TKIC(r.trigger))}</span>`;
   const LASTW = {done: ['ok', 'Done'], failed: ['bad', 'Failed'], incomplete: ['bad', 'Incomplete'], waiting_approval: ['warn', 'Waiting for you'],
     running: ['v', 'Running'], queued: ['v', 'Queued'], sleeping: ['v', 'Waiting'], stopped: ['', 'Stopped']};
   // tables become cards on a phone: every cell carries its own label (data-l), the CSS shows it there
@@ -296,6 +296,12 @@
         <td data-l="Around it" class="mut sm mono found">${esc(x.match)}</td></tr>`).join('')}</tbody></table></div>`;
   }
   const pretty = v => { try { return JSON.stringify(JSON.parse(v), null, 2); } catch { return S(v); } };
+  // v0.999.253: steps inside a branch or loop are logged just before their parent step - show them under it
+  function nestLog(list) {
+    const out = []; let wait = [];
+    (list || []).forEach(l => { if (l && l.in !== undefined) wait.push(l); else { out.push(l); out.push(...wait); wait = []; } });
+    return out.concat(wait);
+  }
   async function viewRun(id) {
     shell(false); setNav('runs');
     const x = await api('GET', `/api/route/runs/${enc(id)}`);
@@ -317,12 +323,13 @@
       ${!x.error && pauseWords(x) ? `<div class="okbox">${esc(pauseWords(x))}.</div>` : ''}
       ${x.start && Object.keys(x.start).length ? `<section class="card"><details><summary><b>What it started with</b></summary><pre>${esc(JSON.stringify(x.start, null, 2))}</pre></details></section>` : ''}
       <section class="card"><div class="hd"><h2>Step by step</h2><span class="sp"></span>${sm.wall_ms ? `<span class="mut sm">${(sm.wall_ms / 1000).toFixed(1)} s${sm.cost && sm.cost.calls ? ` · ${sm.cost.calls} AI calls` : ''}</span>` : ''}</div>
-        <div class="log">${(x.steps_log || []).map(l => {
-          const st = {ok: 'done', error: 'failed', approved: 'done', retry: 'queued', skipped: 'stopped'}[l.status] || l.status;
-          const word = {approved: 'You approved', retry: 'Tried again', skipped: 'Skipped'}[l.status];
-          return `<div class="lrow"><span class="lp">${word ? `<span class="pill ${l.status === 'approved' ? 'ok' : 'v'}"><span class="dot"></span>${esc(word)}</span>` : runPill(st)}</span>
-          <div class="w"><b>${esc(nice(l.id))}</b> <span class="mut sm">${esc(l.type)}${l.at ? ' · ' + esc(l.at) : ''}${l.ms ? ' · ' + l.ms + ' ms' : ''}</span>
-          ${l.error ? `<div class="sm errt">${esc(human(l.error))}</div>` : ''}${(x.outputs && x.outputs[l.id] !== undefined) || l.output ? `<details><summary class="sm">What it gave back${(x.pinned || []).includes(l.id) ? ' (pinned test data)' : ''}</summary><pre>${esc(x.outputs && x.outputs[l.id] !== undefined ? JSON.stringify(x.outputs[l.id], null, 2) : pretty(l.output))}</pre></details>` : ''}</div></div>`; }).join('') || '<div class="empty">No step has run yet.</div>'}</div></section>`;
+        <div class="log">${nestLog(x.steps_log).map(l => {
+          const st = {ok: 'done', error: 'failed', approved: 'done', retry: 'queued', skipped: 'stopped', filtered: 'stopped', ignored: 'done', resumed: 'done'}[l.status] || l.status;
+          const word = {approved: 'You approved', retry: 'Tried again', skipped: 'Skipped', filtered: 'Did not pass', ignored: 'Failed, went on', resumed: 'Failed, used a value'}[l.status];
+          const inner = l.in !== undefined;
+          return `<div class="lrow${inner ? ' inner' : ''}"><span class="lp">${word ? `<span class="pill ${l.status === 'approved' ? 'ok' : 'v'}"><span class="dot"></span>${esc(word)}</span>` : runPill(st)}</span>
+          <div class="w"><b>${esc(l.id === '...' ? '' : nice(l.id))}</b> <span class="mut sm">${l.id === '...' ? esc(S(l.output)) : esc(l.type)}${inner && l.in && l.in !== '...' ? ' · in ' + esc(l.in) : ''}${l.at && l.id !== '...' ? ' · ' + esc(l.at) : ''}${l.ms ? ' · ' + l.ms + ' ms' : ''}</span>
+          ${l.error ? `<div class="sm errt">${esc(human(l.error))}</div>` : ''}${l.id === '...' ? '' : inner ? (l.output ? `<details><summary class="sm">What it gave back</summary><pre>${esc(pretty(l.output))}</pre></details>` : '') : (x.outputs && x.outputs[l.id] !== undefined) || l.output ? `<details><summary class="sm">What it gave back${(x.pinned || []).includes(l.id) ? ' (pinned test data)' : ''}</summary><pre>${esc(x.outputs && x.outputs[l.id] !== undefined ? JSON.stringify(x.outputs[l.id], null, 2) : pretty(l.output))}</pre></details>` : ''}</div></div>`; }).join('') || '<div class="empty">No step has run yet.</div>'}</div></section>`;
     const ra = $('#runAgain');
     if (ra) ra.addEventListener('click', async () => { ra.disabled = true;
       try { const o = await api('POST', `/api/route/runs/${enc(x.id)}/rerun`); toast('Running again with the same data.'); location.hash = '#/run/' + enc(o.run_id); }
@@ -666,7 +673,13 @@
       : sp.monthdays && sp.monthdays.length ? `Day ${sp.monthdays.join(', ')}${at ? ', ' + at : ''}` : sp.once ? `Once, ${S(sp.once).replace('T', ' ')}` : at ? `Every day, ${at}` : 'On a schedule';
     return ['On a schedule', w + (sp.skip_holidays ? ' · not on holidays' : '')];
   }
-  const ST_CLS = {ok: 'ok', approved: 'ok', error: 'bad', skipped: 'skip', retry: 'run'};
+  const ST_CLS = {ok: 'ok', approved: 'ok', error: 'bad', skipped: 'skip', retry: 'run', waiting_approval: 'run', sleeping: 'run', retry_wait: 'run', filtered: 'skip', stopped: 'skip', ignored: 'skip', resumed: 'ok'};
+  // v0.999.253: a run's log -> the state of each step on the canvas (a step that failed in any loop round stays failed)
+  function logStates(list) {
+    const o = {};
+    (list || []).forEach(l => { if (!l || !l.id) return; if (o[l.id] && o[l.id].status === 'error') return; o[l.id] = l; });
+    return o;
+  }
   function nodeHtml(n) {
     const sel = ED.sel === n.id ? ' sel' : '';
     if (n.kind === 'trigger') {
@@ -676,7 +689,7 @@
         <span class="ap k-trig">${svg(ic)}</span><span class="nt"><b>${esc(a)}</b><small>${esc(b)}</small></span></div>`;
     }
     const s = n.step, st = ED.runSt[s.id];
-    return `<div class="nd${sel}${s.type === 'approval' ? ' warmk' : ''}" data-node="${esc(s.id)}" style="left:${n.x}px;top:${n.y}px;width:${n.w}px" tabindex="0" role="button" aria-label="${esc(titleOfStep(s))}">
+    return `<div class="nd${sel}${s.type === 'approval' ? ' warmk' : ''}${st && st.status === 'error' ? ' fail' : ''}" data-node="${esc(s.id)}" style="left:${n.x}px;top:${n.y}px;width:${n.w}px" tabindex="0" role="button" aria-label="${esc(titleOfStep(s))}">
       ${appTile(s.app, s.type, s.op)}<span class="nt"><b>${esc(titleOfStep(s))}</b><small>${esc(KIND[s.type] || s.type)}${stepWords(s) ? ' · ' + esc(stepWords(s)) : ''}</small></span>
       ${s.on_error ? `<span class="oe" title="${esc(DO[s.on_error.do] || '')}">${esc(s.on_error.do === 'break' ? 'retries' : s.on_error.do)}</span>` : ''}
       ${st ? `<span class="sd ${ST_CLS[st.status] || ''}" title="${esc(st.status)}"></span>` : ''}
@@ -1493,10 +1506,19 @@
   }
 
   // ---------------------------------------------------------------- R8: a past run's data in the editor
+  // v0.999.253: "boom: boom: ValueError" -> "ValueError" (the step's name is said once, before it)
+  function dropStep(msg, id) {
+    let m = S(msg); const q = S(id).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (!q) return m;
+    const re = new RegExp('^(step )?[\'‘"]?' + q + '[\'’"]?( \\([a-z_]+\\))?:\\s*');
+    for (let n = 0; n < 3 && re.test(m); n++) m = m.replace(re, '');
+    return m;
+  }
   function debugBanner(d, err) {
     const b = $('#edBanner'); if (!b || !ED) return;
     if (err) { b.innerHTML = `<span>${esc(err)}</span><a class="btn s soft" href="#/r/${enc(ED.r.id)}">Back to the newest data</a>`; b.hidden = false; return; }
-    const fail = d.failed_step ? ` It failed at <b>${esc(nice(d.failed_step))}</b>${d.error ? ': ' + esc(human(d.error)) : ''}.` : '';
+    const why = d.error ? dropStep(human(d.error), d.failed_step) : '';
+    const fail = d.failed_step ? ` It failed at <b>${esc(nice(d.failed_step))}</b>${why ? ': ' + esc(why) : ''}.` : '';
     b.innerHTML = `<span class="dbg">${svg(IC.play)}<span>Looking at the run from ${esc(at(d.at))} (${esc((RUNPILL[d.status] || ['', d.status || ''])[1])}).${fail} A step you test here works on that run's data.</span></span>
       <span class="crow"><button class="btn s" type="button" id="dbgPin">Pin this run's data</button>
       <button class="btn s soft" type="button" id="dbgAgain">Run again with the same data</button>
@@ -1518,7 +1540,11 @@
     try { ED.data = await api('GET', `/api/route/routes/${enc(ED.r.id)}/data${ED.debug ? '?run_id=' + enc(ED.debug) : ''}`); }
     catch (err) { if (ED && ED.debug) debugBanner(null, err.message); return; }
     if (!ED) return;
-    if (ED.debug) debugBanner(ED.data);
+    if (ED.debug) {
+      debugBanner(ED.data);
+      ED.runSt = {};                       // v0.999.253: the past run's steps marked on the canvas (done / failed / waiting)
+      Object.entries(ED.data.log || {}).forEach(([k, v]) => { ED.runSt[k] = v; });
+    }
     draw();
     if (ED.modal) { modalIn(); modalOut(); }
   }
@@ -1725,7 +1751,7 @@
     ED.runT = setInterval(async () => {
       if (!ED) return;
       let r; try { r = await api('GET', `/api/route/runs/${enc(ED.runId)}`); } catch { return; }
-      ED.runSt = {}; (r.steps_log || []).forEach(l => { ED.runSt[l.id] = l; });
+      ED.runSt = logStates(r.steps_log);
       logDraw(r); draw();
       if (['done', 'failed', 'incomplete', 'stopped'].includes(r.status)) { clearInterval(ED.runT); loadData(); }
     }, 1000);

@@ -81,6 +81,25 @@ def _get(obj: Any, path: str) -> Any:
     return cur
 
 
+def _safe_replace(s: str, a: str, b: str) -> str:
+    """v0.999.253: the size is worked out BEFORE the text is built (a huge result used to be built first)."""
+    n = (len(s) + 1) if a == "" else s.count(a)
+    if len(s) + n * (len(b) - len(a)) > TEXT_MAX:
+        raise ExprError("The text is too long")
+    return s.replace(a, b)
+
+
+def _safe_join(items: list, sep: str) -> str:
+    parts, size = [], 0
+    for x in items:
+        t = "" if x is None else str(x)
+        size += len(t) + (len(sep) if parts else 0)
+        if size > TEXT_MAX:
+            raise ExprError("The text is too long")
+        parts.append(t)
+    return sep.join(parts)
+
+
 def _cap_text(s: str) -> str:
     if len(s) > TEXT_MAX:
         raise ExprError("The text is too long")
@@ -190,9 +209,9 @@ def _avg(v: Any) -> float:
 FUNCS: dict[str, Any] = {
     "upper": lambda s: str(s).upper(), "lower": lambda s: str(s).lower(), "title": lambda s: str(s).title(),
     "trim": lambda s: str(s).strip(), "len": lambda v: len(v) if isinstance(v, (str, list, dict)) else len(str(v)),
-    "count": lambda v: len(_list(v)), "replace": lambda s, a, b: _cap_text(str(s).replace(str(a), str(b))),
+    "count": lambda v: len(_list(v)), "replace": lambda s, a, b: _cap_text(_safe_replace(str(s), str(a), str(b))),
     "split": lambda s, sep=",": [x.strip() for x in str(s).split(str(sep))][:LIST_MAX],
-    "join": lambda v, sep=", ": _cap_text(str(sep).join("" if x is None else str(x) for x in _list(v))),
+    "join": lambda v, sep=", ": _cap_text(_safe_join(_list(v), str(sep))),
     "slice": lambda v, a=0, b=None: v[int(_num(a)):(None if b is None else int(_num(b)))],
     "contains": lambda v, x: (x in v) if isinstance(v, (list, dict)) else (str(x) in str(v)),
     "starts_with": lambda s, x: str(s).startswith(str(x)), "ends_with": lambda s, x: str(s).endswith(str(x)),
