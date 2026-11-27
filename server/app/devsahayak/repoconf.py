@@ -389,9 +389,10 @@ def skills(repo: Path, plugins: list[Path] | tuple = ()) -> dict[str, dict[str, 
 
 # ---------------------------------------------------------------- v0.999 the repo's MCP servers (.mcp.json)
 def mcp_servers(repo: Path, plugins: list[Path] | tuple = ()) -> dict[str, dict[str, Any]]:
-    """{name: {url, headers, ok, why}}. Only REMOTE servers (http / sse with an https address) can be reached - a server
-    that runs as a program needs a computer of its own, which the locked box (no network) is not. A header that names a
-    ${VARIABLE} is left out: Hoola has no such secret and never guesses one."""
+    """{name: {kind, url, headers, ok, why} | {kind: stdio, argv, env, ok, why}}. A REMOTE server (http / sse with an https
+    address) is called over the internet; v0.999 a server that RUNS AS A PROGRAM (`command` + `args`, Claude Code's stdio
+    servers: npx ..., uvx ..., node ./x.js, python -m x) runs inside the session's locked box like her commands. A header
+    or variable that names a ${VARIABLE} Hoola does not have is left out: it never guesses a secret."""
     out: dict[str, dict[str, Any]] = {}
     for f in [Path(repo) / ".mcp.json"] + [Path(pl) / ".mcp.json" for pl in plugins]:
         raw = _read(f, 200_000)
@@ -405,15 +406,59 @@ def mcp_servers(repo: Path, plugins: list[Path] | tuple = ()) -> dict[str, dict[
             if not isinstance(cfg, dict) or not re.fullmatch(r"[\w.-]{1,60}", str(name)) or name in out:
                 continue
             url = str(cfg.get("url") or "")
-            if cfg.get("command") or not url:
-                out[name] = {"url": "", "headers": {}, "ok": False, "why": "runs as a program on a computer - not reachable from Hoola"}
+            if cfg.get("command"):
+                out[name] = stdio_spec(cfg, f.parent, plugin=f.parent != Path(repo))
+                continue
+            if not url:
+                out[name] = {"kind": "http", "url": "", "headers": {}, "ok": False, "why": "it has no address and no command"}
                 continue
             if not url.startswith("https://"):
-                out[name] = {"url": url, "headers": {}, "ok": False, "why": "only https addresses are reached"}
+                out[name] = {"kind": "http", "url": url, "headers": {}, "ok": False, "why": "only https addresses are reached"}
                 continue
             hdr = {str(k): str(v) for k, v in (cfg.get("headers") or {}).items() if "${" not in str(v)}
-            out[name] = {"url": url[:500], "headers": hdr, "ok": True, "why": ""}
+            out[name] = {"kind": "http", "url": url[:500], "headers": hdr, "ok": True, "why": ""}
     return out
+
+
+VAR = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}")
+
+
+def _expand(v: str, env: dict[str, str]) -> str | None:
+    """${VAR} / ${VAR:-default} the way Claude Code expands .mcp.json; None = it names something Hoola does not have."""
+    missing = []
+
+    def one(m: re.Match) -> str:
+        k, d = m.group(1), m.group(2)
+        if k in env:
+            return env[k]
+        if d is not None:
+            return d
+        missing.append(k)
+        return ""
+    out = VAR.sub(one, str(v))
+    return None if missing else out
+
+
+def stdio_spec(cfg: dict[str, Any], base: Path, plugin: bool = False) -> dict[str, Any]:
+    """A program-type MCP server, ready to start inside the box: argv with ${VAR}s filled from what Hoola has
+    (CLAUDE_PROJECT_DIR = the repo in the box), its own env (a value naming a secret Hoola does not have is left out)."""
+    known = {"CLAUDE_PROJECT_DIR": "/work"}
+    cmd = str(cfg.get("command") or "").strip()
+    args = [str(a) for a in (cfg.get("args") or []) if isinstance(a, (str, int, float))][:40]
+    if plugin and any("${CLAUDE_PLUGIN_ROOT}" in x for x in [cmd] + args):
+        return {"kind": "stdio", "argv": [], "env": {}, "ok": False,
+                "why": "it runs a program kept inside the plugin's own folder, which the box cannot see"}
+    argv = [_expand(x, known) for x in [cmd] + args]
+    if not cmd or any(x is None for x in argv):
+        return {"kind": "stdio", "argv": [], "env": {}, "ok": False,
+                "why": "its command names a variable Hoola does not have" if cmd else "it has no command"}
+    env = {}
+    for k, v in (cfg.get("env") or {}).items():
+        val = _expand(str(v), known)
+        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,60}", str(k)) and val is not None and not ENV_NEVER.search(str(k)):
+            env[str(k)] = val[:2000]
+    return {"kind": "stdio", "argv": [x[:500] for x in argv], "env": env, "ok": True, "why": "",
+            "dropped": sorted(str(k) for k in (cfg.get("env") or {}) if str(k) not in env)}
 
 
 # ---------------------------------------------------------------- v0.999 CLAUDE.md: imports, CLAUDE.local.md, folders
