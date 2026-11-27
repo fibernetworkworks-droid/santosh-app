@@ -1752,6 +1752,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_qac.block, tenant_id)
     except Exception:
         log.exception("qa desk block failed")
+    try:   # DEVOPS DESK: a turn in the DevOps chat (or a call started from it) knows the desk
+        from .. import dvchat as _dvc
+        if _dvc.is_devops(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_dvc.block, tenant_id)
+    except Exception:
+        log.exception("devops desk block failed")
     _mark("hint")
     return state
 
@@ -2667,6 +2673,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "qa desk chat"
     except Exception:
         log.exception("qa desk chat admission failed")
+    try:   # DEVOPS DESK: the DevOps tools in view in the DevOps chat
+        from .. import dvchat as _dvc
+        if adm is not None and _dvc.is_devops(conversation_id):
+            adm.admit_families(_dvc.FAMILIES)
+            for f in _dvc.FAMILIES:
+                adm.why[f] = "devops desk chat"
+    except Exception:
+        log.exception("devops desk chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,

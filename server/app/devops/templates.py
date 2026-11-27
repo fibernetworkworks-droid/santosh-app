@@ -18,7 +18,7 @@ KINDS: dict[str, dict[str, Any]] = {
     "pm2": {"label": "pm2 ecosystem file", "lang": "js", "file": "ecosystem.config.js", "params": {"app": "app", "script": "server.js", "memory": "500M"}},
     "systemd": {"label": "systemd service", "lang": "ini", "file": "app.service", "params": {"app": "app", "cmd": "/usr/bin/node server.js", "user": "app", "dir": "/srv/app"}},
     "healthcheck": {"label": "Health check script (cron)", "lang": "bash", "file": "healthcheck.sh", "params": {"url": "https://example.com/health"}},
-    "logrotate": {"label": "logrotate (180 days, CERT-In)", "lang": "ini", "file": "app.logrotate", "params": {"path": "/var/log/app/*.log"}},
+    "logrotate": {"label": "logrotate (keeps logs, compressed)", "lang": "ini", "file": "app.logrotate", "params": {"path": "/var/log/app/*.log"}},
     "ps_backup": {"label": "PowerShell backup (Windows folder / Tally data)", "lang": "powershell", "file": "backup.ps1",
                   "params": {"source": "C:\\TallyPrime\\Data", "dest": "D:\\Backup", "keep_days": "30"}},
 }
@@ -313,16 +313,20 @@ fi
 
 def _t_logrotate(p: dict[str, Any]) -> str:
     path = _p(p, "path", "/var/log/app/*.log")
+    keep = re.sub(r"\D", "", str(p.get("keep_days") or "180")) or "180"
+    india = str(p.get("_country") or "IN").upper() == "IN"
+    note = ("# 180 days kept: CERT-In Directions (28 Apr 2022) ask ICT logs to be kept 180 days within India." if india and keep == "180" else
+            f"# {keep} days kept: set this to what your country's rules ask (check this).")
     return f"""{path} {{
     daily
-    rotate 180
+    rotate {keep}
     compress
     delaycompress
     missingok
     notifempty
     copytruncate
 }}
-# 180 days kept: CERT-In Directions (28 Apr 2022) ask ICT logs to be kept 180 days within India.
+{note}
 """
 
 
