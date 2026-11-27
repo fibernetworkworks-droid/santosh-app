@@ -13153,3 +13153,7 @@ no sources. The tool `app_review action=settings` and `PUT /api/appreview/settin
 carry their download url. Guards: hire gate (paused = reads only), no token / password / OTP outside the GitHub part. Tests
 `server/tests/test_ar_desk.py` (5 incl. a browser walk at 1440 and 390). PRE-EXISTING red, not this release: `test_tech_appreview.py::test_tick_and_api`
 (date-dependent upload cleanup; fails on untouched main too). NOT VERIFIED on her server or with a real APK from her.
+
+
+## v0.999.266 REWIND LIKE CLAUDE CODE
+(owner: 'Rewind just the code or just the conversation --- WORK ON IT'): going back to a checkpoint now asks WHAT goes back, Claude Code's /rewind choices - Code and conversation (as before), Conversation only (the conversation returns to that checkpoint, the files keep every change made since), Code only (the files return, the conversation stays), Never mind. `Session.rewind(n, what)`, `engine.rewind`, `service.ws_rewind(..., what)`, POST /tasks/{id}/rewind {n, what}. A partial rewind keeps the later checkpoints, so she can go forward to one again; the next round is told once what changed under the conversation (`pending_note` -> <rewind_note> in her next message: re-read files before editing / run git diff to see the kept changes). The feed row says which it was ('Put the files back', 'Took the conversation back'). WEB: a choice dialog with the three options; PHONE: checkpoint, then the three choices. 6 tests incl. a real git working copy and a real-browser walk.

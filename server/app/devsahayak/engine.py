@@ -387,15 +387,27 @@ class Session:
         self.save_meta()
         return cp
 
-    def rewind(self, n: int) -> dict[str, Any]:
+    def rewind(self, n: int, what: str = "both") -> dict[str, Any]:
+        """Back to checkpoint n, Claude Code's /rewind: what = both (code and conversation) | code (the files only, the
+        conversation stays) | conversation (the conversation only, the files keep every change). A partial rewind keeps
+        the later checkpoints, so she can go forward to one again; the next round is told what changed under it."""
         cps = self.meta.get("checkpoints") or []
         cp = next((c for c in cps if int(c.get("n", 0)) == int(n)), None)
         if cp is None:
             raise ValueError("There is no such checkpoint.")
-        rc, out = _git(self.repo, "reset", "-q", "--hard", cp["sha"])
-        if rc != 0:
-            raise ValueError("Could not go back: " + out.strip()[:200])
-        _git(self.repo, "clean", "-q", "-fd")
+        what = what if what in ("both", "code", "conversation") else "both"
+        if what != "conversation":
+            rc, out = _git(self.repo, "reset", "-q", "--hard", cp["sha"])
+            if rc != 0:
+                raise ValueError("Could not go back: " + out.strip()[:200])
+            _git(self.repo, "clean", "-q", "-fd")
+        label = str(cp.get("label") or "")[:120]
+        if what == "code":
+            self.meta["pending_note"] = (f"She put the FILES back to checkpoint {cp['n']} ({label}). The conversation above is "
+                                         "unchanged, but every file change made after that checkpoint is gone from the working "
+                                         "copy. Read a file again before you edit it; do not assume it still has your later edits.")
+            self.save_meta()
+            return cp
         copy = self.dir / f"messages.cp{cp['n']}.json"
         msgs = None
         if cp.get("copy") and copy.is_file():
@@ -406,6 +418,13 @@ class Session:
         if msgs is None:
             msgs = self.messages()[: int(cp.get("messages") or 0)]
         self.save_messages(msgs)
+        if what == "conversation":
+            self.meta["pending_note"] = (f"She took the CONVERSATION back to checkpoint {cp['n']} ({label}), but the files were "
+                                         "NOT put back: the working copy still has every change made after it (run git diff / "
+                                         "git status to see them). Take that into account before you change anything.")
+            self.save_meta()
+            return cp
+        self.meta.pop("pending_note", None)
         for c in cps:
             if int(c["n"]) > int(n):
                 (self.dir / f"messages.cp{c.get('n')}.json").unlink(missing_ok=True)
@@ -1805,6 +1824,10 @@ def her_blocks(tools: Any, ses: Any, words: str, emit: Any) -> str:
     from . import repoconf as RC
     parts: list[str] = []
     conf = getattr(tools, "conf", {}) or {}
+    note = ses.meta.pop("pending_note", None)              # v0.999 a partial rewind: what changed under the conversation
+    if note:
+        ses.save_meta()
+        parts.append("<rewind_note>\n" + str(note)[:1500] + "\n</rewind_note>")
     if not ses.msg_path.is_file() and RC.hooks_for(conf, "SessionStart"):
         said = run_hooks(tools, "SessionStart", emit=emit)
         if said.get("context"):
@@ -3209,12 +3232,12 @@ def files(tid: str, path: str = "") -> dict[str, Any]:
     return {"path": rel, "entries": rows[:1000]}
 
 
-def rewind(tid: str, n: int) -> dict[str, Any]:
+def rewind(tid: str, n: int, what: str = "both") -> dict[str, Any]:
     if tid in LIVE:
         raise ValueError("Hoola is working in this session right now - stop it first.")
     if not exists(tid):
         raise ValueError("This session has no working copy.")
-    return Session(tid).rewind(n)
+    return Session(tid).rewind(n, what)
 
 
 def mark_pushed(tid: str, head_sha: str) -> None:

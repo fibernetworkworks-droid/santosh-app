@@ -545,7 +545,8 @@ def make_router(require_key, current_tenant) -> APIRouter:
 
     @r.post("/tasks/{tid}/rewind")
     async def ws_rewind(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
-        return await run(S.ws_rewind, tenant, tid, int(_b(body).get("n") or 0))
+        b = _b(body)
+        return await run(S.ws_rewind, tenant, tid, int(b.get("n") or 0), str(b.get("what") or "both"))
 
     @r.get("/tasks/{tid}/made/{mid}")
     async def made_detail(tid: str, mid: str, v: int = 0, tenant: str = Depends(current_tenant)):
