@@ -1040,7 +1040,7 @@ NUMBER    : /\d+(\.\d+)?/ ;
      [{"name": "Precedence", "src": "print 2 + 3 * 4;", "kind": "output", "expect": "14"},
       {"name": "Variables", "src": "let x = 10; let y = x / 4; print y;", "kind": "output", "expect": "2.5"},
       {"name": "Brackets", "src": "print (2 + 3) * 4;", "kind": "output", "expect": "20"},
-      {"name": "Names in any script", "src": "let दाम = 120; print दाम * 2;", "kind": "output", "expect": "240"},
+      {"name": "Names in any script", "src": "let விலை = 120; print விலை * 2;", "kind": "output", "expect": "240"},
       {"name": "Unknown name", "src": "print z;", "kind": "error", "expect": "no value"},
       {"name": "Divide by zero", "src": "print 1 / 0;", "kind": "error", "expect": "zero"},
       {"name": "Missing ;", "src": "print 1", "kind": "error", "expect": ""}]),
