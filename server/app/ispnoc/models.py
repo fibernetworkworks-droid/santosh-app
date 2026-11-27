@@ -21,6 +21,7 @@ class IspnocSettings(Base):
     bsnl_sla_hours: Mapped[float | None] = mapped_column(Float, nullable=True)   # from HER franchise agreement (blank = not set)
     bsnl_penalty_note: Mapped[str] = mapped_column(String(400), default="")
     window_min: Mapped[int] = mapped_column(Integer, default=15)             # alarms closer than this belong together
+    country: Mapped[str | None] = mapped_column(String(2), nullable=True, default="")   # her country (ISO); "" = India (as before)
     morning_time: Mapped[str] = mapped_column(String(5), default="09:00")
     last_morning: Mapped[str] = mapped_column(String(10), default="")
     rules: Mapped[str] = mapped_column(Text, default="")

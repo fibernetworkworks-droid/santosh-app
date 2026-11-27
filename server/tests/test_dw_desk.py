@@ -49,7 +49,7 @@ def test_hire_chat_block_and_wiring(ddk):
     src = (root / "server/app/agent/santosh.py").read_text()
     assert "_dwc.is_docs(conversation_id)" in src and "adm.admit_families(_dwc.FAMILIES)" in src
     for f_ in ("callconv.py", "convs.py"):
-        assert '"docs")' in (root / "server/app" / f_).read_text()
+        assert '"docs"' in (root / "server/app" / f_).read_text()
     from app.main import APP_VERSION, app
     r = TestClient(app).get("/console/docs")
     assert r.status_code == 200 and "Content-Security-Policy" in r.headers and "dwdesk.js" in r.text

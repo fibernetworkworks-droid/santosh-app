@@ -2196,6 +2196,15 @@ def qa_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/noc")
+@app.get("/console/noc/")
+def noc_desk_page():
+    """NOC DESK: the NOC employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "ncdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/docs")
 @app.get("/console/docs/")
 def docs_desk_page():
@@ -2880,6 +2889,8 @@ from . import archat as _archat_mod                             # noqa: E402  AP
 _archat_mod.mount(app, current_tenant, require_key)             # /api/ardesk/*
 from . import dwchat as _dwchat_mod                             # noqa: E402  TECHNICAL WRITER DESK
 _dwchat_mod.mount(app, current_tenant, require_key)             # /api/dwdesk/*
+from . import ncchat as _ncchat_mod                             # noqa: E402  NOC DESK
+_ncchat_mod.mount(app, current_tenant, require_key)             # /api/ncdesk/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through
