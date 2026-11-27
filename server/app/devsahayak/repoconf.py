@@ -29,7 +29,11 @@ TOOL_NAMES = {"bash": "Bash", "read": "Read", "write": "Write", "edit": "Edit", 
               "grep": "Grep", "ls": "LS", "web_fetch": "WebFetch", "web_search": "WebSearch", "notebook_edit": "NotebookEdit",
               "todo_write": "TodoWrite", "agent": "Task", "mcp": "mcp"}
 HOOK_EVENTS = ("PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "Stop", "SubagentStop", "PreCompact",
-               "SessionEnd", "Notification")
+               "SessionEnd", "Notification",
+               # v0.999 the rest of Claude Code's events that mean something in Hoola Code
+               "SubagentStart", "PermissionRequest", "PermissionDenied", "PostToolUseFailure", "PostToolBatch", "PostCompact",
+               "StopFailure", "InstructionsLoaded", "UserPromptExpansion", "TaskCreated", "TaskCompleted")
+HOOK_TYPES = ("command", "prompt", "agent", "http", "mcp_tool")
 MENTION = re.compile(r"(?<![\w/])@((?:[\w.-]+/)*[\w.-]+\.[\w]+|(?:[\w.-]+/)+[\w.-]+)")
 MENTION_MAX = 5
 MENTION_CHARS = 60_000
@@ -63,12 +67,40 @@ def _hook_groups(out: dict[str, Any], hooks: Any) -> None:
         for g in groups:
             if not isinstance(g, dict):
                 continue
-            cmds = [str(h.get("command") or "")[:2000] for h in g.get("hooks") or []
-                    if isinstance(h, dict) and str(h.get("type") or "command") == "command" and h.get("command")]
-            if cmds:
-                out["hooks"].setdefault(ev, []).append({"matcher": str(g.get("matcher") or ""), "commands": cmds[:5],
-                                                        "timeout": int(next((h.get("timeout") for h in g.get("hooks") or []
-                                                                             if isinstance(h, dict) and h.get("timeout")), 60) or 60)})
+            specs = [s for s in (hook_spec(h) for h in (g.get("hooks") or [])[:5]) if s]
+            if specs:
+                out["hooks"].setdefault(ev, []).append({
+                    "matcher": str(g.get("matcher") or ""), "specs": specs,
+                    "commands": [s["command"] for s in specs if s["type"] == "command"],
+                    "timeout": int(next((h.get("timeout") for h in g.get("hooks") or [] if isinstance(h, dict) and h.get("timeout")), 60) or 60)})
+
+
+def hook_spec(h: Any) -> dict[str, Any] | None:
+    """One hook of a settings file, Claude Code's types: command | prompt (a model judges) | agent (an agent checks with
+    read-only tools) | http (POST the event to a url) | mcp_tool (a tool of one of the repo's MCP servers); onFailure."""
+    if not isinstance(h, dict):
+        return None
+    kind = str(h.get("type") or "command")
+    if kind not in HOOK_TYPES:
+        return None
+    s: dict[str, Any] = {"type": kind, "on_failure": "block" if str(h.get("onFailure") or "") == "block" else "",
+                         "timeout": max(1, min(int(h.get("timeout") or (30 if kind in ("prompt", "http") else 60) or 60), 300))}
+    if kind == "command":
+        s["command"] = str(h.get("command") or "")[:2000]
+        return s if s["command"].strip() else None
+    if kind in ("prompt", "agent"):
+        s["prompt"] = str(h.get("prompt") or "")[:4000]
+        s["model"] = str(h.get("model") or "")[:80]
+        return s if s["prompt"].strip() else None
+    if kind == "http":
+        s["url"] = str(h.get("url") or "")[:500]
+        s["headers"] = {str(k): str(v) for k, v in (h.get("headers") or {}).items()
+                        if isinstance(h.get("headers"), dict) and "${" not in str(v)}
+        return s if s["url"].startswith("https://") else None
+    s["server"] = str(h.get("server") or "")[:60]
+    s["tool"] = str(h.get("tool") or "")[:120]
+    s["input"] = h.get("input") if isinstance(h.get("input"), dict) else {}
+    return s if s["server"] and s["tool"] else None
 
 
 ENV_OK = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
@@ -169,9 +201,10 @@ def decide(conf: dict[str, Any], tool: str, inp: dict[str, Any]) -> str:
     return ""
 
 
-def hooks_for(conf: dict[str, Any], event: str, tool: str = "") -> list[tuple[str, int]]:
-    """The commands to run for this event (and tool): (command, timeout seconds)."""
-    out: list[tuple[str, int]] = []
+def hooks_for(conf: dict[str, Any], event: str, tool: str = "") -> list[dict[str, Any]]:
+    """The hooks to run for this event (and tool), each a hook_spec ({type, command | prompt | url | server+tool, timeout,
+    on_failure})."""
+    out: list[dict[str, Any]] = []
     cname = _claude_name(tool) if tool else ""
     for g in (conf.get("hooks") or {}).get(event) or []:
         m = g.get("matcher") or ""
@@ -182,7 +215,8 @@ def hooks_for(conf: dict[str, Any], event: str, tool: str = "") -> list[tuple[st
             except re.error:
                 if m not in (cname, tool):
                     continue
-        out += [(c, max(1, min(int(g.get("timeout") or 60), 300))) for c in g["commands"]]
+        out += g.get("specs") or [{"type": "command", "command": c, "timeout": max(1, min(int(g.get("timeout") or 60), 300)),
+                                   "on_failure": ""} for c in g.get("commands") or []]
     return out[:8]
 
 
@@ -208,7 +242,7 @@ def hook_answer(event: str, rc: int, stdout: str, stderr: str) -> dict[str, Any]
     updatedInput, additionalContext), or plain text (context for SessionStart / UserPromptSubmit, otherwise only shown);
     any other exit = a non-blocking error shown to her, the work goes on."""
     a: dict[str, Any] = {"block": False, "reason": "", "context": "", "decision": "", "updated": None, "stop": False,
-                         "stop_reason": "", "message": "", "shown": "", "error": ""}
+                         "stop_reason": "", "message": "", "shown": "", "error": "", "output": None, "retry": False, "title": ""}
     out, err = (stdout or "").strip(), (stderr or "").strip()
     if rc == 2:
         a["block"], a["reason"] = True, (err or out)[-4000:]
@@ -236,26 +270,63 @@ def hook_answer(event: str, rc: int, stdout: str, stderr: str) -> dict[str, Any]
     hs = j.get("hookSpecificOutput") if isinstance(j.get("hookSpecificOutput"), dict) else {}
     if event == "PreToolUse":
         pd = str(hs.get("permissionDecision") or "").lower() or {"approve": "allow", "block": "deny"}.get(dec, "")
-        if pd in ("allow", "deny", "ask"):
+        if pd in ("allow", "deny", "ask"):                # 'defer' = no decision: the normal flow decides
             a["decision"] = pd
             a["reason"] = str(hs.get("permissionDecisionReason") or reason or "")[:4000]
         if isinstance(hs.get("updatedInput"), dict):
             a["updated"] = hs["updatedInput"]
+    elif event == "PermissionRequest":                    # v0.999 answer the permission prompt instead of her
+        d = hs.get("decision") if isinstance(hs.get("decision"), dict) else {}
+        beh = str(d.get("behavior") or "").lower()
+        if beh in ("allow", "deny"):
+            a["decision"], a["reason"] = beh, str(d.get("message") or reason or "")[:4000]
+        if isinstance(d.get("updatedInput"), dict):
+            a["updated"] = d["updatedInput"]
     elif dec == "block":
         a["block"], a["reason"] = True, reason
-    if event in ("SessionStart", "UserPromptSubmit", "PostToolUse") and hs.get("additionalContext"):
+    if event == "PermissionDenied" and (hs.get("retry") is True or j.get("retry") is True):
+        a["retry"] = True
+    if event == "PostToolUse" and "updatedToolOutput" in hs:
+        v = hs["updatedToolOutput"]
+        a["output"] = v if isinstance(v, str) else json.dumps(v, default=str)
+    if isinstance(hs.get("sessionTitle"), str) and event in ("SessionStart", "UserPromptSubmit"):
+        a["title"] = hs["sessionTitle"].strip()[:120]
+    if event in ("SessionStart", "UserPromptSubmit", "PostToolUse", "PostToolUseFailure", "SubagentStart",
+                 "UserPromptExpansion", "PostToolBatch") and hs.get("additionalContext"):
         a["context"] = str(hs["additionalContext"])[:6000]
     return a
 
 
+def judge_answer(event: str, text: str) -> str:
+    """A prompt / agent hook's verdict ({"ok": true|false, "reason": "..."}, Claude Code's shape) as the stdout JSON a
+    command hook would print, so one reader handles both."""
+    m = re.search(r"\{.*\}", text or "", re.S)
+    try:
+        j = json.loads(m.group(0)) if m else {}
+    except ValueError:
+        j = {}
+    if not isinstance(j, dict) or "ok" not in j:
+        return ""
+    if j.get("ok") is True:
+        return json.dumps({"hookSpecificOutput": {"additionalContext": str(j.get("reason") or "")}} if j.get("reason") else {})
+    why = str(j.get("reason") or "the hook said no")[:2000]
+    if event == "PreToolUse":
+        return json.dumps({"hookSpecificOutput": {"permissionDecision": "deny", "permissionDecisionReason": why}})
+    if event == "PermissionRequest":
+        return json.dumps({"hookSpecificOutput": {"decision": {"behavior": "deny", "message": why}}})
+    return json.dumps({"decision": "block", "reason": why})
+
+
 def hook_input(event: str, tid: str, tool: str = "", inp: dict[str, Any] | None = None, out: str = "",
-               prompt: str = "") -> dict[str, Any]:
+               prompt: str = "", extra: dict[str, Any] | None = None) -> dict[str, Any]:
     j: dict[str, Any] = {"session_id": tid, "hook_event_name": event, "cwd": "/work"}
+    for k, v in (extra or {}).items():                    # v0.999 what each newer event carries (error, agent_type, ...)
+        j[str(k)] = v
     if tool:
         j["tool_name"] = _claude_name(tool)
         j["tool_input"] = to_claude_input(tool, inp)
-    if event == "PostToolUse":
-        j["tool_response"] = out[:20000]
+    if event in ("PostToolUse", "PostToolUseFailure"):
+        j["tool_response" if event == "PostToolUse" else "error"] = out[:20000]
     if prompt:
         j["message" if event == "Notification" else "prompt"] = prompt[:20000]
     return j

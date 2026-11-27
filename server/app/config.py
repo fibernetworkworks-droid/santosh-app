@@ -218,6 +218,12 @@ class Settings(BaseSettings):
     # v0.784 HOOLA CODE ENGINE (owner: "GO STEP 1 AND 2 --- 2 SESSIONS, USE CLAUDE"): devsahayak/engine.py + brain.py
     dev_claude: bool = True                 # every Hoola Code model call is Claude's own (stands SAB GLM / claude_one_model aside)
     dev_think: bool = True                  # ... with adaptive thinking
+    dev_fallback_models: str = "claude-sonnet-5-5,claude-opus-5-5,claude-haiku-5-5"   # v0.999 backups when the model is overloaded / down / gone (Claude Code's fallbackModel; up to 3, the session's own model skipped)
+    dev_parallel_reads: bool = True         # v0.999 read-only calls of one reply run side by side (Claude Code's concurrency-safe tools)
+    dev_parallel_width: int = 8
+    dev_idle_compact: bool = True           # v0.999 a long session idle just under the 5-min prompt cache is summarised through its own cached request
+    dev_idle_compact_after_s: int = 240
+    dev_idle_compact_chars: int = 800000    # ... only past this size (~200k tokens, Claude Code's threshold)
     # v0.926 HOOLA CODE ON QWEN (owner: "27B FOR CODING ALSO"): every Hoola Code call on Qwen through OpenRouter
     dev_brain: str = "qwen"                 # "qwen" = OpenRouter (dev_qwen_model) | "claude" = Claude's own (dev_claude rules)
     dev_qwen_model: str = "qwen/qwen3.8-27b"   # the coder, plans, reviews, agents, compaction, hint and memory all on this

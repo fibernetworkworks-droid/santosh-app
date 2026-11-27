@@ -138,7 +138,7 @@ def test_compact_focus_and_the_hook_events(ws, monkeypatch):
     EN.compact(msgs, keep_tail=2, focus="the API changes")
     assert "focus on: the API changes" in str(seen.get("ask"))
     src = (ROOT / "server/app/devsahayak/engine.py").read_text()
-    assert 'run_hooks(tools, "PreCompact")' in src and "def notify_hook" in src and "def session_end_hook" in src
+    assert 'run_hooks(tools, "PreCompact"' in src and "def notify_hook" in src and "def session_end_hook" in src
     assert "notify_hook(tools, ask)" in src and "notify_hook(self, ask)" in src
     assert '"SubagentStop"' in (ROOT / "server/app/devsahayak/subagent.py").read_text()
     svc = (ROOT / "server/app/devsahayak/service.py").read_text()
