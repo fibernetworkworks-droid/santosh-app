@@ -1256,6 +1256,10 @@ from .dbeng_tools import DBENG_HANDLERS, DBENG_LABELS, DBENG_TOOLS  # noqa: E402
 TOOLS.extend(DBENG_TOOLS)
 TOOL_LABELS.update(DBENG_LABELS)
 HANDLERS.update(DBENG_HANDLERS)
+from .dist_tools import DIST_HANDLERS, DIST_LABELS, DIST_TOOLS  # noqa: E402
+TOOLS.extend(DIST_TOOLS)
+TOOL_LABELS.update(DIST_LABELS)
+HANDLERS.update(DIST_HANDLERS)
 # v0.357 Engineering Desk: the hired CAD Engineer (cad_part)
 from .eng_tools import ENG_HANDLERS, ENG_LABELS, ENG_TOOLS  # noqa: E402
 

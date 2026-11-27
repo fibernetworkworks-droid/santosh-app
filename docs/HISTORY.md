@@ -13484,3 +13484,38 @@ NOT VERIFIED: on her server or with her own database; the lab is SQLite on gener
 
 ## v0.999.281 MCP TOOLS ONE BY ONE
 (owner: 'GO NEXT - MCP TOOLS LISTED ONE BY ONE'): Claude Code's way of showing MCP servers in Hoola Code (`devsahayak/mcptools.py`). Before, the coder had ONE `mcp` tool (list, then call with pack_id + tool + args) and never saw a tool's real fields; now every tool of her connected MCP servers and of the repo's `.mcp.json` / plugin servers she already allowed is a tool of its own, named mcp__<server>__<tool> (64 characters at most, never two with one name), with the server's own input schema and description (a tool that changes something says it becomes a confirm card on her phone). A repo server's tool list is read once, after her OK, and kept for a day; listing it loads its tools into the running round at once. Past 60 tools or 40,000 characters of definitions they are held back like Claude Code's tool search: the coder sees their names and `mcp_tool_search` (keywords, or select:<name>,<name>) loads the ones it needs. Every call still runs through the same doors (her connector layer and its phone cards; the repo's box or allowed address); the repo's permission rules (mcp__server__tool, mcp__server, mcp__server__*), hook matchers (mcp__notion__.*), the 'ask each step' questions and the Auto-mode safety reviewer all see the real name. The old `mcp` tool stays for listing and for servers not yet allowed. Web + phone rows name the server and tool; a 'Loaded MCP tools' row for the search. NOT VERIFIED against a live MCP server or a real model.
+
+
+## v0.999.282 DISTRIBUTED DESK (built as 0.999.281; their HOOLA CODE MCP TOOLS took 0.999.281, both kept; owner: "Distributed Systems Engineer same as finance desks")
+
+The Hub's `distsys_eng` card goes live like the finance desks: its own page `/console/distributed` (`static/console/dsdesk.{html,js,css}`)
+and its own chat (Conversation kind `distsys`, `app/distchat.py`, routes `/api/dsdesk/*`), out of every Hoola chat list, with the desk
+block + the `dist` tool family in view in that chat and in a call started from it.
+
+Engine `app/distdesk/` - all code, no model, no money, nothing runs on her systems:
+- `retry.py`: one policy (tries, first backoff, multiplier, cap, per-try timeout, deadline, jitter none / full / equal / decorrelated
+  after the AWS 'Exponential Backoff and Jitter' formulas) -> the longest waits, the worst case, the load while the service below
+  fails, the tries arriving per 10 ms when every client fails at once (fixed seed: 1,000 clients -> peak 1,000 without jitter, ~67 with
+  full jitter), deadline cuts; a call chain -> how retries multiply and which caller gives up while its callee still retries.
+- `quorum.py`: N / R / W (overlap, failures reads / writes survive, two writes overlapping), consensus voters (majority, tolerance,
+  even numbers), replicas across zones (what losing each zone, and each pair, does).
+- `linear.py`: a linearizability checker for register / compare-and-set histories (Wing-Gong search with memoising, as in Knossos;
+  timed-out operations may or may not have happened; per key) reading JSON, Jepsen EDN or plain lines; names the operation that
+  cannot be explained and what the register could hold. A test compares it with brute force on 500 random histories.
+- `sim.py`: a fault-injection simulator of one register - one leader, quorum without read repair, quorum with read repair (ABD),
+  last-writer-wins on client clocks, async primary-backup with failover - with partitions, crashes and clock skew, fixed seeds;
+  every operation recorded as a client saw it and checked. The quorum preset breaks and the SAME run with read repair holds; LWW with
+  skew breaks; async failover loses acknowledged writes. A model of the protocol, not her system.
+- `tla.py`: TLA+ starter specs (idempotent consumer, two-phase commit, fenced leader lease) each with a switch for the bug and the
+  fix; TLC output read (pass / invariant / property / deadlock / error, states, depth, the trace with what changed each step); a
+  GitHub Actions workflow that runs TLC (pinned tla2tools release) on every spec with a .cfg in her specs folder.
+- `service.py`: items (retry R-, chain C-, quorum Q-, history H-, simulation J-, TLC T-), settings (system, failure rate, clients,
+  specs folder, branch, TLA+ tools version).
+
+Tool `dist_desk` (`agent/dist_tools.py`, registry 706 -> 707). Pages: Today, Retries (policy + chain; waits, the herd chart),
+Quorums (zones), Histories (simulator scenarios + paste; the timeline with the unexplained operation in red), Specs (starters with
+the bug / fix switch, TLC output, the CI workflow), Settings.
+
+Tests `tests/test_ds_desk.py` (5) incl. a browser walk at 1440 / 390.
+NOT VERIFIED: on her server. The TLA+ starter specs were NOT run through TLC here: running the downloaded TLC jar was refused by
+this session's safety check, so they are untested until her CI (or a TLC run) checks them.

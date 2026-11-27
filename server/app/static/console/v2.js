@@ -487,6 +487,7 @@ function go(v, arg) {
   if (v === 'kddesk') { location.assign('/console/kernel'); return; }   // KERNEL DESK: its own section
   if (v === 'gxdesk') { location.assign('/console/graphics'); return; }   // GRAPHICS DESK: its own section
   if (v === 'dbdesk') { location.assign('/console/database'); return; }   // DATABASE DESK: its own section
+  if (v === 'dsdesk') { location.assign('/console/distributed'); return; }   // DISTRIBUTED DESK: its own section
   if (v === 'ncdesk') { location.assign('/console/noc'); return; }   // NOC DESK: its own section
   if (v === 'dwdesk') { location.assign('/console/docs'); return; }   // TECHNICAL WRITER DESK: its own section
   if (v === 'ardesk') { location.assign('/console/appreview'); return; }   // APP REVIEWER DESK: its own section

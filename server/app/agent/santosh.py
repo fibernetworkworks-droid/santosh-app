@@ -1824,6 +1824,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_dbc.block, tenant_id)
     except Exception:
         log.exception("database desk block failed")
+    try:   # DISTRIBUTED DESK: a turn in the Distributed chat (or a call started from it) knows the desk
+        from .. import distchat as _dsc
+        if _dsc.is_distsys(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_dsc.block, tenant_id)
+    except Exception:
+        log.exception("distributed desk block failed")
     _mark("hint")
     return state
 
@@ -2835,6 +2841,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "database desk chat"
     except Exception:
         log.exception("database desk chat admission failed")
+    try:   # DISTRIBUTED DESK: the distributed tool in view in the Distributed chat
+        from .. import distchat as _dsc
+        if adm is not None and _dsc.is_distsys(conversation_id):
+            adm.admit_families(_dsc.FAMILIES)
+            for f in _dsc.FAMILIES:
+                adm.why[f] = "distributed desk chat"
+    except Exception:
+        log.exception("distributed desk chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,
