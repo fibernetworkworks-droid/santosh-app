@@ -55,7 +55,7 @@ def test_hire_setup_chat_block_and_wiring(fo):
     from app.agent.tools import FAMILY_OF
     assert FAMILY_OF["vitt_sahayak"] in fo.FAMILIES
     for f_ in ("callconv.py", "convs.py"):
-        assert '"finops")' in (root / "server/app" / f_).read_text()
+        assert '"finops"' in (root / "server/app" / f_).read_text()
     from app.main import APP_VERSION, app
     r = TestClient(app).get("/console/finops")
     assert r.status_code == 200 and "Content-Security-Policy" in r.headers and "fodesk.js" in r.text

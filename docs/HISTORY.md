@@ -12689,3 +12689,23 @@ Desktop wiring. Audit: AST list of every action the server sends (hub.call / cal
   editor; chat texts; routes to watch; inputs; the MCP address), the address box with Copy / Open it; canvas words and icons.
 - Tests `server/tests/test_v0999_240_route_triggers.py` (10 incl. a Chromium walk: make a form route, open its page, send it,
   see the route's answer). NOT VERIFIED: on her server, with a real mailbox / sheet / feed, or a real AI app over MCP.
+
+
+## v0.999.243 RISK DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE RISK DESK SAME WAY")
+
+The Risk Desk employee (`risk_desk`, the v0.603 riskdesk engine) gets its own section like the Finance Desk / Public Finance desks:
+`/console/risk` (`rkdesk.html/.js/.css`) + the Risk Desk chat (Conversation kind `risk`, `server/app/rkchat.py`, routes `/api/riskdesk/*`).
+
+- State in the workspace settings under `risk_desk`: registers holdings, targets, rules, loans, exposures, txns, trades (CSV or one row,
+  each a snapshot), lists applicants, tickets, offers, models, decisions and settings (limits, rates, as_of).
+- Portfolio & orders: weights, drift vs HER targets, breaches of HER mandate limits (none assumed; said when missing), rebalance proposals
+  with the portfolio manager's decision recorded; order tickets checked on HER order limits and broker rates - `placed` is always false.
+- Applications: HER policy rules (rules or applicant fields on religion / caste / gender / locality and proxies refused at entry), rule hits
+  as reason codes, the credit officer's decision recorded; key fact statements via `credit.kfs`, which gained `fee_gst_pct` (the desk passes
+  her tax on fees, 0 when she gives none - the engine's India 18% default no longer applies silently).
+- Loan book: days past due by band, the NPA line hers or 90 shown as the default from memory; ECL working paper on HER PD / LGD.
+- Surveillance: payment velocity only once she sets window + count; accounts kept as fingerprint + last 4; round-trip trades as evidence.
+- Valuation: DCF + sensitivity grid of HER cash flows and rates.
+- Wiring: main.py route + mount, convs/callconv kinds, santosh.py block + admission, employees.js `risk_desk: 'rkdesk'`, v2.js redirect,
+  phone `hoola_employees.dart`, test_fin_f7 own map.
+- Tests: `server/tests/test_rk_desk.py` (5, incl. a browser walk at 1440 and 390). NOT VERIFIED on her server.
