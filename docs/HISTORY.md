@@ -13268,3 +13268,40 @@ word 'suraksha' (fails on untouched main too). NOT VERIFIED on her server with r
 
 ## v0.999.272 ENGINE LIKE CLAUDE CODE
 (owner, after the read of anthropics/claude-code: 'Build items 1, 2, 3, 4 and 8-9 first'): Hoola Code's engine now works like Claude Code's in six places. (1) PARALLEL READS: the read-only calls of one reply (read / glob / grep / ls / web_fetch / web_search) that no rule or PreToolUse hook must decide run side by side (`engine.parallel_reads`, `dev_parallel_width` 8) - only the run BEFORE the first call that may change something, so a read after an edit always sees the edit; one that fails never cancels another. (2) BIG OUTPUTS SAVED: a tool result over 50K characters (bash over 30K, MCP over 30K) is kept whole in the session folder and the model gets its start, its end and a path - `read @out/oN.txt` by lines, `grep` with path @out/oN.txt (`Tools.spill`, newest 50 kept). (3) FALLBACK MODELS: when Claude is overloaded / down / the connection drops / the model is not found, the same request goes to up to 3 backup models (`dev_fallback_models`, `brain.fallback_worthy`); credit, rate-limit, bad-request and too-long errors still show at once; a model that does not exist is skipped from then on; compaction uses the chain too; the page says which model answered. (4) COMPACTION GUARDS: 'prompt is too long' = summarise and ask once more; 3 failed summaries = no more tries this round (trim instead); 3 summaries within 2 steps of each other = the round stops and says something in it is too big; a session over ~200k tokens idle for 4 minutes is summarised THROUGH ITS OWN CACHED REQUEST (the round's system prompt + tools saved in prefix.json, the conversation, plus one line) just before the 5-minute prompt cache runs out, once per idle spell (`engine.idle_compact`, `service._idle_compact`, Claude brain only). (8) 11 MORE HOOK EVENTS - SubagentStart, PermissionRequest (a hook answers the prompt for her: allow / deny / changed input), PermissionDenied (retry: true), PostToolUseFailure (a refused / failed step or a command exiting non-zero), PostToolBatch, PostCompact, StopFailure, InstructionsLoaded (session start + a folder's rules), UserPromptExpansion (before her custom command), TaskCreated, TaskCompleted (a block keeps the task open) - 20 in all. (9) HOOK TYPES: prompt (a model judges, {ok, reason}), agent (a read-only agent checks, same answer), http (the event POSTed to an https address - only a host this repo's network already allows, since it leaves the box), mcp_tool (a tool of a repo MCP server she allowed); onFailure: block; JSON fields updatedToolOutput, retry, defer, sessionTitle (renames the session). FIXED on the way: the idle summary looked for a git copy it does not need. 12 tests incl. a full round with fakes and a real 5,000-line saved output. NOT VERIFIED: a real overloaded Claude answer, real Docker hooks, a real http hook delivery; the 5-minute cache window is Hoola's own setting.
+
+
+## v0.999.273 COMPILER DESK (built as 0.999.272; owner: "Compiler Construction Engineer -- TOP DEVLOPENT OF IT AND DESIGN SAME AS OTHER SECTIONS")
+
+The Compiler Construction Engineer (hire key `compiler_eng`, was a "not live" Hub card) goes live with a NEW engine and its own
+section like the finance desks: `/console/compiler` (`static/console/lcdesk.html/.js/.css`) with the Compiler chat (Conversation
+kind `langlab`, `server/app/lcchat.py`, routes `/api/lcdesk/{chat, chat/new, chat/{conv}/ok, desk, do/{part}, zip/{id}}`).
+
+THE ENGINE `server/app/langlab/`:
+- `hoola_lang.py` - Hoola's own parser generator in plain Python (no other packages; it also ships in the sandbox and in her zip).
+  Grammar notation: lower-case rules, UPPER-CASE tokens (/regex/ or "text"), ( ) | * + ?, %ignore, %allow_keywords, ?rule (inline
+  when one child), !rule (keep fixed words). PEG with packrat memo and a 2,000,000-step limit. Checks: undefined names, left recursion
+  (with the loop form to write instead), repeats that can match nothing, choices that can never win ("=" before "=="), duplicate
+  choices, slow nested-repeat token patterns, unused rules / tokens, empty-matching tokens / ignores, bad regexes. Errors carry line,
+  column, the expected set, what was found and a pointer under the line. Fixed words match whole words and are reserved from NAME-like
+  tokens. GLOBAL: `\w` in token patterns also takes combining marks (Python's \w leaves out the vowel signs of दाम, Arabic harakat,
+  Thai vowels - names in those scripts broke in the middle; found by the starter's own test). A sampler makes example programs from
+  the grammar (with a small regex sampler) for fuzzing.
+- `service.py` - languages (`langlab_langs`: grammar, interpreter, tests, versions, last run, fuzz, proposal) + desk settings
+  (`langlab_settings`: time per program, fuzz count, interpreter or compiler). Her interpreter runs ONLY in the pylab sandbox
+  (`pylab.runner`: no network, no secrets, no server files, limits) through a harness with a per-program timer: a clean LangError, a
+  crash (with its line), an endless loop and a sandbox refusal are told apart. Golden tests (output / error / tree), "Keep this
+  answer" = her approval, fuzzing (made-up programs must read; mutated programs must give a clean error and never crash the
+  interpreter; reading speed), spec Markdown, railroad SVGs (`railroad.py`, text escaped), a TextMate grammar, and an export zip
+  (parser, grammar, interpreter, cli.py, run_tests.py, tests.json, SPEC.md, README.md, railroad/, editor/ VS Code extension).
+- `ai.py` - design from her words + examples (checked; up to two fix rounds with the checker's problems), improve (kept only when no
+  more tests fail, else a proposal she applies or drops), more tests (added with no expectation, she approves what they print).
+  Model calls through the door, job `langlab` (tier row web), counted as feature `langlab`.
+- Every save of the grammar or interpreter is a version; any version comes back as a new version.
+
+NEW tool `lang_lab` (agent/langlab_tools.py, family langlab, admit keys: grammar, parser, compiler, interpreter, dsl, ...; registry
+702 -> 703, 26 count pins moved). Hub entry live with does / needs / never; employees.js + v2.js open /console/compiler.
+
+FOUND AND FIXED while building: keeping a test's answer mutated the stored JSON in place so it was never saved; a designed language
+showed "ready" before its tests had run; tests the model re-sent were added twice. Tests `server/tests/test_lc_desk.py` (5 incl. a
+browser walk at 1440 and 390; the walk runs a real sandbox, the zip's cli.py and run_tests.py in a subprocess). NOT VERIFIED on her
+server with a real model (the design / improve paths ran against a fake model).
