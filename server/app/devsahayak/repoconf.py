@@ -27,7 +27,7 @@ from typing import Any
 DIRS = (".claude", ".hoola")
 TOOL_NAMES = {"bash": "Bash", "read": "Read", "write": "Write", "edit": "Edit", "multi_edit": "Edit", "glob": "Glob",
               "grep": "Grep", "ls": "LS", "web_fetch": "WebFetch", "web_search": "WebSearch", "notebook_edit": "NotebookEdit",
-              "todo_write": "TodoWrite", "agent": "Task", "mcp": "mcp"}
+              "todo_write": "TodoWrite", "agent": "Task", "mcp": "mcp", "lsp": "LSP"}
 HOOK_EVENTS = ("PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "Stop", "SubagentStop", "PreCompact",
                "SessionEnd", "Notification",
                # v0.999 the rest of Claude Code's events that mean something in Hoola Code

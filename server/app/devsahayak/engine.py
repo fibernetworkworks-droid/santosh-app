@@ -691,6 +691,12 @@ def tools_for_round() -> list[dict[str, Any]]:
     except Exception:
         pass
     try:
+        from . import lsp as LS
+        if LS.on():
+            extra.append(LS.TOOL)                         # v0.999 code intelligence (Claude Code's LSP tool)
+    except Exception:
+        pass
+    try:
         from . import memory as M
         if M.on():
             extra.append(M.TOOL)                          # the repo's memory (claude-mem's three steps)
@@ -1576,6 +1582,13 @@ class Tools:
         self.rules_new = list(new)                        # v0.999 InstructionsLoaded fires for these (outside the lock)
         return "".join(f"\n\n<folder_rules path=\"{p}\">\n{RC.rule_text(self.s.repo, p)[:8000]}\n</folder_rules>" for p in new)
 
+    def t_lsp(self, operation: str = "", filePath: str = "", line: int = 0, character: int = 0, query: str = "",
+              path: str = "") -> str:
+        """v0.999 code intelligence from a language server in the box (lsp.py)."""
+        from . import lsp as LS
+        return LS.tool(self, {"operation": operation, "filePath": filePath or path, "line": line, "character": character,
+                              "query": query})
+
     def run(self, name: str, inp: dict[str, Any]) -> str:
         fn = getattr(self, "t_" + name, None)
         if fn is None:
@@ -1866,6 +1879,7 @@ def now_words(name: str, inp: dict[str, Any]) -> str:
         return _ing(cmd_words(str(inp.get("command") or ""), inp.get("description")))
     return {"read": f"Reading {p}" if p else "Reading a file", "edit": f"Editing {p}", "multi_edit": f"Editing {p}",
             "write": f"Writing {p}", "grep": "Searching the code", "glob": "Looking for files",
+            "lsp": f"Asking the language server about {str(inp.get('filePath') or inp.get('query') or 'the code').split('/')[-1]}",
             "ls": f"Looking in {p or 'the repo'}", "show_diff": "Checking its own change", "todo_write": "Planning the steps",
             "other_repo": "Reading another repo", "code_map": "Reading the code map",
             "look": f"Opening {p} in a browser" if p else "Opening the page in a browser",
@@ -2210,8 +2224,24 @@ def cmd_prefix(cmd: str) -> str:
     return " ".join(words[:2]) if words[0] in TWO_WORD and len(words) > 1 else words[0]
 
 
+LSP_TENANT: dict[str, str] = {}
+
+
 def needs_ok(tid: str, mode: str, ses: Any, name: str, inp: dict[str, Any], force: bool = False) -> dict[str, Any] | None:
     """The question for her when this step must wait, else None. force = the repo's own 'ask' rule (any mode, any tool)."""
+    if name == "lsp" and ses is not None:                 # v0.999 a language server the REPO / a plugin names is a program:
+        try:                                              # her OK the first time it starts (the box's own need none)
+            from . import lsp as LS
+            spec = LS.server_for(ses.repo, str((inp or {}).get("filePath") or (inp or {}).get("path") or ""),
+                                 LSP_TENANT.get(str(getattr(ses, "tid", "")), ""))
+        except Exception:  # noqa: BLE001
+            spec = None
+        if spec and spec.get("origin") != "builtin" and spec["name"] not in ((ses.meta.get("allow") or {}).get("lsp") or []):
+            cmd = " ".join(spec["candidates"][0])[:200]
+            return {"tool": "lsp", "server": spec["name"],
+                    "what": f"Start {spec['name']}, the language server {'this repo' if spec['origin'] == 'repo' else 'your plugin'} names ({cmd})"}
+        if not force:
+            return None
     if name == "mcp" and str((inp or {}).get("pack_id") or "").startswith("repo:"):
         srv = str(inp.get("pack_id"))[5:]                 # a server the REPO names: her OK the first time, even to look at it -
         if srv in ((ses.meta.get("allow") or {}).get("mcp") or []) if ses is not None else False:   # it may be a program
@@ -2312,6 +2342,9 @@ def give_ok(tid: str, pid: str, answer: str, note: str = "") -> bool:
         elif p["tool"] == "mcp":                           # this repo's MCP server: allowed for the rest of the session
             if p.get("server") and p["server"] not in allow.setdefault("mcp", []):
                 allow["mcp"].append(p["server"])
+        elif p["tool"] == "lsp":                           # v0.999 this repo's language server: allowed for the session
+            if p.get("server") and p["server"] not in allow.setdefault("lsp", []):
+                allow["lsp"].append(p["server"])
         else:
             allow["edits"] = True
         ses.save_meta()
@@ -2488,6 +2521,13 @@ def event(tools: Tools, name: str, inp: dict[str, Any], out: str) -> list[dict[s
         return []                                         # wait_ok already told the page
     if name == "web_fetch":
         return [{"k": "web", "url": str(inp.get("url") or "")[:300], "ok": not o.startswith("Could not")}]
+    if name == "lsp":                                     # v0.999 code intelligence: one row, what it asked and what came back
+        fp = str(inp.get("filePath") or inp.get("path") or "").lstrip("./")
+        first = o.split("\n", 1)[0][:200]
+        m = re.match(r"(\d+) (definition|implementation|reference|symbol)", first)
+        return [{"k": "lsp", "op": str(inp.get("operation") or ""), "path": fp, "line": int(inp.get("line") or 0) or None,
+                 "q": str(inp.get("query") or "")[:80], "num": int(m.group(1)) if m else None, "text": first,
+                 "ok": not o.startswith(("No language server", "The language server", "Give ", "operation must"))}]
     if name == "web_search":
         return [{"k": "websearch", "q": str(inp.get("query") or "")[:200], "num": getattr(tools, "last_search", 0)}]
     if name == "mcp":
@@ -2999,6 +3039,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
         sp = {}
     tools = Tools(ses, allow_workflows, sp, hers, env, net)
     tools.tenant, tools.conv = str(getattr(t, "tenant_id", "") or ""), str(getattr(t, "conv", "") or "")
+    LSP_TENANT[ses.tid] = tools.tenant                    # v0.999 needs_ok must see her plugins' language servers too
     ROUND_TOOLS[str(getattr(t, "id", "") or "")] = tools
     ref_note = ""
     for full in (refs or [])[:3]:                        # Phase 6: her other repos, read-only, beside this one
@@ -3244,6 +3285,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
             if SA.on():
                 agent_out = SA.run_many(tools, agent_calls, emit=emit, stopped=stopped)
         pre = parallel_reads(tools, uses)                   # v0.999 read-only calls of this reply, side by side
+        edited_now: list[str] = []
         for b in uses:
             inp = b.get("input") or {}
             if b["name"] == "done":
@@ -3494,6 +3536,9 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
             finally:
                 NOW_STEP.pop(tid, None)
                 tools.live_tid = ""
+            if b["name"] in ("write", "edit", "multi_edit", "notebook_edit") and isinstance(out, str) \
+                    and not out.startswith(("Refused", "Wrong arguments", "Unknown tool", "Error", "Could not")):
+                edited_now.append(tools._rel(str(inp.get("path") or "")))   # v0.999 the language server checks these next
             if b["name"] in ("write", "edit", "multi_edit", "bash"):
                 try:                                       # v0.943 the code map is read again after a change
                     from . import repoindex as RX
@@ -3537,6 +3582,16 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                 notes = [str(x)[:6000] for x in (inbox() or []) if str(x).strip()]
             except Exception:
                 notes = []
+        try:                                              # v0.999 diagnostics: the language server checks what was edited
+            from . import lsp as LS
+            if edited_now:
+                LS.after_edits(tools, [p for p in edited_now if p], set((ses.meta.get("allow") or {}).get("lsp") or []))
+            dg = LS.take(tid_now, wait=float(_set("dev_lsp_diag_next_s", 6) or 0) if edited_now else 0.0)
+            if dg:
+                results.append({"type": "text", "text": dg})
+                emit({"k": "diagnostics", "text": dg[:3000], "files": len(re.findall(r"(?m)^\S[^\n]*:$", dg))})
+        except Exception:  # noqa: BLE001
+            pass
         try:                                              # v0.999 background agents that finished meanwhile
             from . import subagent as SA
             for rep in SA.take_reports(tid_now):

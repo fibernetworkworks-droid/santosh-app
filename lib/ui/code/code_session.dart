@@ -2131,6 +2131,36 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
           TextSpan(text: 'Read ${codeHost(cs(s['url']))}'),
           if (s['ok'] == false) TextSpan(text: ' · could not open it', style: TextStyle(color: c.bad)),
         ]);
+      case 'lsp': // v0.999 code intelligence (Claude Code's LSP tool)
+        {
+          const w = {
+            'goToDefinition': 'Found the definition',
+            'goToImplementation': 'Found the implementation',
+            'findReferences': 'Found the references',
+            'hover': 'Read the type',
+            'documentSymbol': 'Listed the symbols',
+            'workspaceSymbol': 'Searched the symbols',
+            'prepareCallHierarchy': 'Found the function',
+            'incomingCalls': 'Found the callers',
+            'outgoingCalls': 'Found what it calls',
+            'diagnostics': 'Checked for problems',
+          };
+          if (s['ok'] == false) {
+            return _line(c, Icons.code_off_rounded, [TextSpan(text: cs(s['text']).isEmpty ? 'The language server could not answer' : cs(s['text']), style: TextStyle(color: c.ink3))]);
+          }
+          final where = cs(s['q']).isNotEmpty
+              ? ' for “${cs(s['q'])}”'
+              : (cs(s['path']).isNotEmpty ? ' in ${cs(s['path'])}${s['line'] is num ? ':${ci(s['line'])}' : ''}' : '');
+          return _line(c, Icons.data_object_rounded, [
+            TextSpan(text: '${w[cs(s['op'])] ?? 'Asked the language server'}$where'),
+            if (s['num'] is num) TextSpan(text: ' · ${ci(s['num'])}', style: TextStyle(color: c.ink3)),
+          ]);
+        }
+      case 'diagnostics':
+        return _line(c, Icons.error_outline_rounded, [
+          const TextSpan(text: 'The language server found problems in what was just edited'),
+          if (cs(s['text']).isNotEmpty) TextSpan(text: '\n${cs(s['text']).split('\n').skip(2).take(6).join('\n')}', style: codeMono(c, size: 12, color: c.ink3)),
+        ], iconColor: c.warn);
       case 'websearch':
         return _line(c, Icons.search_rounded, [
           TextSpan(text: 'Searched the web for “${cs(s['q'])}”${s['num'] is num ? ' · ${codeCount(s['num'], 'result')}' : ''}'),

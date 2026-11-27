@@ -227,6 +227,12 @@ class Settings(BaseSettings):
     dev_worktree_max: int = 8               # ... open copies per session at most
     dev_worktree_max_mb: int = 2000         # ... a working copy bigger than this gets no copy
     dev_worktree_days: int = 7              # ... a kept copy nobody brought in is removed after this
+    dev_lsp: bool = True                    # v0.999 code intelligence: the lsp tool (a language server in the box, Claude Code's LSP tool)
+    dev_lsp_diagnostics: bool = True        # ... the server checks the files the coder edited; its problems arrive at the next step
+    dev_lsp_diag_wait_s: int = 25           # ... how long one check waits for the server's diagnostics
+    dev_lsp_diag_next_s: int = 6            # ... how long the next step waits for them (later ones arrive a step later)
+    dev_lsp_s: int = 300                    # ... one box run at most
+    dev_lsp_open_max: int = 40              # ... files that name the symbol, opened for references / callers
     dev_parallel_reads: bool = True         # v0.999 read-only calls of one reply run side by side (Claude Code's concurrency-safe tools)
     dev_parallel_width: int = 8
     dev_idle_compact: bool = True           # v0.999 a long session idle just under the 5-min prompt cache is summarised through its own cached request

@@ -42,7 +42,7 @@ FROM python:3.13-slim-bookworm
 #
 # v0.537: the walls and this image are one thing - bump BASE_REV whenever the image must be rebuilt, and
 # `lab_check` can then tell her that the image on her VPS is older than the code reading it.
-LABEL hoola.devlab.rev="3"
+LABEL hoola.devlab.rev="4"
 
 ENV DEBIAN_FRONTEND=noninteractive LANG=C.UTF-8 PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1 NODE_OPTIONS=--max-old-space-size=1536 HOME=/home/lab
@@ -64,6 +64,14 @@ RUN rm -f /usr/lib/python3*/EXTERNALLY-MANAGED /usr/local/lib/python3*/EXTERNALL
 # pytest / ruff for Python repos that declare no dev dependencies of their own
 RUN python3 -m pip install --no-cache-dir pytest pytest-timeout ruff
 
+# v0.999 (rev 4) code intelligence, Hoola Code's LSP tool (Claude Code's): language servers for Python and JS / TS live
+# in the image, so every repo gets go-to-definition, references and diagnostics with nothing installed. They run in the
+# box like every command (a server reads and can run the repo's own config), never on the server.
+# A failed download must never cost the box itself (every command needs it): the image builds without them, and
+# the lsp tool then says plainly that no language server is installed.
+RUN (npm install -g --no-fund --no-audit pyright@1 typescript@5 typescript-language-server@4 && npm cache clean --force) \
+ || echo "hoola: language servers not installed (npm failed) - the box works without them"
+
 RUN useradd -m -u 1000 -s /bin/bash lab \
  && mkdir -p /work /home/lab/.local/bin \
  && chown -R lab:lab /work /home/lab
@@ -73,7 +81,7 @@ CMD ["bash", "-lc", "echo hoola-devlab ready; python3 -V; node -v"]
 """
 DOCKERFILE = Path(__file__).resolve().parents[3] / "deploy" / "devlab" / "Dockerfile"
 
-BASE_REV = "3"                # bump with any image change; lab_check compares it with what is built
+BASE_REV = "4"                # bump with any image change; lab_check compares it with what is built
 CHECK_TIMEOUT = 600          # seconds a check may run (her setting may lower it)
 
 

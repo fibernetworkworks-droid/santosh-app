@@ -93,9 +93,9 @@ How you work:
 
 Your specialist instructions follow."""
 
-LEVEL_TOOLS = {"read": ("read", "glob", "grep", "ls"),
-               "run": ("read", "glob", "grep", "ls", "bash"),
-               "edit": ("read", "glob", "grep", "ls", "bash", "edit", "multi_edit", "write")}
+LEVEL_TOOLS = {"read": ("read", "glob", "grep", "ls", "lsp"),          # v0.999 every agent may use code intelligence
+               "run": ("read", "glob", "grep", "ls", "bash", "lsp"),
+               "edit": ("read", "glob", "grep", "ls", "bash", "edit", "multi_edit", "write", "lsp")}
 
 
 def _set(name: str, default: Any) -> Any:
@@ -114,7 +114,14 @@ def on() -> bool:
 def tool_specs(level: str) -> list[dict[str, Any]]:
     from .engine import TOOLS
     names = LEVEL_TOOLS.get(level, LEVEL_TOOLS["read"])
-    return [t for t in TOOLS if t["name"] in names] + [REPORT_TOOL]
+    extra = []
+    try:
+        from . import lsp as LS
+        if "lsp" in names and LS.on():
+            extra.append(LS.TOOL)
+    except Exception:  # noqa: BLE001
+        pass
+    return [t for t in TOOLS if t["name"] in names] + extra + [REPORT_TOOL]
 
 
 def _child(tools: Any) -> Any:
