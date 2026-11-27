@@ -3931,3 +3931,15 @@ Work Log:
 
 Stage Summary:
 - v0.999.234; deploy with Actions > VPS ops > deploy. R3 next on her word.
+
+---
+Task ID: route-data-r3
+Agent: main
+Task: Hoola Route R3 - data steps + expressions (owner: "GO R3")
+
+Work Log:
+- agent/dhara_data.py: safe expression walker + the data step (13 ops); engine resolve / validate / exec wired; editor forms + live result.
+- Renumbered 235 -> 237 (main moved to Digital Assets desk + Computer top bar).
+
+Stage Summary:
+- v0.999.237; deploy with Actions > VPS ops > deploy. R4 (flow steps) next on her word.

@@ -74,7 +74,7 @@ _RUNNING: set[str] = set()
 _TASKS: set["asyncio.Task"] = set()
 
 _STEP_TYPES = ("tool", "code", "condition", "loop", "wait", "notify", "approval", "set", "http",
-               "router", "filter")      # v0.999.87 HOOLA ROUTE: a router with named routes + a filter gate
+               "router", "filter", "data")      # v0.999.87 HOOLA ROUTE: a router with named routes + a filter gate
 _COND_OPS = ("eq", "ne", "gt", "lt", "contains", "empty")
 # v0.999.87 HOOLA ROUTE filter language (the Make / n8n filter idea, own code): one condition is
 # {left, op, right, ci?}; groups are {"all": [...]} (AND) / {"any": [...]} (OR), nested up to _FILTER_DEPTH.
@@ -94,6 +94,8 @@ _DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 _TOOL_STEP_DENY = {"ask_form"}
 _EXPR_RE = re.compile(r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_.\[\]]{0,120})\s*\}\}")
 _PATH_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z0-9_]+)*$")
+# v0.999.237 ROUTE R3: any {{ ... }} - a plain path keeps the old meaning; anything else is an expression (dhara_data)
+_ANY_EXPR_RE = re.compile(r"\{\{(.{1,2000}?)\}\}", re.S)
 _EventHandlerT = Any  # events module is imported lazily (house pattern)
 
 
@@ -489,6 +491,9 @@ def validate_steps(steps: list) -> list[dict]:
             if st_.get("filter") is None:
                 raise ToolError(f"Step '{sid}': a filter step needs a filter ({{left, op, right}} or {{all: [...]}})")
             validate_filter(st_["filter"], sid)
+        elif typ == "data":                              # v0.999.237 ROUTE R3
+            from . import dhara_data as DD
+            DD.validate(st_, sid)
         elif typ == "http":
             if not str(st_.get("url") or "").strip():
                 raise ToolError(f"Step '{sid}': http needs a url")
@@ -502,6 +507,27 @@ def validate_steps(steps: list) -> list[dict]:
         for v in st_.values():
             if isinstance(v, str) and len(v) > _EXPR_CHARS:
                 raise ToolError(f"Step '{sid}': expression/text too long (cap {_EXPR_CHARS} chars)")
+        # v0.999.237: every {{ }} that is not a plain path must be a well-formed expression
+        from . import dhara_data as DD
+
+        def _exprs(v):
+            if isinstance(v, str):
+                for mm in _ANY_EXPR_RE.finditer(v):
+                    inner = mm.group(1).strip()
+                    if _PATH_RE.match(inner):
+                        continue
+                    why = DD.check(inner)
+                    if why:
+                        raise ToolError(f"Step '{sid}': {{{{ {inner[:60]} }}}} - {why}")
+            elif isinstance(v, dict):
+                for x in v.values():
+                    _exprs(x)
+            elif isinstance(v, list):
+                for x in v:
+                    _exprs(x)
+        for k, v in st_.items():
+            if k not in ("then", "else", "body", "fallback", "routes", "code"):
+                _exprs(v)
     _ = loop_max  # loop iteration cap lives in the engine (a graph cannot exceed it anyway)
     return top
 
@@ -521,16 +547,32 @@ def _dig(obj: Any, path: str) -> Any:
     return cur
 
 
+def _one_value(inner: str, ctx: dict, raw: str) -> Any:
+    """v0.999.237: the value of one {{ }}: a plain path as before; else a safe expression; one that fails stays as written."""
+    from . import dhara_data as DD
+    inner = inner.strip()
+    if _PATH_RE.match(inner):
+        return _dig(ctx, inner)
+    try:
+        return DD.evaluate(inner, ctx)
+    except DD.ExprError:
+        return raw
+
+
 def _resolve_one(expr: Any, ctx: dict) -> Any:
-    """A pure {{path}} returns the VALUE (so conditions compare real types); mixed text returns text."""
+    """A pure {{path}} returns the VALUE (so conditions compare real types); mixed text returns text.
+    v0.999.237: {{ }} may hold an expression with maths and functions (dhara_data) - a whole-string one returns its value."""
     if isinstance(expr, str):
-        m = _EXPR_RE.fullmatch(expr.strip())
-        if m:
-            return _dig(ctx, m.group(1))
+        whole = _ANY_EXPR_RE.fullmatch(expr.strip())
+        if whole:
+            return _one_value(whole.group(1), ctx, expr)
+
         def sub(mm):
-            v = _dig(ctx, mm.group(1))
+            v = _one_value(mm.group(1), ctx, mm.group(0))
+            if v is mm.group(0):
+                return v
             return "" if v is None else (json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else str(v))
-        return _EXPR_RE.sub(sub, expr)
+        return _ANY_EXPR_RE.sub(sub, expr)
     return expr
 
 
@@ -908,6 +950,14 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
             return True, {"sent": True}, ""
         if typ == "approval":
             return True, None, "__APPROVE__"
+        if typ == "data":                                  # v0.999.237 ROUTE R3: sort, dates, files, ...
+            from . import dhara_data as DD
+            try:
+                out = await asyncio.to_thread(DD.run, tenant_id, step, ctx, resolve)
+            except DD.ExprError as e:
+                return False, None, str(e)[:300]
+            ctx["steps"][sid] = {"output": out}
+            return True, out, ""
         if typ == "set":
             ctx["vars"][str(step.get("name"))] = resolve(step.get("value"), ctx)
             return True, {"set": str(step.get("name"))}, ""
@@ -1870,7 +1920,19 @@ DHARA_TOOLS = [
         "America/New_York), every_minutes (>=15), every_hours, at ['HH:MM'], days ['mon'..], monthdays [1..31], "
         "dates ['YYYY-MM-DD'], once 'YYYY-MM-DDTHH:MM', quiet {from, to}, skip_holidays '<country code>'. "
         "settings: {folder, timezone, stop_after_errors, error_route, runs_per_day, currency}. Use the user's own "
-        "time zone and currency - never assume India."),
+        "time zone and currency - never assume India. "
+        "v0.999.237 adds the DATA step {type: data, op, ...}: sort {items, by, order asc|desc} | limit {items, count, keep "
+        "first|last} | dedupe {items, by} | aggregate {items, field, how count|sum|avg|min|max|list|unique|join, sep} | split "
+        "{items, field} | compare {a, b, key} -> added/removed/changed/same | keep_fields {items, fields, mode keep|drop} | "
+        "rename {items, map {old: new}} | fields {values {name: value}} | date {action format|add|subtract|diff|parse|now, "
+        "value, amount, unit, other, format, tz} | text {action html_text|html_select|xml_to_data|csv_to_rows|rows_to_csv|"
+        "json_parse|json_text|base64_encode|base64_decode|url_encode|url_decode, value, selector, attr} | file {action "
+        "make_xlsx|make_csv|make_pdf|read, items, name, title, value, file_id} -> {file_id, url} | crypto {action sha256|sha1|"
+        "md5|hmac_sha256|uuid|random, value, secret}. EXPRESSIONS in {{ }} can do maths and call functions: "
+        "{{ steps.x.output.total * 1.18 }}, {{ round(vars.a / 3, 2) }}, {{ 'big' if vars.amount > 5000 else 'small' }}, "
+        "upper lower title trim len count replace split join slice contains starts_with ends_with text num int round abs "
+        "floor ceil min max sum avg default json parse_json keys values first last sort unique pluck get now today "
+        "date_add date_diff date_format to_date; lists by index {{ vars.rows[0].name }}."),
      "input_schema": {"type": "object", "properties": {
          "name": {"type": "string", "description": "lowercase_with_underscores, unique, e.g. daily_morning_notice_check"},
          "steps": {"type": "array", "description": "The steps: [{id, type, ...}] — see the tool guide for each type's fields"},

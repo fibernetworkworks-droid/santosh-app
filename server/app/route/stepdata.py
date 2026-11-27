@@ -239,3 +239,37 @@ async def test_step(tenant: str, wf: dict, sid: str, use_pins: bool = True) -> d
     if ok and typ not in NO_PIN:
         _keep(tenant, wf["id"], sid, out)
     return {"ok": bool(ok), "output": _view(out), "error": str(err or "")[:600], "ms": ms, "real": typ not in NO_PIN}
+
+
+def preview(tenant: str, wf: dict, text: str, sid: str = "") -> dict:
+    """v0.999.237 ROUTE R3: what a box would become with the route's newest data - for the editor, as she types."""
+    from ..agent import dhara_data as DD
+    from ..agent import dhara_tools as D
+    text = str(text or "")[:4000]
+    ctx = context_for(tenant, wf, True)
+    ctx.pop("_pins", None)
+    if sid:
+        loop = next((s for s in _all(wf.get("steps") or []) if s.get("type") == "loop"
+                     and any(b.get("id") == sid for b in _all(s.get("body") or []))), None)
+        if loop is not None:
+            items = D.resolve(loop.get("items"), ctx)
+            if isinstance(items, list) and items:
+                ctx["item"] = items[0]
+    errors = []
+    for mm in D._ANY_EXPR_RE.finditer(text):
+        inner = mm.group(1).strip()
+        if D._PATH_RE.match(inner):
+            continue
+        why = DD.check(inner)
+        if not why:
+            try:
+                DD.evaluate(inner, ctx)
+            except DD.ExprError as e:
+                why = str(e)
+        if why:
+            errors.append({"expr": inner[:80], "error": why})
+    try:
+        value = D.resolve(text, ctx)
+    except Exception as e:   # noqa: BLE001
+        value, errors = None, errors + [{"expr": "", "error": str(e)[:160]}]
+    return {"value": _view(value), "errors": errors, "has_data": bool(ctx.get("steps") or ctx.get("vars"))}

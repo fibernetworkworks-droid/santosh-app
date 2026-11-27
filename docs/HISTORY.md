@@ -12566,3 +12566,29 @@ Owner: "NOW LETS WORK ON NEXT EMPLOYEE DIGITAL ASSETS DESK". The Digital Assets 
 
 ## v0.999.236 COMPUTER LOGO + BACK
 Computer logo + back. `static/console/computer.js` topbar(): .cx-mark draws HoolaMark.svg() (fallback /static/hoola-mark.png), NEW .cx-back link to /console/ with the back arrow; `computer.css`: .cx-back pill (margin-left:auto, stays visible at 860 px where .cx-links hide). `test_v0999_233_computer_v2.py` checks the svg.hm-svg mark and the link. NOT VERIFIED on her server.
+
+
+## v0.999.237 DATA STEPS + EXPRESSIONS (R3 of the Hoola Route plan)
+
+Owner: "GO R3". Built as 0.999.235; their DIGITAL ASSETS DESK (0.999.235) and COMPUTER TOP BAR (0.999.236) took those numbers, all kept.
+
+- Expressions: `server/app/agent/dhara_data.py`. A {{ }} that is not a plain path is parsed with Python's own parser and walked by a
+  small evaluator that allows only: her data (vars, steps, item), numbers / text / lists / objects, + - * / // % ** (power <= 64),
+  comparisons, and / or / not, `x if c else y`, list indexes and slices, and FUNCS (text: upper lower title trim len replace split join
+  slice contains starts_with ends_with text; numbers: num int round abs floor ceil min max sum avg; lists: count first last sort unique
+  pluck keys values get default json parse_json; dates: now today date_add date_diff date_format to_date). No attribute of a Python
+  object (a.b reads her field b), no import, no lambda / comprehension / f-string / call of anything else; 4,000 nodes, 2 MB text,
+  10,000 items. A plain {{a.b.c}} keeps its old meaning; an expression that fails at run time stays as written; a malformed one
+  (or an unknown function / name) is refused when the route is saved (`validate_steps`, code steps excepted).
+- The data step: type "data", field "op": sort, limit, dedupe, aggregate (count / sum / avg / min / max / list / unique / join),
+  split, compare (added / removed / changed / same by a key), keep_fields (keep / drop), rename, fields (several values at once),
+  date (format / add / subtract / diff / parse / now, months and years too, time zones), text (HTML text / pick by CSS selector,
+  XML -> data with DOCTYPE / entities refused, CSV <-> rows, JSON, Base64, URL encode), file (make Excel / CSV / PDF via
+  ms.store_bytes - kept 24 hours like her other files, {file_id, url} for later steps; read CSV / Excel / PDF / text of HER file
+  only), crypto (sha256 / sha1 / md5 / HMAC-SHA256 / uuid / random). Runs off the event loop; failures are plain step errors.
+- Editor: Add a step lists the 13 data steps (catalog kinds now have a `key`), each with its own form (choices change which boxes
+  show); a box holding {{ }} shows its result live under it from the route's newest data (POST /api/route/routes/<id>/eval: value +
+  per-expression errors, nothing runs); single-step tests and pins work for data steps.
+- dhara_save's description and the route chat's rules tell Hoola about data steps and expressions.
+
+Tests: `server/tests/test_v0999_237_route_data.py` (8, incl. a browser walk). NOT VERIFIED: on her server.
