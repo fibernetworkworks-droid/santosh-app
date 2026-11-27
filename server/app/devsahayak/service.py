@@ -4226,7 +4226,8 @@ def repo_commands(tenant: str, ref: str) -> dict[str, Any]:
         out["rules"] = {k: len(conf[k]) for k in ("allow", "ask", "deny")}
         out["env"], out["mode"] = sorted(conf["env"]), conf["mode"]
         out["skills"] = [{"name": k, "description": v["description"], "origin": v["origin"]} for k, v in sorted(RC.skills(repo, pls).items())]
-        out["mcp"] = [{"name": k, "ok": v["ok"], "why": v["why"]} for k, v in sorted(RC.mcp_servers(repo, pls).items())]
+        out["mcp"] = [{"name": k, "ok": v["ok"], "why": v["why"], "kind": v.get("kind", "http"),
+                       "program": " ".join(v.get("argv") or [])[:200]} for k, v in sorted(RC.mcp_servers(repo, pls).items())]
         out["styles"] = [{"name": k, "description": v["description"], "origin": v["origin"]} for k, v in RC.styles(repo, pls).items()]
         out["style"] = str(ses.meta.get("style") or conf.get("style") or "default")
         out["files"] = claude_paths(ses)

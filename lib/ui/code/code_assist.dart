@@ -581,7 +581,9 @@ Future<void> showCodeRepoSetup(BuildContext context, Santosh app, String id) asy
           if (mcp.isNotEmpty) ...[
             CodeSection('MCP servers · ${mcp.length}'),
             for (final x in mcp)
-              item(cs(x['name']), x['ok'] == true ? 'Reachable' : (cs(x['why']).isEmpty ? 'Not reachable' : cs(x['why'])),
+              item(cs(x['name']), x['ok'] == true
+                      ? (cs(x['kind']) == 'stdio' ? 'Runs in the locked box${cs(x['program']).isEmpty ? '' : ' · ${cs(x['program'])}'}' : 'Online')
+                      : (cs(x['why']).isEmpty ? 'Not reachable' : cs(x['why'])),
                   subColor: x['ok'] == true ? c.ok : c.warn),
           ],
           if (hooks.isNotEmpty) ...[

@@ -62,7 +62,7 @@ def test_skills_mcp_env_mode_styles_and_hook_events_are_read(ws):
     assert sk["description"] == "How we ship a release" and "1. bump" in sk["body"] and sk["files"] == [".claude/skills/release/checklist.md"]
     mcp = RC.mcp_servers(ses.repo)
     assert mcp["linear"]["ok"] and mcp["linear"]["headers"] == {"X-Team": "core"}      # a ${SECRET} header is never sent
-    assert not mcp["local-db"]["ok"] and "program" in mcp["local-db"]["why"]
+    assert mcp["local-db"]["ok"] and mcp["local-db"]["kind"] == "stdio" and mcp["local-db"]["argv"] == ["npx", "db-mcp"]   # v0.999 runs in the box now
     assert not mcp["plain"]["ok"] and "https" in mcp["plain"]["why"]
     conf = RC.settings(ses.repo)
     assert conf["env"] == {"NODE_ENV": "test"}                                          # a secret-looking name is left out
@@ -99,7 +99,7 @@ def test_the_repo_skill_and_mcp_tools(ws, monkeypatch):
     got = tl.t_skill("read", name="release")
     assert "1. bump" in got and ".claude/skills/release/checklist.md" in got
     assert "linear (this repo's .mcp.json, pack_id repo:linear): reachable" in tl.t_mcp("list")
-    assert "cannot be reached from Hoola" in tl.t_mcp("call", pack_id="repo:local-db", tool="q")
+    assert "could not start" in tl.t_mcp("call", pack_id="repo:local-db", tool="q")    # no box here: said plainly
     from app.agent import duniya_tools as DU
     import app.bazar.connectors.mcp_remote as MR
     monkeypatch.setattr(DU, "_guard_url", lambda u: u)
@@ -122,7 +122,7 @@ def test_the_repo_skill_and_mcp_tools(ws, monkeypatch):
     EN.PERMIT["t1"] = {**ask, "id": "p", "_ev": threading.Event(), "answer": None}
     assert EN.give_ok("t1", "p", "always")
     assert EN.needs_ok("t1", "auto", EN.Session("t1"), "mcp", {"action": "call", "pack_id": "repo:linear", "tool": "x"}) is None
-    assert EN.needs_ok("t1", "auto", ses, "mcp", {"action": "list", "pack_id": "repo:linear"}) is None   # looking needs no OK
+    assert EN.needs_ok("t1", "auto", EN.Session("t1"), "mcp", {"action": "list", "pack_id": "repo:linear"}) is None   # after always, looking too
 
 
 def test_compact_focus_and_the_hook_events(ws, monkeypatch):
