@@ -147,7 +147,8 @@ def _index(steps: list, out: dict | None = None) -> dict[str, dict]:
         if s.get("id"):
             out[str(s["id"])] = s
         for k in ("then", "else", "body", "fallback"):
-            _index(s.get(k) or [], out)
+            if k != "body" or s.get("type") == "loop":      # a web request's body is data, not steps
+                _index(s.get(k) or [], out)
         for rt in s.get("routes") or []:
             if isinstance(rt, dict):
                 _index(rt.get("steps") or [], out)
@@ -179,12 +180,12 @@ def unmask(new_steps: list, old_steps: list) -> list:
             d = dict(s)
             if o is not None:
                 for k, v in s.items():
-                    if k in ("then", "else", "body", "fallback", "routes"):
+                    if k in ("then", "else", "fallback", "routes") or (k == "body" and s.get("type") == "loop"):
                         continue
                     if k in o:
                         d[k] = _restore(v, o[k])
             for k in ("then", "else", "body", "fallback"):
-                if isinstance(s.get(k), list):
+                if isinstance(s.get(k), list) and (k != "body" or s.get("type") == "loop"):
                     d[k] = walk(s[k])
             if isinstance(s.get("routes"), list):
                 d["routes"] = [{**rt, "steps": walk(rt.get("steps"))} if isinstance(rt, dict) else rt for rt in s["routes"]]
@@ -263,8 +264,17 @@ KINDS: list[dict[str, Any]] = [
      "make": {"filter": {"left": "", "op": "exists"}}},
     {"type": "loop", "group": "Flow", "title": "Repeat for each", "sub": "Run steps for every item of a list",
      "make": {"items": "", "body": []}},
-    {"type": "wait", "group": "Flow", "title": "Wait", "sub": "Some seconds, or until a time of day",
-     "make": {"duration_s": 60}},
+    {"type": "wait", "group": "Flow", "title": "Wait", "sub": "Minutes, hours or days (up to 30), or until a date and time",
+     "make": {"amount": 10, "unit": "minutes"}},
+    # v0.999.239 ROUTE R4: the flow steps
+    {"key": "wait_call", "type": "wait", "group": "Flow", "title": "Wait for a reply", "sub": "Until someone calls the run's link (a form, an email button)",
+     "make": {"for": "call", "timeout_s": 86400, "on_timeout": "continue"}},
+    {"type": "subroute", "group": "Flow", "title": "Run another route", "sub": "Use one of your routes as a step, with its result",
+     "make": {"route": "", "vars": {}}},
+    {"type": "stop", "group": "Flow", "title": "Stop the run", "sub": "End here, as an error or as done",
+     "make": {"as": "error", "message": ""}},
+    {"type": "respond", "group": "Core", "title": "Answer the caller", "sub": "What an app that called the webhook gets back",
+     "make": {"status": 200, "body": {"ok": True}}},
     {"type": "set", "group": "Data", "title": "Set a value", "sub": "Keep a value for later steps",
      "make": {"name": "value", "value": ""}},
     # v0.999.237 ROUTE R3: the data steps (one engine type "data", told apart by op)
@@ -282,6 +292,8 @@ KINDS: list[dict[str, Any]] = [
      "make": {"op": "split", "items": "", "field": ""}},
     {"key": "compare", "type": "data", "group": "Data", "title": "Compare two lists", "sub": "What was added, removed, changed",
      "make": {"op": "compare", "a": "", "b": "", "key": "id"}},
+    {"key": "merge", "type": "data", "group": "Data", "title": "Merge two lists", "sub": "Join by a field, one after the other, side by side",
+     "make": {"op": "merge", "mode": "by_key", "a": "", "b": "", "key": "id", "join": "inner"}},
     {"key": "keep_fields", "type": "data", "group": "Data", "title": "Keep or drop fields", "sub": "Only the fields you name",
      "make": {"op": "keep_fields", "items": "", "fields": "", "mode": "keep"}},
     {"key": "rename", "type": "data", "group": "Data", "title": "Rename fields", "sub": "Give fields new names",

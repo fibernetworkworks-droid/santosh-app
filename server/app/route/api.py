@@ -11,6 +11,7 @@ message: a tap on Approve is her yes, exactly like typing it in the chat.
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from typing import Any
 
@@ -55,7 +56,8 @@ def _walk(steps: list) -> list[dict]:
             continue
         out.append(s)
         for k in ("then", "else", "body", "fallback"):
-            out.extend(_walk(s.get(k) or []))
+            if k != "body" or s.get("type") == "loop":      # a web request's body is data, not steps
+                out.extend(_walk(s.get(k) or []))
         for rt in s.get("routes") or []:
             if isinstance(rt, dict):
                 out.extend(_walk(rt.get("steps") or []))
@@ -123,7 +125,15 @@ def _status(wf: dict, last: dict | None) -> dict[str, str]:
 
 
 def _waiting_question(wf: dict, run: dict) -> str:
-    """The question of the approval step this run is parked on (the cursor's step), not just any approval step."""
+    """The question of the approval step this run is parked on (the cursor's step), not just any approval step.
+    v0.999.239: an approval inside a branch or loop is named by the run itself (its question, with the data)."""
+    try:
+        c = run.get("context")
+        c = json.loads(c) if isinstance(c, str) else (c or {})
+        if c.get("_wait_mark") and c.get("_wait_q"):
+            return str(c["_wait_q"])
+    except Exception:   # noqa: BLE001
+        pass
     top = [s for s in (wf.get("steps") or []) if isinstance(s, dict)]
     try:
         cur = int(run.get("cursor") or 0)
@@ -202,7 +212,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
                                 (m30,)).fetchone()
             ok30, bad30 = int(ended[0] or 0), int(ended[1] or 0)
             waiting = [dict(x) for x in con.execute(
-                "SELECT id, wf_name, workflow_id, cursor, updated_at FROM runs WHERE status = 'waiting_approval' "
+                "SELECT id, wf_name, workflow_id, cursor, updated_at, context FROM runs WHERE status = 'waiting_approval' "
                 "ORDER BY updated_at DESC LIMIT 20").fetchall()]
             # v0.999.128: a failure needs her only while it is the route's LATEST run - a later good run or a
             # retry that finished clears it (the list used to keep every failure of the week)
@@ -253,10 +263,11 @@ def make_router(require_key, current_tenant) -> APIRouter:
             for s in lst or []:
                 if not isinstance(s, dict):
                     continue
-                d = {k: v for k, v in s.items() if k not in ("then", "else", "body", "fallback", "routes")}
+                d = {k: v for k, v in s.items() if k not in ("then", "else", "fallback", "routes")
+                     and not (k == "body" and s.get("type") == "loop")}
                 d["app"] = app_of(s)
                 for k in ("then", "else", "body", "fallback"):
-                    if s.get(k):
+                    if isinstance(s.get(k), list) and (k != "body" or s.get("type") == "loop"):
                         d[k] = deco(s[k])
                 if s.get("routes"):
                     d["routes"] = [{**{k: v for k, v in rt.items() if k != "steps"}, "steps": deco(rt.get("steps"))}

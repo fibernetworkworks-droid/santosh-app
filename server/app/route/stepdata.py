@@ -23,7 +23,7 @@ PIN_MAX_BYTES = 200_000
 PINS_MAX = 40
 DATA_MAX_BYTES = 1_500_000
 VIEW_MAX_BYTES = 120_000
-NO_PIN = ("condition", "router", "loop", "filter", "approval", "wait")
+NO_PIN = ("condition", "router", "loop", "filter", "approval", "wait", "stop", "respond")
 
 
 def _cols(con) -> None:
@@ -108,7 +108,8 @@ def _all(steps: list, out: list | None = None) -> list:
             continue
         out.append(s)
         for k in ("then", "else", "body", "fallback"):
-            _all(s.get(k) or [], out)
+            if k != "body" or s.get("type") == "loop":      # a web request's body is data, not steps
+                _all(s.get(k) or [], out)
         for rt in s.get("routes") or []:
             if isinstance(rt, dict):
                 _all(rt.get("steps") or [], out)
@@ -222,7 +223,21 @@ async def test_step(tenant: str, wf: dict, sid: str, use_pins: bool = True) -> d
             else:
                 out = {"count": len(items), "items": items[:50]}
         elif typ == "wait":
-            out = {"would_wait": f"{step['duration_s']} seconds" if step.get("duration_s") else f"until {step.get('until')}"}
+            if str(step.get("for") or "") == "call":
+                out = {"would_wait": "until someone calls the run's resume link ({{vars.resume_url}})",
+                       "up_to_hours": round(int(step.get("timeout_s") or 86400) / 3600, 1)}
+            elif step.get("amount") not in (None, ""):
+                out = {"would_wait": f"{D.resolve(step.get('amount'), ctx)} {step.get('unit') or 'minutes'}"}
+            elif step.get("duration_s"):
+                out = {"would_wait": f"{D.resolve(step['duration_s'], ctx)} seconds"}
+            else:
+                out = {"would_wait": f"until {D.resolve(step.get('until'), ctx)}"}
+        elif typ == "stop":
+            out = {"would_end": "as an error" if str(step.get("as") or "error") == "error" else "as done",
+                   "message": str(D.resolve(step.get("message") or "", ctx))}
+        elif typ == "respond":
+            out = {"would_answer": {"status": D.resolve(step.get("status", 200), ctx), "body": D.resolve(step.get("body"), ctx)},
+                   "note": "Only a call to the webhook gets this answer"}
         elif typ == "approval":
             out = {"would_ask": str(D.resolve(step.get("question") or "", ctx))}
         else:

@@ -112,11 +112,13 @@ def test_save_validation_refuses_garbage():
                                                  for i in range(41)]))
     with pytest.raises(Exception):  # oversized expression
         _run(D.dhara_save(CTX, name="x9", steps=[{"id": "a", "type": "set", "name": "v", "value": "x" * 3000}]))
-    with pytest.raises(Exception):  # nesting cap: condition inside condition's then
+    with pytest.raises(Exception):  # nesting cap (v0.999.239: three levels): four conditions inside each other
         _run(D.dhara_save(CTX, name="x10", steps=[
             {"id": "a", "type": "condition", "left": "1", "op": "eq", "right": "1",
              "then": [{"id": "b", "type": "condition", "left": "1", "op": "eq", "right": "1",
-                       "then": [{"id": "c", "type": "set", "name": "v", "value": 1}]}]}]))
+                       "then": [{"id": "b2", "type": "condition", "left": "1", "op": "eq", "right": "1",
+                                 "then": [{"id": "b3", "type": "condition", "left": "1", "op": "eq", "right": "1",
+                                           "then": [{"id": "c", "type": "set", "name": "v", "value": 1}]}]}]}]}]))
     with pytest.raises(Exception):  # bad step id shape
         _run(D.dhara_save(CTX, name="x11", steps=[{"id": "BAD ID!", "type": "set", "name": "v", "value": 1}]))
 

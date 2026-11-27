@@ -12592,3 +12592,47 @@ Owner: "GO R3". Built as 0.999.235; their DIGITAL ASSETS DESK (0.999.235) and CO
 - dhara_save's description and the route chat's rules tell Hoola about data steps and expressions.
 
 Tests: `server/tests/test_v0999_237_route_data.py` (8, incl. a browser walk). NOT VERIFIED: on her server.
+
+## v0.999.238 PUBLIC FINANCE DESK
+
+Owner: "NOW LETS WORK ON NEXT EMPLOYEE PUBLIC FINANCE DESK". The Public Sector employee (tool `public_finance`, engine
+`fin/desks/public.py`, F12) gets its own section like the other finance desks.
+
+- `server/app/pbchat.py`: Public Finance chat (Conversation kind `public`, out of chat lists), desk block + tool family `pubfin` in view;
+  state in the workspace settings under `public_desk`: scheme rules (each needs a source), cases (checked result + the caseworker's
+  decision in her words, recorded by her tap), due / paid, the payment run's three files, deposit accounts / loans / depositors + the
+  insurer's limit and set-off rule, bank returns + the period before + thresholds, findings + earlier findings, projects + spending.
+  Account numbers are kept only as a salted one-way fingerprint + the last 4 (shared accounts still found; a 16-digit account no longer
+  trips the card-number guard); a depositor's name + date of birth only as a fingerprint. Routes `/api/public/*`, downloads g2p /
+  deposit / overpay / findings.
+- `static/console/pbdesk.{html,js,css}`: Today, Casework, Overpayments, Payment runs, Deposit cover, Supervision, Inspections, Projects,
+  Settings; `/console/public`, employees.js + v2.js + the phone route open it.
+- Tests `server/tests/test_pb_desk.py` (5, incl. a Chromium walk at 1440 and 390). NOT VERIFIED on her server.
+
+## v0.999.239 FLOW STEPS (R4 of the Hoola Route plan; owner: "GO R4"; built as 0.999.238, their PUBLIC FINANCE DESK took 0.999.238, both kept)
+
+- FIXED (found while reading the engine for R4): an approval or a wait inside an if / else, a switch or a loop never paused -
+  `_exec_sublist` treated the step's pause signal as a finished step, so the steps after "Ask me first" ran without her yes.
+  Now every step inside a branch or loop round leaves a done mark under its scope (`/<step>:then/<sub>`, `#<way>`, `@<round>`),
+  a pause anywhere (wait, approval, a sub-route still running) parks the whole run with the cursor kept, and the resume - or a
+  retry - goes on from the same step; a finished step never runs twice. Branches decide their way once (`_dec`: if / else
+  result, the switch's ways, the loop's list) so a resumed branch takes the same way. Marks are pruned when the top-level step
+  ends. Approve marks a nested approval done (`_wait_mark`) instead of moving the cursor; the Needs-you list shows the nested
+  question with its data (`_wait_q`).
+- New steps: `merge` (data op: append | by_key with inner / left / outer join | by_position | keep_matches | keep_non_matches);
+  `subroute` (run another route with data; wait = its result as {{steps.x.output.result}} / .vars, the child runs in the same
+  task and, if it pauses, the parent waits and looks again every 30 s; wait false = start it and go on; up to 3 deep, never
+  itself); `stop` (end the run as an error or as done, with a message); `respond` (the webhook caller gets this status + body:
+  a route with a Respond step starts at once on the call and the caller waits up to 25 s, `webhook_call`).
+- Waits: up to 30 days (duration_s or amount + unit), until 'HH:MM' or 'YYYY-MM-DD HH:MM' in the route's time zone (was one
+  hour, India time); `for: call` = wait until someone calls the run's resume link (`{{vars.resume_url}}`, made once per run,
+  sha256 kept; public GET / POST `/api/dhara/resume/<run>.<secret>`, used once, timeout continue or fail).
+- Loops up to 1,000 items (`dhara_loop_max`, hard 5,000), `as` names the item for a loop inside a loop (the outer item is given
+  back after the inner loop); branches and loops nest 3 levels (was 1). Long loops save progress every 3 s and notice Stop.
+- The run time limit counts working time only (`_active_s`; a wait of days no longer ends the run on waking).
+- FIXED a web request's / an answer's `body` being walked as steps (an http POST with an object body could not be saved, and the
+  editor dropped it).
+- Editor: forms for each (wait kinds, sub-route, stop, answer, merge, loop name), canvas words, run notes ("Goes on at ...",
+  "Waiting for a call to its resume link", "Waiting for another route"); catalog keys merge / wait_call / subroute / stop / respond.
+- Tests `server/tests/test_v0999_239_route_flow.py` (15 incl. a Chromium walk); test_v0502 / test_v0999_87 nesting and mark
+  pins moved to the new rules. NOT VERIFIED: on her server.

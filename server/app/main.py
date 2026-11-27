@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.237"   # v0.999.237 DATA STEPS + EXPRESSIONS (R3 of the Hoola Route plan; owner: "GO R3"; built as 0.999.235, their DIGITAL ASSETS DESK and COMPUTER TOP BAR took 0.999.235-0.999.236, all kept): expressions in {{ }} do maths, comparisons, x if c else y, list indexes and a fixed list of functions (text, numbers, lists, dates: upper, round, sum, pluck, date_add, date_format, default ...) on her data only - parsed by Python's parser and walked by agent/dhara_data.py, nothing of Python reachable, capped; a plain {{a.b}} unchanged, a failing one stays as written, a malformed one refused at save; a new step type data: sort, limit, remove duplicates, summarise, split out, compare two lists, keep / drop / rename fields, set several fields, date and time, text formats (HTML pick / text, XML, CSV, JSON, Base64, URL), make or read files (Excel, CSV, PDF - kept 24 h, its file id goes on to later steps) and hashes / HMAC / ids; Add a step lists them with their own forms; every box shows its result live from the route's newest data (POST /api/route/routes/<id>/eval); dhara_save and the route chat know them; 8 tests incl. a browser walk. NOT VERIFIED: on her server. Previous: v0.999.236 COMPUTER LOGO + BACK (owner, on the new Computer page: 'just put hoola logo there and a back to hoola chat for going to hoola main chat page'): the Computer top bar's plain violet circle is now the real Hoola mark (HoolaMark.svg from mark.js, the PNG if the script is missing) and a 'Back to Hoola chat' button (to /console/) sits on the right of the top bar on every Computer view, also at phone width where the tool links hide; the browser walk checks both. NOT VERIFIED on her server. Previous head: v0.999.235 DIGITAL ASSETS DESK (built as 0.999.232; their ROUTE EDITOR, COMPUTER V2 and STEPS YOU CAN TEST took 0.999.232-0.999.234, all kept) (owner: "NOW LETS WORK ON NEXT EMPLOYEE DIGITAL ASSETS DESK"): the Digital Assets employee gets its own section /console/digital + Digital Assets chat (kind digital, `dgchat.py`) on any finance workspace (her own coins up to an exchange, custodian or stablecoin issuer): Today (net gain this tax year, holdings at cost, custody, reserve cover, needs, gains by tax year, holdings ring, the firm); Gains (an exchange export with its title lines skipped, matched by HER country's method or hers, by HER tax year, holdings, coin income, each disposal, CSV for the return); Wallets & safety (her public addresses, an address checked before sending: checksum, a look-alike of hers, draining-scam signs); Stablecoin pay (coins for an invoice at HER rate, the peg against HER tolerance); Token checks; Reserve (coverage by HER eligible list, by type and holder vs HER limit); Custody (client ledger vs wallet balances); Transfers (travel rule above HER threshold, accounts kept as their last 4, counts for a licensing return); Surveillance (self-trades, round trips, volume spikes); Settings; never holds a key, signs or sends, and refuses a seed phrase or private key; 5 tests incl. a browser walk. NOT VERIFIED on her server.
+APP_VERSION = "0.999.239"   # v0.999.239 FLOW STEPS (R4 of the Hoola Route plan; owner: "GO R4"; built as 0.999.238, their PUBLIC FINANCE DESK took 0.999.238, both kept): FIXED an approval or a wait inside an if / else, a switch or a loop that never paused (the steps after it ran) - every step inside a branch or loop round now leaves a done mark, a pause anywhere parks the whole run and the resume (or a retry) goes on from the same step, never running a finished step twice; branches decide their way once; merge two lists (one after the other, by a field like a join, side by side, keep (non-)matches); run another route as a step (wait for its result or start it and go on; up to 3 deep, never itself); stop the run as an error or as done; answer the webhook caller (Respond, the caller waits up to 25 s); waits up to 30 days or until a date and time in the route's time zone (was one hour, India time); wait until someone calls the run's resume link ({{vars.resume_url}}, POST/GET /api/dhara/resume/<link>); loops up to 1,000 items (was 50) with a name for nested loops, branches and loops 3 levels deep (was 1); the run time limit counts working time only; FIXED a web request's body being read as steps; the editor has their forms and run notes; 15 tests incl. a browser walk. NOT VERIFIED: on her server. Previous: v0.999.238 PUBLIC FINANCE DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE PUBLIC FINANCE DESK"): the Public Sector employee gets its own section /console/public + Public Finance chat (kind public, `pbchat.py`) on any finance workspace (a benefits office, a payment agency, a deposit insurer, a supervisor, a development-finance team): Today (cases waiting, the payment run, banks in breach, findings open, needs, cases against the rules, run exceptions, capital ratios); Casework (scheme rules each with its source, a household checked -> meets / misses by how much / cannot tell, evidence missing, amount by HER rule, the caseworker's decision recorded, never made); Overpayments (due vs paid per case and period, CSV); Payment runs (approved list vs payment file vs bank return: paid twice, wrong amount, failed, never sent, not on the list, shared accounts; accounts kept only as a fingerprint + last 4); Deposit cover (depositors up to HER limit, set-off by HER law, records to fix, payout list CSV; names and dates of birth only as a fingerprint); Supervision (returns vs HER thresholds, peers, change since the period before); Inspections (owners, overdue, repeats, Closed); Projects (tranches vs conditions met, budget, eligible categories, indicators); Settings; never pays, awards, refuses or stops anything; 5 tests incl. a browser walk. NOT VERIFIED on her server. Previous: v0.999.237 DATA STEPS + EXPRESSIONS.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2160,6 +2160,15 @@ def markets_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/public")
+@app.get("/console/public/")
+def public_desk_page():
+    """PUBLIC FINANCE DESK: the Public Sector employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "pbdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/digital")
 @app.get("/console/digital/")
 def digital_desk_page():
@@ -2759,6 +2768,8 @@ from . import cmchat as _cmchat_mod                            # noqa: E402  COM
 _cmchat_mod.mount(app, current_tenant, require_key)             # /api/community/*
 from . import dgchat as _dgchat_mod                            # noqa: E402  DIGITAL ASSETS DESK
 _dgchat_mod.mount(app, current_tenant, require_key)             # /api/digital/*
+from . import pbchat as _pbchat_mod                            # noqa: E402  PUBLIC FINANCE DESK
+_pbchat_mod.mount(app, current_tenant, require_key)             # /api/public/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through
@@ -12488,9 +12499,38 @@ async def dhara_hook(token: str, request: Request):
             body = {"body": body}
     except Exception:
         body = {"raw": raw[:8000].decode("utf-8", "ignore")}
-    out = await asyncio.to_thread(dhara_tools.webhook_enqueue, token, body)
+    out = await dhara_tools.webhook_call(token, body)
+    if out.get("answered"):         # v0.999.239 ROUTE R4: the route's Respond step answers the caller
+        ans = out.get("answer")
+        code = int(out.get("status") or 200)
+        if isinstance(ans, (dict, list)) or ans is None:
+            return JSONResponse(ans if ans is not None else {}, status_code=code)
+        return Response(str(ans), status_code=code, media_type="text/plain; charset=utf-8")
     return JSONResponse({"ok": out["ok"], "run_id": out.get("run_id"), "workflow": out.get("workflow"),
-                         "error": out.get("error")}, status_code=int(out.get("status") or 500))
+                         "error": out.get("error"), **({"note": out["note"]} if out.get("note") else {})},
+                        status_code=int(out.get("status") or 500))
+
+
+@app.api_route("/api/dhara/resume/{token}", methods=["GET", "POST"])
+async def dhara_resume(token: str, request: Request):
+    """v0.999.239 ROUTE R4: a route waiting for a call (wait step, for: call) goes on when its resume link
+    ({{vars.resume_url}}) is called. The body (or the query of a GET) becomes the wait step's output."""
+    from .agent import dhara_tools
+    raw = await request.body()
+    if len(raw) > 256_000:
+        return JSONResponse({"ok": False, "error": "body too large"}, status_code=413)
+    body: object
+    if request.method == "GET":
+        body = dict(request.query_params)
+    else:
+        try:
+            body = json.loads(raw or b"{}")
+        except Exception:
+            body = {"raw": raw[:8000].decode("utf-8", "ignore")}
+    out = await dhara_tools.resume_call_and_go(token, body)
+    return JSONResponse({"ok": out["ok"], **({"run_id": out["run_id"]} if out.get("run_id") else {}),
+                         **({"error": out["error"]} if out.get("error") else {})},
+                        status_code=int(out.get("status") or 500))
 
 
 @app.post("/api/site-app/{site_id}/hook/{key}")
