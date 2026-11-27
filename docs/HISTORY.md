@@ -12983,3 +12983,20 @@ Owner: "100 % Cyber security same as finance desks --- very advance and every as
 - Console `cydesk.html/.js/.css`: Today, Alerts, Checks, Attack surface, Incidents, Programme (7 sub-pages), Settings.
 - Tests `tests/test_cy_desk.py` 6 incl. a browser walk at 1440 / 390; test_tech_cyber 8 still pass.
 - NOT VERIFIED on her server / with real keys / real user exports.
+
+
+## v0.999.258 IT ADMIN DESK
+Owner: "IT Admin same as finance desks".
+
+- NEW `server/app/itchat.py` - Conversation kind itadmin, `/api/itdesk/{chat, chat/new, chat/{conv}/ok, desk, do/{part}}`; today_view = engine
+  overview + IT spend (`spend`: a year, a month, a person, by kind, by vendor, due in 90 days, unused seats, auto-renew off / unknown) + access
+  stats (admins without 2-step, open for leavers, shared, never reviewed, by system) + needs; parts for licences, renewals, people, access,
+  checklists, change cards (decide by_tap + hash), access reviews, guides, staff questions, Google / Microsoft links + sync, register file,
+  settings; a password / OTP value refused outside staff questions and guide words; the Entra secret only in ms_save; block `<itadmin_desk>`.
+- Engine: ItadminSettings country + currency; `rules.practices_list(country)` = common ISO 27001 rows + India's CERT-In / DPDP rows (checked)
+  or EU / UK / US rows ('check this') or a 'check with a local adviser' row; `service.money` writes every price in her unit; the DPDP word
+  only for India; a licence's say no longer ends '..'.
+- Wiring: main.py page + mount, convs / callconv kinds, santosh.py block + admission (itadmin + helpdesk), employees.js, v2.js, teamdesks DESK.
+- Console `itdesk.html/.js/.css`: Today, Licences & spend, People & access, Changes, Guides & questions, Settings.
+- Tests `tests/test_it_desk.py` 4 incl. a browser walk at 1440 / 390; test_tech_itadmin 7 still pass.
+- NOT VERIFIED on her server / with real Google Workspace or Microsoft 365 consoles.

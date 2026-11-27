@@ -59,7 +59,7 @@ def test_hire_chat_block_and_wiring(cd):
     from app.agent.tools import FAMILY_OF
     assert FAMILY_OF["cyber"] in cd.FAMILIES
     for f_ in ("callconv.py", "convs.py"):
-        assert '"cyber")' in (root / "server/app" / f_).read_text()
+        assert '"cyber"' in (root / "server/app" / f_).read_text()
     from app.main import APP_VERSION, app
     r = TestClient(app).get("/console/cyber")
     assert r.status_code == 200 and "Content-Security-Policy" in r.headers and "cydesk.js" in r.text

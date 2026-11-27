@@ -1764,6 +1764,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_cyc.block, tenant_id)
     except Exception:
         log.exception("cyber desk block failed")
+    try:   # IT ADMIN DESK: a turn in the IT Admin chat (or a call started from it) knows the desk
+        from .. import itchat as _itc
+        if _itc.is_itadmin(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_itc.block, tenant_id)
+    except Exception:
+        log.exception("it admin desk block failed")
     _mark("hint")
     return state
 
@@ -2695,6 +2701,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "cyber desk chat"
     except Exception:
         log.exception("cyber desk chat admission failed")
+    try:   # IT ADMIN DESK: the IT admin + helpdesk tools in view in the IT Admin chat
+        from .. import itchat as _itc
+        if adm is not None and _itc.is_itadmin(conversation_id):
+            adm.admit_families(_itc.FAMILIES)
+            for f in _itc.FAMILIES:
+                adm.why[f] = "it admin desk chat"
+    except Exception:
+        log.exception("it admin desk chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,

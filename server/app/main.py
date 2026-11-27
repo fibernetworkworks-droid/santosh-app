@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.257"   # v0.999.257 CYBER DESK (built as 0.999.256; their HOOLA CODE took 0.999.256, both kept; owner: "100 % Cyber security same as finance desks --- very advance and every aspect and every cyber security tool in it"): the Cyber security employee (cyber) gets its own section /console/cyber + Cyber chat (kind cyber, `cychat.py`, /api/cydesk/*) on the Cyber Suraksha engine + NEW `cyber/program.py`: Today (security score from what is known, needs, alerts by kind and by MITRE ATT&CK tactic, controls by NIST CSF function), Alerts (paste / upload antivirus, firewall, server, Workspace, M365, WAF alerts; the few that matter with why, ATT&CK technique, what to do; 'this is normal' rules; card to block an address), Checks (mail headers + words, links looked up never opened, files by fingerprint only, keys / passwords in pasted code masked), Attack surface (her domains: SPF / DMARC / DKIM / CAA, SSL, headers, exposed files after proof; breaches; software vs NVD / CISA KEV), Incidents (timeline, notice clocks for every country she works in - NOTIFY rows for 20 jurisdictions, only India's checked, the rest 'check this' with their source; 8 playbooks; Word + PDF note; block / disable / wipe cards decided only by her tap with the card hash), Programme (CIS Controls v8 IG1 self-check mapped to NIST CSF 2.0 + ISO 27001:2022 with history, risk register + heat map, access review of her user export, vendor reviews, tabletop drills, training records + quiz, password policy vs NIST SP 800-63B), Settings (country, sector, other countries, her IPs / systems / VIPs / work emails, keys sealed); CERT-In clock starts only for India; 6 tests incl. a browser walk. NOT VERIFIED on her server / with real keys or real exports.
+APP_VERSION = "0.999.258"   # v0.999.258 IT ADMIN DESK (owner: "IT Admin same as finance desks"): the IT Admin employee (it_admin) gets its own section /console/itadmin + IT Admin chat (kind itadmin, `itchat.py`, /api/itdesk/*) on the IT Admin engine: Today (IT spend a year, unused-seat cost, renewals in 30 days, changes waiting, needs, access at a glance, spend by kind, coming up incl. device warranty / AMC, what staff keep asking), Licences & spend (add / edit with seats, price, per seat, renewal, auto-renew; seat bars, I renewed it, register as Excel, spend by vendor), People & access (people, access records never a password with 2-step state, joiner / mover / leaver checklists, Turn off = a change card, access review keep / remove), Changes (cards with steps, meaning and undo; yes / no by her tap with the card hash; I did it), Guides & questions (guides from her words, publish, Word, versions; staff questions answered from guides or a ticket), Settings (office, country, money unit, renewal windows, good practice by country, Google Workspace / Microsoft 365 read links, the Entra secret only in its own part); GLOBAL: the CERT-In / DPDP practice rows only for India, other countries 'check this', every price in her own money unit; 4 tests incl. a browser walk. NOT VERIFIED on her server / with real Google or Microsoft consoles.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2196,6 +2196,15 @@ def qa_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/itadmin")
+@app.get("/console/itadmin/")
+def itadmin_desk_page():
+    """IT ADMIN DESK: the IT Admin employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "itdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/cyber")
 @app.get("/console/cyber/")
 def cyber_desk_page():
@@ -2836,6 +2845,8 @@ from . import dvchat as _dvchat_mod                             # noqa: E402  DE
 _dvchat_mod.mount(app, current_tenant, require_key)             # /api/dvdesk/*
 from . import cychat as _cychat_mod                             # noqa: E402  CYBER DESK
 _cychat_mod.mount(app, current_tenant, require_key)             # /api/cydesk/*
+from . import itchat as _itchat_mod                             # noqa: E402  IT ADMIN DESK
+_itchat_mod.mount(app, current_tenant, require_key)             # /api/itdesk/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

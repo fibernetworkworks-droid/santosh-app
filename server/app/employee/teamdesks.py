@@ -244,7 +244,7 @@ TEAM: dict[str, tuple[str, str, str, list[str], str]] = {
 }
 
 # the studios that are their own console pages
-DESK: dict[str, str] = {'website': 'webdev', 'app_banao': 'appdev', 'dev': 'code', 'qa': 'qadesk', 'devops': 'dvdesk', 'cyber': 'cydesk'}
+DESK: dict[str, str] = {'website': 'webdev', 'app_banao': 'appdev', 'dev': 'code', 'qa': 'qadesk', 'devops': 'dvdesk', 'cyber': 'cydesk', 'it_admin': 'itdesk'}
 
 # desk-room departments: (id, hub group, name, line, [(lane id, lane name, keys)])
 LANES: dict[str, list[str]] = {'biz': ['telecall', 'kalam', 'ads', 'brand', 'office', 'lekhak'], 'retail': ['thok', 'franchise', 'mobile_shop', 'chai', 'darzi'], 'fin': ['paisa', 'audit', 'payroll', 'gst', 'bima'], 'care': ['helpdesk', 'shikayat', 'service_desk', 'feedback', 'wapsi', 'samudaay'], 'soft': ['qa', 'it_admin', 'noc', 'cyber', 'devops', 'docs_writer', 'app_review', 'product', 'blender_3d'], 'move': ['logistics', 'fleet', 'warehouse', 'courier', 'travel', 'drivers', 'customs', 'niryat'], 'const': ['theka', 'propagent', 'rentdesk', 'sitesup', 'interior', 'archassist', 'society'], 'legal': ['vakil', 'legalres', 'compliance', 'contracts', 'cosec', 'notary', 'pidesk', 'dpo'], 'hosp': ['front_office', 'event_plan', 'shaadi', 'tour_guide', 'homestay', 'banquet'], 'media': ['edit_desk', 'motion_desk', 'graphic', 'photo_assist', 'patrakar', 'kitab', 'podcast', 'artist_manager', 'influencer']}
