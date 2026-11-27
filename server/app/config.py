@@ -236,6 +236,8 @@ class Settings(BaseSettings):
     dev_mcp_tools: bool = True              # v0.999 every MCP tool as a tool of its own (mcp__server__tool, Claude Code's way)
     dev_mcp_direct_max: int = 60            # ... more tools than this are held back behind mcp_tool_search
     dev_mcp_direct_chars: int = 40000       # ... or more definition text than this
+    dev_bash_to_bg: bool = True             # v0.999 a command still running at its time limit keeps running in the background (OpenCode)
+    dev_auto_format: bool = True            # v0.999 the repo's own formatter runs on the files an edit changed (only when the repo declares it)
     dev_parallel_reads: bool = True         # v0.999 read-only calls of one reply run side by side (Claude Code's concurrency-safe tools)
     dev_parallel_width: int = 8
     dev_idle_compact: bool = True           # v0.999 a long session idle just under the 5-min prompt cache is summarised through its own cached request

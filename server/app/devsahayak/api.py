@@ -548,6 +548,10 @@ def make_router(require_key, current_tenant) -> APIRouter:
         b = _b(body)
         return await run(S.ws_rewind, tenant, tid, int(b.get("n") or 0), str(b.get("what") or "both"))
 
+    @r.post("/tasks/{tid}/redo")
+    async def ws_redo(tid: str, tenant: str = Depends(current_tenant)):
+        return await run(S.ws_redo, tenant, tid)
+
     @r.get("/tasks/{tid}/worktrees")
     async def ws_worktrees(tid: str, tenant: str = Depends(current_tenant)):
         return await run(S.ws_worktrees, tenant, tid)

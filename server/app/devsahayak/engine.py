@@ -401,6 +401,7 @@ class Session:
         if cp is None:
             raise ValueError("There is no such checkpoint.")
         what = what if what in ("both", "code", "conversation") else "both"
+        self._keep_for_redo(int(n), what)                 # v0.999 OpenCode's staged revert: undoable until her next message
         if what != "conversation":
             rc, out = _git(self.repo, "reset", "-q", "--hard", cp["sha"])
             if rc != 0:
@@ -436,6 +437,59 @@ class Session:
         self.meta["checkpoints"] = [c for c in cps if int(c["n"]) <= int(n)]
         self.save_meta()
         return cp
+
+    def _keep_for_redo(self, n: int, what: str) -> None:
+        """Everything a rewind is about to throw away, kept so redo() can bring it back: the files as one commit (her
+        working copy as it is now), the conversation, the later checkpoints and their saved conversations."""
+        red = self.dir / "redo"
+        shutil.rmtree(red, ignore_errors=True)
+        red.mkdir(parents=True, exist_ok=True)
+        sha = _commit(self.repo, f"before going back to checkpoint {n}") if what != "conversation" else ""
+        if self.msg_path.is_file():
+            shutil.copy2(self.msg_path, red / "messages.json")
+        for c in self.meta.get("checkpoints") or []:
+            f = self.dir / f"messages.cp{c.get('n')}.json"
+            if int(c.get("n", 0)) > n and f.is_file():
+                shutil.copy2(f, red / f.name)
+        self.meta["redo"] = {"n": n, "what": what, "sha": sha, "at": time.time(),
+                             "checkpoints": json.loads(json.dumps(self.meta.get("checkpoints") or [])),
+                             "note": self.meta.get("pending_note")}
+
+    def redo(self) -> dict[str, Any]:
+        """Undo the last rewind (allowed until her next message starts a round)."""
+        rd = self.meta.get("redo")
+        if not rd:
+            raise ValueError("There is nothing to redo.")
+        red, what = self.dir / "redo", rd.get("what") or "both"
+        if what != "conversation":
+            if not rd.get("sha"):
+                raise ValueError("The files from before going back were not kept, so they cannot come back.")
+            rc, out = _git(self.repo, "reset", "-q", "--hard", rd["sha"])
+            if rc != 0:
+                raise ValueError("Could not bring the files back: " + out.strip()[:200])
+            _git(self.repo, "clean", "-q", "-fd")
+        if what != "code":
+            if (red / "messages.json").is_file():
+                self.save_messages(json.loads((red / "messages.json").read_text()))
+            for f in red.glob("messages.cp*.json"):
+                shutil.copy2(f, self.dir / f.name)
+            self.meta["checkpoints"] = rd.get("checkpoints") or self.meta.get("checkpoints") or []
+        if rd.get("note"):
+            self.meta["pending_note"] = rd["note"]
+        else:
+            self.meta.pop("pending_note", None)
+        if what == "code":                                # the conversation never moved: say the files are back
+            self.meta["pending_note"] = ("She undid putting the files back: the working copy again has every change the "
+                                         "conversation above made. Read a file again before you edit it.")
+        self.meta.pop("redo", None)
+        self.save_meta()
+        shutil.rmtree(red, ignore_errors=True)
+        return {"n": rd.get("n"), "what": what}
+
+    def drop_redo(self) -> None:
+        if self.meta.pop("redo", None) is not None:
+            shutil.rmtree(self.dir / "redo", ignore_errors=True)
+            self.save_meta()
 
     def undo_round(self) -> bool:
         """v0.955 put the working copy back to this round's base (HEAD stays): index + files match the base again,
@@ -957,16 +1011,41 @@ class Tools:
         return " The dependency list changed: the box installs it again before the next command."
 
     def _apply(self, text: str, old: str, new: str, every: bool) -> tuple[str, str]:
+        """v0.999 OpenCode's tolerant edit: exact first, then the same text with typographic quotes / dashes / odd spaces
+        read as plain ones, then whole lines that differ only in trailing spaces. A miss says WHY and shows the closest
+        lines, so the model can retry without reading the file again."""
+        self.match_note = ""
         if old == new:
             return text, "old_string and new_string are the same."
         if not old:
             return text, "old_string is empty - use write for a new file."
         n = text.count(old)
-        if n == 0:
-            return text, "old_string was not found. Read the file again and copy the text exactly (indentation too)."
-        if n > 1 and not every:
-            return text, f"old_string appears {n} times. Add more surrounding lines to make it unique, or set replace_all."
-        return text.replace(old, new) if every else text.replace(old, new, 1), ""
+        if n:
+            if n > 1 and not every:
+                return text, f"old_string appears {n} times. Add more surrounding lines to make it unique, or set replace_all."
+            return text.replace(old, new) if every else text.replace(old, new, 1), ""
+        spans = _loose_spans(text, old)
+        how = "quote / dash / space characters"
+        if not spans:
+            spans, how = _line_spans(text, old), "trailing spaces"
+        if spans:
+            if len(spans) > 1 and not every:
+                return text, (f"old_string appears {len(spans)} times (ignoring {how}). Add more surrounding lines to make it "
+                              "unique, or set replace_all.")
+            out = text
+            for a, b in sorted(spans, reverse=True):
+                out = out[:a] + new + out[b:]
+            self.match_note = f" (matched ignoring {how})"
+            STATS["edit_tolerant"] = STATS.get("edit_tolerant", 0) + 1
+            return out, ""
+        STATS["edit_miss"] = STATS.get("edit_miss", 0) + 1
+        if new and new in text:
+            return text, ("old_string was not found, but new_string is already in the file - this change looks applied "
+                          "already. Check it before you edit again.")
+        near = _closest(text, old)
+        return text, ("old_string was not found." + (f" The closest place in the file (line numbers as read shows them):\n{near}\n"
+                      "Copy the text from there exactly and try again." if near else
+                      " Read the file again and copy the text exactly (indentation too)."))
 
     def t_edit(self, path: str, old_string: str, new_string: str, replace_all: bool = False) -> str:
         return self.t_multi_edit(path, [{"old_string": old_string, "new_string": new_string, "replace_all": replace_all}], _one=True)
@@ -997,7 +1076,7 @@ class Tools:
         f.write_bytes((text.replace("\n", "\r\n") if crlf else text).encode("utf-8"))
         self.trail.append(f"edited {rel}")
         add, rem, _ = R.changed_lines(before, text)
-        return f"Edited {rel} (+{add} -{rem})." + self._deps_changed(rel)
+        return f"Edited {rel} (+{add} -{rem}){getattr(self, 'match_note', '')}." + self._deps_changed(rel)
 
     def t_glob(self, pattern: str, path: str = "") -> str:
         start = self._rel(path) if path else ""
@@ -1229,6 +1308,12 @@ class Tools:
             share = run_now[-1][1]["name"] if run_now else ""
         tid = self.live_tid
         hide = [v for v in (grant or {}).get("hide") or [] if v and len(v) >= 6]
+        mv = None                                         # v0.999 past its time limit it moves to the background, not killed
+        if (not grant and bool(_set("dev_bash_to_bg", True))
+                and len(self._bg_running()) < int(_set("dev_bg_max", 3) or 3)):
+            n_bg = int(self.s.meta.get("bg_n") or 0) + 1
+            mv = {"name": "hoola-bg-" + re.sub(r"[^a-z0-9]", "", str(self.s.tid).lower())[:24] + f"-{n_bg}",
+                  "task": str(self.s.tid), "limit_s": int(_set("dev_bg_max_s", 1800) or 1800), "bid": f"bg{n_bg}", "n": n_bg}
 
         def on_line(line: str) -> None:                   # v0.999 her live terminal: each line as it is printed, cleaned
             for v in hide:
@@ -1238,8 +1323,9 @@ class Tools:
             buf.append(scrub(line)[:300])
             del buf[:-LIVE_OUT_LINES]
         try:
+            kw = {"move_to_bg": mv} if mv else {}
             r = box.run_in(img, str(self.s.repo), f"cd {box.WORK}; {cmd}", timeout=lim, network=False, env=self.env or None,
-                           net=grant, on_line=on_line if tid else None, share_with=share)
+                           net=grant, on_line=on_line if tid else None, share_with=share, **kw)
         finally:
             if grant:
                 from ..devlab import net as NET
@@ -1252,6 +1338,19 @@ class Tools:
             out = re.sub(r"http://[a-f0-9]{12,40}:[A-Za-z0-9_-]+@hoola-lab-proxy", "http://hoola-lab-proxy", out)
         out = net_note + scrub(out)
         r = {**r, "out": out}
+        if r.get("moved") and mv:                         # still running: it is a background command now
+            self.s.meta["bg_n"] = mv["n"]
+            self._bg()[mv["bid"]] = {"name": r["moved"], "cmd": cmd[:300], "desc": cmd_words(cmd, description)[:120],
+                                     "at": time.time(), "state": "running", "seen": len(str(r.get("out") or "").splitlines()),
+                                     "moved": True}
+            self.s.save_meta()
+            self.last_bash = {"cmd": cmd[:300], "bg": mv["bid"], "rc": None, "secs": round(float(r.get("secs") or 0), 1),
+                              "timed_out": False, "moved": True, "tail": [x[:200] for x in out.splitlines()[-12:]]}
+            self.trail.append(f"bash moved to background {mv['bid']}: {cmd[:80]}")
+            STATS["bash_moved"] = STATS.get("bash_moved", 0) + 1
+            return (f"{note}[still running after {lim}s, so it was NOT stopped: it keeps running in the background as {mv['bid']} "
+                    f"(up to {mv['limit_s'] // 60} min in all). bash_output id={mv['bid']} reads what it prints next; kill_shell "
+                    f"id={mv['bid']} stops it. Do not run it again.]\nWhat it printed so far:\n{self.spill(out, OUT_CAP)}").strip()
         out = self.spill(out, OUT_CAP)                    # v0.999 over the limit: saved whole, the model gets a path
         self.last_bash = {"cmd": cmd[:300], "rc": r.get("rc"), "secs": round(float(r.get("secs") or 0), 1),
                           "timed_out": bool(r.get("timed_out")), "tail": [x[:200] for x in str(r.get("out") or "").splitlines()[-12:]]}
@@ -1605,13 +1704,27 @@ class Tools:
         from . import mcptools as MT
         return MT.search(self, query, max_results)
 
+    def _schema_of(self, name: str) -> dict[str, Any] | None:
+        """The input schema of a tool of this round (built-in, extra, or an MCP tool by its own name)."""
+        for t in list(getattr(self, "round_tools", None) or []) + TOOLS:
+            if t.get("name") == name:
+                return t.get("input_schema")
+        try:
+            for t in tools_for_round():
+                if t.get("name") == name:
+                    return t.get("input_schema")
+        except Exception:  # noqa: BLE001
+            pass
+        return None
+
     def run(self, name: str, inp: dict[str, Any]) -> str:
         if name.startswith("mcp__"):                      # v0.999 one MCP tool by its own name (mcptools.py)
             from . import mcptools as MT
             tg = MT.target(str(getattr(self.s, "tid", "")), name)
             if tg is None:
                 return f"Unknown tool {name} (that MCP tool is not connected in this session - mcp action=list shows what is)."
-            return self.t_mcp("call", tg[0], tg[1], {k: v for k, v in (inp or {}).items() if not str(k).startswith("_")})
+            return self.t_mcp("call", tg[0], tg[1], repair_input(self._schema_of(name),
+                                                                 {k: v for k, v in (inp or {}).items() if not str(k).startswith("_")}))
         fn = getattr(self, "t_" + name, None)
         if fn is None:
             return f"Unknown tool {name}."
@@ -1621,7 +1734,7 @@ class Tools:
                     f"{str(inp[B.BROKEN_KEY])[:160]!r}). Send the call again with valid JSON. For a big file, write a "
                     "small first version and then add to it with edit, instead of one very large write.")
         try:
-            out = fn(**{k: _loose(v) for k, v in inp.items() if not k.startswith("_")})
+            out = fn(**repair_input(self._schema_of(name), {k: v for k, v in inp.items() if not k.startswith("_")}))
             if name in ("read", "edit", "multi_edit", "write", "notebook_edit") and inp.get("path") and isinstance(out, str):
                 with SPILL_LOCK:                          # parallel reads touch the same session notes
                     out += self._folder_rules(str(inp.get("path")))
@@ -1739,6 +1852,150 @@ def _lines(text: str) -> list[str]:
     t = (text or "").replace("\r\n", "\n")
     out = t.split("\n")
     return out[:-1] if out and out[-1] == "" else out
+
+
+# v0.999 OpenCode's tolerant edit match (tool/plugin/edit.ts): characters a model types differently than the file has
+_LOOSE_CH = str.maketrans({"\u2018": "'", "\u2019": "'", "\u201a": "'", "\u201b": "'", "\u2032": "'",
+                           "\u201c": '"', "\u201d": '"', "\u201e": '"', "\u2033": '"',
+                           "\u2010": "-", "\u2011": "-", "\u2012": "-", "\u2013": "-", "\u2014": "-", "\u2212": "-",
+                           "\u00a0": " ", "\u2007": " ", "\u202f": " ", "\u2009": " ", "\u200a": " ", "\u3000": " ",
+                           "\t": "\t"})
+
+
+def _loose_spans(text: str, old: str) -> list[tuple[int, int]]:
+    """Where `old` sits in `text` when quotes / dashes / odd spaces count as plain ones (one character each way, so the
+    positions in the normalised text are the positions in the file)."""
+    a, b = text.translate(_LOOSE_CH), old.translate(_LOOSE_CH)
+    if a == text and b == old:
+        return []
+    out, i = [], a.find(b)
+    while i >= 0 and len(out) < 50:
+        out.append((i, i + len(b)))
+        i = a.find(b, i + len(b))
+    return out
+
+
+def _line_spans(text: str, old: str) -> list[tuple[int, int]]:
+    """Whole lines that match `old` line by line when trailing spaces (and the characters above) are ignored."""
+    want = [x.rstrip().translate(_LOOSE_CH) for x in old.rstrip("\n").split("\n")]
+    if not any(w.strip() for w in want):
+        return []
+    lines = text.split("\n")
+    starts, pos = [], 0
+    for ln in lines:
+        starts.append(pos)
+        pos += len(ln) + 1
+    got = [x.rstrip().translate(_LOOSE_CH) for x in lines]
+    out, m = [], len(want)
+    for i in range(0, len(lines) - m + 1):
+        if got[i:i + m] == want:
+            end = starts[i + m - 1] + len(lines[i + m - 1])
+            if old.endswith("\n") and i + m < len(lines):
+                end += 1                                   # the old text took its line break too
+            out.append((starts[i], end))
+            if len(out) >= 50:
+                break
+    return out
+
+
+def _closest(text: str, old: str, show: int = 14) -> str:
+    """The lines of the file most like `old`, by whitespace-blind line votes (OpenCode's hint on a missed edit)."""
+    key = lambda x: re.sub(r"\s+", "", x.translate(_LOOSE_CH))
+    want = [key(x) for x in old.strip("\n").split("\n")]
+    lines = text.split("\n")
+    idx: dict[str, list[int]] = {}
+    for i, ln in enumerate(lines):
+        k = key(ln)
+        if len(k) >= 4:
+            idx.setdefault(k, []).append(i)
+    votes: dict[int, int] = {}
+    for j, w in enumerate(want):
+        if len(w) < 4:
+            continue
+        for i in idx.get(w, [])[:20]:
+            votes[i - j] = votes.get(i - j, 0) + 1
+    if not votes:
+        return ""
+    start, n = max(votes.items(), key=lambda kv: (kv[1], -kv[0]))
+    if n < (1 if len(want) <= 3 else 2):                  # a short edit: one matching line is enough to point at
+        return ""
+    a, b = max(0, start), min(len(lines), max(0, start) + max(len(want), 1) + 1)
+    b = min(b, a + show)
+    return "\n".join(f"{i + 1:>6}\t{lines[i]}" for i in range(a, b))
+
+
+_NULLISH = ("null", "none", "undefined", "nil")
+STR_FIELDS = ("content", "new_string", "old_string", "command", "text", "body", "prompt", "report", "explain", "message",
+              "task", "query", "pattern", "description")
+
+
+def _types(prop: Any) -> set[str]:
+    if not isinstance(prop, dict):
+        return set()
+    t = prop.get("type")
+    out = set(t) if isinstance(t, list) else ({t} if isinstance(t, str) else set())
+    for alt in (prop.get("anyOf") or prop.get("oneOf") or []):
+        if isinstance(alt, dict) and isinstance(alt.get("type"), str):
+            out.add(alt["type"])
+    return out
+
+
+def _fix(prop: Any, v: Any) -> Any:
+    """One value made to fit its field when there is only ONE reading of it."""
+    ts = _types(prop)
+    if not ts or (isinstance(v, str) and "string" in ts):
+        return v                                          # a text field keeps its text, whatever it looks like
+    if isinstance(v, str):
+        t = v.strip()
+        if ts & {"array", "object"} and t[:1] in "[{" and t[-1:] in "]}":
+            try:
+                j = json.loads(t)
+                if (isinstance(j, list) and "array" in ts) or (isinstance(j, dict) and "object" in ts):
+                    return _fix_items(prop, j)
+            except ValueError:
+                return v
+        if "integer" in ts and re.fullmatch(r"[+-]?\d+", t):
+            return int(t)
+        if "number" in ts and re.fullmatch(r"[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?", t):
+            x = float(t)
+            return int(x) if x.is_integer() and "." not in t and "e" not in t.lower() else x
+        if "boolean" in ts and t.lower() in ("true", "false"):
+            return t.lower() == "true"
+        return v
+    if "integer" in ts and isinstance(v, float) and v.is_integer():
+        return int(v)
+    if "string" in ts and isinstance(v, (int, float)) and not isinstance(v, bool):
+        return str(v)
+    if isinstance(v, (list, dict)):
+        return _fix_items(prop, v)
+    return v
+
+
+def _fix_items(prop: Any, v: Any) -> Any:
+    if isinstance(v, list) and isinstance(prop.get("items"), dict):
+        return [_fix(prop["items"], x) for x in v]
+    if isinstance(v, dict) and isinstance(prop.get("properties"), dict):
+        return repair_input(prop, v)
+    return v
+
+
+def repair_input(schema: dict[str, Any] | None, inp: dict[str, Any]) -> dict[str, Any]:
+    """v0.999 OpenCode's tool-input repair (plugin/tool-input-repair.ts): a value the model sent in the wrong shape is
+    read back when the tool's field leaves only one reading - a list / object sent as JSON text, "20" for a number,
+    "true" for a yes / no, a 'null' placeholder for a field that is not required. A text field is NEVER touched (the
+    old blind reading turned a package.json's content into a Python dict and wrote that into the file)."""
+    if not isinstance(schema, dict) or not isinstance(schema.get("properties"), dict):
+        return {k: (v if k in STR_FIELDS else _loose(v)) for k, v in inp.items()}
+    props, need = schema["properties"], set(schema.get("required") or [])
+    out: dict[str, Any] = {}
+    for k, v in inp.items():
+        if k not in need and (v is None or (isinstance(v, str) and v.strip().lower() in _NULLISH and "string" not in _types(props.get(k)))):
+            continue                                      # a placeholder for an optional field: as if not given
+        fixed = _fix(props.get(k), v) if k in props else v
+        if fixed is not v:
+            STATS["input_repaired"] = STATS.get("input_repaired", 0) + 1
+        out[k] = fixed
+    return out
 
 
 def _loose(v: Any) -> Any:
@@ -1940,6 +2197,7 @@ def her_blocks(tools: Any, ses: Any, words: str, emit: Any) -> str:
     from . import repoconf as RC
     parts: list[str] = []
     conf = getattr(tools, "conf", {}) or {}
+    ses.drop_redo()                                       # v0.999 her new message makes the last rewind final
     note = ses.meta.pop("pending_note", None)              # v0.999 a partial rewind: what changed under the conversation
     if note:
         ses.save_meta()
@@ -2533,6 +2791,10 @@ def event(tools: Tools, name: str, inp: dict[str, Any], out: str) -> list[dict[s
     if name == "bash" and (getattr(tools, "last_bash", None) or {}).get("bg"):
         lb = tools.last_bash
         desc = cmd_words(lb["cmd"], inp.get("description"))
+        if lb.get("moved"):                               # v0.999 it ran past its time limit and keeps running
+            return [{"k": "bgstart", "id": lb["bg"], "cmd": lb["cmd"], "desc": desc, "moved": True,
+                     "did": f"Still running after {int(lb.get('secs') or 0)} s, so it keeps going in the background: "
+                     + desc[:1].lower() + desc[1:]}]
         return [{"k": "bgstart", "id": lb["bg"], "cmd": lb["cmd"], "desc": desc, "did": "Started in the background: "
                  + desc[:1].lower() + desc[1:]}]
     if name == "bash_output":
@@ -3621,6 +3883,15 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                 notes = [str(x)[:6000] for x in (inbox() or []) if str(x).strip()]
             except Exception:
                 notes = []
+        if edited_now:                                    # v0.999 the repo's own formatter on what this reply changed
+            try:
+                from . import fmt as FM
+                ftxt, fchanged = FM.after_edits(tools, [p for p in edited_now if p])
+                if ftxt:
+                    results.append({"type": "text", "text": ftxt})
+                    emit({"k": "format", "files": fchanged[:40], "text": ftxt[:2000]})
+            except Exception as e:  # noqa: BLE001 - formatting never stops the work
+                log.info("format after edits failed: %s", e)
         try:                                              # v0.999 diagnostics: the language server checks what was edited
             from . import lsp as LS
             if edited_now:
@@ -3754,6 +4025,8 @@ def view(tid: str) -> dict[str, Any]:
     if not exists(tid):
         return {"exists": False}
     return {"exists": True, "checkpoints": ses.meta.get("checkpoints") or [], "todos": ses.meta.get("todos") or [],
+            "redo": ({"n": (ses.meta.get("redo") or {}).get("n"), "what": (ses.meta.get("redo") or {}).get("what")}
+                     if ses.meta.get("redo") else None),
             "hidden": ses.meta.get("hidden") or [], "changed": ses.changed(ses.meta.get("base", "")),
             "choices": (ses.meta.get("ask") or {}).get("choices") or [],
             "live": tid in LIVE, "slots": slots(), "mb": ses.meta.get("mb", 0)}
@@ -3800,6 +4073,15 @@ def rewind(tid: str, n: int, what: str = "both") -> dict[str, Any]:
     if not exists(tid):
         raise ValueError("This session has no working copy.")
     return Session(tid).rewind(n, what)
+
+
+def redo(tid: str) -> dict[str, Any]:
+    """v0.999 undo the last rewind (until her next message)."""
+    if tid in LIVE:
+        raise ValueError("Hoola is working in this session right now - stop it first.")
+    if not exists(tid):
+        raise ValueError("This session has no working copy.")
+    return Session(tid).redo()
 
 
 def mark_pushed(tid: str, head_sha: str) -> None:

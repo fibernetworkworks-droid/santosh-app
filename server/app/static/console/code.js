@@ -789,6 +789,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       case 'compact': case 'ws': return `<div class="hcd-step dim">${svg('list')}<span>${esc(s.text || '')}</span>${at}</div>`;
       case 'wait': return `<div class="hcd-step">${svg('dot')}<span>${esc(s.text || 'Waiting for a free coding slot')}</span>${at}</div>`;
       case 'ckpt': return `<div class="hcd-step dim">${svg('ok')}<span>Checkpoint ${esc(String(s.num ?? s.n))} saved - you can go back to here</span>${at}</div>`;
+      case 'format': return `<div class="hcd-step dim">${svg('ok')}<span>The repo's formatter tidied ${esc((s.files || []).join(', ') || 'the edited files')}</span>${at}</div>`;
+      case 'redo': return `<div class="hcd-step">${svg('list')}<span><b>Undid going back to checkpoint ${esc(String(s.n ?? ''))}.</b> ${s.what === 'code' ? 'The files have every later change again.' : s.what === 'conversation' ? 'The conversation is whole again.' : 'The files and the conversation are as they were before.'}</span>${at}</div>`;
       case 'rewind': return `<div class="hcd-step">${svg('list')}<span><b>${s.what === 'code' ? 'Put the files back' : s.what === 'conversation' ? 'Took the conversation back' : 'Went back'} to checkpoint ${esc(String(s.num ?? s.n))}.</b> ${s.what === 'code' ? 'The conversation is unchanged.' : s.what === 'conversation' ? 'The files keep every change made since.' : 'The working copy and the conversation are as they were then.'}</span>${at}</div>`;
       case 'agent': { /* v0.794 ECC agents (Claude Code-style subagents) */
         if (s.state === 'start') return `<div class="hcd-step">${svg('dot')}<span><b>${s.background ? 'Started' : 'Asked'} ${esc(s.title || s.name)}</b>${s.background ? ` <span class="hcd-bgtag">in the background${s.id ? ' · ' + esc(s.id) : ''}</span>` : ''}${s.worktree ? ` <span class="hcd-bgtag">in its own copy · ${esc(s.worktree)}</span>` : ''} (${esc(s.tools || 'read')}${s.model ? ' · on ' + esc(s.model) : ''}) · ${esc(s.task || '')}</span>${at}</div>`;
@@ -1131,9 +1133,10 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   function wsCard(t) {      // v0.784 the session's working copy: checkpoints (rewind), browse files (v0.999.245 the to-do list shows once, in the conversation)
     const w = t.ws || {}; if (!w.exists) return '';
     const todos = w.todos || [], cps = (w.checkpoints || []).slice(-6).reverse();
+    const redoRow = w.redo && !t.running && !shared ? `<div class="hcd-row hcd-redo"><span>You went back to checkpoint ${esc(String(w.redo.n))}</span><b>${w.redo.what === 'code' ? 'files only' : w.redo.what === 'conversation' ? 'conversation only' : 'files and conversation'}</b><button type="button" class="hcd-btn sm" data-act="redo" title="Undo it - possible until your next message">Redo</button></div>` : '';
     return `<section class="hcd-rc" aria-labelledby="hcdRcW"><h2 id="hcdRcW">Working copy${w.live ? '<span class="hcd-stat">working</span>' : ''}</h2>
       ${todos.length ? `<p class="hcd-mut">${plural(todos.filter(x => x.status === 'completed').length, 'step')} of ${todos.length} done - the list is in the conversation.</p>` : ''}
-      ${cps.length ? cps.map(c => `<div class="hcd-row"><span title="${esc(c.label || '')}">Checkpoint ${c.n}</span><b>${esc((c.label || '').slice(0, 34))}</b>${!t.running && c.n !== (w.checkpoints || []).length ? `<button type="button" class="hcd-btn sm" data-act="rewind" data-n="${c.n}">Go back</button>` : ''}${!t.running && !shared ? `<button type="button" class="hcd-btn sm" data-act="forkcp" data-n="${c.n}" title="A new session from this point">Fork</button>` : ''}</div>`).join('') : '<p class="hcd-mut">A checkpoint is saved after every round.</p>'}
+      ${redoRow}${cps.length ? cps.map(c => `<div class="hcd-row"><span title="${esc(c.label || '')}">Checkpoint ${c.n}</span><b>${esc((c.label || '').slice(0, 34))}</b>${!t.running && c.n !== (w.checkpoints || []).length ? `<button type="button" class="hcd-btn sm" data-act="rewind" data-n="${c.n}">Go back</button>` : ''}${!t.running && !shared ? `<button type="button" class="hcd-btn sm" data-act="forkcp" data-n="${c.n}" title="A new session from this point">Fork</button>` : ''}</div>`).join('') : '<p class="hcd-mut">A checkpoint is saved after every round.</p>'}
       ${(w.hidden || []).length ? `<p class="hcd-mut">${plural(w.hidden.length, 'file')} with secrets hidden from Hoola.</p>` : ''}
       <div class="hcd-acts"><button type="button" class="hcd-btn" data-act="files" data-path="">Browse files</button></div></section>`;
   }
@@ -1739,6 +1742,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       if (!['both', 'code', 'conversation'].includes(r)) return;
       await busy(b, async () => { await api('POST', `/api/devsahayak/tasks/${tid()}/rewind`, {n, what: r}); await again();
         toast(r === 'code' ? `Files back at checkpoint ${n}. The conversation is unchanged.` : r === 'conversation' ? `Conversation back at checkpoint ${n}. The files keep their changes.` : `Back at checkpoint ${n}.`); }); },
+    redo: async b => {   /* v0.999 undo the last going-back (OpenCode's staged revert), until her next message */
+      await busy(b, async () => { await api('POST', `/api/devsahayak/tasks/${tid()}/redo`); await again(); toast('Back as it was before you went back.'); }); },
     wtshow: async b => { const w = b.dataset.wt;   /* v0.999 an agent's own copy: its diff */
       try { const r = await api('GET', `/api/devsahayak/tasks/${tid()}/worktrees/${encodeURIComponent(w)}`);
         await dialog(`<h2>Changes in the agent's own copy ${esc(w)}</h2><p class="hcd-mut">Not in your working copy yet.</p>${diffHTML(String(r.diff || '').split('\n').slice(0, 3000)) || '<p>No changes.</p>'}
