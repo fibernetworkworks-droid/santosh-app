@@ -49,15 +49,50 @@ class CodeCommands {
   }
 }
 
-/// Hoola's own slash commands: (name, what it does).
+/// Hoola's own slash commands: (name, what it does). These are Claude Code's built-in commands as they work here; a
+/// repo command of the same name is hidden (the built-in wins). The most used come first.
 const List<(String, String)> codeOwnCommands = [
+  ('help', 'Every command you can type here'),
   ('compact', 'Summarise the conversation (add what to keep)'),
-  ('init', 'Write AGENTS.md'),
+  ('clear', 'Start a new session (this one stays in your list)'),
+  ('review', 'Review the changes on this branch'),
   ('security-review', 'Review the changes for security problems'),
-  ('export', 'Share the conversation as a file'),
-  ('style', 'Pick how Hoola writes to you'),
+  ('init', 'Write AGENTS.md'),
+  ('status', 'Repo, branch, pull request, context and cost'),
+  ('context', 'How full the conversation is'),
+  ('cost', 'What this session has cost so far'),
+  ('usage', 'Same as /cost'),
+  ('model', 'Pick the quality Hoola works at'),
+  ('todos', "Hoola's to-do list for this session"),
+  ('rewind', 'Go back to an earlier checkpoint'),
+  ('resume', 'Back to all your sessions'),
+  ('bashes', 'Commands running in the background'),
+  ('doctor', "Check this session's setup for problems"),
+  ('pr-comments', "Reviewers' comments on the pull request"),
+  ('agents', "The repo's agents and Claude Code files"),
+  ('memory', 'Edit CLAUDE.md, the rules Hoola reads first'),
+  ('hooks', 'Edit the hooks in .claude/settings.json'),
+  ('permissions', 'Edit the permission rules in .claude/settings.json'),
+  ('mcp', "The repo's MCP servers and setup"),
   ('plugins', 'Your plugins'),
+  ('plugin', 'Same as /plugins'),
+  ('style', 'Pick how Hoola writes to you'),
+  ('output-style', 'Same as /style (add a style name)'),
+  ('export', 'Share the conversation as a file'),
+  ('config', 'Hoola Code settings'),
+  ('add-dir', 'How to work with other repos'),
+  ('login', 'Connect GitHub'),
+  ('logout', 'Disconnect GitHub'),
+  ('install-github-app', 'Connect the GitHub app'),
 ];
+
+/// Claude Code commands that only make sense in a terminal. Typed here, Hoola says so instead of sending them.
+const List<String> codeTerminalOnlyCommands = [
+  'vim', 'terminal-setup', 'statusline', 'ide', 'exit', 'quit', 'upgrade', 'bug', 'release-notes', 'privacy-settings',
+];
+
+/// Every name the phone handles itself (a repo command with one of these names is never shown or sent).
+final Set<String> codeBuiltinNames = {for (final x in codeOwnCommands) x.$1, ...codeTerminalOnlyCommands};
 
 // ---------------------------------------------------------------------------------------------- @ files and / commands
 /// The list above the typing box while she types '@part' (files) or '/name' (commands). A tap puts the pick in the box.
@@ -209,7 +244,7 @@ class _CodeAssistListState extends State<CodeAssistList> {
 
   List<Widget> _cmdRows(HoolaColors c) {
     final repo = cl(CodeCommands.cached(widget.id)?['commands']);
-    final own = {for (final x in codeOwnCommands) x.$1};
+    final own = codeBuiltinNames;
     final rows = <Widget>[];
     for (final (name, what) in codeOwnCommands) {
       if (!name.startsWith(_q)) continue;
@@ -217,7 +252,7 @@ class _CodeAssistListState extends State<CodeAssistList> {
     }
     for (final x in repo) {
       final name = cs(x['name']).replaceFirst(RegExp(r'^/'), '');
-      if (name.isEmpty || own.contains(name) || !name.toLowerCase().startsWith(_q)) continue;
+      if (name.isEmpty || own.contains(name.toLowerCase()) || !name.toLowerCase().startsWith(_q)) continue;
       final hint = cs(x['hint']);
       final what = cs(x['description']);
       rows.add(_row(c,
@@ -227,7 +262,7 @@ class _CodeAssistListState extends State<CodeAssistList> {
           mono: true,
           onTap: () => _pickCmd(name)));
     }
-    return rows.take(8).toList();
+    return rows.take(12).toList();
   }
 
   @override
@@ -342,36 +377,39 @@ class CodeContextMeter extends StatelessWidget {
     );
   }
 
-  Future<void> _explain(BuildContext context, int v) async {
-    final go = await codeSheet<bool>(context, app,
-        title: 'Context $v% used',
-        body: (ctx) {
-          final c = HoolaColors.of(ctx);
-          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text(
-                'This is how full the conversation is that Hoola keeps in mind for this session. When it is full, '
-                'Hoola sums up the older part by itself and carries on from the summary.',
-                style: codeSans(c, size: 14.5, color: c.ink2)),
+  Future<void> _explain(BuildContext context, int v) => showCodeContextExplain(context, app, v, running: running, onCompact: onCompact);
+}
+
+/// What the context meter means, with Compact now (also typed as /context).
+Future<void> showCodeContextExplain(BuildContext context, Santosh app, int v, {required bool running, required VoidCallback onCompact}) async {
+  final go = await codeSheet<bool>(context, app,
+      title: 'Context $v% used',
+      body: (ctx) {
+        final c = HoolaColors.of(ctx);
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text(
+              'This is how full the conversation is that Hoola keeps in mind for this session. When it is full, '
+              'Hoola sums up the older part by itself and carries on from the summary.',
+              style: codeSans(c, size: 14.5, color: c.ink2)),
+          const SizedBox(height: 10),
+          Text('Compact now does it at once: the earlier steps become a short summary and the space is free again. '
+              'Your changes and the pull request stay as they are.',
+              style: codeSans(c, size: 14.5, color: c.ink2)),
+          if (running) ...[
             const SizedBox(height: 10),
-            Text('Compact now does it at once: the earlier steps become a short summary and the space is free again. '
-                'Your changes and the pull request stay as they are.',
-                style: codeSans(c, size: 14.5, color: c.ink2)),
-            if (running) ...[
-              const SizedBox(height: 10),
-              Text('Hoola is working. You can compact once it finishes.', style: codeSans(c, size: 13.5, color: c.warn)),
-            ],
-            const SizedBox(height: 16),
-            Row(children: [
-              Expanded(child: CodeOutline('Close', onTap: () => Navigator.pop(ctx, false))),
-              const SizedBox(width: 10),
-              Expanded(
-                  flex: 2,
-                  child: CodeMain('Compact now', icon: Icons.compress_rounded, onTap: running ? null : () => Navigator.pop(ctx, true))),
-            ]),
-          ]);
-        });
-    if (go == true) onCompact();
-  }
+            Text('Hoola is working. You can compact once it finishes.', style: codeSans(c, size: 13.5, color: c.warn)),
+          ],
+          const SizedBox(height: 16),
+          Row(children: [
+            Expanded(child: CodeOutline('Close', onTap: () => Navigator.pop(ctx, false))),
+            const SizedBox(width: 10),
+            Expanded(
+                flex: 2,
+                child: CodeMain('Compact now', icon: Icons.compress_rounded, onTap: running ? null : () => Navigator.pop(ctx, true))),
+          ]),
+        ]);
+      });
+  if (go == true) onCompact();
 }
 
 // ---------------------------------------------------------------------------------------------- a question mid-work
@@ -581,7 +619,9 @@ Future<void> showCodeRepoSetup(BuildContext context, Santosh app, String id) asy
           if (mcp.isNotEmpty) ...[
             CodeSection('MCP servers · ${mcp.length}'),
             for (final x in mcp)
-              item(cs(x['name']), x['ok'] == true ? 'Reachable' : (cs(x['why']).isEmpty ? 'Not reachable' : cs(x['why'])),
+              item(cs(x['name']), x['ok'] == true
+                      ? (cs(x['kind']) == 'stdio' ? 'Runs in the locked box${cs(x['program']).isEmpty ? '' : ' · ${cs(x['program'])}'}' : 'Online')
+                      : (cs(x['why']).isEmpty ? 'Not reachable' : cs(x['why'])),
                   subColor: x['ok'] == true ? c.ok : c.warn),
           ],
           if (hooks.isNotEmpty) ...[

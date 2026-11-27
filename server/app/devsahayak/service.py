@@ -723,8 +723,8 @@ def ws_files(tenant: str, ref: str, path: str = "") -> dict[str, Any]:
         raise DevError(str(e))
 
 
-def ws_rewind(tenant: str, ref: str, n: int) -> dict[str, Any]:
-    """Back to checkpoint n: the working copy and the conversation as they were then. GitHub is not touched; a PR
+def ws_rewind(tenant: str, ref: str, n: int, what: str = "both") -> dict[str, Any]:
+    """Back to checkpoint n, Claude Code's /rewind: what = both | code | conversation. GitHub is not touched; a PR
     already open keeps its commits until the next push."""
     from . import engine as EN
     with session() as s:
@@ -733,7 +733,9 @@ def ws_rewind(tenant: str, ref: str, n: int) -> dict[str, Any]:
             raise DevError("Hoola is working in this session right now - stop it first.")
         tid = t.id
     try:
-        cp = EN.rewind(tid, n)
+        if what not in ("both", "code", "conversation"):
+            raise DevError("Choose what goes back: both, code or conversation.")
+        cp = EN.rewind(tid, n, what)
     except ValueError as e:
         raise DevError(str(e))
     with session() as s:
@@ -742,10 +744,11 @@ def ws_rewind(tenant: str, ref: str, n: int) -> dict[str, Any]:
     # v0.945 the step where that checkpoint was saved: what came after it is undone (the phone dims it)
     since = next((int(x.get("n", -1)) for x in reversed(steps) if isinstance(x, dict) and x.get("k") == "ckpt"
                   and int(x.get("num", -1)) == int(cp["n"])), -1)
-    _Step(tid).event({"k": "rewind", "n": cp["n"], "from": since, "text": cp.get("label", "")[:80]})
+    _Step(tid).event({"k": "rewind", "n": cp["n"], "from": since if what != "code" else -1, "what": what,
+                      "text": cp.get("label", "")[:80]})
     with session() as s:
         row = s.get(DevTask, tid)
-        _log(row, f"rewound to checkpoint {cp['n']}")
+        _log(row, f"rewound {'' if what == 'both' else what + ' '}to checkpoint {cp['n']}")
         out = task_view(row, full=True)
     return out
 
@@ -4226,7 +4229,8 @@ def repo_commands(tenant: str, ref: str) -> dict[str, Any]:
         out["rules"] = {k: len(conf[k]) for k in ("allow", "ask", "deny")}
         out["env"], out["mode"] = sorted(conf["env"]), conf["mode"]
         out["skills"] = [{"name": k, "description": v["description"], "origin": v["origin"]} for k, v in sorted(RC.skills(repo, pls).items())]
-        out["mcp"] = [{"name": k, "ok": v["ok"], "why": v["why"]} for k, v in sorted(RC.mcp_servers(repo, pls).items())]
+        out["mcp"] = [{"name": k, "ok": v["ok"], "why": v["why"], "kind": v.get("kind", "http"),
+                       "program": " ".join(v.get("argv") or [])[:200]} for k, v in sorted(RC.mcp_servers(repo, pls).items())]
         out["styles"] = [{"name": k, "description": v["description"], "origin": v["origin"]} for k, v in RC.styles(repo, pls).items()]
         out["style"] = str(ses.meta.get("style") or conf.get("style") or "default")
         out["files"] = claude_paths(ses)

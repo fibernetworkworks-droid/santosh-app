@@ -778,7 +778,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       case 'compact': case 'ws': return `<div class="hcd-step dim">${svg('list')}<span>${esc(s.text || '')}</span>${at}</div>`;
       case 'wait': return `<div class="hcd-step">${svg('dot')}<span>${esc(s.text || 'Waiting for a free coding slot')}</span>${at}</div>`;
       case 'ckpt': return `<div class="hcd-step dim">${svg('ok')}<span>Checkpoint ${esc(String(s.num ?? s.n))} saved - you can go back to here</span>${at}</div>`;
-      case 'rewind': return `<div class="hcd-step">${svg('list')}<span><b>Went back to checkpoint ${esc(String(s.num ?? s.n))}.</b> The working copy and the conversation are as they were then.</span>${at}</div>`;
+      case 'rewind': return `<div class="hcd-step">${svg('list')}<span><b>${s.what === 'code' ? 'Put the files back' : s.what === 'conversation' ? 'Took the conversation back' : 'Went back'} to checkpoint ${esc(String(s.num ?? s.n))}.</b> ${s.what === 'code' ? 'The conversation is unchanged.' : s.what === 'conversation' ? 'The files keep every change made since.' : 'The working copy and the conversation are as they were then.'}</span>${at}</div>`;
       case 'agent': { /* v0.794 ECC agents (Claude Code-style subagents) */
         if (s.state === 'start') return `<div class="hcd-step">${svg('dot')}<span><b>Asked ${esc(s.title || s.name)}</b> (${esc(s.tools || 'read')}${s.model ? ' · on ' + esc(s.model) : ''}) · ${esc(s.task || '')}</span>${at}</div>`;
         const lab = `<b>${esc(s.title || s.name)}</b> reported · ${plural(s.steps || 0, 'step')}${s.edits ? ` · changed ${plural(s.edits, 'file')}` : ''}${s.secs ? ` · ${esc(String(s.secs))} s` : ''}`;
@@ -914,8 +914,46 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   /* v0.999 the box's pickers, as in Claude Code: '@' + letters = files of the working copy, '/' at the start = commands
      (Hoola's and this repo's own .claude/commands). Click (or Tab / Enter on the first) puts it in the box. */
   let PICK = null, PICK_T = 0, REPOCMD = null;
-  const HOOLA_CMDS = [['compact', 'Summarise the conversation so far · add what to keep after it'], ['init', 'Write the repo\u2019s AGENTS.md'], ['security-review', 'Review the changes for security problems'],
-    ['export', 'Download the conversation as a file'], ['style', 'How Hoola explains its work'], ['plugins', 'Your Claude Code plugins']];
+  // v0.999 every Claude Code built-in command, typed in the box (built-in names win over a repo command of the same name)
+  const TERMINAL_ONLY = ['vim', 'terminal-setup', 'statusline', 'ide', 'exit', 'quit', 'upgrade', 'bug', 'release-notes', 'privacy-settings'];
+  const BUILTIN = {
+    help: {d: 'Every command you can type here', run: () => helpDlg()},
+    clear: {d: 'Start fresh: a new session on this repo (this one stays in the list)', run: () => clearNow()},
+    compact: {d: 'Summarise the conversation so far · add what to keep after it', args: true, run: a => compactNow(a)},
+    context: {d: 'How full the conversation is', run: () => ACTS.ctxinfo()},
+    init: {d: 'Write the repo\u2019s AGENTS.md', run: () => initNow()},
+    review: {d: 'Review this branch\u2019s changes - nothing is changed', args: true,
+      send: 'Review the changes on this branch like a careful reviewer: bugs, risks and missing tests. Change nothing; report each finding with path:line.'},
+    'pr-comments': {d: 'Read the reviewers\u2019 comments on the pull request', run: () => prComments()},
+    export: {d: 'Download the conversation as a file', run: () => exportNow()},
+    rewind: {d: 'Go back to a checkpoint: code, conversation or both', run: () => rewindPick()},
+    resume: {d: 'Open another session', run: () => show('all')},
+    model: {d: 'The quality tier, which picks the model', run: () => modelNow()},
+    'output-style': {d: 'How Hoola explains its work', args: true, run: a => a ? setStyle(a) : styleMenu($('#hcdNote'))},
+    style: {d: 'Same as /output-style', args: true, run: a => a ? setStyle(a) : styleMenu($('#hcdNote')), alias: true},
+    cost: {d: 'What this session has cost so far', run: () => costDlg()},
+    usage: {d: 'This session\u2019s cost and your month', run: () => costDlg()},
+    status: {d: 'Repo, branch, mode, environment, pull request, context', run: () => statusDlg(false)},
+    doctor: {d: 'Check this session\u2019s setup for problems', run: () => statusDlg(true)},
+    todos: {d: 'Hoola\u2019s to-do list in this session', run: () => todosDlg()},
+    bashes: {d: 'Commands running in the background', run: () => openTerm()},
+    agents: {d: 'This repo\u2019s agents: add or change them', run: () => claudeFiles('.claude/agents/')},
+    hooks: {d: 'This repo\u2019s hooks (.claude/settings.json)', run: () => settingsFile()},
+    permissions: {d: 'Allow / ask / deny rules (.claude/settings.json)', run: () => settingsFile()},
+    memory: {d: 'The repo\u2019s rules for Hoola (CLAUDE.md)', run: () => memoryFile()},
+    mcp: {d: 'MCP servers this repo names', run: () => repoSetup()},
+    plugin: {d: 'Your Claude Code plugins', run: () => pluginsDlg()},
+    plugins: {d: 'Same as /plugin', run: () => pluginsDlg(), alias: true},
+    config: {d: 'Hoola Code settings', run: () => show('settings')},
+    'add-dir': {d: 'Other repos for this session', run: () => toast('Attach other repos when you start a session (Other repos). A running session keeps its repos.')},
+    login: {d: 'GitHub access (Settings)', run: () => show('settings')},
+    logout: {d: 'GitHub access (Settings)', run: () => show('settings'), alias: true},
+    'install-github-app': {d: 'GitHub access (Settings)', run: () => show('settings'), alias: true},
+  };
+  TERMINAL_ONLY.forEach(n => { BUILTIN[n] = {d: 'Terminal only', terminal: true, run: () => toast(`/${n} is a terminal command of Claude Code - Hoola Code does not need it.`)}; });
+  const HOOLA_CMDS = Object.entries(BUILTIN).filter(([, w]) => !w.terminal && !w.alias).map(([n, w]) => [n, w.d])
+    .concat([['security-review', 'Review the changes for security problems']])      // sent to Hoola as it is (the server knows it)
+    .sort((a, b) => a[0] < b[0] ? -1 : 1);
   function pickClose() { PICK = null; const b = $('#hcdPick'); if (b) b.remove(); }
   function pickFor(ta) {
     if (!TASK || shared) return pickClose();
@@ -1320,12 +1358,13 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     const ta = $('#hcdNote'), v = (text === undefined ? ta.value : text).trim(), mode = $('#hcdSteer').dataset.mode, t = TASK;
     const cs = mode === 'note' || mode === 'revise' ? COMMENTS : [];
     if (!t || mode === 'off' || (!v && !cs.length)) return;
-    const sc = /^\/(compact|init|export|plugins|style)(?:\s+([\s\S]*))?$/.exec(v);      // v0.999 Claude Code's session commands
-    if (sc && (sc[1] === 'compact' || sc[1] === 'style' || !sc[2])) {
-      if (text === undefined) { ta.value = ''; grow(ta); }
-      const arg = (sc[2] || '').trim();
-      return sc[1] === 'compact' ? compactNow(arg) : sc[1] === 'init' ? initNow() : sc[1] === 'export' ? exportNow()
-        : sc[1] === 'plugins' ? pluginsDlg() : arg ? setStyle(arg) : styleMenu($('#hcdNote'));
+    const sc = /^\/([a-z][\w-]*)(?:\s+([\s\S]*))?$/.exec(v);      // v0.999 Claude Code's built-in commands, typed
+    if (sc && BUILTIN[sc[1]]) {
+      const w = BUILTIN[sc[1]], arg = (sc[2] || '').trim();
+      if (w.args || !arg) {
+        if (text === undefined) { ta.value = ''; grow(ta); }
+        return w.send ? sendMessage(w.send + (arg ? '\n' + arg : '')) : w.run(arg);
+      }
     }
     const typed = text === undefined, mine = v && (mode === 'revise' || mode === 'answer') ? herNow(v) : null;      // her words show the moment she sends
     if (typed && mine) { ta.value = ''; grow(ta); }
@@ -1389,7 +1428,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       ${any ? rows('Commands', (r.commands || []).map(c => `<div class="hcd-row"><span><code>/${esc(c.name)}</code></span><b>${esc(c.description || '')}</b></div>`))
         + rows('Agents', (r.agents || []).map(a => `<div class="hcd-row"><span><code>${esc(a.name)}</code></span><b>${esc(a.description || '')} · ${esc(a.tools)}${a.model && a.model !== 'inherit' ? ' · model ' + esc(a.model) : ''}</b></div>`))
         + rows('Skills', (r.skills || []).map(k => `<div class="hcd-row"><span><code>${esc(k.name)}</code></span><b>${esc(k.description || '')}</b></div>`))
-        + rows('MCP servers', (r.mcp || []).map(m => `<div class="hcd-row"><span><code>${esc(m.name)}</code></span><b>${m.ok ? 'Reachable · asks you before its first use' : esc(m.why || 'Not reachable')}</b></div>`))
+        + rows('MCP servers', (r.mcp || []).map(m => `<div class="hcd-row"><span><code>${esc(m.name)}</code></span><b>${m.ok ? (m.kind === 'stdio' ? 'Runs in the locked box' + (m.program ? ' · <code>' + esc(m.program) + '</code>' : '') : 'Online') + ' · asks you before its first use' : esc(m.why || 'Not reachable')}</b></div>`))
         + rows('Hooks', (r.hooks || []).map(h => `<div class="hcd-row"><span>${esc(h)}</span></div>`))
         + (r.mode ? `<h3>Starting mode</h3><p>${esc((MODES.find(m => m[0] === r.mode) || [0, r.mode])[1])} <span class="hcd-mut">from settings.json defaultMode</span></p>` : '')
         + ((r.env || []).length ? `<h3>Variables from settings.json</h3><p><code>${(r.env || []).map(esc).join('</code> <code>')}</code></p>` : '')
@@ -1398,6 +1437,77 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       ${(r.plugins || []).filter(p => p.enabled).length ? `<h3>Your plugins</h3><p>${(r.plugins || []).filter(p => p.enabled).map(p => esc(p.name)).join(' · ')}</p>` : ''}
       <div class="hcd-dlgb"><button class="hcd-btn" value="plug" formnovalidate>Plugins…</button><button class="hcd-btn" value="edit" formnovalidate>Edit the files…</button><span class="hcd-flex"></span><button class="hcd-btn" value="no">Close</button></div>`)
       .then(v => v === 'edit' ? claudeFiles() : v === 'plug' ? pluginsDlg() : null);
+  }
+  // v0.999 the dialogs behind the typed commands
+  async function helpDlg() {
+    if (!REPOCMD || REPOCMD.tid !== TASK.id) { try { REPOCMD = {tid: TASK.id, ...(await api('GET', `/api/devsahayak/tasks/${tid()}/commands`))}; } catch (e) { REPOCMD = {tid: TASK.id, commands: []}; } }
+    const row = (n, d) => `<div class="hcd-row"><span><code>/${esc(n)}</code></span><b>${esc(d)}</b></div>`;
+    await dialog(`<h2>Commands</h2><p class="hcd-mut">Type them in the box, like in Claude Code.</p>
+      <div class="hcd-cmdlist">${HOOLA_CMDS.map(([n, d]) => row(n, d)).join('')}</div>
+      ${(REPOCMD.commands || []).length ? `<h3>This repo\u2019s commands</h3><div class="hcd-cmdlist">${REPOCMD.commands.map(c => row(c.name, (c.description || '') + (c.hint ? ' · ' + c.hint : ''))).join('')}</div>` : ''}
+      <p class="hcd-mut">Terminal-only commands of Claude Code (${TERMINAL_ONLY.map(n => '/' + n).join(', ')}) are not needed here.</p>
+      <div class="hcd-dlgb"><button class="hcd-btn" value="no">Close</button></div>`);
+  }
+  function clearNow() {
+    const r = TASK && TASK.repo; if (r && (OV?.repos || []).some(x => x.repo === r)) REPO = r;
+    show('home'); toast('A fresh start: a new session on ' + (r || 'this repo') + '. The last one stays in the list.');
+  }
+  function modelNow() {
+    const b = $('.hcd-tierbtn') || $('#hcdNote');
+    if (TIERS && TIERS.available) return tierMenu(b);
+    toast('Hoola Code picks the model for you: ' + (TIER_NAME[(TIERS && TIERS.selected) || ''] || 'Normal') + ' quality.');
+  }
+  async function costDlg() {
+    const t = TASK, c = t.cost || {}, us = OV?.usage || {};
+    await dialog(`<h2>Cost</h2><div class="hcd-row"><span>This session</span><b>${c.calls ? rs(c.inr) + ' · ' + plural(c.calls, 'model call') : 'Nothing yet'}</b></div>
+      <div class="hcd-row"><span>This month, all of Hoola</span><b>${us.spent_inr > 0 ? rs(us.spent_inr) : 'Nothing yet'}${us.limit_inr > 0 ? ' of ' + rs(us.limit_inr) : ''}</b></div>
+      <p class="hcd-mut">The session figure is the list price of its model calls - an estimate, not a bill.</p>
+      <div class="hcd-dlgb"><button class="hcd-btn" value="no">Close</button></div>`);
+  }
+  async function statusDlg(doctor) {
+    const t = TASK, row = (k, v) => v ? `<div class="hcd-row"><span>${k}</span><b>${v}</b></div>` : '';
+    let probs = [];
+    if (doctor) {
+      const st = OV?.settings || {};
+      if (!st.github) probs.push('GitHub is not connected - Settings > GitHub access.');
+      if (!(OV?.repos || []).some(x => x.repo === t.repo)) probs.push(`${t.repo} is not in your list of repositories.`);
+      try { const r = await api('GET', `/api/devsahayak/tasks/${tid()}/commands`);
+        (r.mcp || []).filter(m => !m.ok).forEach(m => probs.push(`MCP server ${m.name} cannot be used: ${m.why}`)); } catch (e) { probs.push('Could not read this repo\u2019s Claude Code setup: ' + e.message); }
+      if (t.ctx >= 80) probs.push(`The conversation is ${t.ctx}% full - /compact makes room.`);
+    }
+    await dialog(`<h2>${doctor ? 'Doctor' : 'Status'}</h2>
+      ${row('Repo', esc(t.repo || ''))}${row('Branch', t.branch ? '<code>' + esc(t.branch) + '</code>' : '')}${row('Works from', esc(t.base || ''))}
+      ${row('Mode', esc((MODES.find(m => m[0] === (t.mode || '')) || [0, 'Default'])[1]))}${row('Environment', esc((t.env || {}).name || 'Auto'))}
+      ${row('Quality', esc(TIER_NAME[(TIERS && TIERS.selected) || ''] || 'Normal'))}${row('Pull request', t.pr_number ? '#' + t.pr_number + ' · ' + esc(STATUS[t.status] || t.status) : 'Not yet')}
+      ${row('Context', t.ctx >= 0 ? t.ctx + '% used' : '')}${row('Checkpoints', String(((t.ws || {}).checkpoints || []).length))}
+      ${doctor ? (probs.length ? `<h3>Found</h3>${probs.map(p => `<p>${esc(p)}</p>`).join('')}` : '<h3>Found</h3><p>Nothing wrong.</p>') : ''}
+      <div class="hcd-dlgb"><button class="hcd-btn" value="no">Close</button></div>`);
+  }
+  async function todosDlg() {
+    const td = [...(TASK.steps || [])].reverse().find(s => s.k === 'todo'), items = (td && td.items) || [];
+    await dialog(`<h2>To-dos</h2>${items.length ? items.map(x => `<div class="hcd-row"><span>${x.status === 'completed' ? '\u2713' : x.status === 'in_progress' ? '\u25cf' : '\u25cb'}</span><b>${esc(x.content || x.text || '')}</b></div>`).join('')
+      : '<p class="hcd-mut">Hoola has not made a to-do list in this session.</p>'}<div class="hcd-dlgb"><button class="hcd-btn" value="no">Close</button></div>`);
+  }
+  async function rewindPick() {
+    const cps = ((TASK.ws || {}).checkpoints || []).slice().reverse();
+    if (!cps.length) return toast('No checkpoint yet - one is saved after every round.');
+    if (TASK.running) return toast('Hoola is working - stop it first, then go back.');
+    const v = await dialog(`<h2>Rewind</h2><p class="hcd-mut">Pick the checkpoint to go back to.</p>
+      <div class="hcd-cflist">${cps.map(c => `<button class="hcd-row hcd-cfrow" value="${c.n}"><span>Checkpoint ${c.n}</span><b>${esc((c.label || '').slice(0, 60))}</b></button>`).join('')}</div>
+      <div class="hcd-dlgb"><button class="hcd-btn" value="no" formnovalidate>Never mind</button></div>`);
+    if (+v > 0) ACTS.rewind({dataset: {n: v}});
+  }
+  async function prComments() {
+    if (!TASK.pr_number) return toast('There is no pull request in this session yet.');
+    ACTS.readcomments({});
+  }
+  async function settingsFile() {
+    let have = false; try { await api('GET', `/api/devsahayak/tasks/${tid()}/claude-file?path=.claude/settings.json`); have = true; } catch (e) { have = false; }
+    claudeEdit('.claude/settings.json', have ? undefined : CF_NEW.find(n => n[0] === '.claude/settings.json')[2]);
+  }
+  async function memoryFile() {
+    let have = false; try { await api('GET', `/api/devsahayak/tasks/${tid()}/claude-file?path=CLAUDE.md`); have = true; } catch (e) { have = false; }
+    claudeEdit('CLAUDE.md', have ? undefined : CF_NEW.find(n => n[0] === 'CLAUDE.md')[2]);
   }
   async function compactNow(focus) {
     try { await api('POST', `/api/devsahayak/tasks/${tid()}/compact`, {focus: focus || ''}); toast(focus ? 'Summarised, keeping: ' + focus : 'The conversation is summarised - your words are kept.'); await again(); } catch (e) { toast(e.message, true); }
@@ -1426,12 +1536,12 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     ['.claude/output-styles/NAME.md', 'An output style', '---\ndescription: How replies should look\n---\nAnswer ...\n'],
     ['.claude/settings.json', 'Rules and hooks (settings.json)', '{\n  "permissions": {"allow": [], "ask": [], "deny": []},\n  "hooks": {}\n}\n'],
     ['.mcp.json', 'MCP servers (.mcp.json)', '{\n  "mcpServers": {}\n}\n'], ['CLAUDE.md', 'CLAUDE.md (rules for the repo)', '# Rules\n\n']];
-  async function claudeFiles() {
+  async function claudeFiles(only) {
     let r; try { r = await api('GET', `/api/devsahayak/tasks/${tid()}/commands`); } catch (e) { return toast(e.message, true); }
-    const have = r.files || [];
+    const have = (r.files || []).filter(f => !only || f.startsWith(only));
     const v = await dialog(`<h2>Claude Code files in this repo</h2><p class="hcd-mut">Change them here like Claude Code\u2019s /agents, /hooks and /permissions. A change is made in this session\u2019s copy of the repo, so it goes into its pull request. Never put a key or a password in them.</p>
       ${have.length ? `<div class="hcd-cflist">${have.map(f => `<button class="hcd-row hcd-cfrow" value="open:${esc(f)}"><code>${esc(f)}</code><span class="hcd-flex"></span>${svg('pencil')}</button>`).join('')}</div>` : '<p>This repo has none of them yet.</p>'}
-      <h3>Add</h3><div class="hcd-acts">${CF_NEW.filter(n => n[0].includes('NAME') || !have.includes(n[0])).map((n, i) => `<button class="hcd-btn sm" value="new:${CF_NEW.indexOf(n)}">${esc(n[1])}</button>`).join('')}</div>
+      <h3>Add</h3><div class="hcd-acts">${CF_NEW.filter(n => (!only || n[0].startsWith(only)) && (n[0].includes('NAME') || !have.includes(n[0]))).map(n => `<button class="hcd-btn sm" value="new:${CF_NEW.indexOf(n)}">${esc(n[1])}</button>`).join('')}</div>
       <div class="hcd-dlgb"><button class="hcd-btn" value="no">Close</button></div>`);
     if (!v || v === 'no') return;
     if (v.startsWith('open:')) return claudeEdit(v.slice(5));
@@ -1601,9 +1711,15 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       try { const out = await api('POST', `/api/devsahayak/tasks/${tid()}/edit`, {step: n, text});
         if (n < 0 && out && out.id && out.id !== t.id) { await load(); show('session', out.id); } else await again(); } catch (e) { toast(e.message, true); } },
     rewind: async b => { const n = +b.dataset.n;
-      const r = await dialog(`<h2>Go back to checkpoint ${n}?</h2><p class="hcd-mut">The working copy and the conversation return to how they were then. Work after it is dropped here. Your pull request on GitHub is not changed until the next push.</p>
-        <div class="hcd-dlgb"><button class="hcd-btn" value="no" formnovalidate>Cancel</button><button class="hcd-btn pri" value="ok">Go back</button></div>`);
-      if (r !== 'ok') return; await busy(b, async () => { await api('POST', `/api/devsahayak/tasks/${tid()}/rewind`, {n}); await again(); toast(`Back at checkpoint ${n}.`); }); },
+      const r = await dialog(`<h2>Go back to checkpoint ${n}</h2><p class="hcd-mut">What should go back? Your pull request on GitHub is not changed until the next push.</p>
+        <div class="hcd-rwopts">
+          <button class="hcd-rwopt" value="both"><b>Code and conversation</b><span>The files and the conversation return to how they were then.</span></button>
+          <button class="hcd-rwopt" value="conversation"><b>Conversation only</b><span>The conversation goes back; the files keep every change made since.</span></button>
+          <button class="hcd-rwopt" value="code"><b>Code only</b><span>The files go back; the conversation stays as it is.</span></button></div>
+        <div class="hcd-dlgb"><button class="hcd-btn" value="no" formnovalidate>Never mind</button></div>`);
+      if (!['both', 'code', 'conversation'].includes(r)) return;
+      await busy(b, async () => { await api('POST', `/api/devsahayak/tasks/${tid()}/rewind`, {n, what: r}); await again();
+        toast(r === 'code' ? `Files back at checkpoint ${n}. The conversation is unchanged.` : r === 'conversation' ? `Conversation back at checkpoint ${n}. The files keep their changes.` : `Back at checkpoint ${n}.`); }); },
     starter: b => { const l = $('#hcdLine'), st = STARTS[+b.dataset.i]; if (!l || !st) return; l.value = st[2]; l.focus(); l.setSelectionRange(l.value.length, l.value.length); },
     unkind: () => { HOME.kind = 'auto'; drawTray(); },
     unissue: () => { HOME.issue = 0; drawTray(); },

@@ -21,9 +21,10 @@ import 'code_changes.dart';
 import 'code_claude.dart';
 import 'code_files.dart';
 import 'code_home.dart';
-import '../shell/hoola_quality.dart' show HoolaQualityRow;
+import '../shell/hoola_quality.dart' show HoolaQualityRow, showHoolaTierSheet;
 import 'code_kit.dart';
 import 'code_made.dart';
+import 'code_more.dart' show CodeSettingsPage;
 import 'code_vps.dart';
 import 'code_start.dart';
 import 'code_terminal.dart';
@@ -414,11 +415,13 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
     final t = _t;
     if (t == null) return;
     final mode = _mode(t);
-    final text = (words ?? _msg.text).trim();
+    var text = (words ?? _msg.text).trim();
     // v1.0 /compact sums up the conversation, /init has Hoola write the repo's AGENTS.md - never sent as a message
     // v0.999 "/compact keep the API notes" = what the summary must keep; /export, /style, /plugins open their screens
+    // v0.999 every Claude Code built-in command typed here does its job on the phone (_slash); a built-in name wins over
+    // a repo command of the same name; /security-review and any other "/word" still go to Hoola as before
     if (words == null && text.startsWith('/')) {
-      final m = RegExp(r'^/([A-Za-z-]+)(?:\s+([\s\S]*))?$').firstMatch(text);
+      final m = RegExp(r'^/([A-Za-z][A-Za-z0-9_:-]*)(?:\s+([\s\S]*))?$').firstMatch(text);
       final name = (m?.group(1) ?? '').toLowerCase();
       final rest = (m?.group(2) ?? '').trim();
       if (name == 'compact') {
@@ -430,18 +433,15 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         await _run('POST', '$_base/compact', <String, dynamic>{if (rest.isNotEmpty) 'focus': rest});
         return;
       }
-      if (rest.isEmpty && const {'init', 'export', 'style', 'plugins'}.contains(name)) {
-        _msg.clear();
-        switch (name) {
-          case 'init':
-            await _run('POST', '$_base/init', const <String, dynamic>{});
-          case 'export':
-            await codeExportConversation(context, widget.app, widget.id);
-          case 'style':
-            await showCodeStylePicker(context, widget.app, widget.id);
-          case 'plugins':
-            await showCodePlugins(context, widget.app, id: widget.id);
+      if (name == 'review') {
+        if (mode != 'note' && mode != 'revise') {
+          codeToast(context, mode == 'off' ? 'This session is finished. Start a new one to review.' : 'Answer Hoola first, then ask for a review.');
+          return;
         }
+        text = rest.isEmpty ? _reviewAsk : '$_reviewAsk Focus on: $rest';   // sent as her message, below
+      } else if (name != 'security-review' && codeBuiltinNames.contains(name)) {
+        _msg.clear();
+        await _slash(name, rest, t);
         return;
       }
     }
@@ -469,6 +469,315 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
       setState(() => _sent = null);     // it did not go: her words go back into the box
       if (words == null && _msg.text.isEmpty) _msg.text = text;
     }
+  }
+
+  // ---------------------------------------------------------------------------------------------- typed commands
+  /// What /review sends (as her own message): a review that changes nothing.
+  static const _reviewAsk = 'Review the changes on this branch like a careful reviewer: bugs, risks and missing tests. '
+      'Change nothing; report each finding with path:line.';
+
+  /// What /hooks and /permissions start from when the repo has no .claude/settings.json yet.
+  static const _settingsStarter = '{\n  "permissions": {\n    "allow": [],\n    "ask": [],\n    "deny": []\n  },\n  "hooks": {}\n}\n';
+
+  /// v0.999 one of Claude Code's built-in commands, typed in the box: each does the same job here with the screens Hoola
+  /// Code already has. Nothing here is sent to Hoola as a message.
+  Future<void> _slash(String name, String rest, Map<String, dynamic> t) async {
+    final cps = cl(cm(t['ws'])['checkpoints']);
+    if (codeTerminalOnlyCommands.contains(name)) {
+      codeToast(context, 'That is a terminal command of Claude Code - Hoola Code does not need it.');
+      return;
+    }
+    switch (name) {
+      case 'help':
+        await _helpSheet();
+      case 'clear':
+        codeToast(context, 'Starting a new session on a clean page. This one stays in your sessions.');
+        await showCodeNewSession(context, widget.app, onStarted: _openSession);
+      case 'init':
+        await _run('POST', '$_base/init', const <String, dynamic>{});
+      case 'export':
+        await codeExportConversation(context, widget.app, widget.id);
+      case 'style' || 'output-style':
+        await showCodeStylePicker(context, widget.app, widget.id, name: rest);
+      case 'plugins' || 'plugin':
+        await showCodePlugins(context, widget.app, id: widget.id);
+      case 'model':
+        await showHoolaTierSheet(context, widget.app);
+      case 'context':
+        {
+          final v = t['ctx'] is num ? (t['ctx'] as num).toInt() : -1;
+          if (v < 0) {
+            codeToast(context, 'How full the conversation is shows once Hoola has worked in this session.');
+            return;
+          }
+          await showCodeContextExplain(context, widget.app, v.clamp(0, 100), running: codeRunning(t), onCompact: _compactNow);
+        }
+      case 'cost' || 'usage':
+        await _costSheet(t);
+      case 'status':
+        await _statusSheet(t, doctor: false);
+      case 'doctor':
+        await _statusSheet(t, doctor: true);
+      case 'todos':
+        await _todosSheet(t);
+      case 'rewind':
+        if (codeRunning(t)) {
+          codeToast(context, 'Wait until Hoola finishes this step, then go back.');
+        } else if (cps.length < 2) {
+          codeToast(context, 'There is no earlier checkpoint in this session yet.');
+        } else {
+          await _rewind(cps);
+        }
+      case 'resume':
+        Navigator.of(context).maybePop();
+      case 'bashes':
+        await Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => HoolaTheme(appearance: widget.app.appearance, child: CodeTerminalPage(app: widget.app, id: widget.id))));
+      case 'agents':
+        await openCodeClaudeFiles(context, widget.app, widget.id);
+      case 'hooks' || 'permissions':
+        await openCodeClaudeFile(context, widget.app, widget.id, '.claude/settings.json', _settingsStarter);
+      case 'memory':
+        await openCodeClaudeFile(context, widget.app, widget.id, 'CLAUDE.md', '# Rules\n\n');
+      case 'mcp':
+        await showCodeRepoSetup(context, widget.app, widget.id);
+      case 'config':
+        await Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => HoolaTheme(appearance: widget.app.appearance, child: CodeSettingsPage(app: widget.app))));
+      case 'pr-comments':
+        await _prComments(t);
+      case 'add-dir':
+        codeToast(context, 'Attach other repos when you start a session (Other repos). A running session keeps its repos.');
+      case 'login' || 'logout' || 'install-github-app':
+        codeToast(context, 'GitHub is connected and changed in Hoola Code settings > Repos & GitHub.');
+    }
+  }
+
+  /// /help: every command she can type, the repo's own commands, and the ones only a terminal needs.
+  Future<void> _helpSheet() async {
+    final r = await CodeCommands.of(widget.app, widget.id);
+    if (!mounted) return;
+    final repo = <Map<String, dynamic>>[];
+    for (final x in cl(r['commands'])) {
+      final n = cs(x['name']).replaceFirst(RegExp(r'^/'), '');
+      if (n.isNotEmpty && !codeBuiltinNames.contains(n.toLowerCase())) repo.add({...x, 'name': n});
+    }
+    final pick = await codeSheet<String>(context, widget.app,
+        title: 'Commands',
+        body: (ctx) {
+          final c = HoolaColors.of(ctx);
+          Widget row(String n, String what) => InkWell(
+                onTap: () => Navigator.pop(ctx, n),
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 48),
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                  alignment: Alignment.centerLeft,
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                    Text('/$n', style: codeMono(c, size: 13.5)),
+                    if (what.isNotEmpty) Text(what, style: codeSans(c, size: 13, color: c.ink3, height: 1.35)),
+                  ]),
+                ),
+              );
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text('Type a command at the start of your message, like in Claude Code. Tap one to put it in the box.',
+                style: codeSans(c, size: 14, color: c.ink2)),
+            const CodeSection('Built in'),
+            for (final (n, what) in codeOwnCommands) row(n, what),
+            if (repo.isNotEmpty) ...[
+              CodeSection("This repo's commands · ${repo.length}"),
+              for (final x in repo)
+                row(cs(x['name']), [cs(x['description']), cs(x['hint'])].where((e) => e.isNotEmpty).join(' · ')),
+            ],
+            const CodeSection('Terminal-only commands of Claude Code (not needed here)'),
+            Text(codeTerminalOnlyCommands.map((x) => '/$x').join('   '), style: codeMono(c, size: 13, color: c.ink3)),
+            const SizedBox(height: 12),
+          ]);
+        });
+    if (pick == null || !mounted) return;
+    final put = '/$pick ';
+    _msg.value = TextEditingValue(text: put, selection: TextSelection.collapsed(offset: put.length));
+    _focus.requestFocus();
+  }
+
+  /// One "what: value" line in the status and cost sheets.
+  Widget _fact(HoolaColors c, String what, String value, {Color? color}) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(width: 118, child: Text(what, style: codeSans(c, size: 14, color: c.ink3))),
+          Expanded(child: Text(value, style: codeSans(c, size: 14, color: color ?? c.ink))),
+        ]),
+      );
+
+  String _costWords(Map<String, dynamic> t) {
+    final cost = cm(t['cost']);
+    final inr = cost['inr'] is num ? (cost['inr'] as num).toDouble() : 0.0;
+    final calls = ci(cost['calls']);
+    if (inr <= 0 && calls == 0) return 'Nothing yet';
+    return '₹${inr.toStringAsFixed(2)} · ${cPlural(calls, 'model call')}';
+  }
+
+  /// /cost and /usage: what this session's model calls came to, as an estimate.
+  Future<void> _costSheet(Map<String, dynamic> t) async {
+    await codeSheet<void>(context, widget.app,
+        title: 'Cost of this session',
+        body: (ctx) {
+          final c = HoolaColors.of(ctx);
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text(_costWords(t), style: codeSans(c, size: 22, weight: FontWeight.w600)),
+            const SizedBox(height: 10),
+            Text("An estimate at the models' list price for this session's calls, added up over its rounds. It is not a bill.",
+                style: codeSans(c, size: 14, color: c.ink2)),
+            const SizedBox(height: 16),
+            CodeOutline('Close', onTap: () => Navigator.pop(ctx)),
+          ]);
+        });
+  }
+
+  /// /status: where this session stands. /doctor: the same, plus the problems found in its setup.
+  Future<void> _statusSheet(Map<String, dynamic> t, {required bool doctor}) async {
+    final problems = <String>[];
+    if (doctor) {
+      codeToast(context, 'Checking this session…');
+      final r = await CodeCommands.of(widget.app, widget.id, fresh: true);
+      if (!mounted) return;
+      if (r.isEmpty) problems.add("Could not read this repo's setup. Check your connection, or wait until the working copy is ready.");
+      for (final x in cl(r['mcp'])) {
+        if (x['ok'] == true) continue;
+        problems.add('MCP server ${cs(x['name'])} cannot be used: ${cs(x['why']).isEmpty ? 'not reachable' : cs(x['why'])}');
+      }
+      final ov = await codeCall(context, widget.app, 'GET', '/api/devsahayak', quiet: true);
+      if (!mounted) return;
+      if (ov != null && cm(ov['settings'])['github'] == false) {
+        problems.add('GitHub is not connected. Connect it in Hoola Code settings > Repos & GitHub.');
+      }
+      if (cs(t['error']).trim().isNotEmpty) problems.add('Last error: ${cs(t['error']).trim()}');
+      ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
+    }
+    if (!mounted) return;
+    final ctxUsed = t['ctx'] is num ? (t['ctx'] as num).toInt() : -1;
+    final ciState = cs(cm(t['ci'])['state']);
+    final ciWords = switch (ciState) {
+      'success' => 'CI passed',
+      'failure' => 'CI failed',
+      'pending' => 'CI running',
+      '' => 'no CI result yet',
+      _ => 'no CI on this repo',
+    };
+    final pr = ci(t['pr_number']) > 0 ? '#${ci(t['pr_number'])} · $ciWords' : 'Not opened yet';
+    final cps = cl(cm(t['ws'])['checkpoints']);
+    await codeSheet<void>(context, widget.app,
+        title: doctor ? 'Doctor' : 'Status',
+        body: (ctx) {
+          final c = HoolaColors.of(ctx);
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            _fact(c, 'Repo', cs(t['repo']).isEmpty ? '-' : cs(t['repo'])),
+            _fact(c, 'Branch', cs(t['branch']).isEmpty ? 'Not made yet' : cs(t['branch'])),
+            _fact(c, 'Base', cs(t['base']).isEmpty ? 'main' : cs(t['base'])),
+            _fact(c, 'Mode', _modeLabel(t)),
+            _fact(c, 'Environment', _envName(t)),
+            _fact(c, 'Pull request', pr, color: ciState == 'failure' ? c.bad : null),
+            _fact(c, 'Context', ctxUsed < 0 ? 'Not known yet' : '${ctxUsed.clamp(0, 100)}% used', color: ctxUsed >= 80 ? c.warn : null),
+            _fact(c, 'Cost', '${_costWords(t)} (estimate)'),
+            _fact(c, 'Checkpoints', '${cps.length}'),
+            _fact(c, 'State', codeRunning(t) ? 'Working' : codeStatus(t)),
+            if (doctor) ...[
+              CodeSection(problems.isEmpty ? 'Problems' : 'Problems · ${problems.length}'),
+              if (problems.isEmpty)
+                Text('No problems found.', style: codeSans(c, size: 14, color: c.ok))
+              else
+                for (final p in problems)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text('• $p', style: codeSans(c, size: 14, color: c.warn, height: 1.4)),
+                  ),
+            ],
+            const SizedBox(height: 16),
+            CodeOutline('Close', onTap: () => Navigator.pop(ctx)),
+          ]);
+        });
+  }
+
+  /// /todos: Hoola's newest to-do list in this session.
+  Future<void> _todosSheet(Map<String, dynamic> t) async {
+    final items = _todoItems(t);
+    if (items.isEmpty) {
+      codeToast(context, 'Hoola has no to-do list in this session yet.');
+      return;
+    }
+    final done = items.where((x) => cs(x['status']) == 'completed').length;
+    await codeSheet<void>(context, widget.app,
+        title: 'To-do list · $done of ${items.length} done',
+        body: (ctx) {
+          final c = HoolaColors.of(ctx);
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            for (final x in items)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Icon(
+                      switch (cs(x['status'])) {
+                        'completed' => Icons.check_circle_rounded,
+                        'in_progress' => Icons.radio_button_checked_rounded,
+                        _ => Icons.radio_button_unchecked_rounded,
+                      },
+                      size: 19,
+                      color: switch (cs(x['status'])) { 'completed' => c.ok, 'in_progress' => c.accent, _ => c.ink3 }),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(cs(x['content']),
+                        style: codeSans(c,
+                            size: 14.5,
+                            color: cs(x['status']) == 'completed' ? c.ink3 : c.ink,
+                            weight: cs(x['status']) == 'in_progress' ? FontWeight.w500 : FontWeight.w400)),
+                  ),
+                ]),
+              ),
+            const SizedBox(height: 16),
+            CodeOutline('Close', onTap: () => Navigator.pop(ctx)),
+          ]);
+        });
+  }
+
+  /// /pr-comments: the reviewers' comments on this session's pull request that the phone already holds.
+  Future<void> _prComments(Map<String, dynamic> t) async {
+    if (ci(t['pr_number']) <= 0) {
+      codeToast(context, 'No pull request yet.');
+      return;
+    }
+    final open = cl(t['pr_comments']);
+    if (open.isEmpty) {
+      codeToast(context, 'Open the pull request to read its comments.');
+      return;
+    }
+    final url = cs(t['pr_url']);
+    await codeSheet<void>(context, widget.app,
+        title: "Reviewers' comments · ${open.length}",
+        body: (ctx) {
+          final c = HoolaColors.of(ctx);
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            for (final x in open)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(
+                      [cs(x['who']), if (cs(x['path']).isNotEmpty) ci(x['line']) > 0 ? '${cs(x['path'])}:${ci(x['line'])}' : cs(x['path'])]
+                          .where((e) => e.isNotEmpty)
+                          .join(' · '),
+                      style: codeMono(c, size: 12.5, color: c.ink3)),
+                  const SizedBox(height: 2),
+                  Text(cs(x['text']), style: codeSans(c, size: 14, height: 1.45)),
+                ]),
+              ),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(child: CodeOutline('Close', onTap: () => Navigator.pop(ctx))),
+              if (url.isNotEmpty) ...[
+                const SizedBox(width: 10),
+                Expanded(child: CodeOutline('GitHub', icon: Icons.open_in_new_rounded, onTap: () => codeOpenGithub(url))),
+              ],
+            ]),
+          ]);
+        });
   }
 
   Future<void> _askMerge() async {
@@ -905,7 +1214,25 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
               for (final cp in cps.reversed.take(8))
                 CodeChoiceRow(label: 'Checkpoint ${ci(cp['n'])}', sub: cs(cp['label']), on: false, onTap: () => Navigator.pop(ctx, ci(cp['n']))),
             ]));
-    if (n != null && n > 0) _run('POST', '$_base/rewind', {'n': n});
+    if (n == null || n <= 0 || !mounted) return;
+    // v0.999 Claude Code's /rewind: what goes back - both, the conversation only, or the code only
+    final what = await codeSheet<String>(context, widget.app,
+        title: 'Go back to checkpoint $n',
+        body: (ctx) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Text('What should go back? Your pull request on GitHub is not changed until the next push.',
+                  style: codeSans(HoolaColors.of(ctx), size: 13.5, color: HoolaColors.of(ctx).ink2)),
+              const SizedBox(height: 10),
+              CodeChoiceRow(
+                  label: 'Code and conversation', sub: 'The files and the conversation return to how they were then.', on: false,
+                  onTap: () => Navigator.pop(ctx, 'both')),
+              CodeChoiceRow(
+                  label: 'Conversation only', sub: 'The conversation goes back; the files keep every change made since.', on: false,
+                  onTap: () => Navigator.pop(ctx, 'conversation')),
+              CodeChoiceRow(
+                  label: 'Code only', sub: 'The files go back; the conversation stays as it is.', on: false,
+                  onTap: () => Navigator.pop(ctx, 'code')),
+            ]));
+    if (what != null) _run('POST', '$_base/rewind', {'n': n, 'what': what});
   }
 
   // v0.943 her own look at the working copy; picked lines come back quoted into her next message
@@ -1737,7 +2064,12 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         return _line(c, Icons.bookmark_border_rounded, [TextSpan(text: 'Checkpoint ${ci(s['num'] ?? s['n'])} saved')]);
       case 'rewind':
         return _line(c, Icons.undo_rounded, [
-          TextSpan(text: 'Went back to checkpoint ${ci(s['num'] ?? s['n'])}${ci(s['from']) >= 0 && s.containsKey('from') ? ' - the greyed part above was undone' : ''}')
+          TextSpan(
+              text: cs(s['what']) == 'code'
+                  ? 'Put the files back to checkpoint ${ci(s['num'] ?? s['n'])} - the conversation is unchanged'
+                  : cs(s['what']) == 'conversation'
+                      ? 'Took the conversation back to checkpoint ${ci(s['num'] ?? s['n'])} - the files keep their changes'
+                      : 'Went back to checkpoint ${ci(s['num'] ?? s['n'])}${ci(s['from']) >= 0 && s.containsKey('from') ? ' - the greyed part above was undone' : ''}')
         ]);
       case 'pass':
         {

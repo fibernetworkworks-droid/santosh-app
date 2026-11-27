@@ -61,6 +61,23 @@ LANGS = {"en": "English", "hi": "Hindi (Devanagari)", "mr": "Marathi (Devanagari
 LANG_WORDS = {"english": "en", "angrezi": "en", "hindi": "hi", "हिंदी": "hi", "हिन्दी": "hi", "marathi": "mr", "मराठी": "mr",
               "hinglish": "hinglish", "en": "en", "hi": "hi", "mr": "mr"}
 HTML_LANG = {"en": "en", "hi": "hi", "mr": "mr", "hinglish": "hi-Latn"}
+# GLOBAL (v0.999.266): docs in the languages of her users anywhere, not only India. Each code is a BCP 47 tag; the name is
+# what the writer is told. Hinglish stays one of them, never a default outside India.
+_WORLD = {"es": "Spanish", "fr": "French", "de": "German", "pt": "Portuguese", "it": "Italian", "nl": "Dutch", "pl": "Polish",
+          "tr": "Turkish", "ru": "Russian", "uk": "Ukrainian", "ar": "Arabic", "he": "Hebrew", "fa": "Persian", "ur": "Urdu",
+          "bn": "Bengali", "gu": "Gujarati", "pa": "Punjabi", "ta": "Tamil", "te": "Telugu", "kn": "Kannada", "ml": "Malayalam",
+          "or": "Odia", "ne": "Nepali", "si": "Sinhala", "id": "Indonesian", "ms": "Malay", "th": "Thai", "vi": "Vietnamese",
+          "fil": "Filipino", "zh": "Chinese (Simplified)", "zh-Hant": "Chinese (Traditional)", "ja": "Japanese", "ko": "Korean",
+          "sw": "Swahili", "am": "Amharic", "yo": "Yoruba", "ha": "Hausa", "zu": "Zulu", "el": "Greek", "sv": "Swedish",
+          "no": "Norwegian", "da": "Danish", "fi": "Finnish", "cs": "Czech", "ro": "Romanian", "hu": "Hungarian"}
+for _c, _n in _WORLD.items():
+    LANGS.setdefault(_c, _n)
+    HTML_LANG.setdefault(_c, _c)
+    LANG_WORDS.setdefault(_c.lower(), _c)
+    LANG_WORDS.setdefault(_n.lower(), _c)
+    LANG_WORDS.setdefault(_n.split(" ")[0].lower(), _c)
+LANG_WORDS.update({"chinese": "zh", "mandarin": "zh", "tagalog": "fil", "farsi": "fa", "brazilian portuguese": "pt"})
+RTL = {"ar", "he", "fa", "ur"}
 
 
 def lang_of(v: Any, default: str = "en") -> str:
@@ -245,7 +262,7 @@ def step_sentence(st: dict[str, Any], lang: str = "en") -> str:
 
 
 # ---------------------------------------------------------------- privacy in screenshots
-PII_PATTERNS = (r"[\w.+-]+@[\w-]+\.[\w.]{2,}", r"(?:\+91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}", r"\b\d{4}\s\d{4}\s\d{4}\b",
+PII_PATTERNS = (r"[\w.+-]+@[\w-]+\.[\w.]{2,}", r"(?:\+91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}", r"\+\d{1,3}[\s-]?\(?\d{1,4}\)?(?:[\s-]?\d{2,4}){2,4}", r"\b\d{4}\s\d{4}\s\d{4}\b",
                 r"\b[A-Z]{5}\d{4}[A-Z]\b", r"\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b")
 PII_JS_RX = "|".join(PII_PATTERNS)
 

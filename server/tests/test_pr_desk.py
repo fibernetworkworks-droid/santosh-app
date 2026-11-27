@@ -42,7 +42,7 @@ def test_hire_chat_block_and_wiring(pdk):
     src = (root / "server/app/agent/santosh.py").read_text()
     assert "_prc.is_product(conversation_id)" in src and "adm.admit_families(_prc.FAMILIES)" in src
     for f_ in ("callconv.py", "convs.py"):
-        assert '"product")' in (root / "server/app" / f_).read_text()
+        assert '"product"' in (root / "server/app" / f_).read_text()
     from app.main import APP_VERSION, app
     r = TestClient(app).get("/console/product")
     assert r.status_code == 200 and "Content-Security-Policy" in r.headers and "prdesk.js" in r.text

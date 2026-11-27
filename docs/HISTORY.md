@@ -13125,3 +13125,100 @@ Tests: tests/test_v0999_263_route_wiring.py (8): walkers see handler steps, open
 rules, a click-only build-and-run of a Make-style route (store, var, repeater with collect, web request with a JSON body, error handler,
 settings, schedule start date, grid, clearing records), every step kind opens its panel and data view, Test step in the data view for
 the new steps, a queued webhook said on the runs page, the version. NOT VERIFIED on her server.
+
+
+## v0.999.264 MCP SERVERS THAT RUN AS A PROGRAM
+(owner: 'MCP servers that run as a program --- WORK ON IT'): a .mcp.json server with `command` + `args` (Claude Code's stdio servers: npx ..., uvx ..., node ./x.js, python -m x) - in the repo or in one of her plugins - now WORKS: it runs inside the session's locked box, like her commands, with the repo's own network setting (no network = none; package registries / her hosts through the allow-list proxy), and a small driver (`engine.MCP_DRIVER`, Python, in the box) speaks MCP to it over stdin / stdout: initialize, initialized, then ONE tools/list (up to 5 pages) or tools/call, answers 'not supported' to anything the server asks the client (roots / sampling), returns the answer + the program's log, and stops it (`Tools._stdio_mcp`, timeout `dev_mcp_stdio_s` 180 s, answer wait `dev_mcp_stdio_wait_s` 60 s). `repoconf.stdio_spec`: ${VAR} / ${VAR:-default} expanded only from what Hoola has (CLAUDE_PROJECT_DIR = /work), a command naming a variable Hoola lacks is not started, env values naming a missing variable or secret-looking names (TOKEN / KEY / SECRET...) are left out and listed, a plugin server that runs a file inside the plugin's own folder (${CLAUDE_PLUGIN_ROOT}) is said to be out of the box's reach. Her OK comes first for ANY repo-named server, now even to list its tools (it starts a program); 'always' covers the session. A server that never answers says so plainly with its output, and names the fix when it needed to download its package (network for package registries, or the repo's setup command). The setup dialog says 'Runs in the locked box' + the program (web + phone). 5 tests incl. a REAL stdio MCP server spoken to over pipes. NOT VERIFIED: on real Docker on her server (the base image has Python; npx / uvx servers need Node / uv in the repo's image and the network to fetch them); a server is started fresh for each request (no long-running server yet).
+
+
+## v0.999.265 APP REVIEWER DESK (owner: "App reviewer same as finance desks")
+
+The App reviewer (hire key `app_review`) gets its own section like the finance desks: `/console/appreview` (`static/console/ardesk.html/.js/.css`)
+with the App review chat (Conversation kind `appreview`, `server/app/archat.py`, routes `/api/ardesk/{chat, chat/new, chat/{conv}/ok, desk, do/{part}}`)
+beside the desk's pages, on the existing App Review engine (`server/app/appreview`, v0.1xx):
+- Today: needs (fix-list cards waiting, an app below Google Play's target API, critical / serious risks open, a review older than 30 days, websites
+  not verified, country not set), tiles, open risks by severity (ring), a card per app / site with its score, severity counts and score over reviews.
+- Review something: upload an APK / AAB / XAPK / source ZIP (the engine's own `/api/appreview/upload`), a GitHub repo (private through the sealed
+  read-only token), a website.
+- Reviews: list + one review (score, what changed since the last review, what Hoola read, risks with evidence, fix, snippet, sources; mark as
+  intended with a reason (needed for a critical); report PDF + Excel + fix list files).
+- Fix lists: the tasks, copy as text, a card to the Developer Assistant or her developer - sent only on her tap with the card hash; earlier cards.
+- Websites: add, the DNS TXT / file record to prove it is hers, Verify now; website reviews.
+- What is checked: the Play target API table, laws by country (checked / check this), every check by area, sources with dates, what Hoola never does.
+- Settings: country, stack, children, iPhone version, developer's name; GitHub token (sealed, never shown again).
+GLOBAL: `AppReviewSettings.country` (new nullable column; "" = India as before). `appreview.rules.law(country)` names the privacy, children and payment
+law per country (IN checked; EU / GB / US / CA / BR / AU / SG / AE / SA / ZA / NG / KE / JP / ID named as a starting point; any other = generic),
+`rules.localise` rewrites the India-only risks (dpdp_notice, dpdp_children, rbi_payment, rbi_card_fields) for another country with `check: true` and
+no sources. The tool `app_review action=settings` and `PUT /api/appreview/settings` take `country`. New `service.handoffs(tenant)`; report files now
+carry their download url. Guards: hire gate (paused = reads only), no token / password / OTP outside the GitHub part. Tests
+`server/tests/test_ar_desk.py` (5 incl. a browser walk at 1440 and 390). PRE-EXISTING red, not this release: `test_tech_appreview.py::test_tick_and_api`
+(date-dependent upload cleanup; fails on untouched main too). NOT VERIFIED on her server or with a real APK from her.
+
+
+## v0.999.266 REWIND LIKE CLAUDE CODE
+(owner: 'Rewind just the code or just the conversation --- WORK ON IT'): going back to a checkpoint now asks WHAT goes back, Claude Code's /rewind choices - Code and conversation (as before), Conversation only (the conversation returns to that checkpoint, the files keep every change made since), Code only (the files return, the conversation stays), Never mind. `Session.rewind(n, what)`, `engine.rewind`, `service.ws_rewind(..., what)`, POST /tasks/{id}/rewind {n, what}. A partial rewind keeps the later checkpoints, so she can go forward to one again; the next round is told once what changed under the conversation (`pending_note` -> <rewind_note> in her next message: re-read files before editing / run git diff to see the kept changes). The feed row says which it was ('Put the files back', 'Took the conversation back'). WEB: a choice dialog with the three options; PHONE: checkpoint, then the three choices. 6 tests incl. a real git working copy and a real-browser walk.
+
+
+## v0.999.267 TECHNICAL WRITER DESK (owner: "Technical writer same as finance desks")
+
+The Technical writer (hire key `docs_writer`) gets its own section like the finance desks: `/console/docs` (`static/console/dwdesk.html/.js/.css`)
+with the Docs chat (Conversation kind `docs`, `server/app/dwchat.py`, routes `/api/dwdesk/{chat, chat/new, chat/{conv}/ok, desk, do/{part}}`) beside
+the desk's pages, on the existing Docs engine (`server/app/docwriter`):
+- Today: needs (publish cards waiting, docs out of date, docs with a must-fix, products not verified, no product / no doc, English only), tiles,
+  docs by kind and by language, latest docs.
+- Write a doc: the kind (quick start / how-to / manual / FAQ / admin guide / API reference) as cards, product, language, title, her words; release
+  notes by version.
+- Docs: list with a filter; one doc = checks (must-fix / warnings with a jump to the section), publish card on her tap (asked twice on the page, no
+  browser dialog) with the hash, the public link + take it down, translate, change the whole doc, Word + PDF + Markdown, delete, each section with
+  its text (a small safe Markdown view, [blank] marked) and screenshots (fetched with the key, shown from a blob), her own edits (kept through syncs),
+  earlier versions.
+- Sources: products with verification (meta / file / DNS), read again, bring the docs in step, remove; connect a product.
+- Screenshots: step lists run in a real browser on her own verified site, re-shoot.
+- Settings: product name, readers, tone, support contact, the languages of her users, words never translated, her rules, glossary, GitHub token.
+GLOBAL: `docwriter.rules` gains 46 world languages (`_WORLD`: es, fr, de, pt, ar, ja, zh ...; lang_of takes names or codes), `RTL` (the docs page /
+PDF printed right to left), a phone pattern for any country in the privacy mask; Hinglish is never a default. Guards: hire gate (paused = reads only),
+no token / password / OTP outside the GitHub part. Tests `server/tests/test_dw_desk.py` (5 incl. a browser walk at 1440 and 390). NOT VERIFIED on her
+server, with a real model or a real GitHub / WordPress publish.
+
+
+## v0.999.268 EVERY COMMAND TYPED
+(owner: 'Typing every built-in command --- WORK ON IT'): in a Hoola Code session the message box takes Claude Code's built-in commands, each doing the same job here (web `code.js` BUILTIN, phone lib/ui/code): /help (every command + the repo's own), /clear (a new session on the same repo - this one stays), /compact [what to keep], /context, /init, /review (a careful review of this branch, nothing changed), /security-review, /pr-comments, /export, /rewind (pick the checkpoint, then code / conversation / both), /resume (all sessions), /model (the quality tier that picks the model), /output-style, /cost and /usage (this session's cost, an estimate, + the month), /status, /doctor (status + what is wrong: GitHub, the repo, MCP servers that cannot be used, a full context), /todos, /bashes (the terminal), /agents, /hooks and /permissions (.claude/settings.json, a template when there is none), /memory (CLAUDE.md), /mcp, /plugin, /config, /add-dir, /login /logout /install-github-app (Settings > GitHub). Built-in names win over a repo command of the same name, as in Claude Code; the terminal-only ones (/vim /terminal-setup /statusline /ide /exit /quit /upgrade /bug /release-notes /privacy-settings) say they are not needed here instead of being sent to Hoola. The / picker lists them all. 3 tests incl. a real-browser walk.
+
+## v0.999.269 THE WORKFLOW LIBRARY (built as 0.999.264 / 0.999.268; the other sessions took 0.999.264-0.999.268, all kept)
+
+Owner: "https://github.com/Zie619/n8n-workflows.git -- now this is repo having readymade workflows for n8n ---- make it fully
+fuctional for hoola route -- make a workflow section in sidebar in route tool ---- first read then design and deployment".
+
+Read first:
+- The repo's HEAD is broken for importing: commit 74bdcdc ("Add workflow fixer", 29 Sep 2025) rewrote every workflow and dropped
+  their connections (2,056 of 2,061 came in with no steps). The last whole commit is f8639776 (28 Sep 2025) - Hoola pins to it.
+- History: a DMCA rewrite in Aug 2025 (before the pinned commit); the owner added the MIT licence on 3 Nov 2025.
+- Files can carry written-in keys (tokens in headers, URLs, apiKey fields).
+
+Built:
+- `server/app/route/n8nlib.py`: the index (shipped as `n8nlib_index.json.gz`: id, file, name, category from the repo's own
+  context/search_categories.json, apps, start, steps, sha256, readiness ready / check / partial, description from the first note),
+  search with filters and pages, `raw_of` = fetched from raw.githubusercontent.com at the pinned commit only when opened, refused
+  unless its sha256 matches, kept under data/n8nlib; `scrub` takes out sign-in blocks, pinned data, webhook ids and any written-in
+  key (by field name or by shape: sk-, xox, ghp_, AIza, Bot tokens, Bearer, JWT, AKIA, SendGrid, Resend) into {{env.N8N_...}} and
+  lists them; `preview` / `use` go through the normal importer (`n8n.bring_in`, switched off, a taken name refused).
+- `server/tools/n8nlib_build.py`: rebuilds the index from a checkout; each file goes through Hoola's importer and the route
+  engine's checks, files that fail are left out (97 of 2,057, mostly one-node files), byte-identical duplicates kept once.
+- Routes: GET /api/route/library, GET /api/route/library/{id}, POST /api/route/library/{id}/use.
+- Page: sidebar "Workflows" (#/workflows): search, app / category / start dropdowns, All / Runs now / Runs as it is chips, cards
+  (apps, name, the repo's note, readiness, start, steps, category), pages; a workflow's page: Bring it in with a name, what it
+  becomes (counts, keys taken out, to redo, to check, left out, notes, the steps as a tree), See it on GitHub.
+- Importer (`route/n8n.py`): Google Sheets (read / lookup -> sheet_read / sheet_query, append, update / appendOrUpdate), Gmail +
+  Send Email (email_draft - n8n sent at once, here a draft waits for her OK; said), Gmail read / get / reply, Drive (download,
+  create doc, search, new folder), Calendar (add, read), OpenWeatherMap, Date & Time v1 + v2 (Moment / Luxon formats to Python's),
+  Crypto (MD5 / SHA-1 / SHA-256 / HMAC SHA-256 / UUID / random), HTML (template, picks by CSS selector), Markdown, XML, RSS
+  (web request + read XML), Rename Keys, Compare Datasets (four ways), Item Lists (as their own nodes), Convert to File /
+  Spreadsheet File (CSV / Excel), every web request method with a body, Set in JSON mode, Telegram / Slack / Discord / Mattermost
+  messages -> "tell me" (said; a bot answering people stays a step to redo); a field an earlier node added is read from that node's
+  step; a literal {{ $json.x }} is read as an expression; an expression Hoola cannot read becomes text ([n8n: ...]) and a step's
+  text is kept within 2,000 characters, so a library workflow never lands as a broken route. `sheet_append` takes one row as an object.
+- Measured on the pinned commit: clean imports 221 -> 408 of 2,057, median converted share 57% -> 70%, route check failures 259 -> 87.
+
+Tests: tests/test_v0999_264_workflow_library.py (11): the shipped index, search / filters / pages, sha256 check + server copy,
+keys taken out, the new nodes, a bot reply not turned into a message to her, unreadable expressions, most of the library comes in,
+the three routes, a browser walk (desktop + phone width), the version. NOT VERIFIED on her server (GitHub reachable from it).

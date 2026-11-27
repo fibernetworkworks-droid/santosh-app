@@ -68,7 +68,9 @@ def _settings_row(s, tenant: str) -> AppReviewSettings:
 def settings(tenant: str) -> dict[str, Any]:
     with session() as s:
         st = _settings_row(s, tenant)
-        return {"stack": st.stack, "kids": bool(st.kids), "ios": bool(st.ios), "developer": st.developer,
+        c = (st.country or "").upper()
+        return {"stack": st.stack, "kids": bool(st.kids), "ios": bool(st.ios), "developer": st.developer, "country": c,
+                "law": R.law(c or "IN"),
                 "github": {"joined": bool(st.gh_sealed), "label": st.gh_label},
                 "play_target": {"new_and_updates": R.PLAY_TARGET["new_and_updates"], "existing_min": R.PLAY_TARGET["existing_min"],
                                 "since": R.PLAY_TARGET["since"].isoformat()}, "checked_on": R.CHECKED_ON}
@@ -87,12 +89,17 @@ def save_settings(tenant: str, **kw: Any) -> dict[str, Any]:
                 setattr(st, k, bool(kw[k]))
         if "developer" in kw:
             st.developer = str(kw["developer"] or "")[:120]
+        if "country" in kw:
+            c = str(kw["country"] or "").strip().upper()
+            if c and not re.fullmatch(r"[A-Z]{2}", c):
+                raise ReviewError("country: a two-letter code, for example IN, US, GB, DE")
+            st.country = c
     return settings(tenant)
 
 
 def _opts(tenant: str) -> dict[str, Any]:
     st = settings(tenant)
-    return {"kids": st["kids"], "ios": st["ios"], "stack": st["stack"]}
+    return {"kids": st["kids"], "ios": st["ios"], "stack": st["stack"], "country": st["country"] or "IN"}
 
 
 # ---------------------------------------------------------------- her files
@@ -141,15 +148,16 @@ def _resolve_file(tenant: str, ref: str) -> tuple[str, Path]:
 
 
 # ---------------------------------------------------------------- risks
-def build_risk(f: dict[str, Any], stack: str) -> dict[str, Any]:
+def build_risk(f: dict[str, Any], stack: str, country: str = "IN") -> dict[str, Any]:
     rl = R.RULES[f["code"]]
     detail = f.get("detail") or ""
     explain = rl["explain"].replace("{detail}", detail) if "{detail}" in rl["explain"] else (
         rl["explain"] + (f" ({detail})" if detail else ""))
-    return {"key": f["key"], "code": f["code"], "title": rl["title"], "area": rl["area"], "area_label": R.AREAS[rl["area"]],
+    out = {"key": f["key"], "code": f["code"], "title": rl["title"], "area": rl["area"], "area_label": R.AREAS[rl["area"]],
             "sev": f.get("sev") or rl["sev"], "masvs": rl["masvs"], "explain": explain, "evidence": f.get("evidence") or [],
             "fix": rl["fix"], "snippet": R.stack_snippet(f["code"], stack),
             "sources": [{"id": r, **R.SOURCES[r]} for r in rl.get("refs", []) if r in R.SOURCES], "status": "open"}
+    return R.localise(out, country)
 
 
 def _sort(risks: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -200,7 +208,7 @@ def _target(kind: str, facts: dict[str, Any], name: str) -> str:
 def _finish(tenant: str, kind: str, name: str, out: dict[str, Any], conv: str) -> dict[str, Any]:
     st = _opts(tenant)
     stack = st.get("stack") or out.get("stack") or "android"
-    risks = _sort([build_risk(f, stack) for f in out["findings"]])
+    risks = _sort([build_risk(f, stack, st.get("country") or "IN") for f in out["findings"]])
     facts = out.get("facts") or {}
     target = _target(kind, facts, name)
     with session() as s:
@@ -675,7 +683,7 @@ def report_files(tenant: str, ref: str = "", conv: str = "") -> dict[str, Any]:
             (f"FixList_{v['number']}_{slug}.json", json.dumps({"review": v["number"], "title": v["title"], "tasks": fix_list(v)},
                                                                ensure_ascii=False, indent=1).encode(), "application/json")):
         f = chatfiles.store(tenant, name, data, ct)
-        made.append({"file_id": f.get("file_id") or f.get("id"), "name": name})
+        made.append({"file_id": f.get("file_id") or f.get("id"), "name": name, "url": f.get("url") or ""})
         _publish(tenant, "pc_file", {**f, "source": "appreview", "title": name}, conv)
     with session() as s:
         r = _row(s, tenant, v["id"])
@@ -757,6 +765,23 @@ def handoff_decide(tenant: str, hid: str, yes: bool, hash_: str, *, by_tap: bool
         row.status, row.result, row.decided_at = status, result, now()
     return {"status": status, **result, "say": "Tasks given to the Developer Assistant." if status == "sent" and to == "devsahayak"
             else result.get("error") or "The message is ready; you send it."}
+
+
+def handoffs(tenant: str, limit: int = 30) -> list[dict[str, Any]]:
+    """Her fix-list cards: waiting for her tap, sent, rejected or failed (newest first)."""
+    with session() as s:
+        rows = s.scalars(select(AppReviewHandoff).where(AppReviewHandoff.tenant_id == tenant)
+                         .order_by(AppReviewHandoff.created_at.desc()).limit(limit)).all()
+        revs = {r.id: r for r in s.scalars(select(AppReview).where(AppReview.id.in_([x.review_id for x in rows]))).all()} if rows else {}
+        out = []
+        for h in rows:
+            rv = revs.get(h.review_id)
+            out.append({"id": h.id, "review_id": h.review_id, "review": rv.number if rv else "", "title": rv.title if rv else "",
+                        "to": h.to, "count": len(h.keys or []), "keys": list(h.keys or []), "hash": h.hash, "status": h.status,
+                        "result": {k: v for k, v in (h.result or {}).items() if k in ("message", "wa", "error", "devsahayak")},
+                        "created_at": h.created_at.isoformat() if h.created_at else "",
+                        "decided_at": h.decided_at.isoformat() if h.decided_at else ""})
+        return out
 
 
 # ---------------------------------------------------------------- worker

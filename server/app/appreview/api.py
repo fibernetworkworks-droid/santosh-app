@@ -35,7 +35,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.put("/settings")
     async def put_settings(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         b = _b(body)
-        return await run(S.save_settings, tenant, **{k: b[k] for k in ("stack", "kids", "ios", "developer") if k in b})
+        return await run(S.save_settings, tenant, **{k: b[k] for k in ("stack", "kids", "ios", "developer", "country") if k in b})
 
     @r.post("/upload")
     async def upload(file: UploadFile = File(...), tenant: str = Depends(current_tenant)):
