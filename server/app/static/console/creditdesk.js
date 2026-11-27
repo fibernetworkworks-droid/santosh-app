@@ -182,7 +182,7 @@
     $('#crPage').addEventListener('mouseleave', () => { const t = $('#crTip'); if (t) t.hidden = true; }, true);
     $('#crPage').addEventListener('input', e => { if (e.target.id !== 'crLq') return; ST.lq = e.target.value; const at = e.target.selectionStart;
       showPage(true); const q = $('#crLq'); if (q) { q.focus(); try { q.setSelectionRange(at, at); } catch {} } });
-    window.addEventListener('hashchange', () => { readTab(); paintTabs(); showPage(); });
+    window.addEventListener('hashchange', () => { ST.keepT = null; readTab(); paintTabs(); showPage(); });
     stateLine();
   }
   function foldIcon() {
@@ -217,12 +217,34 @@
   }
 
   /* ---------------------------------------------------------------- pages */
+  // what she is still typing in other boxes survives a save that redraws the page; a form just sent starts clean
+  function keepTyping(box) {
+    const out = [], act = document.activeElement, now = Date.now();
+    box.querySelectorAll('form[data-form]').forEach(f => {
+      if (f.dataset.sent && now - Number(f.dataset.sent) < 30000) return;
+      f.querySelectorAll('input[name], textarea[name], select[name]').forEach(el => {
+        if (el.type === 'checkbox' || el.type === 'radio' || el.type === 'file' || el.type === 'hidden') return;
+        const typed = el.tagName === 'SELECT' ? [...el.options].some(o => o.selected !== o.defaultSelected) : el.value !== el.defaultValue;
+        if (typed) out.push({f: f.dataset.form, n: el.name, v: el.value, focus: el === act, s: el.selectionStart, e: el.selectionEnd});
+      });
+    });
+    return out;
+  }
+  function putTyping(box, kept) {   // returns what could not go back yet (the page is still loading)
+    const later = [];
+    kept.forEach(k => {
+      const el = box.querySelector(`form[data-form="${k.f}"] [name="${k.n}"]`); if (!el) { later.push(k); return; }
+      el.value = k.v;
+      if (k.focus) { el.focus(); try { if (k.s != null) el.setSelectionRange(k.s, k.e); } catch (_) {} }
+    });
+    return later.length ? later : null;
+  }
   function showPage(keep) {
     const box = $('#crPage'); if (!box) return;
     if (!W()) { box.innerHTML = noBiz(); starters(); return; }
     const fn = {today: pToday, borrow: pBorrow, apps: pApps, loans: pLoans, risk: pRisk, settings: pSettings}[ST.tab] || pToday;
     const html = fn();
-    if (typeof html === 'string') box.innerHTML = html;
+    if (typeof html === 'string') { const kept = keepTyping(box).concat(ST.keepT || []); box.innerHTML = html; ST.keepT = putTyping(box, kept); }
     starters();
     if (!keep) $('#sdDesk').scrollTop = 0;
   }
@@ -660,7 +682,7 @@
     } catch (e) { toast(e.message, true); }
   }
   async function changed(msg) { if (msg) toast(msg); clearCache(); await refreshDesk(false); showPage(true); }
-  const formOf = sel => { const f = $(sel); if (!f) return null; if (!f.reportValidity()) return false; return new FormData(f); };
+  const formOf = sel => { const f = $(sel); if (!f) return null; if (!f.reportValidity()) return false; f.dataset.sent = Date.now(); return new FormData(f); };
   const val = (fd, n) => S(fd.get(n)).trim();
   const nums = (fd, names) => { const o = {}; for (const n of names) { const v = val(fd, n); if (v !== '') o[n] = Number(v); } return o; };
   async function onPageClick(e) {
@@ -732,7 +754,7 @@
     try { await run('condition', a); await changed('Updated.'); } catch (err) { toast(err.message, true); showPage(true); }
   }
   async function onSubmit(e) {
-    const form = e.target.closest('form[data-form]'); if (!form) return;
+    const form = e.target.closest('form[data-form]'); if (!form) return; form.dataset.sent = Date.now();
     e.preventDefault();
     const fd = new FormData(form), kind = form.dataset.form, btn = form.querySelector('[type=submit]');
     const g = n => val(fd, n), n = Number(ST.arg);

@@ -12760,3 +12760,15 @@ Hoola Code fix pass. Web `static/console/code.js` (hcdQual, P.rail out of the co
   search; "Bring in a file" on All routes.
 - Tests `server/tests/test_v0999_246_route_workspace.py` (11 incl. a Chromium walk). NOT VERIFIED: on her server, a real OAuth2
   site, a real team member's run.
+
+
+## v0.999.247 FIRM DESK TYPING KEPT (owner: "NOW LETS WORK ON NEXT EMPLOYEE SAME WAY -- FIRM PRACTICE")
+
+The Firm Practice employee already had its own section /console/firm + Firm chat (v0.999.222). Checked end to end with its
+browser walk on: a save on a client page (Mark received, the fact-find, an engagement letter) redraws the page, and a client
+page redraws twice (a "Working it out" step, then the page), so whatever she was half-typing in another box was wiped.
+`firmdesk.js` now keeps typed values (and the cursor) across the redraw and the loading step (`keepTyping` / `putTyping`,
+`ST.keepT`, cleared on navigation); the form just sent starts clean (`dataset.sent`); the toast shows after the redraw.
+The Cash, Credit, Money Safety, Payments and Tax desks had the same redraw with no keeper and get the same helper; the
+newer desks already had their own (`typed` / `retype`). Test: the firm browser walk types into the engagement fee, marks a
+paper received and checks the fee is still there (fails on the old code). NOT VERIFIED on her server.

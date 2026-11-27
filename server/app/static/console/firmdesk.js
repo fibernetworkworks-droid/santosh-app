@@ -174,7 +174,7 @@
     $('#fmPage').addEventListener('click', onPageClick);
     $('#fmPage').addEventListener('submit', onSubmit);
     $('#fmPage').addEventListener('input', onInput);
-    window.addEventListener('hashchange', () => { readTab(); paintTabs(); showPage(); });
+    window.addEventListener('hashchange', () => { ST.keepT = null; readTab(); paintTabs(); showPage(); });
     stateLine();
   }
   function foldIcon() {
@@ -217,9 +217,31 @@
     if (ST.tab === 'draft' || location.hash.startsWith('#/draft/')) { box.innerHTML = draftPage(ST.arg); starters(); if (!keep) $('#sdDesk').scrollTop = 0; return; }
     const fn = isClient() ? pPortal : ({today: pToday, clients: pClients, work: pWork, team: pTeam, settings: pSettings}[ST.tab] || pToday);
     const html = fn();
-    if (typeof html === 'string') box.innerHTML = html;
+    if (typeof html === 'string') { const kept = keepTyping(box).concat(ST.keepT || []); box.innerHTML = html; ST.keepT = putTyping(box, kept); }
     starters();
     if (!keep) $('#sdDesk').scrollTop = 0;
+  }
+  // what she is still typing in other boxes survives a save that redraws the page; the form just sent starts clean
+  function keepTyping(box) {
+    const out = [], act = document.activeElement;
+    box.querySelectorAll('form[data-form]').forEach(f => {
+      if (f.dataset.sent) return;
+      f.querySelectorAll('input[name], textarea[name], select[name]').forEach(el => {
+        if (el.type === 'checkbox' || el.type === 'radio' || el.type === 'file') return;
+        const typed = el.tagName === 'SELECT' ? [...el.options].some(o => o.selected !== o.defaultSelected) : el.value !== el.defaultValue;
+        if (typed) out.push({f: f.dataset.form, n: el.name, v: el.value, focus: el === act, s: el.selectionStart, e: el.selectionEnd});
+      });
+    });
+    return out;
+  }
+  function putTyping(box, kept) {   // returns what could not go back yet (the page is still loading)
+    const later = [];
+    kept.forEach(k => {
+      const el = box.querySelector(`form[data-form="${k.f}"] [name="${k.n}"]`); if (!el) { later.push(k); return; }
+      el.value = k.v;
+      if (k.focus) { el.focus(); try { if (k.s != null) el.setSelectionRange(k.s, k.e); } catch (_) {} }
+    });
+    return later.length ? later : null;
   }
   const loading = () => '<section class="card"><p class="mut" style="margin:0">Working it out…</p></section>';
   function greet() { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; }
@@ -469,9 +491,9 @@
       setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     } catch (e) { toast(e.message, true); }
   }
-  async function changed(msg) { if (msg) toast(msg); clearCache(); await refreshDesk(false); showPage(true); }
+  async function changed(msg) { clearCache(); await refreshDesk(false); showPage(true); if (msg) toast(msg); }
   const val = (fd, n) => S(fd.get(n)).trim();
-  const formOf = sel => { const f = $(sel); if (!f) return null; if (!f.reportValidity()) return false; return new FormData(f); };
+  const formOf = sel => { const f = $(sel); if (!f) return null; if (!f.reportValidity()) return false; f.dataset.sent = '1'; return new FormData(f); };
   async function onPageClick(e) {
     const t = e.target;
     if (t.closest('select, input, textarea, label')) return;
@@ -507,10 +529,12 @@
         await run('person_add', a); await changed('Added.'); return;
       }
     } catch (err) { toast(err.message, true); }
+    finally { document.querySelectorAll('form[data-sent]').forEach(f => { delete f.dataset.sent; }); }
   }
   async function onSubmit(e) {
     const form = e.target.closest('form[data-form]'); if (!form) return;
     e.preventDefault();
+    form.dataset.sent = '1';
     const fd = new FormData(form), kind = form.dataset.form, btn = e.submitter || form.querySelector('[type=submit]'), g = n => val(fd, n);
     if (btn) btn.disabled = true;
     try {
@@ -525,7 +549,7 @@
       else if (kind === 'review') { const v = (btn && btn.dataset.verdict) || 'approve'; await run('review', {draft: ST.drFor, verdict: v, notes: g('notes'), hash: ST.dr && ST.dr.hash}); await changed(v === 'approve' ? 'Approved.' : 'Sent back.'); }
       else if (kind === 'link') { await run('link', {target: ST.linking, email: g('email')}); ST.linking = ''; await changed('Linked.'); }
     } catch (err) { toast(err.message, true); }
-    finally { if (btn) btn.disabled = false; }
+    finally { if (btn) btn.disabled = false; delete form.dataset.sent; }
   }
   function onInput(e) {
     if (!['fmCq', 'fmWq'].includes(e.target.id)) return;
