@@ -399,7 +399,7 @@ def test_phase5_in_a_browser(arena_server):  # noqa: F811
     pg.goto(base + "/console/code#/s/dt5")
     pg.wait_for_selector("#hcdRail .hcd-rc")
     # --- thinking view: hidden in Normal, shown in Thinking
-    assert pg.locator(".hcd-think").count() == 0                              # chat kit: each piece of work folds by itself; the Thinking view shows the steps unfolded
+    assert not any(x.is_visible() for x in pg.locator(".hcd-think").all())   # v0.999 only "Thought for Ns" shows, folded;                           # chat kit: each piece of work folds by itself; the Thinking view shows the steps unfolded
     pg.locator('[data-menu="title"]').click()
     pg.get_by_role("menuitemradio", name="Thinking").first.click()
     pg.wait_for_selector(".hcd-think")

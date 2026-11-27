@@ -112,7 +112,7 @@ class CodeReply extends StatelessWidget {
               ? null
               : () => codeMessageMenu(context, app, text,
                   mine: false, onQuote: onQuote == null ? null : () => onQuote!(plain), onSelect: onSelect),
-          child: HoolaMd(text, streaming: streaming, selectable: selecting, sans: true, fade: true, tail: tail),
+          child: HoolaMd(text, streaming: streaming, selectable: selecting, fade: true, tail: tail),   // v0.999 the reply font, same as the web page
         ),
         if (actions)
           Padding(
@@ -391,17 +391,27 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
     final path = _s(s['path']).split('/').last;
     switch (k) {
       case 'bash':
-        return (Icons.terminal_rounded, 'Ran', _s(s['desc']).isNotEmpty ? _s(s['desc']) : 'a command', true);
+        {
+          // v0.999 the server says it in the past ("Ran the unit tests"); older steps had only the ask ("Run the unit tests")
+          final did = _s(s['did']);
+          if (did.isNotEmpty) {
+            final at = did.indexOf(' ');
+            return (Icons.terminal_rounded, at < 0 ? did : did.substring(0, at).replaceAll(':', ''), at < 0 ? '' : did.substring(at + 1), true);
+          }
+          return (Icons.terminal_rounded, 'Ran', _s(s['desc']).isNotEmpty ? 'a command: ${_s(s['desc'])}' : 'a command', true);
+        }
       case 'read':
         return (Icons.description_outlined, 'Read', path, false);
       case 'list':
-        return (Icons.folder_open_rounded, 'Looked in', _s(s['path']).isEmpty ? 'the repo' : _s(s['path']), false);
+        return s['glob'] == true
+            ? (Icons.search_rounded, 'Found', '${codeCount(s['n'], 'file')} · ${_s(s['path'])}', false)
+            : (Icons.folder_open_rounded, 'Listed', _s(s['path']).isEmpty ? 'the repo' : _s(s['path']), false);
       case 'search' || 'grep' || 'usages':
-        return (Icons.search_rounded, 'Searched', _s(s['q']).isNotEmpty ? 'for ${_s(s['q'])}' : 'the code', false);
+        return (Icons.search_rounded, 'Searched', '${_s(s['q']).isNotEmpty ? 'for ${_s(s['q'])}' : 'the code'}${codeMatches(s)}', false);
       case 'edit':
-        return (Icons.edit_outlined, 'Edited', path, (s['diff'] as List?)?.isNotEmpty ?? false);
+        return (Icons.edit_outlined, 'Edited', path, _hasChange(s));
       case 'new':
-        return (Icons.note_add_outlined, 'Wrote', path, (s['diff'] as List?)?.isNotEmpty ?? false);
+        return (Icons.note_add_outlined, 'Wrote', path, _hasChange(s));
       case 'check':
         return (Icons.fact_check_outlined, 'Ran', s['ok'] == true ? 'your tests · passed' : 'your tests · failed', false);
       case 'agent':
@@ -410,6 +420,9 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
         return (Icons.circle_outlined, '', '', false);
     }
   }
+
+  static bool _hasChange(Map<String, dynamic> s) =>
+      ((s['hunk'] as List?)?.isNotEmpty ?? false) || ((s['diff'] as List?)?.isNotEmpty ?? false);
 
   Widget _detail(HoolaColors c, Map<String, dynamic> s) {
     final mono = codeMono(c, size: 12.5, color: c.ink2);
@@ -438,6 +451,8 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
             style: codeSans(c, size: 13, color: s['timed_out'] == true || (rc != null && !ok) ? c.bad : c.ink3)),
       ]);
     }
+    final hunk = (s['hunk'] as List?) ?? const [];
+    if (hunk.isNotEmpty) return CodeHunk(rows: hunk);
     final lines = [for (final x in (s['diff'] as List?) ?? const []) _s(x)];
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -546,5 +561,65 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
         child: ListView(controller: widget.scroll, padding: const EdgeInsets.fromLTRB(20, 8, 20, 28), children: kids),
       ),
     ]);
+  }
+}
+
+
+/// v0.999 "7 matches in 3 files" / "3 files" - a search as Claude Code counts it ('' when the step has no count).
+String codeMatches(Map<String, dynamic> s) {
+  final n = s['num'] ?? s['n'];
+  if (n is! num) return '';
+  final f = s['files'];
+  if (f is num && f != n) return ' · ${codeCount(n, 'match', 'matches')} in ${codeCount(f, 'file')}';
+  return n == 0 ? ' · no matches' : ' · ${codeCount(n, 'file')}';
+}
+
+String codeCount(Object? n, String one, [String? many]) {
+  final v = n is num ? n.round() : int.tryParse('$n') ?? 0;
+  return '$v ${v == 1 ? one : (many ?? '${one}s')}';
+}
+
+/// v0.999 the real change as Claude Code shows it: old and new line numbers, red removed, green added, context grey.
+/// Rows come from the server as [kind, old line, new line, text]; '@' is a gap between two parts.
+class CodeHunk extends StatelessWidget {
+  const CodeHunk({super.key, required this.rows});
+  final List rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    final small = codeMono(c, size: 11.5, color: c.ink3);
+    String cell(Object? v) => v == null ? '' : '$v';
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.line)),
+      clipBehavior: Clip.antiAlias,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          for (final r in rows)
+            if (r is List && r.length >= 4)
+              r[0] == '@' || r[0] == '…'
+                  ? Padding(
+                      padding: const EdgeInsets.fromLTRB(84, 2, 12, 2),
+                      child: Text(r[0] == '@' ? '⋯' : cell(r[3]), style: small))
+                  : Container(
+                      color: r[0] == '+' ? c.okSoft : (r[0] == '-' ? c.badSoft : null),
+                      padding: const EdgeInsets.only(right: 12),
+                      child: Row(children: [
+                        SizedBox(width: 34, child: Text(cell(r[1]), textAlign: TextAlign.right, style: small)),
+                        SizedBox(width: 34, child: Text(cell(r[2]), textAlign: TextAlign.right, style: small)),
+                        SizedBox(
+                            width: 16,
+                            child: Text(r[0] == '+' ? '+' : (r[0] == '-' ? '−' : ''),
+                                textAlign: TextAlign.center,
+                                style: codeMono(c, size: 12.5, color: r[0] == '+' ? c.ok : c.bad))),
+                        Text(cell(r[3]),
+                            style: codeMono(c, size: 12.5, color: r[0] == '+' ? c.ok : (r[0] == '-' ? c.bad : c.ink2))),
+                      ]),
+                    ),
+        ]),
+      ),
+    );
   }
 }

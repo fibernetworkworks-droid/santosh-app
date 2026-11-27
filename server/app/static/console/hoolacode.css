@@ -1182,3 +1182,16 @@ html,body{background:var(--bg)}
   #app .hcd-askrow{flex-wrap:wrap;row-gap:4px}
   #app .hcd-askrow>.hcd-flex{display:none}
 }
+
+/* v0.999 THE CLAUDE CODE FEED: the real change with line numbers, the running command's live lines, "Thought for" */
+#app .hcd-diff.num{padding:4px 0;max-height:520px;overflow:auto}
+#app .hcd-diff.num span{display:grid;grid-template-columns:3.2em 3.2em 1.4em minmax(0,1fr);padding:0 12px 0 0;white-space:pre}
+#app .hcd-diff.num b,#app .hcd-diff.num i{font-weight:400;font-style:normal;text-align:right;padding-right:8px;color:var(--dim);user-select:none}
+#app .hcd-diff.num i{text-align:center;padding-right:0}
+#app .hcd-diff.num span.add i{color:var(--ok)}
+#app .hcd-diff.num span.del i{color:var(--bad)}
+#app .hcd-diff.num span.gap{display:block;padding:0 12px 0 calc(6.4em + 1.4em);color:var(--dim);background:transparent}
+#app .hcd-out{margin:6px 0 10px 26px;max-height:180px;font-size:12px;line-height:1.55;color:var(--mut)}
+#app .hcd-term .hcd-cmd{color:var(--ink)}
+#app .hcd-fold.think{color:var(--mut)}
+#app .hcd-fold.think+.hcd-fin .hcd-think{margin-left:26px}

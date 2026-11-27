@@ -505,6 +505,24 @@ def _keep_broken(data: dict, blocks: list[dict], stop: str) -> tuple[list[dict],
     return blocks, stop
 
 
+def _claude_stream(client, kw: dict, sink) -> Any:
+    """One streamed Claude answer: every new piece of the reply's words goes to sink(the whole text so far), and the
+    finished message comes back in the same shape messages.create gives, so nothing after this changes."""
+    try:
+        sink("")                                          # a try again starts its words over
+    except Exception:
+        pass
+    acc = ""
+    with client.messages.stream(**kw) as s:
+        for piece in s.text_stream:
+            acc += piece
+            try:
+                sink(acc)
+            except Exception:
+                pass
+        return s.get_final_message()
+
+
 def _claude_call(system: str, messages: list[dict], tools: list[dict], max_tokens: int,
                  think: bool | None) -> tuple[list[dict], str]:
     st = _settings()
@@ -523,7 +541,11 @@ def _claude_call(system: str, messages: list[dict], tools: list[dict], max_token
     with claude_only():
         for _ in range(3):
             try:
-                resp = client.messages.create(**kw)
+                sink = getattr(TEXT_SINK, "fn", None)
+                if sink is not None and bool(getattr(st, "dev_stream", True)) and callable(getattr(client.messages, "stream", None)):
+                    resp = _claude_stream(client, kw, sink)    # her screen reads the words as Claude writes them
+                else:
+                    resp = client.messages.create(**kw)
                 break
             except Exception as e:
                 if "thinking" in kw and _refused(e, "thinking"):

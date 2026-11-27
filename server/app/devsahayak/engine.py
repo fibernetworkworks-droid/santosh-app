@@ -95,7 +95,27 @@ OVER: dict[str, Any] = {}       # v0.946 per session: has it reached its spendin
 KEEP_CP_COPIES = 20             # v0.945 conversation copies kept for going back (older checkpoints fall back to the count)
 _SLOT_LOCK = threading.Lock()
 LIVE: set[str] = set()
-NOW_STEP: dict[str, str] = {}    # v0.936 the step running right now, in her words ("Running the unit tests")
+LIVE_OUT: dict[str, list[str]] = {}   # v0.999 the last lines a running command printed, per session (her live terminal)
+NOW_AT: dict[str, float] = {}         # v0.999 when the step running now started (her working line's clock)
+NOW_TOOL: dict[str, str] = {}         # v0.999 which tool that step is
+LIVE_OUT_LINES = 20
+
+
+class _NowMap(dict):
+    """v0.999 the step running now: setting it also notes when it started, clearing it also drops its live output."""
+
+    def __setitem__(self, k, v):
+        super().__setitem__(k, v)
+        NOW_AT[k] = time.time()
+
+    def pop(self, k, *d):
+        NOW_AT.pop(k, None)
+        NOW_TOOL.pop(k, None)
+        LIVE_OUT.pop(k, None)
+        return super().pop(k, *d)
+
+
+NOW_STEP: dict[str, str] = _NowMap()    # v0.936 the step running right now, in her words ("Running the unit tests")
 LIVE_TEXT: dict[str, str] = {}   # v0.935 the words of the step Hoola is writing right now, per session
 
 
@@ -480,8 +500,13 @@ Rules that never bend:
   by word as you write, nothing is cut, so keep them that short yourself - no lists, no headings,
   and put the one thing that matters most (the cause, the file, the result) in **bold**. Never repeat or restate
   what you already told her, and never retell her request.
-- Your final answer: one short line with the result first, then at most five short points. Bold only what she must
-  notice or decide.
+- Before your first tool call, say in one sentence what you are about to do. After that, speak only when you find
+  something, change direction, or hit a blocker - never narrate routine steps.
+- Your final answer: lead with the result (what changed, and whether it was proven) in one or two sentences, then at
+  most five short points, then what is next if anything. Bold only what she must notice or decide.
+- Point at code as `path/to/file.py:42` so she can open the exact line.
+- If something failed or could not be checked, say that FIRST and plainly. Never say done, fixed or passing unless you
+  saw it pass in this session.
 - Give every bash call a short plain description of what it is for; she sees that line, not the command.
 - A vague request gets ONE clear question (done with the question in explain ending in '?'), and no edits.
 - A file you make only to try something (a probe, scratch or debug script) is deleted before done; it never ships.
@@ -673,6 +698,8 @@ class Tools:
             self.image = ""                               # she changed this repo's setup command: build its box again
         self.spec = lab_spec
         self.bash_runs = 0
+        self.live_tid = ""                                # v0.999 set by the loop: a running command's lines go to her live view
+        self.before: tuple[str, str] | None = None        # v0.999 a file's text before this edit (the real diff)
         self.trail: list[str] = []
         self.ask_only = False                             # v0.955 her request named no symptom: nothing is written
 
@@ -943,9 +970,19 @@ class Tools:
         self.bash_runs += 1
         STATS["bash"] += 1
         grant, net_note = self._net_pass(lim)
+        tid = self.live_tid
+        hide = [v for v in (grant or {}).get("hide") or [] if v and len(v) >= 6]
+
+        def on_line(line: str) -> None:                   # v0.999 her live terminal: each line as it is printed, cleaned
+            for v in hide:
+                line = line.replace(v, "[secret hidden]")
+            line = re.sub(r"http://[a-f0-9]{12,40}:[A-Za-z0-9_-]+@hoola-lab-proxy", "http://hoola-lab-proxy", line)
+            buf = LIVE_OUT.setdefault(tid, [])
+            buf.append(scrub(line)[:300])
+            del buf[:-LIVE_OUT_LINES]
         try:
             r = box.run_in(img, str(self.s.repo), f"cd {box.WORK}; {cmd}", timeout=lim, network=False, env=self.env or None,
-                           net=grant)
+                           net=grant, on_line=on_line if tid else None)
         finally:
             if grant:
                 from ..devlab import net as NET
@@ -1190,6 +1227,24 @@ _ING = {"run": "Running", "check": "Checking", "build": "Building", "find": "Fin
         "verify": "Verifying", "confirm": "Confirming", "print": "Printing", "get": "Getting", "lint": "Linting"}
 
 
+_PAST = {"run": "Ran", "check": "Checked", "build": "Built", "find": "Found", "search": "Searched", "install": "Installed",
+         "look": "Looked", "list": "Listed", "read": "Read", "test": "Tested", "compile": "Compiled", "start": "Started",
+         "see": "Saw", "make": "Made", "add": "Added", "fix": "Fixed", "update": "Updated", "count": "Counted",
+         "show": "Showed", "open": "Opened", "try": "Tried", "verify": "Verified", "confirm": "Confirmed",
+         "print": "Printed", "get": "Got", "lint": "Linted", "format": "Formatted", "clean": "Cleaned", "remove": "Removed",
+         "delete": "Deleted", "create": "Created", "write": "Wrote", "generate": "Generated", "type-check": "Type-checked"}
+
+
+def did_words(words: str) -> str:
+    """v0.999 'Run the unit tests' -> 'Ran the unit tests' (the row after the step, as Claude Code says it)."""
+    words = str(words or "").strip()
+    head, _, rest = words.partition(" ")
+    g = _PAST.get(head.lower())
+    if not g:
+        return f"Ran: {words[:1].lower() + words[1:]}" if words else "Ran a command"
+    return f"{g} {rest}".strip()
+
+
 def _ing(words: str) -> str:
     """'Run the unit tests' -> 'Running the unit tests'."""
     head, _, rest = words.partition(" ")
@@ -1299,6 +1354,109 @@ def _make_words(inp: dict[str, Any]) -> str:
 
 
 # ---------------------------------------------------------------- page events
+HUNK_ROWS = 120
+SNAP_MAX = 400_000
+
+
+def _snap(tools: Any, name: str, inp: dict[str, Any]) -> tuple[str, str] | None:
+    """v0.999 the file's text before write / edit / multi_edit, read before the tool runs (None = not a file change)."""
+    if name not in ("write", "edit", "multi_edit"):
+        return None
+    try:
+        rel = tools._rel(str((inp or {}).get("path") or ""))
+        f = tools.s.repo / rel
+        if f.is_file() and f.stat().st_size <= SNAP_MAX:
+            return rel, f.read_bytes().decode("utf-8", errors="replace").replace("\r\n", "\n")
+        return (rel, "") if not f.exists() else None
+    except Exception:
+        return None
+
+
+def real_hunk(old: str, new: str, ctx: int = 2, cap: int = HUNK_ROWS) -> tuple[list[list[Any]], int, int]:
+    """v0.999 the change as Claude Code shows it: rows [kind, old line no, new line no, text] - ' ' unchanged context,
+    '-' removed, '+' added, '@' a gap between parts. Counts are of the whole change, the rows are capped."""
+    import difflib
+    a, b = old.splitlines(), new.splitlines()
+    rows: list[list[Any]] = []
+    add = rem = 0
+    sm = difflib.SequenceMatcher(None, a, b, autojunk=False)
+    for gi, grp in enumerate(sm.get_grouped_opcodes(ctx)):
+        if gi:
+            rows.append(["@", None, None, ""])
+        for tag, i1, i2, j1, j2 in grp:
+            if tag == "equal":
+                rows += [[" ", i1 + k + 1, j1 + k + 1, a[i1 + k][:200]] for k in range(i2 - i1)]
+                continue
+            if tag in ("replace", "delete"):
+                rows += [["-", k + 1, None, a[k][:200]] for k in range(i1, i2)]
+                rem += i2 - i1
+            if tag in ("replace", "insert"):
+                rows += [["+", None, k + 1, b[k][:200]] for k in range(j1, j2)]
+                add += j2 - j1
+    if len(rows) > cap:
+        rows = rows[:cap] + [["…", None, None, f"{len(rows) - cap} more lines"]]
+    return rows, add, rem
+
+
+def _real_change(tools: Any, p: str, name: str, out: str) -> dict[str, Any] | None:
+    """v0.999 a write / edit that landed: the file before and after, as real numbered rows (+ the old short list)."""
+    before = getattr(tools, "before", None)
+    if not before or name not in ("write", "edit", "multi_edit"):
+        return None
+    if not out.startswith(("Created", "Wrote", "Edited")):
+        return None
+    rel, old = before
+    try:
+        f = tools.s.repo / rel
+        new = f.read_bytes().decode("utf-8", errors="replace").replace("\r\n", "\n")
+    except Exception:
+        return None
+    rows, add, rem = real_hunk(old, new)
+    kind = "new" if out.startswith("Created") else "edit"
+    short = [(("+ " if r[0] == "+" else "- ") + str(r[3]))[:180] for r in rows if r[0] in "+-"][:28]
+    return {"k": kind, "path": rel or p, "added": add, "removed": rem, "diff": short, "hunk": rows}
+
+
+def grep_counts(out: str, mode: str) -> tuple[int, int]:
+    """v0.999 a search's result as Claude Code says it: how many matches, in how many files."""
+    if not out or out.startswith(("No matches", "The search could not run")):
+        return 0, 0
+    lines = out.splitlines()
+    more = 0
+    if lines and lines[-1].startswith("... ") and lines[-1].endswith(" more"):
+        try:
+            more = int(lines[-1].split()[1])
+        except (IndexError, ValueError):
+            more = 0
+        lines = lines[:-1]
+    if mode == "count":
+        n = files = 0
+        for x in lines:
+            path, _, c = x.rpartition(":")
+            if path and c.isdigit() and int(c):
+                n += int(c)
+                files += 1
+        return n, files
+    if mode == "content":
+        hits = [x for x in lines if re.match(r"^[^:\n]+:\d+:", x)]
+        return len(hits) + more, len({x.split(":", 1)[0] for x in hits})
+    return len(lines) + more, len(lines) + more
+
+
+def glob_count(out: str) -> int:
+    if not out or out.startswith("No files match"):
+        return 0
+    lines = out.splitlines()
+    more = 0
+    if lines and lines[-1].startswith("... ") and lines[-1].endswith(" more"):
+        try:
+            more = int(lines[-1].split()[1])
+        except (IndexError, ValueError):
+            pass
+        lines = lines[:-1]
+    return len(lines) + more
+
+
 def event(tools: Tools, name: str, inp: dict[str, Any], out: str) -> list[dict[str, Any]]:
     o = str(out or "")
     if o.startswith(("Refused", "Not applied", "Wrong arguments", "Unknown tool")):
@@ -1316,12 +1474,15 @@ def event(tools: Tools, name: str, inp: dict[str, Any], out: str) -> list[dict[s
         lim = int((inp or {}).get("limit") or 0)
         return [{"k": "read", "path": p, "lines": [off, off + lim - 1 if off and lim else 0]}]
     if name == "grep":
-        n = 0 if o.startswith("No matches") else len(o.splitlines())
-        return [{"k": "search", "q": str(inp.get("pattern") or "")[:80], "n": n}]
+        n, files = grep_counts(o, str(inp.get("mode") or "files"))
+        return [{"k": "search", "q": str(inp.get("pattern") or "")[:80], "n": n, "files": files}]
     if name == "glob":
-        return [{"k": "list", "path": str(inp.get("pattern") or "")[:120]}]
+        return [{"k": "list", "path": str(inp.get("pattern") or "")[:120], "glob": True, "n": glob_count(o)}]
     if name == "ls":
         return [{"k": "list", "path": p or "/"}]
+    real = _real_change(tools, p, name, o)
+    if real:
+        return [real]
     if name in ("edit", "multi_edit"):
         edits = inp.get("edits") or [{"old_string": inp.get("old_string", ""), "new_string": inp.get("new_string", "")}]
         from .loop import _mini_diff
@@ -1340,7 +1501,8 @@ def event(tools: Tools, name: str, inp: dict[str, Any], out: str) -> list[dict[s
     if name == "bash":
         lb = getattr(tools, "last_bash", None) or {}
         cmd = lb.get("cmd", str(inp.get("command") or "")[:300])
-        return [{"k": "bash", "cmd": cmd, "desc": cmd_words(cmd, inp.get("description")), "rc": lb.get("rc"),
+        desc = cmd_words(cmd, inp.get("description"))
+        return [{"k": "bash", "cmd": cmd, "desc": desc, "did": did_words(desc), "rc": lb.get("rc"),
                  "seconds": lb.get("secs"), "timed_out": lb.get("timed_out"), "tail": lb.get("tail", [])}]
     if name == "todo_write":
         return [{"k": "todo", "items": tools.todos}]
@@ -1781,14 +1943,16 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
         tid = getattr(t, "id", "")
         LIVE_FULL.pop(tid, None)
         B.TEXT_SINK.fn = (lambda txt, _tid=tid, _r=list(recent): live_sink(_tid, txt, _r)) if tid else None   # v0.935 her phone reads the words as they come
+        _tc = time.time()
         try:
             blocks, stop = B.call(system, msgs, round_tools)
         finally:
             B.TEXT_SINK.fn = None
+        call_secs = max(1, int(round(time.time() - _tc)))
         msgs.append({"role": "assistant", "content": blocks})
         for b in blocks:
             if b.get("type") == "thinking" and str(b.get("thinking") or "").strip():
-                emit({"k": "think", "text": scrub(str(b["thinking"]).strip())[:1500]})    # Phase 5: shown in the Thinking view only
+                emit({"k": "think", "text": scrub(str(b["thinking"]).strip())[:1500], "secs": call_secs})    # Phase 5: shown in the Thinking view only
             if b.get("type") == "text" and str(b.get("text") or "").strip():
                 txt = str(b["text"]).strip()[:20000]                         # v0.935 kept whole (was cut at 800)
                 ends = stop != "tool_use" or any(x.get("type") == "tool_use" and x.get("name") == "done" for x in blocks)
@@ -1944,10 +2108,14 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out[:60000]})
                 continue
             NOW_STEP[tid] = now_words(b["name"], inp)     # v0.936 what it is doing this moment, for her working line
+            NOW_TOOL[tid] = b["name"]
+            tools.live_tid = tid
+            tools.before = _snap(tools, b["name"], inp)   # v0.999 the file as it was, so the step shows the real change
             try:
                 out = tools.run(b["name"], inp)
             finally:
                 NOW_STEP.pop(tid, None)
+                tools.live_tid = ""
             if b["name"] in ("write", "edit", "multi_edit", "bash"):
                 try:                                       # v0.943 the code map is read again after a change
                     from . import repoindex as RX

@@ -30,7 +30,7 @@ def test_live_state_reads_memory_only_and_steps_are_counted():
         assert st["live"] == "Found it." and st["n"] == 12 and st["running"] is True
     finally:
         S._RUNNING.discard("t9"), EN.LIVE_TEXT.pop("t9", None), S.STEP_N.pop("t9", None)
-    assert S.live_state("t9") == {"live": "", "now": "", "n": -1, "running": False}
+    assert S.live_state("t9") == {"live": "", "now": "", "n": -1, "running": False, "out": [], "t0": 0, "tool": ""}
     src = (ROOT / "server/app/devsahayak/service.py").read_text()
     assert "STEP_N[self.tid] = int(last_n) + 1" in src
 

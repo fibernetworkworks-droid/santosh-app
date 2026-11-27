@@ -131,6 +131,13 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
     final cleared = writing.isEmpty && cs(t['live']).trim().isNotEmpty;
     final next = <String, dynamic>{...t, 'live': cleared ? t['live'] : _streamLive};
     if (p.containsKey('now')) next['now'] = p['now'];
+    if (p.containsKey('out') || p.containsKey('tool') || p.containsKey('t0')) {   // v0.999 the running command's live lines
+      final ni = <String, dynamic>{...?(t['now_info'] as Map?)?.cast<String, dynamic>()};
+      for (final k in const ['out', 'tool', 't0']) {
+        if (p.containsKey(k)) ni[k] = p[k];
+      }
+      next['now_info'] = ni;
+    }
     setState(() => _t = next);
     final n = p['n'];
     if (cleared || (n is num && n.toInt() > _lastN) || p.containsKey('running')) _load();
@@ -991,7 +998,8 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         child: InkWell(
           onTap: g.isEmpty ? null : () => _openSteps(_summary(g), g),
           borderRadius: BorderRadius.circular(12),
-          child: Container(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+           Container(
             constraints: const BoxConstraints(minHeight: 44),
             child: Row(children: [
               const HoolaMark(size: 22),   // v0.937 the Hoola mark, turning, like the Hoola chat's working row
@@ -1007,10 +1015,29 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
               Text('· ${codeClock(secs)}',              // v0.938 same sans and size as the words beside it
                   style: codeSans(c, size: 16, color: c.ink3).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
             ]),
-          ),
+           ),
+           if (_liveOut(t).isNotEmpty)                // v0.999 the command's last lines as it prints them (Claude Code's live output)
+             Container(
+               margin: const EdgeInsets.only(left: 32, top: 2, bottom: 6),
+               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+               decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(10), border: Border.all(color: c.line)),
+               child: Text(_liveOut(t).join('\n'), maxLines: 6, overflow: TextOverflow.ellipsis,
+                   style: codeMono(c, size: 12, color: c.ink3)),
+             ),
+          ]),
         ),
       ),
     );
+  }
+
+  /// v0.999 the last lines the running command printed (empty when the step is not a command).
+  List<String> _liveOut(Map<String, dynamic> t) {
+    final ni = t['now_info'];
+    if (t['running'] != true || ni is! Map || ni['tool'] != 'bash') return const [];
+    final out = ni['out'];
+    if (out is! List) return const [];
+    final all = [for (final x in out) cs(x)];
+    return all.length > 6 ? all.sublist(all.length - 6) : all;
   }
 
   /// v0.936 "Changes +12 −3", floating above the typing box: opens the change.
@@ -1194,9 +1221,11 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
       case 'read':
         return _line(c, Icons.description_outlined, [const TextSpan(text: 'Read '), _code(c, cs(s['path']))]);
       case 'search':
-        return _line(c, Icons.search_rounded, [const TextSpan(text: 'Searched '), _code(c, cs(s['q'])), TextSpan(text: ' · ${cPlural(ci(s['num'] ?? s['n']), 'place')}')]);
+        return _line(c, Icons.search_rounded, [const TextSpan(text: 'Searched '), _code(c, cs(s['q'])), TextSpan(text: codeMatches(s))]);
       case 'list':
-        return _line(c, Icons.folder_open_rounded, [const TextSpan(text: 'Looked in '), _code(c, cs(s['path']).isEmpty ? '/' : cs(s['path']))]);
+        return s['glob'] == true
+            ? _line(c, Icons.search_rounded, [TextSpan(text: 'Found ${codeCount(s['n'], 'file')} · '), _code(c, cs(s['path']))])
+            : _line(c, Icons.folder_open_rounded, [const TextSpan(text: 'Listed '), _code(c, cs(s['path']).isEmpty ? '/' : cs(s['path']))]);
       case 'usages':
         return _line(c, Icons.search_rounded, [const TextSpan(text: 'Found where '), _code(c, cs(s['name'])), TextSpan(text: ' is used · ${cPlural(ci(s['num'] ?? s['n']), 'place')}')]);
       case 'edit':
@@ -1224,7 +1253,8 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
           final done = s.containsKey('rc');
           final ok = ci(s['rc']) == 0 && s['timed_out'] != true;
           final end = !done ? '' : (s['timed_out'] == true ? ' · timed out' : ' · exit ${ci(s['rc'])}');
-          return _line(c, Icons.terminal_rounded, [_code(c, '\$ ${cs(s['cmd'])}'), TextSpan(text: end, style: TextStyle(color: done && !ok ? c.bad : c.ink3))],
+          final did = cs(s['did']);
+          return _line(c, Icons.terminal_rounded, [did.isNotEmpty ? TextSpan(text: did) : _code(c, '\$ ${cs(s['cmd'])}'), TextSpan(text: end, style: TextStyle(color: done && !ok ? c.bad : c.ink3))],
               iconColor: !done ? null : (ok ? c.ok : c.bad));
         }
       case 'agent':

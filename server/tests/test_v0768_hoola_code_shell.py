@@ -191,7 +191,7 @@ def test_typing_survives_a_refresh_and_steps_fold(arena_server):  # noqa: F811
     pg.locator("[data-tid='dt1']").click()
     pg.wait_for_selector(".hcd-fold")
     feed = pg.locator("#hcdCol")
-    assert "Small fix." in feed.text_content() and "Read the repo's rules, read 2 files, searched 1 time" in feed.text_content()
+    assert "Small fix." in feed.text_content() and "Read the repo's rules, read 2 files, searched for 1 pattern" in feed.text_content()
     assert pg.locator("#hcdCol .hcd-fin").first.is_hidden()                                       # folded by default
     assert "Ran your tests" in feed.text_content() and "1 failed, 46 passed" in feed.text_content()   # a failure is never folded away
     pg.locator("#hcdCol .hcd-fold").first.click()

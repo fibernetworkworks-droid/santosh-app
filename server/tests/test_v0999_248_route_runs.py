@@ -389,4 +389,4 @@ def test_past_runs_insights_and_import_in_a_real_browser(br8):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION >= "0.999.248"
+    assert APP_VERSION >= "0.999.249"

@@ -72,7 +72,7 @@ def test_the_phone_is_steady_and_the_words_land_slowly():
     run = ses[ses.index("Widget _runningRow("):ses.index("Widget _changesPill(")]
     assert "const HoolaMark(size: 22)" in run and "ValueKey('working')" in run and "'>_'" not in run
     # slower landing, each word fading in; the closing answer lands too
-    assert "CodeLanding.msPerWord(waiting)" in words and "sans: true, fade: true" in words
+    assert "CodeLanding.msPerWord(waiting)" in words and "selectable: selecting, fade: true" in words
     assert "final bool fade;" in md and "_fadeSteps = [.82, .62, .42, .22]" in md
     assert "_land(ex, 'explain', done: true, actions: true)" in ses
 

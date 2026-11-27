@@ -111,6 +111,39 @@ def _run(argv: list[str], timeout: int, cwd: str = "") -> tuple[int, str, float]
         return 127, f"{argv[0]}: {e}", time.time() - t0
 
 
+def _run_stream(argv: list[str], timeout: int, on_line) -> tuple[int, str, float]:
+    """v0.999.XXX like _run, but each output line goes to on_line the moment the command prints it (stdout and stderr
+    merged, as a terminal shows them), so her page shows a command's output while it runs."""
+    import threading
+    t0 = time.time()
+    try:
+        pr = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
+                              errors="replace",
+                              env={"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": os.environ.get("HOME", "/tmp"),
+                                   "LANG": "C.UTF-8", "DOCKER_HOST": os.environ.get("DOCKER_HOST", "")})
+    except OSError as e:
+        return 127, f"{argv[0]}: {e}", time.time() - t0
+    got: list[str] = []
+
+    def pump():
+        for line in pr.stdout:                    # type: ignore[union-attr]
+            got.append(line)
+            try:
+                on_line(line.rstrip("\n"))
+            except Exception:                     # noqa: BLE001 - the page never stops a command
+                pass
+    th = threading.Thread(target=pump, daemon=True)
+    th.start()
+    try:
+        rc = pr.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        pr.kill()
+        th.join(5)
+        return 124, "".join(got) + f"\n[timed out after {timeout}s]", time.time() - t0
+    th.join(5)
+    return rc, "".join(got), time.time() - t0
+
+
 def docker() -> str:
     return shutil.which("docker") or ""
 
@@ -193,7 +226,7 @@ def _limits(network: bool, writable: bool = False, net_name: str = "") -> list[s
 
 
 def run_in(image: str, files_dir: str, command: str, timeout: int = CHECK_TIMEOUT, network: bool = False,
-           commit_to: str = "", env: dict[str, str] | None = None, net: dict[str, Any] | None = None) -> dict[str, Any]:
+           commit_to: str = "", env: dict[str, str] | None = None, net: dict[str, Any] | None = None, on_line=None) -> dict[str, Any]:
     """Run ONE shell command on a copy of her files inside `image`.
 
     network=False (a check) means there is no route out at all. commit_to != "" keeps the container and commits it as
@@ -221,7 +254,7 @@ def run_in(image: str, files_dir: str, command: str, timeout: int = CHECK_TIMEOU
     if os.path.isdir(os.path.join(files_dir, ".git")):
         args += ["-v", f"{os.path.abspath(os.path.join(files_dir, '.git'))}:{WORK}/.git:ro"]
     args += [image, "bash", "-lc", shell]
-    rc, txt, secs = _run(args, timeout + 30)
+    rc, txt, secs = _run_stream(args, timeout + 30, on_line) if (on_line and not keep) else _run(args, timeout + 30)
     timed_out = rc == 124 or f"[timed out after {timeout + 30}s]" in txt
     if timed_out:
         _run([d, "kill", name], 30)

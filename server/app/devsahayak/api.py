@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
@@ -567,7 +568,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         async def gen():
             last: dict[str, Any] = {}
             quiet = 0.0
-            yield f"data: {json.dumps({'id': 0, 'kind': 'code_open', 'payload': S.live_state(real)}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'id': 0, 'kind': 'code_open', 'payload': {**S.live_state(real), 'srv': round(time.time(), 2)}}, ensure_ascii=False)}\n\n"
             last = S.live_state(real)
             while True:
                 if await request.is_disconnected():

@@ -30,6 +30,7 @@ import json
 import logging
 import re
 import threading
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
@@ -818,8 +819,8 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
          "updated": _aware(t.updated_at).isoformat() if t.updated_at else "",
          "run_at": _RUN_AT.get(t.id, ""),
          "live": _live_text(t.id),
-         "now": _now_step(t.id),
-         "model_label": _model_label(t)}
+         "now": _now_step(t.id), "now_info": _now_more(t.id),
+         "model_label": _model_label(t), "srv_now": round(time.time(), 2)}
     v["risky_files"] = risky_files([f["path"] for f in v["files"]], ch)   # v0.943 files that change how tools / CI / agents run
     try:                                # G9: the card says what the facts back, never only the model's words
         from . import truth as TR
@@ -1246,7 +1247,19 @@ def live_state(tid: str) -> dict[str, Any]:
     """v0.962 what the live stream sends: the words being written, the step working now, the newest step number and
     whether a round runs. All in this process's memory - read ten times a second, no database."""
     return {"live": _live_text(tid), "now": _now_step(tid) if tid in _RUNNING else "", "n": STEP_N.get(tid, -1),
-            "running": tid in _RUNNING}
+            "running": tid in _RUNNING, **_now_more(tid)}
+
+
+def _now_more(tid: str) -> dict[str, Any]:
+    """v0.999 the running step's clock start, its tool and the last lines its command printed (her live terminal)."""
+    if tid not in _RUNNING:
+        return {"out": [], "t0": 0, "tool": ""}
+    try:
+        from . import engine as EN
+        return {"out": list(EN.LIVE_OUT.get(tid) or [])[-EN.LIVE_OUT_LINES:], "t0": round(float(EN.NOW_AT.get(tid) or 0), 2),
+                "tool": EN.NOW_TOOL.get(tid, "")}
+    except Exception:
+        return {"out": [], "t0": 0, "tool": ""}
 
 
 def live_delta(last: dict[str, Any], cur: dict[str, Any]) -> dict[str, Any]:
@@ -1259,7 +1272,7 @@ def live_delta(last: dict[str, Any], cur: dict[str, Any]) -> dict[str, Any]:
             ev["add"] = now_live[len(was):]
         else:
             ev["live"] = now_live
-    for k in ("now", "n", "running"):
+    for k in ("now", "n", "running", "out", "t0", "tool"):
         if cur.get(k) != last.get(k):
             ev[k] = cur.get(k)
     return ev

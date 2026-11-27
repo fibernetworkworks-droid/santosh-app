@@ -12835,3 +12835,7 @@ a browser walk) + tests/data/n8n_orders.json, n8n_leads.json (hand-written expor
 
 NOT VERIFIED: on her server; against workflows exported by a real n8n (the test files follow n8n's documented shape; node
 parameter names change between n8n versions, so an unknown shape becomes a placeholder, never a guess).
+
+
+## v0.999.249 CLAUDE CODE FEED
+Claude Code feed. Server `devsahayak/engine.py` (`_snap` before write/edit/multi_edit, `real_hunk` + `_real_change` -> step `hunk` rows [kind, old, new, text], `grep_counts`, `glob_count`, `did_words` -> bash `did`, `_NowMap` NOW_STEP sets NOW_AT / clears NOW_TOOL + LIVE_OUT, t_bash `on_line`, think `secs`, SYSTEM reply rules), `devlab/box.py` (`_run_stream`, run_in on_line), `devsahayak/brain.py` (`_claude_stream` when TEXT_SINK is set), `devsahayak/service.py` (`_now_more` out/t0/tool in live_state + live_delta + task_view now_info, srv_now), `devsahayak/api.py` (srv in code_open). Web `static/console/code.js` (liveOpen / liveEvent / liveRefresh / stepClock / liveOut, hunkHTML, srch, openFirst, todo last, look/made/server/gap, Esc stop, summary words) + `hoolacode.css` (.hcd-diff.num, .hcd-out) + `hoolacode.js` (api signal). Phone `lib/ui/code/code_words.dart` (did rows, codeMatches, codeCount, CodeHunk, reply font) + `code_session.dart` (now_info from the stream, `_liveOut`, rows). Tests `test_v0999_249_claude_feed.py`; test_chatkit_code_auto / v0768 / v0794 / v0928 / v0936 / v0937 / v0962 moved to the new words. NOT VERIFIED on her server or phone.
