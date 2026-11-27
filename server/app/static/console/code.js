@@ -763,6 +763,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       case 'mcp': return `<div class="hcd-step">${svg('spark')}<span>${s.action === 'list' ? 'Looked at your MCP servers' : `Used ${esc(s.server || 'an MCP server')} · ${p(s.tool || '')}`}</span>${at}</div>`;
       case 'skill': return `<div class="hcd-step dim">${svg('read')}<span>${s.action === 'list' ? 'Looked at your skills' : `Read the skill ${p(s.name || '')}`}</span>${at}</div>`;
       case 'asked': return `<div class="hcd-step">${svg('dot')}<span>Asked you: <b>${esc(s.question || '')}</b>${s.answer ? ` · you said <i>${esc(s.answer)}</i>` : ' · no answer'}</span>${at}</div>`;
+      case 'judge': return `<div class="hcd-step${s.verdict === 'deny' ? ' bad' : ''}">${svg(s.verdict === 'deny' ? 'x' : 'spark')}<span>${s.verdict === 'deny' ? '<b>The safety reviewer stopped a step</b>' : '<b>The safety reviewer asked you</b>'}${s.what ? ' · ' + esc(s.what) : ''}${s.reason ? ` <span class="hcd-mut">- ${esc(s.reason)}</span>` : ''}</span>${at}</div>`;
       case 'fallback': return `<div class="hcd-step dim">${svg('spark')}<span>${esc(s.text || 'A backup model answered')}</span>${at}</div>`;
       case 'title': return '';
       case 'claudefile': return `<div class="hcd-step dim">${svg('pencil')}<span>You ${s.what === 'deleted' ? 'deleted' : 'changed'} <code>${esc(s.path || '')}</code></span>${at}</div>`;
@@ -782,7 +783,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       case 'ckpt': return `<div class="hcd-step dim">${svg('ok')}<span>Checkpoint ${esc(String(s.num ?? s.n))} saved - you can go back to here</span>${at}</div>`;
       case 'rewind': return `<div class="hcd-step">${svg('list')}<span><b>${s.what === 'code' ? 'Put the files back' : s.what === 'conversation' ? 'Took the conversation back' : 'Went back'} to checkpoint ${esc(String(s.num ?? s.n))}.</b> ${s.what === 'code' ? 'The conversation is unchanged.' : s.what === 'conversation' ? 'The files keep every change made since.' : 'The working copy and the conversation are as they were then.'}</span>${at}</div>`;
       case 'agent': { /* v0.794 ECC agents (Claude Code-style subagents) */
-        if (s.state === 'start') return `<div class="hcd-step">${svg('dot')}<span><b>Asked ${esc(s.title || s.name)}</b> (${esc(s.tools || 'read')}${s.model ? ' · on ' + esc(s.model) : ''}) · ${esc(s.task || '')}</span>${at}</div>`;
+        if (s.state === 'start') return `<div class="hcd-step">${svg('dot')}<span><b>${s.background ? 'Started' : 'Asked'} ${esc(s.title || s.name)}</b>${s.background ? ` <span class="hcd-bgtag">in the background${s.id ? ' · ' + esc(s.id) : ''}</span>` : ''} (${esc(s.tools || 'read')}${s.model ? ' · on ' + esc(s.model) : ''}) · ${esc(s.task || '')}</span>${at}</div>`;
         const lab = `<b>${esc(s.title || s.name)}</b> reported · ${plural(s.steps || 0, 'step')}${s.edits ? ` · changed ${plural(s.edits, 'file')}` : ''}${s.secs ? ` · ${esc(String(s.secs))} s` : ''}`;
         return s.report ? fold('a' + i, lab, `<pre class="hcd-term">${esc(s.report)}</pre>`, 'row', verbose) : `<div class="hcd-step ok">${svg('ok')}<span>${lab}</span>${at}</div>`; }
       case 'memory': { /* Hoola Code memory: the repo's notes from earlier sessions */

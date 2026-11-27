@@ -1282,3 +1282,4 @@ html,body{background:var(--bg)}
 #app .hcd-rwopt span{font-size:13px;color:var(--mut)}
 #app .hcd-cmdlist{max-height:46vh;overflow:auto;margin:6px 0}
 #app .hcd-cmdlist code{white-space:nowrap}
+#app .hcd-bgtag{display:inline-block;margin-left:6px;padding:0 7px;border-radius:999px;background:var(--hov);font-size:12px;font-weight:500}

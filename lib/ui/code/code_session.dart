@@ -2007,6 +2007,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
       case 'agent':
         return _line(c, Icons.groups_outlined, [
           TextSpan(text: cs(s['text']).isNotEmpty ? cs(s['text']) : 'A helper agent: ${cs(s['name'])}'),
+          if (s['background'] == true) TextSpan(text: ' · in the background', style: TextStyle(color: c.ink3)),
           if (cs(s['model']).isNotEmpty) TextSpan(text: ' · on ${cs(s['model'])}', style: TextStyle(color: c.ink3)),
         ]);
       case 'bgstart':
@@ -2092,6 +2093,15 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         return _claudeFileRow(c, s);
       case 'title':
         return null;
+      case 'judge':
+        {
+          final deny = cs(s['verdict']) == 'deny';
+          return _line(c, deny ? Icons.gpp_bad_outlined : Icons.shield_outlined, [
+            TextSpan(text: deny ? 'The safety reviewer stopped a step' : 'The safety reviewer asked you'),
+            if (cs(s['what']).isNotEmpty) TextSpan(text: ' · ${cs(s['what'])}'),
+            if (cs(s['reason']).isNotEmpty) TextSpan(text: ' - ${cs(s['reason'])}', style: TextStyle(color: c.ink3)),
+          ], iconColor: deny ? c.bad : null);
+        }
       case 'fallback':
         return _line(c, Icons.swap_horiz_rounded, [TextSpan(text: cs(s['text']).isEmpty ? 'A backup model answered' : cs(s['text']))]);
       default:

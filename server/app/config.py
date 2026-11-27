@@ -219,6 +219,10 @@ class Settings(BaseSettings):
     dev_claude: bool = True                 # every Hoola Code model call is Claude's own (stands SAB GLM / claude_one_model aside)
     dev_think: bool = True                  # ... with adaptive thinking
     dev_fallback_models: str = "claude-sonnet-5-5,claude-opus-5-5,claude-haiku-5-5"   # v0.999 backups when the model is overloaded / down / gone (Claude Code's fallbackModel; up to 3, the session's own model skipped)
+    dev_auto_judge: bool = True             # v0.999 Auto mode's safety reviewer: risky steps checked by a model before they run (Claude Code's classifier)
+    dev_judge_modes: str = "auto"           # ... in these session modes (comma list)
+    dev_judge_model: str = "haiku"          # ... on this model (an alias or a full id)
+    dev_bg_agents_max: int = 4              # v0.999 background agents running at once in one session
     dev_parallel_reads: bool = True         # v0.999 read-only calls of one reply run side by side (Claude Code's concurrency-safe tools)
     dev_parallel_width: int = 8
     dev_idle_compact: bool = True           # v0.999 a long session idle just under the 5-min prompt cache is summarised through its own cached request
