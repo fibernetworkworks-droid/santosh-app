@@ -1,4 +1,4 @@
-"""v0.999.282 dist_desk: the Distributed Systems Engineer's tool - retry policies and call chains worked out, quorums and zones,
+"""v0.999.283 dist_desk: the Distributed Systems Engineer's tool - retry policies and call chains worked out, quorums and zones,
 histories checked for linearizability, the fault-injection simulator, TLA+ starter specs and TLC output read back. Nothing runs on
 her systems."""
 from __future__ import annotations

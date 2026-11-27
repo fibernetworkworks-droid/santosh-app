@@ -13528,3 +13528,35 @@ Fixed (route.css end block "v0.999.282 EVERY PAGE ALIGNED" + route.js):
 Tests: server/tests/test_v0999_282_route_aligned.py - the rules, and a walk of 22 page views at 1440 and 390 px in light and in
 dark that fails on sideways scroll, anything past the edge, cut text, mismatched controls, tiny controls or a page error.
 NOT VERIFIED on her server.
+
+
+## v0.999.283 DISTRIBUTED DESK (built as 0.999.281; their HOOLA CODE MCP TOOLS took 0.999.281 and EVERY PAGE ALIGNED 0.999.282, all kept; owner: "Distributed Systems Engineer same as finance desks")
+
+The Distributed Systems Engineer (hire key `distsys_eng`) gets its own section `/console/distributed` and its own chat
+(Conversation kind `distsys`, `server/app/distchat.py`, routes under `/api/dsdesk`), the same shape as the finance desks.
+
+NEW all-code engine `server/app/distdesk/` (no model call):
+- `retry.py`: a retry policy (tries, base, cap, multiplier, jitter none / full / equal / decorrelated, deadline) worked out -
+  the worst-case waits, whether the deadline cuts it, the expected tries and extra load at a failure rate, and the retry
+  herd simulated with a fixed seed for N clients (peak in a 10 ms bucket: ~1,000 with no jitter vs ~67 with full jitter).
+  `chain(hops)`: retries multiplying down a call chain, and inner timeouts longer than outer ones ("gives up" first).
+- `quorum.py`: N / R / W overlap, consensus majority and how many failures it survives (even sizes warned), losing one or
+  two zones by her placement (two zones warned).
+- `linear.py`: a linearizability checker for register / compare-and-set histories - Wing-Gong search with a memo set,
+  info (unknown) operations, per key, from JSON, Jepsen EDN or plain lines; a failure is explained by the deepest
+  arrangement found; checked against brute force on 500 random histories.
+- `sim.py`: a fault-injection simulator - one leader, quorum without and with read repair, last-writer-wins with clock skew,
+  async replication with failover; partitions, crashes; writes a history and checks it; counts lost acknowledged writes.
+  Presets show read repair fixing the same quorum run, LWW breaking under skew, failover losing acknowledged writes.
+- `tla.py`: TLA+ starter specs (idempotent consumer, two-phase commit, fencing tokens), each with a bug / fix switch in its
+  config; TLC output read back (pass / invariant / property / deadlock / error, states, the trace with what changed);
+  a GitHub Actions workflow that downloads the pinned tla2tools release and runs TLC in HER repository (she adds it herself).
+- `service.py`: items (tables `distdesk_items`, `distdesk_settings`) and settings (system, failure rate, clients, specs
+  folder, branch, TLA+ version).
+
+NEW tool `dist_desk` (`agent/dist_tools.py`; registry 706 -> 707). Pages: Today, Retries, Quorums, Histories (simulator +
+timeline), Specs, Settings (`static/console/dsdesk.*`). Tests `tests/test_ds_desk.py` (5, incl. a browser walk) +
+`tests/dist_samples.py`.
+
+NOT VERIFIED: on her server; the TLA+ specs have not been run through TLC here (running the downloaded jar was not
+allowed in this session) - the workflow is the way they get checked.

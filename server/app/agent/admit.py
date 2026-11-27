@@ -218,7 +218,7 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "blender": ("blender", "3d", "three d"),
     # v0.999.272 the Compiler Construction Engineer: her own language (grammar, parser, interpreter, compiler)
     # v0.999.274 the Kernel / OS Developer: her kernel words
-    # v0.999.282 the Distributed Systems Engineer: her distributed-systems words
+    # v0.999.283 the Distributed Systems Engineer: her distributed-systems words
     "dist": ("distributed system", "linearizab", "linearisab", "jepsen", "quorum", "consensus", "raft", "paxos", "split brain", "split-brain",
              "exponential backoff", "retry policy", "retry storm", "thundering herd", "idempotency", "idempotent", "failover", "fencing token",
              "two-phase commit", "2pc", "tla+", "tlc model", "model checking", "network partition", "eventual consistency", "vector clock"),
