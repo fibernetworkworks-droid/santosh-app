@@ -795,6 +795,12 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
     s = get_settings()
     sid, typ = str(step.get("id")), str(step.get("type"))
     t0 = time.time()
+    # v0.999.234 ROUTE R2: in a test run from the editor, a step with pinned data uses it instead of running
+    # (her pinned output; never on a real run - only the editor's test puts _pins in the context)
+    pins = ctx.get("_pins")
+    if isinstance(pins, dict) and sid in pins and typ not in ("condition", "router", "loop", "filter", "approval", "wait"):
+        ctx.setdefault("steps", {})[sid] = {"output": pins[sid]}
+        return True, pins[sid], ""
     try:
         if typ == "tool":
             from .tools import HANDLERS

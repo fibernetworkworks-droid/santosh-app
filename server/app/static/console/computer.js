@@ -1,4 +1,4 @@
-/* v0.890 HOOLA COMPUTER - one section, two computers. Home (two cards) -> Hoola PC workspace (straight in) or Your PC
+/* v0.890 HOOLA COMPUTER (v0.999.233 COMPUTER V2: top bar with both computers, a hub that picks the machine, each machine's screen with Hoola's pointer + checklist + yes cards) - one section, two computers. Home (two cards) -> Hoola PC workspace (straight in) or Your PC
    (setup steps until it connects, then its workspace). Each computer has its OWN chats (server: kind 'computer'), never
    mixed with her Hoola chats. The live screen shows whatever runs on that computer for her, even a task her voice call
    started. Same sign-in as the console. Routes: #/ , #/hoola[/<chat>], #/mine[/<chat>].
@@ -90,136 +90,127 @@
     if (!ST.which && !ST.connect) { const a = document.activeElement; if (a && a.id === 'ask') return homeShots(); home(); }   // never under her typing
   }
 
-  /* ---------------------------------------------------------------- shared sidebar
-     v0.999.145 REDESIGN: one sidebar for the whole section - home, the two computers, and the PC tools (jobs, routines,
-     her rules) one tap away; inside a workspace the computer switch + that computer's own chats */
-  function side(inner) {
-    const tools = `<div class="hc-div"></div>
-      <a class="hc-nav" href="/console/pcjobs">${svg(IC.list)}All jobs</a>
-      <a class="hc-nav" href="/console/pcjobs#/routines">${svg(IC.redo)}Routines</a>
-      <a class="hc-nav" href="/console/pcjobs#/rules">${svg(IC.shield)}Your rules</a>`;
-    return `<nav class="hc-side" aria-label="Hoola Computer">
-      ${ST.which ? `<a class="hc-nav hc-backl" href="#/">${svg(IC.back)}Hoola Computer</a>
-        <div class="hc-seg" role="tablist" aria-label="Computer">
-          <button type="button" role="tab" aria-selected="${ST.which === 'hoola'}" data-go="#/hoola">Hoola PC</button>
-          <button type="button" role="tab" aria-selected="${ST.which === 'mine'}" data-go="#/mine">Your PC</button></div>`
-        : `<a class="hc-brand" href="/console/"><i>${svg(IC.mark)}</i>Hoola</a>
-           <a class="hc-nav" href="#/" aria-current="page">${svg(IC.pc)}Hoola Computer</a>
-           <a class="hc-nav hc-sub" href="#/hoola">Hoola PC</a><a class="hc-nav hc-sub" href="#/mine">Your PC</a>${tools}`}
-      ${inner || ''}
-    </nav>`;
+  /* ---------------------------------------------------------------- v0.999.233 COMPUTER V2 (her prototype "One job on each
+     computer" -> "GO"): one top bar with the two machines as tabs; the hub asks "What should a computer do for you?",
+     Hoola picks the machine and says why, the chosen machine lights up; a job opens on that machine's own screen with
+     Hoola's pointer, its thought, a checklist of the real steps, and the cards that need her (sign in privately, yes /
+     not now, move to my PC). Chat, live screen, take control and the private sign-in below are the same code as before. */
+  const devName = () => { const d = (ST.status && ST.status.mine.devices || [])[0]; return d ? d.name : 'Your PC'; };
+  const osOf = d => { const o = S(d && d.os).toLowerCase(); return o.startsWith('darwin') || o.includes('mac') ? 'Mac' : o.startsWith('linux') ? 'Linux' : 'Windows'; };
+  function topbar() {
+    const h = ST.status.hoola, m = ST.status.mine, here = ST.connect ? 'connect' : ST.which || 'home';
+    const dot = (busy, on) => `<i class="cx-dot${busy ? ' busy' : on ? ' on' : ''}"></i>`;
+    const mineOk = m.on && m.devices.length;
+    return `<header class="cx-top">
+      <a class="cx-mark" href="/console/" aria-label="Back to Hoola"><svg viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="12" fill="currentColor"/><circle cx="13" cy="13" r="4.5" fill="#fff"/></svg></a>
+      <a class="cx-title" href="#/"${here === 'home' ? ' aria-current="page"' : ''}>Computer</a>
+      <nav class="cx-tabs" aria-label="Computers">
+        <a href="#/hoola"${here === 'hoola' ? ' aria-current="page"' : ''}>${dot(!!h.running, h.online)}Hoola PC</a>
+        <a href="${mineOk ? '#/mine' : '#/connect'}"${here === 'mine' || here === 'connect' ? ' aria-current="page"' : ''}>${dot(!!m.running, m.online)}${esc(mineOk ? devName() : 'Your PC')}</a>
+      </nav>
+      <nav class="cx-links" aria-label="PC tools">
+        <a href="/console/pcjobs">All jobs</a><a href="/console/pcjobs#/routines">Routines</a><a href="/console/pcjobs#/rules">Your rules</a>
+      </nav>
+    </header>`;
   }
+  const frame = (inner, cls) => `<div class="cx${cls ? ' ' + cls : ''}">${topbar()}<div class="cx-body">${inner}</div></div>`;
+  // kept for the older checks that look for the old sidebar's links
+  function side() { return ''; }
 
-  /* ---------------------------------------------------------------- home */
-  const BLOCKED = ['epfindia.gov.in', 'parivahan.gov.in', 'bizfile.gov.sg', 'u.ae'];   // seen refusing cloud computers in the exams
+  /* ---------------------------------------------------------------- the hub */
   const ago = sec => { const m = Math.round((Date.now() / 1000 - sec) / 60); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
-  const mins = run => { const s = Math.max(0, Math.round(Date.now() / 1000 - run.started)); return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${s % 60} s`; };
-  function shot(which, run, empty, pill) {
-    return `<div class="hc-shot ${which === 'hoola' ? 'dk' : ''}" data-shot="${which}" data-sid="${run ? esc(run.session_id) : ''}">
-      <div class="hc-shotin"><div class="hc-shotbar">${run ? esc(S(run.task).slice(0, 60)) : esc(NAME[which])}</div>
-      <div class="hc-shotview">${esc(empty)}</div></div>
-      ${run ? `<span class="hc-livepill"><i></i>Live · step ${esc(run.step)}</span>` : pill || ''}</div>`;
+  const took = j => { const s = j.ended && j.started ? Math.max(1, j.ended - j.started) : 0; return !s ? ago(j.started) : s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`; };
+  function machine(which, run, chosen) {
+    const h = ST.status.hoola, m = ST.status.mine, mineOk = m.on && m.devices.length, onl = m.devices.filter(d => d.online);
+    const hoola = which === 'hoola';
+    const state = hoola ? (run ? `<b class="busy">Working · step ${esc(run.step)}</b>` : h.online ? '<b class="ok">Ready</b>' : '<b>Starting</b>')
+      : !m.on ? '<b>Not set up</b>' : !m.devices.length ? '<b>Waiting for your PC</b>'
+      : run ? `<b class="busy">Working · step ${esc(run.step)}</b>` : onl.length ? `<b class="ok">Online${m.chrome ? ' · Chrome connected' : ''}</b>` : '<b>Offline · open Hoola Desktop</b>';
+    const line = hoola ? "Hoola's own computer in the cloud. Awake 24×7, your logins in your own locked folder."
+      : mineOk ? `${esc(osOf(onl[0] || m.devices[0]))} · your internet, your Chrome and your apps.` : 'Connect it for sites that refuse cloud computers.';
+    return `<a class="cx-machine${chosen ? ' chosen' : ''}" data-machine="${which}" href="${hoola ? '#/hoola' : mineOk ? '#/mine' : '#/connect'}">
+      <span class="cx-art ${hoola ? 'cloud' : 'laptop'}" data-shot="${which}" data-sid="${run ? esc(run.session_id) : ''}"><span class="scr"></span>${hoola ? '' : '<span class="base"></span>'}</span>
+      <span class="cx-mtext"><span class="cx-mname">${hoola ? 'Hoola PC' : esc(mineOk ? devName() : 'Your PC')}</span>
+        <span class="cx-mline">${line}</span>${state}${run ? `<span class="cx-mthought">${esc(S(run.thought).trim() || S(run.task))}</span>` : ''}</span></a>`;
   }
   function home() {
-    const h = ST.status.hoola, m = ST.status.mine, hr = h.running, mr = m.running;
-    const askVal = ($('#ask') || {}).value || ST.askText || '';
-    const where = ST.askWhere || 'auto';
-    const hState = !h.online ? '<span class="mut">Starting · Hoola is bringing it up</span>'
-      : hr ? `<span class="acct">${hr.status === 'queued' ? 'Waiting for a free Hoola PC' : 'Working'} · ${esc(S(hr.task).slice(0, 56))}</span>`
-      : '<span class="okt">Online · ready</span>';
-    const onl = m.devices.filter(d => d.online);
-    const osName = d => { const o = S(d.os).toLowerCase(); return o.startsWith('darwin') || o.includes('mac') ? 'Mac' : o.startsWith('linux') ? 'Linux' : o ? 'Windows' : ''; };
-    const mState = !m.on ? '<span class="mut">Not set up</span>' : !m.devices.length ? '<span class="mut">Waiting for your PC to connect</span>'
-      : mr ? `<span class="acct">Working · ${esc(S(mr.task).slice(0, 56))}</span>`
-      : onl.length ? `<span class="mut">${esc(onl.map(d => [osName(d), d.name].filter(Boolean).join(' · ')).join(', '))}${m.chrome ? ' · Chrome connected' : ''}${m.background ? ' · background mode on' : ''}</span>`
-      : `<span class="mut">Offline · open Hoola Desktop on ${esc(m.devices[0].name)}</span>`;
-    const minePill = m.on && m.devices.length ? (onl.length ? `<span class="hc-pill ok"><i></i>Online · ${esc(onl[0].name)}</span>` : '<span class="hc-pill"><i></i>Offline</span>') : '';
-    const think = run => run ? `<div class="hc-prog" role="progressbar" aria-label="Job progress" aria-valuetext="Step ${esc(run.step)}"><i style="width:${Math.min(92, 8 + run.step * 7)}%"></i></div>
-        <p class="hc-thought">${esc(S(run.thought).trim() || 'Working on the computer')}</p>` : '';
-    APP.innerHTML = side(`<div class="hc-note"><b>Separate chats</b>Each computer keeps its own chats. They never mix with your Hoola chats.</div>`) +
-      `<main class="hc-main hc-home">
-        <header class="hc-top"><div><h1>Hoola Computer</h1><p class="hc-lead">Give Hoola work that needs a real computer: portals, forms, downloads, repeat entries. Pick where it runs.</p></div>
-          <a class="btn sm" href="/console/">${svg(IC.phone)}Call Hoola</a></header>
-        <section class="hc-cards hc-two" aria-label="Your computers">
-          <article class="hc-pcard">
-            ${shot('hoola', hr, hr ? 'Live screen loading…' : h.online ? 'Ready for a job' : 'Starting')}
-            <div class="hc-pbody">
-              <div class="hc-phead"><span class="hc-ico v">${svg(IC.cloud, '')}</span><div><h2>Hoola PC</h2>${hState}</div>
-                <a class="btn sm ink" href="#/hoola">Open${svg(IC.arrow)}</a></div>
-              ${think(hr) || '<p class="hc-ptext">Hoola\'s own computer in the cloud. Works even when your PC is off.</p>'}
-              <div class="hc-facts"><div><small>Runs</small><b>In the cloud, 24×7</b></div><div><small>Your folder</small><b>Locked</b></div>
-                <div><small>Own email</small><b>${h.email ? 'Ready' : 'Not set up'}</b></div></div>
-            </div></article>
-          <article class="hc-pcard">
-            ${shot('mine', mr, mr ? 'Live screen loading…' : !m.on ? 'Not set up' : !m.devices.length ? 'Waiting for your PC' : onl.length ? 'Ready for a job' : 'Offline', minePill)}
-            <div class="hc-pbody">
-              <div class="hc-phead"><span class="hc-ico">${svg(IC.pc, '')}</span><div><h2>Your PC</h2>${mState}</div>
-                <a class="btn sm" href="${m.on && m.devices.length ? '#/mine' : '#/connect'}">${m.on && m.devices.length ? 'Open' : 'Set up'}${svg(IC.arrow)}</a></div>
-              ${think(mr) || '<p class="hc-ptext">Best for sites that refuse cloud computers. Uses your own internet, your Chrome and your apps.</p>'}
-              <div class="hc-chips">${BLOCKED.map(b => `<span>${esc(b)}</span>`).join('')}</div>
-              <div class="hc-useme"><label class="sw">Use my PC for jobs<input type="checkbox" role="switch" id="mineSw" ${m.on ? 'checked' : ''}></label>
-                <a href="#/connect">Add a PC</a></div>
-            </div></article>
-        </section>
-        <form class="hc-ask" id="askForm" autocomplete="off">
-          <label class="sr" for="ask">Give Hoola a computer job</label>
-          <input id="ask" type="text" placeholder="Download last month's GST returns and put them in a folder…" value="${esc(askVal)}">
-          <div class="hc-where" role="radiogroup" aria-label="Where it runs">
-            ${[['auto', 'Let Hoola choose'], ['hoola', 'Hoola PC'], ['mine', 'Your PC']].map(([k, t]) =>
-              `<button type="button" role="radio" aria-checked="${where === k}" data-where="${k}">${t}</button>`).join('')}</div>
-          <button class="hc-go" type="submit" aria-label="Start the job">${svg(IC.up)}</button>
-        </form>
-        <section class="hc-three" aria-label="Jobs, routines and your rules">
-          <div class="hc-panel"><div class="hc-panhead"><h3>Recent jobs</h3><a href="/console/pcjobs">See all</a></div><ul class="hc-jobs" id="jobs"><li class="mut">Loading…</li></ul></div>
-          <div class="hc-panel"><div class="hc-panhead"><h3>Routines</h3><a href="/console/pcjobs#/routines">Manage</a></div>
-            <p class="hc-small">A job that went well, saved. It runs again in seconds with no AI and asks you only for what changes.</p><div id="routines"></div></div>
-          <div class="hc-panel"><div class="hc-panhead"><h3>You stay in charge</h3><a href="/console/pcjobs#/rules">Your rules</a></div>
-            <ul class="hc-ticks"><li>${svg(IC.check)}Paying, sending, deleting and installing wait for your tap.</li>
-              <li>${svg(IC.check)}Passwords, OTPs and national logins stay yours.</li><li id="ruleLine">${svg(IC.check)}Your rules for sites</li></ul></div>
-        </section>
-      </main>`;
+    const h = ST.status.hoola, m = ST.status.mine;
+    const askVal = ($('#ask') || {}).value || ST.askText || '', where = ST.askWhere || 'auto';
+    const mineOk = m.on && m.devices.length;
+    APP.innerHTML = frame(`<main class="cx-hub">
+      <h1 class="cx-q">What should a computer do for you?</h1>
+      <form class="cx-ask" id="askForm" autocomplete="off">
+        <label class="sr" for="ask">Give Hoola a computer job</label>
+        <textarea id="ask" rows="2" placeholder="Download my October GSTR-2B and tell me which suppliers haven't filed">${esc(askVal)}</textarea>
+        <div class="cx-askrow">
+          <div class="cx-where" role="radiogroup" aria-label="Where it runs">
+            ${[['auto', 'Let Hoola choose'], ['hoola', 'Hoola PC'], ['mine', mineOk ? devName() : 'Your PC']].map(([k, t]) =>
+              `<button type="button" role="radio" aria-checked="${where === k}" data-where="${k}">${esc(t)}</button>`).join('')}</div>
+          <button class="cx-go hc-go" type="submit" aria-label="Start the job">${svg(IC.up)}</button>
+        </div>
+      </form>
+      <div class="cx-route" id="route" role="status" hidden></div>
+      <section class="cx-machines" aria-label="Your computers">${machine('hoola', h.running)}${machine('mine', m.running)}</section>
+      <section class="cx-today" aria-label="Today">
+        <div class="cx-sec"><h2>Recent jobs</h2><a href="/console/pcjobs">See all</a></div>
+        <ul class="cx-jobs" id="jobs"><li class="mut">Loading…</li></ul>
+        <div class="cx-twocol">
+          <div class="cx-panel"><div class="cx-sec"><h2>Routines</h2><a href="/console/pcjobs#/routines">Manage</a></div>
+            <p class="cx-small">A job that went well, saved. It runs again in seconds, with no AI, and asks only for what changes.</p><div id="routines"></div></div>
+          <div class="cx-panel"><div class="cx-sec"><h2>You stay in charge</h2><a href="/console/pcjobs#/rules">Your rules</a></div>
+            <ul class="cx-ticks"><li>${svg(IC.check)}Paying, sending, deleting and saving files wait for your yes.</li>
+              <li>${svg(IC.check)}Passwords, OTPs and national sign-ins stay yours.</li><li id="ruleLine">${svg(IC.check)}Your rules for sites</li></ul>
+            <label class="sw cx-mineSw">Use my PC for jobs<input type="checkbox" role="switch" id="mineSw" ${m.on ? 'checked' : ''}></label></div>
+        </div>
+      </section>
+    </main>`, 'cx-home');
     $('#mineSw').addEventListener('change', async e => {
       try { await api('PUT', '/api/computer/mine', {on: e.target.checked}); ST.status.mine.on = e.target.checked; home();
         if (e.target.checked && !ST.status.mine.devices.length) location.hash = '#/connect'; }
       catch (err) { toast(err.message, true); e.target.checked = !e.target.checked; }
     });
-    $('#ask').addEventListener('input', e => { ST.askText = e.target.value; });
-    document.querySelector('.hc-where').addEventListener('click', e => { const b = e.target.closest('[data-where]'); if (!b) return;
+    const ask = $('#ask');
+    ask.addEventListener('input', e => { ST.askText = e.target.value; });
+    ask.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('#askForm').requestSubmit(); } });
+    document.querySelector('.cx-where').addEventListener('click', e => { const b = e.target.closest('[data-where]'); if (!b) return;
       ST.askWhere = b.dataset.where; for (const x of document.querySelectorAll('[data-where]')) x.setAttribute('aria-checked', x === b); });
     $('#askForm').addEventListener('submit', homeAsk);
     homeShots(); homeLists();
   }
-  async function homeShots() {          // the live picture of what each computer is doing right now
+  async function homeShots() {          // the live picture of what each computer is doing right now, inside its drawing
     for (const el of document.querySelectorAll('[data-shot]')) {
       const sid = el.dataset.sid; if (!sid) continue;
       try {
         const r = await fetch(`/api/browser/${enc(sid)}/frame`, {headers: {Authorization: 'Bearer ' + TOKEN}, cache: 'no-store'});
         if (!r.ok) continue;
-        const u = URL.createObjectURL(await r.blob()), v = el.querySelector('.hc-shotview');
+        const u = URL.createObjectURL(await r.blob()), v = el.querySelector('.scr');
         ST.homeUrls = (ST.homeUrls || []); ST.homeUrls.push(u);
-        v.innerHTML = `<img src="${u}" alt="Live screen of ${esc(NAME[el.dataset.shot])}">`; v.classList.add('has');
+        v.innerHTML = `<img src="${u}" alt="Live screen of ${esc(NAME[el.dataset.shot])}">`;
       } catch {}
     }
     while ((ST.homeUrls || []).length > 6) URL.revokeObjectURL(ST.homeUrls.shift());
   }
   async function homeLists() {
-    const [jobs, rts, rules] = await Promise.all([api('GET', '/api/pc/trace?limit=5').catch(() => null),
+    const [jobs, rts, rules] = await Promise.all([api('GET', '/api/pc/trace?limit=6').catch(() => null),
       api('GET', '/api/pc/routines').catch(() => null), api('GET', '/api/pc/rules').catch(() => null)]);
     const J = $('#jobs');
     if (J) {
       const rows = (jobs && jobs.jobs) || [];
-      const dot = st => st === 'done' ? 'ok' : st === 'running' ? 'run' : st === 'needs_confirm' || st === 'partial' ? 'wait' : st === 'failed' || st === 'cancelled' ? 'bad' : '';
-      J.innerHTML = rows.length ? rows.map(j => `<li><span class="dot ${dot(j.status)}"></span>
-          <span class="t"><b>${esc(S(j.task).replace(/\(Originally:.*$/, '').slice(0, 90))}</b><small>${j.kind === 'hoola_pc' ? 'Hoola PC' : 'Your PC'} · ${esc(j.steps || 0)} steps · ${esc(j.ended && j.started ? Math.max(1, j.ended - j.started) + ' s' : ago(j.started))}</small></span>
-          <a href="/console/pcjobs#/job/${enc(j.job)}">Open</a></li>`).join('')
-        : '<li class="mut">No PC jobs yet. Give one above.</li>';
+      const tone = st => st === 'done' ? 'ok' : st === 'running' ? 'busy' : st === 'needs_confirm' || st === 'partial' ? 'wait' : st === 'failed' || st === 'cancelled' ? 'bad' : '';
+      const word = st => ({done: 'Done', running: 'Working', needs_confirm: 'Waiting for you', partial: 'Stopped part-way', failed: 'Did not finish', cancelled: 'Stopped'})[st] || S(st);
+      J.innerHTML = rows.length ? rows.map(j => `<li class="cx-job ${tone(j.status)}">
+          <span class="cx-pill ${j.kind === 'hoola_pc' ? 'v' : ''}">${j.kind === 'hoola_pc' ? 'Hoola PC' : esc(devName())}</span>
+          <b>${esc(S(j.task).replace(/\s*\(Originally:.*$/, '').slice(0, 110))}</b>
+          <span class="cx-jmeta"><span>${esc(word(j.status))}</span> · ${esc(j.steps || 0)} steps · ${esc(took(j))}</span>
+          <a href="/console/pcjobs#/job/${enc(j.job)}">Watch it again</a></li>`).join('')
+        : '<li class="mut cx-empty">No computer jobs yet. Give one above and watch it happen.</li>';
     }
     const R = $('#routines');
     if (R) {
       const rows = ((rts && rts.routines) || []).slice(0, 3);
-      R.innerHTML = rows.length ? rows.map(r => `<div class="hc-rt"><span><b>${esc(r.name)}</b><small>${(r.blanks || []).length ? 'blanks: ' + esc(r.blanks.map(b => b.name).join(', ')) : 'no blanks'} · ran ${esc(r.runs || 0)}×</small></span>
+      R.innerHTML = rows.length ? rows.map(r => `<div class="hc-rt"><span><b>${esc(r.name)}</b><small>${(r.blanks || []).length ? 'asks for ' + esc(r.blanks.map(b => b.name).join(', ')) : 'nothing to fill'} · ran ${esc(r.runs || 0)}×</small></span>
           <a class="btn xs" href="/console/pcjobs#/routines">Run</a></div>`).join('')
-        : '<p class="hc-small mut">No routines yet. After a job goes well, say "save that as a routine".</p>';
+        : '<p class="cx-small mut">None yet. After a job goes well, say "save that as a routine".</p>';
     }
     const L = $('#ruleLine');
     if (L && rules) { const n = (rules.never || []).length, a = (rules.ask || []).length, t = (rules.notes || []).length;
@@ -228,18 +219,26 @@
   async function homeAsk(e) {
     e.preventDefault();
     const text = S($('#ask').value).trim(); if (!text) { $('#ask').focus(); return; }
+    const go = $('.cx-go'); if (go.disabled) return; go.disabled = true;
     let which = ST.askWhere || 'auto', why = '';
     try {
       if (which === 'auto') { const c = await api('POST', '/api/computer/choose', {text}); which = c.which; why = c.why; }
+      else why = which === 'hoola' ? 'you chose it' : 'you chose it';
       if (which === 'mine' && !(ST.status.mine.on && ST.status.mine.devices.length)) { location.hash = '#/connect'; toast('Connect your PC first'); return; }
+      // say where it goes and why, light that machine up, then open its screen
+      const rt = $('#route');
+      if (rt) { rt.className = `cx-route ${which === 'hoola' ? 'v' : ''}`; rt.innerHTML = `${svg(IC.arrow)}<span><b>${esc(which === 'hoola' ? 'Hoola PC' : devName())}</b> · ${esc(why)}</span>`; rt.hidden = false; }
+      for (const mc of document.querySelectorAll('[data-machine]')) mc.classList.toggle('chosen', mc.dataset.machine === which);
       const r = await api('POST', `/api/computer/${which}/chats`);
       await api('POST', `/api/conversations/${enc(r.id)}/messages`, {text, client_id: 'hc' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7)});
-      ST.askText = ''; if (why) toast(`${NAME[which]}: ${why}`);
+      ST.askText = '';
+      await new Promise(res => setTimeout(res, matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 900));
       location.hash = `#/${which}/${enc(r.id)}`;
     } catch (err) { toast(err.message, true); }
+    finally { go.disabled = false; }
   }
 
-  /* ---------------------------------------------------------------- Your PC setup (Connect your PC) */
+  /* ---------------------------------------------------------------- Connect your PC */
   function guessOs() { const p = S(navigator.userAgentData && navigator.userAgentData.platform || navigator.platform || navigator.userAgent).toLowerCase();
     return p.includes('mac') ? 'mac' : p.includes('linux') && !p.includes('android') ? 'linux' : 'windows'; }
   function setup() {
@@ -249,9 +248,8 @@
       linux: ['Linux', 'X11 desktops', 'Hoola-Desktop-linux.tar.gz · run ./SantoshDesktop']};
     const step = (n, cls, title, sub, right) => `<li class="hc-step ${cls}"><span class="n">${cls === 'done' ? svg(IC.check) + '<span class="sr">Done:</span>' : n}</span>
       <div class="t"><b>${title}</b><span>${sub}</span></div>${right || ''}</li>`;
-    APP.innerHTML = side(`<div class="hc-note"><b>Why connect your PC?</b>Some sites refuse cloud computers. On your PC Hoola uses your own internet, your Chrome and your apps like Excel and Tally.</div>`) +
-      `<main class="hc-main hc-connect">
-        <header class="hc-top"><div><h1>Connect your PC</h1><p class="hc-lead">Three steps, about two minutes. You can turn it off any time.</p></div>
+    APP.innerHTML = frame(`<main class="hc-main hc-connect cx-connect">
+        <header class="hc-top"><div><h1 class="cx-q sm">Connect your computer</h1><p class="hc-lead">Three steps, about two minutes. Some sites refuse cloud computers; on your own computer Hoola uses your internet, your Chrome and your apps.</p></div>
           <label class="sw">Use my PC<input type="checkbox" role="switch" id="mineSw" ${m.on ? 'checked' : ''}></label></header>
         ${!m.on ? `<p class="hc-lead">Turn on "Use my PC" to start.</p>` : `
         <div class="hc-os" role="radiogroup" aria-label="Your computer">
@@ -265,13 +263,13 @@
                  : `<button class="btn sm" type="button" id="newCode">Show my code</button>`)}
           ${step(3, '', 'Let Hoola work in your Chrome', 'In Hoola Desktop open Browser extension, add it to Chrome, then press "Let Hoola work on my pages".', '<span class="mut hc-opt">optional</span>')}
         </ol>
-        <div class="hc-wait" role="status"><i></i>Waiting for your PC… this page opens its workspace by itself when it connects.</div>`}
+        <div class="hc-wait" role="status"><i></i>Waiting for your computer… this page opens its screen by itself when it connects.</div>`}
         <section class="hc-safe" aria-label="Safety">
-          <div><b>You stay in control</b><span>A banner with a Stop button shows on your screen while Hoola works.</span></div>
-          <div><b>Asks before big steps</b><span>Paying, sending, deleting and installing always wait for your tap.</span></div>
+          <div><b>You stay in control</b><span>A banner with Stop shows on your screen while Hoola works.</span></div>
+          <div><b>Asks before big steps</b><span>Paying, sending, deleting and saving files always wait for your yes.</span></div>
           <div><b>Turn off any time</b><span>Switch off "Use my PC" and Hoola stops using it.</span></div>
         </section>
-      </main>`;
+      </main>`, 'cx-setup');
     $('#mineSw').addEventListener('change', async e => {
       try { await api('PUT', '/api/computer/mine', {on: e.target.checked}); ST.status.mine.on = e.target.checked; setup(); }
       catch (err) { toast(err.message, true); }
@@ -285,10 +283,10 @@
     const before = ST.status ? ST.status.mine.devices.length : 0;
     try { ST.status = await api('GET', '/api/computer'); } catch { return; }
     if (ST.status.mine.on && ST.status.mine.devices.length > (ST.connecting ? before : 0)) {
-      toast('Your PC is connected'); stopTimers(); ST.which = 'mine'; ST.connecting = false; history.replaceState(null, '', '#/mine'); workspace(); }
+      toast('Your computer is connected'); stopTimers(); ST.which = 'mine'; ST.connecting = false; history.replaceState(null, '', '#/mine'); workspace(); }
   }
 
-  /* ---------------------------------------------------------------- workspace */
+  /* ---------------------------------------------------------------- a machine's screen */
   async function workspace() {
     const w = ST.which;
     try { ST.chats = (await api('GET', `/api/computer/${w}/chats`)).chats || []; } catch (e) { toast(e.message, true); ST.chats = []; }
@@ -309,57 +307,69 @@
   function chatRows() {
     return ST.chats.map(c => { const [cls, line] = resultLine(c.result);
       return `<button type="button" class="hc-chat" data-chat="${esc(c.id)}" ${c.id === ST.chat ? 'aria-current="page"' : ''}>
-        <b>${esc(c.empty ? 'New task' : c.title)}</b><span class="${cls}">${esc(line || when(c.updated_at))}</span></button>`; }).join('');
+        <b>${esc(c.empty ? 'New job' : c.title)}</b><span class="${cls}">${esc(line || when(c.updated_at))}</span></button>`; }).join('');
   }
   function drawWorkspace() {
-    const w = ST.which, m = ST.status.mine;
-    const osName = d => { const o = S(d.os).toLowerCase(); return o.startsWith('darwin') || o.includes('mac') ? 'Mac' : o.startsWith('linux') ? 'Linux' : 'Windows'; };
-    const pcRow = w === 'mine' ? `<div class="hc-lab">Your computers</div>` + m.devices.map(d => `<div class="hc-pcrow">${svg(IC.pc)}<div><b>${esc(d.name)}</b>
-        <span class="${d.online ? 'okt' : 'mut'}">${d.online ? 'Online' : 'Offline'} · ${esc(osName(d))}</span></div></div>`).join('') : '';
-    const foot = w === 'hoola'
+    const w = ST.which, m = ST.status.mine, hoola = w === 'hoola';
+    const foot = hoola
       ? `<div class="hc-foot">
-          <div class="hc-tile">${svg(IC.lock)}<span><b>Your locked folder</b>Logins, downloads · only yours</span></div>
+          <div class="hc-tile">${svg(IC.lock)}<span><b>Your locked folder</b>Logins and downloads, only yours</span></div>
           ${ST.status.hoola.email ? `<div class="hc-tile">${svg(IC.mail)}<span><b>Hoola's own email</b><span class="hc-mail">${esc(ST.status.hoola.email)}</span></span></div>` : ''}
           <button class="hc-tile" type="button" id="savedBtn">${svg(IC.key)}<span><b>Saved sign-ins</b>Used only when you tap</span></button></div>`
       : `<div class="hc-foot hc-card2">
-          <label class="sw">Work in the background<input type="checkbox" role="switch" id="bgSw" ${m.background ? 'checked' : ''}></label>
-          <span class="hc-small">Hoola works through buttons and fields and never takes your mouse or keyboard without asking.</span>
-          <div class="hc-div"></div>
-          ${m.devices.filter(d => d.online).map(d => `<span class="hc-st"><span class="dot ok"></span>Hoola Desktop ${esc(d.version || '')} connected</span>`).join('') || '<span class="hc-st"><span class="dot"></span>Hoola Desktop is not open</span>'}
+          ${m.devices.map(d => `<span class="hc-st"><span class="dot ${d.online ? 'ok' : ''}"></span>${esc(d.name)} · ${esc(osOf(d))} · ${d.online ? 'online' : 'offline'}</span>`).join('')}
           <span class="hc-st"><span class="dot ${m.chrome ? 'ok' : ''}"></span>${m.chrome ? 'Works in your Chrome' : 'Chrome extension not connected'}</span>
-          <button class="hc-nav" type="button" id="addPc">${svg(IC.plus)}Add another PC</button>
+          <label class="sw">Work in the background<input type="checkbox" role="switch" id="bgSw" ${m.background ? 'checked' : ''}></label>
+          <span class="hc-small">Hoola uses buttons and fields and never takes your mouse or keyboard without asking.</span>
+          <button class="hc-nav" type="button" id="addPc">${svg(IC.plus)}Add another computer</button>
           <button class="hc-nav" type="button" id="offPc" style="color:var(--bad)">Turn off "Use my PC"</button></div>`;
-    APP.innerHTML = side(`${pcRow}<button class="hc-new" type="button" id="newTask">${svg(IC.plus)}New task</button>
-        <div class="hc-lab">${esc(NAME[w])} chats</div><div id="chatList">${chatRows()}</div>${foot}`) +
-      `<section class="hc-stage" aria-label="Live screen">
-        <header class="hc-stagehead"><div><h1 id="stTitle">${esc(NAME[w])}</h1><span id="stSub">Nothing running right now</span></div>
+    const chrome = hoola
+      ? `<div class="cx-chrome dk"><span class="lights"><i></i><i></i><i></i></span><span class="u" id="stUrl">Hoola PC</span><span class="live" id="stLive" hidden><i></i>live</span></div>`
+      : `<div class="cx-chrome tabs"><span class="tab">Your tabs</span><span class="tab hoola" id="stTab" hidden><i></i><span id="stUrl">Hoola</span></span></div>
+         <div class="cx-banner" id="stBanner" hidden>Hoola is working in this tab <button type="button" data-stop>Stop</button></div>`;
+    APP.innerHTML = frame(`
+      <nav class="cx-list" aria-label="${esc(NAME[w])} jobs">
+        <button class="hc-new" type="button" id="newTask">${svg(IC.plus)}New job</button>
+        <div class="hc-lab">Jobs on ${esc(hoola ? 'Hoola PC' : devName())}</div><div id="chatList">${chatRows()}</div>${foot}
+      </nav>
+      <section class="cx-stage" aria-label="Live screen">
+        <header class="hc-stagehead"><div><h1 id="stTitle">${esc(hoola ? 'Hoola PC' : devName())}</h1><span id="stSub">Nothing running right now</span></div>
           <div class="hc-acts"><button class="btn sm" type="button" id="takeBtn" hidden>Take control</button>
           <button class="btn sm stop" type="button" id="stopBtn" hidden>Stop</button></div></header>
-        <div class="hc-screen"><div class="hc-bar"><span class="d"><i></i><i></i><i></i></span><span class="u" id="stUrl">${esc(NAME[w])}</span></div>
-          <div class="hc-view" id="stView">${w === 'mine' && !m.online ? 'Your PC is offline. Open Hoola Desktop on it, then give the task here.' : 'The live screen shows here while Hoola works.'}</div>
-          <div class="hc-think"><span class="dot" id="stDot"></span><span id="stThink">Waiting for a task</span></div></div>
-        <div class="hc-strip" id="steps" aria-label="Steps" hidden></div>
-        <div class="hc-move" id="move" role="status" hidden></div>
+        <div class="cx-device ${hoola ? 'dk' : 'lt'}">${chrome}
+          <div class="cx-view hc-view" id="stView">${!hoola && !m.online ? 'Your computer is offline. Open Hoola Desktop on it, then give the job here.' : 'Give a job and watch it happen here.'}</div>
+          <span class="cx-ptr" id="ptr" hidden aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 2l16 9-7 2-3 7z"/></svg><b>Hoola</b></span>
+          <div class="cx-think hc-think"><span class="dot" id="stDot"></span><span id="stThink">Waiting for a job</span></div>
+        </div>
         <div class="hc-hands" id="hands" hidden>
           <p class="hc-handsnote">You have control. Click on the screen, type below, then press <b>I'm done</b>. Hoola waits and never sees what you type.</p>
-          <form class="hc-typer" id="typer" autocomplete="off"><input id="typeIn" type="text" autocomplete="off" spellcheck="false" placeholder="Type into the PC" aria-label="Type into the PC">
+          <form class="hc-typer" id="typer" autocomplete="off"><input id="typeIn" type="text" autocomplete="off" spellcheck="false" placeholder="Type into the computer" aria-label="Type into the computer">
             <button class="btn sm" type="submit">Type</button></form>
           <div class="hc-keys">${['Enter', 'Tab', 'Backspace', 'Escape'].map(k => `<button class="btn sm" type="button" data-key="${k}">${k === 'Escape' ? 'Esc' : k}</button>`).join('')}
             <button class="btn sm" type="button" data-scroll="3">Scroll up</button><button class="btn sm" type="button" data-scroll="-3">Scroll down</button></div>
         </div>
-        <form class="hc-login" id="login" hidden autocomplete="off"></form>
         <div class="hc-also" id="also" hidden></div>
       </section>
-      <aside class="hc-chatcol" aria-label="${esc(NAME[w])} chat">
-        <div class="hc-chathead"><b>Chat</b><span>only for ${esc(NAME[w])}</span></div>
-        ${w === 'mine' && !m.online ? '<div class="hc-off">Your PC is offline right now. Hoola will tell you if a task needs it on.</div>' : ''}
-        <div class="hc-msgs" id="msgs"><div id="thread" class="hck-tight"></div></div>
-        <div class="hc-need" id="need" role="status" hidden></div>
-        <div class="hc-comp"><div class="hc-files" id="files"></div>
-          <div id="bar"></div><input type="file" id="fileIn" hidden multiple></div>
-      </aside>`;
+      <aside class="cx-side" aria-label="This job and its chat">
+        <div class="cx-now" id="jobPanel">
+          <span class="cx-pill ${hoola ? 'v' : ''}">${hoola ? 'Hoola PC · cloud' : esc(devName()) + ' · your computer'}</span>
+          <h2 class="cx-jt" id="jobTitle">No job running</h2>
+          <ol class="cx-check" id="steps" aria-label="Steps"></ol>
+          <form class="hc-login cx-card" id="login" hidden autocomplete="off"></form>
+          <div class="cx-card amber" id="approve" role="status" hidden></div>
+          <div class="cx-card amber" id="move" role="status" hidden></div>
+        </div>
+        <div class="hc-chatcol cx-chat" aria-label="${esc(NAME[w])} chat">
+          <div class="hc-chathead"><b>Chat</b><span>only for ${esc(hoola ? 'Hoola PC' : devName())}</span></div>
+          ${!hoola && !m.online ? '<div class="hc-off">Your computer is offline right now. Hoola will tell you if a job needs it on.</div>' : ''}
+          <div class="hc-msgs" id="msgs"><div id="thread" class="hck-tight"></div></div>
+          <div class="hc-need" id="need" role="status" hidden></div>
+          <div class="hc-comp"><div class="hc-files" id="files"></div>
+            <div id="bar"></div><input type="file" id="fileIn" hidden multiple></div>
+        </div>
+      </aside>`, 'cx-work');
     ST.thread = HoolaChat.mount($('#thread'), {scroller: $('#msgs'), jump: true});
-    ST.bar = HoolaChat.bar($('#bar'), {placeholder: `Tell ${NAME[w]} what to do`, plus: true,
+    ST.bar = HoolaChat.bar($('#bar'), {placeholder: `Tell ${hoola ? 'Hoola PC' : devName()} what to do`, plus: true,
       onSend: text => send(text), onStop: stopTurn, onPlus: () => $('#fileIn').click()});
     // a file with no words can go too: the shared box sends only words, so the button is opened here
     const go = $('#bar .go');
@@ -373,6 +383,7 @@
     $('#chatList').addEventListener('click', e => { const b = e.target.closest('[data-chat]'); if (b) location.hash = `#/${w}/${enc(b.dataset.chat)}`; });
     $('#fileIn').addEventListener('change', upload);
     $('#stopBtn').addEventListener('click', stopRun);
+    const bs = document.querySelector('[data-stop]'); if (bs) bs.addEventListener('click', stopRun);
     const sb = $('#savedBtn'); if (sb) sb.addEventListener('click', savedList);
     $('#takeBtn').addEventListener('click', toggleTake);
     $('#stView').addEventListener('click', screenClick);
@@ -382,9 +393,10 @@
       if (k) hand({op: 'key', keys: k.dataset.key});
       if (sc) { const im = $('#stView img'); hand({op: 'scroll', x: im ? im.naturalWidth / 2 : 640, y: im ? im.naturalHeight / 2 : 400, amount: +sc.dataset.scroll}); } });
     $('#login').addEventListener('submit', sendLogin);
+    $('#approve').addEventListener('click', e => { const b = e.target.closest('[data-yes]'); if (b) decide(b.dataset.yes === '1'); });
     const bgs = $('#bgSw'); if (bgs) bgs.addEventListener('change', async e => {
       try { await api('PUT', '/api/computer/mine/background', {on: e.target.checked}); ST.status.mine.background = e.target.checked;
-        toast(e.target.checked ? 'Hoola works in the background on your PC' : 'Hoola may use your mouse and keyboard again'); }
+        toast(e.target.checked ? 'Hoola works in the background on your computer' : 'Hoola may use your mouse and keyboard again'); }
       catch (err) { e.target.checked = !e.target.checked; toast(err.message, true); }
     });
     const add = $('#addPc'); if (add) add.addEventListener('click', () => { ST.pair = null; location.hash = '#/connect'; });
@@ -395,7 +407,6 @@
     ST.bar.focus();
   }
 
-  /* the rows only ever grow here (the server sends the newest 200), so a long chat keeps landing new replies */
   function merge(rows) {
     if (!ST.rows.length || !rows.length) { if (rows.length || !ST.rows.length) ST.rows = rows; return; }
     const got = new Set(rows.map(r => r.id)), have = new Map(ST.rows.map(r => [r.id, r]));
@@ -502,48 +513,87 @@
     const run = ST.status[ST.which] && ST.status[ST.which].running;
     const t = $('#stTitle'); if (!t) return;
     paintThread();                                     // the working row follows the task's real step
-    const stop = $('#stopBtn'), view = $('#stView');
+    const stop = $('#stopBtn'), view = $('#stView'), mine = ST.which === 'mine';
+    const show = (sel, on) => { const el = $(sel); if (el) el.hidden = !on; };
+    show('#stLive', !!run); show('#stTab', !!run); show('#stBanner', !!run && mine);
     if (!run) {
-      t.textContent = NAME[ST.which]; $('#stSub').textContent = 'Nothing running right now';
-      $('#stThink').textContent = 'Waiting for a task'; $('#stDot').className = 'dot'; stop.hidden = true;
-      ST.run = null; paintHands(null); paintSteps(null);
+      t.textContent = mine ? devName() : NAME[ST.which]; $('#stSub').textContent = 'Nothing running right now';
+      $('#stThink').textContent = 'Waiting for a job'; $('#stDot').className = 'dot'; stop.hidden = true;
+      $('#jobTitle').textContent = 'No job running';
+      ST.run = null; paintHands(null); paintSteps(null); paintApprove(null);
       return;
     }
-    ST.run = run; paintHands(run); paintSteps(run);
-    t.textContent = run.task.slice(0, 80);
-    const mins = Math.max(0, Math.round((Date.now() / 1000 - run.started) / 6) / 10);
-    $('#stSub').textContent = `${run.pc || NAME[ST.which]}${ST.which === 'mine' && ST.status.mine.chrome ? ' · in your Chrome' : ''} · step ${run.step}${run.from === 'call' ? ' · started on your voice call' : run.from === 'chat' ? ' · started from a Hoola chat' : ''} · ${mins} min`;
-    $('#stThink').textContent = run.thought || (run.status === 'queued' ? 'Waiting for a free Hoola PC' : 'Working…');
+    ST.run = run; paintHands(run); paintSteps(run); paintApprove(run);
+    t.textContent = mine ? devName() : NAME[ST.which];
+    $('#jobTitle').textContent = S(run.task).replace(/\s*\(Originally:.*$/, '').slice(0, 140);
+    const secs = Math.max(0, Math.round(Date.now() / 1000 - run.started)), long = secs < 86400 ? ` · ${secs < 60 ? secs + ' s' : Math.floor(secs / 60) + ' min'}` : '';
+    $('#stSub').textContent = `${mine && ST.status.mine.chrome ? 'In your Chrome · ' : run.pc ? run.pc + ' · ' : ''}step ${run.step}${run.from === 'call' ? ' · started on your voice call' : run.from === 'chat' ? ' · started from a Hoola chat' : ''}${long}`;
+    $('#stThink').textContent = run.thought || (run.status === 'queued' ? 'Waiting for a free Hoola PC' : run.status === 'needs_confirm' ? 'Waiting for your yes' : 'Working…');
     $('#stDot').className = 'dot ' + (run.status === 'needs_confirm' ? 'wait' : 'run');
     stop.hidden = false; stop.dataset.sid = run.session_id;
     try {
       const lv = await api('GET', `/api/browser/${enc(run.session_id)}/live`);
-      if (lv && lv.url) $('#stUrl').textContent = lv.url;
+      if (lv && lv.url) { let u = S(lv.url); try { u = new URL(u).host.replace(/^www\./, '') || u; } catch {} $('#stUrl').textContent = mine ? 'Hoola · ' + u : u; }
       if (lv && lv.seq !== ST.frameSeq) {
         const r = await fetch(`/api/browser/${enc(run.session_id)}/frame`, {headers: {Authorization: 'Bearer ' + TOKEN}, cache: 'no-store'});
         if (r.ok) {
           const u = URL.createObjectURL(await r.blob());
           if (ST.frameUrl) URL.revokeObjectURL(ST.frameUrl);
           ST.frameUrl = u; ST.frameSeq = lv.seq;
-          view.className = 'hc-view has'; view.innerHTML = `<img src="${u}" alt="Live screen of ${esc(NAME[ST.which])}">`;
+          view.className = 'cx-view hc-view has'; view.innerHTML = `<img src="${u}" alt="Live screen of ${esc(NAME[ST.which])}">`;
+          const im = view.querySelector('img'); im.addEventListener('load', placePointer, {once: true});
         }
       }
     } catch {}
   }
-  /* v0.999.145 REDESIGN: the job's steps under the screen (its step record), and "Move to my PC" when a site refuses
-     cloud computers */
+  /* the job's own steps as a checklist beside the screen (its step record), and Hoola's pointer on the screen at the
+     place of the last click it made */
+  const plain = x => { const a = S(x.thought).trim() || S(x.action || x.tool).replace(/_/g, ' ');
+    return a.length > 90 ? a.slice(0, 88) + '…' : a; };
   async function paintSteps(run) {
     const el = $('#steps'); if (!el) return;
-    if (!run) { el.hidden = true; el.innerHTML = ''; return; }
+    if (!run) { el.innerHTML = ''; el.dataset.sig = ''; ST.ptr = null; placePointer(); return; }
     let d = null;
     try { d = await api('GET', `/api/pc/trace/${enc(run.session_id)}`); } catch { return; }
+    if (!ST.run || ST.run.session_id !== run.session_id) return;
     const rows = ((d && (d.steps_list || d.steps)) || []).filter(x => typeof x === 'object');
-    if (!rows.length) { el.hidden = true; return; }
-    const last = rows.slice(-7);
-    el.innerHTML = last.map((x, i) => { const prev = rows[rows.length - last.length + i - 1];
-      const sec = prev ? Math.max(0.1, Math.round((x.t - prev.t) * 10) / 10) + ' s' : '';
-      return `<div class="hc-stp${i === last.length - 1 ? ' now' : ''}"><small>${esc(x.n)}${sec ? ' · ' + esc(sec) : ''}${i === last.length - 1 ? ' · now' : ''}</small><b>${esc(S(x.action || x.tool).slice(0, 60))}</b></div>`; }).join('');
+    const last = rows.slice(-8), hidden = rows.length - last.length;
+    const sig = run.session_id + ':' + rows.length + ':' + run.status;
+    if (el.dataset.sig !== sig) { el.dataset.sig = sig; el.innerHTML = (hidden > 0 ? `<li class="more">${hidden} earlier step${hidden === 1 ? '' : 's'}</li>` : '') +
+      last.map((x, i) => { const now = i === last.length - 1 && run.status !== 'needs_confirm';
+        return `<li class="${now ? 'now' : 'done'}"><i aria-hidden="true">${now ? '' : svg(IC.check)}</i><span>${esc(plain(x))}</span><span class="sr">${now ? ' (now)' : ' (done)'}</span></li>`; }).join('')
+      || '<li class="now"><i aria-hidden="true"></i><span>Getting the computer ready</span></li>'; }   // redrawn only when a step lands
+    const click = [...rows].reverse().find(x => x.args && isFinite(+x.args.x) && isFinite(+x.args.y));
+    ST.ptr = click ? {x: +click.args.x, y: +click.args.y} : null;
+    placePointer();
+  }
+  function placePointer() {
+    const p = $('#ptr'), im = $('#stView img'), dev = document.querySelector('.cx-device');
+    if (!p) return;
+    if (!ST.ptr || !im || !im.naturalWidth || !dev) { p.hidden = true; return; }
+    const r = im.getBoundingClientRect(), d = dev.getBoundingClientRect();
+    p.style.left = `${r.left - d.left + ST.ptr.x * r.width / im.naturalWidth}px`;
+    p.style.top = `${r.top - d.top + ST.ptr.y * r.height / im.naturalHeight}px`;
+    p.hidden = false;
+  }
+  window.addEventListener('resize', () => placePointer());
+  /* a step that needs her yes (paying, sending, deleting, saving a file): the question and two buttons, answered here */
+  function paintApprove(run) {
+    const el = $('#approve'); if (!el) return;
+    const pd = run && run.status === 'needs_confirm' && run.pending;
+    if (!pd || !pd.id) { el.hidden = true; el.dataset.id = ''; return; }
+    if (el.dataset.id === pd.id) return;
+    el.dataset.id = pd.id; el.dataset.sid = run.session_id;
+    el.innerHTML = `<b>${svg(IC.shield)}Hoola needs your yes</b><p>${esc(pd.what || 'A step that cannot be undone')}</p>
+      <div class="cx-acts"><button class="btn sm pri" type="button" data-yes="1">Yes, do it</button><button class="btn sm" type="button" data-yes="0">Not now</button></div>`;
     el.hidden = false;
+  }
+  async function decide(yes) {
+    const el = $('#approve'); const sid = el.dataset.sid, id = el.dataset.id; if (!sid || !id) return;
+    for (const b of el.querySelectorAll('button')) b.disabled = true;
+    try { await api('POST', `/api/computer/task/${enc(sid)}/decide`, {yes, id}); toast(yes ? 'Hoola carries on' : 'Hoola will not do that step');
+      el.hidden = true; el.dataset.id = ''; liveTick(); }
+    catch (e) { toast(e.message, true); for (const b of el.querySelectorAll('button')) b.disabled = false; }
   }
   function paintMove() {
     const el = $('#move'); if (!el || ST.which !== 'hoola') return;
@@ -552,8 +602,8 @@
     const m = ST.status && ST.status.mine;
     if (!hit || !m) { el.hidden = true; return; }
     const ask = (ST.rows.find(r => r.role === 'user') || {}).text || '';
-    el.innerHTML = `${svg(IC.warn)}<span>This site refuses cloud computers. Hoola can do it on your PC${m.online ? '' : ' when it is on'}.</span>
-      ${m.on && m.devices.length ? `<button class="btn sm ink" type="button" id="moveBtn"${ask ? '' : ' disabled'}>Move to my PC</button>` : '<a class="btn sm ink" href="#/connect">Connect your PC</a>'}`;
+    el.innerHTML = `<b>${svg(IC.warn)}This site refuses cloud computers</b><p>Hoola can do it on your PC${m.online ? '' : ' when it is on'}, with your own internet.</p>
+      <div class="cx-acts">${m.on && m.devices.length ? `<button class="btn sm pri" type="button" id="moveBtn"${ask ? '' : ' disabled'}>Move to my PC</button>` : '<a class="btn sm pri" href="#/connect">Connect your PC</a>'}</div>`;
     el.hidden = false;
     const b = $('#moveBtn'); if (b) b.addEventListener('click', async () => {
       try { const r = await api('POST', '/api/computer/mine/chats');

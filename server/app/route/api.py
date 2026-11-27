@@ -316,13 +316,55 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.post("/routes/{wf_id}/test")
     async def route_test(wf_id: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         """Test route: one real run now, even while the route is switched off (the editor's Test button)."""
+        from . import stepdata as SD
         wf = await run(_wf_or_404, tenant, wf_id)
         vars_ = (body or {}).get("vars")
         rid = await run(D.create_run, tenant, wf, vars_ if isinstance(vars_, dict) else {})
+        # v0.999.234 R2: a test starts with her pinned test data, and pinned steps give their pinned output
+        if (body or {}).get("use_pins", True):
+            pc = await run(SD.context_for, tenant, wf, True)
+            ctx = {"vars": vars_ if isinstance(vars_, dict) else (await run(SD.pins, tenant, wf["id"])).get("trigger") or {},
+                   "steps": {}, "notify": 0, "_pins": pc.get("_pins") or {}}
+            await run(lambda: D.update_run(tenant, rid, context=ctx))
         t = asyncio.ensure_future(D.execute_run(tenant, rid))
         D._TASKS.add(t)
         t.add_done_callback(lambda _t: D._TASKS.discard(_t))
         return {"run_id": rid, "status": "queued"}
+
+    # ---------------------------------------------------------------- v0.999.234 R2: step data, single-step tests, pins
+    @r.get("/routes/{wf_id}/data")
+    async def route_data(wf_id: str, tenant: str = Depends(current_tenant)):
+        from . import stepdata as SD
+        return await run(lambda: SD.data(tenant, _wf_or_404(tenant, wf_id)))
+
+    @r.post("/routes/{wf_id}/steps/{sid}/test")
+    async def route_step_test(wf_id: str, sid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """Test one step on the route's newest data (and her pins). A step that sends or writes really does it."""
+        from . import stepdata as SD
+        wf = await run(_wf_or_404, tenant, wf_id)
+        try:
+            return await SD.test_step(tenant, wf, sid, bool((body or {}).get("use_pins", True)))
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+
+    @r.put("/routes/{wf_id}/pins/{sid}")
+    async def route_pin(wf_id: str, sid: str, body: dict = Body(...), tenant: str = Depends(current_tenant)):
+        from . import stepdata as SD
+
+        def go():
+            wf = _wf_or_404(tenant, wf_id)
+            if "value" not in (body or {}):
+                raise HTTPException(400, "Send the data to pin as value")
+            try:
+                return {"pins": list(SD.set_pin(tenant, wf, sid, body["value"]))}
+            except ValueError as e:
+                raise HTTPException(400, str(e))
+        return await run(go)
+
+    @r.delete("/routes/{wf_id}/pins/{sid}")
+    async def route_unpin(wf_id: str, sid: str, tenant: str = Depends(current_tenant)):
+        from . import stepdata as SD
+        return await run(lambda: {"pins": list(SD.drop_pin(tenant, _wf_or_404(tenant, wf_id)["id"], sid))})
 
     @r.get("/routes/{wf_id}/chat")
     async def route_chat(wf_id: str, tenant: str = Depends(current_tenant)):
@@ -380,6 +422,19 @@ def make_router(require_key, current_tenant) -> APIRouter:
                                         "at": x.get("created_at"), "next_wake_at": x.get("next_wake_at")} for x in rows])}
         return await run(go)
 
+    def _outputs(x: dict) -> dict:
+        from . import stepdata as SD
+        out, total = {}, 0
+        for k, v in ((x.get("context") or {}).get("steps") or {}).items():
+            if not isinstance(v, dict):
+                continue
+            val = SD._view(v.get("output"))
+            total += SD._size(val)
+            if total > 600_000:
+                break
+            out[k] = val
+        return out
+
     @r.get("/runs/{run_id}")
     async def route_run_one(run_id: str, tenant: str = Depends(current_tenant)):
         def go():
@@ -389,6 +444,8 @@ def make_router(require_key, current_tenant) -> APIRouter:
             return D._masked({"id": x["id"], "route": x["wf_name"], "route_id": x["workflow_id"], "status": x["status"],
                               "error": x.get("error") or "", "pause_reason": x.get("pause_reason") or "",
                               "summary": x.get("summary"), "steps_log": (x.get("steps_log") or [])[-80:],
+                              # v0.999.234 R2: each step's whole output (the log keeps 600 characters of it)
+                              "outputs": _outputs(x), "pinned": sorted(((x.get("context") or {}).get("_pins") or {}).keys()),
                               "at": x.get("created_at"), "next_wake_at": x.get("next_wake_at")})
         return await run(go)
 

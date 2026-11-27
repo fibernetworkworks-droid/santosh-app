@@ -169,6 +169,9 @@ def _running(tenant: str, which: str) -> dict[str, Any] | None:
             ("computer" if which_of(best.conv) else "chat"), "started": best.created,
             # v0.999.37 her hands: she has the screen / a sign-in waits on her private form / her other jobs at once
             "takeover": bool(getattr(best, "takeover", False)),
+            # v0.999.233 COMPUTER V2: the step waiting for her yes, answered right on the job panel
+            **({"pending": {"id": str(best.pending.get("id") or ""), "what": str(best.pending.get("what") or "")[:300]}}
+               if best.status == "needs_confirm" and isinstance(getattr(best, "pending", None), dict) else {}),
             **({"login": {k: v for k, v in (_hands_login(best) or {}).items() if k != "session_id"}}
                if getattr(best, "login", None) and best.login.get("status") == "pending" else {}),
             "others": [{"session_id": o.id, "task": o.task[:120], "status": o.status, "pc": o.device_name}
@@ -355,6 +358,11 @@ class MineIn(BaseModel):
     on: bool
 
 
+class DecideIn(BaseModel):
+    yes: bool
+    id: str = Field(default="", max_length=40)
+
+
 class ChooseIn(BaseModel):
     text: str = Field(default="", max_length=4000)
 
@@ -385,6 +393,20 @@ def mount(app, current_tenant, require_key) -> None:
     @router.post("/api/computer/choose", dependencies=[Depends(require_key)])
     def computer_choose(body: ChooseIn, tenant: str = Depends(current_tenant)):
         return choose(tenant, body.text)
+
+    @router.post("/api/computer/task/{sid}/decide", dependencies=[Depends(require_key)])
+    def computer_decide(sid: str, body: DecideIn, tenant: str = Depends(current_tenant)):
+        """v0.999.233 her yes / no for the step a PC job is waiting on (same as the approval card)."""
+        from .pc import operator as pcop
+        op = pcop.get(tenant, sid)
+        if op is None:
+            raise HTTPException(404, "That job is not running")
+        pend = op.pending if isinstance(getattr(op, "pending", None), dict) else None
+        if not pend or (body.id and body.id != pend.get("id")):
+            raise HTTPException(409, "Nothing is waiting for your answer on that job now")
+        if not pcop.decide(tenant, sid, str(pend.get("id")), bool(body.yes)):
+            raise HTTPException(409, "That question was already answered")
+        return {"ok": True, "yes": bool(body.yes)}
 
     @router.put("/api/computer/mine", dependencies=[Depends(require_key)])
     def computer_mine(body: MineIn, tenant: str = Depends(current_tenant)):

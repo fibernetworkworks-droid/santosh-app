@@ -12518,3 +12518,32 @@ Tests: `server/tests/test_v0999_232_route_editor.py` (11, incl. a Chromium walk 
 walks moved to the editor.
 NOT VERIFIED: on her server; Ask Hoola with a real model. NOT BUILT (R2-R8): test data / pinned output / drag-to-map, more data and flow
 steps, app-event / form / chat triggers, AI steps, accounts per step + variables + versions + sharing, insights, n8n import.
+
+
+## v0.999.233 COMPUTER V2
+Computer V2. `server/app/computer.py`: _running carries `pending` {id, what} while a job waits for her yes; NEW POST /api/computer/task/{sid}/decide (DecideIn yes + id; 404 no job, 409 nothing waiting / a stale card / already answered) over pc/operator.decide. `static/console/computer.js`: topbar() + frame() replace the sidebar (side() kept as an empty stub), home() = the hub (cx-q, the ask form with where radios, #route chip + .chosen machine, machine() cards with cloud / laptop drawings holding the live frame, homeLists result cards), setup() inside the frame, drawWorkspace() = jobs list | cx-device (dark chrome or Chrome tabs + banner) with #ptr | cx-side (job panel: #jobTitle, #steps checklist, #login, #approve, #move; then the chat), liveTick (tab / banner / live, host only in the address bar, minutes hidden past a day), paintSteps (checklist redrawn only when a step lands; the last click's args -> ST.ptr), placePointer (frame image box -> pointer px, on load and resize), paintApprove + decide(). `computer.css`: the v0.999.232 COMPUTER V2 block (cx- tokens light + dark, 1180 / 860 breakpoints, reduced motion). `lib/ui/shell/hoola_computer.dart`: HoolaComputer hub (_go: choose -> chat -> message -> open; _Machine, _JobCard), ComputerSpace(chat:), _device (frame, pointer via AnimatedPositioned, thought bar), _jobPanel (checklist from /api/pc/trace/<sid>, yes card -> /decide). Tests `test_v0999_233_computer_v2.py` (3; grew from the v0.999.145 redesign test). NOT VERIFIED on her server / phone.
+
+
+## v0.999.234 STEPS YOU CAN TEST (R2 of the Hoola Route plan)
+
+Owner: "GO R2". Built as 0.999.233; their COMPUTER V2 took 0.999.233 on main, both kept.
+
+- A step opens in a large view: double-click it on the canvas (two clicks on the same step within 420 ms - the first click
+  redraws the canvas, so the browser's own dblclick never arrives) or "Open with data" in the side panel. Three columns:
+  What comes in | the step's settings | What goes out (on a phone they stack).
+- What comes in: the data the route started with (her pinned start data first), the item of a "Repeat for each" (the loop's
+  first item), and every earlier step's WHOLE output - from the newest run's context (the run log keeps 600 characters, the
+  context keeps it all) with single-step tests made since laid over it (`route_meta.data`). Fields (a tree, 4 levels, lists show
+  3 items) or JSON. A field is dragged onto any box in the middle (the browser inserts at the drop point) or clicked after
+  clicking a box (inserted at the caret) as {{steps.<id>.output.<field>}} / {{vars.<k>}} / {{item.<k>}}.
+- Test step: POST /api/route/routes/<id>/steps/<sid>/test runs that one step on the newest data + her pins. If / else, switch,
+  filter report the way they would take; repeat lists its items; wait and approval say what they would do; every other step
+  really runs (asks once first: "Testing runs this step for real"); Set a value shows the value. The page saves first.
+- Pins: PUT / DELETE /api/route/routes/<id>/pins/<sid>. A step's output (from the last test / run, or written by hand) or the
+  trigger's start data (an object). Deciding / waiting steps cannot be pinned; 200 KB each, 40 per route; pins of deleted steps
+  go. In a TEST run (Test route, Test step data) the engine gives a pinned step its pinned output instead of running it
+  (`dhara_tools._exec_one` reads `_pins` from the run context, which only the editor's test puts there - a real run never has it).
+- The run page shows each step's whole output and which were pinned.
+
+Files: `server/app/route/stepdata.py` (new), `route/api.py`, `agent/dhara_tools.py` (_exec_one pins), `static/console/route.js|css`.
+Tests: `server/tests/test_v0999_234_route_stepdata.py` (3, incl. a browser walk at 1440 and 390). NOT VERIFIED: on her server.
