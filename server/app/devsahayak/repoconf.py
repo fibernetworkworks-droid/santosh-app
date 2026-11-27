@@ -260,7 +260,8 @@ def agents(repo: Path, plugins: list[Path] | tuple = ()) -> dict[str, dict[str, 
                      else "run" if tl & {"bash"} else "read")
             out[name] = {"name": name, "title": name.replace("-", " ").replace("_", " ").title(), "tools": level,
                          "prompt": f"THIS {'REPO' if origin == 'repo' else origin.upper()}'S OWN AGENT (from " + str(f.relative_to(rel_to)) + "):\n" + body.strip()[:20000],
-                         "description": meta.get("description", "")[:300], "repo": "1", "origin": origin}
+                         "description": meta.get("description", "")[:300], "repo": "1", "origin": origin,
+                         "model": str(meta.get("model", "") or "").strip()[:80]}       # v0.999 Claude Code's `model:` line
     return out
 
 

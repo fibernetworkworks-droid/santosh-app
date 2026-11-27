@@ -1667,7 +1667,10 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
               iconColor: !done ? null : (ok ? c.ok : c.bad));
         }
       case 'agent':
-        return _line(c, Icons.groups_outlined, [TextSpan(text: cs(s['text']).isNotEmpty ? cs(s['text']) : 'A helper agent: ${cs(s['name'])}')]);
+        return _line(c, Icons.groups_outlined, [
+          TextSpan(text: cs(s['text']).isNotEmpty ? cs(s['text']) : 'A helper agent: ${cs(s['name'])}'),
+          if (cs(s['model']).isNotEmpty) TextSpan(text: ' · on ${cs(s['model'])}', style: TextStyle(color: c.ink3)),
+        ]);
       case 'bgstart':
         {
           final what = cs(s['desc']).isNotEmpty ? cs(s['desc']) : cs(s['cmd']);

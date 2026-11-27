@@ -73,8 +73,8 @@ def qwen_model() -> str:
     """The Qwen model: a qwen/ model she picked for this session, else dev_qwen_model (a Claude pick - the hint and
     memory callers ask for Haiku - means nothing on the Qwen brain)."""
     picked = str(getattr(PICK, "model", "") or "")
-    if picked.startswith("qwen/"):
-        return picked
+    if picked.startswith("qwen/") or (getattr(PICK, "agent", False) and "/" in picked):
+        return picked                                # v0.999 an agent file's `model:` (anthropic/claude-haiku-5.5 ...) too
     return str(getattr(_settings(), "dev_qwen_model", "") or "qwen/qwen3.8-27b")
 
 

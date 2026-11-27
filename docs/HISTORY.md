@@ -13063,3 +13063,7 @@ Owner: "IT Admin same as finance desks".
 - Console `itdesk.html/.js/.css`: Today, Licences & spend, People & access, Changes, Guides & questions, Settings.
 - Tests `tests/test_it_desk.py` 4 incl. a browser walk at 1440 / 390; test_tech_itadmin 7 still pass.
 - NOT VERIFIED on her server / with real Google Workspace or Microsoft 365 consoles.
+
+
+## v0.999.260 AN AGENT'S OWN MODEL
+(owner: 'Agent model: an agent file can pick its own model in Claude Code ... WORK ON IT SAME AS CLAUDE CODE'): the `model:` line of an agent file (.claude/agents/*.md or a plugin's) is followed like Claude Code - `inherit` or no line = the session's model; `haiku` / `sonnet` / `opus` = that Claude model on whichever brain Hoola Code runs on (Claude: claude-haiku-5-5 ...; through OpenRouter: anthropic/claude-haiku-5.5 ...; a dev_agent_<alias>_<claude|openrouter> setting can change one); a full model id the brain can run; anything else runs on the session's model and the agent's report says why (`subagent.agent_model`). The agent's model is set only while it runs and the coder's own comes back after (an edit agent runs in the coder's thread); on the OpenRouter brain a pinned agent model skips the tier / Box choice for that agent only. The feed says 'on Haiku 5.5' beside the agent, the repo setup lists each agent's model (web + phone). FIXED: when several agents ran in one round, a repo's own EDIT agent could run side by side with others (the one-by-one rule only knew Hoola's built-in agents). 5 tests. NOT VERIFIED: a live agent call on Haiku / Opus on her server.
