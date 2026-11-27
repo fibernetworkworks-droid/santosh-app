@@ -2196,6 +2196,15 @@ def qa_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/docs")
+@app.get("/console/docs/")
+def docs_desk_page():
+    """TECHNICAL WRITER DESK: the Technical writer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "dwdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/appreview")
 @app.get("/console/appreview/")
 def appreview_desk_page():
@@ -2869,6 +2878,8 @@ from . import prchat as _prchat_mod                             # noqa: E402  PR
 _prchat_mod.mount(app, current_tenant, require_key)             # /api/prdesk/*
 from . import archat as _archat_mod                             # noqa: E402  APP REVIEWER DESK
 _archat_mod.mount(app, current_tenant, require_key)             # /api/ardesk/*
+from . import dwchat as _dwchat_mod                             # noqa: E402  TECHNICAL WRITER DESK
+_dwchat_mod.mount(app, current_tenant, require_key)             # /api/dwdesk/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

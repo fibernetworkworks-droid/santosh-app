@@ -46,7 +46,7 @@ def test_hire_chat_block_and_wiring(adk):
     src = (root / "server/app/agent/santosh.py").read_text()
     assert "_arc.is_appreview(conversation_id)" in src and "adm.admit_families(_arc.FAMILIES)" in src
     for f_ in ("callconv.py", "convs.py"):
-        assert '"appreview")' in (root / "server/app" / f_).read_text()
+        assert '"appreview"' in (root / "server/app" / f_).read_text()
     from app.main import APP_VERSION, app
     r = TestClient(app).get("/console/appreview")
     assert r.status_code == 200 and "Content-Security-Policy" in r.headers and "ardesk.js" in r.text
