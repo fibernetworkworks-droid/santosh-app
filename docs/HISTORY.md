@@ -13222,3 +13222,26 @@ Built:
 Tests: tests/test_v0999_264_workflow_library.py (11): the shipped index, search / filters / pages, sha256 check + server copy,
 keys taken out, the new nodes, a bot reply not turned into a message to her, unreadable expressions, most of the library comes in,
 the three routes, a browser walk (desktop + phone width), the version. NOT VERIFIED on her server (GitHub reachable from it).
+
+
+## v0.999.270 NOC DESK (owner: "NOC same as finance desks")
+
+The NOC (ISP network) employee (hire key `noc`) gets its own section like the finance desks: `/console/noc` (`static/console/ncdesk.html/.js/.css`)
+with the NOC chat (Conversation kind `noc`, `server/app/ncchat.py`, routes `/api/ncdesk/{chat, chat/new, chat/{conv}/ok, desk, do/{part}}`) beside the
+desk's pages, on the existing NOC engine (`server/app/ispnoc`):
+- Today: needs (changes waiting for her tap, faults without a ticket, tickets past SLA, collectors offline, no network / country / teams), tiles,
+  open faults, the alarm box, 30 days (faults by kind with time to fix, by PON, teams in SLA, tips).
+- Faults: the alarm box (OLT log / syslog / SNMP trap / alert email as data, which OLT), list by status; one fault = affected / how sure / who fixes /
+  due, what happened + why + where to go (Maps), tickets (WhatsApp / call / on site / fixed), open a ticket, the customer message (copy text + numbers,
+  open in WhatsApp - she sends it), a change card from Hoola's suggestion, affected customers (phones masked), close it (fixed / not a real fault), log.
+- Tickets: open tickets with their SLA. Changes: each card with its commands and the way back, how to do it yourself, edit, approve (asked twice on the
+  page) / decline with the hash, "done, it worked" after she ran it; ask for a change.
+- Network: OLTs (add / remove), customers with light and state (search), CSV import (a password column ignored), the light budget.
+- Collectors: on her own network, the secret shown once, may run approved changes or reads only, the collector script download.
+- Settings: ISP, country, model, upstream, optics, morning time, alarm window, franchise SLA hours, rules, teams, hours to fix by kind.
+GLOBAL: `IspnocSettings.country` (new nullable column, "" = India as before); `service.india()` - TRAI's outage notes, the Telecom Cyber Security Rules
+and the BSNL franchise lines only for India, elsewhere a large outage says 'check this' for her own regulator (`OTHER_OUTAGE`); `_phone` keeps an Indian
+mobile as 10 digits and any other number as +country code, `_mask_phone` / `_tel` / the WhatsApp link follow it; team names neutral ("Electricity
+company", "BSNL / the ISP you are a franchise of"); the change risk line in English ("Affects N customers", was "Asar"). Tool `noc action=settings` and
+PUT /api/ispnoc/settings take `country`. Tests `server/tests/test_nc_desk.py` (5 incl. a browser walk at 1440 and 390). NOT VERIFIED on her server, with
+a real OLT or a real collector.
