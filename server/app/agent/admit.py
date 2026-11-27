@@ -218,6 +218,10 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "blender": ("blender", "3d", "three d"),
     # v0.999.272 the Compiler Construction Engineer: her own language (grammar, parser, interpreter, compiler)
     # v0.999.274 the Kernel / OS Developer: her kernel words
+    # v0.999.280 the Database Engine Developer: her database words
+    "dbeng": ("explain analyze", "query plan", "explain plan", "seq scan", "sequential scan", "index scan", "slow query", "missing index",
+              "postgres", "postgresql", "mysql", "mariadb", "sqlite", "pgbench", "sysbench", "ycsb", "work_mem", "vacuum", "create index",
+              "query optimizer", "query planner", "database index", "full table scan", "filesort"),
     # v0.999.277 the Graphics Engine Programmer: her rendering words
     "gfx": ("shader", "glsl", "hlsl", "wgsl", "vulkan", "direct3d", "d3d12", "metal api", "opengl", "webgpu", "spir-v", "vuid",
             "validation layer", "renderer", "rendering", "ray tracing", "path tracing", "frame time", "presentmon", "fps drop", "gpu pass",

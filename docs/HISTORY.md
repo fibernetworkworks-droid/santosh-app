@@ -13446,3 +13446,37 @@ panel, the Sign-ins page). NOT VERIFIED with a real Telegram bot, Slack / Discor
 
 ## v0.999.279 CODE INTELLIGENCE (LSP)
 (owner: 'GO NEXT - CODE INTELLIGENCE (LSP)'): Claude Code's LSP tool in Hoola Code (`devsahayak/lsp.py`). One `lsp` tool asks a language server - goToDefinition, goToImplementation, findReferences, hover (type + docs), documentSymbol, workspaceSymbol, prepareCallHierarchy, incomingCalls, outgoingCalls, diagnostics (line / character from 1, as Claude Code's) - and after the coder edits files a server covers, the server checks them in the background and its errors and warnings arrive at the coder's next step (problems only; nothing is said when all is fine). A server reads and can run the repo's own config, so it runs ONLY in the session's locked box with no network: a small driver there starts it, does the LSP handshake (clientInfo Hoola Code, workspace/configuration answered from the server's settings), opens the files, sends one request, prints the answer and shuts the server down. For references, callers, implementations and workspace symbols it opens the files that name the symbol (git grep) - the server answers from open files (found on the real pyright: 1 reference before, 3 after). Places in node_modules / virtualenvs / build folders are left out of references; a definition outside the repo is kept and labelled. Servers: the box's own (box image rev 4 adds pyright + typescript + typescript-language-server; gopls / rust-analyzer / clangd / jdtls when the repo's setup installed them; a failed npm download never breaks the image), the repo's `.lsp.json` and her plugins' `.lsp.json` / `lspServers` (Claude Code's format: command, args, extensionToLanguage, env, initializationOptions, settings, startupTimeout, requestTimeout); a server the repo or a plugin names is a program, so she is asked before it starts the first time ('always' remembers it for the session). Agents get the tool too; permission rules name it LSP; web + phone show one row per call and the diagnostics. The box image on her server is rebuilt by itself on the first session after deploy (a few minutes, once). VERIFIED against the real pyright on this machine (every operation, under 2 s each); NOT VERIFIED in the real box or with a real model.
+
+
+## v0.999.280 DATABASE DESK (built as 0.999.278; their ROUTE SENDING and CODE INTELLIGENCE took 0.999.278-0.999.279, all kept; owner: "Database Engine Developer same as finance desks")
+
+The Hub's `dbengine_dev` card goes live like the finance desks: its own page `/console/database` (`static/console/dbdesk.{html,js,css}`)
+and its own chat (Conversation kind `dbengine`, `app/dbchat.py`, routes `/api/dbdesk/*`), out of every Hoola chat list, with the desk
+block + the `dbeng` tool family in view in that chat and in a call started from it.
+
+Engine `app/dbdesk/` - all code, no model, no money, never connects to her database:
+- `plans.py`: PostgreSQL EXPLAIN text (ANALYZE, BUFFERS) and FORMAT JSON, MySQL EXPLAIN ANALYZE / FORMAT=TREE and the classic table,
+  SQLite EXPLAIN QUERY PLAN -> a tree of steps (planned vs real rows, loops, inclusive and self time) and findings: a full scan that
+  throws most rows away (the filter's columns -> CREATE INDEX to try; MySQL: the Filter step above a Table scan), an estimate 10x off
+  reported once at the deepest step it starts at, sorts / hashes spilled to disk, a scan repeated 1,000+ times in a nested loop,
+  lossy bitmaps, heap fetches on an index-only scan, where most of the time goes.
+- `sqlcheck.py`: one query - a function / arithmetic on a column, leading %, NOT IN (SELECT), OFFSET >= 1000, SELECT *, UPDATE /
+  DELETE without WHERE, huge IN lists, 8+ joins - and the index it asks for (equality columns, then one range or the ORDER BY).
+- `schema.py`: CREATE TABLE / CREATE INDEX parsed; no primary key, foreign keys without an index (not for MySQL - InnoDB adds one),
+  an index covered by a longer one or duplicated, timestamps without time zone, money in floats, serial.
+- `lab.py`: her schema built in an in-memory SQLite database, generated rows (parents a twentieth of the children, categories skewed,
+  foreign keys drawn from the parent), only the query's tables; the query (one SELECT, PostgreSQL casts / ILIKE / NOW() turned into
+  SQLite) run three times before and after the CREATE INDEX: plan, best time, rows, a hash of the rows. An authorizer refuses
+  ATTACH / PRAGMA / writes / functions it does not allow (load_extension included), a progress handler stops it at 12 s, 200k rows a
+  table, 600k in all. SQLite's planner, not hers: every page says so.
+- `bench.py`: pgbench, sysbench, YCSB, HammerDB NOPM / TPM, or plain latencies; a run compared with a baseline against her noise %.
+- `service.py`: items (plan P-, query Q-, schema S-, lab L-, bench B-), settings (database, version, slow ms, big scan rows, noise,
+  lab rows); the lab uses her latest reviewed schema when none is pasted.
+
+Tool `db_desk` (`agent/dbeng_tools.py`, registry 705 -> 706). Pages: Today, Plans (findings with the index SQL, the step tree with
+time bars and estimate misses in red), Queries (issues + suggestions with "Prove it in the lab"), Schema (issues, tables with keys
+and indexes), Lab (before / after plans and times), Benchmarks (with a baseline), Settings.
+
+Tests `tests/test_db_desk.py` (4) incl. a browser walk at 1440 / 390: plan -> schema -> query -> Prove it in the lab (index used,
+same rows) -> benchmark against a baseline -> settings.
+NOT VERIFIED: on her server or with her own database; the lab is SQLite on generated rows.
