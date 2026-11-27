@@ -212,10 +212,11 @@ def test_hover_and_drag_are_hoola_pc_tools_with_an_honest_old_agent_answer():
     hoola = {t["name"] for t in op_mod.HOOLA_TOOLS}
     assert {"page_hover", "page_drag"} <= hoola and not {"page_hover", "page_drag"} & {t["name"] for t in op_mod.TOOLS}
     f = _Fake({"hovered": True, "change": "page change: appeared: link: Profile"})
-    assert _do("page_hover", {"ref": 3}, f).endswith("appeared: link: Profile") and f.calls == [("page_hover", {"ref": 3})]
+    assert _do("page_hover", {"ref": 3}, f, kind=op_mod.HOOLA_PC_KIND).endswith("appeared: link: Profile") and f.calls == [("page_hover", {"ref": 3})]
     f = _Fake({"dragged": True, "how": "mouse"})
-    assert "dragged #2 onto #5 (mouse)" in _do("page_drag", {"ref": 2, "to_ref": 5}, f)
-    old = _do("page_hover", {"ref": 3}, _Fake(exc=RuntimeError("Unknown action: page_hover")))
+    assert "dragged #2 onto #5 (mouse)" in _do("page_drag", {"ref": 2, "to_ref": 5}, f, kind=op_mod.HOOLA_PC_KIND)
+    old = _do("page_hover", {"ref": 3}, _Fake(exc=RuntimeError("Unknown action: page_hover")),
+              kind=op_mod.HOOLA_PC_KIND)   # Hoola PC tools (her PC: only via her Chrome extension)
     assert "older than the page engine 2" in old and "pc_deploy" in old
     assert "PAGE ENGINE 2" in op_mod.HOOLA_PC_ADDENDUM
 

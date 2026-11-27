@@ -12654,3 +12654,7 @@ officer's / committee's own words (`decide`), never made. Desk writes refuse a P
 Roles as Books & Accounts (owner / accountant / approver change; auditor / viewer read). Downloads: ageing CSVs, the match, the
 tax-withheld check, alerts, the memo. Tests `server/tests/test_fo_desk.py` (5, incl. a browser walk at 1440 and 390).
 NOT VERIFIED on her server.
+
+
+## v0.999.241 DESKTOP WIRING
+Desktop wiring. Audit: AST list of every action the server sends (hub.call / call_sync / call_personal / operator._pc) vs `desktop/santosh_desktop/actions.py` do_* and `desktop-linux/agent.py` do_* + AX_ACTIONS; every operator tool run through `_do` on both kinds with fake PCs; wire types (hello / job / result / info / ping / pong) match; desktop / agent / extension HTTP paths all answer. Fixes in `server/app/pc/operator.py`: WINDOWS_ONLY + `_not_windows(op)` (Hoola PC, or os_note says Mac / Linux) filtered in `_tools_for` and refused in `_do`; `Op.bg_jobs`, `run` background remembers the job id, NEW HOOLA tool `run_stop`, `_stop_bg_jobs(op)` called in `_run`'s finally (not on done); CHROME_ONLY + `_chrome_gone(op, name)` for page_hover / page_drag / page_tables on her PC (extension not ready or background job), kind-aware 'older' messages. Tests `test_v0999_241_desktop_wiring.py` (4). NOT VERIFIED on her PC / Hoola PC.

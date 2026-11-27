@@ -550,6 +550,10 @@ HOOLA_TOOLS = TOOLS + [
     {"name": "run_status", "description": "v0.885 Output of a background command started with run background=true (job id), "
                                           "or no job = the list of background commands.",
      "input_schema": {"type": "object", "properties": {"job": {"type": "string"}}}},
+    {"name": "run_stop", "description": "Stop a background command started with run background=true (job id): it is stuck, "
+                                        "it is the wrong command, or it is no longer needed. Background commands this task "
+                                        "started also stop by themselves when the task is stopped or does not finish.",
+     "input_schema": {"type": "object", "properties": {"job": {"type": "string"}}, "required": ["job"]}},
     {"name": "send_to_chat", "description": "v0.885 Send ONE file from THIS PC to the user's chat as a download (the receipt / "
                                             "acknowledgement PDF a portal gave, the filled Excel, a converted file). Use it "
                                             "for every file the task produced that she will want - before done. Her own chat "
@@ -694,6 +698,7 @@ class Op:
     heard: list = field(default_factory=list)      # HER own later words for this task (the checker reads only these)
     ok_step: int = 0               # the step she approved last (a step she just approved is not asked again)
     lane: str = ""                 # v0.999.47 TAB LANE: "new" = open one; else this job's own browser window id
+    bg_jobs: list = field(default_factory=list)   # v0.999.241 background commands this job started on Hoola PC
     bg: bool = False               # v0.999.47 background mode on her own PC: no mouse / keyboard without her yes
     onepw_otp: tuple | None = None # v0.999.51 (site key, 1Password item, when) after a 1Password sign-in
     saved_otp: tuple | None = None # v0.999.54 (site key, saved sign-in, when) after a Hoola Cred sign-in with a 2-step key
@@ -1782,6 +1787,9 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         except Exception as e:
             return _desktop_says(e, "window") or f"ERROR: {e}"
         return f"window {wop}: {r.get('window', '')}"
+    if name in WINDOWS_ONLY and _not_windows(op):
+        return (f"NOT AVAILABLE: {name} sets up Hoola Desktop on a Windows computer, and {_not_windows(op)}. "
+                "Skip it and carry on with the task.")
     if name == "app_paths":
         # v0.481 W2a: one safe alias write on her PC (HKCU App Paths); the desktop gates it behind PC control.
         on = bool(a.get("on", True))
@@ -1937,11 +1945,15 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         return (f"typed into #{ref}" + (" (as a date)" if r.get("as_date") else "")
                 + (f" ({r.get('length', '?')} chars, verified)" if r.get("matches") else "") + _change(r))
     if name == "page_tables":
+        if _chrome_gone(op, name):
+            return _chrome_gone(op, name)
         try:
             r = await _pc(op, "page_tables", {}, timeout=40)
         except Exception as e:
             if "Unknown action" in str(e):
-                return "ERROR: this PC is older than page tables - use page_text (update Hoola PC with vps-ops pc_deploy)."
+                return ("ERROR: this PC is older than page tables - use page_text"
+                        + (" (update Hoola PC with vps-ops pc_deploy)." if op.kind == HOOLA_PC_KIND else
+                           " (update the Hoola extension in her Chrome)."))
             return f"ERROR: {e}"
         ts = r.get("tables") or []
         if not ts:
@@ -1980,6 +1992,8 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         left = r.get("left_blank") or []
         return f"filled {', '.join(r.get('filled') or []) or 'nothing'} -> {r.get('path')}" + (f"; still blank: {', '.join(left)}" if left else "")
     if name in ("page_hover", "page_drag"):
+        if _chrome_gone(op, name):
+            return _chrome_gone(op, name)
         try:
             ref = int(a.get("ref") or 0)
             to = int(a.get("to_ref") or 0) if name == "page_drag" else 0
@@ -1990,8 +2004,10 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
             r = await _pc(op, name, args, timeout=45)
         except Exception as e:
             if "Unknown action" in str(e):
-                return ("ERROR: this Hoola PC is older than the page engine 2 - it cannot hover / drag yet (update it "
-                        "with vps-ops pc_deploy). Use the screenshot + mouse instead.")
+                return (("ERROR: this Hoola PC is older than the page engine 2 - it cannot hover / drag yet (update it "
+                         "with vps-ops pc_deploy). " if op.kind == HOOLA_PC_KIND else
+                         "ERROR: her Hoola extension is older than hover / drag (update it in her Chrome). ")
+                        + "Use the screenshot + mouse instead.")
             return f"ERROR: {e}"
         if name == "page_hover":
             cov = f" (but '{str(r['covered_by'])[:80]}' lies on top of it)" if r.get("covered_by") else ""
@@ -2248,6 +2264,8 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         except Exception as e:
             return f"ERROR: {e}"
         if bg:      # v0.885 a long command keeps running on the PC; run_status reads it later
+            if r.get("job"):
+                op.bg_jobs.append(str(r["job"]))
             return (f"started in the background as job {r.get('job')} (max 2 hours). Check it with run_status "
                     f"job={r.get('job')} - do other steps meanwhile, never start it again.")
         out = str(r.get("stdout") or "").strip()
@@ -2268,6 +2286,17 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         body = str(r.get("output") or "").strip() or "(no output yet)"
         return f"job {r.get('job')} {state} after {r.get('seconds')}s" + \
             (" (stopped: it ran over 2 hours)" if r.get("stopped_after_2h") else "") + f"\n{body[-3000:]}"
+    if name == "run_stop":
+        job = str(a.get("job") or "").strip()[:40]
+        if not job:
+            return "REFUSED: which job? Give the job id from run (or run_status with no job lists them)."
+        try:
+            await _pc(op, "run_stop", {"job": job}, timeout=30)
+        except Exception as e:
+            return _desktop_says(e, "run_stop") or f"ERROR: {e}"
+        if job in op.bg_jobs:
+            op.bg_jobs.remove(job)
+        return f"stopped background job {job}"
     if name == "send_to_chat":
         return await _send_to_chat(op, str(a.get("path", "")).strip(), str(a.get("title", "")).strip())
     # v0.202 THE BRIDGE: the user's personal PC is reachable for FILES while the operator works on Hoola's
@@ -2332,6 +2361,23 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
                     "Finish the task without her files if you can, or tell the user to switch her PC on.")
         return await _push_to_user_pc(op, path)
     return f"Unknown tool {name}"
+
+
+async def _stop_bg_jobs(op: Op) -> int:
+    """v0.999.241 a job that was stopped or did not finish leaves no command of its own running on Hoola PC (they ran
+    up to 2 hours after her Stop). A job that finished keeps them: it may have left a long download on purpose."""
+    if op.kind != HOOLA_PC_KIND or not op.bg_jobs or op.status == "done":
+        return 0
+    n = 0
+    for j in list(op.bg_jobs):
+        try:
+            await _pc(op, "run_stop", {"job": j}, timeout=15)
+            n += 1
+            log.info("pc task %s stopped background job %s (%s)", op.id, j, op.status)
+        except Exception:   # noqa: BLE001 - already ended / the PC restarted: nothing left running
+            pass
+    op.bg_jobs.clear()
+    return n
 
 
 async def _send_to_chat(op: Op, path: str, title: str = "") -> str:
@@ -2916,8 +2962,46 @@ def os_note(op: "Op") -> str:
     return ""
 
 
+# v0.999.241 tools only Hoola Desktop on a WINDOWS computer can do (Win+R alias, PowerToys, the Chrome extension install):
+# never offered on Hoola PC or on a Mac / Linux computer of hers (they answered "Santosh Desktop is out of date" there)
+WINDOWS_ONLY = ("app_paths", "pt_run", "ext")
+
+
+def _not_windows(op: "Op") -> str:
+    """'' on her Windows PC; else a plain reason these setup tools cannot run here."""
+    if op.kind == HOOLA_PC_KIND:
+        return "Hoola PC is Hoola's own Linux computer"
+    note = os_note(op)
+    if note == MAC_NOTE:
+        return "her computer is a Mac"
+    if note == LINUX_NOTE:
+        return "her computer runs Linux"
+    return ""
+
+
+# v0.999.241 hover / drag / page tables on HER PC run only in her Chrome through the Hoola extension: when it has dropped
+# (or the job works in the background) they are said plainly, never sent on to Hoola Desktop, which cannot do them
+CHROME_ONLY = ("page_hover", "page_drag", "page_tables")
+
+
+def _chrome_gone(op: "Op", name: str) -> str:
+    if op.kind == HOOLA_PC_KIND or name not in CHROME_ONLY:
+        return ""
+    from . import extlink
+    if getattr(op, "bg", False):
+        return (f"NOT AVAILABLE: {name} needs her Chrome in front, and this job works in the background. "
+                "Use page_elements / page_click / page_text instead.")
+    if not extlink.ready(op.tenant):
+        return (f"NOT AVAILABLE: {name} works on her PC only through the Hoola extension in her Chrome, and it is not "
+                "connected right now. Use page_elements / page_click / page_text instead; if you need it, ask_user her "
+                "to open Chrome (Hoola extension > Let Hoola work on my pages).")
+    return ""
+
+
 def _tools_for(op: "Op") -> list[dict]:
     base = HOOLA_TOOLS if op.kind == HOOLA_PC_KIND else TOOLS
+    if _not_windows(op):
+        base = [t for t in base if t.get("name") not in WINDOWS_ONLY]
     try:   # v0.999.120 P4 click by the words on the screen (OCR) / by a description (her grounding server) - when they can work
         from . import grounding as _gr
         base = base + ([_gr.CLICK_TEXT_TOOL] if _gr.ocr_ready() else []) + ([_gr.POINT_TOOL] if _gr.point_ready() else [])
@@ -3508,6 +3592,7 @@ async def _run(op: Op) -> None:
                 await _proof(op)
             except Exception:
                 log.exception("hoola pc proof failed")
+        await _stop_bg_jobs(op)
         if op.lane and op.lane != "new":   # v0.999.47 the side window closes with its job (her logins stay in Chrome)
             try:
                 await _pc(op, "lane_close", {}, timeout=20)

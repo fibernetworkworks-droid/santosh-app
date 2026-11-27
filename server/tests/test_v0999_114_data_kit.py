@@ -79,7 +79,8 @@ def test_operator_lines_and_tools():
     hoola = {t["name"] for t in O.HOOLA_TOOLS}
     assert {"data_read", "sheet_write", "doc_fill", "page_tables"} <= hoola
     assert not {"data_read", "sheet_write", "doc_fill", "page_tables"} & {t["name"] for t in O.TOOLS}
-    out = _do("page_tables", {}, _Fake({"title": "Invoices", "tables": [{"caption": "", "rows": [["A", "B"], ["1", "2"]]}]}))
+    out = _do("page_tables", {}, _Fake({"title": "Invoices", "tables": [{"caption": "", "rows": [["A", "B"], ["1", "2"]]}]}),
+              kind=O.HOOLA_PC_KIND)   # a Hoola PC tool (on her PC it needs her Chrome extension - test_v0999_241_desktop_wiring)
     assert "Table 1 - 2 rows:" in out and "1 | 2" in out and "WEBSITE'S data" in out
     out = _do("data_read", {"path": "a.xlsx"}, _Fake({"name": "a.xlsx", "kind": "sheet", "sheets": [{"name": "S", "n_rows": 1, "rows": [["x", 1]]}]}))
     assert "Sheet 'S' - 1 rows:" in out and "x | 1" in out
