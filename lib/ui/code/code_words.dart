@@ -417,7 +417,33 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
       case 'search' || 'grep' || 'usages':
         return (Icons.search_rounded, 'Searched', '${_s(s['q']).isNotEmpty ? 'for ${_s(s['q'])}' : 'the code'}${codeMatches(s)}', false);
       case 'edit':
+        // v1.1 a notebook cell: "Edited cell 3 of analysis.ipynb"
+        if (s.containsKey('cell')) return (Icons.edit_outlined, 'Edited', 'cell ${_s(s['cell'])} of $path', _hasChange(s));
         return (Icons.edit_outlined, 'Edited', path, _hasChange(s));
+      case 'asked':
+        return (Icons.help_outline_rounded, 'Asked you', _s(s['question']), true);
+      case 'cmd':
+        {
+          final name = '/${_s(s['name']).replaceFirst(RegExp(r'^/'), '')}';
+          return s['repo'] == true
+              ? (Icons.terminal_rounded, 'Ran', 'your command $name', false)
+              : (Icons.terminal_rounded, 'Started', name, false);
+        }
+      case 'mention':
+        {
+          final files = [for (final f in (s['files'] as List?) ?? const []) _s(f).split('/').last].where((e) => e.isNotEmpty).toList();
+          return (Icons.alternate_email_rounded, 'Read', files.isEmpty ? 'the files you pointed at' : 'the files you pointed at: ${files.join(', ')}', false);
+        }
+      case 'hook':
+        {
+          final ev = _s(s['event']);
+          return (
+            s['block'] == true ? Icons.block_rounded : Icons.bolt_rounded,
+            "This repo's",
+            '${ev.isEmpty ? '' : '$ev '}hook ran${s['block'] == true ? ' and stopped the step' : ''}',
+            _s(s['text']).trim().isNotEmpty
+          );
+        }
       case 'new':
         return (Icons.note_add_outlined, 'Wrote', path, _hasChange(s));
       case 'check':
@@ -477,6 +503,7 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
 
   /// The icon's colour when it says something (a yes in green, a no in red).
   static Color? _tint(HoolaColors c, Map<String, dynamic> s) {
+    if (_s(s['k']) == 'hook') return s['block'] == true ? c.warn : null;
     if (_s(s['k']) != 'perm') return null;
     return _s(s['answer']) == 'no' ? c.bad : c.ok;
   }
@@ -486,6 +513,29 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
 
   Widget _detail(HoolaColors c, Map<String, dynamic> s) {
     final box = BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.line));
+    if (_s(s['k']) == 'asked') {
+      // v1.1 the question, the choices it offered and her answer
+      final answer = _s(s['answer']).trim();
+      final choices = [for (final x in (s['choices'] as List?) ?? const []) _s(x)].where((e) => e.isNotEmpty).toList();
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(_s(s['question']), style: codeSans(c, size: 14.5, height: 1.45)),
+        if (choices.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text('Choices: ${choices.join(' · ')}', style: codeSans(c, size: 13, color: c.ink3)),
+          ),
+        const SizedBox(height: 6),
+        Text(answer.isEmpty ? 'No answer' : 'You: $answer',
+            style: codeSans(c, size: 14, weight: FontWeight.w500, color: answer.isEmpty ? c.ink3 : c.ink)),
+      ]);
+    }
+    if (_s(s['k']) == 'hook') {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: box,
+        child: SelectableText(_s(s['text']).trim(), style: codeMono(c, size: 12.5, color: c.ink2)),
+      );
+    }
     if (_s(s['k']) == 'bgout') {
       final tail = _tail(s);
       return CodeTermBox(
@@ -543,7 +593,8 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
       final s = widget.steps[i];
       final (icon, verb, words, can) = _row(s);
       final last = i == widget.steps.length - 1;
-      final open = _open.contains(i);
+      // v1.1 a question she was asked shows her answer under it at once (a tap folds it)
+      final open = _s(s['k']) == 'asked' ? !_open.contains(i) : _open.contains(i);
       final Widget head = verb.isEmpty
           ? Container(constraints: const BoxConstraints(minHeight: 52), alignment: Alignment.centerLeft, child: widget.fallback(s))
           : Semantics(
@@ -551,7 +602,7 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
               label: '$verb $words${can ? (open ? '. Hide the details' : '. Show the details') : ''}',
               excludeSemantics: true,
               child: InkWell(
-                onTap: can ? () => setState(() => open ? _open.remove(i) : _open.add(i)) : null,
+                onTap: can ? () => setState(() => _open.contains(i) ? _open.remove(i) : _open.add(i)) : null,
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   constraints: const BoxConstraints(minHeight: 52),

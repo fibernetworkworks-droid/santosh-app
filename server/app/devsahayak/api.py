@@ -615,6 +615,14 @@ def make_router(require_key, current_tenant) -> APIRouter:
         b = _b(body)
         return await run(S.permit, tenant, tid, str(b.get("id") or ""), str(b.get("answer") or ""), str(b.get("note") or ""))
 
+    @r.get("/tasks/{tid}/find")
+    async def find_files(tid: str, q: str = "", tenant: str = Depends(current_tenant)):
+        return await run(S.find_files, tenant, tid, q)
+
+    @r.get("/tasks/{tid}/commands")
+    async def repo_commands(tid: str, tenant: str = Depends(current_tenant)):
+        return await run(S.repo_commands, tenant, tid)
+
     @r.get("/tasks/{tid}/terminal")
     async def terminal(tid: str, tenant: str = Depends(current_tenant)):
         return await run(S.terminal, tenant, tid)

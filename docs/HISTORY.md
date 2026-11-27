@@ -12939,3 +12939,7 @@ back to initials (the 404s were the test server's empty logo cache).
 The three old exact pins (`0.999.169`) now accept any newer version. Tests: 17 new (incl. a browser walk at 1440 + 390).
 NOT VERIFIED: on her server.
 
+
+
+## v0.999.254 CLAUDE CODE'S REPO SETUP
+Claude Code's repo setup. NEW `devsahayak/repoconf.py` (settings, rule_matches, decide, hooks_for, hook_input, commands, expand_command, agents, mentions, find_files, _clean). `devsahayak/engine.py` (TOOLS ask_user + notebook_edit, t_ask_user, _nb, t_notebook_edit, t_read for .ipynb, SECURITY_REVIEW, her_text, her_blocks, run_hooks, CTX, rule / PreToolUse / PostToolUse / Stop in the loop, needs_ok force, give_ok answer, wait_ok asked event, repo agents in the prompt), `subagent.py` (repo agents first), `service.py` (_ctx, find_files, repo_commands, on_mention), `api.py` (/find, /commands), `events.py` (MENTION, issue_comment / pull_request_review_comment, _mention). Web `static/console/code.js` (ctxHTML, question askHTML, pickFor / pickShow / pickTake, answerQ, repoSetup, new step cases) + `hoolacode.css`. Phone `lib/ui/code/code_assist.dart` (NEW), `code_session.dart`, `code_words.dart`. Tests `test_v0999_254_claude_code_setup.py`; test_v0962 moved.

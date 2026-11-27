@@ -19,6 +19,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import re
 import logging
 import secrets
 import threading
@@ -34,7 +35,8 @@ from .models import DevRepo, DevSchedule
 log = logging.getLogger("santosh.devsahayak.events")
 EVENTS = {"issue_opened": "a new issue is opened", "issue_labeled": "an issue gets a label",
           "pr_opened": "someone opens a pull request", "ci_failed": "a CI run fails", "push": "something is pushed"}
-GH_EVENTS = ["issues", "pull_request", "workflow_run", "push"]
+GH_EVENTS = ["issues", "pull_request", "workflow_run", "push", "issue_comment", "pull_request_review_comment"]
+MENTION = re.compile(r"(?i)(?<![\w@])@hoola\b")      # v0.999 '@hoola ...' in a comment = her ask, like Claude Code's @claude
 MAX_BODY = 1_000_000
 PER_HOUR = 10
 
@@ -161,6 +163,20 @@ def _facts(event: str, p: dict[str, Any]) -> tuple[str, dict[str, Any]] | None:
             return None
         return "ci_failed", {**base, "branch": br, "workflow": str(w.get("name") or "")[:120], "run": int(w.get("id") or 0),
                              "sha": str(w.get("head_sha") or "")[:40], "bot": False}     # a CI run's "sender" is whoever pushed; the failure is the event
+    if event in ("issue_comment", "pull_request_review_comment") and act == "created" and isinstance(p.get("comment"), dict):
+        body = str(p["comment"].get("body") or "")
+        if not MENTION.search(body):
+            return None
+        if event == "issue_comment":
+            i = p.get("issue") or {}
+            n, is_pr, title = int(i.get("number") or 0), "pull_request" in i, str(i.get("title") or "")
+        else:
+            pr = p.get("pull_request") or {}
+            n, is_pr, title = int(pr.get("number") or 0), True, str(pr.get("title") or "")
+        c = p["comment"]
+        where = (f" (on {c.get('path')}" + (f" line {c.get('line')}" if c.get("line") else "") + ")") if c.get("path") else ""
+        return "mention", {**base, "n": n, "pr": is_pr, "title": title[:200], "where": where[:200],
+                           "text": MENTION.sub("", body).strip()[:4000]}
     if event == "push" and str(p.get("ref") or "").startswith("refs/heads/") and not p.get("deleted"):
         br = str(p["ref"])[11:]
         if br.startswith("hoola/"):
@@ -221,6 +237,11 @@ def receive(hook_id: str, event: str, delivery: str, signature: str, raw: bytes)
     if f.get("bot"):
         return {"status": 200, "ok": True, "started": 0, "why": "bot"}
     me = str(S.settings(tenant).get("login") or "").lower()
+    if kind == "mention":                     # v0.999 '@hoola' in a comment: only HER comment starts work (never a stranger's)
+        if not (me and f["by"].lower() == me) or not f.get("text"):
+            return {"status": 200, "ok": True, "started": 0, "why": "not hers"}
+        threading.Thread(target=_mention, args=(tenant, full, f), name=f"dev-mention-{f['n']}", daemon=True).start()
+        return {"status": 200, "ok": True, "started": 1}
     started = 0
     with session() as s:
         rows = [(x.id, _j(x.event_filter or "", {})) for x in s.scalars(select(DevSchedule).where(
@@ -248,6 +269,13 @@ def receive(hook_id: str, event: str, delivery: str, signature: str, raw: bytes)
         except Exception as e:  # noqa: BLE001 - one task that cannot start must not fail the delivery
             log.info("devsahayak event %s for %s did not start: %s", kind, sid, e)
     return {"status": 200, "ok": True, "started": started}
+
+
+def _mention(tenant: str, full: str, f: dict[str, Any]) -> None:
+    try:
+        _S().on_mention(tenant, full, f)
+    except Exception as e:  # noqa: BLE001
+        log.info("devsahayak @hoola %s#%s: %s", full, f.get("n"), e)
 
 
 def _review(tenant: str, full: str, n: int) -> None:

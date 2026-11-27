@@ -106,9 +106,9 @@ def run_one(tools: Any, name: str, task: str, files: list[str] | None = None,
             pick: tuple[str, str] = ("", ""), part: dict | None = None) -> str:
     """One agent, start to report. Returns the text the coder gets as the tool result."""
     from . import engine as EN
-    spec = ecc.get(name)
+    spec = (getattr(tools, "repo_agents", None) or {}).get(str(name or "").lower()) or ecc.get(name)   # v0.999 the repo's own first
     if spec is None:
-        known = ", ".join(sorted(ecc.catalog()))
+        known = ", ".join(sorted(list(ecc.catalog()) + list(getattr(tools, "repo_agents", None) or {})))
         return f"Unknown agent '{name}'. Use one of: {known}."
     task = str(task or "").strip()
     if len(task) < 15:

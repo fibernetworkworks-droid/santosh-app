@@ -199,7 +199,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     if (window.ResizeObserver) new ResizeObserver(() => { const b = $('[data-act="rail"]'); if (!b) return; const on = railShown();   // the window got narrower / wider: the button tells the truth
       b.setAttribute('aria-pressed', String(on)); b.title = `${on ? 'Hide' : 'Show'} session details`; b.setAttribute('aria-label', b.title); }).observe($('#hcdBody'));
     EL.addEventListener('input', envForm); EL.addEventListener('change', envForm);
-    EL.addEventListener('input', ev => { if (ev.target.id === 'hcdSearch') { Q = ev.target.value; drawList(); } if (ev.target.id === 'hcdNote') grow(ev.target); });
+    EL.addEventListener('input', ev => { if (ev.target.id === 'hcdSearch') { Q = ev.target.value; drawList(); } if (ev.target.id === 'hcdNote') { grow(ev.target); pickFor(ev.target); } });
   }
   const body = html => { $('#hcdBody').innerHTML = html; };
   const frame = body;                     // the reviews and settings screens draw the whole body
@@ -311,7 +311,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     if (inSession) items.push({label: 'Terminal', icon: 'braces', sub: 'Commands running in the background', run: () => openTerm()},
       {label: 'Compact the conversation', icon: 'doc', sub: '/compact - summarise it so far, your words kept', disabled: isRun(t), run: () => compactNow()},
       {label: 'Write AGENTS.md', icon: 'pencil', sub: '/init - the repo\u2019s rules for coding agents', disabled: isRun(t), run: () => initNow()},
-      {label: 'Fork this session', icon: 'restore', sub: 'A copy to try another way', disabled: isRun(t), run: () => forkNow(0)});
+      {label: 'Fork this session', icon: 'restore', sub: 'A copy to try another way', disabled: isRun(t), run: () => forkNow(0)},
+      {label: 'This repo\u2019s Claude Code setup', icon: 'gear', sub: '.claude/ commands, agents, hooks, rules', run: () => repoSetup()});
     if (inSession) items.push(...views, {sep: true}, {label: t.share?.on ? 'Read-only link…' : 'Share a read-only link…', icon: 'doc', sub: t.share?.on ? 'On - anyone with the link can read this session' : '', disabled: isRun(t), run: () => shareDialog(t)});
     if (inSession && (t.branch || t.pr_url)) items.push({header: 'Open in'});
     if (inSession && t.branch && t.pr_number) items.push({label: 'Copy checkout command', icon: 'braces', sub: `git checkout ${t.branch}`, run: async () => { const cmd = `git fetch origin ${t.branch} && git checkout ${t.branch}`;
@@ -441,6 +442,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     else if (f.id === 'hcdAllF') { ev.preventDefault(); ALL.q = $('#hcdAllQ').value.trim(); ALL.rows = null; allSessions(); }
   }
   function onKey(ev) {
+    if (PICK && ev.target.id === 'hcdNote' && (ev.key === 'Tab' || (ev.key === 'Enter' && !ev.shiftKey))) { ev.preventDefault(); return pickTake(0); }
+    if (PICK && ev.key === 'Escape') { ev.preventDefault(); return pickClose(); }
     if (ev.key === 'Escape' && VIEW === 'session' && TASK?.running && !TASK.stopping && !shared && !(ev.target.value || '').trim()
         && !EL.querySelector('dialog[open]')) { const b = $('#hcdStop'); if (b) { ev.preventDefault(); return ACTS.stop(b); } }   // v0.999 Esc stops, like Claude Code
     if (ev.key === 'Escape' && ev.target.id === 'hcdCText') { ev.preventDefault(); return ACTS.ccancel(); }
@@ -608,7 +611,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     catch (e) { toast(e.message, true); }
   }
   // v0.999.27 under a session's box: her quality tier (no model name) and the mode
-  const metaHTML = t => `${TIERS && TIERS.available ? `<span>${esc(TIER_NAME[TIERS.selected || ''] || 'Normal')}</span>` : ''}${shared ? '' : `<button type="button" class="hcd-modechip" data-menu="smode" title="Change how Hoola works in this session">${esc((MODES.find(m => m[0] === (t.mode || '')) || [0, 'Default mode'])[1])}${svg('down')}</button>`}`;
+  const ctxHTML = t => !shared && t.ctx >= 0 ? `<button type="button" class="hcd-ctx${t.ctx >= 80 ? ' hi' : ''}" data-act="ctxinfo" title="How full the conversation is before Hoola summarises it"><i style="--p:${t.ctx}" aria-hidden="true"></i>Context ${t.ctx}%${t.ctx >= 80 ? ' · /compact' : ''}</button>` : '';
+  const metaHTML = t => `${ctxHTML(t)}${TIERS && TIERS.available ? `<span>${esc(TIER_NAME[TIERS.selected || ''] || 'Normal')}</span>` : ''}${shared ? '' : `<button type="button" class="hcd-modechip" data-menu="smode" title="Change how Hoola works in this session">${esc((MODES.find(m => m[0] === (t.mode || '')) || [0, 'Default mode'])[1])}${svg('down')}</button>`}`;
   function sessModeMenu(btn) {        // v0.999 her mode, switched while the session runs (Claude Code's Shift+Tab)
     const t = TASK; if (!window.HoolaMenu || !t) return;
     HoolaMenu.open(btn, MODES.map(([k, n, why]) => ({label: n, sub: why, checked: k === (t.mode || ''), run: async () => {
@@ -727,7 +731,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       case 'list': return s.glob ? `<div class="hcd-step">${svg('search')}<span>Found ${plural(s.num ?? s.n ?? 0, 'file')} · ${p(s.path)}</span>${at}</div>`
         : `<div class="hcd-step">${svg('list')}<span>Listed ${p(s.path || '/')}</span>${at}</div>`;
       case 'usages': return `<div class="hcd-step">${svg('search')}<span>Found where ${p(s.name)} is used · ${plural(s.num ?? s.n, 'place')}</span>${at}</div>`;
-      case 'edit': case 'new': { const lab = `${s.k === 'new' ? 'Created' : 'Edited'} ${p(s.path)} <em class="add">+${s.added || 0}</em>${s.k === 'edit' ? ` <em class="del">−${s.removed || 0}</em>` : ''}${s.by ? ` · by ${esc(s.by)}` : ''}`;
+      case 'edit': case 'new': { const lab = s.cell != null ? `Edited cell ${esc(String(s.cell))} of ${p(s.path)}` : `${s.k === 'new' ? 'Created' : 'Edited'} ${p(s.path)} <em class="add">+${s.added || 0}</em>${s.k === 'edit' ? ` <em class="del">−${s.removed || 0}</em>` : ''}${s.by ? ` · by ${esc(s.by)}` : ''}`;
         return (s.hunk && s.hunk.length) || (s.diff && s.diff.length) ? fold(openFirst('e' + i, (s.hunk || s.diff || []).length <= 40), lab, changeHTML(s), 'row', verbose) : `<div class="hcd-step">${svg(s.k === 'new' ? 'new' : 'edit')}<span>${lab}</span>${at}</div>`; }
       case 'diff': return `<div class="hcd-step">${svg('read')}<span>Checked its own change · ${plural(s.num ?? s.n, 'file')}</span>${at}</div>`;
       case 'check': return `<div class="hcd-step ${s.ok ? 'ok' : 'bad'}">${svg(s.ok ? 'ok' : 'bad')}<span><b>Ran your tests</b>${s.only ? ` (${esc(s.only)})` : ''} · <span class="${s.ok ? 'add' : 'del'}">${s.ok ? 'passed' : 'failed'}</span>${s.seconds ? ` · ${esc(String(s.seconds))} s` : ''}${s.cmd ? ` · ${p(s.cmd)}` : ''}</span>${at}</div>${!s.ok && s.tail && s.tail.length ? `<pre class="hcd-diff">${s.tail.map(x => `<span class="${/fail|error|assert/i.test(x) ? 'del' : 'ctx'}">${esc(x)}</span>`).join('\n')}</pre>` : ''}`;
@@ -753,6 +757,11 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       case 'websearch': return `<div class="hcd-step">${svg('web')}<span>Searched the web for ${p(s.q || '')} · ${plural(s.num ?? 0, 'result')}</span>${at}</div>`;
       case 'mcp': return `<div class="hcd-step">${svg('spark')}<span>${s.action === 'list' ? 'Looked at your MCP servers' : `Used ${esc(s.server || 'an MCP server')} · ${p(s.tool || '')}`}</span>${at}</div>`;
       case 'skill': return `<div class="hcd-step dim">${svg('read')}<span>${s.action === 'list' ? 'Looked at your skills' : `Read the skill ${p(s.name || '')}`}</span>${at}</div>`;
+      case 'asked': return `<div class="hcd-step">${svg('dot')}<span>Asked you: <b>${esc(s.question || '')}</b>${s.answer ? ` · you said <i>${esc(s.answer)}</i>` : ' · no answer'}</span>${at}</div>`;
+      case 'cmd': return `<div class="hcd-step dim">${svg('spark')}<span>${s.repo ? 'Ran your command' : 'Started'} <span class="hcd-cmd">/${esc(s.name || '')}</span>${s.repo ? ' from this repo' : ''}</span>${at}</div>`;
+      case 'mention': return `<div class="hcd-step">${svg('read')}<span>Read the files you pointed at · ${(s.files || []).map(p).join(', ')}</span>${at}</div>`;
+      case 'hook': return s.text ? fold('h' + i, `This repo\u2019s ${esc(s.event || '')} hook ran${s.tool ? ' for ' + esc(s.tool) : ''}${s.block ? ' · <span class="del">stopped it</span>' : ''}`, `<pre class="hcd-term">${esc(s.text)}</pre>`, 'row', verbose || !!s.block)
+        : `<div class="hcd-step dim">${svg('gear')}<span>This repo\u2019s ${esc(s.event || '')} hook ran</span>${at}</div>`;
       case 'gap': return `<div class="hcd-step dim">${svg('list')}<span>${esc(s.text || 'Earlier steps folded')}</span></div>`;
       case 'compact': case 'ws': return `<div class="hcd-step dim">${svg('list')}<span>${esc(s.text || '')}</span>${at}</div>`;
       case 'wait': return `<div class="hcd-step">${svg('dot')}<span>${esc(s.text || 'Waiting for a free coding slot')}</span>${at}</div>`;
@@ -889,6 +898,34 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       return thLater(() => { const b = p.node && p.node.querySelector('.hck-bub'); if (b && text && b.textContent !== text) b.textContent = text; }); }
     const still = k.hist;
     thLater(() => { thEnd(); editable(k.t.her(text, {still}), s.n, text); thTail(); if (!still && k.task.running) thOpen(); });
+  }
+  /* v0.999 the box's pickers, as in Claude Code: '@' + letters = files of the working copy, '/' at the start = commands
+     (Hoola's and this repo's own .claude/commands). Click (or Tab / Enter on the first) puts it in the box. */
+  let PICK = null, PICK_T = 0, REPOCMD = null;
+  const HOOLA_CMDS = [['compact', 'Summarise the conversation so far'], ['init', 'Write the repo\u2019s AGENTS.md'], ['security-review', 'Review the changes for security problems']];
+  function pickClose() { PICK = null; const b = $('#hcdPick'); if (b) b.remove(); }
+  function pickFor(ta) {
+    if (!TASK || shared) return pickClose();
+    const pos = ta.selectionStart || 0, before = ta.value.slice(0, pos), at = /(^|\s)@([\w./-]*)$/.exec(before), sl = /^\/([\w-]*)$/.exec(before);
+    clearTimeout(PICK_T);
+    if (at) { PICK_T = setTimeout(async () => { let r; try { r = await api('GET', `/api/devsahayak/tasks/${tid()}/find?q=${encodeURIComponent(at[2])}`); } catch (e) { return pickClose(); }
+        pickShow((r.files || []).slice(0, 8).map(f => ({v: '@' + f + ' ', label: f, mono: true})), at[2].length + 1); }, 220); return; }
+    if (sl) { (async () => { if (!REPOCMD || REPOCMD.tid !== TASK.id) { try { REPOCMD = {tid: TASK.id, ...(await api('GET', `/api/devsahayak/tasks/${tid()}/commands`))}; } catch (e) { REPOCMD = {tid: TASK.id, commands: []}; } }
+        const q = sl[1].toLowerCase(), rows = HOOLA_CMDS.map(([n, d]) => ({v: '/' + n + ' ', label: '/' + n, sub: d}))
+          .concat((REPOCMD.commands || []).map(c => ({v: '/' + c.name + ' ', label: '/' + c.name, sub: (c.description || '') + (c.hint ? ' · ' + c.hint : ''), repo: true})));
+        pickShow(rows.filter(r => r.label.slice(1).startsWith(q)).slice(0, 8), sl[1].length + 1); })(); return; }
+    pickClose();
+  }
+  function pickShow(rows, cut) {
+    const ta = $('#hcdNote'); if (!ta || !rows.length) return pickClose();
+    PICK = {rows, cut};
+    let b = $('#hcdPick'); if (!b) { b = document.createElement('div'); b.id = 'hcdPick'; b.className = 'hcd-pick'; b.setAttribute('role', 'listbox'); $('#hcdSteer').append(b); }
+    b.innerHTML = rows.map((r, i) => `<button type="button" role="option" class="hcd-pickr" data-act="pick" data-i="${i}">${r.mono ? `<code>${esc(r.label)}</code>` : `<b>${esc(r.label)}</b>`}${r.sub ? `<small>${esc(r.sub)}</small>` : ''}${r.repo ? '<em>this repo</em>' : ''}</button>`).join('');
+  }
+  function pickTake(i) {
+    const ta = $('#hcdNote'), r = PICK && PICK.rows[i]; if (!ta || !r) return;
+    const pos = ta.selectionStart || 0, a = ta.value.slice(0, pos - PICK.cut), z = ta.value.slice(pos);
+    ta.value = a + r.v + z; const c = (a + r.v).length; ta.focus(); ta.setSelectionRange(c, c); grow(ta); pickClose();
   }
   function editable(node, n, text) {   // v0.999 edit an earlier message of hers and ask again
     if (!node || shared || n == null || !text) return node;
@@ -1156,6 +1193,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     if ('now' in p) t.now = p.now;
     const ni = t.now_info = {...(t.now_info || {})}; ['out', 't0', 'tool'].forEach(k => { if (k in p) ni[k] = p[k]; });
     if ('ask' in p) { t.ask = p.ask; if (TASK === t) { put('#hcdBar', 'bar', barHTML(t)); } }
+    if ('ctx' in p) { t.ctx = p.ctx; if (TASK === t) drawMeta(t); }
     if (('n' in p && p.n > (t.last_n ?? -1)) || ('running' in p && p.running !== t.running)) { liveRefresh(); return; }
     if (LIVE_RAF) return;
     LIVE_RAF = requestAnimationFrame(() => { LIVE_RAF = 0; if (VIEW === 'session' && TASK === t) thread(t); });
@@ -1232,6 +1270,9 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   }
   // v0.999 'Ask each step': the step waits here for her yes, like Claude Code's permission prompt
   function askHTML(a) {
+    if (a.tool === 'question') return `<div class="hcd-ask2 col hcd-perm hcd-qask" id="hcdPerm" data-id="${esc(a.id)}"><span class="hcd-badge info">Hoola asks</span><p class="hcd-qtext"><b>${esc(a.what || '')}</b></p>
+      ${(a.choices || []).length ? `<div class="hcd-acts">${a.choices.map(c => `<button type="button" class="hcd-btn" data-act="qans" data-v="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}
+      <div class="hcd-qrow"><label class="hcd-sr" for="hcdQAns">Your answer</label><input id="hcdQAns" maxlength="2000" placeholder="Or type your answer" autocomplete="off"><button type="button" class="hcd-btn pri" data-act="qsend">Send</button></div></div>`;
     const always = a.tool === 'bash' ? (a.prefix ? `Yes, and don\u2019t ask again for <code>${esc(a.prefix)}</code> commands` : '') : 'Yes, allow all edits in this session';
     const body = a.tool === 'bash' ? `<pre class="hcd-term hcd-askcmd"><span class="hcd-cmd">$ ${esc(a.cmd || '')}</span>${a.background ? '\n<span class="hcd-dim">keeps running in the background</span>' : ''}</pre>`
       : (a.rows || []).length ? hunkHTML(a.rows) : '';
@@ -1317,6 +1358,22 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   async function termLoad() {
     if (!PANE || !PANE.term || !TASK) return;
     try { const r = await api('GET', `/api/devsahayak/tasks/${tid()}/terminal`); if (PANE && PANE.term) { PANE.shells = r.shells || []; drawPane(true); } } catch (e) { toast(e.message, true); }
+  }
+  async function answerQ(v) {
+    const a = TASK?.ask; if (!a) return;
+    await api('POST', `/api/devsahayak/tasks/${tid()}/permit`, {id: a.id, answer: 'answer', note: v}); TASK.ask = null; SIG.top = ''; paint();
+  }
+  async function repoSetup() {      // v0.999 what Hoola reads from this repo's .claude/
+    let r; try { r = await api('GET', `/api/devsahayak/tasks/${tid()}/commands`); } catch (e) { return toast(e.message, true); }
+    const rows = (h, xs) => xs.length ? `<h3>${h}</h3>${xs.join('')}` : '';
+    const rl = r.rules || {}, any = (r.commands || []).length || (r.agents || []).length || (r.hooks || []).length || rl.allow || rl.ask || rl.deny;
+    await dialog(`<h2>This repo\u2019s Claude Code setup</h2><p class="hcd-mut">Hoola follows <code>.claude/</code> in this repo, like Claude Code: its commands, agents, hooks and permission rules. Hooks run in the locked box, never on Hoola\u2019s server.</p>
+      ${any ? rows('Commands', (r.commands || []).map(c => `<div class="hcd-row"><span><code>/${esc(c.name)}</code></span><b>${esc(c.description || '')}</b></div>`))
+        + rows('Agents', (r.agents || []).map(a => `<div class="hcd-row"><span><code>${esc(a.name)}</code></span><b>${esc(a.description || '')} · ${esc(a.tools)}</b></div>`))
+        + rows('Hooks', (r.hooks || []).map(h => `<div class="hcd-row"><span>${esc(h)}</span></div>`))
+        + (rl.allow || rl.ask || rl.deny ? `<h3>Permission rules</h3><p>${rl.allow || 0} allowed · ${rl.ask || 0} ask first · ${rl.deny || 0} denied</p>` : '')
+        : '<p>This repo has no <code>.claude/</code> setup yet. Add commands in <code>.claude/commands</code>, agents in <code>.claude/agents</code>, rules and hooks in <code>.claude/settings.json</code>.</p>'}
+      <div class="hcd-dlgb"><button class="hcd-btn" value="no">Close</button></div>`);
   }
   async function compactNow() {
     try { await api('POST', `/api/devsahayak/tasks/${tid()}/compact`); toast('The conversation is summarised - your words are kept.'); await again(); } catch (e) { toast(e.message, true); }
@@ -1417,12 +1474,20 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     choice: b => busy(b, async () => { const c = ((TASK.ws || {}).choices || [])[+b.dataset.i]; if (c) await sendMessage(c); }),
     files: b => browse(b.dataset.path || ''),
     term: () => { PANE && PANE.term ? closePane() : openTerm(); },
-    permit: b => busy(b, async () => { const a = TASK?.ask; if (!a) return; await api('POST', `/api/devsahayak/tasks/${tid()}/permit`, {id: a.id, answer: b.dataset.a}); TASK.ask = null; put('#hcdBar', 'bar', barHTML(TASK)); }),
+    pick: b => pickTake(+b.dataset.i),
+    qans: b => busy(b, () => answerQ(b.dataset.v)),
+    qsend: b => { const v = ($('#hcdQAns') || {}).value || ''; if (v.trim()) busy(b, () => answerQ(v.trim())); },
+    ctxinfo: async () => { const t = TASK; if (!t) return;
+      const r = await dialog(`<h2>Context ${t.ctx}% used</h2><p class="hcd-mut">This is how full the conversation is. At 100% Hoola summarises the older part by itself and keeps your own words whole. <b>Compact now</b> does it at once, so the next message starts light.</p>
+        <div class="hcd-dlgb"><button class="hcd-btn" value="no" formnovalidate>Close</button><button class="hcd-btn pri" value="ok"${t.running ? ' disabled' : ''}>Compact now</button></div>`);
+      if (r === 'ok') compactNow(); },
+    repoconf: () => repoSetup(),
+    permit: b => busy(b, async () => { const a = TASK?.ask; if (!a) return; await api('POST', `/api/devsahayak/tasks/${tid()}/permit`, {id: a.id, answer: b.dataset.a}); TASK.ask = null; SIG.top = ''; paint(); }),
     permitno: async b => { const a = TASK?.ask; if (!a) return;
       const r = await dialog(`<h2>Not this step</h2><p class="hcd-mut">${esc(a.what || '')} will not run. Tell Hoola what to do instead (you can leave it empty).</p><label class="hcd-f"><span class="hcd-sr">What to do instead</span><textarea name="note" rows="3" maxlength="2000" placeholder="e.g. run only the cart tests"></textarea></label>
         <div class="hcd-dlgb"><button class="hcd-btn" value="no" formnovalidate>Cancel</button><button class="hcd-btn pri" value="ok">Send</button></div>`);
       if (r !== 'ok') return; const note = ($('#hcdDlg textarea[name=note]') || {}).value || '';
-      await busy(b, async () => { await api('POST', `/api/devsahayak/tasks/${tid()}/permit`, {id: a.id, answer: 'no', note}); TASK.ask = null; put('#hcdBar', 'bar', barHTML(TASK)); }); },
+      await busy(b, async () => { await api('POST', `/api/devsahayak/tasks/${tid()}/permit`, {id: a.id, answer: 'no', note}); TASK.ask = null; SIG.top = ''; paint(); }); },
     termstop: b => busy(b, async () => { const r = await api('POST', `/api/devsahayak/tasks/${tid()}/terminal/${encodeURIComponent(b.dataset.id)}/stop`); if (PANE && PANE.term) { PANE.shells = r.shells || []; drawPane(true); } }),
     forkcp: b => forkNow(+b.dataset.n),
     editmsg: async b => { const t = TASK; if (!t) return; if (t.running) return toast('Hoola is working - stop it first, then edit.', true);

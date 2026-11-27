@@ -820,7 +820,7 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
          "updated": _aware(t.updated_at).isoformat() if t.updated_at else "",
          "run_at": _RUN_AT.get(t.id, ""),
          "live": _live_text(t.id),
-         "now": _now_step(t.id), "now_info": _now_more(t.id), "ask": _asking(t.id),
+         "now": _now_step(t.id), "now_info": _now_more(t.id), "ask": _asking(t.id), "ctx": _ctx(t.id),
          "model_label": _model_label(t), "srv_now": round(time.time(), 2)}
     v["risky_files"] = risky_files([f["path"] for f in v["files"]], ch)   # v0.943 files that change how tools / CI / agents run
     try:                                # G9: the card says what the facts back, never only the model's words
@@ -1248,7 +1248,17 @@ def live_state(tid: str) -> dict[str, Any]:
     """v0.962 what the live stream sends: the words being written, the step working now, the newest step number and
     whether a round runs. All in this process's memory - read ten times a second, no database."""
     return {"live": _live_text(tid), "now": _now_step(tid) if tid in _RUNNING else "", "n": STEP_N.get(tid, -1),
-            "running": tid in _RUNNING, **_now_more(tid), "ask": _asking(tid)}
+            "running": tid in _RUNNING, **_now_more(tid), "ask": _asking(tid), "ctx": _ctx(tid)}
+
+
+def _ctx(tid: str) -> int:
+    """v0.999 the context meter: how full the conversation is, in percent of where it gets summarised (-1 = unknown)."""
+    try:
+        from . import engine as EN
+        c = EN.CTX.get(tid)
+        return max(0, min(100, round(100 * c["used"] / max(1, c["limit"])))) if c else -1
+    except Exception:
+        return -1
 
 
 def _asking(tid: str) -> dict[str, Any] | None:
@@ -1284,7 +1294,7 @@ def live_delta(last: dict[str, Any], cur: dict[str, Any]) -> dict[str, Any]:
             ev["add"] = now_live[len(was):]
         else:
             ev["live"] = now_live
-    for k in ("now", "n", "running", "out", "t0", "tool", "ask"):
+    for k in ("now", "n", "running", "out", "t0", "tool", "ask", "ctx"):
         if cur.get(k) != last.get(k):
             ev[k] = cur.get(k)
     return ev
@@ -4160,3 +4170,62 @@ def fork(tenant: str, ref: str, checkpoint: int = 0) -> dict[str, Any]:
             log.warning("fork copy failed: %s", e)
     with session() as s:
         return task_view(s.get(DevTask, nid), full=True)
+
+
+def find_files(tenant: str, ref: str, q: str = "") -> dict[str, Any]:
+    """v0.999 the @ picker: files of the session's working copy whose name / path matches what she typed."""
+    from . import engine as EN
+    from . import repoconf as RC
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    if not EN.exists(tid):
+        return {"files": []}
+    ses = EN.Session(tid)
+    hid = set(ses.meta.get("hidden") or [])
+    return {"files": [p for p in RC.find_files(ses.walk(), q, 30) if p not in hid][:20]}
+
+
+def repo_commands(tenant: str, ref: str) -> dict[str, Any]:
+    """v0.999 the slash menu: this repo's own commands (.claude/commands) beside Hoola's."""
+    from . import engine as EN
+    from . import repoconf as RC
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    out = {"commands": [], "agents": [], "hooks": [], "rules": {"allow": 0, "ask": 0, "deny": 0}}
+    if not EN.exists(tid):
+        return out
+    repo = EN.Session(tid).repo
+    try:
+        out["commands"] = [{"name": k, "description": v["description"], "hint": v["hint"]} for k, v in sorted(RC.commands(repo).items())]
+        out["agents"] = [{"name": k, "description": v["description"], "tools": v["tools"]} for k, v in sorted(RC.agents(repo).items())]
+        conf = RC.settings(repo)
+        out["hooks"] = sorted(conf["hooks"])
+        out["rules"] = {k: len(conf[k]) for k in ("allow", "ask", "deny")}
+    except Exception:  # noqa: BLE001
+        pass
+    return out
+
+
+def on_mention(tenant: str, full: str, f: dict[str, Any]) -> dict[str, Any]:
+    """v0.999 '@hoola <ask>' in HER comment on GitHub (Claude Code's @claude): on a pull request Hoola made, the ask is a
+    follow-up in that same session; on another pull request, a new session working from that PR's branch; on an issue,
+    a new session on that issue. Every run is an ordinary session: same checks, merging stays her tap."""
+    words = (f"{f.get('text', '')}\n\n(She asked this in a GitHub comment on {'pull request' if f.get('pr') else 'issue'} "
+             f"#{f.get('n')}{f.get('where', '')}: \"{str(f.get('title') or '')[:160]}\".)")
+    with session() as s:
+        own = s.scalars(select(DevTask).where(DevTask.tenant_id == tenant, DevTask.repo == full,
+                                              DevTask.pr_number == int(f.get("n") or 0)).order_by(DevTask.created_at.desc())).first() \
+            if f.get("pr") else None
+        tid = own.id if own is not None else ""
+    if tid:
+        if tid in _RUNNING:
+            return add_note(tenant, tid, words)
+        return in_background(tenant, tid, "revise", words=words)
+    if f.get("pr"):
+        base = ""
+        try:
+            base = str(((gh(tenant).pr(full, int(f["n"])) or {}).get("head") or {}).get("ref") or "")
+        except Exception:  # noqa: BLE001 - the branch could not be read: work from the default branch, said in the ask
+            base = ""
+        return start_bg(tenant, guess_kind(words), words, repo=full, base=base if base and not base.startswith("hoola/") else "")
+    return start_bg(tenant, guess_kind(words), words, repo=full, issue=int(f.get("n") or 0))
