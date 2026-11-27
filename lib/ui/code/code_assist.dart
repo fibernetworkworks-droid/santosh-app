@@ -10,6 +10,8 @@ import 'package:flutter/material.dart';
 
 import '../../state.dart';
 import '../hoola_theme.dart';
+import 'code_claude.dart';
+import 'code_home.dart' show codeModes;
 import 'code_kit.dart';
 
 String _taskBase(String id) => '/api/devsahayak/tasks/${Uri.encodeComponent(id)}';
@@ -49,9 +51,12 @@ class CodeCommands {
 
 /// Hoola's own slash commands: (name, what it does).
 const List<(String, String)> codeOwnCommands = [
-  ('compact', 'Summarise the conversation'),
+  ('compact', 'Summarise the conversation (add what to keep)'),
   ('init', 'Write AGENTS.md'),
   ('security-review', 'Review the changes for security problems'),
+  ('export', 'Share the conversation as a file'),
+  ('style', 'Pick how Hoola writes to you'),
+  ('plugins', 'Your plugins'),
 ];
 
 // ---------------------------------------------------------------------------------------------- @ files and / commands
@@ -495,7 +500,8 @@ String _toolsLevel(Map<String, dynamic> a) {
   return '';
 }
 
-/// The repo's .claude/ as Hoola reads it: its commands, agents, hooks and permission rules (GET /tasks/{id}/commands).
+/// The repo's .claude/ as Hoola reads it: its commands, agents, skills, MCP servers, hooks, permission rules, starting
+/// mode, variables and her plugins (GET /tasks/{id}/commands), with ways to edit the files and the plugins.
 Future<void> showCodeRepoSetup(BuildContext context, Santosh app, String id) async {
   final r = await CodeCommands.of(app, id, fresh: true);
   if (!context.mounted) return;
@@ -508,35 +514,75 @@ Future<void> showCodeRepoSetup(BuildContext context, Santosh app, String id) asy
   }
   final rules = cm(r['rules']);
   final allow = _count(rules['allow']), ask = _count(rules['ask']), deny = _count(rules['deny']);
-  final none = cmds.isEmpty && agents.isEmpty && hooks.isEmpty && allow + ask + deny == 0;
-  await codeSheet<void>(context, app,
+  final skills = cl(r['skills']);
+  final mcp = cl(r['mcp']);
+  final env = [for (final e in (r['env'] as List?) ?? const []) cs(e)].where((e) => e.isNotEmpty).toList();
+  final mode = cs(r['mode']);
+  final modeLabel = mode.isEmpty ? '' : codeModes.firstWhere((x) => x.$1 == mode, orElse: () => (mode, mode, '')).$2;
+  final plugins = cl(r['plugins']);
+  final style = cs(r['style']);
+  final none = cmds.isEmpty && agents.isEmpty && hooks.isEmpty && allow + ask + deny == 0 && skills.isEmpty && mcp.isEmpty && env.isEmpty &&
+      mode.isEmpty;
+  final pick = await codeSheet<String>(context, app,
       title: "This repo's Claude Code setup",
       body: (ctx) {
         final c = HoolaColors.of(ctx);
-        Widget item(String main, String sub, {bool mono = true}) => Padding(
+        Widget item(String main, String sub, {bool mono = true, Color? subColor}) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(main, style: mono ? codeMono(c, size: 13.5) : codeSans(c, size: 14.5, weight: FontWeight.w500)),
-                if (sub.isNotEmpty) Text(sub, style: codeSans(c, size: 13, color: c.ink3, height: 1.35)),
+                if (sub.isNotEmpty) Text(sub, style: codeSans(c, size: 13, color: subColor ?? c.ink3, height: 1.35)),
               ]),
             );
+        String from(Map<String, dynamic> x) {
+          final o = cs(x['origin']);
+          return o.isEmpty || o == 'repo' ? '' : codeOriginWords(o);
+        }
+
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text('Hoola follows .claude/ in this repo: commands, agents, hooks and permission rules. Hooks run in the locked box.',
+          Text('Hoola follows .claude/ in this repo and your plugins: commands, agents, skills, MCP servers, hooks and permission '
+              'rules. Hooks run in the locked box.',
               style: codeSans(c, size: 14, color: c.ink2)),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: CodeOutline('Edit the files', icon: Icons.edit_outlined, height: 48, onTap: () => Navigator.pop(ctx, 'files'))),
+            const SizedBox(width: 10),
+            Expanded(child: CodeOutline('Plugins', icon: Icons.extension_rounded, height: 48, onTap: () => Navigator.pop(ctx, 'plugins'))),
+          ]),
           if (none)
             Padding(
               padding: const EdgeInsets.only(top: 16, bottom: 8),
-              child: Text('This repo has no Claude Code setup yet. Add a .claude/ folder with commands, agents or settings and Hoola will use it.',
+              child: Text('This repo has no Claude Code setup yet. Tap Edit the files to add commands, agents, skills or settings.',
                   style: codeSans(c, size: 14, color: c.ink3)),
             ),
+          if (mode.isNotEmpty) ...[
+            const CodeSection('Starting mode'),
+            item(modeLabel, 'From .claude/settings.json', mono: false),
+          ],
+          if (style.isNotEmpty && style != 'default') ...[
+            const CodeSection('Output style'),
+            item(style, ''),
+          ],
           if (cmds.isNotEmpty) ...[
             CodeSection('Commands · ${cmds.length}'),
             for (final x in cmds)
-              item('/${cs(x['name']).replaceFirst(RegExp(r'^/'), '')}${cs(x['hint']).isEmpty ? '' : ' ${cs(x['hint'])}'}', cs(x['description'])),
+              item('/${cs(x['name']).replaceFirst(RegExp(r'^/'), '')}${cs(x['hint']).isEmpty ? '' : ' ${cs(x['hint'])}'}',
+                  [cs(x['description']), from(x)].where((e) => e.isNotEmpty).join(' · ')),
           ],
           if (agents.isNotEmpty) ...[
             CodeSection('Agents · ${agents.length}'),
-            for (final a in agents) item(cs(a['name']), [cs(a['description']), _toolsLevel(a)].where((e) => e.isNotEmpty).join(' · '), mono: false),
+            for (final a in agents)
+              item(cs(a['name']), [cs(a['description']), _toolsLevel(a), from(a)].where((e) => e.isNotEmpty).join(' · '), mono: false),
+          ],
+          if (skills.isNotEmpty) ...[
+            CodeSection('Skills · ${skills.length}'),
+            for (final x in skills) item(cs(x['name']), [cs(x['description']), from(x)].where((e) => e.isNotEmpty).join(' · '), mono: false),
+          ],
+          if (mcp.isNotEmpty) ...[
+            CodeSection('MCP servers · ${mcp.length}'),
+            for (final x in mcp)
+              item(cs(x['name']), x['ok'] == true ? 'Reachable' : (cs(x['why']).isEmpty ? 'Not reachable' : cs(x['why'])),
+                  subColor: x['ok'] == true ? c.ok : c.warn),
           ],
           if (hooks.isNotEmpty) ...[
             CodeSection('Hooks · ${hooks.length}'),
@@ -546,7 +592,25 @@ Future<void> showCodeRepoSetup(BuildContext context, Santosh app, String id) asy
             const CodeSection('Permission rules'),
             Text('$allow allowed, $ask ${ask == 1 ? 'asks' : 'ask'} first, $deny denied', style: codeSans(c, size: 14.5)),
           ],
+          if (env.isNotEmpty) ...[
+            CodeSection('Variables · ${env.length}'),
+            Text(env.join(', '), style: codeMono(c, size: 13, color: c.ink2)),
+            Text('Only the names are shown here.', style: codeSans(c, size: 12.5, color: c.ink3)),
+          ],
+          CodeSection('Your plugins · ${plugins.length}'),
+          if (plugins.isEmpty)
+            Text('No plugins yet. Tap Plugins to add one from a GitHub link.', style: codeSans(c, size: 14, color: c.ink3))
+          else
+            for (final p in plugins)
+              item(cs(p['name']), [p['enabled'] == true ? 'On' : 'Off', cs(p['description'])].where((e) => e.isNotEmpty).join(' · '),
+                  mono: false),
           const SizedBox(height: 12),
         ]);
       });
+  if (!context.mounted) return;
+  if (pick == 'files') {
+    await openCodeClaudeFiles(context, app, id);
+  } else if (pick == 'plugins') {
+    await showCodePlugins(context, app, id: id);
+  }
 }

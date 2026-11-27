@@ -1970,7 +1970,12 @@ def archive(tenant: str, ref: str, on: bool = True) -> dict[str, Any]:
             raise DevError("Hoola is still working on this - stop it first.")
         t.archived_at = now() if on else None
         s.flush()
-        return task_view(t)
+        tid = t.id
+        out = task_view(t)
+    if on:                                                 # v0.999 the repo's SessionEnd hook (in the background)
+        from . import engine as _EN
+        threading.Thread(target=_EN.session_end_hook, args=(tid, tenant), daemon=True).start()
+    return out
 
 
 def delete_task(tenant: str, ref: str) -> dict[str, Any]:
@@ -1990,6 +1995,7 @@ def delete_task(tenant: str, ref: str) -> dict[str, Any]:
         import shutil
         shutil.rmtree(_attach_dir(tid), ignore_errors=True)      # the pictures she attached go with the session
         from . import engine as _EN
+        _EN.session_end_hook(tid, tenant)                         # v0.999 the repo's SessionEnd hook, before it goes
         _EN.forget(tid)                                           # v0.784 and its working copy
     except Exception:
         pass
@@ -4069,7 +4075,7 @@ def stop_shell(tenant: str, ref: str, bid: str) -> dict[str, Any]:
     return EN.terminal(tid)
 
 
-def compact_now(tenant: str, ref: str) -> dict[str, Any]:
+def compact_now(tenant: str, ref: str, focus: str = "") -> dict[str, Any]:
     """/compact: the session's conversation summarised now (her words kept whole), so the next message starts light."""
     from . import engine as EN
     with session() as s:
@@ -4085,7 +4091,18 @@ def compact_now(tenant: str, ref: str) -> dict[str, Any]:
         raise DevError("The conversation is still short - nothing to compact.")
     before = sum(len(json.dumps(m)) for m in msgs)
     try:
-        new = EN.compact(msgs)
+        if True:                                           # v0.999 the repo's PreCompact hook first
+            try:
+                from . import plugins as PL
+                from . import repoconf as RC
+                tl = EN.Tools(ses, False)
+                tl.plugins = PL.roots(tenant)
+                tl.conf, tl.tid = RC.settings(ses.repo, tl.plugins), tid
+                if RC.hooks_for(tl.conf, "PreCompact"):
+                    EN.run_hooks(tl, "PreCompact")
+            except Exception:  # noqa: BLE001
+                pass
+        new = EN.compact(msgs, focus=str(focus or "")[:600])
     except Exception as e:  # noqa: BLE001
         raise DevError(f"Could not summarise it now: {str(e)[:200]}")
     ses.save_messages(new)
@@ -4191,19 +4208,159 @@ def repo_commands(tenant: str, ref: str) -> dict[str, Any]:
     from . import repoconf as RC
     with session() as s:
         tid = _find_task(s, tenant, ref).id
-    out = {"commands": [], "agents": [], "hooks": [], "rules": {"allow": 0, "ask": 0, "deny": 0}}
+    from . import plugins as PL
+    pls = PL.roots(tenant)
+    out = {"commands": [], "agents": [], "hooks": [], "rules": {"allow": 0, "ask": 0, "deny": 0}, "skills": [], "mcp": [],
+           "styles": [], "style": "default", "env": [], "mode": "", "plugins": PL.listing(tenant), "files": []}
     if not EN.exists(tid):
         return out
-    repo = EN.Session(tid).repo
+    ses = EN.Session(tid)
+    repo = ses.repo
     try:
-        out["commands"] = [{"name": k, "description": v["description"], "hint": v["hint"]} for k, v in sorted(RC.commands(repo).items())]
-        out["agents"] = [{"name": k, "description": v["description"], "tools": v["tools"]} for k, v in sorted(RC.agents(repo).items())]
-        conf = RC.settings(repo)
+        out["commands"] = [{"name": k, "description": v["description"], "hint": v["hint"], "origin": v.get("origin", "repo")}
+                           for k, v in sorted(RC.commands(repo, pls).items())]
+        out["agents"] = [{"name": k, "description": v["description"], "tools": v["tools"], "origin": v.get("origin", "repo")}
+                         for k, v in sorted(RC.agents(repo, pls).items())]
+        conf = RC.settings(repo, pls)
         out["hooks"] = sorted(conf["hooks"])
         out["rules"] = {k: len(conf[k]) for k in ("allow", "ask", "deny")}
+        out["env"], out["mode"] = sorted(conf["env"]), conf["mode"]
+        out["skills"] = [{"name": k, "description": v["description"], "origin": v["origin"]} for k, v in sorted(RC.skills(repo, pls).items())]
+        out["mcp"] = [{"name": k, "ok": v["ok"], "why": v["why"]} for k, v in sorted(RC.mcp_servers(repo, pls).items())]
+        out["styles"] = [{"name": k, "description": v["description"], "origin": v["origin"]} for k, v in RC.styles(repo, pls).items()]
+        out["style"] = str(ses.meta.get("style") or conf.get("style") or "default")
+        out["files"] = claude_paths(ses)
     except Exception:  # noqa: BLE001
-        pass
+        log.debug("repo setup read failed", exc_info=True)
     return out
+
+
+# ---------------------------------------------------------------- v0.999 /export, the .claude files from the screen, the style
+CLAUDE_FILE = re.compile(r"^(?:CLAUDE\.md|CLAUDE\.local\.md|AGENTS\.md|\.mcp\.json|\.claude/settings(?:\.local)?\.json|"
+                         r"\.claude/(?:commands|agents|output-styles)/[\w.-]{1,60}\.md|\.claude/skills/[\w.-]{1,60}/SKILL\.md)$")
+
+
+def claude_paths(ses: Any) -> list[str]:
+    return sorted(p for p in ses.walk() if CLAUDE_FILE.match(p))[:200]
+
+
+def claude_file(tenant: str, ref: str, path: str) -> dict[str, Any]:
+    from . import engine as EN
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    path = str(path or "").strip().lstrip("/")
+    if not CLAUDE_FILE.match(path) or not EN.exists(tid):
+        raise DevError("Only this repo's Claude Code files can be opened here.")
+    f = EN.Session(tid).real(path)
+    return {"path": path, "text": f.read_text("utf-8", errors="replace")[:200000] if f is not None and f.is_file() else "", "exists": bool(f and f.is_file())}
+
+
+def claude_write(tenant: str, ref: str, path: str, text: str) -> dict[str, Any]:
+    """Her own change to a Claude Code file of the repo (a command, an agent, a skill, settings.json, CLAUDE.md...), made
+    from the screen like Claude Code's /agents /hooks /permissions: written in the session's working copy, so it rides in
+    this session's pull request like any change. settings.json / .mcp.json must be valid JSON. Empty text = delete."""
+    from . import engine as EN
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        if t.id in _RUNNING:
+            raise DevError("Hoola is working right now - change it after this round.")
+        tid = t.id
+    path = str(path or "").strip().lstrip("/")
+    if not CLAUDE_FILE.match(path):
+        raise DevError("Only this repo's Claude Code files can be changed here.")
+    if not EN.exists(tid):
+        raise DevError("This session has no working copy yet.")
+    text = str(text or "")
+    if len(text) > 200000:
+        raise DevError("That file is too long.")
+    if text.strip() and path.endswith(".json"):
+        try:
+            json.loads(text)
+        except ValueError as e:
+            raise DevError(f"That is not valid JSON: {e}")
+    if R.secrets_in(text):
+        raise DevError("That text has a key or a password in it - keep secrets out of the repo.")
+    ses = EN.Session(tid)
+    f = ses.repo / path
+    if f.is_symlink():
+        raise DevError("That file is a link - it is not changed.")
+    if not text.strip():
+        f.unlink(missing_ok=True)
+        what = "deleted"
+    else:
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(text if text.endswith("\n") else text + "\n", "utf-8")
+        what = "saved"
+    _Step(tid).event({"k": "claudefile", "path": path, "what": what, "by": "you"})
+    return {"ok": True, "path": path, "what": what, "files": claude_paths(ses)}
+
+
+def set_style(tenant: str, ref: str, style: str) -> dict[str, Any]:
+    """Her output style for this session (default / explanatory / learning / one of the repo's own)."""
+    from . import engine as EN
+    from . import plugins as PL
+    from . import repoconf as RC
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    if not EN.exists(tid):
+        raise DevError("This session has no working copy yet.")
+    ses = EN.Session(tid)
+    style = str(style or "default").strip().lower()
+    if style not in RC.styles(ses.repo, PL.roots(tenant)):
+        raise DevError("No such output style.")
+    ses.meta["style"] = style
+    ses.save_meta()
+    return {"ok": True, "style": style}
+
+
+def export(tenant: str, ref: str) -> dict[str, Any]:
+    """/export: the whole conversation as Markdown - her words, Hoola's words, every step in one line, the result."""
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        v = task_view(t, full=True)
+    lines = [f"# {v.get('title') or v.get('number')}", "",
+             f"Hoola Code session {v.get('number')} · {v.get('repo')} · {v.get('kind_label')} · {v.get('status_label')}", "",
+             "## You", "", str(t.text or ""), ""]
+    for x in v.get("steps") or []:
+        if not isinstance(x, dict):
+            continue
+        k = x.get("k")
+        if k == "say":
+            lines += ["## Hoola", "", str(x.get("text") or ""), ""]
+        elif k == "note" and x.get("her"):
+            lines += ["## You", "", str(x.get("text") or ""), ""]
+        elif k == "think":
+            continue
+        else:
+            one = (x.get("did") or x.get("text") or x.get("desc") or x.get("what") or x.get("q") or x.get("path") or x.get("cmd") or "")
+            lines.append(f"- {k}: {str(one)[:300]}")
+    if v.get("explain"):
+        lines += ["", "## Result", "", str(v["explain"])]
+    if v.get("pr_url"):
+        lines += ["", f"Pull request: {v['pr_url']}"]
+    name = re.sub(r"[^\w-]+", "-", str(v.get("title") or v.get("number") or "session")).strip("-")[:60] or "session"
+    return {"name": f"hoola-code-{name}.md", "text": "\n".join(lines) + "\n"}
+
+
+def plugins_list(tenant: str) -> dict[str, Any]:
+    from . import plugins as PL
+    return {"plugins": PL.listing(tenant)}
+
+
+def plugin_add(tenant: str, url: str) -> dict[str, Any]:
+    from . import plugins as PL
+    try:
+        return {"plugins": PL.add(tenant, url)}
+    except PL.PluginError as e:
+        raise DevError(str(e))
+
+
+def plugin_set(tenant: str, name: str, on: bool | None = None, remove: bool = False) -> dict[str, Any]:
+    from . import plugins as PL
+    try:
+        return {"plugins": PL.remove(tenant, name) if remove else PL.set_enabled(tenant, name, bool(on))}
+    except PL.PluginError as e:
+        raise DevError(str(e))
 
 
 def on_mention(tenant: str, full: str, f: dict[str, Any]) -> dict[str, Any]:

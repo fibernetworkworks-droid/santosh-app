@@ -18,6 +18,7 @@ import '../hoola_mark.dart';
 import '../hoola_theme.dart';
 import 'code_assist.dart';
 import 'code_changes.dart';
+import 'code_claude.dart';
 import 'code_files.dart';
 import 'code_home.dart';
 import '../shell/hoola_quality.dart' show HoolaQualityRow;
@@ -415,14 +416,34 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
     final mode = _mode(t);
     final text = (words ?? _msg.text).trim();
     // v1.0 /compact sums up the conversation, /init has Hoola write the repo's AGENTS.md - never sent as a message
-    if (words == null && (text == '/compact' || text == '/init')) {
-      if (text == '/compact' && codeRunning(t)) {
-        codeToast(context, 'Wait until Hoola finishes, then compact.');
+    // v0.999 "/compact keep the API notes" = what the summary must keep; /export, /style, /plugins open their screens
+    if (words == null && text.startsWith('/')) {
+      final m = RegExp(r'^/([A-Za-z-]+)(?:\s+([\s\S]*))?$').firstMatch(text);
+      final name = (m?.group(1) ?? '').toLowerCase();
+      final rest = (m?.group(2) ?? '').trim();
+      if (name == 'compact') {
+        if (codeRunning(t)) {
+          codeToast(context, 'Wait until Hoola finishes, then compact.');
+          return;
+        }
+        _msg.clear();
+        await _run('POST', '$_base/compact', <String, dynamic>{if (rest.isNotEmpty) 'focus': rest});
         return;
       }
-      _msg.clear();
-      await _run('POST', '$_base/${text.substring(1)}', const <String, dynamic>{});
-      return;
+      if (rest.isEmpty && const {'init', 'export', 'style', 'plugins'}.contains(name)) {
+        _msg.clear();
+        switch (name) {
+          case 'init':
+            await _run('POST', '$_base/init', const <String, dynamic>{});
+          case 'export':
+            await codeExportConversation(context, widget.app, widget.id);
+          case 'style':
+            await showCodeStylePicker(context, widget.app, widget.id);
+          case 'plugins':
+            await showCodePlugins(context, widget.app, id: widget.id);
+        }
+        return;
+      }
     }
     final comments = (mode == 'note' || mode == 'revise') ? CodeComments.of(widget.id) : const <Map<String, dynamic>>[];
     if (mode == 'off' || (text.isEmpty && comments.isEmpty && mode != 'plan')) return;
@@ -526,6 +547,10 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
               if (!codeRunning(t)) row(ctx, Icons.compress_rounded, 'Compact the conversation', 'compact'),
               if (!codeRunning(t)) row(ctx, Icons.description_outlined, 'Write AGENTS.md (/init)', 'init'),
               row(ctx, Icons.extension_rounded, "This repo's Claude Code setup", 'setup'),
+              row(ctx, Icons.edit_note_rounded, 'Edit Claude Code files', 'claudefiles'),
+              row(ctx, Icons.widgets_outlined, 'Plugins', 'plugins'),
+              row(ctx, Icons.format_paint_outlined, 'Output style', 'style'),
+              row(ctx, Icons.ios_share_rounded, 'Export the conversation', 'export'),
               row(ctx, Icons.call_split_rounded, 'Fork this session', 'fork'),
               if (!codeRunning(t) && cps.length > 1) row(ctx, Icons.undo_rounded, 'Go back to an earlier checkpoint', 'rewind'),
               if (cs(t['status']) == 'plan_wait') row(ctx, Icons.close_rounded, 'Cancel this job', 'cancel'),
@@ -556,6 +581,14 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         _run('POST', '$_base/init', const <String, dynamic>{});
       case 'setup':
         showCodeRepoSetup(context, widget.app, widget.id);
+      case 'claudefiles':
+        openCodeClaudeFiles(context, widget.app, widget.id);
+      case 'plugins':
+        showCodePlugins(context, widget.app, id: widget.id);
+      case 'style':
+        showCodeStylePicker(context, widget.app, widget.id);
+      case 'export':
+        codeExportConversation(context, widget.app, widget.id);
       case 'fork':
         _fork(cps);
       case 'rewind':
@@ -722,7 +755,11 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
       );
     }
     final bash = tool == 'bash';
-    final what = cs(ask['what']).isNotEmpty ? cs(ask['what']) : (bash ? 'Run a command' : 'Edit ${cs(ask['path'])}');
+    final mcp = tool == 'mcp';
+    final server = cs(ask['server']).trim();
+    final what = cs(ask['what']).isNotEmpty
+        ? cs(ask['what'])
+        : (bash ? 'Run a command' : (mcp ? 'Use ${server.isEmpty ? 'an MCP server' : server}' : 'Edit ${cs(ask['path'])}'));
     final prefix = cs(ask['prefix']).trim();
     final rows = (ask['rows'] as List?) ?? const [];
     var add = 0, rem = 0;
@@ -734,7 +771,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
     }
     final always = bash
         ? (prefix.isEmpty ? '' : "Yes, don't ask again for $prefix commands")
-        : 'Yes, allow all edits in this session';
+        : (mcp ? 'Yes, and allow ${server.isEmpty ? 'this server' : server} for this session' : 'Yes, allow all edits in this session');
     return Padding(
       key: ValueKey('ask${cs(ask['id'])}'),
       padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
@@ -760,7 +797,16 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
                     padding: const EdgeInsets.only(top: 6),
                     child: Text('It keeps running in the background. You can stop it from Terminal.', style: codeSans(c, size: 12.5, color: c.ink3)),
                   ),
-              ] else
+              ] else if (mcp)
+                Row(children: [
+                  Icon(Icons.hub_outlined, size: 17, color: c.ink2),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(server.isEmpty ? 'An MCP server this repo names' : '$server · an MCP server this repo names',
+                        style: codeMono(c, size: 13, color: c.ink2)),
+                  ),
+                ])
+              else
                 CodeEditCard(verb: tool == 'write' ? 'Write' : 'Edit', path: cs(ask['path']), added: add, removed: rem, rows: rows),
               const SizedBox(height: 12),
               CodeMain('Yes', icon: Icons.check_rounded, height: 48, busy: _permitting, onTap: () => _permit(ask, 'yes')),
@@ -1096,6 +1142,10 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         out.add(Padding(padding: const EdgeInsets.only(top: 18), child: _her(c, cs(s['text']), const [], key: 'note${_stepN(s, si)}')));
         _herAt = out.length - 1;
         if (_sent != null && _stepN(s, si) > _sentAt && _same(cs(s['text']), _sent!)) _sentSeen = true;
+      } else if (k == 'claudefile') {
+        // v0.999 her own change to a Claude Code file, from the screen: one dim row in the thread
+        flush(last: false);
+        out.add(Padding(padding: const EdgeInsets.only(top: 6), child: _claudeFileRow(c, s)));
       } else if (k == 'todo') {
         // v0.957 the plan shows in the dock above the typing box (_planDock), never in the thread
       } else if (k == 'think') {
@@ -1517,6 +1567,14 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
 
   TextSpan _code(HoolaColors c, String s) => TextSpan(text: s, style: codeMono(c, size: 13, color: c.ink));
 
+  /// v0.999 "You changed .claude/agents/reviewer.md" / "You deleted ..." (her change from the Claude Code files screen).
+  Widget _claudeFileRow(HoolaColors c, Map<String, dynamic> s) {
+    final gone = cs(s['what']) == 'deleted';
+    final who = cs(s['by']).isEmpty || cs(s['by']) == 'you' ? 'You' : cs(s['by']);
+    return _line(c, gone ? Icons.delete_outline_rounded : Icons.edit_note_rounded,
+        [TextSpan(text: '$who ${gone ? 'deleted' : 'changed'} '), _code(c, cs(s['path']))]);
+  }
+
   Widget? _step(HoolaColors c, Map<String, dynamic> s) {
     final k = cs(s['k']);
     switch (k) {
@@ -1684,6 +1742,8 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         );
       case 'stopped':
         return _line(c, Icons.stop_circle_outlined, [const TextSpan(text: 'Stopped. Nothing was pushed.')], iconColor: c.bad);
+      case 'claudefile':
+        return _claudeFileRow(c, s);
       default:
         {
           final txt = cs(s['text']);
