@@ -84,7 +84,7 @@ _RUNNING: set[str] = set()
 _TASKS: set["asyncio.Task"] = set()
 
 _STEP_TYPES = ("tool", "code", "condition", "loop", "wait", "notify", "approval", "set", "http",
-               "router", "filter", "data", "subroute", "stop", "respond")      # v0.999.87 HOOLA ROUTE: a router with named routes + a filter gate
+               "router", "filter", "data", "subroute", "stop", "respond", "ai")   # v0.999.243 ROUTE R6: AI steps      # v0.999.87 HOOLA ROUTE: a router with named routes + a filter gate
 _COND_OPS = ("eq", "ne", "gt", "lt", "contains", "empty")
 # v0.999.87 HOOLA ROUTE filter language (the Make / n8n filter idea, own code): one condition is
 # {left, op, right, ci?}; groups are {"all": [...]} (AND) / {"any": [...]} (OR), nested up to _FILTER_DEPTH.
@@ -523,6 +523,9 @@ def validate_steps(steps: list) -> list[dict]:
                     raise ToolError(f"Step '{sid}': route {i + 1} label is too long (80 chars)")
             if st_.get("fallback") is not None and not isinstance(st_.get("fallback"), list):
                 raise ToolError(f"Step '{sid}': fallback must be a list of steps")
+            if st_.get("ai") is not None:              # v0.999.243: the AI picks the way
+                from ..route import aistep as AS
+                AS.validate_choose(st_, sid)
         elif typ == "filter":
             if st_.get("filter") is None:
                 raise ToolError(f"Step '{sid}': a filter step needs a filter ({{left, op, right}} or {{all: [...]}})")
@@ -530,6 +533,9 @@ def validate_steps(steps: list) -> list[dict]:
         elif typ == "data":                              # v0.999.237 ROUTE R3
             from . import dhara_data as DD
             DD.validate(st_, sid)
+        elif typ == "ai":                                # v0.999.243 ROUTE R6
+            from ..route import aistep as AS
+            AS.validate(st_, sid)
         elif typ == "http":
             if not str(st_.get("url") or "").strip():
                 raise ToolError(f"Step '{sid}': http needs a url")
@@ -1069,6 +1075,16 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
             routes = step.get("routes") or []
             if base in dec and isinstance(dec[base], list):
                 plan = dec[base]
+            elif step.get("ai"):                         # v0.999.243 ROUTE R6: the AI reads a text and picks one way
+                from ..route import aistep as AS
+                try:
+                    pick = await AS.choose(step, ctx, resolve)
+                except AS.AIError as e:
+                    return False, None, str(e)[:300]
+                labels = [str(r.get("label") or f"Way {i + 1}") for i, r in enumerate(routes)]
+                plan = [labels.index(pick)] if pick in labels else (
+                    ["fallback"] if isinstance(step.get("fallback"), list) and step.get("fallback") else [])
+                dec[base] = plan
             else:
                 plan, matched = [], False
                 for i, rt in enumerate(routes):
@@ -1096,8 +1112,9 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
                         return True, None, err
                     done.append(rmark)
                 taken.append(label)
-            ctx["steps"][sid] = {"output": {"routes": taken}}
-            return True, {"routes": taken}, ""
+            why = (ctx.get("_ai_why") or {}).pop(sid, None)
+            ctx["steps"][sid] = {"output": {"routes": taken, **({"why": why} if why else {})}}
+            return True, ctx["steps"][sid]["output"], ""
         if typ == "loop":
             if base in dec and isinstance(dec[base], list):
                 items = dec[base]                        # v0.999.239 a resumed loop goes on with the same list
@@ -1143,6 +1160,14 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
             if secs > 0:
                 await asyncio.sleep(min(secs, 5))
             return True, {"wait_s": secs}, ""
+        if typ == "ai":                                  # v0.999.243 ROUTE R6: summarise, classify, extract, agent ...
+            from ..route import aistep as AS
+            try:
+                out = await AS.run(tenant_id, step, ctx, resolve, conv, run_id)
+            except AS.AIError as e:
+                return False, None, str(e)[:300]
+            ctx["steps"][sid] = {"output": out}
+            return True, out, ""
         if typ == "subroute":                            # v0.999.239 run another route
             return await _subroute(tenant_id, step, ctx, sid, base, run_id)
         if typ == "stop":                                # v0.999.239 end the run here, as an error or as done
@@ -2446,7 +2471,13 @@ DHARA_TOOLS = [
         "zone, or {for: call, timeout_s, on_timeout continue|fail} = wait until someone calls {{vars.resume_url}} (send "
         "that link in an earlier step; the call's data is the step's output). Approvals and waits work anywhere, also "
         "inside branches and loops. Loops take up to 1,000 items (as: '<name>' keeps the item as {{vars.<name>}} for a "
-        "loop inside it); branches and loops nest up to 3 levels."),
+        "loop inside it); branches and loops nest up to 3 levels. "
+        "v0.999.243 adds AI steps {type: ai, op, ..., quality fast|best, instructions}: write {prompt} -> {text} | summarise "
+        "{text, length short|medium|long|points, language} -> {summary} | classify {text, categories 'a, b', multi} -> "
+        "{category, matched, reason} | extract {text, fields {name: what it is}} -> an object of those fields | sentiment "
+        "{text} -> {label, score} | answer {question, files [file ids], text, knowledge true} -> {answer, found, sources} (only "
+        "from those) | agent {prompt, tools ['sheet_read', ...] (only these, up to 15), max_steps 1-10, memory none|on, "
+        "memory_key} -> {answer, used}. A router may carry ai {text, instructions}: the AI picks ONE way by its label."),
      "input_schema": {"type": "object", "properties": {
          "name": {"type": "string", "description": "lowercase_with_underscores, unique, e.g. daily_morning_notice_check"},
          "steps": {"type": "array", "description": "The steps: [{id, type, ...}] — see the tool guide for each type's fields"},

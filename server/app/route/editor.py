@@ -270,6 +270,23 @@ def new_route(tenant: str, title: str, folder: str = "") -> dict:
 
 # ---------------------------------------------------------------- the catalog
 KINDS: list[dict[str, Any]] = [
+    # v0.999.243 ROUTE R6: the AI steps (engine type "ai", told apart by op)
+    {"key": "ai_agent", "type": "ai", "group": "AI", "title": "AI agent", "sub": "Does a task with the Hoola tools you give it",
+     "make": {"op": "agent", "prompt": "", "tools": [], "max_steps": 5, "memory": "none"}},
+    {"key": "ai_write", "type": "ai", "group": "AI", "title": "Ask AI", "sub": "Write, rewrite, translate, answer - from a prompt",
+     "make": {"op": "write", "prompt": ""}},
+    {"key": "ai_summarise", "type": "ai", "group": "AI", "title": "Summarise", "sub": "Short, a paragraph or points, in any language",
+     "make": {"op": "summarise", "text": "", "length": "short"}},
+    {"key": "ai_classify", "type": "ai", "group": "AI", "title": "Sort into categories", "sub": "Put a message into one of your categories",
+     "make": {"op": "classify", "text": "", "categories": "question, complaint, order, other"}},
+    {"key": "ai_extract", "type": "ai", "group": "AI", "title": "Pull out fields", "sub": "Names, amounts, dates from any text",
+     "make": {"op": "extract", "text": "", "fields": {"name": "The person's name", "amount": "The total"}}},
+    {"key": "ai_sentiment", "type": "ai", "group": "AI", "title": "How it feels", "sub": "Positive, neutral, negative, with a score",
+     "make": {"op": "sentiment", "text": ""}},
+    {"key": "ai_answer", "type": "ai", "group": "AI", "title": "Answer from my files", "sub": "Only from the files, text or Knowledge you give",
+     "make": {"op": "answer", "question": "", "knowledge": True}},
+    {"key": "ai_switch", "type": "router", "group": "AI", "title": "AI picks the way", "sub": "A switch where the AI reads a text and picks a way",
+     "make": {"ai": {"text": ""}, "routes": [{"label": "Sales", "steps": []}, {"label": "Support", "steps": []}], "fallback": []}},
     {"type": "approval", "group": "Human in the loop", "title": "Ask me first", "sub": "Waits for your tap before going on",
      "make": {"question": "Go ahead?"}},
     {"type": "notify", "group": "Human in the loop", "title": "Tell me", "sub": "A message to you in Hoola",

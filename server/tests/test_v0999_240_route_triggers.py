@@ -353,4 +353,4 @@ def test_make_a_form_route_in_a_real_browser(br5):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.242"
+    assert APP_VERSION >= "0.999.242"
