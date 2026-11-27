@@ -3918,3 +3918,16 @@ Work Log:
 
 Stage Summary:
 - v0.999.232; deploy with Actions > VPS ops > deploy. R2-R8 next on her word.
+
+---
+Task ID: route-stepdata-r2
+Agent: main
+Task: Hoola Route R2 - steps you can test (owner: "GO R2")
+
+Work Log:
+- Large step view (in | settings | out), drag / click a field into a box, Test step, pins used only by test runs, whole outputs on the run page.
+- Found and fixed: the browser's dblclick never reached a step (the first click redraws); phone grid squeezed the three parts over each other.
+- Renumbered 233 -> 234 (main moved to Computer V2).
+
+Stage Summary:
+- v0.999.234; deploy with Actions > VPS ops > deploy. R3 next on her word.

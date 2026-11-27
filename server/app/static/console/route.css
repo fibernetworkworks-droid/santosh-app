@@ -339,8 +339,39 @@ svg.edges path.ghost{stroke-dasharray:4 4}
 .tries{display:flex;gap:6px;flex-wrap:wrap;padding:10px 14px 14px;flex:none}
 .tries .chip{height:28px;font-size:12.5px}
 
+/* ---------------------------------------------------------------- v0.999.234 R2: a step with its data */
+.pinb{position:absolute;right:28px;top:7px;color:var(--acc)}.pinb .i{width:13px;height:13px}
+.smodal{position:fixed;inset:0;z-index:40;background:rgba(28,25,23,.34);padding:28px;display:flex}
+.sm-card{flex:1;min-width:0;background:var(--bg);border-radius:18px;box-shadow:0 24px 64px rgba(28,25,23,.28);display:flex;flex-direction:column;overflow:hidden}
+.sm-top{height:62px;flex:none;display:flex;align-items:center;gap:12px;padding:0 18px;border-bottom:1px solid var(--line)}
+.sm-cols{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr) minmax(0,1fr)}
+.sm-in,.sm-out{background:var(--side);overflow-y:auto;min-height:0}
+.sm-in{border-right:1px solid var(--line)}.sm-out{border-left:1px solid var(--line)}
+.sm-mid{overflow-y:auto;min-height:0}
+.smh{position:sticky;top:0;z-index:2;height:46px;display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--side);border-bottom:1px solid var(--line);font-size:13.5px}
+.sm-pad{padding:10px 14px}
+.hint{color:var(--dim)}
+.src{border-bottom:1px solid var(--line)}
+.srct{display:flex;align-items:center;gap:6px;width:100%;border:0;background:none;padding:10px 14px 6px;font-size:12.5px;font-weight:600;color:var(--ink2);cursor:pointer;text-align:left}
+.srct::before{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);margin:0 4px 3px 2px;transition:transform .12s}
+.srct[aria-expanded="false"]::before{transform:rotate(-45deg);margin-bottom:0}
+.frs{padding:2px 8px 10px}
+.fr{display:flex;align-items:center;gap:8px;min-height:32px;padding-right:10px;border-radius:8px;font-size:13px;cursor:grab;background:var(--bg);border:1px solid var(--line);margin-bottom:4px}
+.fr:hover{border-color:var(--acc);box-shadow:0 2px 8px -2px rgba(91,69,224,.25)}
+.fr.ro{cursor:default;background:none;border-color:transparent;margin-bottom:0}
+.fr.ro:hover{box-shadow:none;border-color:transparent}
+.fk{font-weight:500;white-space:nowrap}
+.ft{font-size:10.5px;color:var(--dim);border:1px solid var(--line);border-radius:5px;padding:0 4px;white-space:nowrap}
+.fv{flex:1;min-width:0;text-align:right;font:12px 'JetBrains Mono',ui-monospace,monospace;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sm-json{margin:10px 14px;max-height:none}
+.sm-edit{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:12.5px;line-height:1.5;background:var(--bg);margin-bottom:8px;resize:vertical}
+.pinl{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;color:var(--acct)}.pinl .i{width:13px;height:13px}
+.warnbox{display:flex;flex-direction:column;gap:6px;background:var(--warns);color:var(--warn);border-bottom:1px solid var(--line)}
+.dropok{border-color:var(--acc)!important;border-style:dashed!important;background:var(--accs)!important}
+.sm-top .btn .dots i{background:var(--onpill)}
+
 /* ---------------------------------------------------------------- a smaller screen */
-@media (max-width:1100px){.edbody{grid-template-columns:minmax(0,1fr) 330px}.needs{grid-template-columns:1fr}}
+@media (max-width:1100px){.sm-cols{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)}.sm-out{grid-column:1 / -1;border-left:0;border-top:1px solid var(--line)}.edbody{grid-template-columns:minmax(0,1fr) 330px}.needs{grid-template-columns:1fr}}
 @media (max-width:900px){
   .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
   .main{padding:28px 24px 48px}
@@ -380,5 +411,8 @@ svg.edges path.ghost{stroke-dasharray:4 4}
   .mini{display:none}
   .testask{left:14px;right:14px;width:auto}
   .two{grid-template-columns:1fr}
+  .smodal{padding:0}.sm-card{border-radius:0}
+  .sm-cols{display:block;overflow-y:auto}.sm-in,.sm-out,.sm-mid{overflow:visible;min-height:auto}
+  .sm-in{border-right:0;border-bottom:1px solid var(--line)}.sm-out{border-left:0;border-top:1px solid var(--line)}
 }
 @media (prefers-reduced-motion: reduce){.tog span,.addaf{transition:none}.dots i{animation:none;opacity:.7}}

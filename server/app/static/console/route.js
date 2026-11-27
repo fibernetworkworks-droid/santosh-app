@@ -57,6 +57,7 @@
     copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
     spark: '<path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"/>', more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
     store: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+    pin: '<path d="M12 17v5M9 3h6l-1 7 4 3H6l4-3z"/>', expand: '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>',
     grid: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>'};
   const MARK = c => (window.HoolaMark ? HoolaMark.svg({color: c || '#FFFFFF'}) : '');
   try { $('#brandMark').innerHTML = MARK('#FFFFFF'); } catch {}
@@ -279,7 +280,7 @@
           const word = {approved: 'You approved', retry: 'Tried again', skipped: 'Skipped'}[l.status];
           return `<div class="lrow"><span class="lp">${word ? `<span class="pill ${l.status === 'approved' ? 'ok' : 'v'}"><span class="dot"></span>${esc(word)}</span>` : runPill(st)}</span>
           <div class="w"><b>${esc(nice(l.id))}</b> <span class="mut sm">${esc(l.type)}${l.at ? ' · ' + esc(l.at) : ''}${l.ms ? ' · ' + l.ms + ' ms' : ''}</span>
-          ${l.error ? `<div class="sm errt">${esc(human(l.error))}</div>` : ''}${l.output ? `<details><summary class="sm">What it gave back</summary><pre>${esc(pretty(l.output))}</pre></details>` : ''}</div></div>`; }).join('') || '<div class="empty">No step has run yet.</div>'}</div></section>`;
+          ${l.error ? `<div class="sm errt">${esc(human(l.error))}</div>` : ''}${(x.outputs && x.outputs[l.id] !== undefined) || l.output ? `<details><summary class="sm">What it gave back${(x.pinned || []).includes(l.id) ? ' (pinned test data)' : ''}</summary><pre>${esc(x.outputs && x.outputs[l.id] !== undefined ? JSON.stringify(x.outputs[l.id], null, 2) : pretty(l.output))}</pre></details>` : ''}</div></div>`; }).join('') || '<div class="empty">No step has run yet.</div>'}</div></section>`;
   }
   async function viewTemplates() {
     shell(false); setNav('templates');
@@ -395,6 +396,7 @@
     draw(); topState();
     if (layoutToo) saveLayoutSoon();
     if (ED.tab === 'step') panel();
+    if (ED.modal) modalDraw(true);
   }
   function topState() {
     const st = $('#edState'); if (!st) return;
@@ -501,6 +503,7 @@
       ${appTile(s.app, s.type)}<span class="nt"><b>${esc(titleOfStep(s))}</b><small>${esc(KIND[s.type] || s.type)}${stepWords(s) ? ' · ' + esc(stepWords(s)) : ''}</small></span>
       ${s.on_error ? `<span class="oe" title="${esc(DO[s.on_error.do] || '')}">${esc(s.on_error.do === 'break' ? 'retries' : s.on_error.do)}</span>` : ''}
       ${st ? `<span class="sd ${ST_CLS[st.status] || ''}" title="${esc(st.status)}"></span>` : ''}
+      ${ED.data && ED.data.pins && ED.data.pins[s.id] !== undefined ? `<span class="pinb" title="Pinned test data">${svg(IC.pin)}</span>` : ''}
       <button class="addaf" type="button" data-addafter="${esc(s.id)}" aria-label="Add a step after this" title="Add a step after this">${svg(IC.plus)}</button></div>`;
   }
   function edgePath(a, b) {
@@ -618,6 +621,7 @@
     document.querySelectorAll('.ptab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.ptab === (ED.tab === 'add' ? 'step' : ED.tab))));
     if (ED.tab === 'ask') { askPanel(box); return; }
     if (ED.tab === 'add') { addPanel(box); return; }
+    if (ED.modal) { box.innerHTML = '<div class="pempty"><div class="pe-t">Open in the large view</div><p class="mut sm">Close it to set the step here.</p></div>'; return; }
     stepPanel(box);
   }
   // the values earlier steps leave behind, to put into a box
@@ -713,8 +717,9 @@
     const parts = [];
     let tinfo = null;
     if (s.type === 'tool') tinfo = await toolInfo(s.name);
-    if (!ED || ED.sel !== s.id || ED.tab !== 'step') return;
-    parts.push(`<div class="phead">${appTile(s.app || (tinfo && tinfo.app), s.type)}<div><div class="pk">${esc(KIND[s.type] || s.type)}</div><div class="pt">${esc(titleOfStep(s))}</div></div></div>`);
+    if (!ED || ED.sel !== s.id || (box.id === 'edPanel' ? (ED.tab !== 'step' || ED.modal) : ED.modal !== s.id)) return;
+    if (box.id === 'edPanel') parts.push(`<div class="phead">${appTile(s.app || (tinfo && tinfo.app), s.type)}<div><div class="pk">${esc(KIND[s.type] || s.type)}</div><div class="pt">${esc(titleOfStep(s))}</div></div>
+      <span class="sp"></span><button class="btn s soft" type="button" data-big title="Open with its data (double-click a step)">Open with data</button></div>`);
     parts.push(field('What this step does', s.label || '', {k: 'label', ref: false, ph: 'In your own words, like "Add the order to my sheet"'}));
     if (s.type === 'tool') {
       parts.push(`<div class="tbox"><div><b>${esc(tinfo ? tinfo.label : nice(s.name))}</b><span class="mut sm">${esc(tinfo ? tinfo.desc : 'This tool is not on this server any more.')}</span></div>
@@ -759,7 +764,8 @@
     if (oe.do === 'break') parts.push(`<div class="two">${field('Tries', oe.retries ?? 3, {k: 'oe_retries', ref: false, num: true})}${field('Minutes apart', oe.wait_min ?? 10, {k: 'oe_wait', ref: false, num: true})}</div>`);
     if (oe.do === 'resume') parts.push(field('Value to use', typeof oe.value === 'string' ? oe.value : JSON.stringify(oe.value ?? ''), {k: 'oe_value'}));
     parts.push('<div class="psub">Name</div>');
-    parts.push(`<div class="fld"><label for="sidIn">Step name (later steps read its result by this)</label><div class="fc"><input id="sidIn" class="mono" value="${esc(s.id)}"></div></div>`);
+    const sidId = fid();
+    parts.push(`<div class="fld"><label for="${sidId}">Step name (later steps read its result by this)</label><div class="fc"><input id="${sidId}" data-sid class="mono" value="${esc(s.id)}"></div></div>`);
     parts.push(`<div class="pfoot"><button class="btn s soft" type="button" data-dup>${svg(IC.copy)}Duplicate</button><span class="sp"></span><button class="btn s soft bad" type="button" data-del>${svg(IC.trash)}Delete step</button></div>`);
     box.innerHTML = `<div class="pform">${parts.join('')}</div>`;
     wireStep(box.firstElementChild, s);
@@ -796,7 +802,7 @@
       else if (k === 'oe_value') s.on_error.value = v;
       else s[k] = v;
       ED.dirty = snap() !== ED.saved; draw(); topState();
-      if (['method', 'oe_do'].includes(k)) stepPanel($('#edPanel'));
+      if (['method', 'oe_do'].includes(k)) stepPanel(box.parentNode);
     };
     box.addEventListener('input', e => { if (e.target.dataset.k && e.target.tagName !== 'SELECT') apply(e.target); else if (e.target.closest('.fgroup')) applyFilter(e.target); });
     box.addEventListener('change', e => { if (e.target.dataset.k && e.target.tagName === 'SELECT') apply(e.target); else if (e.target.closest('.fgroup')) applyFilter(e.target, true);
@@ -808,7 +814,7 @@
     function applyFilter(el, redraw) {
       const fg = el.closest('.fgroup'); once(); setF(fg, readFilter(fg));
       ED.dirty = snap() !== ED.saved; draw(); topState();
-      if (redraw && el.dataset.fo !== undefined) stepPanel($('#edPanel'));
+      if (redraw && el.dataset.fo !== undefined) stepPanel(box.parentNode);
     }
     box.addEventListener('click', e => {
       const t = e.target.closest('button'); if (!t) return;
@@ -820,6 +826,7 @@
       if (t.dataset.wadd !== undefined) { before(); s.routes.push({label: 'Way ' + (s.routes.length + 1), filter: {left: '', op: 'exists'}, steps: []}); changed(false); return; }
       if (t.dataset.wdel !== undefined) { before(); s.routes.splice(+t.dataset.wdel, 1); changed(false); return; }
       if (t.dataset.dup !== undefined) { dupStep(s.id); return; }
+      if (t.dataset.big !== undefined) { openModal(s.id); return; }
       if (t.dataset.del !== undefined) {
         if (t.dataset.sure !== '1') { t.dataset.sure = '1'; t.innerHTML = `${svg(IC.trash)}${['condition', 'router', 'loop'].includes(s.type) ? 'Delete it and the steps inside?' : 'Delete this step?'}`; return; }
         delStep(s.id); return;
@@ -828,7 +835,7 @@
     });
     const fb = box.querySelector('[data-fallback]');
     if (fb) fb.addEventListener('change', () => { before(); if (fb.checked) s.fallback = s.fallback || []; else delete s.fallback; changed(false); });
-    const sid = box.querySelector('#sidIn');
+    const sid = box.querySelector('[data-sid]');
     sid.addEventListener('change', () => { const v = sid.value.trim(); if (v === s.id) return; if (!renameStep(s.id, v)) sid.value = s.id; });
   }
 
@@ -1028,6 +1035,202 @@
     });
   }
 
+  // ---------------------------------------------------------------- R2: a step with its data (in · settings · out)
+  async function loadData() {
+    if (!ED || !ED.r) return;
+    try { ED.data = await api('GET', `/api/route/routes/${enc(ED.r.id)}/data`); } catch { return; }
+    if (!ED) return;
+    draw();
+    if (ED.modal) { modalIn(); modalOut(); }
+  }
+  const TYPEW = v => v === null || v === undefined ? 'empty' : Array.isArray(v) ? 'list' : typeof v === 'object' ? 'object' : typeof v === 'number' ? '#' : typeof v === 'boolean' ? 'yes/no' : 'text';
+  const prev = v => v === null || v === undefined ? '—' : Array.isArray(v) ? `${v.length} item${v.length === 1 ? '' : 's'}` : typeof v === 'object' ? `${Object.keys(v).length} field${Object.keys(v).length === 1 ? '' : 's'}` : S(v).slice(0, 80);
+  // a value as rows of fields she can drag into a box: {path, key, depth, type, preview}
+  function flatten(v, base, out, depth, label) {
+    out = out || []; depth = depth || 0;
+    if (out.length > 400) return out;
+    if (depth === 0 && (v === null || typeof v !== 'object')) { out.push({path: base, key: label || 'value', depth: 0, type: TYPEW(v), prev: prev(v)}); return out; }
+    if (v && v._too_big) { out.push({path: base, key: 'too big to show whole', depth, type: 'text', prev: S(v.first_part).slice(0, 80)}); return out; }
+    const keys = Array.isArray(v) ? v.slice(0, 3).map((_, i) => String(i)) : Object.keys(v || {}).slice(0, 80);
+    keys.forEach(k => {
+      const x = v[k], p = `${base}.${k}`;
+      out.push({path: p, key: Array.isArray(v) ? `item ${Number(k) + 1}` : k, depth, type: TYPEW(x), prev: prev(x)});
+      if (x && typeof x === 'object' && depth < 4) flatten(x, p, out, depth + 1);
+    });
+    if (Array.isArray(v) && v.length > 3) out.push({path: '', key: `… ${v.length - 3} more`, depth, type: '', prev: ''});
+    return out;
+  }
+  function fieldRows(rows, drag) {
+    return rows.map(r => r.path && drag ? `<div class="fr" draggable="true" data-expr="{{${esc(r.path)}}}" style="padding-left:${10 + r.depth * 16}px" title="Drag into a box, or click to put it in the box you were in">
+        <span class="fk">${esc(r.key)}</span><span class="ft">${esc(r.type)}</span><span class="fv">${esc(r.prev)}</span></div>`
+      : `<div class="fr ro" style="padding-left:${10 + r.depth * 16}px"><span class="fk">${esc(r.key)}</span><span class="ft">${esc(r.type)}</span><span class="fv">${esc(r.prev)}</span></div>`).join('');
+  }
+  function sourcesFor(id) {
+    const d = ED.data || {vars: {}, steps: {}, pins: {}};
+    const out = [];
+    const pinsT = d.pins && d.pins.trigger;
+    const vars = pinsT !== undefined ? pinsT : d.vars;
+    if (vars && Object.keys(vars).length) out.push({title: pinsT !== undefined ? 'The data a test starts with (pinned)' : 'The data it started with', base: 'vars', v: vars});
+    const h = id ? find(id) : null;
+    if (h && h.path[1] === 'body') {
+      const lp = find(h.path[0]), lo = lp && d.steps[lp.step.id] && d.steps[lp.step.id].output;
+      const it = lo && Array.isArray(lo.items) ? lo.items[0] : undefined;
+      out.push({title: 'The item in this round', base: 'item', v: it, none: it === undefined ? 'Test “' + titleOfStep(lp.step) + '” to see an item here.' : ''});
+    }
+    const flat = allSteps(); const idx = flat.findIndex(x => x.id === id);
+    flat.slice(0, idx < 0 ? flat.length : idx).forEach(x => {
+      if (['condition', 'router', 'filter', 'wait', 'approval'].includes(x.type)) return;
+      if (x.type === 'set') { const sv = (d.vars || {})[x.name] !== undefined ? d.vars[x.name] : ((d.steps[x.id] || {}).output || {}).value;
+        out.push({title: `${titleOfStep(x)} (value)`, base: `vars.${x.name}`, v: sv, label: x.name, none: 'Test this step to see its value.'}); return; }
+      const pinned = d.pins && d.pins[x.id] !== undefined;
+      const st = pinned ? {output: d.pins[x.id]} : d.steps[x.id];
+      out.push({title: titleOfStep(x) + (pinned ? ' (pinned)' : ''), base: `steps.${x.id}.output`, v: st ? st.output : undefined,
+        none: st ? '' : 'No data yet - test this step or the route.'});
+    });
+    return out;
+  }
+  function openModal(id) {
+    if (!ED || !id) return;
+    ED.sel = id; ED.modal = id; ED.mview = ED.mview || {in: 'fields', out: 'fields'}; ED.stepRes = null;
+    draw(); panel(); modalDraw();
+    if (!ED.data) loadData();
+  }
+  function closeModal() { if (!ED) return; ED.modal = null; const m = $('#smodal'); if (m) { m.hidden = true; m.innerHTML = ''; } panel(); draw(); }
+  function modalDraw(keepMid) {
+    const m = $('#smodal'); if (!m || !ED.modal) return;
+    const id = ED.modal, trig = id === 'trigger', h = trig ? null : find(id);
+    if (!trig && !h) { closeModal(); return; }
+    if (keepMid && m.querySelector('.sm-mid')) { modalMid(); modalIn(); modalOut(); return; }
+    const s = h && h.step;
+    const [tt, ts] = trig ? trigWords() : [titleOfStep(s), KIND[s.type] || s.type];
+    m.hidden = false;
+    m.innerHTML = `<div class="sm-card">
+      <div class="sm-top">${trig ? `<span class="ap k-trig">${svg(IC.bolt)}</span>` : appTile(s.app, s.type)}<div class="sm-t"><div class="pk">${esc(trig ? 'What starts it' : ts)}</div><div class="pt">${esc(tt)}</div></div>
+        <span class="sp"></span>${trig ? '' : `<button class="btn s" type="button" id="smTest">${svg(IC.play)}Test step</button>`}
+        <button class="btn s soft ib" type="button" id="smX" aria-label="Close">${svg(IC.x)}</button></div>
+      <div class="sm-cols"><section class="sm-in" aria-label="What comes in"></section><section class="sm-mid" aria-label="Settings"></section><section class="sm-out" aria-label="What goes out"></section></div></div>`;
+    $('#smX').addEventListener('click', closeModal);
+    const tb = $('#smTest'); if (tb) tb.addEventListener('click', () => testStep(false));
+    modalMid(); modalIn(); modalOut();
+    m.querySelector('.sm-in').addEventListener('dragstart', e => { const r = e.target.closest('[data-expr]'); if (!r) return;
+      e.dataTransfer.setData('text/plain', r.dataset.expr); e.dataTransfer.effectAllowed = 'copy'; });
+    m.querySelector('.sm-in').addEventListener('click', e => {
+      const v = e.target.closest('[data-mview]'); if (v) { ED.mview.in = v.dataset.mview; modalIn(); return; }
+      const g = e.target.closest('[data-tg]'); if (g) { ED.fold = ED.fold || {}; ED.fold[g.dataset.tg] = !ED.fold[g.dataset.tg]; modalIn(); return; }
+      if (e.target.closest('#inTest')) { testRoute(false); return; }
+      const r = e.target.closest('[data-expr]'); if (!r) return;
+      const f = ED.lastFld && document.body.contains(ED.lastFld) ? ED.lastFld : null;
+      if (!f) { toast('Click in a box in the middle first, or drag the field onto it.'); return; }
+      const a = f.selectionStart ?? f.value.length, b = f.selectionEnd ?? a;
+      f.value = f.value.slice(0, a) + r.dataset.expr + f.value.slice(b);
+      f.dispatchEvent(new Event('input', {bubbles: true})); f.dispatchEvent(new Event('change', {bubbles: true})); f.focus();
+    });
+    const mid = m.querySelector('.sm-mid');
+    mid.addEventListener('focusin', e => { if (/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) ED.lastFld = e.target; });
+    mid.addEventListener('dragover', e => { if (/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) e.target.classList.add('dropok'); });
+    mid.addEventListener('dragleave', e => e.target.classList && e.target.classList.remove('dropok'));
+    mid.addEventListener('drop', e => { e.target.classList && e.target.classList.remove('dropok');
+      if (/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) setTimeout(() => { e.target.dispatchEvent(new Event('change', {bubbles: true})); }, 0); });
+    m.querySelector('.sm-out').addEventListener('click', outClick);
+  }
+  function modalMid() {
+    const mid = document.querySelector('#smodal .sm-mid'); if (!mid) return;
+    if (ED.modal === 'trigger') trigPanel(mid); else stepPanel(mid);
+  }
+  function modalIn() {
+    const box = document.querySelector('#smodal .sm-in'); if (!box) return;
+    const v = ED.mview.in;
+    const srcs = ED.modal === 'trigger' ? [] : sourcesFor(ED.modal);
+    const head = `<div class="smh"><b>What comes in</b><span class="sp"></span><span class="seg sm"><button type="button" data-mview="fields" aria-pressed="${v === 'fields'}">Fields</button><button type="button" data-mview="json" aria-pressed="${v === 'json'}">JSON</button></span></div>`;
+    if (ED.modal === 'trigger') { box.innerHTML = '<div class="smh"><b>What comes in</b></div><p class="mut sm sm-pad">Nothing comes before the start. The data a test starts with is on the right.</p>'; return; }
+    if (!ED.data) { box.innerHTML = head + '<p class="mut sm sm-pad">Loading…</p>'; return; }
+    const any = srcs.some(x => x.v !== undefined);
+    box.innerHTML = head + (srcs.length ? srcs.map(x => {
+      const folded = (ED.fold || {})[x.base];
+      return `<div class="src"><button type="button" class="srct" data-tg="${esc(x.base)}" aria-expanded="${!folded}">${esc(x.title)}</button>
+        ${folded ? '' : x.v === undefined ? `<p class="mut sm sm-pad">${esc(x.none || 'No data yet.')}</p>`
+          : v === 'json' ? `<pre class="sm-json">${esc(JSON.stringify(x.v, null, 2))}</pre>` : `<div class="frs">${fieldRows(flatten(x.v, x.base, [], 0, x.label), true)}</div>`}</div>`; }).join('')
+      : '<p class="mut sm sm-pad">This is the first step: it gets the data the route starts with.</p>') +
+      (any ? '<p class="mut sm sm-pad hint">Drag a field into a box in the middle, or click a box and then the field.</p>'
+        : `<div class="sm-pad"><p class="mut sm">No data yet. Test the route once, and what each step gave back shows here.</p><button class="btn s soft" type="button" id="inTest">${svg(IC.play)}Test route</button></div>`);
+  }
+  function modalOut() {
+    const box = document.querySelector('#smodal .sm-out'); if (!box) return;
+    const d = ED.data || {steps: {}, pins: {}, log: {}};
+    const v = ED.mview.out;
+    if (ED.modal === 'trigger') {
+      const pin = d.pins && d.pins.trigger;
+      const cur = pin !== undefined ? pin : (d.vars || {});
+      box.innerHTML = `<div class="smh"><b>The data a test starts with</b>${pin !== undefined ? `<span class="pinl">${svg(IC.pin)}Pinned</span>` : ''}</div>
+        <p class="mut sm sm-pad">${ED.trig.kind === 'webhook' ? 'What the app that starts it sends. Write an example to test with.' : 'Values your steps read as {{vars.…}}. Optional.'}</p>
+        <div class="sm-pad"><textarea class="mono sm-edit" id="trigData" rows="12" spellcheck="false">${esc(JSON.stringify(cur, null, 2))}</textarea>
+        <div class="crow"><button class="btn s" type="button" data-pin="trigger">${svg(IC.pin)}Pin as test data</button>${pin !== undefined ? '<button class="btn s soft" type="button" data-unpin="trigger">Unpin</button>' : ''}</div></div>`;
+      return;
+    }
+    const h = find(ED.modal); if (!h) return;
+    const s = h.step, decides = ['condition', 'router', 'loop', 'filter', 'approval', 'wait'].includes(s.type);
+    const pinned = d.pins && d.pins[s.id] !== undefined;
+    const res = ED.stepRes && ED.stepRes.id === s.id ? ED.stepRes : null;
+    const lg = (d.log || {})[s.id];
+    const val = res ? res.output : pinned ? d.pins[s.id] : (d.steps[s.id] || {}).output;
+    const has = val !== undefined && val !== null;
+    const state = res ? (res.ok ? `<span class="lr ok">Tested · ${(res.ms / 1000).toFixed(1)} s</span>` : '<span class="lr bad">Did not work</span>')
+      : pinned ? `<span class="pinl">${svg(IC.pin)}Pinned</span>` : lg ? `<span class="lr ${lg.status === 'error' ? 'bad' : 'ok'}">From the last run</span>` : '';
+    box.innerHTML = `<div class="smh"><b>What goes out</b>${state}<span class="sp"></span>${has && !ED.editOut ? `<span class="seg sm"><button type="button" data-oview="fields" aria-pressed="${v === 'fields'}">Fields</button><button type="button" data-oview="json" aria-pressed="${v === 'json'}">JSON</button></span>` : ''}</div>
+      ${ED.realAsk === s.id ? `<div class="sm-pad warnbox"><b>Testing runs this step for real.</b><span class="mut sm">A message is really sent, a row really added. Steps before it are not run - their latest data is used.</span>
+        <div class="crow"><button class="btn s" type="button" id="realGo">Test now</button><button class="btn s soft" type="button" id="realNo">Not now</button></div></div>` : ''}
+      ${res && !res.ok ? `<div class="sm-pad"><div class="errbox">${esc(human(res.error))}</div></div>` : ''}
+      ${ED.editOut ? `<div class="sm-pad"><textarea class="mono sm-edit" id="outEdit" rows="14" spellcheck="false">${esc(JSON.stringify(has ? val : {}, null, 2))}</textarea>
+        <div class="crow"><button class="btn s" type="button" data-pin="${esc(s.id)}" data-from="edit">${svg(IC.pin)}Pin this</button><button class="btn s soft" type="button" id="editNo">Cancel</button></div></div>`
+      : has ? (v === 'json' ? `<pre class="sm-json">${esc(JSON.stringify(val, null, 2))}</pre>` : `<div class="frs">${fieldRows(flatten(val, `steps.${s.id}.output`), false)}</div>`)
+      : `<p class="mut sm sm-pad">${decides ? 'Test it to see which way it goes with the latest data.' : 'Nothing yet. Tap Test step, or test the route.'}</p>`}
+      ${decides || ED.editOut ? (decides ? '<p class="mut sm sm-pad">This step decides or waits - it has no data to pin.</p>' : '')
+        : `<div class="sm-pad crow">${has && !pinned ? `<button class="btn s soft" type="button" data-pin="${esc(s.id)}">${svg(IC.pin)}Pin this output</button>` : ''}
+           ${pinned ? `<button class="btn s soft" type="button" data-unpin="${esc(s.id)}">Unpin</button>` : ''}<button class="btn s soft" type="button" id="editOut">Write test data</button></div>
+           ${pinned ? '<p class="mut sm sm-pad">While pinned, a test uses this data instead of running the step. A real run always runs it.</p>' : ''}`}`;
+  }
+  async function outClick(e) {
+    const t = e.target.closest('button'); if (!t || !ED) return;
+    const id = ED.modal;
+    if (t.dataset.oview) { ED.mview.out = t.dataset.oview; modalOut(); return; }
+    if (t.id === 'realGo') { ED.realAsk = null; ED.realOk = true; testStep(true); return; }
+    if (t.id === 'realNo') { ED.realAsk = null; modalOut(); return; }
+    if (t.id === 'editOut') { ED.editOut = true; modalOut(); return; }
+    if (t.id === 'editNo') { ED.editOut = false; modalOut(); return; }
+    if (t.dataset.pin) {
+      let value;
+      try {
+        if (t.dataset.pin === 'trigger') value = JSON.parse($('#trigData').value || '{}');
+        else if (t.dataset.from === 'edit') value = JSON.parse($('#outEdit').value || 'null');
+        else { const d = ED.data || {}; value = ED.stepRes && ED.stepRes.id === id ? ED.stepRes.output : (d.steps[id] || {}).output; }
+      } catch { toast('That is not valid data. Check the brackets and quotes.', true); return; }
+      if (ED.dirty && !(await save())) return;
+      t.disabled = true;
+      try { await api('PUT', `/api/route/routes/${enc(ED.r.id)}/pins/${enc(t.dataset.pin)}`, {value}); ED.editOut = false; toast('Pinned. Tests use this data.'); await loadData(); }
+      catch (err) { toast(err.message, true); t.disabled = false; }
+      return;
+    }
+    if (t.dataset.unpin) {
+      try { await api('DELETE', `/api/route/routes/${enc(ED.r.id)}/pins/${enc(t.dataset.unpin)}`); toast('Unpinned.'); await loadData(); } catch (err) { toast(err.message, true); }
+    }
+  }
+  async function testStep(sure) {
+    if (!ED || !ED.modal || ED.modal === 'trigger') return;
+    const h = find(ED.modal); if (!h) return;
+    const real = !['condition', 'router', 'loop', 'filter', 'approval', 'wait'].includes(h.step.type);
+    if (real && !sure && !ED.realOk) { ED.realAsk = h.step.id; modalOut(); return; }
+    if (ED.dirty && !(await save())) return;
+    const b = $('#smTest'); if (b) { b.disabled = true; b.innerHTML = `<span class="dots"><i></i><i></i><i></i></span>Testing`; }
+    let res;
+    try { res = await api('POST', `/api/route/routes/${enc(ED.r.id)}/steps/${enc(h.step.id)}/test`, {use_pins: true}); }
+    catch (e) { res = {ok: false, error: e.message, ms: 0}; }
+    if (!ED) return;
+    ED.stepRes = Object.assign({id: h.step.id}, res);
+    ED.runSt = Object.assign({}, ED.runSt, {[h.step.id]: {status: res.ok ? 'ok' : 'error'}});
+    if (b) { b.disabled = false; b.innerHTML = `${svg(IC.play)}Test step`; }
+    await loadData(); modalOut();
+  }
+
   // ---------------------------------------------------------------- Test route
   async function testRoute(sure) {
     if (!ED) return;
@@ -1045,7 +1248,7 @@
       let r; try { r = await api('GET', `/api/route/runs/${enc(ED.runId)}`); } catch { return; }
       ED.runSt = {}; (r.steps_log || []).forEach(l => { ED.runSt[l.id] = l; });
       logDraw(r); draw();
-      if (['done', 'failed', 'incomplete', 'stopped'].includes(r.status)) clearInterval(ED.runT);
+      if (['done', 'failed', 'incomplete', 'stopped'].includes(r.status)) { clearInterval(ED.runT); loadData(); }
     }, 1000);
   }
   function logDraw(r) {
@@ -1087,6 +1290,7 @@
             <div class="crow"><button class="btn s" type="button" id="testGo">Test now</button><button class="btn s soft" type="button" id="testNo">Not now</button></div></div>
           <div class="edlog" id="edLog" hidden></div>
         </div>
+        <div class="smodal" id="smodal" hidden role="dialog" aria-modal="true" aria-label="Step with its data"></div>
         <aside class="edside" aria-label="Side panel">
           <div class="ptabs" role="tablist"><button class="ptab" role="tab" data-ptab="ask" aria-selected="true">${MARK('#5B45E0')}Ask Hoola</button><button class="ptab" role="tab" data-ptab="step" aria-selected="false">Step</button></div>
           <div class="edpanel" id="edPanel"></div>
@@ -1098,6 +1302,7 @@
     $('#testGo').addEventListener('click', () => testRoute(true)); $('#testNo').addEventListener('click', () => { $('#testAsk').hidden = true; });
     $('#tAdd').addEventListener('click', () => { const h = ED.sel && ED.sel !== 'trigger' ? find(ED.sel) : null; if (h) addAt(h.path, h.i + 1); else addAt([], ED.steps.length); });
     $('#tNote').addEventListener('click', addNote);
+    $('#smodal').addEventListener('click', e => { if (e.target.id === 'smodal') closeModal(); });
     $('#tTidy').addEventListener('click', () => { before(); ED.pos = {}; changed(true); fit(); });
     $('#zIn').addEventListener('click', () => { const c = $('#canvas'); zoomAt(1.2, c.clientWidth / 2, c.clientHeight / 2); });
     $('#zOut').addEventListener('click', () => { const c = $('#canvas'); zoomAt(1 / 1.2, c.clientWidth / 2, c.clientHeight / 2); });
@@ -1105,7 +1310,7 @@
     document.querySelectorAll('.ptab').forEach(b => b.addEventListener('click', () => { ED.tab = b.dataset.ptab; if (ED.tab === 'step') ED.addAt = null; panel(); }));
     canvasWire();
     window.addEventListener('keydown', edKeys); window.addEventListener('beforeunload', edLeave);
-    draw(); fit(); topState(); panel();
+    draw(); fit(); topState(); panel(); loadData();
     if (r.steps === 1 && (r.graph[0] || {}).id === 'tell_me' && !sessionStorage.getItem(ASK_KEY)) setTimeout(() => { const a = $('#askIn'); if (a) a.focus(); }, 300);
   }
   function edTop(r, tab) {
@@ -1129,6 +1334,7 @@
     if (mod && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
     if (mod && (e.key === 'y' || e.key === 'Y')) { e.preventDefault(); redo(); return; }
     if ((e.key === 'Delete' || e.key === 'Backspace') && ED.sel && ED.sel !== 'trigger') { e.preventDefault(); delStep(ED.sel); return; }
+    if (e.key === 'Escape' && ED.modal) { closeModal(); return; }
     if (e.key === 'Escape') { ED.sel = null; draw(); if (ED.tab !== 'ask') { ED.tab = 'step'; panel(); } return; }
     if (e.key === 'Enter' && document.activeElement && document.activeElement.dataset.node) { select(document.activeElement.dataset.node); }
   }
@@ -1178,7 +1384,12 @@
       c.classList.remove('panning', 'dragging');
       const d = drag; drag = null;
       if (d.moved) { if (d.kind !== 'pan') saveLayoutSoon(); return; }
-      if (d.kind === 'node') select(d.id);
+      if (d.kind === 'node') {
+        // a double click: the first click redraws the canvas, so the browser's own dblclick never reaches the step
+        const now = Date.now();
+        if (ED.lastTap && ED.lastTap.id === d.id && now - ED.lastTap.t < 420) { ED.lastTap = null; openModal(d.id); return; }
+        ED.lastTap = {id: d.id, t: now}; select(d.id);
+      }
       else if (d.kind === 'pan') { if (ED.sel) { ED.sel = null; draw(); if (ED.tab === 'step') panel(); } }
     };
     c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
