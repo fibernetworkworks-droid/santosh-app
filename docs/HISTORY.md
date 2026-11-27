@@ -13442,3 +13442,89 @@ Tests: server/tests/test_v0999_278_sending.py (14): the step's checks, nothing b
 a test run, the run / day limits, the sign-ins, each app's request, a refusal written down, two sign-ins need a pick, the bot
 start + its reply through the real webhook path, the importer, the routes, a browser walk (desktop + phone width, the bar, the
 panel, the Sign-ins page). NOT VERIFIED with a real Telegram bot, Slack / Discord / Mattermost workspace or mailbox on her server.
+
+
+## v0.999.279 CODE INTELLIGENCE (LSP)
+(owner: 'GO NEXT - CODE INTELLIGENCE (LSP)'): Claude Code's LSP tool in Hoola Code (`devsahayak/lsp.py`). One `lsp` tool asks a language server - goToDefinition, goToImplementation, findReferences, hover (type + docs), documentSymbol, workspaceSymbol, prepareCallHierarchy, incomingCalls, outgoingCalls, diagnostics (line / character from 1, as Claude Code's) - and after the coder edits files a server covers, the server checks them in the background and its errors and warnings arrive at the coder's next step (problems only; nothing is said when all is fine). A server reads and can run the repo's own config, so it runs ONLY in the session's locked box with no network: a small driver there starts it, does the LSP handshake (clientInfo Hoola Code, workspace/configuration answered from the server's settings), opens the files, sends one request, prints the answer and shuts the server down. For references, callers, implementations and workspace symbols it opens the files that name the symbol (git grep) - the server answers from open files (found on the real pyright: 1 reference before, 3 after). Places in node_modules / virtualenvs / build folders are left out of references; a definition outside the repo is kept and labelled. Servers: the box's own (box image rev 4 adds pyright + typescript + typescript-language-server; gopls / rust-analyzer / clangd / jdtls when the repo's setup installed them; a failed npm download never breaks the image), the repo's `.lsp.json` and her plugins' `.lsp.json` / `lspServers` (Claude Code's format: command, args, extensionToLanguage, env, initializationOptions, settings, startupTimeout, requestTimeout); a server the repo or a plugin names is a program, so she is asked before it starts the first time ('always' remembers it for the session). Agents get the tool too; permission rules name it LSP; web + phone show one row per call and the diagnostics. The box image on her server is rebuilt by itself on the first session after deploy (a few minutes, once). VERIFIED against the real pyright on this machine (every operation, under 2 s each); NOT VERIFIED in the real box or with a real model.
+
+
+## v0.999.280 DATABASE DESK (built as 0.999.278; their ROUTE SENDING and CODE INTELLIGENCE took 0.999.278-0.999.279, all kept; owner: "Database Engine Developer same as finance desks")
+
+The Hub's `dbengine_dev` card goes live like the finance desks: its own page `/console/database` (`static/console/dbdesk.{html,js,css}`)
+and its own chat (Conversation kind `dbengine`, `app/dbchat.py`, routes `/api/dbdesk/*`), out of every Hoola chat list, with the desk
+block + the `dbeng` tool family in view in that chat and in a call started from it.
+
+Engine `app/dbdesk/` - all code, no model, no money, never connects to her database:
+- `plans.py`: PostgreSQL EXPLAIN text (ANALYZE, BUFFERS) and FORMAT JSON, MySQL EXPLAIN ANALYZE / FORMAT=TREE and the classic table,
+  SQLite EXPLAIN QUERY PLAN -> a tree of steps (planned vs real rows, loops, inclusive and self time) and findings: a full scan that
+  throws most rows away (the filter's columns -> CREATE INDEX to try; MySQL: the Filter step above a Table scan), an estimate 10x off
+  reported once at the deepest step it starts at, sorts / hashes spilled to disk, a scan repeated 1,000+ times in a nested loop,
+  lossy bitmaps, heap fetches on an index-only scan, where most of the time goes.
+- `sqlcheck.py`: one query - a function / arithmetic on a column, leading %, NOT IN (SELECT), OFFSET >= 1000, SELECT *, UPDATE /
+  DELETE without WHERE, huge IN lists, 8+ joins - and the index it asks for (equality columns, then one range or the ORDER BY).
+- `schema.py`: CREATE TABLE / CREATE INDEX parsed; no primary key, foreign keys without an index (not for MySQL - InnoDB adds one),
+  an index covered by a longer one or duplicated, timestamps without time zone, money in floats, serial.
+- `lab.py`: her schema built in an in-memory SQLite database, generated rows (parents a twentieth of the children, categories skewed,
+  foreign keys drawn from the parent), only the query's tables; the query (one SELECT, PostgreSQL casts / ILIKE / NOW() turned into
+  SQLite) run three times before and after the CREATE INDEX: plan, best time, rows, a hash of the rows. An authorizer refuses
+  ATTACH / PRAGMA / writes / functions it does not allow (load_extension included), a progress handler stops it at 12 s, 200k rows a
+  table, 600k in all. SQLite's planner, not hers: every page says so.
+- `bench.py`: pgbench, sysbench, YCSB, HammerDB NOPM / TPM, or plain latencies; a run compared with a baseline against her noise %.
+- `service.py`: items (plan P-, query Q-, schema S-, lab L-, bench B-), settings (database, version, slow ms, big scan rows, noise,
+  lab rows); the lab uses her latest reviewed schema when none is pasted.
+
+Tool `db_desk` (`agent/dbeng_tools.py`, registry 705 -> 706). Pages: Today, Plans (findings with the index SQL, the step tree with
+time bars and estimate misses in red), Queries (issues + suggestions with "Prove it in the lab"), Schema (issues, tables with keys
+and indexes), Lab (before / after plans and times), Benchmarks (with a baseline), Settings.
+
+Tests `tests/test_db_desk.py` (4) incl. a browser walk at 1440 / 390: plan -> schema -> query -> Prove it in the lab (index used,
+same rows) -> benchmark against a baseline -> settings.
+NOT VERIFIED: on her server or with her own database; the lab is SQLite on generated rows.
+
+
+## v0.999.281 MCP TOOLS ONE BY ONE
+(owner: 'GO NEXT - MCP TOOLS LISTED ONE BY ONE'): Claude Code's way of showing MCP servers in Hoola Code (`devsahayak/mcptools.py`). Before, the coder had ONE `mcp` tool (list, then call with pack_id + tool + args) and never saw a tool's real fields; now every tool of her connected MCP servers and of the repo's `.mcp.json` / plugin servers she already allowed is a tool of its own, named mcp__<server>__<tool> (64 characters at most, never two with one name), with the server's own input schema and description (a tool that changes something says it becomes a confirm card on her phone). A repo server's tool list is read once, after her OK, and kept for a day; listing it loads its tools into the running round at once. Past 60 tools or 40,000 characters of definitions they are held back like Claude Code's tool search: the coder sees their names and `mcp_tool_search` (keywords, or select:<name>,<name>) loads the ones it needs. Every call still runs through the same doors (her connector layer and its phone cards; the repo's box or allowed address); the repo's permission rules (mcp__server__tool, mcp__server, mcp__server__*), hook matchers (mcp__notion__.*), the 'ask each step' questions and the Auto-mode safety reviewer all see the real name. The old `mcp` tool stays for listing and for servers not yet allowed. Web + phone rows name the server and tool; a 'Loaded MCP tools' row for the search. NOT VERIFIED against a live MCP server or a real model.
+
+## v0.999.282 EVERY PAGE ALIGNED
+
+Owner: "NOW GO DEEP ON EVERY PAGE OF ROUTE AND ALINE AND MAKE EVERY SECTION PERFCTLY FIXED".
+
+How: a seeded account (8 routes of every start, runs done / failed / waiting, a data store with records, a variable, two sign-ins,
+a library workflow) and every Route page - Home, All routes, Needs you, Runs, a run, Insights, Bring in, Templates, Workflows + one,
+Variables, Sign-ins, Data stores + one, Grid, the editor (plain, a step, the start, Add a step), the route's Runs / Versions /
+Settings - opened in Chromium at 1440, 1024 and 390 px in light and dark (144 views). Each view measured in code (sideways scroll,
+anything past the page edge, cut text, controls side by side with different heights or middles, controls under 26 px, page errors)
+and looked at by eye. 74 views had findings; after the fixes none (the home's 36 px round send button beside 32 px chips stays, on
+the same middle line, by design).
+
+Fixed (route.css end block "v0.999.282 EVERY PAGE ALIGNED" + route.js):
+- a form inside a card was padded twice (Variables, Sign-ins, Data stores, a record, Settings, Bring in) - once now;
+- a heading inside a table card sat on the card's edge (Insights "Each route", Versions) - padded, with a line under it;
+- the line under a page title sat 28 px away on some pages and 6 px on others - 8 px everywhere;
+- drop-downs were the browser's own and file pickers a grey "Choose File" - the house look (chevron, pill button);
+- toolbars mixed 32 / 36 / 38 px controls (Runs: Find, Workflows: Search, Data store search) - 36, chips 32 on the same middle;
+- three different number-card styles (Home serif, Insights wide figures, Grid sans) - the Home serif everywhere; number columns
+  use plain figures (the font's table figures put wide gaps round a decimal point: "0 . 0 s");
+- links in tables were the browser's colour - read as names (ink, underline on hover); "Set it" keeps the accent;
+- row buttons (Change / Delete) touched and floated mid-row - at the end of the row with a gap;
+- phone list cards (routes, runs, insights) had values starting at different places - one label column;
+- phone bar: "New route" broke onto two lines - one line, the bar fades where it scrolls on;
+- home on a phone: the send button dropped under its chips - on their line;
+- Data store page: the record search was an unstyled box on the card edge, the field rows repeated their labels and touched,
+  the title was in a code font - a styled search, labels once, rows apart, the page's title font;
+- Grid: the fourth column (Apps and web) was cut off at full desktop width - the columns fit the page (narrower columns, closer)
+  before it scrolls; app names read nicely;
+- the route's Runs / Versions / Settings pages were pinned left with an empty half - centred; the three daily limits on one row;
+  "Money and sending: Always wait for your tap" replaced by the true sending state (none / allowed + sent today / waits for Allow
+  sending) and Money on its own line;
+- the editor: the sending bar took three lines - one line (wraps when long); what starts a route was a long one-per-line list - two
+  across; the Fit button now fits the whole route (the first view stays readable from the start); on a phone the back button sat
+  alone on a line - back, name and its state on one line, the controls under it; on a phone a tapped step's settings opened out of
+  view below the canvas - scrolled into view; hint texts that were cut shortened;
+- a workflow's page: the back button floated at the middle of a tall title block and a stray "·" ended the meta line - top-aligned,
+  no stray dot; a run that a Stop step ended said "stopped by step 'boom': ..." - "Stopped at boom: ...", every error starts with a
+  capital letter.
+
+Tests: server/tests/test_v0999_282_route_aligned.py - the rules, and a walk of 22 page views at 1440 and 390 px in light and in
+dark that fails on sideways scroll, anything past the edge, cut text, mismatched controls, tiny controls or a page error.
+NOT VERIFIED on her server.

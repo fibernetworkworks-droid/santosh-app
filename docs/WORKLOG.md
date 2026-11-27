@@ -4071,3 +4071,11 @@ Task: make the Route's mails and Telegram / Slack / Discord / Mattermost posts r
 Work: route/send.py (Send step, Allow sending bound to destinations, limits, record, Telegram bot start), chat-app sign-in kinds,
 importer + library rebuild (1,920), editor Send group / bar / bot box, 14 tests.
 Not verified: a real bot / workspace / mailbox on her server.
+
+---
+Task ID: route-aligned-v0999282
+Agent: Claude Code (cloud session)
+Task: align and fix every Hoola Route page (owner: "NOW GO DEEP ON EVERY PAGE OF ROUTE AND ALINE AND MAKE EVERY SECTION PERFCTLY FIXED")
+Work: 144 page views walked + measured + looked at (1440 / 1024 / 390, light + dark), 74 with findings -> 0; route.css end block, route.js fixes;
+test_v0999_282_route_aligned.py.
+Not verified: on her server.

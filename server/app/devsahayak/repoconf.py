@@ -27,7 +27,7 @@ from typing import Any
 DIRS = (".claude", ".hoola")
 TOOL_NAMES = {"bash": "Bash", "read": "Read", "write": "Write", "edit": "Edit", "multi_edit": "Edit", "glob": "Glob",
               "grep": "Grep", "ls": "LS", "web_fetch": "WebFetch", "web_search": "WebSearch", "notebook_edit": "NotebookEdit",
-              "todo_write": "TodoWrite", "agent": "Task", "mcp": "mcp"}
+              "todo_write": "TodoWrite", "agent": "Task", "mcp": "mcp", "lsp": "LSP"}
 HOOK_EVENTS = ("PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "Stop", "SubagentStop", "PreCompact",
                "SessionEnd", "Notification",
                # v0.999 the rest of Claude Code's events that mean something in Hoola Code
@@ -168,6 +168,11 @@ def rule_matches(rule: str, tool: str, inp: dict[str, Any]) -> bool:
     """One Claude Code permission rule against one Hoola tool call."""
     name, spec = _rule_parts(rule)
     cname = _claude_name(tool)
+    if tool.startswith("mcp__"):                         # v0.999 an MCP tool by its own name: mcp__server[__tool|__*]
+        if not name.startswith("mcp__"):
+            return name == "*"
+        rp, tp = name.split("__"), tool.split("__", 2)
+        return len(rp) >= 2 and len(tp) == 3 and rp[1] == tp[1] and (len(rp) < 3 or rp[2] in ("*", tp[2]))
     if tool == "mcp":                                    # mcp__server__tool / mcp__server
         if not name.startswith("mcp__"):
             return False

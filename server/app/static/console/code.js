@@ -759,7 +759,15 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       case 'perm': return `<div class="hcd-step ${s.answer === 'no' ? 'bad' : 'ok'}">${svg(s.answer === 'no' ? 'bad' : 'ok', s.answer === 'no' ? 'bad' : 'ok')}<span>${s.answer === 'no' ? 'You said no' : 'You allowed'}: ${esc(s.what || '')}${s.note ? ` · <i>${esc(s.note)}</i>` : ''}</span>${at}</div>`;
       case 'web': { let host = String(s.url || ''); try { host = new URL(host).host + new URL(host).pathname.replace(/\/$/, ''); } catch (e) { /* not a link */ }
         return `<div class="hcd-step ${s.ok === false ? 'bad' : ''}">${svg('web')}<span>${s.ok === false ? 'Could not read' : 'Read'} <a href="${esc(s.url || '#')}" target="_blank" rel="noopener noreferrer">${esc(host.slice(0, 80))}</a></span>${at}</div>`; }
+      case 'lsp': { /* v0.999 code intelligence (Claude Code's LSP tool) */
+        const W = {goToDefinition: 'Found the definition', goToImplementation: 'Found the implementation', findReferences: 'Found the references',
+          hover: 'Read the type', documentSymbol: 'Listed the symbols', workspaceSymbol: 'Searched the symbols', prepareCallHierarchy: 'Found the function',
+          incomingCalls: 'Found the callers', outgoingCalls: 'Found what it calls', diagnostics: 'Checked for problems'};
+        const where = s.q ? ` for ${p(s.q)}` : s.path ? ` in ${esc(s.path)}${s.line ? ':' + s.line : ''}` : '';
+        return `<div class="hcd-step${s.ok === false ? ' dim' : ''}">${svg('search')}<span>${s.ok === false ? esc(s.text || 'The language server could not answer') : `${W[s.op] || 'Asked the language server'}${where}${s.num != null ? ' · ' + esc(String(s.num)) : ''}`}</span>${at}</div>`; }
+      case 'diagnostics': return fold('dg' + i, `<b>The language server found problems</b> in what was just edited`, `<pre class="hcd-term">${esc(s.text || '')}</pre>`, 'row', verbose);
       case 'websearch': return `<div class="hcd-step">${svg('web')}<span>Searched the web for ${p(s.q || '')} · ${plural(s.num ?? 0, 'result')}</span>${at}</div>`;
+      case 'toolsearch': return `<div class="hcd-step dim">${svg('search')}<span>Loaded MCP tools for ${p(s.q || '')} · ${plural(s.num ?? 0, 'tool')}</span>${at}</div>`;
       case 'mcp': return `<div class="hcd-step">${svg('spark')}<span>${s.action === 'list' ? 'Looked at your MCP servers' : `Used ${esc(s.server || 'an MCP server')} · ${p(s.tool || '')}`}</span>${at}</div>`;
       case 'skill': return `<div class="hcd-step dim">${svg('read')}<span>${s.action === 'list' ? 'Looked at your skills' : `Read the skill ${p(s.name || '')}`}</span>${at}</div>`;
       case 'asked': return `<div class="hcd-step">${svg('dot')}<span>Asked you: <b>${esc(s.question || '')}</b>${s.answer ? ` · you said <i>${esc(s.answer)}</i>` : ' · no answer'}</span>${at}</div>`;

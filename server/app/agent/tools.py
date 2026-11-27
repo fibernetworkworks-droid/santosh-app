@@ -1252,6 +1252,10 @@ from .gfx_tools import GFX_HANDLERS, GFX_LABELS, GFX_TOOLS  # noqa: E402
 TOOLS.extend(GFX_TOOLS)
 TOOL_LABELS.update(GFX_LABELS)
 HANDLERS.update(GFX_HANDLERS)
+from .dbeng_tools import DBENG_HANDLERS, DBENG_LABELS, DBENG_TOOLS  # noqa: E402
+TOOLS.extend(DBENG_TOOLS)
+TOOL_LABELS.update(DBENG_LABELS)
+HANDLERS.update(DBENG_HANDLERS)
 # v0.357 Engineering Desk: the hired CAD Engineer (cad_part)
 from .eng_tools import ENG_HANDLERS, ENG_LABELS, ENG_TOOLS  # noqa: E402
 
