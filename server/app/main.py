@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.228"   # v0.999.228 THE QUALITY SHEET (owner, her quality menu: "CHECK THE MODEL SECTION SHOWING NOT PROPERLY ALINED AND STALE MAKE IT PREMIUM SHEET LIKE THE ATTACHMENT SHEET"; built as 0.999.226, their CUSTOMIZE PAGE + INSTITUTION DESK took 0.999.226-0.999.227, all kept): the Normal / Ultra / High / Medium / Low sheet is now the + card - a Quality header, a soft tile per tier with its own mark (Hoola pick, a gem, signal bars), one plain line under each, an ink tile + ink tick on the chosen one, amber Up to 70x credit, the note at the foot; it opens below the button (above only when there is no room) instead of over the typing box, and the browser tooltip that sat on it is gone; the Use Ultra? card in the same style; 2 tests incl. a browser walk. NOT VERIFIED: on her server. Previous: v0.999.227 INSTITUTION DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE INSTITUTION DESK"): the Institution employee gets its own section /console/institution + Institution chat (kind institution, `instchat.py`): set up an institution on the desk with her as the first admin; who she is on the desk (the owner picks her person, an admin links a team member's login - everything is done AS that person with that person's roles); Today (waiting for your check, monitoring alerts, obligations overdue, incident reports due, the five areas as cards, maker-checker bar, report clocks, alerts by rule); Financial crime (transactions CSV -> alerts on HER rule values, Hoola's starting values marked check this, a SAR draft from an alert into maker-checker with machine checks, sanctions against her own watch list, customer file review); Compliance (obligations with their source, done today, complaints vs her deadline, policy and promotion checks); Risk (incidents with her report clocks and when SHE reported, RCSA heat map vs her appetite, third parties, models, ECL); Audit (prepared-by-client list, samples by seed, pass / fail per item -> the control test, journal tests); Governance (board pack, cap table and a new round, related parties, whistleblowing with a case number only); Drafts (maker never checks, two checkers above her limit, a check holds for the exact text, the MLRO scores a SAR, PDF); Team & settings (roles, logins, limit, keep periods, keys shown once, export); typed values survive a redraw; files, freezes and reports nothing; 5 tests incl. a browser walk. NOT VERIFIED on her server.
+APP_VERSION = "0.999.232"   # v0.999.232 THE ROUTE EDITOR (R1 of the Hoola Route plan; owner: n8n check + design canvas claude.ai/artifact/AfdPogRtMSqNY4ztAZ9dxq -> "GO BUILD"): Hoola Route gets a real editor - the route drawn on a canvas she can drag, zoom and pan, with a mini-map, sticky notes, Tidy up and undo / redo; a + after every step and at the end of every branch opens Add a step (search over the step kinds and Hoola's tools with their own fields); a side panel sets every step (labels, tool arguments, filters with All / Any tests, Switch ways, If it fails, the step's name with its references renamed) and what starts the route (by hand, a schedule with times / days / time zone / holidays / quiet hours, or incoming data with its address); Save goes through the engine's own validation and is refused when Hoola or another tab changed the route meanwhile; a value the page only saw masked is never written back; Test route runs the real steps even while the route is off and colours the canvas step by step; Ask Hoola beside the canvas is the route's own chat (kind route, out of her chat lists) that changes the same route, with Keep / Undo of what changed; the home redrawn (ask in words -> a new route OFF in the editor, numbers for the week, Needs you, routes with their last 7 days, templates, folders); route/editor.py + route/chat.py; 11 tests incl. two browser walks. NOT VERIFIED: on her server; R2-R8 (test data, more steps, triggers, AI steps, accounts, versions, n8n import) not built. Previous: v0.999.231 COMMUNITY FINANCE DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE COMMUNITY FINANCE DESK"): the Community, Inclusive & Islamic Finance employee gets its own section /console/community + Community chat (kind community, `cmchat.py`) on any finance workspace: Today (cash in hand, the group's box, who owes, repayments or the next payout, needs, coming up, charts); Cash book (lines typed or said like "sold tea 250", unread lines said back, day by day, where the money went, CSV); Savings group (members, every meeting - a meeting cannot lend what the box holds, the counted cash vs the book, who owes, the share-out to the last cent, close the cycle, earlier cycles); Rotating group (payout order, dates, rounds paid out, auction bids and each member's gain, safety signs); Loans (true yearly cost of each, repayments vs HER income and limit, check an offer); Collections (collection sheet, arrears, loan book by lateness, PAR30 vs HER limit); Farm (crop plan, break-even, crop-insurance claim in HER scheme's terms); Send money (what arrives with each provider, mobile-money fee bands, scam signs); Zakat & Islamic (at HER prices and school, kept for next year; murabaha / ijara / diminishing musharaka / mudaraba worked out); Settings; FIXED the finance gate refusing the community tool's remit comparison as moving money; never collects, lends or sends money; 6 tests incl. a browser walk. NOT VERIFIED on her server.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2142,6 +2142,33 @@ def firm_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/investments")
+@app.get("/console/investments/")
+def investments_desk_page():
+    """INVESTMENTS DESK: the Investments & Wealth employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "invdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/markets")
+@app.get("/console/markets/")
+def markets_desk_page():
+    """MARKETS DESK: the Markets & Post-Trade employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "mktdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/community")
+@app.get("/console/community/")
+def community_desk_page():
+    """COMMUNITY FINANCE DESK: the Community, Inclusive & Islamic Finance employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "cmdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/institution")
 @app.get("/console/institution/")
 def institution_desk_page():
@@ -2715,6 +2742,12 @@ from . import paychat as _paychat_mod                            # noqa: E402  P
 _paychat_mod.mount(app, current_tenant, require_key)            # /api/payments/*
 from . import instchat as _instchat_mod                          # noqa: E402  INSTITUTION DESK
 _instchat_mod.mount(app, current_tenant, require_key)           # /api/institution/*
+from . import invchat as _invchat_mod                           # noqa: E402  INVESTMENTS DESK
+_invchat_mod.mount(app, current_tenant, require_key)            # /api/investments/*
+from . import mktchat as _mktchat_mod                           # noqa: E402  MARKETS DESK
+_mktchat_mod.mount(app, current_tenant, require_key)            # /api/markets/*
+from . import cmchat as _cmchat_mod                            # noqa: E402  COMMUNITY FINANCE DESK
+_cmchat_mod.mount(app, current_tenant, require_key)             # /api/community/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

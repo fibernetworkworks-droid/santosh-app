@@ -1,0 +1,100 @@
+/* MARKETS DESK - the Markets & Post-Trade employee's own section. Frame, chat and cards from seodesk.css; kpis / forms from moneydesk.css;
+   rows, tags, the hero and the charts from cashdesk.css; grids from creditdesk.css; the hero picture from firmdesk.css; the drop zone and
+   labels from instdesk.css; the ring, the bars, sales and kpi rows from invdesk.css. Only the markets' own parts are here: the reconciliation
+   ring colours, the fail ages, the slippage chart, the margin cover bar, the comparables range, the disclosure timeline. */
+#mkPage{display:flex;flex-direction:column;gap:20px;padding-top:4px}
+#mkPage table.tb .num{font-variant-numeric:normal}
+#mkPage .r{text-align:right}
+#mkPage table.tb,#mkPage .md-kpi .v,#mkPage .cs-hero .v{font-variant-numeric:normal}
+#mkPage td.r,#mkPage th.r{text-align:right;font-variant-numeric:normal}
+#mkPage table.tb td{vertical-align:middle}
+#mkPage form[data-form=prices]+.ins-drop,#mkPage .md-acts+.ins-drop{margin-top:14px}
+#mkPage .cr-grid{align-items:end}
+#mkPage .cr-grid>.in:not(textarea),#mkPage .cr-grid .ins-lab .in:not(textarea),#mkPage .cr-grid>.btn{height:42px;min-height:0;box-sizing:border-box}
+#mkPage .iv-add{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+#mkPage .iv-add>*{flex:1 1 130px;min-width:0}
+#mkPage .iv-add>.btn{flex:0 0 auto;padding:0 18px}
+#mkPage .iv-add>.btn.wide{flex:1 1 100%}
+#mkPage .iv-add>.ins-lab{flex:1 1 130px}
+#mkPage .cr-grid .wide{grid-column:1/-1}
+#mkPage .iv-grid .in{height:42px;min-height:0;box-sizing:border-box;width:100%}
+#mkPage .md-kpi .v.warn{color:var(--warn)}
+.mk-h{font-size:13px;font-weight:600;letter-spacing:.02em;color:var(--mut);margin:6px 0 -8px;text-transform:none}
+.mk-sum{cursor:pointer;font-size:15px;font-weight:600;display:flex;gap:8px;align-items:center;list-style:none}
+.mk-sum::-webkit-details-marker{display:none}
+.mk-sum::before{content:"";width:8px;height:8px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(-45deg);transition:transform .15s;margin-right:2px}
+details[open]>.mk-sum::before{transform:rotate(45deg)}
+details[open]>.mk-sum{margin-bottom:10px}
+.mk-ask{width:30px;height:30px;color:var(--mut)}.mk-ask:hover{color:var(--acct)}
+.mk-ask svg{width:16px;height:16px}
+.mk-mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12.5px}
+.mk-prob{font-size:12.5px;color:var(--badt);line-height:1.35}.mk-prob+.mk-prob{margin-top:3px}
+tr.mk-stat td{background:var(--page);font-weight:600}
+#mkPage .mk-list td,#mkPage .mk-list th{padding-top:7px;padding-bottom:7px}
+
+/* the reconciliation / matching ring */
+.mk-ok{--c:var(--ok)}.mk-q{--c:var(--warn)}.mk-mc{--c:var(--bad)}.mk-mb{--c:#b5527a}
+.iv-dleg i.mk-ok,.iv-dleg i.mk-q,.iv-dleg i.mk-mc,.iv-dleg i.mk-mb{background:var(--c)}
+
+/* horizontal bars: fails by age, reclaims by country */
+.mk-bars>div{grid-template-columns:minmax(0,140px) minmax(0,1fr) auto}
+.mk-b{--c:var(--acc)}.mk-age0{--c:#e0b14a}.mk-age1{--c:#d98a2b}.mk-age2{--c:#d1602e}.mk-age3{--c:var(--bad)}
+.mk-bars i b{background:var(--c)}
+
+/* slippage */
+.cs-chart .mk-cost{fill:var(--warn);opacity:.8}.cs-chart .mk-worse{fill:var(--bad);opacity:.85}.cs-chart .mk-gain{fill:var(--ok);opacity:.75}
+.cs-chart .tx{font-size:11.5px;fill:var(--mut)}
+.cs-legend i.mk-gain-i{background:var(--ok)}.cs-legend i.mk-cost-i{background:var(--warn)}
+
+/* confirmation differences */
+.mk-diff{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.mk-diff .h{display:flex;align-items:center;justify-content:space-between}
+
+/* margin cover */
+.mk-cov{display:flex;flex-direction:column;gap:8px;margin:4px 0 14px}
+.mk-cov>div{display:grid;grid-template-columns:100px minmax(0,1fr);gap:10px;align-items:center;font-size:13px;color:var(--mut)}
+.mk-cov i{display:block;height:12px;border-radius:999px;background:var(--soft)}
+.mk-cov b{display:block;height:100%;border-radius:999px}.mk-cov b.req{background:var(--ink2);opacity:.55}.mk-cov b.ok{background:var(--ok)}.mk-cov b.bad{background:var(--bad)}
+.mk-notice{border:1px dashed var(--line2);border-radius:12px;padding:12px 14px;margin-top:12px;background:var(--page)}
+.mk-notice .h{display:flex;justify-content:space-between;align-items:center}.mk-notice p{margin:6px 0 0;font-size:14px;line-height:1.5}
+
+/* comparables range */
+.mk-range{padding:10px 0;border-top:1px solid var(--line)}.mk-range:first-of-type{border-top:0;padding-top:0}
+.mk-range .h{display:flex;justify-content:space-between;gap:10px;font-size:14px;flex-wrap:wrap}
+.mk-range .bar{position:relative;height:12px;margin:10px 0 6px}
+.mk-range .bar i{position:absolute;top:0;bottom:0;border-radius:999px;background:linear-gradient(90deg,var(--accs),var(--acc))}
+.mk-range .bar u{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1.5px;border-radius:2px;background:var(--ink)}
+.mk-range .ft{display:flex;justify-content:space-between;font-size:12.5px;color:var(--mut)}
+
+/* disclosure timeline */
+.mk-tl{list-style:none;margin:8px 0 0;padding:0 0 0 18px;border-left:2px solid var(--line);display:flex;flex-direction:column;gap:12px}
+.mk-tl li{position:relative;display:grid;grid-template-columns:minmax(0,130px) minmax(0,1fr);gap:12px;font-size:14px}
+.mk-tl li::before{content:"";position:absolute;left:-25px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--bg);border:2px solid var(--acc)}
+.mk-tl li.soon::before{border-color:var(--warn);background:var(--warns)}.mk-tl li.bad::before{border-color:var(--bad);background:var(--bads)}
+.mk-tl .d,.mk-tl .w{display:flex;flex-direction:column;min-width:0}
+.mk-tl em{font-style:normal;font-size:12.5px;color:var(--mut)}
+.mk-tl li.bad .d em{color:var(--badt);font-weight:600}
+
+/* add rows */
+.mk-add{display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin:12px 0 10px}
+.mk-add>.ins-lab{flex:1 1 120px;min-width:0}
+#mkPage .mk-add .in{height:40px;min-height:0;box-sizing:border-box;width:100%}
+.mk-add>.btn{flex:0 0 auto;height:40px}
+.ins-drop+.ins-drop{margin-top:10px}
+
+/* the corporate-action form shows only the fields its type needs */
+.mk-caform:has([name=type] option[value=cash_dividend]:checked) .mk-ratio,.mk-caform:has([name=type] option[value=cash_dividend]:checked) .mk-rights{display:none}
+.mk-caform:not(:has([name=type] option[value=cash_dividend]:checked)) .mk-cash{display:none}
+.mk-caform:not(:has([name=type] option[value=rights]:checked)) .mk-rights{display:none}
+@media (max-width:600px){.mk-tl li{grid-template-columns:minmax(0,1fr)}.mk-bars>div{grid-template-columns:minmax(0,1fr) auto}}
+
+/* ten tabs stay on one line and scroll sideways when the desk is narrow */
+#sdTabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}#sdTabs::-webkit-scrollbar{display:none}
+#sdTabs button{flex:none;white-space:nowrap}
+.cs-chart .tx.lb{font-size:13px;fill:var(--ink2)}
+.iv-kpis.mk-k2{grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:12px}
+.mk-two,.mk-three{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.mk-three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.mk-two textarea,.mk-three textarea{width:100%;box-sizing:border-box;font-family:inherit}
+@media (max-width:700px){.mk-three{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:420px){.mk-two{grid-template-columns:minmax(0,1fr)}}

@@ -1692,6 +1692,30 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_inc.block, tenant_id)
     except Exception:
         log.exception("institution desk block failed")
+    try:   # INVESTMENTS DESK: a turn in the Investments chat (or a call started from it) knows the desk
+        from .. import invchat as _ivc
+        if _ivc.is_investments(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_ivc.block, tenant_id)
+    except Exception:
+        log.exception("investments desk block failed")
+    try:   # INVESTMENTS DESK: a turn in the Investments chat (or a call started from it) knows the desk
+        from .. import mktchat as _mkc
+        if _mkc.is_markets(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_mkc.block, tenant_id)
+    except Exception:
+        log.exception("markets desk block failed")
+    try:   # COMMUNITY FINANCE DESK: a turn in the Community chat (or a call started from it) knows the desk
+        from .. import cmchat as _cmc
+        if _cmc.is_community(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_cmc.block, tenant_id)
+    except Exception:
+        log.exception("community desk block failed")
+    try:   # v0.999.232 ROUTE EDITOR: a turn in a route's Ask Hoola chat knows that route
+        from ..route import chat as _rtc
+        if _rtc.is_route(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_rtc.block, tenant_id, conversation_id)
+    except Exception:
+        log.exception("route editor block failed")
     _mark("hint")
     return state
 
@@ -2527,6 +2551,38 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "institution chat"
     except Exception:
         log.exception("institution chat admission failed")
+    try:   # INVESTMENTS DESK: the investments tool in view in the Investments chat
+        from .. import invchat as _ivc
+        if adm is not None and _ivc.is_investments(conversation_id):
+            adm.admit_families(_ivc.FAMILIES)
+            for f in _ivc.FAMILIES:
+                adm.why[f] = "investments chat"
+    except Exception:
+        log.exception("investments chat admission failed")
+    try:   # MARKETS DESK: the markets tool in view in the Markets chat
+        from .. import mktchat as _mkc
+        if adm is not None and _mkc.is_markets(conversation_id):
+            adm.admit_families(_mkc.FAMILIES)
+            for f in _mkc.FAMILIES:
+                adm.why[f] = "markets chat"
+    except Exception:
+        log.exception("markets chat admission failed")
+    try:   # COMMUNITY FINANCE DESK: the community tool in view in the Community chat
+        from .. import cmchat as _cmc
+        if adm is not None and _cmc.is_community(conversation_id):
+            adm.admit_families(_cmc.FAMILIES)
+            for f in _cmc.FAMILIES:
+                adm.why[f] = "community chat"
+    except Exception:
+        log.exception("community chat admission failed")
+    try:   # v0.999.232 ROUTE EDITOR: the workflow tools in view in a route's Ask Hoola chat
+        from ..route import chat as _rtc
+        if adm is not None and _rtc.is_route(conversation_id):
+            adm.admit_families(_rtc.FAMILIES)
+            for f in _rtc.FAMILIES:
+                adm.why[f] = "route editor chat"
+    except Exception:
+        log.exception("route chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,

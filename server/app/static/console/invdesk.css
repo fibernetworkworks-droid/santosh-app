@@ -1,0 +1,135 @@
+/* INVESTMENTS DESK - the Investments & Wealth employee's own section. Frame, chat and cards from seodesk.css; kpis / forms from
+   moneydesk.css; rows, tags, the hero and the line chart from cashdesk.css; grids from creditdesk.css; the hero picture from firmdesk.css;
+   the drop zone and labels from instdesk.css; only the investments' own parts are here: the allocation ring, weights, the tax-year bars,
+   the sales, the positions, the target mix. */
+#ivPage{display:flex;flex-direction:column;gap:20px;padding-top:4px}
+#ivPage table.tb .num{font-variant-numeric:normal}
+#ivPage .r{text-align:right}
+#ivPage table.tb,#ivPage .md-kpi .v,#ivPage .cs-hero .v{font-variant-numeric:normal}
+#ivPage td.r,#ivPage th.r{text-align:right;font-variant-numeric:normal}
+.cs-neg{color:var(--badt)}
+.md-kpi .v.cs-pos{color:var(--okt)}.md-kpi .v.cs-neg{color:var(--badt)}.md-kpi .v.warn{color:var(--warn)}
+.cs-hero .k .v.cs-pos{color:var(--okt)}.cs-hero .k .v.cs-neg{color:var(--badt)}
+
+/* asset-class colours - one per class, used by the ring, the weights and the swatches */
+:root{--c-shares:#5b6cff;--c-funds:#18a497;--c-bonds:#c58a1c;--c-cash:#8a93a6;--c-property:#b5527a;--c-crypto:#8b5cf6;--c-commodities:#d97a2b;--c-other:#64748b}
+.c-shares{--c:var(--c-shares)}.c-funds{--c:var(--c-funds)}.c-bonds{--c:var(--c-bonds)}.c-cash{--c:var(--c-cash)}.c-property{--c:var(--c-property)}
+.c-crypto{--c:var(--c-crypto)}.c-commodities{--c:var(--c-commodities)}.c-other{--c:var(--c-other)}
+
+/* the allocation ring */
+.iv-donut{display:flex;gap:24px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.iv-donut svg{width:168px;height:168px;flex:none}
+.iv-track{fill:none;stroke:var(--soft);stroke-width:18}
+.iv-seg{fill:none;stroke:var(--c);stroke-width:18;transition:stroke-width .15s}
+.iv-seg:hover{stroke-width:22}
+.iv-dl{font-size:10px;fill:var(--mut);text-anchor:middle}
+.iv-dv{font-size:17px;font-weight:700;fill:var(--ink);text-anchor:middle}
+.iv-dleg{display:flex;flex-direction:column;gap:8px;flex:1 1 160px;min-width:0}
+.iv-dleg>div{display:grid;grid-template-columns:12px minmax(0,1fr) auto;gap:10px;align-items:center;font-size:14px}
+.iv-dleg i,.iv-sw{display:inline-block;width:12px;height:12px;border-radius:4px;background:var(--c)}
+.iv-sw{margin-right:6px;vertical-align:-1px}
+.iv-dleg b{font-variant-numeric:normal}
+
+/* weights and the target mix */
+.iv-w,.iv-drift{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.iv-w>div,.iv-drift>div{display:grid;grid-template-columns:minmax(0,150px) minmax(0,1fr) auto;gap:12px;align-items:center;font-size:13.5px}
+.iv-w span{display:flex;flex-direction:column;min-width:0}
+.iv-w span em{font-style:normal;font-size:12px;color:var(--mut)}
+.iv-w i,.iv-drift i,.iv-wc i{position:relative;display:block;height:10px;border-radius:999px;background:var(--soft)}
+.iv-w i b,.iv-drift i b,.iv-wc i b{display:block;height:100%;border-radius:999px;background:var(--c)}
+.iv-w i u,.iv-drift i u{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:var(--warn);border-radius:2px}
+.iv-w>div>em,.iv-drift em{font-style:normal;font-variant-numeric:normal;white-space:nowrap}
+.iv-w>div.over>em{color:var(--badt);font-weight:600}
+.iv-w>div.over i b{box-shadow:0 0 0 2px var(--bads)}
+@media (max-width:600px){.iv-w>div,.iv-drift>div{grid-template-columns:minmax(0,1fr) auto}.iv-w i,.iv-drift i{grid-column:1/-1;grid-row:2}}
+
+/* tax-year bars */
+.cs-chart .iv-g{fill:var(--ok);opacity:.75}.cs-chart .iv-l{fill:var(--bad);opacity:.6}
+.cs-chart .iv-net{font-size:11.5px;font-weight:700}.cs-chart .iv-net.p{fill:var(--okt)}.cs-chart .iv-net.n{fill:var(--badt)}
+.iv-terms{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:13.5px}
+tr.iv-now td{background:var(--accs)}
+
+/* tables */
+.iv-tw{overflow-x:auto;margin-top:8px}
+.iv-tb{min-width:620px}
+.iv-tb .iv-px{width:96px;text-align:right;height:34px;min-height:0}
+.iv-wc{display:flex;align-items:center;gap:10px;min-width:150px}
+.iv-wc i{flex:1;min-width:60px}
+.iv-wc span{font-size:13px;min-width:52px;text-align:right;white-space:nowrap}
+#ivPage table.tb td{vertical-align:middle}
+.iv-pon{display:flex;gap:8px;align-items:center;white-space:nowrap;font-size:13px}
+#ivPage form[data-form=prices]+.ins-drop,#ivPage .md-acts+.ins-drop{margin-top:14px}
+
+/* kpi rows */
+.iv-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.iv-kpis.s3{grid-template-columns:repeat(3,minmax(0,1fr));margin:6px 0 10px}
+.iv-kpis .md-kpi .v{font-size:22px}
+@media (max-width:900px){.iv-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.iv-kpis.s3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:420px){.iv-kpis.s3{grid-template-columns:minmax(0,1fr)}}
+
+/* the method strip and the assumptions */
+.iv-meth,.iv-assume{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.iv-meth .ico,.iv-assume .ico{width:40px;height:40px;border-radius:12px;background:var(--accs);color:var(--acct);display:flex;align-items:center;justify-content:center;flex:none}
+.iv-meth .ico svg,.iv-assume .ico svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.iv-assume .ins-lab{width:130px}
+.iv-assume .in.sm{height:38px}
+.iv-assume .btn{align-self:flex-end}
+
+/* trades and sales */
+.iv-trades{margin-top:12px;max-height:440px;overflow-y:auto}
+.iv-side{display:inline-flex;align-items:center;justify-content:center;min-width:42px;height:22px;border-radius:7px;font-size:11.5px;font-weight:700;flex:none}
+.iv-side.buy{background:var(--oks);color:var(--okt)}.iv-side.sell{background:var(--bads);color:var(--badt)}
+.iv-sales{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.iv-sale{border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.iv-sale summary{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;cursor:pointer;list-style:none;font-size:14px}
+.iv-sale summary::-webkit-details-marker{display:none}
+.iv-sale summary .r{margin-left:auto;font-weight:700;font-variant-numeric:normal}
+.iv-sale[open]{border-color:var(--line2)}
+.iv-sale summary .mut{font-size:12.5px}
+.iv-ty{font-size:11.5px;font-weight:600;background:var(--soft);border-radius:6px;padding:2px 7px}
+.iv-parts{padding:0 14px 12px;display:flex;flex-direction:column;gap:6px}
+.iv-part{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:6px 10px;border-radius:8px;background:var(--page)}
+.iv-part em{font-style:normal;font-weight:600;color:var(--acct)}
+.iv-part>span:last-child{font-variant-numeric:normal;white-space:nowrap}
+
+/* positions */
+.iv-pos{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:10px}
+.iv-p{border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--bg)}
+.iv-p.risk{border-color:color-mix(in srgb,var(--bad) 35%,var(--line))}
+.iv-p .h{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px}
+.iv-p .h .mut{font-size:12.5px}
+.iv-pf{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+.iv-pf>div{display:flex;flex-direction:column;gap:2px;background:var(--page);border-radius:10px;padding:8px 10px}
+.iv-pf span{font-size:12px;color:var(--mut)}.iv-pf b{font-size:15px;font-variant-numeric:normal}
+
+/* scam verdict */
+.iv-verdict{display:flex;flex-direction:column;gap:4px;border-radius:14px;padding:14px 16px;margin:4px 0 8px;background:var(--oks);color:var(--okt)}
+.iv-verdict b{font-size:17px}.iv-verdict span{font-size:13px;color:var(--ink2)}
+.iv-verdict.warn{background:var(--warns);color:var(--warn)}.iv-verdict.bad{background:var(--bads);color:var(--badt)}
+
+/* funds */
+.iv-fund{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
+.iv-fund:first-of-type{border-top:0;margin-top:0;padding-top:0}
+
+/* the target-mix form */
+.iv-tg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.iv-tg .ins-lab span{font-size:12.5px;color:var(--ink2)}
+@media (max-width:700px){.iv-tg{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* add rows: fields share the line, the button keeps its size */
+#ivPage .cr-grid{align-items:end}
+#ivPage .cr-grid>.in:not(textarea),#ivPage .cr-grid .ins-lab .in:not(textarea),#ivPage .cr-grid>.btn{height:42px;min-height:0;box-sizing:border-box}
+#ivPage .iv-add{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+#ivPage .iv-add>*{flex:1 1 130px;min-width:0}
+#ivPage .iv-add>.btn{flex:0 0 auto;padding:0 18px}
+#ivPage .iv-add>.btn.wide{flex:1 1 100%}
+#ivPage .iv-add>.ins-lab{flex:1 1 130px}
+#ivPage .cr-grid .wide{grid-column:1/-1}
+.cs-head+.ins-drop,.md-h2+.ins-drop{margin-top:12px}
+@media (prefers-reduced-motion: reduce){.iv-seg{transition:none}}
+.iv-pf .lose b{color:var(--badt)}
+.iv-p.risk .iv-pf .lose{background:var(--bads)}
+.iv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;align-items:end}
+#ivPage .iv-grid .in{height:42px;min-height:0;box-sizing:border-box;width:100%}
+.iv-pform:has([name=type] option[value=future]:checked) .opt{display:none}
+.iv-pform:not(:has([name=type] option[value=future]:checked)) .fut{display:none}

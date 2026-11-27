@@ -12431,3 +12431,90 @@ credit as an amber pill (emoji dropped), the note at the foot after a hairline. 
 only when there is no room. The button no longer carries a `title`, so no tooltip covers the sheet. The Use Ultra?
 card uses the same style. Test `test_v0999_228_tier_sheet.py` walks it in Chromium: the sheet is below the button,
 right edges line up, every tile on one edge, one tick, no line cut off.
+
+
+## v0.999.229 INVESTMENTS DESK
+
+v0.999.229 INVESTMENTS DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE INVESTMENTS DESK"): the Investments & Wealth employee gets its own section /console/investments + Investments chat (kind investments, `invchat.py`) on any of her finance workspaces (a person up to a fund): Today (value at her prices, unrealised, this tax year, losses she could look at, needs, allocation ring, gains by tax year, largest holdings vs her limit); Portfolio (holdings from a broker CSV, a form or built from her trades, her prices - Hoola fetches none - weights, target mix, losses with the buy-back window from her own buys); Gains & tax lots (broker CSV / form, matched by her country's method or hers, by tax year, wash-sale losses carried, each sale with its lots, CSV for her return - tax not worked out); Plans (fee cost and pot drawdown at HER return / inflation, with charts); Options & futures (most she can lose, break-even, a 1% move, her results); Scam check with history; Fund NAV with history and breaks; Settings (country, method, window, limit, target mix, another portfolio); team roles from Books read or change; never places an order or says what to buy or sell; 5 tests incl. a browser walk. NOT VERIFIED on her server.
+
+Files: server/app/invchat.py (desk state under the workspace settings `investments_desk`: trades, holdings, positions, results, scams, funds, assumptions, plans, targets; routes /api/investments/*), static/console/invdesk.{html,js,css}, wiring in convs.py, callconv.py, agent/santosh.py (block + admission), main.py (page + mount), employees.js, v2.js, lib/ui/shell/hoola_employees.dart; tests server/tests/test_inv_desk.py. The F10 engine (fin/desks/investments.py) is unchanged. Tax years by Hoola's table (GB, IN, AU, NZ, ZA; calendar elsewhere) marked check this.
+
+
+## v0.999.230 MARKETS DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE MARKETS DESK")
+
+The Markets & Post-Trade employee (tool `markets_desk`, engine `fin/desks/markets.py`, F10) gets its own section like Investments,
+Payments and Institution: `/console/markets` (`mktdesk.html/.js/.css`) + the Markets chat (Conversation kind `markets`, `server/app/mktchat.py`,
+`/api/markets/*`), the desk block + family `mktdesk` in view in that chat (agent/santosh.py), kept out of chat lists (convs / callconv).
+
+- Data in the workspace settings under `markets_desk`: books / custodian positions and cash (snapshots: a file replaces the list), trades,
+  confirms, settlements, executions (keyed by id: a re-upload updates, never doubles), dividends, instructions, peers + target, events (corporate
+  actions worked out), margins, period_ends + ir_rules, and HER settings: tolerances, daily penalty bp, slippage limit, treaty rates, claim years,
+  haircuts. CSV columns read by common custodian / broker header names.
+- Pages: Today, Reconcile, Settlement, Corporate actions, Reclaims, Margin, Execution, Instructions, Comps & IR, Settings; SVG charts (match ring,
+  fails by age, diverging slippage, cover bar, comps range, disclosure timeline); downloads breaks / fails / reclaims / calendar CSV.
+- Page reads run the engine without an audit row each redraw; actions she takes go through `core.run_tool` (laws + audit). Roles from Books:
+  owner / accountant / approver change, auditor / viewer read.
+- Hoola never places, changes, cancels, allocates or affirms an order or a trade and sends nothing to a custodian, broker or counterparty; every
+  rate is hers. Tests `server/tests/test_mkt_desk.py` (5, incl. a browser walk at 1440 and 390). NOT VERIFIED on her server.
+
+## v0.999.231 COMMUNITY FINANCE DESK
+
+Owner: "NOW LETS WORK ON NEXT EMPLOYEE COMMUNITY FINANCE DESK". The Community, Inclusive & Islamic Finance employee (tool
+`community_finance`, engine `fin/desks/community.py`, F11) gets its own section like the other finance desks.
+
+- `server/app/cmchat.py`: Community chat (Conversation kind `community`, out of chat lists), desk block + tool family `commfin` in view,
+  state in the workspace settings under `community_desk`: cash (lines + opening), members / group rules / meetings / closed cycles,
+  rosca (members in order, contribution, frequency, start, auction, fee, bids, paid rounds, safety answers), loans + income + her limit,
+  collections / portfolio (+ PAR limit), crops, remit + providers, mobile-money tariff, zakat inputs + results, Islamic structures.
+  Routes `/api/community/{chat,chat/new,chat/{id}/ok,desk,setup,do/{part},download,workspace}`; team roles from Books read or change
+  (accountant = Treasurer, approver = Chair). Page reads run the engine with no audit row; actions go through `core.run_tool`.
+- Guards: a meeting the books cannot carry (lending more than the box holds) is refused and not kept; removing a meeting that later
+  ones depend on is refused; a member in this cycle's meetings stays until the cycle closes; the share value and opening balances are
+  fixed once the cycle has meetings; closing a cycle needs every loan repaid; an auction bid below the organiser's fee is refused.
+- `static/console/cmdesk.{html,js,css}`: Today, Cash book, Savings group, Rotating group, Loans, Collections, Farm, Send money, Zakat &
+  Islamic, Settings; SVG charts (line, bars, repayment gauge, nisab bar), the chat beside; `/console/community`, employees.js +
+  v2.js + the phone route open it.
+- FIXED: `fin/laws._ACT_WORDS` refused the F11 tool's own `remit` action (a fee comparison) as "moving money", so the chat could never
+  compare remittance providers; the words are now `remit_now|send_remittance` (send_money / pay / transfer still refused).
+- Tests `server/tests/test_cm_desk.py` (6, incl. a Chromium walk at 1440 and 390). NOT VERIFIED on her server.
+
+
+## v0.999.232 THE ROUTE EDITOR (R1 of the Hoola Route plan)
+
+Owner: "NOW LETS WORK ON HOOLA ROUTE --- FIRST CHECK IS ALL n8n WIRED ... WE WANT ALL 100 % N8N FEATURE ... SHOW ME THE DESIGN" ->
+design canvas claude.ai/artifact/AfdPogRtMSqNY4ztAZ9dxq (the check + 8 screens + the R1-R8 plan) -> "GO BUILD".
+
+The check (27 Nov 2026, engine dhara_tools.py + route/api.py + route.js against n8n's feature list): 69 features - 15 work fully, 14 partly,
+37 missing, 3 not for Hoola (self-hosting, community nodes = strangers' code, SSO). The engine was real (schedule / webhook / manual, tools,
+if / switch / filter / loop / wait / approval, per-step on error); the page could only look and every change went through chat.
+
+Built (R1):
+- Home: "What should run by itself?" - her words create a new route (OFF, one placeholder step) and open it in the editor with the words handed
+  to its Ask Hoola chat; Blank canvas; numbers (routes on, runs this week + failed, went well in 30 days, needs you); Needs you cards; routes
+  table with the last 7 days per route (`days7`) and the On switch; templates (Use this = a new route + the template's words to Ask Hoola);
+  sidebar Needs you + All routes counts, folders, runs today + her time zone. New views #/needs, #/routes/<folder>.
+- The editor #/r/<id>: the route on a canvas (auto layout of the engine's nested steps: If yes / If no, Switch ways + Anything else, For each
+  item; positions she drags kept in `route_meta`), pan / wheel / ctrl-wheel zoom, Fit, mini-map (click to move), Tidy up, sticky notes
+  (5 colours), undo / redo (Ctrl Z / Ctrl Shift Z), Delete key, + after every step and at the end of every branch.
+- Add a step: search over the step kinds (Ask me first, Tell me, If / else, Switch, Filter, Repeat for each, Wait, Set a value, Code,
+  Web request) and Hoola's tools (`/api/route/catalog?q=`: scored by name / label / description, with the tool's argument fields).
+- Step panel: label, tool + Change, the tool's own fields (selects for choices, JSON for lists / objects, {} menu of earlier steps' values),
+  message / question / value / code / address / wait, filter builder (All / Any of these), Switch ways, If it fails (every on_error choice),
+  the step's name (renaming rewrites `steps.<id>` references), Duplicate, Delete (asks once). Trigger panel: by hand / schedule (times, days,
+  every N minutes / hours, time zone, holidays, quiet hours) / when data arrives (make its address).
+- Save (Ctrl S) -> PUT /api/route/routes/<id>/graph: the engine's own validate_steps / validate_schedule, `base` = the version she opened
+  (409 when Hoola or another tab saved meanwhile), drawing keys stripped, a value the page only saw masked restored from the stored route
+  (`editor.unmask`); leaving with unsaved changes asks in the page; beforeunload too.
+- Test route -> POST /routes/<id>/test: a real run even while the route is off (first time: "A test runs the real steps"); the canvas colours
+  each step and edge; a log strip with each step's result, Approve when a step waits, Open the full run.
+- Ask Hoola: GET /routes/<id>/chat = the route's own Conversation (kind 'route', out of callconv.not_call / convs.current); a turn there gets
+  `<route_editor>` (the route's JSON + rules: dhara_save with this exact name, keep untouched steps, labels, never switch on or run) and the
+  dhara family in view; after Hoola answers the page reloads the route and lists what changed with Keep / Undo (Undo saves the earlier steps back).
+- Runs and Settings tabs of a route (its runs; how it runs, webhook address, delete).
+
+Files: `server/app/route/editor.py`, `server/app/route/chat.py`, `server/app/route/api.py`, `static/console/route.js|css|html`,
+santosh.py (block + admission), callconv.py / convs.py (kind route).
+Tests: `server/tests/test_v0999_232_route_editor.py` (11, incl. a Chromium walk at 1440 and one at 390); the v0.999.87 / v0.999.128 browser
+walks moved to the editor.
+NOT VERIFIED: on her server; Ask Hoola with a real model. NOT BUILT (R2-R8): test data / pinned output / drag-to-map, more data and flow
+steps, app-event / form / chat triggers, AI steps, accounts per step + variables + versions + sharing, insights, n8n import.

@@ -41,7 +41,7 @@ TIER_C: dict[str, tuple[str, str, str]] = {
 
 # words in an action / tool name that mean one of the acts above
 _ACT_WORDS = {
-    "move_money": r"\b(pay|transfer|send_money|remit|release_payment|payout|disburse|reimburse|issue_refund|refund_now)\b",
+    "move_money": r"\b(pay|transfer|send_money|remit_now|send_remittance|release_payment|payout|disburse|reimburse|issue_refund|refund_now)\b",
     "place_order": r"\b(place_order|buy_order|sell_order|cancel_order|execute_trade)\b",
     "approve_decision": r"\b(approve_loan|decline_loan|approve_kyc|approve_claim|approve_account|approve_refund|decline_refund|decide_claim|decide_case|close_case)\b",
     "freeze_account": r"\b(freeze|freeze_account|block_account|close_account|decide_dispute)\b",

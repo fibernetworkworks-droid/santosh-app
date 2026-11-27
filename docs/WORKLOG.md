@@ -3904,3 +3904,17 @@ Work Log:
 - Removed the native tooltip on the Quality button; browser test with screenshots. Renumbered 226 -> 228 (main moved).
 Stage Summary:
 - Pushed to main as v0.999.228; deploy with Actions > VPS ops > deploy.
+
+---
+Task ID: route-editor-r1
+Agent: main
+Task: Hoola Route - check n8n features, design canvas, then build R1 (owner: "GO BUILD")
+
+Work Log:
+- Checked n8n's feature list against dhara_tools.py / route/api.py / route.js: 15 work, 14 partly, 37 missing, 3 not for Hoola.
+- Design canvas claude.ai/artifact/AfdPogRtMSqNY4ztAZ9dxq (check + home, editor, step, add, runs, connections, phone, plan R1-R8).
+- Built R1: home + canvas editor + add-a-step + step / trigger panels + Save (409 on stale) + Test route + Ask Hoola route chat.
+- Renumbered 231 -> 232 (main moved to the Community Finance desk).
+
+Stage Summary:
+- v0.999.232; deploy with Actions > VPS ops > deploy. R2-R8 next on her word.
