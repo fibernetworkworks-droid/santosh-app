@@ -753,6 +753,39 @@ def make_router(require_key, current_tenant) -> APIRouter:
                 raise HTTPException(409 if "already there" in str(e) else 400, str(e))
         return await run(go)
 
+    # v0.999.264 THE WORKFLOW LIBRARY: ready-made n8n workflows (github.com/Zie619/n8n-workflows, MIT, one fixed commit)
+    @r.get("/library")
+    async def route_library(q: str = "", category: str = "", app: str = "", trigger: str = "", ready: str = "",
+                            page: int = 1, per: int = 24, tenant: str = Depends(current_tenant)):
+        from . import n8nlib as L
+        return L.search(q[:200], category[:80], app[:80], trigger[:20], ready[:10], page, per)
+
+    @r.get("/library/{wid}")
+    async def route_library_one(wid: str, tenant: str = Depends(current_tenant)):
+        """What one library workflow becomes in Hoola - fetched from GitHub once, checked, keys taken out; nothing saved."""
+        from . import n8n as N8, n8nlib as L
+
+        def go():
+            try:
+                return D._masked(L.preview(wid))
+            except (L.LibError, N8.N8nError) as e:
+                raise HTTPException(404 if "not in the library" in str(e) else 502, str(e))
+        return await run(go)
+
+    @r.post("/library/{wid}/use")
+    async def route_library_use(wid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """Bring a library workflow in as a new route, switched off (a taken name is refused, never overwritten)."""
+        from . import n8n as N8, n8nlib as L
+
+        def go():
+            try:
+                return L.use(tenant, wid, str((body or {}).get("new_name") or ""))
+            except L.LibError as e:
+                raise HTTPException(404 if "not in the library" in str(e) else 502, str(e))
+            except N8.N8nError as e:
+                raise HTTPException(409 if "already there" in str(e) else 400, str(e))
+        return await run(go)
+
     @r.post("/import")
     async def route_import(body: dict = Body(...), tenant: str = Depends(current_tenant)):
         """Bring in a route file: the engine's own checks, and it lands switched off."""

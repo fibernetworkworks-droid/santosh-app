@@ -431,6 +431,97 @@
     tplClicks($('#tg'), t.templates);
   }
 
+  // ================================================================ v0.999.264 THE WORKFLOW LIBRARY
+  // ready-made n8n workflows (github.com/Zie619/n8n-workflows, MIT) - each opens as what it becomes in Hoola
+  const LIB = {q: '', category: '', app: '', trigger: '', ready: '', page: 1};
+  let LIBSEQ = 0;
+  const RDY = {ready: ['ok', 'Runs as it is'], check: ['warn', 'Runs - a few things to check'], partial: ['', 'Some steps to redo']};
+  const trigName = t => ((TKINDS.find(k => k[0] === t) || [])[1]) || t;
+  const libSlug = a => S(a).toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9]+/g, '');
+  const libCard = x => { const r = RDY[x.ready] || ['', x.ready_text];
+    return `<section class="card tc wlc"><div class="apps">${(x.apps.length ? x.apps.slice(0, 4).map(a => appTile({kind: 'app', slug: libSlug(a), label: a})) : [appTile({}, TKIND_T(x.trigger))]).join('')}</div>
+      <h3>${esc(x.name)}</h3>${x.description ? `<span class="mut sm ldesc">${esc(x.description)}</span>` : ''}
+      <div class="lmeta"><span class="lr ${r[0]}">${esc(r[1])}</span><span class="mut sm">${esc(trigName(x.trigger))} · ${fmtN(x.nodes)} step${x.nodes === 1 ? '' : 's'}</span></div>
+      <div class="tf"><span class="mut sm">${esc(x.category)}</span><span class="sp"></span><a class="btn s" href="#/workflows/${enc(x.id)}">Open</a></div></section>`; };
+  const TKIND_T = t => ({schedule: 'wait', webhook: 'http', chat: 'notify', form: 'set', event: 'tool', error: 'stop', route: 'subroute', tool: 'tool'}[t] || 'set');
+
+  async function viewLibrary(id) {
+    if (id) return viewLibraryOne(id);
+    shell(false); setNav('workflows');
+    const qs = ['q', 'category', 'app', 'trigger', 'ready', 'page'].filter(k => LIB[k] !== '' && !(k === 'page' && LIB.page === 1))
+      .map(k => `${k}=${encodeURIComponent(LIB[k])}`).join('&');
+    const my = ++LIBSEQ;
+    const d = await api('GET', '/api/route/library' + (qs ? '?' + qs : ''));
+    if (my !== LIBSEQ || !location.hash.startsWith('#/workflows')) return;     // a newer search already drew the page
+    const rc = d.ready_counts || {};
+    const pages = Math.max(1, Math.ceil(d.total / d.per));
+    const opt = (v, t, cur) => `<option value="${esc(v)}"${v === cur ? ' selected' : ''}>${esc(t)}</option>`;
+    MAIN.innerHTML = `<div class="top"><div><h1>Workflows</h1><p class="lead sm">${fmtN(d.all)} ready-made workflows from the n8n community library, turned into Hoola routes. Open one to see exactly what it becomes - it lands switched off, and nothing runs until you have read it.</p></div></div>
+      <form class="libbar" id="libF" role="search"><input type="search" id="libQ" aria-label="Search workflows" placeholder="Search - like gmail sheets, invoice, telegram, lead" value="${esc(LIB.q)}">
+        <select id="libApp" aria-label="App">${opt('', 'Every app', LIB.app)}${d.apps.map(([a, n]) => opt(a, `${a} (${n})`, LIB.app)).join('')}</select>
+        <select id="libCat" aria-label="Category">${opt('', 'Every category', LIB.category)}${d.categories.map(([c, n]) => opt(c, `${c} (${n})`, LIB.category)).join('')}</select>
+        <select id="libTrig" aria-label="Starts">${opt('', 'Any start', LIB.trigger)}${d.triggers.map(([t, n]) => opt(t, `${trigName(t)} (${n})`, LIB.trigger)).join('')}</select>
+        <button class="btn s" type="submit">Search</button></form>
+      <div class="libtools"><div class="chips left" id="libRdy">${[['', `All (${fmtN(d.all)})`], ['runs', `Runs now (${fmtN((rc.ready || 0) + (rc.check || 0))})`], ['ready', `Runs as it is (${fmtN(rc.ready || 0)})`]].map(([v, t]) =>
+        `<button class="chip" type="button" aria-pressed="${LIB.ready === v}" data-r="${esc(v)}">${esc(t)}</button>`).join('')}</div>
+      <p class="mut sm" id="libN">${d.total ? `${fmtN((d.page - 1) * d.per + 1)}-${fmtN(Math.min(d.total, d.page * d.per))} of ${fmtN(d.total)}` : 'No workflow matches - try fewer words.'}</p></div>
+      <div class="tgal" id="libG">${d.items.map(libCard).join('')}</div>
+      ${pages > 1 ? `<div class="pager"><button class="btn s soft" type="button" data-pg="${d.page - 1}"${d.page <= 1 ? ' disabled' : ''}>Previous</button><span class="mut sm">Page ${d.page} of ${pages}</span><button class="btn s soft" type="button" data-pg="${d.page + 1}"${d.page >= pages ? ' disabled' : ''}>Next</button></div>` : ''}
+      <p class="mut sm libsrc">From <a href="${esc(d.source.url)}" target="_blank" rel="noopener">${esc(d.source.repo)}</a> (MIT licence), as it was on ${esc(d.source.commit_date)}. ${esc(d.source.why_this_commit)} Keys written into a workflow are taken out before you see it. ${d.left_out ? fmtN(d.left_out) + ' files Hoola cannot bring in are not listed.' : ''}</p>`;
+    const again = () => { LIB.page = 1; viewLibrary(''); };
+    $('#libF').addEventListener('submit', e => { e.preventDefault(); LIB.q = $('#libQ').value.trim(); LIB.app = $('#libApp').value; LIB.category = $('#libCat').value; LIB.trigger = $('#libTrig').value; again(); });
+    $('#libApp').addEventListener('change', () => { LIB.app = $('#libApp').value; again(); });
+    $('#libTrig').addEventListener('change', () => { LIB.trigger = $('#libTrig').value; again(); });
+    $('#libRdy').addEventListener('click', e => { const b = e.target.closest('[data-r]'); if (b) { LIB.ready = b.dataset.r; again(); } });
+    $('#libCat').addEventListener('change', () => { LIB.category = $('#libCat').value; again(); });
+    MAIN.querySelectorAll('[data-pg]').forEach(b => b.addEventListener('click', () => { LIB.page = Number(b.dataset.pg) || 1; viewLibrary(''); window.scrollTo(0, 0); }));
+  }
+
+  const LIBTOOL = {sheet_append: 'Google Sheets: add rows', sheet_read: 'Google Sheets: read', sheet_query: 'Google Sheets: find rows',
+    sheet_update: 'Google Sheets: update rows', email_draft: 'Email (draft for your OK)', email_check: 'Email: read the inbox', email_read: 'Email: open one',
+    drive_read_file: 'Google Drive: read a file', drive_create_doc: 'Google Drive: new doc', drive_find: 'Google Drive: find', drive_create_folder: 'Google Drive: new folder',
+    calendar_add_event: 'Calendar: add an event', calendar_agenda: 'Calendar: read', get_weather: 'Weather'};
+  function libSteps(steps, depth) {
+    return `<ul class="lsteps">${(steps || []).map(st => {
+      const redo = st.type === 'stop' && st.n8n;
+      const kind = st.type === 'data' ? (DATAW[st.op] || 'Data') : st.type === 'ai' ? (AIW[st.op] || 'AI') : st.type === 'tool' ? (LIBTOOL[st.name] || nice(st.name)) : (KIND[st.type] || st.type);
+      const kids = [];
+      if (st.then) kids.push(['If yes', st.then]); if (st.else) kids.push(['If no', st.else]); if (st.type === 'loop' && st.body) kids.push(['For each', st.body]);
+      (st.routes || []).forEach(r => kids.push([r.label || 'Way', r.steps || []]));
+      return `<li class="${redo ? 'ph' : ''}"><span class="lk">${esc(kind)}</span> ${esc(st.label || nice(st.id))}${redo ? ' <span class="lr bad">to redo</span>' : ''}${depth < 3 ? kids.map(([t, ss]) => `<div class="lway mut sm">${esc(t)}</div>${libSteps(ss, depth + 1)}`).join('') : ''}</li>`; }).join('')}</ul>`;
+  }
+
+  async function viewLibraryOne(id) {
+    shell(false); setNav('workflows');
+    MAIN.innerHTML = `<div class="rhead"><a class="btn soft s ib" href="#/workflows" aria-label="Back to the workflows">${svg(IC.back)}</a><div class="rh-t"><h1 class="rtitle">Opening the workflow…</h1><div class="rh-m mut sm">Fetching it from the library and reading it.</div></div></div>`;
+    const p = await api('GET', '/api/route/library/' + enc(id));
+    const L = p.library, R = p.report, c = p.counts, r = RDY[L.ready] || ['', L.ready_text];
+    const list = (rows, cls) => rows.map(x => `<li class="${cls}"><b>${esc(x.node)}</b>${x.as ? ' → ' + esc(x.as) : ''}${x.why ? ' — ' + esc(x.why) : ''}</li>`).join('');
+    MAIN.innerHTML = `<div class="rhead"><a class="btn soft s ib" href="#/workflows" aria-label="Back to the workflows">${svg(IC.back)}</a>
+        <div class="rh-t"><h1 class="rtitle">${esc(L.name)}</h1><div class="rh-m mut sm">${esc(L.category)} · starts ${esc(trigName(p.trigger).toLowerCase())} · <span class="lr ${r[0]}">${esc(r[1])}</span></div></div>
+        <span class="sp"></span><a class="btn soft s" href="${esc(L.github)}" target="_blank" rel="noopener">See it on GitHub</a></div>
+      ${L.description ? `<p class="lead sm">${esc(L.description)}</p>` : ''}
+      <section class="card"><form id="libUse" class="pform"><div class="two">${field('Name of the new route', p.name, {k: 'libname', ref: false})}</div>
+        <div class="crow"><button class="btn s" type="submit">Bring it in</button><span class="mut sm">It lands switched off. Read it on the canvas, add any sign-ins it needs, then switch it on.</span></div></form></section>
+      <section class="card"><div class="hd"><h2>What it becomes</h2></div>
+        <div class="stats"><div class="stat"><span class="k">Steps that came in</span><b>${c.converted}</b></div><div class="stat"><span class="k">To check</span><b>${c.check}</b></div>
+          <div class="stat"><span class="k">To redo in Hoola</span><b>${c.placeholders}</b></div><div class="stat"><span class="k">Left out</span><b>${c.skipped}</b></div></div>
+        ${L.taken_out.length ? `<div class="psub">Keys taken out</div><p class="mut sm">They were written into the workflow. Add each one under <a href="#/variables">Variables</a> with your own value.</p><ul class="rep">${L.taken_out.map(t => `<li><b>${esc(t.variable)}</b> — from ${esc(t.node)} (${esc(t.field)})</li>`).join('')}</ul>` : ''}
+        ${c.placeholders ? `<div class="psub">To redo in Hoola</div><p class="mut sm">Each one is a step that stops the run with its reason, so nothing half-done runs. Replace it in the editor.</p><ul class="rep">${list(R.placeholders, 'ph')}</ul>` : ''}
+        ${c.check ? `<div class="psub">To check</div><ul class="rep">${list(R.check, 'tocheck')}</ul>` : ''}
+        ${c.skipped ? `<div class="psub">Left out</div><ul class="rep">${list(R.skipped, 'sk')}</ul>` : ''}
+        ${R.notes.length ? `<div class="psub">Good to know</div><ul class="rep">${R.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
+        <div class="psub">The steps</div>${p.steps.length ? libSteps(p.steps, 0) : '<p class="mut sm">No steps.</p>'}</section>`;
+    $('#libUse').addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const b = ev.submitter || $('#libUse button'); b.disabled = true;
+      const nm = ((MAIN.querySelector('[data-k="libname"]') || {}).value || p.name).trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+      try { const o = await api('POST', `/api/route/library/${enc(id)}/use`, {new_name: nm});
+        toast('Brought in. It is off until you switch it on.'); location.hash = '#/r/' + enc(o.workflow_id); }
+      catch (err) { toast(err.message, true); b.disabled = false; }
+    });
+  }
+
   // ================================================================ THE EDITOR
   const NW = 220, NH = 64, GX = 56, GY = 36, TW = 200;
   const OPW = {exists: 'exists', not_exists: 'does not exist', empty: 'is empty', not_empty: 'is not empty', eq: 'is', ne: 'is not', contains: 'contains',
@@ -2427,6 +2518,7 @@
       else if (a === 'grid') await viewGrid();
       else if (a === 'run' && b) await viewRun(decodeURIComponent(b));
       else if (a === 'templates') await viewTemplates();
+      else if (a === 'workflows') await viewLibrary(b ? decodeURIComponent(b) : '');
       else if (a === 'variables') await viewVariables();
       else if (a === 'signins') await viewSignins(b || '');
       else await viewHome();

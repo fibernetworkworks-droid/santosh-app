@@ -298,7 +298,7 @@ def test_the_page_has_the_pickers_meter_and_question(arena_server):  # noqa: F81
     assert pg.locator("#hcdNote").input_value() == "look at @src/cart.py "
     # the slash menu: Hoola's + this repo's
     pg.locator("#hcdNote").fill("")
-    pg.keyboard.type("/re")
+    pg.keyboard.type("/rel")
     pg.wait_for_selector("#hcdPick .hcd-pickr")
     txt = pg.locator("#hcdPick").text_content()
     assert "/release" in txt and "this repo" in txt and "Cut a release" in txt

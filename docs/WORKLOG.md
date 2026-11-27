@@ -4051,3 +4051,15 @@ Work Log:
 Stage Summary:
 - tests/test_v0999_263_route_wiring.py (8, incl. 4 browser walks); Route suites green
 - NOT VERIFIED on her server
+
+---
+Task ID: workflow-library-v0999-269 (built as 0.999.264 / 0.999.268)
+Agent: Claude (cloud session)
+Task: n8n-workflows repo -> "make it fully fuctional for hoola route -- make a workflow section in sidebar in route tool"
+Work Log:
+- read the repo: HEAD's 'workflow fixer' (74bdcdc) dropped every connection; pinned to f8639776; MIT since Nov 2025
+- measured every file through Hoola's importer, added the missing node types, built the index + fetch with sha256 + key scrub
+- Workflows sidebar section: search, filters, preview, Bring it in (off)
+Stage Summary:
+- clean imports 221 -> 408 of 2,057; 1,904 in the library; tests/test_v0999_264_workflow_library.py (11, incl. a browser walk)
+- NOT VERIFIED on her server

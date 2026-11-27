@@ -459,6 +459,8 @@ async def sheet_append(ctx: Ctx, spreadsheet=None, tab=None, rows=None, values=N
                        spreadsheet_id=None, sheet_name=None, **_):
     if not rows and values:
         rows = [values] if not isinstance(values[0], list) else values
+    if isinstance(rows, dict):          # v0.999.264: one row as an object (a route step passes its item)
+        rows = [rows]
     out = await _t(ss.append, ctx.tenant_id, _sheet_arg(spreadsheet, spreadsheet_id), rows or [], tab or sheet_name,
                    bool(add_columns))
     return out

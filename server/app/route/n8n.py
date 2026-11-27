@@ -123,6 +123,11 @@ class _Conv:
         self.form_names: dict[str, str] = {}
         self.chat = False
         self.done: set = set()
+        # v0.999.264 WORKFLOW LIBRARY: n8n nodes that ADD a field to the item (dates, hashes, html picks) become
+        # their own Hoola step; a later {{ $json.<that field> }} reads that step's output instead
+        self.fieldmap: dict[tuple[str, str], str] = {}
+        self.trig_app = ""
+        self.textsrc: set = set()
         self.report: dict[str, list] = {"converted": [], "check": [], "placeholders": [], "skipped": [], "notes": []}
 
     # ------------------------------------------------------------------ helpers
@@ -151,6 +156,9 @@ class _Conv:
             key = a or b
             if c:
                 out += f"[{c}]"
+                continue
+            if first and (ref, key) in self.fieldmap:
+                out, first = self.fieldmap[(ref, key)], False
                 continue
             if first and ref == "vars.form" and key in self.form_names:
                 key = self.form_names[key]
@@ -209,8 +217,12 @@ class _Conv:
             return {k: self.expr(x, prev, node) for k, x in v.items()}
         if isinstance(v, list):
             return [self.expr(x, prev, node) for x in v]
-        if not isinstance(v, str) or not v.startswith("="):
+        if not isinstance(v, str):
             return v
+        if not v.startswith("="):
+            if not re.search(r"\{\{[^}]*\$", v):
+                return v
+            v = "=" + v
         body = v[1:]
         bad: list[str] = []
 
@@ -506,6 +518,8 @@ class _Conv:
                                            "tool) - Hoola's AI step uses Hoola's own model"})
             return then(None, prev, "")
         if t == "httpRequest":
+            if not str(p.get("url") or "").strip():
+                return self.placeholder(name, "it named no web address", prev, stop)
             return then(self._http(name, p, prev), f"steps.{sid}.output.json", "web request")
         if t == "set":
             vals: dict[str, Any] = {}
@@ -514,8 +528,10 @@ class _Conv:
             for kind in ("string", "number", "boolean"):
                 for a in (p.get("values") or {}).get(kind) or []:
                     vals[str(a.get("name") or "field")] = self.expr(a.get("value"), prev, name)
+            if not vals and str(p.get("mode") or "") == "raw":
+                vals = self._raw_json(p.get("jsonOutput"), prev, name)
             if not vals:
-                return self.placeholder(name, "it set fields with a raw JSON block", prev, stop)
+                return self.placeholder(name, "it set fields with a JSON block Hoola could not read", prev, stop)
             if p.get("includeOtherFields") or str(p.get("include") or "") == "all":
                 self.check(name, "n8n kept the other fields too; here only these fields come out")
             return then({"id": sid, "type": "data", "op": "fields", "values": vals}, f"steps.{sid}.output", "fields")
@@ -586,7 +602,10 @@ class _Conv:
                          **({"vars": self.expr(vars_, prev, name)} if isinstance(vars_, dict) and vars_ else {})},
                         f"steps.{sid}.output", "sub-route")
         if t in ("agent", "chainLlm", "chainSummarization", "informationExtractor", "chainRetrievalQa", "openAi"):
-            return then(self._ai(name, sid, t, p, prev), f"steps.{sid}.output", "AI step")
+            return then(self._clip(name, self._ai(name, sid, t, p, prev)), f"steps.{sid}.output", "AI step")
+        got = self._more(name, sid, t, p, prev, stop, then)
+        if got is not None:
+            return got
         if t in ("code", "function", "functionItem", "executeCommand", "ssh"):
             code = str(p.get("jsCode") or p.get("pythonCode") or p.get("functionCode") or p.get("command") or "")
             return self.placeholder(name, "it ran code in n8n; Hoola does not run that code. Rewrite it as a Code "
@@ -601,6 +620,486 @@ class _Conv:
         return self.placeholder(name, f"connect {app} in Connectors and pick its action in Add a step"
                                 + (f" ({what})" if what else ""), prev, stop)
 
+    # ------------------------------------------------------------------ v0.999.264 WORKFLOW LIBRARY: more nodes
+    def _raw_json(self, raw: Any, prev: str, name: str) -> dict:
+        """A Set node in JSON mode: {"a": "{{ $json.x }}", "n": {{ $json.n }}} -> Hoola field values."""
+        if isinstance(raw, dict):
+            return {str(k): self.expr(v, prev, name) for k, v in raw.items()}
+        text = str(raw or "").strip()
+        if text.startswith("="):
+            text = text[1:]
+        held: list[str] = []
+
+        def hold(m: re.Match) -> str:
+            held.append(m.group(0))
+            return f"@@HX{len(held) - 1}@@"
+        body = re.sub(r"\{\{.*?\}\}", hold, text, flags=re.S)
+        # a held expression outside a JSON string (a number, a whole object) gets quotes so the text parses
+        out, ins, esc_, i = [], False, False, 0
+        while i < len(body):
+            ch = body[i]
+            if ins:
+                out.append(ch)
+                esc_ = (ch == "\\") and not esc_
+                if ch == '"' and not esc_:
+                    ins = False
+                i += 1
+                continue
+            m = re.match(r"@@HX\d+@@", body[i:])
+            if m:
+                out.append('"' + m.group(0) + '"')
+                i += len(m.group(0))
+                continue
+            if ch == '"':
+                ins = True
+            out.append(ch)
+            i += 1
+        try:
+            obj = json.loads("".join(out))
+        except ValueError:
+            return {}
+        if not isinstance(obj, dict):
+            return {}
+
+        def back(v: Any) -> Any:
+            if isinstance(v, dict):
+                return {k: back(x) for k, x in v.items()}
+            if isinstance(v, list):
+                return [back(x) for x in v]
+            if isinstance(v, str) and "@@HX" in v:
+                return self.expr("=" + re.sub(r"@@HX(\d+)@@", lambda m: held[int(m.group(1))], v), prev, name)
+            return v
+        return {str(k): back(v) for k, v in obj.items()}
+
+    def _clip(self, name: str, step: dict) -> dict:
+        for k in ("prompt", "text", "question"):
+            v = step.get(k)
+            if isinstance(v, str) and len(v) > 1990:
+                step[k] = v[:1990]
+                self.check(name, "Its prompt was longer than a Hoola step takes (2,000 characters); the end was cut - "
+                                 "shorten it or put the long part in a Variable")
+        return step
+
+    def _add(self, name: str, sid: str, step: dict, field: str, prev: str, then, typ: str, out: str = ""):
+        """A node that added `field` to the item: its own step; later {{ $json.field }} reads that step."""
+        self.fieldmap[(prev, field)] = out or f"steps.{sid}.output"
+        return then(step, prev, typ)
+
+    def _as(self, name: str, t2: str, p2: dict, prev: str, stop: set):
+        """Convert this node as if it were n8n's `t2` node (itemLists' operations are other nodes)."""
+        real = self.nodes[name]
+        self.nodes[name] = {**real, "type": BASE + t2, "parameters": p2}
+        try:
+            return self._node(name, prev, stop)
+        finally:
+            self.nodes[name] = real
+
+    def _field(self, dp: str, prev: str, name: str) -> Any:
+        return self.expr("={{ $json[\"" + str(dp or "data").replace('"', "") + "\"] }}", prev, name)
+
+    def _more(self, name: str, sid: str, t: str, p: dict, prev: str, stop: set, then):
+        """The nodes Hoola has its own step for (data, files, Google apps, messages) - None = not one of them."""
+        op = str(p.get("operation") or "")
+        E = lambda v: self.expr(v, prev, name)                      # noqa: E731
+        if t == "dateTime":
+            return self._date(name, sid, p, prev, then)
+        if t == "crypto":
+            act = str(p.get("action") or "hash")
+            field = str(p.get("dataPropertyName") or "data")
+            if act == "generate":
+                kind = str(p.get("encodingType") or "uuid")
+                step = {"id": sid, "type": "data", "op": "crypto", "action": "uuid" if kind == "uuid" else "random"}
+                if kind != "uuid":
+                    step["length"] = int(p.get("stringLength") or 32)
+                return self._add(name, sid, step, field, prev, then, "hash and IDs")
+            algo = {"MD5": "md5", "SHA1": "sha1", "SHA256": "sha256"}.get(str(p.get("type") or "MD5").upper())
+            if act not in ("hash", "hmac") or not algo or (act == "hmac" and algo != "sha256"):
+                return self.placeholder(name, "it used a hash Hoola does not make (Hoola makes MD5, SHA-1, SHA-256 "
+                                        "and HMAC SHA-256)", prev, stop)
+            if str(p.get("encoding") or "hex") != "hex":
+                self.check(name, "n8n gave the hash in base64; here it comes as hex")
+            step = {"id": sid, "type": "data", "op": "crypto", "action": "hmac_sha256" if act == "hmac" else algo,
+                    "value": E(p.get("value"))}
+            if act == "hmac":
+                step["secret"] = E(p.get("secret"))
+            return self._add(name, sid, step, field, prev, then, "hash and IDs")
+        if t == "html":
+            return self._html(name, sid, op or "generateHtmlTemplate", p, prev, stop, then)
+        if t == "markdown":
+            to_html = str(p.get("mode") or "htmlToMarkdown") == "markdownToHtml"
+            step = {"id": sid, "type": "data", "op": "text", "action": "markdown_to_html" if to_html else "html_to_markdown",
+                    "value": E(p.get("markdown") if to_html else p.get("html"))}
+            return self._add(name, sid, step, str(p.get("destinationKey") or "data"), prev, then, "text and formats")
+        if t == "xml":
+            dp = str(p.get("dataPropertyName") or "data")
+            if str(p.get("mode") or "xmlToJson") == "jsonToxml":
+                step = {"id": sid, "type": "data", "op": "text", "action": "data_to_xml", "value": "{{" + prev + "}}"}
+            else:
+                step = {"id": sid, "type": "data", "op": "text", "action": "xml_to_data", "value": self._field(dp, prev, name)}
+            return self._add(name, sid, step, dp, prev, then, "text and formats")
+        if t == "renameKeys":
+            mp, bad = {}, False
+            for k in (p.get("keys") or {}).get("key") or []:
+                a, b = str(k.get("currentKey") or ""), k.get("newKey")
+                if not a or not isinstance(b, str) or b.startswith("="):
+                    bad = True
+                    continue
+                mp[a] = b
+            if not mp:
+                return self.placeholder(name, "the new names were n8n expressions", prev, stop)
+            if bad:
+                self.check(name, "Some new names were n8n expressions; those were left out")
+            return then({"id": sid, "type": "data", "op": "rename", "items": "{{" + prev + "}}", "map": mp},
+                        f"steps.{sid}.output", "rename fields")
+        if t == "compareDatasets":
+            return self._compare(name, sid, p, prev, stop)
+        if t == "itemLists":
+            op = op or "splitOutItems"
+            p2 = dict(p)
+            if op == "removeDuplicates" and isinstance(p.get("fieldsToCompare"), dict):
+                p2["fieldsToCompare"] = ",".join(str(x.get("fieldName") or "") for x in
+                                                 (p["fieldsToCompare"].get("fields") or []))
+            t2 = {"splitOutItems": "splitOut", "aggregateItems": "aggregate", "concatenateItems": "aggregate",
+                  "removeDuplicates": "removeDuplicates", "sort": "sort", "limit": "limit",
+                  "summarize": "summarize"}.get(op)
+            if not t2:
+                return self.placeholder(name, f"its '{op}' is not one Hoola has", prev, stop)
+            return self._as(name, t2, p2, prev, stop)
+        if t == "rssFeedRead":
+            url = E(str(p.get("url") or ""))
+            if not url:
+                return None
+            g = sid + "_get"
+            self.used.add(g)
+            self.report["converted"].append({"node": name, "type": t, "as": "web request + read XML"})
+            self.check(name, "The feed comes as its whole XML tree (rss > channel > item); point the next step at "
+                             f"{{{{steps.{sid}.output.rss.channel.item}}}}")
+            self.refs[name] = f"steps.{sid}.output"
+            more, _r, nxt = self.follow(name, self.refs[name], stop)
+            return [{"id": g, "type": "http", "method": "GET", "url": url, "label": (name + " (fetch)")[:80]},
+                    {"id": sid, "type": "data", "op": "text", "action": "xml_to_data",
+                     "value": "{{steps." + g + ".output.text}}", "label": name[:80]}] + more, self.refs[name], nxt
+        if t in ("extractFromFile", "spreadsheetFile") and (t == "extractFromFile" or (op or "fromFile") == "fromFile"):
+            if prev in self.textsrc:
+                self.report["converted"].append({"node": name, "type": t, "as": "(nothing - the file is read as text here)"})
+                return then(None, prev, "")
+            return self.placeholder(name, "it read a file n8n carried along; in Hoola use 'Make or read a file' "
+                                    "(Read) with the file's id from the step that brings the file", prev, stop)
+        if t in ("convertToFile", "spreadsheetFile"):
+            fmt = str(p.get("fileFormat") or op or "csv")
+            act = {"csv": "make_csv", "xlsx": "make_xlsx", "toFile": "make_csv"}.get(fmt)
+            if not act:
+                return self.placeholder(name, f"it made a {fmt} file; Hoola makes CSV, Excel and PDF files", prev, stop)
+            nm = (p.get("options") or {}).get("fileName")
+            step = {"id": sid, "type": "data", "op": "file", "action": act, "items": "{{" + prev + "}}"}
+            if nm:
+                step["name"] = E(nm)
+            return then(step, f"steps.{sid}.output", "make a file")
+        if t == "openWeatherMap":
+            if op and op != "currentWeather":
+                self.check(name, "n8n read the forecast; here it is today's weather")
+            return then({"id": sid, "type": "tool", "name": "get_weather", "args": {"city": E(p.get("cityName") or "")}},
+                        f"steps.{sid}.output", "weather")
+        if t == "googleSheets":
+            return self._sheets(name, sid, op or "read", p, prev, stop, then)
+        if t in ("gmail", "emailSend"):
+            return self._mail(name, sid, t, op, p, prev, stop, then)
+        if t == "googleDrive":
+            return self._drive(name, sid, op, p, prev, stop, then)
+        if t == "googleCalendar":
+            res = str(p.get("resource") or "event")
+            op = op or "create"
+            if res != "event" or op not in ("create", "getAll"):
+                return None
+            if op == "getAll":
+                o = {**(p.get("options") or {}), **{k: p[k] for k in ("timeMin", "timeMax") if p.get(k)}}
+                args = {}
+                if o.get("timeMin"):
+                    args["from_date"] = E(o["timeMin"])
+                if o.get("timeMax"):
+                    args["to_date"] = E(o["timeMax"])
+                self.check(name, "Hoola reads your calendar by date (YYYY-MM-DD); check the From and To dates")
+                return then({"id": sid, "type": "tool", "name": "calendar_agenda", "args": args},
+                            f"steps.{sid}.output", "calendar")
+            af = p.get("additionalFields") or {}
+            args = {"title": E(af.get("summary") or "Event"), "start": E(p.get("start") or ""), "end": E(p.get("end") or "")}
+            for a, b in (("description", "description"), ("location", "location")):
+                if af.get(a):
+                    args[b] = E(af[a])
+            if af.get("attendees"):
+                args["attendees"] = E(af["attendees"])
+            if not args["end"]:
+                args.pop("end")
+            return then({"id": sid, "type": "tool", "name": "calendar_add_event", "args": args},
+                        f"steps.{sid}.output", "calendar")
+        if t in ("telegram", "slack", "discord", "mattermost"):
+            return self._message(name, sid, t, op, p, prev, stop, then)
+        return None
+
+    _LUX = (("yyyy", "%Y"), ("yy", "%y"), ("MMMM", "%B"), ("LLLL", "%B"), ("MMM", "%b"), ("LLL", "%b"), ("MM", "%m"),
+            ("LL", "%m"), ("dd", "%d"), ("EEEE", "%A"), ("cccc", "%A"), ("EEE", "%a"), ("ccc", "%a"), ("HH", "%H"),
+            ("hh", "%I"), ("mm", "%M"), ("ss", "%S"), ("a", "%p"), ("M", "%m"), ("L", "%m"), ("d", "%d"), ("H", "%H"),
+            ("h", "%I"))
+    _MOM = (("YYYY", "%Y"), ("YY", "%y"), ("MMMM", "%B"), ("MMM", "%b"), ("MM", "%m"), ("DD", "%d"), ("dddd", "%A"),
+            ("ddd", "%a"), ("HH", "%H"), ("hh", "%I"), ("mm", "%M"), ("ss", "%S"), ("A", "%p"), ("M", "%m"), ("D", "%d"))
+
+    def _fmt(self, f: str, moment: bool = False) -> tuple[str, bool]:
+        """A Luxon (n8n v2) or Moment (v1) date format -> Python's; False when a part had no match."""
+        out, i, ok = [], 0, True
+        table = self._MOM if moment else self._LUX
+        while i < len(f):
+            if f[i] in "'[":
+                end = "'" if f[i] == "'" else "]"
+                j = f.find(end, i + 1)
+                j = len(f) if j < 0 else j
+                out.append(f[i + 1:j].replace("%", "%%"))
+                i = j + 1
+                continue
+            for a, b in table:
+                if f.startswith(a, i):
+                    out.append(b)
+                    i += len(a)
+                    break
+            else:
+                if f[i].isalpha():
+                    ok = False
+                out.append("%%" if f[i] == "%" else f[i])
+                i += 1
+        return "".join(out), ok
+
+    def _date(self, name: str, sid: str, p: dict, prev: str, then):
+        E = lambda v: self.expr(v, prev, name)                      # noqa: E731
+        unit = lambda u: str(u or "days")                            # noqa: E731
+        if p.get("action") or "toFormat" in p or "value" in p:      # version 1 (Moment formats)
+            act = str(p.get("action") or "format")
+            field = str(p.get("dataPropertyName") or "data")
+            if act == "calculate":
+                step = {"id": sid, "type": "data", "op": "date", "action": "subtract" if p.get("operation") == "subtract"
+                        else "add", "value": E(p.get("value")), "amount": p.get("duration") or 1, "unit": unit(p.get("timeUnit"))}
+            else:
+                f, ok = self._fmt(str(p.get("toFormat") or "YYYY-MM-DD"), moment=True)
+                if not ok:
+                    self.check(name, "Part of its date format has no match here; check the format")
+                step = {"id": sid, "type": "data", "op": "date", "action": "format", "value": E(p.get("value")), "format": f}
+            return self._add(name, sid, step, field, prev, then, "date and time")
+        op = str(p.get("operation") or "getCurrentDate")
+        tz = str((p.get("options") or {}).get("timezone") or "")
+        if op == "getCurrentDate":
+            step = {"id": sid, "type": "data", "op": "date", "action": "now"}
+            field = "currentDate"
+        elif op in ("addToDate", "subtractFromDate"):
+            u = unit(p.get("timeUnit"))
+            if u in ("quarters", "milliseconds"):
+                self.check(name, f"Hoola counts days, weeks, months, years, hours, minutes and seconds - not {u}")
+            step = {"id": sid, "type": "data", "op": "date", "action": "add" if op == "addToDate" else "subtract",
+                    "value": E(p.get("magnitude")), "amount": E(p.get("duration") if p.get("duration") is not None else 1),
+                    "unit": u}
+            field = "newDate"
+        elif op == "formatDate":
+            raw = str(p.get("customFormat") if p.get("format") == "custom" else p.get("format") or "yyyy-MM-dd")
+            if raw in ("X", "x"):
+                self.check(name, "n8n gave a Unix timestamp; here it is a date text - use timestamp() in an expression")
+                raw = "yyyy-MM-dd HH:mm:ss"
+            f, ok = self._fmt(raw)
+            if not ok:
+                self.check(name, "Part of its date format has no match here; check the format")
+            step = {"id": sid, "type": "data", "op": "date", "action": "format", "value": E(p.get("date")), "format": f}
+            field = "formattedDate"
+        elif op == "getTimeBetweenDates":
+            us = p.get("units") or ["days"]
+            step = {"id": sid, "type": "data", "op": "date", "action": "diff", "value": E(p.get("startDate")),
+                    "other": E(p.get("endDate")), "unit": str(us[0] if isinstance(us, list) and us else us)}
+            field = "timeDifference"
+        else:
+            return None
+        if tz:
+            step["tz"] = tz
+        return self._add(name, sid, step, str(p.get("outputFieldName") or field), prev, then, "date and time")
+
+    def _html(self, name: str, sid: str, op: str, p: dict, prev: str, stop: set, then):
+        if op == "generateHtmlTemplate":
+            step = {"id": sid, "type": "data", "op": "fields", "values": {"html": self.expr(p.get("html") or "", prev, name)}}
+            return self._add(name, sid, step, "html", prev, then, "fields", f"steps.{sid}.output.html")
+        if op != "extractHtmlContent":
+            return None
+        vals = (p.get("extractionValues") or {}).get("values") or []
+        if not vals:
+            return self.placeholder(name, "it named nothing to pick from the page", prev, stop)
+        src = self.expr(p.get("dataPropertyName") and "={{ $json[\"%s\"] }}" % p.get("dataPropertyName")
+                        or "={{ $json.data }}", prev, name)
+        steps = []
+        for v in vals[:8]:
+            key = str(v.get("key") or "value")
+            x = sid if len(vals) == 1 else _slug(sid + "_" + key, self.used)
+            st = {"id": x, "type": "data", "op": "text", "action": "html_select", "value": src,
+                  "selector": str(v.get("cssSelector") or ""), "label": (name + (" - " + key if len(vals) > 1 else ""))[:80]}
+            rv = str(v.get("returnValue") or "text")
+            if rv == "attribute":
+                st["attr"] = str(v.get("attribute") or "")
+            elif rv in ("html", "value"):
+                self.check(name, f"'{key}': n8n took the {rv} of the element; here it takes its text")
+            if "script" in st["selector"]:
+                self.check(name, f"'{key}': Hoola leaves script tags out when it reads a page")
+            steps.append(st)
+            self.fieldmap[(prev, key)] = f"steps.{x}.output" + ("" if v.get("returnArray") else "[0]")
+        if len(vals) > 8:
+            self.check(name, "Only the first 8 picks came in")
+        self.refs[name] = prev
+        self.report["converted"].append({"node": name, "type": "html", "as": "pick from a page"})
+        more, _r, nxt = self.follow(name, prev, stop)
+        return steps + more, prev, nxt
+
+    def _compare(self, name: str, sid: str, p: dict, prev: str, stop: set):
+        ins = sorted(self.inc.get(name) or [], key=lambda x: x[2])
+        a = self.refs.get(ins[0][0], prev) if ins else prev
+        b = self.refs.get(ins[1][0], prev) if len(ins) > 1 else prev
+        mf = ((p.get("mergeByFields") or {}).get("values") or [{}])[0]
+        step = {"id": sid, "type": "data", "op": "compare", "a": "{{" + a + "}}", "b": "{{" + b + "}}",
+                "key": str(mf.get("field1") or "id"), "label": name[:80]}
+        if mf.get("field2") and mf.get("field2") != mf.get("field1"):
+            self.check(name, "n8n matched different field names on each side; here both sides use " + step["key"])
+        self.refs[name] = f"steps.{sid}.output"
+        self.report["converted"].append({"node": name, "type": "compareDatasets", "as": "compare two lists"})
+        steps, join = [step], ""
+        for oi, key in enumerate(("removed", "same", "changed", "added")):
+            for x in self.targets(name, oi):
+                s_, _l, j = self.chain(x, f"steps.{sid}.output.{key}", stop)
+                steps += s_
+                join = join or j
+        if sum(1 for oi in range(4) if self.targets(name, oi)) > 1:
+            self.report["notes"].append(f"After '{name}' the ways (only in A, same, different, only in B) run one "
+                                        "after another here")
+        return steps, self.refs[name], join
+
+    @staticmethod
+    def _rlv(v: Any) -> str:
+        """A resource locator's link or id (not its display name)."""
+        if isinstance(v, dict):
+            return str(v.get("cachedResultUrl") or v.get("value") or "")
+        return str(v or "")
+
+    def _sheets(self, name: str, sid: str, op: str, p: dict, prev: str, stop: set, then):
+        E = lambda v: self.expr(v, prev, name)                      # noqa: E731
+        doc = E(self._rlv(p.get("documentId")) or str(p.get("sheetId") or ""))
+        sn = p.get("sheetName")
+        tab = (str(sn.get("cachedResultName") or "") if isinstance(sn, dict) else str(sn or ""))
+        if isinstance(sn, dict) and not tab and not str(sn.get("value") or "").startswith("gid="):
+            tab = str(sn.get("value") or "")
+        if not tab and "!" in str(p.get("range") or ""):
+            tab = str(p["range"]).split("!")[0].strip("'")
+        if not doc:
+            return self.placeholder(name, "it named no sheet", prev, stop)
+        base = {"spreadsheet": doc, **({"tab": E(tab)} if tab else {})}
+        cols = (p.get("columns") or {})
+        vals = cols.get("value") if isinstance(cols.get("value"), dict) else {}
+        if op in ("read", "lookup"):
+            f = ((p.get("filtersUI") or {}).get("values") or [])
+            if op == "lookup" and p.get("lookupColumn"):
+                f = [{"lookupColumn": p.get("lookupColumn"), "lookupValue": p.get("lookupValue")}]
+            if f:
+                where = [{"column": str(x.get("lookupColumn") or ""), "op": "=", "value": E(x.get("lookupValue"))}
+                         for x in f if x.get("lookupColumn")]
+                return then({"id": sid, "type": "tool", "name": "sheet_query", "args": {**base, "where": where}},
+                            f"steps.{sid}.output", "Google Sheets")
+            return then({"id": sid, "type": "tool", "name": "sheet_read", "args": base}, f"steps.{sid}.output", "Google Sheets")
+        if op == "append":
+            rows: Any = [{str(k): E(v) for k, v in vals.items()}] if vals else "{{" + prev + "}}"
+            return then({"id": sid, "type": "tool", "name": "sheet_append", "args": {**base, "rows": rows}},
+                        f"steps.{sid}.output", "Google Sheets")
+        if op in ("update", "appendOrUpdate"):
+            mc = (cols.get("matchingColumns") or [p.get("columnToMatchOn")] or [""])[0] or ""
+            if not vals or not mc or mc not in vals:
+                return self.placeholder(name, "it updated rows by a column Hoola could not read", prev, stop)
+            if op == "appendOrUpdate":
+                self.check(name, "n8n added the row when no row matched; here only matching rows are updated")
+            return then({"id": sid, "type": "tool", "name": "sheet_update",
+                         "args": {**base, "set": {str(k): E(v) for k, v in vals.items() if k != mc},
+                                  "where": [{"column": str(mc), "op": "=", "value": E(vals[mc])}]}},
+                        f"steps.{sid}.output", "Google Sheets")
+        return None
+
+    def _mail(self, name: str, sid: str, t: str, op: str, p: dict, prev: str, stop: set, then):
+        E = lambda v: self.expr(v, prev, name)                      # noqa: E731
+        res = str(p.get("resource") or "message")
+        if t == "emailSend" or (res in ("message", "draft") and (op or ("create" if res == "draft" else "send")) in ("send", "create")):
+            if op == "sendAndWait":
+                return None
+            to = p.get("toEmail") if t == "emailSend" else (p.get("sendTo") or p.get("toList"))
+            body = p.get("message") if t == "gmail" else (p.get("text") or p.get("html") or p.get("message"))
+            args = {"to": E(to or ""), "subject": E(p.get("subject") or ""), "body": E(body or "")}
+            if not args["to"]:
+                args.pop("to")
+                self.check(name, "Say who the mail goes to")
+            if res != "draft":
+                self.check(name, "n8n sent this mail at once; here it is a draft that waits for your OK in Hoola")
+            return then({"id": sid, "type": "tool", "name": "email_draft", "args": args}, f"steps.{sid}.output", "email")
+        if t == "gmail" and res == "message" and op == "reply":
+            return then({"id": sid, "type": "tool", "name": "email_draft",
+                         "args": {"reply_to_id": E(p.get("messageId") or ""), "body": E(p.get("message") or "")}},
+                        f"steps.{sid}.output", "email")
+        if t == "gmail" and res == "message" and op == "getAll":
+            fl = p.get("filters") or {}
+            q = " ".join(str(x) for x in [fl.get("q"), ("from:" + str(fl["sender"])) if fl.get("sender") else ""] if x)
+            args: dict[str, Any] = {"limit": min(int(p.get("limit") or 10), 50) if not p.get("returnAll") else 50}
+            if q:
+                args["search"] = E(q)
+            if fl.get("receivedAfter") or fl.get("receivedBefore"):
+                self.check(name, "n8n read mail between two dates; put the dates in the search (after:YYYY/MM/DD)")
+            return then({"id": sid, "type": "tool", "name": "email_check", "args": args}, f"steps.{sid}.output", "email")
+        if t == "gmail" and res == "message" and op == "get":
+            return then({"id": sid, "type": "tool", "name": "email_read", "args": {"id": E(p.get("messageId") or "")}},
+                        f"steps.{sid}.output", "email")
+        return None
+
+    def _drive(self, name: str, sid: str, op: str, p: dict, prev: str, stop: set, then):
+        E = lambda v: self.expr(v, prev, name)                      # noqa: E731
+        res = str(p.get("resource") or "file")
+        op = op or ("search" if res == "fileFolder" else "create" if res == "folder" else "upload")
+        if op == "download":
+            ref = f"steps.{sid}.output"
+            self.textsrc.add(ref)
+            return then({"id": sid, "type": "tool", "name": "drive_read_file", "args": {"file": E(self._rlv(p.get("fileId")))}},
+                        ref, "Google Drive")
+        if op == "createFromText":
+            args = {"title": E(p.get("name") or "From n8n"), "text": E(p.get("content") or "")}
+            fo = self._rlv(p.get("folderId"))
+            if fo and fo != "root":
+                args["folder"] = E(fo)
+            return then({"id": sid, "type": "tool", "name": "drive_create_doc", "args": args}, f"steps.{sid}.output",
+                        "Google Drive")
+        if op == "search":
+            q = p.get("queryString") or ((p.get("filter") or {}).get("query"))
+            return then({"id": sid, "type": "tool", "name": "drive_find", "args": {"query": E(q)} if q else {}},
+                        f"steps.{sid}.output", "Google Drive")
+        if res == "folder" and op == "create":
+            args = {"name": E(p.get("name") or "New folder")}
+            fo = self._rlv(p.get("folderId"))
+            if fo and fo != "root":
+                args["parent"] = E(fo)
+            return then({"id": sid, "type": "tool", "name": "drive_create_folder", "args": args}, f"steps.{sid}.output",
+                        "Google Drive")
+        return None
+
+    def _message(self, name: str, sid: str, t: str, op: str, p: dict, prev: str, stop: set, then):
+        app = {"telegram": "Telegram", "slack": "Slack", "discord": "Discord", "mattermost": "Mattermost"}[t]
+        res = str(p.get("resource") or "message")
+        if res != "message" or (op and op not in ("sendMessage", "post", "send")):
+            return None
+        text = p.get("text") or p.get("content") or p.get("message")
+        if not text:
+            return None
+        if self.trig_app == t:
+            return self.placeholder(name, f"it answers people who write to a {app} bot; connect {app} in Connections "
+                                    "and use its 'send message' action here", prev, stop)
+        where = p.get("chatId") or p.get("channelId") or p.get("channel") or p.get("webhookUri") or ""
+        self.check(name, f"n8n posted this to {app}" + (f" ({_rl(where)[:60]})" if where and not str(_rl(where)).startswith("=")
+                   else "") + "; here Hoola tells you in your Hoola chat. To post to " + app +
+                   " instead, connect it in Connections and swap this step")
+        said = self.expr(text, prev, name)
+        if not str(said).strip():
+            return None
+        return then({"id": sid, "type": "notify", "text": said}, prev, "tell me")
+
     def placeholder(self, name: str, why: str, prev: str, stop: set, extra: str = "") -> tuple[list[dict], str, str]:
         step = self.place(name, why, prev, extra)
         more, _r, nxt = self.follow(name, prev, stop)
@@ -610,8 +1109,8 @@ class _Conv:
         sid = self.sid(name)
         method = str(p.get("method") or p.get("requestMethod") or "GET").upper()
         url = self.expr(str(p.get("url") or ""), prev, name)
-        if method not in ("GET", "POST"):
-            self.check(name, f"It used {method} in n8n; a Hoola web request sends GET or POST - it is POST here")
+        if method not in ("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"):
+            self.check(name, f"It used {method} in n8n; it is POST here")
             method = "POST"
         q = [(x.get("name"), x.get("value")) for x in (p.get("queryParameters") or {}).get("parameters") or []] + \
             [(x.get("name"), x.get("value")) for x in (p.get("queryParametersUi") or {}).get("parameter") or []]
@@ -628,7 +1127,7 @@ class _Conv:
         step: dict[str, Any] = {"id": sid, "type": "http", "method": method, "url": url}
         if headers:
             step["headers"] = headers
-        if method == "POST":
+        if method in ("POST", "PUT", "PATCH", "DELETE"):
             bp = ((p.get("bodyParameters") or {}).get("parameters") or []) + \
                  ((p.get("bodyParametersUi") or {}).get("parameter") or [])
             if bp:
@@ -894,11 +1393,13 @@ class _Conv:
         if not text:
             text = "={{ $json.chatInput }}" if self.chat else "={{ $json }}"
         txt = self.expr(text, prev, name)
+        if not str(txt).strip():
+            txt = "{{" + prev + "}}"
         if self.ai_links.get(name):
             self.report["notes"].append(f"'{name}' used an n8n model and parts ({', '.join(self.ai_links[name][:6])}) - "
                                         "here it uses Hoola's model")
         if t == "agent":
-            sysm = str((p.get("options") or {}).get("systemMessage") or "")
+            sysm = str(self.expr((p.get("options") or {}).get("systemMessage") or "", prev, name))
             tools = [x for x in self.ai_links.get(name, []) if "tool" in _short((self.nodes.get(x) or {}).get("type")).lower()]
             if tools:
                 self.check(name, "The agent had n8n tools (" + ", ".join(tools[:6]) + ") - pick the Hoola tools it may use")
@@ -919,9 +1420,57 @@ class _Conv:
         return {"id": sid, "type": "ai", "op": "write", "prompt": txt}
 
     # ------------------------------------------------------------------ the whole workflow
+    def _tidy(self, steps: list) -> None:
+        """v0.999.264: the last pass - an n8n expression Hoola cannot read is shown as text (never a broken route),
+        and a step's text is kept within what a step takes."""
+        from ..agent import dhara_data as DD
+        from ..agent.dhara_tools import _EXPR_CHARS
+        plain = re.compile(r"^\s*[a-zA-Z_][a-zA-Z0-9_.\[\]\"' ]{0,200}\s*$")
+
+        def fix(v: Any, label: str) -> Any:
+            if isinstance(v, dict):
+                return {k: fix(x, label) for k, x in v.items()}
+            if isinstance(v, list):
+                return [fix(x, label) for x in v]
+            if not isinstance(v, str) or "{{" not in v:
+                return v
+            bad: list[str] = []
+
+            def one(m: re.Match) -> str:
+                b = m.group(1)
+                if "$" not in b and (plain.match(b) or not DD.check(b.strip())):
+                    return m.group(0)
+                bad.append(b.strip()[:80])
+                return "[n8n: " + b.strip()[:200] + "]"
+            out = re.sub(r"\{\{(.{1,2000}?)\}\}", one, v, flags=re.S)
+            if bad:
+                self.check(label, "This expression could not be brought in - write it again in Hoola: " + "; ".join(bad[:3]))
+            return out
+        for st in steps:
+            if not isinstance(st, dict):
+                continue
+            label = str(st.get("label") or st.get("id") or "")
+            for k in list(st):
+                if k in ("then", "else") or (k == "body" and st.get("type") == "loop"):
+                    if isinstance(st[k], list):
+                        self._tidy(st[k])
+                elif k == "routes" and isinstance(st[k], list):
+                    for r in st[k]:
+                        if isinstance(r, dict) and isinstance(r.get("steps"), list):
+                            self._tidy(r["steps"])
+                elif k == "on_error" and isinstance(st[k], dict) and isinstance(st[k].get("steps"), list):
+                    self._tidy(st[k]["steps"])
+                elif k not in ("id", "type"):
+                    st[k] = fix(st[k], label)
+                    if isinstance(st[k], str) and len(st[k]) > _EXPR_CHARS:
+                        st[k] = st[k][:_EXPR_CHARS - 10]
+                        self.check(label, "Its text was longer than a Hoola step takes (2,000 characters); the end "
+                                          "was cut")
+
     def run(self) -> dict:
         try:
             tname, kind, spec, settings = self.trigger()
+            self.trig_app = _short((self.nodes.get(tname) or {}).get("type")).replace("Trigger", "")
         except (ValueError, TypeError, KeyError, AttributeError):   # v0.999.253: an unreadable start = by hand
             heads = [n for n in self.nodes if n not in self.inc]
             tname = heads[0] if heads else ""
@@ -950,6 +1499,7 @@ class _Conv:
                 self.report["skipped"].append({"node": nm, "why": "It was not reached from the start"})
             elif _short(nd.get("type")) == "stickyNote" and nm not in self.done and nd.get("parameters", {}).get("content"):
                 self.report["notes"].append("Note in n8n: " + str(nd["parameters"]["content"])[:300])
+        self._tidy(steps)
         self.report["notes"].append("n8n runs a step once for every item; a Hoola step runs once with the whole list. "
                                     "Where a step must run per item, put it in a Repeat for each.")
         name = _slug(str(self.doc.get("name") or "n8n_route"), set(), "route")
