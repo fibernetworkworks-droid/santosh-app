@@ -82,7 +82,9 @@
   const appName = slug => APP_NAME[S(slug).toLowerCase()] || S(slug).replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   // the engine's error text, said plainly: "step 'x' (tool): route 'Paid online': ..." -> "Paid online › x: ..."
   const human = e => S(e).replace(/route '([^']+)': /g, '$1 › ').replace(/step '([^']+)' \([a-z_]+\): /g, (m, id) => id.replace(/_/g, ' ') + ': ')
-    .replace(/^([^›:]+): ([^:]+ › )/, '$2');
+    .replace(/^([^›:]+): ([^:]+ › )/, '$2')
+    .replace(/^stopped by step '([^']+)': /, (m, id) => 'Stopped at ' + id.replace(/_/g, ' ') + ': ')   // v0.999.280 the stop step's own words
+    .replace(/^[a-z]/, c => c.toUpperCase());
   const KIND_TILE = {data: 'data', approval: 'warm', notify: 'warm', send: 'warm', condition: 'flow', router: 'flow', filter: 'flow', loop: 'flow', wait: 'flow',
     subroute: 'flow', stop: 'flow', ai: 'ai', set: 'data', code: 'data', http: 'core', respond: 'core', store: 'data', var: 'data'};
   function appTile(a, type, op) {
@@ -365,7 +367,7 @@
         x.routes.map(r => `<tr><td class="c-name"><a class="rn" href="#/r/${enc(r.id)}/runs">${esc(nice(r.name))}</a>${r.enabled ? '' : ' <span class="mut sm">(off)</span>'}</td>
           <td data-l="Runs" class="num">${fmtN(r.runs)}</td><td data-l="Failed" class="num">${fmtN(r.failed)} <span class="mut sm">${r.failure_rate}%</span></td>
           <td data-l="Average time" class="num">${dur(r.avg_s)}</td>
-          <td data-l="Time saved" class="num">${r.minutes_per_run ? saved(r.minutes_saved) : `<a class="sm" href="#/r/${enc(r.id)}/settings">Set it</a>`}</td></tr>`).join('')}</tbody></table></div>`
+          <td data-l="Time saved" class="num">${r.minutes_per_run ? saved(r.minutes_saved) : `<a class="sm lnk" href="#/r/${enc(r.id)}/settings">Set it</a>`}</td></tr>`).join('')}</tbody></table></div>`
         : '<div class="empty">No runs in this time yet.</div>'}</section>
       <div class="setgrid">
         <section class="card"><div class="hd"><h2>Slowest steps</h2></div>${x.slow_steps.length ? x.slow_steps.map(st => `<div class="kv"><span class="k"><a href="#/r/${enc(st.route_id)}">${esc(nice(st.route))}</a> › ${esc(nice(st.step))}</span><span>${(st.avg_ms / 1000).toFixed(1)} s <span class="mut sm">(${fmtN(st.runs)} runs)</span></span></div>`).join('') : '<p class="mut sm">Nothing yet.</p>'}</section>
@@ -458,7 +460,7 @@
     const pages = Math.max(1, Math.ceil(d.total / d.per));
     const opt = (v, t, cur) => `<option value="${esc(v)}"${v === cur ? ' selected' : ''}>${esc(t)}</option>`;
     MAIN.innerHTML = `<div class="top"><div><h1>Workflows</h1><p class="lead sm">${fmtN(d.all)} ready-made workflows from the n8n community library, turned into Hoola routes. Open one to see exactly what it becomes - it lands switched off, and nothing runs until you have read it.</p></div></div>
-      <form class="libbar" id="libF" role="search"><input type="search" id="libQ" aria-label="Search workflows" placeholder="Search - like gmail sheets, invoice, telegram, lead" value="${esc(LIB.q)}">
+      <form class="libbar" id="libF" role="search"><input type="search" id="libQ" aria-label="Search workflows" placeholder="Search, like gmail, invoice, telegram" value="${esc(LIB.q)}">
         <select id="libApp" aria-label="App">${opt('', 'Every app', LIB.app)}${d.apps.map(([a, n]) => opt(a, `${a} (${n})`, LIB.app)).join('')}</select>
         <select id="libCat" aria-label="Category">${opt('', 'Every category', LIB.category)}${d.categories.map(([c, n]) => opt(c, `${c} (${n})`, LIB.category)).join('')}</select>
         <select id="libTrig" aria-label="Starts">${opt('', 'Any start', LIB.trigger)}${d.triggers.map(([t, n]) => opt(t, `${trigName(t)} (${n})`, LIB.trigger)).join('')}</select>
@@ -499,7 +501,7 @@
     const L = p.library, R = p.report, c = p.counts, r = RDY[L.ready] || ['', L.ready_text];
     const list = (rows, cls) => rows.map(x => `<li class="${cls}"><b>${esc(x.node)}</b>${x.as ? ' → ' + esc(x.as) : ''}${x.why ? ' — ' + esc(x.why) : ''}</li>`).join('');
     MAIN.innerHTML = `<div class="rhead"><a class="btn soft s ib" href="#/workflows" aria-label="Back to the workflows">${svg(IC.back)}</a>
-        <div class="rh-t"><h1 class="rtitle">${esc(L.name)}</h1><div class="rh-m mut sm">${esc(L.category)} · starts ${esc(trigName(p.trigger).toLowerCase())} · <span class="lr ${r[0]}">${esc(r[1])}</span></div></div>
+        <div class="rh-t"><h1 class="rtitle">${esc(L.name)}</h1><div class="rh-m mut sm"><span>${esc(L.category)} · starts ${esc(trigName(p.trigger).toLowerCase())}</span><span class="lr ${r[0]}">${esc(r[1])}</span></div></div>
         <span class="sp"></span><a class="btn soft s" href="${esc(L.github)}" target="_blank" rel="noopener">See it on GitHub</a></div>
       ${L.description ? `<p class="lead sm">${esc(L.description)}</p>` : ''}
       <section class="card"><form id="libUse" class="pform"><div class="two">${field('Name of the new route', p.name, {k: 'libname', ref: false})}</div>
@@ -910,12 +912,12 @@
     ED.notes.forEach(n => { x0 = Math.min(x0, n.x); y0 = Math.min(y0, n.y); x1 = Math.max(x1, n.x + n.w); y1 = Math.max(y1, n.y + 120); });
     return {x0, y0, x1, y1};
   }
-  function fit() {
+  function fit(all) {
     const c = $('#canvas'); if (!c) return;
     // the whole route when it fits at a readable size; otherwise readable, from its start, and the mini-map shows the rest
     const b = bounds(), W = c.clientWidth, H = c.clientHeight - (ED.logOpen ? 150 : 0), small = W < 700;
     const want = Math.min(1, (W - 120) / (b.x1 - b.x0), (H - 80) / (b.y1 - b.y0));
-    ED.z = Math.max(small ? 0.62 : 0.8, want);
+    ED.z = all === true ? Math.max(0.3, Math.min(1, want)) : Math.max(small ? 0.62 : 0.8, want);
     const left = small ? 68 : 76;
     ED.px = want >= ED.z ? (W - (b.x1 - b.x0) * ED.z) / 2 - b.x0 * ED.z : left - b.x0 * ED.z;
     ED.py = Math.max(small ? 24 : 40, (H - (b.y1 - b.y0) * ED.z) / 2) - b.y0 * ED.z;
@@ -1214,7 +1216,7 @@
     if (!ED || ED.sel !== s.id || (box.id === 'edPanel' ? (ED.tab !== 'step' || ED.modal) : ED.modal !== s.id)) return;
     if (box.id === 'edPanel') parts.push(`<div class="phead">${appTile(s.app || (tinfo && tinfo.app), s.type, s.op)}<div><div class="pk">${esc(KIND[s.type] || s.type)}</div><div class="pt">${esc(titleOfStep(s))}</div></div>
       <span class="sp"></span><button class="btn s soft" type="button" data-big title="Open with its data (double-click a step)">Open with data</button></div>`);
-    parts.push(field('What this step does', s.label || '', {k: 'label', ref: false, ph: 'In your own words, like "Add the order to my sheet"'}));
+    parts.push(field('What this step does', s.label || '', {k: 'label', ref: false, ph: 'Like "Add the order to my sheet"'}));
     if (s.type === 'tool') {
       parts.push(`<div class="tbox"><div><b>${esc(tinfo ? tinfo.label : nice(s.name))}</b><span class="mut sm">${esc(tinfo ? tinfo.desc : 'This tool is not on this server any more.')}</span></div>
         <button class="btn s soft" type="button" data-change-tool>Change</button></div>`);
@@ -1806,7 +1808,7 @@
   function dropStep(msg, id) {
     let m = S(msg); const q = S(id).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     if (!q) return m;
-    const re = new RegExp('^(step )?[\'‘"]?' + q + '[\'’"]?( \\([a-z_]+\\))?:\\s*');
+    const re = new RegExp('^(step )?[\'‘"]?' + q + '[\'’"]?( \\([a-z_]+\\))?:\\s*', 'i');
     for (let n = 0; n < 3 && re.test(m); n++) m = m.replace(re, '');
     return m;
   }
@@ -2110,7 +2112,7 @@
     $('#tTidy').addEventListener('click', () => { before(); ED.pos = {}; changed(true); fit(); });
     $('#zIn').addEventListener('click', () => { const c = $('#canvas'); zoomAt(1.2, c.clientWidth / 2, c.clientHeight / 2); });
     $('#zOut').addEventListener('click', () => { const c = $('#canvas'); zoomAt(1 / 1.2, c.clientWidth / 2, c.clientHeight / 2); });
-    $('#zFit').addEventListener('click', fit);
+    $('#zFit').addEventListener('click', () => fit(true));
     document.querySelectorAll('.ptab').forEach(b => b.addEventListener('click', () => { ED.tab = b.dataset.ptab; if (ED.tab === 'step') ED.addAt = null; panel(); }));
     canvasWire();
     window.addEventListener('keydown', edKeys); window.addEventListener('beforeunload', edLeave);
@@ -2146,6 +2148,8 @@
     ED.sel = id; ED.tab = 'step'; ED.addAt = null; ED.replace = null;
     draw(); panel();
     const el = document.querySelector(`[data-node="${CSS.escape(id)}"]`); if (el) el.focus({preventScroll: true});
+    // v0.999.280: on a phone the step's settings open below the canvas - bring them into view
+    if (window.innerWidth <= 900) { const sd = document.querySelector('.edside'); if (sd) setTimeout(() => sd.scrollIntoView({behavior: 'smooth', block: 'start'}), 60); }
   }
   function addNote() {
     const c = $('#canvas');
@@ -2243,7 +2247,8 @@
     if (tab === 'versions') { await versionsTab(r); return; }
     // v0.999.246 ROUTE R7: every setting of the route on the page
     const st = r.settings || {};
-    const [all, team] = await Promise.all([api('GET', '/api/route/routes').catch(() => ({routes: []})), api('GET', '/api/route/team').catch(() => ({team: []}))]);
+    const [all, team, snd] = await Promise.all([api('GET', '/api/route/routes').catch(() => ({routes: []})), api('GET', '/api/route/team').catch(() => ({team: []})),
+      api('GET', `/api/route/routes/${enc(r.id)}/sending`).catch(() => ({sends: []}))]);
     const others = (all.routes || []).filter(x => x.id !== r.id);
     let zones = []; try { zones = Intl.supportedValuesOf('timeZone'); } catch {}
     const shared = new Set(st.shared_with || []);
@@ -2258,16 +2263,17 @@
         ${r.next_due_at ? `<div class="kv"><span class="k">Next run</span><span>${esc(at(r.next_due_at))}</span></div>` : ''}
         ${r.trigger === 'webhook' ? `<div class="kv"><span class="k">Address that starts it</span><span class="v" id="addrBox"><span class="mut">Kept secret. Make a new one to see it.</span><br><button class="btn soft s" id="addrNew" type="button">Make a new address</button></span></div>` : ''}
         ${r.public_url ? `<div class="kv"><span class="k">Its page</span><span class="v"><code class="addr">${esc(/^https?:/.test(r.public_url) ? r.public_url : location.origin + r.public_url)}</code></span></div>` : ''}
-        <div class="kv"><span class="k">Money and sending</span><span>Always wait for your tap</span></div>
+        <div class="kv"><span class="k">Mail and messages</span><span>${!(snd.sends || []).length ? 'It sends none' : snd.allowed ? `Allowed by you · ${fmtN(snd.today)} sent today of ${fmtN(snd.per_day)} a day` : 'Nothing goes out until you tap Allow sending in the editor'}</span></div>
+        <div class="kv"><span class="k">Money</span><span>Always waits for your tap</span></div>
         <p class="mut sm">What starts it is changed in the editor (click the first step).</p></section>
       <section class="card"><div class="hd"><h2>Settings</h2></div><form id="setForm" class="pform">
         ${field('What it does (one line)', r.description || '', {k: 'description', ref: false})}
         <div class="two">${field('Folder', st.folder || '', {k: 'folder', ref: false, ph: 'Like Sales'})}${field('Tags (with commas)', (st.tags || []).join(', '), {k: 'tags', ref: false, ph: 'orders, daily'})}</div>
         <div class="fld"><label for="stTz">Time zone</label><div class="fc"><input id="stTz" data-k="timezone" list="stTzList" value="${esc(st.timezone || '')}" placeholder="${esc(TZ || 'Europe/London')}"></div>
           <datalist id="stTzList">${zones.map(z => `<option value="${esc(z)}">`).join('')}</datalist><span class="fh">Used by its schedule, its waits and its dates.</span></div>
-        <div class="two">${field('Switch it off after this many failed runs in a row', S(st.stop_after_errors || ''), {k: 'stop_after_errors', ref: false, num: true, help: '1-20; empty = never'})}
-          ${field('At most this many runs a day', S(st.runs_per_day || ''), {k: 'runs_per_day', ref: false, num: true, help: 'Empty = no limit'})}</div>
-        ${field('At most this many messages sent a day', S(st.sends_per_day || ''), {k: 'sends_per_day', ref: false, num: true, help: 'Its Send steps: mail, Telegram, Slack, Discord, Mattermost. Empty = 100; up to 2,000'})}
+        <div class="three">${field('Switch it off after this many failed runs in a row', S(st.stop_after_errors || ''), {k: 'stop_after_errors', ref: false, num: true, help: '1-20; empty = never'})}
+          ${field('At most this many runs a day', S(st.runs_per_day || ''), {k: 'runs_per_day', ref: false, num: true, help: 'Empty = no limit'})}
+          ${field('At most this many messages sent a day', S(st.sends_per_day || ''), {k: 'sends_per_day', ref: false, num: true, help: 'Mail and chat messages. Empty = 100; up to 2,000'})}</div>
         <div class="two">${field('When it fails, run', st.error_route || '', {k: 'error_route', options: [['', 'Nothing'], ...others.map(x => [x.name, nice(x.name)])]})}
           ${field('Currency', st.currency || '', {k: 'currency', ref: false, ph: 'Like EUR, USD, INR'})}</div>
         <div class="two">${field('Keep its runs for (days)', S(st.keep_runs_days || ''), {k: 'keep_runs_days', ref: false, num: true, help: '1-3650; empty = the server default'})}
@@ -2374,7 +2380,7 @@
     shell(false); setNav('stores');
     const L = await api('GET', '/api/route/stores');
     if (!name) {
-      const rows = (L.stores || []).map(x => `<tr><td class="c-name"><a href="#/stores/${enc(x.name)}" class="mono">${esc(x.name)}</a></td>
+      const rows = (L.stores || []).map(x => `<tr><td class="c-name"><a href="#/stores/${enc(x.name)}">${esc(x.name)}</a></td>
         <td class="num">${fmtN(x.records)}</td><td class="sm">${esc(String(x.used_kb))} KB of ${fmtN(x.max_kb)} KB</td>
         <td class="sm mut">${(x.structure || []).length ? esc(x.structure.map(f => f.name).join(', ')) : 'Any fields'}</td></tr>`).join('');
       MAIN.innerHTML = `<div class="top"><div><h1>Data stores</h1><p class="lead sm">Your own small tables that every route can read and write between runs - customers, stock, what was already sent. A route uses one with a <b>Data store</b> step.</p></div></div>
@@ -2396,7 +2402,7 @@
     const rows = (D0.records || []).map(r => `<tr><td class="mono sm">${esc(r.key)}</td>${cols.map(c => `<td class="sm">${esc(cell((r.data || {})[c])).slice(0, 120)}</td>`).join('')}
       <td class="c-act"><button class="btn soft s" type="button" data-redit="${esc(r.key)}">Change</button><button class="btn soft s bad" type="button" data-rdel="${esc(r.key)}">Delete</button></td></tr>`).join('');
     MAIN.innerHTML = `<div class="rhead"><a class="btn soft s ib" href="#/stores" aria-label="Back to data stores">${svg(IC.back)}</a>
-        <div class="rh-t"><h1 class="rtitle mono">${esc(st.name)}</h1><div class="rh-m mut sm">${fmtN(st.records)} records · ${esc(String(st.used_kb))} KB of ${fmtN(st.max_kb)} KB</div></div>
+        <div class="rh-t"><h1 class="rtitle">${esc(st.name)}</h1><div class="rh-m mut sm">${fmtN(st.records)} records · ${esc(String(st.used_kb))} KB of ${fmtN(st.max_kb)} KB</div></div>
         <span class="sp"></span><a class="btn soft s" href="/api/route/stores/${enc(st.name)}/csv" data-dl>Download CSV</a>
         <label class="btn soft s" for="dsCsv">Bring in a CSV<input type="file" id="dsCsv" accept=".csv,text/csv" hidden></label></div>
       <section class="card"><div class="hd"><h2>Its fields</h2></div><p class="mut sm">With fields, every record is checked against them (a number stays a number, required ones must be there). With none, a record can hold anything.</p>
@@ -2406,7 +2412,7 @@
       <section class="card"><div class="hd"><h2>A record</h2></div><form id="dsRec" class="pform"><div class="two">${field('Key', '', {k: 'rkey', ref: false, mono: true, ph: 'Empty = a new id', help: 'One record per key'})}</div>
         ${field('Its data', '{}', {k: 'rdata', ref: false, area: true, mono: true, rows: 5, help: 'An object of field: value'})}
         <div class="crow"><button class="btn s" type="submit">Save the record</button></div></form></section>
-      <section class="card flat"><div class="crow"><input id="dsQ" class="sm" placeholder="Find a record" aria-label="Find a record"><span class="mut sm">${fmtN(D0.total)} records</span>
+      <section class="card flat"><div class="crow"><label class="srch">${svg(IC.search)}<input id="dsQ" placeholder="Find a record" aria-label="Find a record"></label><span class="mut sm">${fmtN(D0.total)} records</span>
         <span class="sp"></span><button class="btn soft s bad" type="button" id="dsClear"${D0.total ? '' : ' disabled'}>Delete all records</button></div>
         <div class="crow" id="dsClearBox" hidden><label class="sm" for="dsClearIn">To delete all ${fmtN(D0.total)} records, type <b class="mono">${esc(st.name)}</b></label>
           <input id="dsClearIn" class="mono sm" autocomplete="off"><button class="btn s bad solid" type="button" id="dsClearGo">Delete them</button><button class="btn soft s" type="button" id="dsClearNo">Keep them</button></div>
@@ -2465,7 +2471,9 @@
     const want = [['door', 'Starts'], ['route', 'Routes'], ['store', 'Data stores'], ['app', 'Apps and web']];
     const used = want.filter(([k]) => G.nodes.some(n => (n.kind === 'web' ? 'app' : n.kind) === k));
     const colOf = {}; used.forEach(([k], i) => { colOf[k] = i; }); colOf.web = colOf.app;
-    const W = 220, H = 52, GX = 120, GY = 18;
+    let W = 220, GX = 120; const H = 52, GY = 18;
+    { const n = used.length, cs = getComputedStyle(MAIN), room = Math.max(320, (MAIN.clientWidth || 1000) - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0) - 28);   // v0.999.280: the map fits the page when it can
+      if (n > 1 && 40 + n * W + (n - 1) * GX > room) { W = 200; GX = Math.max(64, Math.floor((room - 40 - n * W) / (n - 1))); } }
     const byCol = used.map(() => []);
     G.nodes.forEach(n => byCol[colOf[n.kind] ?? 0].push(n));
     const pos = {};
@@ -2481,7 +2489,7 @@
     const box = n => { const p = pos[n.id]; const href = n.kind === 'route' && n.route_id ? `#/r/${enc(n.route_id)}` : n.kind === 'store' ? `#/stores/${enc(n.name)}` : '';
       const tag = href ? 'a' : 'div';
       return `<${tag} class="gn k-${esc(n.kind)}${n.missing ? ' miss' : ''}${n.kind === 'route' && !n.enabled ? ' off' : ''}" ${href ? `href="${href}"` : ''} style="left:${p.x}px;top:${p.y}px;width:${W}px;height:${H}px">
-        <small>${esc(KW[n.kind] || n.kind)}${n.kind === 'route' ? (n.missing ? ' · not found' : n.enabled ? ' · on' : ' · off') : ''}${n.records !== undefined ? ' · ' + fmtN(n.records) + ' records' : ''}</small><b>${esc(n.kind === 'route' ? nice(n.name) : n.name)}</b></${tag}>`; };
+        <small>${esc(KW[n.kind] || n.kind)}${n.kind === 'route' ? (n.missing ? ' · not found' : n.enabled ? ' · on' : ' · off') : ''}${n.records !== undefined ? ' · ' + fmtN(n.records) + ' records' : ''}</small><b>${esc(n.kind === 'route' ? nice(n.name) : n.kind === 'app' ? appName(n.name) : n.name)}</b></${tag}>`; };
     const c = G.counts;
     MAIN.innerHTML = `<div class="top"><div><h1>Grid</h1><p class="lead sm">All your routes on one map, and what each one touches: the routes it runs, where it goes when it fails, its data stores, apps and web addresses. Nothing here changes a route.</p></div></div>
       <div class="stats"><div class="stat"><span class="k">Routes</span><b>${fmtN(c.route)}</b></div><div class="stat"><span class="k">Data stores</span><b>${fmtN(c.store)}</b></div>
@@ -2532,8 +2540,8 @@
       <td class="mono sm">${esc(x.hint)}</td><td class="mut sm">${x.used_at ? 'Used ' + esc(at(x.used_at)) : 'Not used yet'}</td><td class="c-act"><button class="btn soft s bad" type="button" data-cdel="${esc(x.name)}">Delete</button></td></tr>`).join('');
     MAIN.innerHTML = `<div class="top"><h1>Sign-ins</h1></div><p class="lead">For web request steps that need a key, and for Send steps to Telegram, Slack, Discord and Mattermost. Saved locked, never shown again (only the last 4), never seen by the AI, and only ever sent to the site you name.</p>
       <section class="card"><form id="credForm" class="pform" autocomplete="off">
-        <div class="two">${field('Name', '', {k: 'name', ref: false, mono: true, ph: 'SHOP_API'})}${field('Kind', kind, {k: 'kind', options: Object.entries(CREDW)})}</div>
-        ${MSGK.includes(kind) ? `<p class="mut sm">Used only by a Send step of ${esc(CREDW[kind])}, only towards ${esc(CREDW[kind])}.</p>` : field('For this site only', '', {k: 'host', ref: false, mono: true, ph: 'api.example.com'})}
+        <div class="two">${field('Name', '', {k: 'name', ref: false, mono: true, ph: {telegram: 'MY_BOT', slack: 'TEAM_SLACK', discord: 'SHOP_DISCORD', mattermost: 'TEAM_CHAT'}[kind] || 'SHOP_API'})}${field('Kind', kind, {k: 'kind', options: Object.entries(CREDW)})}</div>
+        ${MSGK.includes(kind) ? `<p class="mut sm">Only a ${esc(VIAW[kind])} Send step uses it, and only towards ${esc(VIAW[kind])}.</p>` : field('For this site only', '', {k: 'host', ref: false, mono: true, ph: 'api.example.com'})}
         ${F.map(([k, lab, secret]) => `<div class="fld"><label for="cr_${k}">${esc(lab)}</label><div class="fc"><input id="cr_${k}" data-k="${k}" ${secret ? 'type="password" autocomplete="new-password"' : ''} class="mono"></div></div>`).join('')}
         <div class="crow"><button class="btn s" type="submit">Save the sign-in</button></div></form></section>
       <section class="card flat">${rows ? `<div class="tw"><table class="rt"><thead><tr><th>Name</th><th>Kind</th><th>Site</th><th>Key</th><th>Last use</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="empty">No sign-ins yet.</div>'}</section>`;

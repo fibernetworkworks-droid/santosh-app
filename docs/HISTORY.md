@@ -13485,37 +13485,46 @@ NOT VERIFIED: on her server or with her own database; the lab is SQLite on gener
 ## v0.999.281 MCP TOOLS ONE BY ONE
 (owner: 'GO NEXT - MCP TOOLS LISTED ONE BY ONE'): Claude Code's way of showing MCP servers in Hoola Code (`devsahayak/mcptools.py`). Before, the coder had ONE `mcp` tool (list, then call with pack_id + tool + args) and never saw a tool's real fields; now every tool of her connected MCP servers and of the repo's `.mcp.json` / plugin servers she already allowed is a tool of its own, named mcp__<server>__<tool> (64 characters at most, never two with one name), with the server's own input schema and description (a tool that changes something says it becomes a confirm card on her phone). A repo server's tool list is read once, after her OK, and kept for a day; listing it loads its tools into the running round at once. Past 60 tools or 40,000 characters of definitions they are held back like Claude Code's tool search: the coder sees their names and `mcp_tool_search` (keywords, or select:<name>,<name>) loads the ones it needs. Every call still runs through the same doors (her connector layer and its phone cards; the repo's box or allowed address); the repo's permission rules (mcp__server__tool, mcp__server, mcp__server__*), hook matchers (mcp__notion__.*), the 'ask each step' questions and the Auto-mode safety reviewer all see the real name. The old `mcp` tool stays for listing and for servers not yet allowed. Web + phone rows name the server and tool; a 'Loaded MCP tools' row for the search. NOT VERIFIED against a live MCP server or a real model.
 
+## v0.999.282 EVERY PAGE ALIGNED
 
-## v0.999.282 DISTRIBUTED DESK (built as 0.999.281; their HOOLA CODE MCP TOOLS took 0.999.281, both kept; owner: "Distributed Systems Engineer same as finance desks")
+Owner: "NOW GO DEEP ON EVERY PAGE OF ROUTE AND ALINE AND MAKE EVERY SECTION PERFCTLY FIXED".
 
-The Hub's `distsys_eng` card goes live like the finance desks: its own page `/console/distributed` (`static/console/dsdesk.{html,js,css}`)
-and its own chat (Conversation kind `distsys`, `app/distchat.py`, routes `/api/dsdesk/*`), out of every Hoola chat list, with the desk
-block + the `dist` tool family in view in that chat and in a call started from it.
+How: a seeded account (8 routes of every start, runs done / failed / waiting, a data store with records, a variable, two sign-ins,
+a library workflow) and every Route page - Home, All routes, Needs you, Runs, a run, Insights, Bring in, Templates, Workflows + one,
+Variables, Sign-ins, Data stores + one, Grid, the editor (plain, a step, the start, Add a step), the route's Runs / Versions /
+Settings - opened in Chromium at 1440, 1024 and 390 px in light and dark (144 views). Each view measured in code (sideways scroll,
+anything past the page edge, cut text, controls side by side with different heights or middles, controls under 26 px, page errors)
+and looked at by eye. 74 views had findings; after the fixes none (the home's 36 px round send button beside 32 px chips stays, on
+the same middle line, by design).
 
-Engine `app/distdesk/` - all code, no model, no money, nothing runs on her systems:
-- `retry.py`: one policy (tries, first backoff, multiplier, cap, per-try timeout, deadline, jitter none / full / equal / decorrelated
-  after the AWS 'Exponential Backoff and Jitter' formulas) -> the longest waits, the worst case, the load while the service below
-  fails, the tries arriving per 10 ms when every client fails at once (fixed seed: 1,000 clients -> peak 1,000 without jitter, ~67 with
-  full jitter), deadline cuts; a call chain -> how retries multiply and which caller gives up while its callee still retries.
-- `quorum.py`: N / R / W (overlap, failures reads / writes survive, two writes overlapping), consensus voters (majority, tolerance,
-  even numbers), replicas across zones (what losing each zone, and each pair, does).
-- `linear.py`: a linearizability checker for register / compare-and-set histories (Wing-Gong search with memoising, as in Knossos;
-  timed-out operations may or may not have happened; per key) reading JSON, Jepsen EDN or plain lines; names the operation that
-  cannot be explained and what the register could hold. A test compares it with brute force on 500 random histories.
-- `sim.py`: a fault-injection simulator of one register - one leader, quorum without read repair, quorum with read repair (ABD),
-  last-writer-wins on client clocks, async primary-backup with failover - with partitions, crashes and clock skew, fixed seeds;
-  every operation recorded as a client saw it and checked. The quorum preset breaks and the SAME run with read repair holds; LWW with
-  skew breaks; async failover loses acknowledged writes. A model of the protocol, not her system.
-- `tla.py`: TLA+ starter specs (idempotent consumer, two-phase commit, fenced leader lease) each with a switch for the bug and the
-  fix; TLC output read (pass / invariant / property / deadlock / error, states, depth, the trace with what changed each step); a
-  GitHub Actions workflow that runs TLC (pinned tla2tools release) on every spec with a .cfg in her specs folder.
-- `service.py`: items (retry R-, chain C-, quorum Q-, history H-, simulation J-, TLC T-), settings (system, failure rate, clients,
-  specs folder, branch, TLA+ tools version).
+Fixed (route.css end block "v0.999.282 EVERY PAGE ALIGNED" + route.js):
+- a form inside a card was padded twice (Variables, Sign-ins, Data stores, a record, Settings, Bring in) - once now;
+- a heading inside a table card sat on the card's edge (Insights "Each route", Versions) - padded, with a line under it;
+- the line under a page title sat 28 px away on some pages and 6 px on others - 8 px everywhere;
+- drop-downs were the browser's own and file pickers a grey "Choose File" - the house look (chevron, pill button);
+- toolbars mixed 32 / 36 / 38 px controls (Runs: Find, Workflows: Search, Data store search) - 36, chips 32 on the same middle;
+- three different number-card styles (Home serif, Insights wide figures, Grid sans) - the Home serif everywhere; number columns
+  use plain figures (the font's table figures put wide gaps round a decimal point: "0 . 0 s");
+- links in tables were the browser's colour - read as names (ink, underline on hover); "Set it" keeps the accent;
+- row buttons (Change / Delete) touched and floated mid-row - at the end of the row with a gap;
+- phone list cards (routes, runs, insights) had values starting at different places - one label column;
+- phone bar: "New route" broke onto two lines - one line, the bar fades where it scrolls on;
+- home on a phone: the send button dropped under its chips - on their line;
+- Data store page: the record search was an unstyled box on the card edge, the field rows repeated their labels and touched,
+  the title was in a code font - a styled search, labels once, rows apart, the page's title font;
+- Grid: the fourth column (Apps and web) was cut off at full desktop width - the columns fit the page (narrower columns, closer)
+  before it scrolls; app names read nicely;
+- the route's Runs / Versions / Settings pages were pinned left with an empty half - centred; the three daily limits on one row;
+  "Money and sending: Always wait for your tap" replaced by the true sending state (none / allowed + sent today / waits for Allow
+  sending) and Money on its own line;
+- the editor: the sending bar took three lines - one line (wraps when long); what starts a route was a long one-per-line list - two
+  across; the Fit button now fits the whole route (the first view stays readable from the start); on a phone the back button sat
+  alone on a line - back, name and its state on one line, the controls under it; on a phone a tapped step's settings opened out of
+  view below the canvas - scrolled into view; hint texts that were cut shortened;
+- a workflow's page: the back button floated at the middle of a tall title block and a stray "·" ended the meta line - top-aligned,
+  no stray dot; a run that a Stop step ended said "stopped by step 'boom': ..." - "Stopped at boom: ...", every error starts with a
+  capital letter.
 
-Tool `dist_desk` (`agent/dist_tools.py`, registry 706 -> 707). Pages: Today, Retries (policy + chain; waits, the herd chart),
-Quorums (zones), Histories (simulator scenarios + paste; the timeline with the unexplained operation in red), Specs (starters with
-the bug / fix switch, TLC output, the CI workflow), Settings.
-
-Tests `tests/test_ds_desk.py` (5) incl. a browser walk at 1440 / 390.
-NOT VERIFIED: on her server. The TLA+ starter specs were NOT run through TLC here: running the downloaded TLC jar was refused by
-this session's safety check, so they are untested until her CI (or a TLC run) checks them.
+Tests: server/tests/test_v0999_282_route_aligned.py - the rules, and a walk of 22 page views at 1440 and 390 px in light and in
+dark that fails on sideways scroll, anything past the edge, cut text, mismatched controls, tiny controls or a page error.
+NOT VERIFIED on her server.
