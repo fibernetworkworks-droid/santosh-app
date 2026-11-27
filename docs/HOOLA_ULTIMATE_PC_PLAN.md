@@ -168,3 +168,6 @@ the task ends cleanly). This hit real users too, not only the exam: any PC step 
 
 - v0.999.146 Hoola Computer page redrawn (her canvas): both computers on one home with live pictures, give-a-job box with Let Hoola choose, step strip + Move to my PC, Connect for Windows / Mac / Linux; blank computer chats fixed.
 
+
+- v0.999.233 Computer V2: the console and phone Computer section rebuilt from her prototype (hub that picks the machine, device frame with Hoola's pointer, job checklist, yes card on the page).
+
