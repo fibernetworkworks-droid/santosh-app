@@ -285,7 +285,9 @@ def create_run(tenant_id: str, wf: dict, vars_: dict | None = None, missed: bool
     try:
         con.execute("INSERT INTO runs (id, workflow_id, wf_name, status, cursor, context, steps_log, tries, "
                     "started_at, missed, created_at, updated_at) VALUES (?,?,?,?,0,?,?,0,?,?,?,?)",
-                    (rid, wf["id"], wf["name"], "queued", json.dumps({"vars": dict(vars_ or {}), "steps": {}, "notify": 0}),
+                    (rid, wf["id"], wf["name"], "queued", json.dumps({"vars": dict(vars_ or {}), "steps": {}, "notify": 0,
+                                                         # v0.999.248 R8: what it started with, for Run again
+                                                         "_start": dict(vars_ or {})}),
                      "[]", now_ if not missed else None, 1 if missed else 0, now_, now_))
         con.commit()
     finally:
@@ -350,13 +352,34 @@ def update_run(tenant_id: str, run_id: str, **fields) -> None:
 
 
 def forget_old_runs(tenant_id: str, keep_days: int = 30, keep: int = 40) -> int:
-    cut = time.time() - max(1, int(keep_days)) * 86400
+    """Finished runs past the keeping go. v0.999.248 R8: a route that says how long / how many runs it keeps
+    (settings keep_runs_days / keep_runs) is kept that way; the rest share the server's default."""
+    from ..route import runs as RU
+    fin = "status NOT IN ('queued','running','sleeping','waiting_approval','incomplete')"
+    now_ = time.time()
+    cut = now_ - max(1, int(keep_days)) * 86400
     con = _con(tenant_id)
     try:
-        gone = con.execute("DELETE FROM runs WHERE status NOT IN ('queued','running','sleeping','waiting_approval','incomplete') "
-                           "AND updated_at < ?", (cut,)).rowcount
-        extra = con.execute("SELECT id FROM runs WHERE status NOT IN ('queued','running','sleeping','waiting_approval','incomplete') "
-                            "ORDER BY updated_at DESC LIMIT -1 OFFSET ?", (int(keep),)).fetchall()
+        own: dict[str, tuple[int, int]] = {}
+        for r in con.execute("SELECT id, settings FROM workflows").fetchall():
+            try:
+                k = RU.keeping(json.loads(r["settings"] or "{}") or {}, keep_days, keep)
+            except (TypeError, ValueError):
+                k = None
+            if k:
+                own[r["id"]] = k
+        gone = 0
+        for wid, (d, k) in own.items():
+            gone += con.execute(f"DELETE FROM runs WHERE workflow_id = ? AND {fin} AND updated_at < ?",
+                                (wid, now_ - d * 86400)).rowcount
+            for (rid,) in con.execute(f"SELECT id FROM runs WHERE workflow_id = ? AND {fin} "
+                                      "ORDER BY updated_at DESC LIMIT -1 OFFSET ?", (wid, int(k))).fetchall():
+                con.execute("DELETE FROM runs WHERE id = ?", (rid,))
+                gone += 1
+        mine = (" AND workflow_id NOT IN (" + ",".join("?" * len(own)) + ")") if own else ""
+        gone += con.execute(f"DELETE FROM runs WHERE {fin} AND updated_at < ?" + mine, (cut, *own)).rowcount
+        extra = con.execute(f"SELECT id FROM runs WHERE {fin}" + mine +
+                            " ORDER BY updated_at DESC LIMIT -1 OFFSET ?", (*own, int(keep))).fetchall()
         for (rid,) in extra:
             con.execute("DELETE FROM runs WHERE id = ?", (rid,))
             gone += 1
@@ -1646,6 +1669,11 @@ def _after_run(tenant_id: str, wf: dict, status: str, err: str, run_id: str) -> 
     settings.stop_after_errors of them (and say so once), and start the route's error route with the details.
     Never raises (the run's own result is already saved)."""
     try:
+        from ..route import runs as RU
+        RU.tally(tenant_id, wf["id"], status, run_id)       # v0.999.248 R8 insights
+    except Exception:   # noqa: BLE001
+        pass
+    try:
         st = dict(wf.get("settings") or {})
         con = _con(tenant_id)
         try:
@@ -1974,6 +2002,18 @@ def validate_settings(st: Any, tenant_id: str = "") -> dict:
         if len(tags) > 10:
             raise ToolError("Up to 10 tags on a route")
         out["tags"] = list(dict.fromkeys(tags))
+    for key, lo, hi, what in (("keep_runs_days", 1, 3650, "days to keep its runs"),    # v0.999.248 ROUTE R8
+                              ("keep_runs", 1, 20000, "runs to keep"),
+                              ("minutes_saved", 0, 1440, "minutes a run saves")):
+        if st.get(key) not in (None, ""):
+            try:
+                v = float(st[key]) if key == "minutes_saved" else int(st[key])
+            except (TypeError, ValueError):
+                raise ToolError(f"{what} must be a number {lo}-{hi}")
+            if not lo <= v <= hi:
+                raise ToolError(f"{what} must be {lo}-{hi}")
+            if v or key != "minutes_saved":
+                out[key] = v
     if st.get("shared_with") not in (None, "", []):   # team members who may run it from their own Hoola
         ids = [str(x) for x in (st["shared_with"] if isinstance(st["shared_with"], list) else [st["shared_with"]])]
         if tenant_id:

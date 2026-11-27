@@ -125,10 +125,30 @@ def _view(v: Any) -> Any:
     return D._masked(v)
 
 
-def data(tenant: str, wf: dict) -> dict:
-    """The newest data of the route: the latest run's whole context, single-step tests made since laid over it."""
+def _run_of(tenant: str, wf: dict, run_id: str) -> dict:
+    from ..agent import dhara_tools as D
+    x = D.get_run(tenant, run_id)
+    if x is None or x.get("workflow_id") != wf["id"]:
+        raise ValueError("That run is not a run of this route")
+    return x
+
+
+def data(tenant: str, wf: dict, run_id: str = "") -> dict:
+    """The newest data of the route: the latest run's whole context, single-step tests made since laid over it.
+    v0.999.248 R8: with run_id = THAT past run's data only (debugging a run in the editor)."""
     from ..agent import dhara_tools as D
     p, d = _read(tenant, wf["id"])
+    if run_id:
+        x = _run_of(tenant, wf, run_id)
+        from . import runs as RU
+        ctx = x.get("context") or {}
+        live = {s["id"] for s in _all(wf.get("steps") or [])}
+        return {"vars": _view(RU.start_data(x)), "debug": True, "run_id": x["id"], "status": x.get("status"),
+                "error": (x.get("error") or "")[:500], "failed_step": RU.failed_step(x), "at": x.get("created_at"),
+                "steps": {k: {"output": _view((v or {}).get("output")), "from": "run", "at": x.get("updated_at")}
+                          for k, v in (ctx.get("steps") or {}).items() if isinstance(v, dict) and k in live},
+                "pins": {k: _view(v) for k, v in p.items()},
+                "log": {l.get("id"): {k: l.get(k) for k in ("status", "ms", "error")} for l in (x.get("steps_log") or [])}}
     last = D.latest_run(tenant, wf["id"])
     vars_, steps, src, at = {}, {}, "", 0.0
     if last is not None:
@@ -159,11 +179,12 @@ def _keep(tenant: str, wf_id: str, sid: str, output: Any) -> None:
     _write(tenant, wf_id, data=d)
 
 
-def context_for(tenant: str, wf: dict, use_pins: bool = True) -> dict:
-    """The data a single-step test (or a test run) works on: the newest data + her pins."""
+def context_for(tenant: str, wf: dict, use_pins: bool = True, run_id: str = "") -> dict:
+    """The data a single-step test (or a test run) works on: the newest data + her pins.
+    v0.999.248 R8: with run_id = that past run's data (her pins still win when use_pins)."""
     from ..agent import dhara_tools as D
     p, d = _read(tenant, wf["id"])
-    last = D.latest_run(tenant, wf["id"])
+    last = _run_of(tenant, wf, run_id) if run_id else D.latest_run(tenant, wf["id"])
     ctx: dict[str, Any] = {"vars": {}, "steps": {}, "notify": 0}
     at = 0.0
     if last is not None:
@@ -171,6 +192,8 @@ def context_for(tenant: str, wf: dict, use_pins: bool = True) -> dict:
         ctx["vars"] = dict(c.get("vars") or {})
         ctx["steps"] = {k: v for k, v in (c.get("steps") or {}).items() if isinstance(v, dict)}
         at = float(last.get("updated_at") or 0)
+    if run_id:
+        at = float("inf")                               # a past run: tests made since are not laid over it
     for k, x in (d.get("steps") or {}).items():
         if float(x.get("at") or 0) > at:
             ctx["steps"][k] = {"output": x.get("output")}
@@ -184,13 +207,13 @@ def context_for(tenant: str, wf: dict, use_pins: bool = True) -> dict:
     return ctx
 
 
-async def test_step(tenant: str, wf: dict, sid: str, use_pins: bool = True) -> dict:
+async def test_step(tenant: str, wf: dict, sid: str, use_pins: bool = True, run_id: str = "") -> dict:
     from ..agent import dhara_tools as D
     from ..agent.tools import ToolError
     step = next((s for s in _all(wf.get("steps") or []) if s.get("id") == sid), None)
     if step is None:
         raise ValueError("No such step in this route - save the route first")
-    ctx = context_for(tenant, wf, use_pins)
+    ctx = context_for(tenant, wf, use_pins, run_id)
     ctx.pop("_pins", None)                       # the step under test really runs, even when it has a pin
     loop = next((s for s in _all(wf.get("steps") or []) if s.get("type") == "loop"
                  and any(b.get("id") == sid for b in _all(s.get("body") or []))), None)
@@ -261,12 +284,12 @@ async def test_step(tenant: str, wf: dict, sid: str, use_pins: bool = True) -> d
     return {"ok": bool(ok), "output": _view(out), "error": str(err or "")[:600], "ms": ms, "real": typ not in NO_PIN}
 
 
-def preview(tenant: str, wf: dict, text: str, sid: str = "") -> dict:
+def preview(tenant: str, wf: dict, text: str, sid: str = "", run_id: str = "") -> dict:
     """v0.999.237 ROUTE R3: what a box would become with the route's newest data - for the editor, as she types."""
     from ..agent import dhara_data as DD
     from ..agent import dhara_tools as D
     text = str(text or "")[:4000]
-    ctx = context_for(tenant, wf, True)
+    ctx = context_for(tenant, wf, not run_id, run_id)
     ctx.pop("_pins", None)
     if sid:
         loop = next((s for s in _all(wf.get("steps") or []) if s.get("type") == "loop"

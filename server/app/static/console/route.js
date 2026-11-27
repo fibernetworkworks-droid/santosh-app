@@ -224,7 +224,7 @@
     shell(false); setNav('routes');
     const list = await api('GET', '/api/route/routes');
     const folders = [...new Set(list.routes.map(r => r.folder).filter(Boolean))];
-    MAIN.innerHTML = `<div class="top"><h1>All routes</h1><span class="sp"></span><label class="btn soft" for="impFile">Bring in a file<input type="file" id="impFile" accept=".json,application/json" hidden></label><button class="btn" id="newR">${svg(IC.plus)}New route</button></div>
+    MAIN.innerHTML = `<div class="top"><h1>All routes</h1><span class="sp"></span><a class="btn soft" href="#/import">Bring in from n8n</a><label class="btn soft" for="impFile">Bring in a file<input type="file" id="impFile" accept=".json,application/json" hidden></label><button class="btn" id="newR">${svg(IC.plus)}New route</button></div>
       <div class="filt"><label class="srch">${svg(IC.search)}<input type="search" id="rq" placeholder="Find a route" aria-label="Find a route"></label>
       <select id="rsort" aria-label="Sort"><option value="changed">Last changed</option><option value="name">Name</option><option value="runs">Most runs</option></select>
       ${folders.length ? `<div class="chips left" id="fchips"><button class="chip" aria-pressed="${!folderPick}" data-f="">All</button>${folders.map(f => `<button class="chip" aria-pressed="${f === folderPick}" data-f="${esc(f)}">${esc(f)}</button>`).join('')}</div>` : ''}</div>
@@ -271,14 +271,29 @@
         <td data-l="Steps done" class="num">${fmtN(x.steps_done)}</td><td data-l="Started" class="nw">${esc(when(x.at))}</td>
         <td data-l="Note" class="mut sm${note(x) ? '' : ' blank'}">${esc(note(x))}</td></tr>`).join('')}</tbody></table></div>`;
   }
-  async function viewRuns(filter) {
+  async function viewRuns(filter, q) {
     shell(false); setNav('runs');
-    const q = filter ? `&status=${enc(filter)}` : '';
-    const runs = await api('GET', `/api/route/runs?limit=60${q}`);
+    q = S(q || '').trim();
+    const qs = filter ? `&status=${enc(filter)}` : '';
+    const runs = await api('GET', `/api/route/runs?limit=60${qs}${q ? '&q=' + enc(q) : ''}`);
     const F = [['', 'All'], ['waiting_approval', 'Waiting for you'], ['incomplete', 'Incomplete'], ['failed', 'Failed'], ['done', 'Done']];
     MAIN.innerHTML = `<div class="top"><h1>Runs</h1></div>
-      <div class="chips left">${F.map(([k, n]) => `<a class="chip" aria-pressed="${(filter || '') === k}" href="#/runs${k ? '/' + k : ''}">${esc(n)}</a>`).join('')}</div>
-      <section class="card flat">${runRows(runs.runs, false, filter ? 'No runs in this list.' : 'No runs yet. A route runs when its time comes, when data arrives, or when you test it.')}</section>`;
+      <form class="filt" id="runFind" role="search"><label class="srch">${svg(IC.search)}<input type="search" id="runQ" value="${esc(q)}" placeholder="Find runs by a value - an order number, an email, an error word" aria-label="Find runs by a value"></label>
+        <button class="btn soft s" type="submit">Find</button>${q ? '<a class="btn soft s" href="#/runs">Clear</a>' : ''}</form>
+      ${q ? '' : `<div class="chips left">${F.map(([k, n]) => `<a class="chip" aria-pressed="${(filter || '') === k}" href="#/runs${k ? '/' + k : ''}">${esc(n)}</a>`).join('')}</div>`}
+      <section class="card flat" id="runList">${q ? foundRows(runs.runs, q) : runRows(runs.runs, false, filter ? 'No runs in this list.' : 'No runs yet. A route runs when its time comes, when data arrives, or when you test it.')}</section>`;
+    $('#runFind').addEventListener('submit', e => { e.preventDefault(); const v = $('#runQ').value.trim();
+      if (v.length === 1) { toast('Type at least 2 characters.', true); return; }
+      location.hash = v ? '#/runs/find/' + enc(v) : '#/runs'; });
+  }
+  // v0.999.248 R8: runs found by a value, with where in the run it is
+  function foundRows(runs, q) {
+    if (!runs.length) return `<div class="empty">No kept run holds "${esc(q)}". Runs are kept as long as each route's Settings say.</div>`;
+    return `<div class="tw"><table class="rt runs"><thead><tr><th>Status</th><th>Route</th><th>Started</th><th>Found in</th><th>Around it</th></tr></thead><tbody>${
+      runs.map(x => `<tr><td class="c-on">${runPill(x.status)}</td>
+        <td class="c-name"><a class="rn" href="#/run/${enc(x.id)}">${esc(nice(x.route))}</a></td>
+        <td data-l="Started" class="nw">${esc(when(x.at))}</td><td data-l="Found in" class="sm">${esc(x.found_in)}</td>
+        <td data-l="Around it" class="mut sm mono found">${esc(x.match)}</td></tr>`).join('')}</tbody></table></div>`;
   }
   const pretty = v => { try { return JSON.stringify(JSON.parse(v), null, 2); } catch { return S(v); } };
   async function viewRun(id) {
@@ -288,6 +303,9 @@
     if (x.status === 'waiting_approval') acts.push('<button class="btn" data-act="approve" data-run="' + esc(x.id) + '">Approve</button>');
     if (['queued', 'running', 'sleeping', 'waiting_approval'].includes(x.status)) acts.push('<button class="btn soft bad" data-act="stop" data-run="' + esc(x.id) + '">Stop the run</button>');
     if (['failed', 'stopped', 'incomplete'].includes(x.status)) acts.push('<button class="btn" data-act="retry" data-run="' + esc(x.id) + '">Retry from where it stopped</button>');
+    // v0.999.248 R8: a new run with the same start data, and this run's data in the editor
+    if (!['queued', 'running'].includes(x.status)) acts.push('<button class="btn soft" type="button" id="runAgain">Run again with the same data</button>');
+    acts.push(`<a class="btn soft" id="runDebug" href="#/r/${enc(x.route_id)}/debug/${enc(x.id)}">Debug in the editor</a>`);
     acts.push(`<a class="btn soft" href="#/r/${enc(x.route_id)}">Open the route</a>`);
     const sm = x.summary || {};
     MAIN.innerHTML = `
@@ -297,6 +315,7 @@
         <div class="rh-a">${acts.join('')}</div></div>
       ${x.error ? `<div class="errbox"><b>What happened.</b> ${esc(human(x.error))}${x.pause_reason === 'retry' && x.next_wake_at ? `<br>Hoola will try again at ${esc(at(x.next_wake_at))}.` : ''}</div>` : ''}
       ${!x.error && pauseWords(x) ? `<div class="okbox">${esc(pauseWords(x))}.</div>` : ''}
+      ${x.start && Object.keys(x.start).length ? `<section class="card"><details><summary><b>What it started with</b></summary><pre>${esc(JSON.stringify(x.start, null, 2))}</pre></details></section>` : ''}
       <section class="card"><div class="hd"><h2>Step by step</h2><span class="sp"></span>${sm.wall_ms ? `<span class="mut sm">${(sm.wall_ms / 1000).toFixed(1)} s${sm.cost && sm.cost.calls ? ` · ${sm.cost.calls} AI calls` : ''}</span>` : ''}</div>
         <div class="log">${(x.steps_log || []).map(l => {
           const st = {ok: 'done', error: 'failed', approved: 'done', retry: 'queued', skipped: 'stopped'}[l.status] || l.status;
@@ -304,7 +323,86 @@
           return `<div class="lrow"><span class="lp">${word ? `<span class="pill ${l.status === 'approved' ? 'ok' : 'v'}"><span class="dot"></span>${esc(word)}</span>` : runPill(st)}</span>
           <div class="w"><b>${esc(nice(l.id))}</b> <span class="mut sm">${esc(l.type)}${l.at ? ' · ' + esc(l.at) : ''}${l.ms ? ' · ' + l.ms + ' ms' : ''}</span>
           ${l.error ? `<div class="sm errt">${esc(human(l.error))}</div>` : ''}${(x.outputs && x.outputs[l.id] !== undefined) || l.output ? `<details><summary class="sm">What it gave back${(x.pinned || []).includes(l.id) ? ' (pinned test data)' : ''}</summary><pre>${esc(x.outputs && x.outputs[l.id] !== undefined ? JSON.stringify(x.outputs[l.id], null, 2) : pretty(l.output))}</pre></details>` : ''}</div></div>`; }).join('') || '<div class="empty">No step has run yet.</div>'}</div></section>`;
+    const ra = $('#runAgain');
+    if (ra) ra.addEventListener('click', async () => { ra.disabled = true;
+      try { const o = await api('POST', `/api/route/runs/${enc(x.id)}/rerun`); toast('Running again with the same data.'); location.hash = '#/run/' + enc(o.run_id); }
+      catch (err) { toast(err.message, true); ra.disabled = false; } });
   }
+  // ---------------------------------------------------------------- v0.999.248 R8: insights
+  async function viewInsights(days) {
+    shell(false); setNav('insights');
+    days = ['1', '7', '30', '90'].includes(S(days)) ? S(days) : '7';
+    const tz = TZ || 'UTC';
+    const x = await api('GET', `/api/route/insights?days=${days}&tz=${enc(tz)}`);
+    const T = x.totals, D = [['1', 'Today'], ['7', '7 days'], ['30', '30 days'], ['90', '90 days']];
+    const dur = s => s === null || s === undefined ? '—' : s < 60 ? s.toFixed(1) + ' s' : (s / 60).toFixed(1) + ' min';
+    const saved = m => !m ? '—' : m < 120 ? Math.round(m) + ' min' : (m / 60).toFixed(1) + ' h';
+    const trend = (now, was, lowerBetter) => { if (!was && !now) return ''; const d = now - was; if (!d) return '<span class="mut sm">same as before</span>';
+      const good = lowerBetter ? d < 0 : d > 0; return `<span class="sm ${good ? 'okt' : 'errt'}">${d > 0 ? '+' : ''}${lowerBetter ? d.toFixed(1) + ' points' : fmtN(d)} vs the ${days === '1' ? 'day' : days + ' days'} before</span>`; };
+    const top = Math.max(1, ...x.series.map(p => p.done + p.failed));
+    MAIN.innerHTML = `<div class="top"><h1>Insights</h1><span class="sp"></span>
+        <div class="chips">${D.map(([k, n]) => `<a class="chip" aria-pressed="${k === days}" href="#/insights/${k}">${esc(n)}</a>`).join('')}</div></div>
+      <div class="stats">
+        <div class="stat"><span class="k">Runs</span><b>${fmtN(T.runs)}</b>${trend(T.runs, T.before.runs, false)}</div>
+        <div class="stat"><span class="k">Failed</span><b>${fmtN(T.failed)}<span class="sm mut"> · ${T.failure_rate}%</span></b>${trend(T.failure_rate, T.before.failure_rate, true)}</div>
+        <div class="stat"><span class="k">Average working time</span><b>${dur(T.avg_s)}</b><span class="mut sm">Waits are not counted</span></div>
+        <div class="stat"><span class="k">Time saved</span><b>${saved(T.minutes_saved)}</b><span class="mut sm">${T.minutes_saved ? 'From the minutes each route saves' : 'Set the minutes a run saves in a route\'s Settings'}</span></div></div>
+      <section class="card"><div class="hd"><h2>Runs by day</h2><span class="sp"></span><span class="mut sm">${esc(x.tz)}</span></div>
+        <div class="bars" role="img" aria-label="Runs by day: done and failed">${x.series.map(p => `<div class="bar" title="${esc(p.day)}: ${p.done} done, ${p.failed} failed">
+          <span class="bf" style="height:${(p.failed / top) * 100}%"></span><span class="bd" style="height:${(p.done / top) * 100}%"></span>
+          ${x.series.length <= 31 ? `<span class="bl">${esc(p.day.slice(8))}</span>` : ''}</div>`).join('')}</div>
+        <div class="legend sm"><span><i class="bd"></i>Done</span><span><i class="bf"></i>Failed</span></div></section>
+      <section class="card flat"><div class="hd"><h2>Each route</h2></div>${x.routes.length ? `<div class="tw"><table class="rt"><thead><tr><th>Route</th><th>Runs</th><th>Failed</th><th>Average time</th><th>Time saved</th></tr></thead><tbody>${
+        x.routes.map(r => `<tr><td class="c-name"><a class="rn" href="#/r/${enc(r.id)}/runs">${esc(nice(r.name))}</a>${r.enabled ? '' : ' <span class="mut sm">(off)</span>'}</td>
+          <td data-l="Runs" class="num">${fmtN(r.runs)}</td><td data-l="Failed" class="num">${fmtN(r.failed)} <span class="mut sm">${r.failure_rate}%</span></td>
+          <td data-l="Average time" class="num">${dur(r.avg_s)}</td>
+          <td data-l="Time saved" class="num">${r.minutes_per_run ? saved(r.minutes_saved) : `<a class="sm" href="#/r/${enc(r.id)}/settings">Set it</a>`}</td></tr>`).join('')}</tbody></table></div>`
+        : '<div class="empty">No runs in this time yet.</div>'}</section>
+      <div class="setgrid">
+        <section class="card"><div class="hd"><h2>Slowest steps</h2></div>${x.slow_steps.length ? x.slow_steps.map(st => `<div class="kv"><span class="k"><a href="#/r/${enc(st.route_id)}">${esc(nice(st.route))}</a> › ${esc(nice(st.step))}</span><span>${(st.avg_ms / 1000).toFixed(1)} s <span class="mut sm">(${fmtN(st.runs)} runs)</span></span></div>`).join('') : '<p class="mut sm">Nothing yet.</p>'}</section>
+        <section class="card"><div class="hd"><h2>Steps that fail most</h2></div>${x.failing_steps.length ? x.failing_steps.map(st => `<div class="kv"><span class="k"><a href="#/r/${enc(st.route_id)}">${esc(nice(st.route))}</a> › ${esc(nice(st.step))}</span><span>${fmtN(st.fails)} of ${fmtN(st.runs)}</span></div>`).join('') : '<p class="mut sm">No step failed in this time.</p>'}</section></div>
+      <p class="mut sm">${esc(x.note)}</p>`;
+  }
+
+  // ---------------------------------------------------------------- v0.999.248 R8: bring in an n8n workflow
+  async function viewImport() {
+    shell(false); setNav('routes');
+    MAIN.innerHTML = `<div class="rhead"><a class="btn soft s ib" href="#/routes" aria-label="Back to all routes">${svg(IC.back)}</a>
+        <div class="rh-t"><h1 class="rtitle">Bring in from n8n</h1><div class="rh-m mut sm">In n8n: open the workflow, then Download (or select all nodes and copy). Paste it here.</div></div></div>
+      <section class="card"><form id="n8nForm" class="pform">
+        <div class="fld"><label for="n8nText">The n8n workflow (its JSON)</label><div class="fc"><textarea id="n8nText" rows="10" class="mono" placeholder='{"name": "...", "nodes": [...], "connections": {...}}'></textarea></div>
+          <span class="fh">Or pick the file: <input type="file" id="n8nFile" accept=".json,application/json"></span></div>
+        <div class="crow"><button class="btn s" type="submit">Look at it first</button><span class="mut sm">Nothing is saved yet.</span></div></form></section>
+      <div id="n8nOut"></div>`;
+    let raw = '';
+    $('#n8nFile').addEventListener('change', async e => { const f = e.target.files[0]; if (f) { $('#n8nText').value = await f.text(); } });
+    const list = (rows, cls) => rows.map(r => `<li class="${cls}"><b>${esc(r.node)}</b>${r.as ? ' → ' + esc(r.as) : ''}${r.why ? ' — ' + esc(r.why) : ''}</li>`).join('');
+    $('#n8nForm').addEventListener('submit', async e => {
+      e.preventDefault(); raw = $('#n8nText').value.trim();
+      if (!raw) { toast('Paste the workflow first.', true); return; }
+      let p; try { p = await api('POST', '/api/route/import/n8n', {workflow: raw}); } catch (err) { toast(err.message, true); return; }
+      const R = p.report, c = p.counts;
+      $('#n8nOut').innerHTML = `<section class="card"><div class="hd"><h2>What it becomes</h2></div>
+          <div class="stats"><div class="stat"><span class="k">Came in</span><b>${c.converted}</b></div><div class="stat"><span class="k">To check</span><b>${c.check}</b></div>
+            <div class="stat"><span class="k">To redo in Hoola</span><b>${c.placeholders}</b></div><div class="stat"><span class="k">Left out</span><b>${c.skipped}</b></div></div>
+          <p class="sm">It starts: <b>${esc(((TKINDS.find(k => k[0] === p.trigger) || [])[1]) || p.trigger)}</b> · ${fmtN(p.steps.length)} step${p.steps.length === 1 ? '' : 's'} at the top level.</p>
+          ${c.placeholders ? `<div class="psub">To redo in Hoola</div><p class="mut sm">Each one is a step that stops the run with its reason, so nothing half-done runs. Replace it in the editor.</p><ul class="rep">${list(R.placeholders, 'ph')}</ul>` : ''}
+          ${c.check ? `<div class="psub">To check</div><ul class="rep">${list(R.check, 'ck')}</ul>` : ''}
+          ${c.skipped ? `<div class="psub">Left out</div><ul class="rep">${list(R.skipped, 'sk')}</ul>` : ''}
+          ${R.notes.length ? `<div class="psub">Good to know</div><ul class="rep">${R.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
+          <details><summary class="sm">Came in as</summary><ul class="rep">${list(R.converted, 'ok')}</ul></details>
+          <form id="n8nSave" class="pform"><div class="two">${field('Name of the new route', p.name, {k: 'n8nname', ref: false})}</div>
+            <div class="crow"><button class="btn s" type="submit">Bring it in</button><span class="mut sm">It stays off until you have read it and switch it on.</span></div></form></section>`;
+      $('#n8nSave').addEventListener('submit', async ev => {
+        ev.preventDefault();
+        const nm = (MAIN.querySelector('[data-k="n8nname"]') || {}).value || p.name;
+        try { const o = await api('POST', '/api/route/import/n8n', {workflow: raw, save: true, new_name: nm.trim().toLowerCase().replace(/\s+/g, '_')});
+          toast('Brought in. It is off until you switch it on.'); location.hash = '#/r/' + enc(o.workflow_id); }
+        catch (err) { toast(err.message, true); }
+      });
+    });
+  }
+
   async function viewTemplates() {
     shell(false); setNav('templates');
     const t = await api('GET', '/api/route/templates');
@@ -836,7 +934,7 @@
     clearTimeout(el._pv);
     if (!/\{\{[\s\S]*?\}\}/.test(el.value)) { out.hidden = true; return; }
     el._pv = setTimeout(async () => {
-      let r; try { r = await api('POST', `/api/route/routes/${enc(ED.r.id)}/eval`, {text: el.value, step: s.id}); } catch { return; }
+      let r; try { r = await api('POST', `/api/route/routes/${enc(ED.r.id)}/eval`, {text: el.value, step: s.id, run_id: ED.debug || ''}); } catch { return; }
       if (!document.body.contains(out)) return;
       out.hidden = false;
       if (r.errors && r.errors.length) { out.className = 'fprev bad'; out.textContent = r.errors.map(x => x.error).join(' · '); return; }
@@ -1394,11 +1492,33 @@
     });
   }
 
+  // ---------------------------------------------------------------- R8: a past run's data in the editor
+  function debugBanner(d, err) {
+    const b = $('#edBanner'); if (!b || !ED) return;
+    if (err) { b.innerHTML = `<span>${esc(err)}</span><a class="btn s soft" href="#/r/${enc(ED.r.id)}">Back to the newest data</a>`; b.hidden = false; return; }
+    const fail = d.failed_step ? ` It failed at <b>${esc(nice(d.failed_step))}</b>${d.error ? ': ' + esc(human(d.error)) : ''}.` : '';
+    b.innerHTML = `<span class="dbg">${svg(IC.play)}<span>Looking at the run from ${esc(at(d.at))} (${esc((RUNPILL[d.status] || ['', d.status || ''])[1])}).${fail} A step you test here works on that run's data.</span></span>
+      <span class="crow"><button class="btn s" type="button" id="dbgPin">Pin this run's data</button>
+      <button class="btn s soft" type="button" id="dbgAgain">Run again with the same data</button>
+      <a class="btn s soft" href="#/run/${enc(d.run_id)}">Open the run</a>
+      <a class="btn s soft" id="dbgOff" href="#/r/${enc(ED.r.id)}">Back to the newest data</a></span>`;
+    b.hidden = false; b.classList.add('debug');
+    $('#dbgPin').addEventListener('click', async () => {
+      try { const o = await api('POST', `/api/route/routes/${enc(ED.r.id)}/pins/from-run`, {run_id: d.run_id});
+        toast(`Pinned ${o.pinned.length} piece${o.pinned.length === 1 ? '' : 's'} of this run's data. Tests use it.${o.skipped.length ? ' ' + o.skipped.length + ' too big to pin.' : ''}`); }
+      catch (e) { toast(e.message, true); } });
+    $('#dbgAgain').addEventListener('click', async () => {
+      try { const o = await api('POST', `/api/route/runs/${enc(d.run_id)}/rerun`); toast('Running again with the same data.'); location.hash = '#/run/' + enc(o.run_id); }
+      catch (e) { toast(e.message, true); } });
+  }
+
   // ---------------------------------------------------------------- R2: a step with its data (in · settings · out)
   async function loadData() {
     if (!ED || !ED.r) return;
-    try { ED.data = await api('GET', `/api/route/routes/${enc(ED.r.id)}/data`); } catch { return; }
+    try { ED.data = await api('GET', `/api/route/routes/${enc(ED.r.id)}/data${ED.debug ? '?run_id=' + enc(ED.debug) : ''}`); }
+    catch (err) { if (ED && ED.debug) debugBanner(null, err.message); return; }
     if (!ED) return;
+    if (ED.debug) debugBanner(ED.data);
     draw();
     if (ED.modal) { modalIn(); modalOut(); }
   }
@@ -1581,7 +1701,7 @@
     if (ED.dirty && !(await save())) return;
     const b = $('#smTest'); if (b) { b.disabled = true; b.innerHTML = `<span class="dots"><i></i><i></i><i></i></span>Testing`; }
     let res;
-    try { res = await api('POST', `/api/route/routes/${enc(ED.r.id)}/steps/${enc(h.step.id)}/test`, {use_pins: true}); }
+    try { res = await api('POST', `/api/route/routes/${enc(ED.r.id)}/steps/${enc(h.step.id)}/test`, {use_pins: !ED.debug, run_id: ED.debug || ''}); }
     catch (e) { res = {ok: false, error: e.message, ms: 0}; }
     if (!ED) return;
     ED.stepRes = Object.assign({id: h.step.id}, res);
@@ -1626,13 +1746,14 @@
   }
 
   // ---------------------------------------------------------------- the editor page
-  async function viewEditor(id, tab) {
+  async function viewEditor(id, tab, runId) {
     const r = await api('GET', `/api/route/routes/${enc(id)}`);
     if (ED && ED.r && ED.r.id !== id) stopEditor();
     shell(true); setNav('routes');
     if (tab === 'runs' || tab === 'settings' || tab === 'versions') { await viewRouteTab(r, tab); return; }
     stopEditor();
-    ED = {r: null, steps: [], trig: {}, pos: {}, notes: [], sel: null, hist: [], fut: [], z: 1, px: 40, py: 80, dirty: false, runSt: {}, tab: 'ask', chat: null};
+    ED = {r: null, steps: [], trig: {}, pos: {}, notes: [], sel: null, hist: [], fut: [], z: 1, px: 40, py: 80, dirty: false, runSt: {}, tab: 'ask', chat: null,
+          debug: tab === 'debug' ? S(runId || '') : ''};
     load(r);
     MAIN.innerHTML = `<div class="ed">
       ${edTop(r, 'editor')}
@@ -1824,6 +1945,9 @@
           ${field('At most this many runs a day', S(st.runs_per_day || ''), {k: 'runs_per_day', ref: false, num: true, help: 'Empty = no limit'})}</div>
         <div class="two">${field('When it fails, run', st.error_route || '', {k: 'error_route', options: [['', 'Nothing'], ...others.map(x => [x.name, nice(x.name)])]})}
           ${field('Currency', st.currency || '', {k: 'currency', ref: false, ph: 'Like EUR, USD, INR'})}</div>
+        <div class="two">${field('Keep its runs for (days)', S(st.keep_runs_days || ''), {k: 'keep_runs_days', ref: false, num: true, help: '1-3650; empty = the server default'})}
+          ${field('Keep at most this many runs', S(st.keep_runs || ''), {k: 'keep_runs', ref: false, num: true, help: 'Empty = the server default'})}</div>
+        ${field('Minutes one run saves you', S(st.minutes_saved || ''), {k: 'minutes_saved', ref: false, num: true, help: 'Used for Time saved in Insights; empty = not counted'})}
         <div class="crow"><button class="btn s" type="submit" id="setSave">Save settings</button><span class="mut sm" id="setNote"></span></div></form></section>
       <section class="card"><div class="hd"><h2>Share</h2></div>
         <p class="mut sm">A link to look at this route - its steps in words, without any of its data or sign-ins. It works for 30 days.</p>
@@ -1844,7 +1968,8 @@
       const o = {};
       MAIN.querySelectorAll('#setForm [data-k]').forEach(el => { const v = el.value.trim(); if (v) o[el.dataset.k] = v; });
       if (o.tags) o.tags = o.tags.split(',').map(x => x.trim()).filter(Boolean);
-      ['stop_after_errors', 'runs_per_day'].forEach(k => { if (o[k]) o[k] = parseInt(o[k], 10) || o[k]; });
+      ['stop_after_errors', 'runs_per_day', 'keep_runs_days', 'keep_runs'].forEach(k => { if (o[k]) o[k] = parseInt(o[k], 10) || o[k]; });
+      if (o.minutes_saved) o.minutes_saved = parseFloat(o.minutes_saved) || o.minutes_saved;
       o.description = (MAIN.querySelector('#setForm [data-k="description"]') || {}).value || '';
       o.shared_with = Array.from(MAIN.querySelectorAll('[data-member]:checked')).map(x => x.dataset.member);
       return o;
@@ -1995,8 +2120,8 @@
   let LEAVE_OK = '';
   async function route() {
     const h = location.hash.replace(/^#\/?/, '');
-    const [a, b, c] = h.split('/');
-    if (ED && ED.dirty && !(a === 'r' && decodeURIComponent(b || '') === ED.r.id && !c) && LEAVE_OK !== h) {
+    const [a, b, c, d] = h.split('/');
+    if (ED && ED.dirty && !(a === 'r' && decodeURIComponent(b || '') === ED.r.id && (!c || c === 'debug')) && LEAVE_OK !== h) {
       // unsaved canvas changes: ask in the page before leaving
       banner('You have changes that are not saved.', false);
       const bn = $('#edBanner');
@@ -2009,9 +2134,11 @@
     LEAVE_OK = '';
     try {
       if (a === 'routes') await viewRoutes(b ? decodeURIComponent(b) : '');
-      else if (a === 'r' && b) await viewEditor(decodeURIComponent(b), c || '');
+      else if (a === 'r' && b) await viewEditor(decodeURIComponent(b), c || '', d ? decodeURIComponent(d) : '');
       else if (a === 'needs') await viewNeeds();
-      else if (a === 'runs') await viewRuns(b || '');
+      else if (a === 'runs') await viewRuns(b === 'find' ? '' : (b || ''), b === 'find' ? decodeURIComponent(c || '') : '');
+      else if (a === 'insights') await viewInsights(b || '');
+      else if (a === 'import') await viewImport();
       else if (a === 'run' && b) await viewRun(decodeURIComponent(b));
       else if (a === 'templates') await viewTemplates();
       else if (a === 'variables') await viewVariables();
