@@ -488,7 +488,7 @@
 #app .hcd-lab{display:block;margin-top:14px;font:500 12.5px/1.4 var(--fd);color:var(--lit)}
 #app .hcd-lab small{font-weight:400;color:var(--mut);margin-left:6px}
 #app .hcd-dlg textarea{width:100%;min-height:64px;margin-top:4px;padding:8px 12px;border:1px solid var(--hair2);border-radius:var(--rc);background:var(--surface);
-  font:400 12.5px/1.5 var(--fm, ui-monospace, monospace);color:var(--ink);resize:vertical;display:block}
+  font:400 12.5px/1.5 var(--mono, ui-monospace, monospace);color:var(--ink);resize:vertical;display:block}
 #app .hcd-dlg textarea:focus{outline:none;border-color:var(--pri);box-shadow:var(--focus)}
 #app .hcd-envnet{margin:0;padding:0;border:0}
 #app .hcd-envnet legend{padding:0}
@@ -1105,7 +1105,6 @@ html,body{background:var(--bg)}
 #app .hck-me>.hca-heard{margin-top:0}
 #app .hck-ho>.hca-gots{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
 #app .hck-bar [data-b="mic"][aria-pressed="true"]{background:var(--pri);color:var(--on-acc,#fff);box-shadow:0 0 0 4px var(--pri-soft)}   /* she is being heard */
-=======
 /* ==== v1.000 SAME AS HOOLA CHAT + CLAUDE CODE ===================================================================
    Owner (her Hoola Code screenshot beside Claude Code's): "IT LOOKS STALE AND DIFFERENT FROM APP SIDE DESIGN ... MAKE IT
    SAME AS CLAUDE CODE AND HOOLA CHAT". The warm-paper palette is gone (the tokens above now come from v2.css: white
@@ -1167,3 +1166,19 @@ html,body{background:var(--bg)}
 #app .hcd-home h1{font-family:'Literata',Georgia,serif;font-size:clamp(28px,5.4vw,38px);font-weight:var(--hck0-gw,330);line-height:1.2;letter-spacing:normal;font-variation-settings:"opsz" 48}
 #app .hcd .hck-bar textarea,#app .hcd .hck-bar textarea:focus,#app .hcd .hck-bar textarea::placeholder{font-size:16px;font-weight:var(--hck0-hw,430)}
 #app .hcd textarea::placeholder{font-weight:var(--hck0-hw,430)}
+
+/* ---- v0.999.245 HOOLA CODE FIX PASS: the mode / quality line under a session's box lines up with the box (it ran past
+   its right edge at every width) */
+#app .hcd-cpmeta{width:calc(100% - 48px);max-width:760px;margin:-12px auto 14px;padding:0 6px;box-sizing:border-box}
+/* a phone-width window: the slim bar keeps only named buttons (the bare status dots of sessions meant nothing without
+   their titles - Search opens the list), the session's top bar wraps onto two rows instead of running off the right
+   edge, and the home's settings chips wrap */
+@media (max-width:760px){
+  #app .hcd[data-side="min"] .hcd-side [data-tid]{display:none}
+  #app .hcd-top{height:auto;min-height:52px;flex-wrap:wrap;row-gap:6px;padding:8px 10px 8px 14px}
+  #app .hcd-top .hcd-title{max-width:calc(100% - 44px)}
+  #app .hcd-top>.hcd-flex{flex-basis:100%;height:0}
+  #app .hcd-top .hcd-prpill{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  #app .hcd-askrow{flex-wrap:wrap;row-gap:4px}
+  #app .hcd-askrow>.hcd-flex{display:none}
+}

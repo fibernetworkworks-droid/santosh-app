@@ -41,7 +41,7 @@ RISKDESK_TOOLS = [
          "cashflows": {"type": "array", "items": {"type": "number"}}, "discount_pct": {"type": "number"},
          "terminal_growth_pct": {"type": "number"}, "net_debt": {"type": "number"}, "shares": {"type": "number"},
          "txns": {"type": "array", "items": {"type": "object"}}, "window_minutes": {"type": "number"}, "max_count": {"type": "integer"},
-         "max_amount": {"type": "number"}, "trades": {"type": "array", "items": {"type": "object"}}, "product_name": {"type": "string"}},
+         "max_amount": {"type": "number"}, "trades": {"type": "array", "items": {"type": "object"}}, "product_name": {"type": "string"}, "fee_gst_pct": {"type": "number"}},
          "required": ["action"]}},
 ]
 RISKDESK_LABELS = {"risk_desk": "Preparing Risk Desk slips and checks"}
@@ -59,7 +59,7 @@ def _sync(action: str, a: dict[str, Any]) -> dict[str, Any]:
         return credit.underwrite(a.get("applicant") or {}, a.get("rules") or [])
     if action == "kfs":
         return credit.kfs(a.get("lender", ""), a.get("borrower", ""), a.get("product_name", ""), a.get("amount"), a.get("rate"), a.get("months"),
-                          a.get("fee_pct", 0), a.get("fee_fixed", 0), a.get("insurance", 0), a.get("other_upfront", 0), a.get("cooling_off_days"), a.get("grievance", ""))
+                          a.get("fee_pct", 0), a.get("fee_fixed", 0), a.get("insurance", 0), a.get("other_upfront", 0), a.get("cooling_off_days"), a.get("grievance", ""), a.get("fee_gst_pct"))
     if action == "dpd":
         return credit.dpd(a.get("accounts") or [], a.get("as_of"), a.get("npa_days", 90))
     if action == "ecl":

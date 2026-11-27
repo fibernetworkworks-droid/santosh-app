@@ -132,8 +132,8 @@ def test_tool_routes_and_console(env):
     js = open(TL.__file__.replace("agent/tools.py", "static/console/employees.js")).read()
     for k in ("household_money", "books_accounts", "tax_worldwide", "payroll_worldwide", "cash_treasury", "credit_lending",
               "firm_practice", "payments_desk", "institution_desk", "investments_desk", "markets_desk",
-              "community_finance", "digital_assets", "public_finance", "vitt_sahayak"):                                     # every finance-plan employee opens its desk in the console
-        own = {"books_accounts": "booksdesk", "payroll_worldwide": "payrolldesk", "tax_worldwide": "taxdesk", "cash_treasury": "cashdesk", "credit_lending": "creditdesk", "firm_practice": "firmdesk", "payments_desk": "paydesk", "institution_desk": "instdesk", "investments_desk": "invdesk", "markets_desk": "mktdesk", "community_finance": "cmdesk", "digital_assets": "dgdesk", "public_finance": "pbdesk", "vitt_sahayak": "fodesk"}                     # v0.999.158 / v0.999.169 their own sections
+              "community_finance", "digital_assets", "public_finance", "vitt_sahayak", "risk_desk"):                                     # every finance-plan employee opens its desk in the console
+        own = {"books_accounts": "booksdesk", "payroll_worldwide": "payrolldesk", "tax_worldwide": "taxdesk", "cash_treasury": "cashdesk", "credit_lending": "creditdesk", "firm_practice": "firmdesk", "payments_desk": "paydesk", "institution_desk": "instdesk", "investments_desk": "invdesk", "markets_desk": "mktdesk", "community_finance": "cmdesk", "digital_assets": "dgdesk", "public_finance": "pbdesk", "vitt_sahayak": "fodesk", "risk_desk": "rkdesk"}                     # v0.999.158 / v0.999.169 their own sections
         assert k in HI.CATALOG and f"{k}: '{own.get(k, 'deptdesk')}'" in js, k
     with pytest.raises(ToolError):
         asyncio.run(TL.dispatch("firm_practice", {"action": "clients", "firm": "x", "person": "y"},

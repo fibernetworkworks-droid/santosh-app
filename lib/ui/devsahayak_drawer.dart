@@ -6,6 +6,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../state.dart';
+import 'code/code_session.dart' show CodeSessionPage;
 import 'devsahayak_kit.dart';
 import 'devsahayak_new.dart';
 import 'devsahayak_screen.dart' show DevCodeSettingsPage;
@@ -16,9 +17,13 @@ import 'hoola_theme.dart';
 const List<String> _needsStatus = ['plan_wait', 'ready', 'checks_failed', 'refused'];
 
 /// Opens one session from anywhere in Hoola Code (from a session page it replaces that page).
+/// On the new look it opens the new-design session page (code_session.dart), like the Hoola Code home does.
 void devOpenSession(NavigatorState nav, Santosh app, String id, {bool replace = false}) {
   if (id.isEmpty) return;
-  final route = MaterialPageRoute<void>(builder: (_) => DevTaskPage(app: app, id: id));
+  final route = MaterialPageRoute<void>(
+      builder: (_) => app.newLook
+          ? HoolaTheme(appearance: app.appearance, child: CodeSessionPage(app: app, id: id))
+          : DevTaskPage(app: app, id: id));
   if (replace) {
     nav.pushReplacement(route);
   } else {

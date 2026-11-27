@@ -75,6 +75,15 @@ DOCKERFILE = Path(__file__).resolve().parents[3] / "deploy" / "devlab" / "Docker
 
 BASE_REV = "3"                # bump with any image change; lab_check compares it with what is built
 CHECK_TIMEOUT = 600          # seconds a check may run (her setting may lower it)
+
+
+def check_timeout() -> int:
+    """v0.999.245 the server's own ceiling for one check: dev_lab_timeout (was defined but never read; 600 by default)."""
+    try:
+        from ..config import get_settings
+        return max(30, int(getattr(get_settings(), "dev_lab_timeout", CHECK_TIMEOUT) or CHECK_TIMEOUT))
+    except Exception:   # noqa: BLE001
+        return CHECK_TIMEOUT
 SETUP_TIMEOUT = 1200         # ... and a one-time dependency install
 MEM = "2g"
 CPUS = "2"
@@ -251,8 +260,14 @@ def forget(tag: str) -> bool:
     return bool(d) and _run([d, "rmi", "-f", tag], 120)[0] == 0
 
 
-def prune(keep: int = 12) -> list[str]:
-    """Drop the oldest repo snapshots, newest `keep` kept (the base image is never dropped)."""
+def prune(keep: int | None = None) -> list[str]:
+    """Drop the oldest repo snapshots, newest `keep` kept (the base image is never dropped). No number = dev_lab_keep."""
+    if keep is None:
+        try:
+            from ..config import get_settings
+            keep = int(getattr(get_settings(), "dev_lab_keep", 12) or 12)
+        except Exception:   # noqa: BLE001
+            keep = 12
     rows = [r for r in images() if r["image"] != BASE_IMAGE]
     rows.sort(key=lambda r: r["at"], reverse=True)
     gone = []

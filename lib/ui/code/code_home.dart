@@ -48,7 +48,13 @@ class _HoolaCodeState extends State<HoolaCode> {
 
   Future<void> _load() async {
     final api = widget.app.api;
-    if (api == null) return;
+    if (api == null) {
+      // not signed in to a server yet: say so instead of a ring that turns for ever
+      await Future<void>.value();   // this can run from initState: setState only after it
+      if (mounted && _ov == null) setState(() => _error = codeLoadFailedLine);
+      return;
+    }
+    if (_error != null && _ov == null) setState(() => _error = null);
     _loadAuto();
     try {
       final r = await api.call('GET', '/api/devsahayak');
@@ -64,8 +70,9 @@ class _HoolaCodeState extends State<HoolaCode> {
         _poll?.cancel();
         _poll = null;
       }
-    } catch (e) {
-      if (mounted) setState(() => _error = '$e'.replaceFirst('Exception: ', ''));
+    } catch (_) {
+      // a failed reload keeps the list it has; only an empty screen shows the error
+      if (mounted && _ov == null) setState(() => _error = codeLoadFailedLine);
     }
   }
 
@@ -150,17 +157,7 @@ class _HoolaCodeState extends State<HoolaCode> {
           ),
           Expanded(
             child: ov == null
-                ? Center(
-                    child: _error == null
-                        ? const CodeRing(size: 22)
-                        : Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(mainAxisSize: MainAxisSize.min, children: [
-                              Text(_error!, textAlign: TextAlign.center, style: codeSans(c, color: c.ink2)),
-                              const SizedBox(height: 14),
-                              CodeOutline('Try again', onTap: _load, icon: Icons.refresh_rounded),
-                            ]),
-                          ))
+                ? (_error == null ? const Center(child: CodeRing(size: 22)) : CodeLoadFailed(onRetry: _load, text: _error!))
                 : RefreshIndicator(
                     onRefresh: _load,
                     color: c.ink,
@@ -223,11 +220,15 @@ class _HoolaCodeState extends State<HoolaCode> {
       if (old.isNotEmpty) ...[
         CodeSection('Earlier',
             trailing: by['old']!.length > 6
-                ? InkWell(
-                    onTap: () => setState(() => _all = !_all),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                      child: Text(_all ? 'Show less' : 'See all', style: codeSans(c, size: 13, color: c.ink2)),
+                ? Semantics(
+                    button: true,
+                    label: _all ? 'Show fewer earlier sessions' : 'See all earlier sessions',
+                    child: InkWell(
+                      onTap: () => setState(() => _all = !_all),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                        child: Text(_all ? 'Show less' : 'See all', style: codeSans(c, size: 13, color: c.ink2)),
+                      ),
                     ),
                   )
                 : null),
@@ -236,8 +237,33 @@ class _HoolaCodeState extends State<HoolaCode> {
           child: Column(children: [for (final (i, t) in old.indexed) _oldRow(c, t, last: i == old.length - 1)]),
         ),
       ],
+      _archivedLink(c),
     ];
   }
+
+  // The home leaves archived sessions out; this is the way to them (and to "Bring back from the archive").
+  Widget _archivedLink(HoolaColors c) => Padding(
+        padding: const EdgeInsets.only(top: 14),
+        child: Semantics(
+          button: true,
+          label: 'Archived sessions',
+          child: InkWell(
+            key: const ValueKey('code-home-archived'),
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => _go(CodeArchivedPage(app: widget.app)),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 48),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Row(children: [
+                Icon(Icons.archive_outlined, size: 18, color: c.ink3),
+                const SizedBox(width: 10),
+                Expanded(child: Text('Archived sessions', style: codeSans(c, size: 14, color: c.ink2))),
+                Icon(Icons.chevron_right_rounded, size: 20, color: c.ink3),
+              ]),
+            ),
+          ),
+        ),
+      );
 
   Widget _note(HoolaColors c, IconData icon, String title, String sub, VoidCallback onTap) => Padding(
         padding: const EdgeInsets.only(bottom: 12),
@@ -263,7 +289,7 @@ class _HoolaCodeState extends State<HoolaCode> {
     final secs = DateTime.now().difference(codeTime(cs(t['run_at']).isEmpty ? cs(t['at']) : cs(t['run_at'])) ?? DateTime.now()).inSeconds;
     final words = cs(t['question']).isNotEmpty ? 'Hoola asks you a question' : codeStatus(t);
     final (a, r) = codeStat(t);
-    return CodeCard(
+    final card = CodeCard(
       edge: need ? c.warn : null,
       onTap: () => _open(cs(t['id'])),
       padding: const EdgeInsets.fromLTRB(16, 12, 14, 12),
@@ -288,6 +314,7 @@ class _HoolaCodeState extends State<HoolaCode> {
         ]),
       ]),
     );
+    return Semantics(button: true, label: 'Open session ${codeTitle(t)}', child: card);
   }
 
   Widget _oldRow(HoolaColors c, Map<String, dynamic> t, {required bool last}) {
@@ -304,7 +331,10 @@ class _HoolaCodeState extends State<HoolaCode> {
         .where((e) => e.isNotEmpty)
         .join(' · ');
     final (a, r) = codeStat(t);
-    return InkWell(
+    return Semantics(
+      button: true,
+      label: 'Open session ${codeTitle(t)}',
+      child: InkWell(
       onTap: () => _open(cs(t['id'])),
       child: Container(
         constraints: const BoxConstraints(minHeight: 60),
@@ -322,6 +352,7 @@ class _HoolaCodeState extends State<HoolaCode> {
           const SizedBox(width: 8),
           CodeStat(a, r),
         ]),
+      ),
       ),
     );
   }

@@ -197,7 +197,7 @@ def check(repo: str, ref: str = "", token: str = "", cmd: str = "", hers: dict[s
         snap = snapshot(repo, work, setup or sp["setup"], sp["deps_key"])
         if not snap["ok"]:
             return {"ok": False, "stage": "setup", "why": snap["why"], "out": snap.get("out", ""), "spec": sp}
-        lim = timeout or sp.get("timeout") or box.CHECK_TIMEOUT
+        lim = timeout or sp.get("timeout") or box.check_timeout()
         r = box.run_in(snap["image"], work, f"set -o pipefail; cd {box.WORK}; {run_cmd}", timeout=int(lim),
                        network=False)
         logp = out.write_log(_log_folder(), f"{_slug(repo)}-{int(time.time())}", r["out"])
@@ -281,7 +281,7 @@ def run_on(ws: dict[str, Any], cmd: str = "", overlay: dict[str, str] | None = N
         if not snap["ok"]:
             return {"ok": False, "stage": "setup", "why": snap["why"], "out": snap.get("out", "")[-4000:]}
         ws["image"], ws["setup_seconds"], ws["snapshot_cached"] = snap["image"], snap["seconds"], snap["cached"]
-    lim = int(timeout or ws["spec"].get("timeout") or box.CHECK_TIMEOUT)
+    lim = int(timeout or ws["spec"].get("timeout") or box.check_timeout())
     r = box.run_in(ws["image"], ws["dir"], f"set -o pipefail; cd {box.WORK}; {run_cmd}", timeout=lim, network=False)
     ws["runs"] = int(ws.get("runs") or 0) + 1
     logp = out.write_log(_log_folder(), f"{_slug(ws['repo'])}-{label or 'check'}-{int(time.time())}", r["out"])

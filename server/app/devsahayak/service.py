@@ -12,8 +12,9 @@ How, in code:
   set ask_before_pr.
 * Every change is checked BEFORE commit: path rules, size limits, secrets / personal data in the diff (refused, nothing pushed),
   secure-coding warnings on added lines (OWASP Top 10 2025) and DPDP hints, a fix without a test is said plainly.
-* Hoola never runs repo code on the Hoola server: tests run in HER CI; Hoola reads the result via the Checks + Statuses API and can
-  try a fix for a failed check (its log text = data).
+* Repo code runs on Hoola's server ONLY inside the locked box (devlab: no network unless the repo's level allows it, no
+  keys, read-only root, its own user) - the working copy engine's tests and commands; the checks that count run in HER CI,
+  read via the Checks + Statuses API, and Hoola can try a fix for a failed check (its log text = data).
 * Review of her / her team's PRs: diff from the API -> findings by code + the model's comments (only on lines in the diff) ->
   DRAFT review card; posted only on her tap (any event incl. APPROVE, her choice) or, if she set review_post=direct, as COMMENT
   only. Hoola never approves by itself.
@@ -1627,7 +1628,7 @@ def _prepare(tenant: str, t: DevTask, out: dict[str, Any], read: list[dict[str, 
 
 
 def _pr_body(t: DevTask, out: dict[str, Any], warnings: list[dict[str, Any]], issue: int) -> str:
-    lines = [f"**{KINDS.get(t.kind, t.kind)} · {t.number}*** (by Hoola Code, for review)", "",
+    lines = [f"**{KINDS.get(t.kind, t.kind)} · {t.number}** (by Hoola Code, for review)", "",
              str(out.get("pr_summary") or "").strip() or "-"]
     if out.get("cause"):
         lines += ["", f"**Root cause:** {str(out['cause']).strip()}"]
@@ -1652,8 +1653,11 @@ def _pr_body(t: DevTask, out: dict[str, Any], warnings: list[dict[str, Any]], is
         for w in warnings[:20]:
             tag = f"{w['owasp']} {w['owasp_name']}: " if w.get("owasp") else ""
             lines.append(f"- `{w.get('path', '')}` +{w.get('line', 0)}: {tag}{w['say']}")
-    lines += ["", "---", "_Not merged. Tests run in this repo's CI; nothing was executed on Hoola's server. Merge / deploy only on the "
-                      "owner's tap._"]
+    # v0.999.245 said true: since the working-copy engine (v0.787) Hoola runs the repo's tests and commands itself, inside
+    # a locked box on Hoola's server (no internet unless the repo allows it, no keys); it used to say nothing ran there
+    lines += ["", "---", "_Not merged. Any tests or commands Hoola ran for this change ran in a locked box on Hoola's server "
+                      "(no keys; no internet unless this repo allows it); the checks that count are this repo's CI. Merge / "
+                      "deploy only on the owner's tap._"]
     return "\n".join(lines)[:60000]
 
 

@@ -665,3 +665,29 @@ class CodeSwitchRow extends StatelessWidget {
     );
   }
 }
+
+/// The words for a load that did not come back.
+const codeLoadFailedLine = 'Could not load. Check your connection.';
+
+/// A page whose load did not come back: one plain line and Try again, never a ring that turns for ever.
+class CodeLoadFailed extends StatelessWidget {
+  const CodeLoadFailed({super.key, required this.onRetry, this.text = codeLoadFailedLine});
+  final VoidCallback onRetry;
+  final String text;
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.cloud_off_rounded, size: 26, color: c.ink3),
+          const SizedBox(height: 10),
+          Text(text, textAlign: TextAlign.center, style: codeSans(c, color: c.ink2)),
+          const SizedBox(height: 14),
+          CodeOutline('Try again', onTap: onRetry, icon: Icons.refresh_rounded),
+        ]),
+      ),
+    );
+  }
+}

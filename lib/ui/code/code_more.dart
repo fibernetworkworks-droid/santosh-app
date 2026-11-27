@@ -18,9 +18,12 @@ Future<void> _openSession(BuildContext context, Santosh app, String id) async {
 
 /// The frame every one of these pages shares: the top bar and a pull-to-refresh list.
 class _Frame extends StatelessWidget {
-  const _Frame({required this.title, required this.loading, required this.onRefresh, required this.children, this.actions = const [], this.bottom});
+  const _Frame({required this.title, required this.loading, required this.onRefresh, required this.children, this.actions = const [], this.bottom,
+      this.failed = false});
   final String title;
   final bool loading;
+  /// The first load did not come back: a plain line and Try again instead of the ring.
+  final bool failed;
   final Future<void> Function() onRefresh;
   final List<Widget> children;
   final List<Widget> actions;
@@ -35,7 +38,7 @@ class _Frame extends StatelessWidget {
           CodeTopBar(title: title, actions: actions, line: false),
           Expanded(
             child: loading
-                ? const Center(child: CodeRing(size: 22))
+                ? (failed ? CodeLoadFailed(onRetry: onRefresh) : const Center(child: CodeRing(size: 22)))
                 : RefreshIndicator(
                     onRefresh: onRefresh,
                     color: c.ink,
@@ -61,7 +64,7 @@ class _CodePrsPageState extends State<CodePrsPage> {
   Map<String, dynamic>? _ov;
   List<Map<String, dynamic>> _prs = [];
   String _repo = '';
-  bool _busy = false, _prsLoading = false;
+  bool _busy = false, _prsLoading = false, _failed = false, _prsFailed = false;
   final Map<String, String> _event = {};
 
   @override
@@ -73,8 +76,13 @@ class _CodePrsPageState extends State<CodePrsPage> {
   List<String> get _repos => [for (final r in cl(_ov?['repos'])) if (cs(r['repo']).isNotEmpty) cs(r['repo'])];
 
   Future<void> _load() async {
+    if (_failed) setState(() => _failed = false);
     final r = await codeCall(context, widget.app, 'GET', '/api/devsahayak', quiet: true);
-    if (!mounted || r == null) return;
+    if (!mounted) return;
+    if (r == null) {
+      if (_ov == null) setState(() => _failed = true);
+      return;
+    }
     setState(() {
       _ov = r;
       if (!_repos.contains(_repo)) {
@@ -91,6 +99,7 @@ class _CodePrsPageState extends State<CodePrsPage> {
     final r = await codeCall(context, widget.app, 'GET', '/api/devsahayak/prs', query: {'repo': _repo}, quiet: true);
     if (mounted) setState(() {
       _prsLoading = false;
+      _prsFailed = r == null;
       _prs = cl(r?['prs']);
     });
   }
@@ -184,6 +193,7 @@ class _CodePrsPageState extends State<CodePrsPage> {
     return _Frame(
       title: 'Pull requests',
       loading: _ov == null,
+      failed: _failed,
       onRefresh: _load,
       actions: [
         if (_repos.isNotEmpty) CodeChip(cRepoShort(_repo), mono: true, chevron: true, onTap: _pickRepo),
@@ -215,7 +225,15 @@ class _CodePrsPageState extends State<CodePrsPage> {
             ),
         ],
         CodeSection('Open pull requests', trailing: _prsLoading ? const CodeRing(size: 14) : null),
-        if (!_prsLoading && _prs.isEmpty && _repos.isNotEmpty) Padding(padding: const EdgeInsets.fromLTRB(4, 0, 4, 4), child: Text('No open pull requests on ${cRepoShort(_repo)}.', style: codeSans(c, size: 14, color: c.ink3))),
+        if (!_prsLoading && _prsFailed && _repos.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+            child: Row(children: [
+              Expanded(child: Text(codeLoadFailedLine, style: codeSans(c, size: 14, color: c.ink2))),
+              CodeChip('Try again', icon: Icons.refresh_rounded, onTap: _loadPrs),
+            ]),
+          ),
+        if (!_prsLoading && !_prsFailed && _prs.isEmpty && _repos.isNotEmpty) Padding(padding: const EdgeInsets.fromLTRB(4, 0, 4, 4), child: Text('No open pull requests on ${cRepoShort(_repo)}.', style: codeSans(c, size: 14, color: c.ink3))),
         if (_prs.isNotEmpty)
           CodeCard(
             padding: EdgeInsets.zero,
@@ -362,7 +380,7 @@ class CodeScheduledPage extends StatefulWidget {
 
 class _CodeScheduledPageState extends State<CodeScheduledPage> {
   Map<String, dynamic>? _ov;
-  bool _busy = false;
+  bool _busy = false, _failed = false;
 
   @override
   void initState() {
@@ -371,8 +389,14 @@ class _CodeScheduledPageState extends State<CodeScheduledPage> {
   }
 
   Future<void> _load() async {
+    if (_failed) setState(() => _failed = false);
     final r = await codeCall(context, widget.app, 'GET', '/api/devsahayak', quiet: true);
-    if (mounted && r != null) setState(() => _ov = r);
+    if (!mounted) return;
+    if (r != null) {
+      setState(() => _ov = r);
+    } else if (_ov == null) {
+      setState(() => _failed = true);
+    }
   }
 
   Future<Map<String, dynamic>?> _act(String method, String path, [Object? body]) async {
@@ -484,6 +508,7 @@ class _CodeScheduledPageState extends State<CodeScheduledPage> {
     return _Frame(
       title: 'Scheduled tasks',
       loading: _ov == null,
+      failed: _failed,
       onRefresh: _load,
       actions: [CodeIconButton(icon: Icons.add_rounded, label: 'New scheduled task', onTap: _busy ? null : _new)],
       children: [
@@ -563,7 +588,7 @@ class CodeSettingsPage extends StatefulWidget {
 
 class _CodeSettingsPageState extends State<CodeSettingsPage> {
   Map<String, dynamic>? _ov;
-  bool _busy = false;
+  bool _busy = false, _failed = false;
   String _open = '';
 
   @override
@@ -573,8 +598,14 @@ class _CodeSettingsPageState extends State<CodeSettingsPage> {
   }
 
   Future<void> _load() async {
+    if (_failed) setState(() => _failed = false);
     final r = await codeCall(context, widget.app, 'GET', '/api/devsahayak', quiet: true);
-    if (mounted && r != null) setState(() => _ov = r);
+    if (!mounted) return;
+    if (r != null) {
+      setState(() => _ov = r);
+    } else if (_ov == null) {
+      setState(() => _failed = true);
+    }
   }
 
   Future<void> _act(String method, String path, [Object? body]) async {
@@ -741,6 +772,7 @@ class _CodeSettingsPageState extends State<CodeSettingsPage> {
     return _Frame(
       title: 'Repos & GitHub',
       loading: _ov == null,
+      failed: _failed,
       onRefresh: _load,
       children: [
         CodeCard(
@@ -892,6 +924,98 @@ class _CodeSettingsPageState extends State<CodeSettingsPage> {
             ]),
           ),
       ]),
+    );
+  }
+}
+
+// ============================================================================================== archived sessions
+/// The sessions she put in the archive (the home leaves them out). Opening one shows "Bring back from the archive"
+/// in its menu. The overview has no archived sessions, so this reads GET /tasks?archived=1.
+class CodeArchivedPage extends StatefulWidget {
+  const CodeArchivedPage({super.key, required this.app});
+  final Santosh app;
+  @override
+  State<CodeArchivedPage> createState() => _CodeArchivedPageState();
+}
+
+class _CodeArchivedPageState extends State<CodeArchivedPage> {
+  List<Map<String, dynamic>>? _tasks;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (_failed) setState(() => _failed = false);
+    final r = await codeCall(context, widget.app, 'GET', '/api/devsahayak/tasks', query: {'archived': '1', 'limit': '100'}, quiet: true);
+    if (!mounted) return;
+    if (r != null) {
+      setState(() => _tasks = cl(r['tasks']));
+    } else if (_tasks == null) {
+      setState(() => _failed = true);
+    }
+  }
+
+  Future<void> _open(String id) async {
+    await _openSession(context, widget.app, id);
+    if (mounted) await _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    final list = _tasks ?? const <Map<String, dynamic>>[];
+    return _Frame(
+      title: 'Archived sessions',
+      loading: _tasks == null,
+      failed: _failed,
+      onRefresh: _load,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+          child: Text('Sessions you archived. Everything in them is kept. Open one and use its menu to bring it back.',
+              style: codeSans(c, size: 14, color: c.ink2)),
+        ),
+        if (list.isEmpty) Padding(padding: const EdgeInsets.all(4), child: Text('No archived sessions.', style: codeSans(c, color: c.ink3))),
+        if (list.isNotEmpty)
+          CodeCard(
+            padding: EdgeInsets.zero,
+            child: Column(children: [
+              for (final (i, t) in list.indexed) _row(c, t, last: i == list.length - 1),
+            ]),
+          ),
+      ],
+    );
+  }
+
+  Widget _row(HoolaColors c, Map<String, dynamic> t, {required bool last}) {
+    final when = codeAgo(cs(t['updated']).isNotEmpty ? cs(t['updated']) : cs(t['at']));
+    final sub = [cRepoShort(cs(t['repo'])), codeStatus(t), when].where((e) => e.isNotEmpty).join(' · ');
+    return Semantics(
+      button: true,
+      label: 'Open archived session ${codeTitle(t)}',
+      child: InkWell(
+        onTap: () => _open(cs(t['id'])),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 60),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: c.sunk))),
+          child: Row(children: [
+            Icon(Icons.archive_outlined, size: 19, color: c.ink3),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(codeTitle(t), maxLines: 1, overflow: TextOverflow.ellipsis, style: codeSans(c, size: 14.5)),
+                Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: codeSans(c, size: 12.5, color: c.ink3)),
+              ]),
+            ),
+            Icon(Icons.chevron_right_rounded, color: c.ink3, size: 20),
+          ]),
+        ),
+      ),
     );
   }
 }

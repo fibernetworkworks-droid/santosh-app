@@ -12712,3 +12712,51 @@ Desktop wiring. Audit: AST list of every action the server sends (hub.call / cal
   know them.
 - Tests `server/tests/test_v0999_243_route_ai.py` (9 incl. a Chromium walk; the model is a scripted fake). NOT VERIFIED: with a
   real model on her server.
+## v0.999.244 RISK DESK (built as 0.999.243; owner: "NOW LETS WORK ON NEXT EMPLOYEE RISK DESK SAME WAY")
+
+The Risk Desk employee (`risk_desk`, the v0.603 riskdesk engine) gets its own section like the Finance Desk / Public Finance desks:
+`/console/risk` (`rkdesk.html/.js/.css`) + the Risk Desk chat (Conversation kind `risk`, `server/app/rkchat.py`, routes `/api/riskdesk/*`).
+
+- State in the workspace settings under `risk_desk`: registers holdings, targets, rules, loans, exposures, txns, trades (CSV or one row,
+  each a snapshot), lists applicants, tickets, offers, models, decisions and settings (limits, rates, as_of).
+- Portfolio & orders: weights, drift vs HER targets, breaches of HER mandate limits (none assumed; said when missing), rebalance proposals
+  with the portfolio manager's decision recorded; order tickets checked on HER order limits and broker rates - `placed` is always false.
+- Applications: HER policy rules (rules or applicant fields on religion / caste / gender / locality and proxies refused at entry), rule hits
+  as reason codes, the credit officer's decision recorded; key fact statements via `credit.kfs`, which gained `fee_gst_pct` (the desk passes
+  her tax on fees, 0 when she gives none - the engine's India 18% default no longer applies silently).
+- Loan book: days past due by band, the NPA line hers or 90 shown as the default from memory; ECL working paper on HER PD / LGD.
+- Surveillance: payment velocity only once she sets window + count; accounts kept as fingerprint + last 4; round-trip trades as evidence.
+- Valuation: DCF + sensitivity grid of HER cash flows and rates.
+- Wiring: main.py route + mount, convs/callconv kinds, santosh.py block + admission, employees.js `risk_desk: 'rkdesk'`, v2.js redirect,
+  phone `hoola_employees.dart`, test_fin_f7 own map.
+- Tests: `server/tests/test_rk_desk.py` (5, incl. a browser walk at 1440 and 390). NOT VERIFIED on her server.
+
+
+## v0.999.245 HOOLA CODE FIX PASS
+Hoola Code fix pass. Web `static/console/code.js` (hcdQual, P.rail out of the comment, share radio read, sideFresh 20 s, wsCard todo count only, no Model kv, locale dates, wording) + `hoolacode.css` (merge marker removed, --mono, FIX PASS block: .hcd-cpmeta width, 760 px rules). Phone `lib/ui/code/` (code_kit CodeLoadFailed + codeLoadFailedLine; code_more _failed + CodeArchivedPage; code_vps; code_home _archivedLink + Semantics; code_session / code_made plain errors, setState after the first await; NEW code_env.dart CodeEnvPage; code_start opens it; devsahayak_drawer devOpenSession -> CodeSessionPage when newLook). Server `devsahayak/service.py` (_pr_body heading + true footer, module doc), WIRING.md, `config.py` (5 dev_* settings), `devlab/box.py` (check_timeout, prune default), `devlab/service.py`, `devlab/__main__.py`, `devsahayak/vps.py` (Look only refuses, _idle_too_long auto-off in check_in, poll_s in config), `deploy/hoola-vps/agent.py` 1.1.0 (CONF, not_allowed, _program, _inside, time limit). Tests `test_v0999_245_code_fix_pass.py` (7); test_v0794 share now ticks 'Anyone with the link'. NOT VERIFIED on her server / phone.
+
+## v0.999.246 ACCOUNTS, VARIABLES, SETTINGS, VERSIONS, SHARING (R7 of the Hoola Route plan; owner: "GO R7"; built as 0.999.244 / 0.999.245, their RISK DESK and HOOLA CODE FIX PASS took 0.999.243-0.999.245, all kept)
+
+- `server/app/route/workspace.py` (new), tables in dhara.db: route_vars, route_creds, route_versions, route_shares.
+- Variables: {{env.NAME}} in every route (ctx["env"] at each run segment; `env` is an expression root in dhara_data). Up to 100,
+  20 KB each; a value that looks like a key (sk_live_, AKIA, ghp_, xox, a JWT, a private key) is refused - it belongs in a sign-in.
+- Sign-ins: bearer | header | basic | query | oauth2 (client credentials, token kept in memory until it runs out, token address
+  SSRF-guarded). Sealed with the house vault (bazar.security), listed as name / kind / site / last 4 / last use only, never in a
+  run, never seen by the AI. An http step's `auth: NAME` is applied at run time only when the request's host is the sign-in's
+  site (or a subdomain of it) - another site = the step fails with why.
+- Accounts: GET /api/route/accounts = her mailboxes (MailAccount) + Google accounts (googlehub.status); a tool step whose tool takes
+  `account` gets a "Which account" choice.
+- Settings: PUT /api/route/routes/<id>/settings = description, folder, tags (10), time zone, stop after errors, runs a day, error
+  route (another route), currency, shared_with (team member ids, checked against AI Employees > Team); validate_settings gained
+  tags + shared_with.
+- Versions: save_workflow keeps a version at every save (skipped when nothing changed; 50 kept); GET versions (what changed in
+  words: added / removed / changed steps), GET one, POST restore = through the engine's checks, saved as a new version with a note.
+- Sharing: a read-only link /route-view/<t> (its steps in words - labels, kinds, tool names, branches; never args, texts or data;
+  30 days; Stop the link); team members in shared_with may run the route from their own Hoola (dhara_run + the employee gate let a
+  staff actor run only a shared route, audited); dhara_save / dhara_control / dhara_dsl refuse staff and customer actors.
+- Files: GET /routes/<id>/export (keys left out), POST /api/route/import (the engine's checks, lands off, 409 on a taken name).
+- Page: Settings tab = the whole settings form + Share (link, team members) + As a file + Delete; a Versions tab with Bring back;
+  sidebar Variables and Sign-ins pages; "Sign in with" on web requests; "Which account" on tool steps; tags on route rows + found by
+  search; "Bring in a file" on All routes.
+- Tests `server/tests/test_v0999_246_route_workspace.py` (11 incl. a Chromium walk). NOT VERIFIED: on her server, a real OAuth2
+  site, a real team member's run.

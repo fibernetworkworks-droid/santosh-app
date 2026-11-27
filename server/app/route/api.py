@@ -190,6 +190,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
                 "steps": len(_walk(wf.get("steps") or [])), "runs_30d": n30,
                 "last_run": ({"id": last["id"], "status": last["status"], "at": last.get("created_at")} if last else None),
                 "next_due_at": wf.get("next_due_at"), "status": _status(wf, last),
+                "tags": (wf.get("settings") or {}).get("tags") or [],
                 "errors_in_a_row": int(wf.get("consecutive_errors") or 0)}
 
     def _days7(tenant: str, wf_id: str) -> list[dict]:
@@ -295,6 +296,8 @@ def make_router(require_key, current_tenant) -> APIRouter:
         out["public_url"] = TR.public_address(tenant, wf)
         if wf.get("trigger_kind") == "event":
             out["poll"] = TR.poll_state(tenant, wf["id"])
+        from . import workspace as WS                # v0.999.246 ROUTE R7
+        out["share"] = WS.share_state(tenant, wf["id"])
         m = E.meta(tenant, wf["id"])
         out["layout"] = {"pos": m["pos"], "notes": m["notes"]}
         out["version"] = wf.get("updated_at")
@@ -537,6 +540,130 @@ def make_router(require_key, current_tenant) -> APIRouter:
             E.forget(tenant, wf["id"])
             return {"deleted": wf["id"], "name": wf["name"]}
         return await run(go)
+
+    # ---------------------------------------------------------------- v0.999.246 ROUTE R7: accounts, variables, sign-ins,
+    # settings, versions, sharing
+    from . import workspace as WS
+
+    def _ws(fn, *a):
+        try:
+            return fn(*a)
+        except WS.WorkspaceError as e:
+            raise HTTPException(400, str(e))
+        except ToolError as e:
+            raise HTTPException(400, str(e))
+
+    @r.get("/variables")
+    async def route_vars(tenant: str = Depends(current_tenant)):
+        return {"variables": await run(WS.variables, tenant)}
+
+    @r.put("/variables/{name}")
+    async def route_var_set(name: str, body: dict = Body(...), tenant: str = Depends(current_tenant)):
+        return await run(_ws, WS.set_variable, tenant, name, (body or {}).get("value"), str((body or {}).get("note") or ""))
+
+    @r.delete("/variables/{name}")
+    async def route_var_drop(name: str, tenant: str = Depends(current_tenant)):
+        await run(WS.drop_variable, tenant, name)
+        return {"deleted": name}
+
+    @r.get("/credentials")
+    async def route_creds(tenant: str = Depends(current_tenant)):
+        """Her saved sign-ins: names, kinds, sites and the last 4 - never the secret itself."""
+        return {"credentials": await run(WS.credentials, tenant), "kinds": list(WS.CRED_KINDS)}
+
+    @r.post("/credentials")
+    async def route_cred_save(body: dict = Body(...), tenant: str = Depends(current_tenant)):
+        return await run(_ws, WS.save_credential, tenant, body or {})
+
+    @r.delete("/credentials/{name}")
+    async def route_cred_drop(name: str, tenant: str = Depends(current_tenant)):
+        await run(WS.drop_credential, tenant, name)
+        return {"deleted": name}
+
+    @r.get("/accounts")
+    async def route_accounts(tenant: str = Depends(current_tenant)):
+        return {"accounts": await run(WS.accounts, tenant)}
+
+    @r.get("/team")
+    async def route_team(tenant: str = Depends(current_tenant)):
+        def go():
+            try:
+                from ..employee import service as ES
+                return [{"id": m["id"], "name": m["name"], "role": m["role"], "active": m["active"]} for m in ES.team(tenant)]
+            except Exception:   # noqa: BLE001
+                return []
+        return {"team": await run(go)}
+
+    @r.put("/routes/{wf_id}/settings")
+    async def route_settings(wf_id: str, body: dict = Body(...), tenant: str = Depends(current_tenant)):
+        """Every route setting from the page: folder, tags, time zone, switch off after errors, error route, runs a day,
+        currency, the description and the team members who may run it."""
+        def go():
+            wf = _wf_or_404(tenant, wf_id)
+            b = dict(body or {})
+            desc = str(b.pop("description", wf.get("description") or ""))[:500]
+            settings = _ws(D.validate_settings, b, tenant)
+            er = settings.get("error_route")
+            if er and (er == wf["name"] or D.get_workflow(tenant, name=er) is None):
+                raise HTTPException(400, "The error route must be another of your routes")
+            new, _ = D.save_workflow(tenant, wf["name"], desc, wf["trigger_kind"], wf.get("trigger_spec") or {}, wf.get("steps") or [],
+                                     settings=settings, note="Settings changed")
+            if new["trigger_kind"] == "schedule":
+                con = D._con(tenant)
+                try:
+                    con.execute("UPDATE workflows SET next_due_at = ? WHERE id = ?", (D.next_due(new), new["id"]))
+                    con.commit()
+                finally:
+                    con.close()
+            return _full(tenant, D.get_workflow(tenant, wf_id=new["id"]))
+        return await run(go)
+
+    @r.get("/routes/{wf_id}/versions")
+    async def route_versions(wf_id: str, tenant: str = Depends(current_tenant)):
+        wf = await run(_wf_or_404, tenant, wf_id)
+        return {"versions": await run(WS.versions, tenant, wf["id"])}
+
+    @r.get("/routes/{wf_id}/versions/{vid}")
+    async def route_version(wf_id: str, vid: str, tenant: str = Depends(current_tenant)):
+        wf = await run(_wf_or_404, tenant, wf_id)
+        v = await run(WS.version, tenant, wf["id"], vid)
+        if v is None:
+            raise HTTPException(404, "That version is not kept any more")
+        return D._masked(v)
+
+    @r.post("/routes/{wf_id}/versions/{vid}/restore")
+    async def route_restore(wf_id: str, vid: str, tenant: str = Depends(current_tenant)):
+        def go():
+            wf = _wf_or_404(tenant, wf_id)
+            return _full(tenant, _ws(WS.restore, tenant, wf, vid))
+        return await run(go)
+
+    @r.post("/routes/{wf_id}/share")
+    async def route_share(wf_id: str, tenant: str = Depends(current_tenant)):
+        """A read-only link to look at this route (its steps in words; no data, no sign-ins) for 30 days."""
+        wf = await run(_wf_or_404, tenant, wf_id)
+        return await run(WS.share_make, tenant, wf["id"])
+
+    @r.delete("/routes/{wf_id}/share")
+    async def route_share_stop(wf_id: str, tenant: str = Depends(current_tenant)):
+        wf = await run(_wf_or_404, tenant, wf_id)
+        await run(WS.share_stop, tenant, wf["id"])
+        return {"on": False}
+
+    @r.get("/routes/{wf_id}/export")
+    async def route_export(wf_id: str, tenant: str = Depends(current_tenant)):
+        """The route as a file (keys and addresses left out) to keep or bring into another account."""
+        wf = await run(_wf_or_404, tenant, wf_id)
+        return await run(D.dsl_export, tenant, wf)
+
+    @r.post("/import")
+    async def route_import(body: dict = Body(...), tenant: str = Depends(current_tenant)):
+        """Bring in a route file: the engine's own checks, and it lands switched off."""
+        out = await D.dhara_dsl(Ctx(tenant_id=tenant, conversation_id=""), action="import", dsl=(body or {}).get("dsl"),
+                                new_name=str((body or {}).get("new_name") or ""))
+        if not out.get("ok"):
+            raise HTTPException(409, out.get("note") or "That route name is taken")
+        return out
 
     # ---------------------------------------------------------------- v0.999.240 ROUTE R5 triggers
     @r.get("/triggers")

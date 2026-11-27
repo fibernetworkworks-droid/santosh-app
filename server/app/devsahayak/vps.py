@@ -235,6 +235,18 @@ def _poll_s() -> int:
     return 20
 
 
+def _idle_too_long(s, row: DevServer) -> bool:
+    """v0.999.245 her "remove the helper after N idle days" (auto_off_days, 0 = never) was stored and shown but nothing
+    acted on it: idle = no command proposed for this server (or since pairing) for that many days."""
+    days = int(row.auto_off_days or 0)
+    if days <= 0:
+        return False
+    last = s.scalars(select(DevServerCmd.created_at).where(DevServerCmd.server_id == row.id)
+                     .order_by(DevServerCmd.created_at.desc()).limit(1)).first()
+    since = _aware(last) or _aware(row.created_at)
+    return bool(since) and now() - since > timedelta(days=days)
+
+
 def _agent_config_by_id(sid: str) -> dict[str, Any]:
     with session() as s:
         srv = s.get(DevServer, sid)
@@ -250,6 +262,7 @@ def _agent_config(srv: DevServer) -> dict[str, Any]:
         "access": srv.access, "folders": _folders(srv), "admin_cmds": [str(x) for x in _j(srv.admin_cmds or "[]")],
         "auto_off_days": int(srv.auto_off_days or 0), "removing": srv.status in ("removing", "removed"),
         "cmd_timeout_s": int(getattr(get_settings(), "dev_vps_cmd_timeout_s", 900)),
+        "poll_s": _poll_s(),        # v0.999.245 the helper reads poll_s from here (it was only at the top of the enroll reply)
     }
 
 
@@ -276,6 +289,8 @@ def check_in(token: str, facts: dict[str, Any] | None = None) -> dict[str, Any]:
             row.facts = _dump(_clean_facts(facts))
         if row.status == "offline":
             row.status = "online"
+        if row.status not in ("removing", "removed") and _idle_too_long(s, row):
+            row.status = "removing"            # v0.999.245 auto-off: enforced HERE, so every helper (even 1.0.0) removes itself
         removing = row.status in ("removing", "removed")
         cfg = _agent_config(row)
         if removing:
@@ -333,6 +348,9 @@ def propose(tenant: str, sid: str, cmd: str, folder: str = "", reason: str = "",
         srv = _own(s, tenant, sid)
         folder = (folder or (_folders(srv)[0] if _folders(srv) else "~")).strip()
         lane, why = classify(cmd, folder, srv)
+        if srv.access == "look" and lane not in ("reads", "refuse"):
+            # v0.999.245 "Look only" promises nothing changes: a change is refused, never queued for a tap
+            lane, why = "refuse", "changes something, and this server is set to Look only"
         online = _online(srv)
         auto = lane in ("reads", "trusted")
         c = DevServerCmd(tenant_id=tenant, server_id=sid, task_id=task_id, cmd=cmd[:4000], folder=folder[:300],

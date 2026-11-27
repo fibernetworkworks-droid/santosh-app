@@ -437,6 +437,16 @@ def gate(ctx, tool: str, args: dict[str, Any]) -> dict[str, Any] | None:
     actor = getattr(ctx, "actor", "owner") or "owner"
     if actor.startswith(("approved:", "api:")) or tool == "employee":
         return None     # v0.877 "api:<key>" = a company's own programmatic call (Hoola Agent API): the catalogue allowlist, wallet and key limits are its gate
+    if tool == "dhara_run" and actor.startswith("staff:"):   # v0.999.246: a route the owner shared with this team member
+        try:
+            from ..agent import dhara_tools as D
+            from ..route import workspace as WS
+            wf = D.get_workflow(tenant, name=str((args or {}).get("name") or "").lower(), wf_id=str((args or {}).get("workflow_id") or ""))
+            if wf is not None and WS.team_may_run(tenant, actor, wf):
+                _audit(tenant, actor, "routes", tool, "action", "done", f"ran the shared route {wf['name']}")
+                return None
+        except Exception:   # noqa: BLE001
+            pass
     with session() as s:
         p = _row(s, tenant)
         if p is None or not p.enabled:

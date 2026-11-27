@@ -29,7 +29,7 @@ class CodeServersPage extends StatefulWidget {
 
 class _CodeServersPageState extends State<CodeServersPage> {
   List<Map<String, dynamic>> _servers = [];
-  bool _loading = true;
+  bool _loading = true, _failed = false, _loaded = false;
 
   @override
   void initState() {
@@ -38,10 +38,22 @@ class _CodeServersPageState extends State<CodeServersPage> {
   }
 
   Future<void> _load() async {
+    if (_failed) {
+      setState(() {
+        _failed = false;
+        _loading = true;
+      });
+    }
     final r = await codeCall(context, widget.app, 'GET', '/api/devsahayak/servers', quiet: true);
     if (!mounted) return;
     setState(() {
-      _servers = cl(r?['servers']);
+      if (r != null) {
+        // a failed reload keeps the list it had; only a first load that failed shows the error
+        _servers = cl(r['servers']);
+        _loaded = true;
+      } else if (!_loaded) {
+        _failed = true;
+      }
       _loading = false;
     });
   }
@@ -77,7 +89,9 @@ class _CodeServersPageState extends State<CodeServersPage> {
         child: Column(children: [
           CodeTopBar(title: 'Servers', line: false),
           Expanded(
-            child: _loading
+            child: _failed
+                ? CodeLoadFailed(onRetry: _load)
+                : _loading
                 ? const Center(child: CodeRing(size: 22))
                 : RefreshIndicator(
                     onRefresh: _load,
@@ -285,7 +299,7 @@ class CodeServerPage extends StatefulWidget {
 
 class _CodeServerPageState extends State<CodeServerPage> {
   Map<String, dynamic>? _s;
-  bool _busy = false;
+  bool _busy = false, _failed = false;
 
   @override
   void initState() {
@@ -294,8 +308,14 @@ class _CodeServerPageState extends State<CodeServerPage> {
   }
 
   Future<void> _load() async {
+    if (_failed) setState(() => _failed = false);
     final r = await codeCall(context, widget.app, 'GET', '/api/devsahayak/servers/${widget.id}', quiet: true);
-    if (mounted && r != null) setState(() => _s = r);
+    if (!mounted) return;
+    if (r != null) {
+      setState(() => _s = r);
+    } else if (_s == null) {
+      setState(() => _failed = true);
+    }
   }
 
   Future<void> _put(Map<String, dynamic> body) async {
@@ -323,7 +343,7 @@ class _CodeServerPageState extends State<CodeServerPage> {
           CodeTopBar(title: cs(s?['name']).isEmpty ? 'Server' : cs(s?['name']), line: false),
           Expanded(
             child: s == null
-                ? const Center(child: CodeRing(size: 22))
+                ? (_failed ? CodeLoadFailed(onRetry: _load) : const Center(child: CodeRing(size: 22)))
                 : RefreshIndicator(
                     onRefresh: _load,
                     color: c.ink,

@@ -22,7 +22,7 @@ import '../shell/hoola_credits.dart' show HoolaCreditsPage, hoolaCountry;
 import '../shell/hoola_quality.dart' show hoolaTierLoad, hoolaTierName, hoolaTierNow, showHoolaTierSheet;
 import '../shell/hoola_settings.dart' show hoolaOpenNew;
 import '../shell/hoola_tool_icons.dart' show svgPath;
-import '../devsahayak_new.dart' show DevEnvPage;
+import 'code_env.dart';
 import 'code_home.dart';
 import 'code_kit.dart';
 import 'code_more.dart';
@@ -625,8 +625,7 @@ class _CodeNewSessionPageState extends State<CodeNewSessionPage> {
             ]));
     if (!mounted || pick == null) return;
     if (pick == '+new') {
-      final saved = await Navigator.push<Map<String, dynamic>>(
-          context, MaterialPageRoute(builder: (_) => DevEnvPage(app: widget.app, netOn: _envs['net_on'] == true)));
+      final saved = await codePush<Map<String, dynamic>>(context, widget.app, CodeEnvPage(app: widget.app, netOn: _envs['net_on'] == true));
       if (saved == null || !mounted) return;
       await _load();
       if (mounted && cs(saved['id']).isNotEmpty) setState(() => _env = cs(saved['id']));

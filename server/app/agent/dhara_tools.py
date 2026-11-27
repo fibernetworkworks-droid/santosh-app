@@ -186,9 +186,10 @@ def _run_row(r: sqlite3.Row | None) -> dict[str, Any] | None:
 
 def save_workflow(tenant_id: str, name: str, description: str, trigger_kind: str,
                   trigger_spec: dict, steps: list, conversation_id: str = "",
-                  settings: dict | None = None) -> tuple[dict, bool]:
+                  settings: dict | None = None, note: str = "") -> tuple[dict, bool]:
     """Insert or update by name. Returns (row, created). Keeps id / created_at on update;
-    a webhook token is generated once and kept unless the trigger kind changed away and back."""
+    a webhook token is generated once and kept unless the trigger kind changed away and back.
+    v0.999.246: every save keeps a version of the route (route/workspace.keep_version)."""
     now_ = time.time()
     con = _con(tenant_id)
     try:
@@ -218,9 +219,15 @@ def save_workflow(tenant_id: str, name: str, description: str, trigger_kind: str
                 con.execute("UPDATE workflows SET settings = ? WHERE id = ?", (json.dumps(settings), wid))
             created = False
         con.commit()
-        return _wf_row(con.execute("SELECT * FROM workflows WHERE id = ?", (wid,)).fetchone()), created
+        row = _wf_row(con.execute("SELECT * FROM workflows WHERE id = ?", (wid,)).fetchone())
     finally:
         con.close()
+    try:
+        from ..route import workspace as WS
+        WS.keep_version(tenant_id, row, note)
+    except Exception:   # noqa: BLE001  (a version is a help, never a reason a save fails)
+        pass
+    return row, created
 
 
 def get_workflow(tenant_id: str, name: str = "", wf_id: str = "") -> dict[str, Any] | None:
@@ -541,6 +548,8 @@ def validate_steps(steps: list) -> list[dict]:
                 raise ToolError(f"Step '{sid}': http needs a url")
             if str(st_.get("method") or "GET").upper() not in ("GET", "POST"):
                 raise ToolError(f"Step '{sid}': http method can be only GET or POST (v1)")
+            if st_.get("auth") not in (None, "") and not re.match(r"^[A-Za-z_][A-Za-z0-9_]{0,49}$", str(st_["auth"])):
+                raise ToolError(f"Step '{sid}': auth must be the name of a saved sign-in")
         if "on_error" in st_:
             st_["on_error"] = validate_on_error(st_.get("on_error"), sid)
             if st_["on_error"] is None:
@@ -1399,6 +1408,12 @@ async def _http_step(tenant_id: str, step: dict, ctx: dict) -> dict:
     guard = await asyncio.to_thread(st._guard_url, url)
     method = str(step.get("method") or "GET").upper()
     headers = {str(k): str(v) for k, v in (resolve(step.get("headers") or {}, ctx) or {}).items()}
+    if step.get("auth"):                     # v0.999.246 ROUTE R7: a saved sign-in, only for its own site
+        from ..route import workspace as WS
+        try:
+            guard, headers = await asyncio.to_thread(WS.apply_auth, tenant_id, str(step["auth"]), guard, headers)
+        except WS.WorkspaceError as e:
+            raise ToolError(str(e))
     body = resolve(step.get("body"), ctx) if method == "POST" else None
     timeout = httpx.Timeout(15.0)
 
@@ -1474,6 +1489,11 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
         ctx["_deadline"] = time.time() + max(0.0, timeout_s - used)
         ctx["_tz"] = str((wf.get("settings") or {}).get("timezone") or "")
         ctx["_route"] = wf["name"]
+        try:                                     # v0.999.246 ROUTE R7: her variables, read as {{env.NAME}}
+            from ..route import workspace as WS
+            ctx["env"] = WS.env(tenant_id)
+        except Exception:   # noqa: BLE001
+            ctx["env"] = {}
         if _has_call_wait(wf["steps"]):
             _resume_link(ctx, run_id)
         child = bool(ctx.get("_parent"))
@@ -1948,6 +1968,24 @@ def validate_settings(st: Any, tenant_id: str = "") -> dict:
         out["error_route"] = er
     if st.get("currency"):
         out["currency"] = str(st["currency"]).upper()[:3]
+    if st.get("tags") not in (None, "", []):          # v0.999.246 ROUTE R7: tags to find routes by
+        tags = st["tags"] if isinstance(st["tags"], list) else str(st["tags"]).split(",")
+        tags = [str(x).strip().lower()[:30] for x in tags if str(x).strip()]
+        if len(tags) > 10:
+            raise ToolError("Up to 10 tags on a route")
+        out["tags"] = list(dict.fromkeys(tags))
+    if st.get("shared_with") not in (None, "", []):   # team members who may run it from their own Hoola
+        ids = [str(x) for x in (st["shared_with"] if isinstance(st["shared_with"], list) else [st["shared_with"]])]
+        if tenant_id:
+            try:
+                from ..employee import service as ES
+                team = {m["id"] for m in ES.team(tenant_id)}
+            except Exception:   # noqa: BLE001
+                team = set(ids)
+            bad = [i for i in ids if i not in team]
+            if bad:
+                raise ToolError("Share only with people in your team (AI Employees > Team)")
+        out["shared_with"] = list(dict.fromkeys(ids))[:50]
     return out
 
 
@@ -2153,9 +2191,15 @@ def _fmt_wf(wf: dict, run: dict | None = None) -> dict[str, Any]:
     return out
 
 
+def _owner_only(ctx: Ctx) -> None:
+    if str(getattr(ctx, "actor", "") or "").startswith(("staff:", "customer:")):
+        raise ToolError("Only the owner changes routes; a team member can run a route shared with them")
+
+
 async def dhara_save(ctx: Ctx, name, steps, description="", trigger="manual", trigger_spec=None, settings=None, **_):
     """Create/update one of her workflows: validated hard BEFORE anything is stored."""
     from ..config import get_settings
+    _owner_only(ctx)
     s = get_settings()
     if not getattr(s, "dhara_enabled", True):
         raise ToolError("DHARA is turned off on this server (dhara_enabled=false)")
@@ -2164,7 +2208,7 @@ async def dhara_save(ctx: Ctx, name, steps, description="", trigger="manual", tr
         raise ToolError("Give the workflow name in lowercase_with_underscores (like daily_morning_report)")
     kind = str(trigger or "manual").lower()
     from ..route import triggers as TR
-    st_norm = validate_settings(settings) if settings is not None else None
+    st_norm = validate_settings(settings, ctx.tenant_id) if settings is not None else None
     spec = TR.validate(kind, dict(trigger_spec or {}), st_norm)   # v0.999.240: every trigger kind, checked in one place
     norm = validate_steps(steps)
     wf, created = save_workflow(ctx.tenant_id, nm, str(description or ""), kind, spec, norm,
@@ -2218,6 +2262,10 @@ async def dhara_run(ctx: Ctx, name="", workflow_id="", vars=None, **_):
     wf = get_workflow(ctx.tenant_id, name=str(name or "").lower(), wf_id=str(workflow_id or ""))
     if wf is None:
         raise ToolError("No workflow with this name found — check dhara_list")
+    if str(getattr(ctx, "actor", "") or "").startswith("staff:"):   # v0.999.246: a team member runs only routes shared with them
+        from ..route import workspace as WS
+        if not WS.team_may_run(ctx.tenant_id, ctx.actor, wf):
+            raise ToolError("This route is not shared with this team member")
     if not wf.get("enabled", 0):
         raise ToolError(f'"{wf["name"]}" is disabled right now — turn it on with dhara_control action=enable')
     v = dict(vars) if isinstance(vars, dict) else {}
@@ -2255,6 +2303,7 @@ async def dhara_runs(ctx: Ctx, run_id="", workflow_id="", limit=8, **_):
 
 async def dhara_control(ctx: Ctx, action, name="", workflow_id="", run_id="", **_):
     """enable | disable | stop | approve — the house decides on HER word; the agent relays it here."""
+    _owner_only(ctx)
     act = str(action or "").lower()
     if act in ("enable", "disable"):
         wf = get_workflow(ctx.tenant_id, name=str(name or "").lower(), wf_id=str(workflow_id or ""))
@@ -2371,6 +2420,7 @@ async def dhara_dsl(ctx: Ctx, action: str, name: str = "", workflow_id: str = ""
     """export (workflow -> a portable JSON envelope, secrets-free) | import (the SAME hard validator,
     lands disabled, she enables it). Backup, migrate between tenants, share a proven recipe."""
     from ..config import get_settings
+    _owner_only(ctx)
     s = get_settings()
     if not getattr(s, "dhara_enabled", True) or not getattr(s, "dhara_dsl_enabled", True):
         raise ToolError("DHARA DSL is turned off on this server (dhara_dsl_enabled=false)")
@@ -2477,7 +2527,10 @@ DHARA_TOOLS = [
         "{category, matched, reason} | extract {text, fields {name: what it is}} -> an object of those fields | sentiment "
         "{text} -> {label, score} | answer {question, files [file ids], text, knowledge true} -> {answer, found, sources} (only "
         "from those) | agent {prompt, tools ['sheet_read', ...] (only these, up to 15), max_steps 1-10, memory none|on, "
-        "memory_key} -> {answer, used}. A router may carry ai {text, instructions}: the AI picks ONE way by its label."),
+        "memory_key} -> {answer, used}. A router may carry ai {text, instructions}: the AI picks ONE way by its label. "
+        "v0.999.246: her variables {{env.NAME}}; an http step may carry auth '<sign-in name>' (saved on the Route page under "
+        "Sign-ins - never ask for a key in chat; it is only sent to its own site); settings also take tags [..] and "
+        "shared_with [team member ids] (they may run it, never change it); every save is kept as a version."),
      "input_schema": {"type": "object", "properties": {
          "name": {"type": "string", "description": "lowercase_with_underscores, unique, e.g. daily_morning_notice_check"},
          "steps": {"type": "array", "description": "The steps: [{id, type, ...}] — see the tool guide for each type's fields"},

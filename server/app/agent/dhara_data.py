@@ -212,7 +212,7 @@ FUNCS: dict[str, Any] = {
     "to_date": lambda v: _iso(_dt(v)),
 }
 _NAMES = {"true": True, "false": False, "null": None, "none": None}
-_ROOTS = ("vars", "steps", "item")
+_ROOTS = ("vars", "steps", "item", "env")   # v0.999.246: env = her route variables
 _BIN = {ast.Add: lambda a, b: a + b, ast.Sub: lambda a, b: a - b, ast.Mult: lambda a, b: a * b, ast.Div: lambda a, b: a / b,
         ast.FloorDiv: lambda a, b: a // b, ast.Mod: lambda a, b: a % b, ast.Pow: lambda a, b: a ** b}
 _CMP = {ast.Eq: lambda a, b: a == b, ast.NotEq: lambda a, b: a != b, ast.Lt: lambda a, b: a < b, ast.LtE: lambda a, b: a <= b,
@@ -242,7 +242,7 @@ def _ev(n: ast.AST, ctx: dict, budget: list) -> Any:
             return _NAMES[k.lower()]
         if k in FUNCS:
             raise ExprError(f"{k} is a function - write {k}( )")
-        raise ExprError(f"Unknown name '{k}' - start with vars, steps or item")
+        raise ExprError(f"Unknown name '{k}' - start with vars, steps, item or env")
     if isinstance(n, ast.Attribute):
         return _get(_ev(n.value, ctx, budget), n.attr)
     if isinstance(n, ast.Subscript):
@@ -367,7 +367,7 @@ def check(src: str) -> str:
         if isinstance(n, ast.Call) and not (isinstance(n.func, ast.Name) and n.func.id in FUNCS):
             return f"Unknown function '{n.func.id if isinstance(n.func, ast.Name) else 'that'}'"
         if isinstance(n, ast.Name) and n.id not in _ROOTS and n.id.lower() not in _NAMES and n.id not in FUNCS:
-            return f"Unknown name '{n.id}' - start with vars, steps or item"
+            return f"Unknown name '{n.id}' - start with vars, steps, item or env"
         if isinstance(n, (ast.Lambda, ast.ListComp, ast.DictComp, ast.SetComp, ast.GeneratorExp, ast.Starred,
                           ast.NamedExpr, ast.JoinedStr, ast.Await, ast.Yield, ast.YieldFrom, ast.Set)):
             return "That is not allowed in an expression"

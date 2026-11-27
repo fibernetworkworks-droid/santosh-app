@@ -3980,3 +3980,16 @@ Work Log:
 
 Stage Summary:
 - v0.999.243; deploy with Actions > VPS ops > deploy. R7 (accounts, variables, settings, versions, sharing) next on her word.
+
+---
+Task ID: route-workspace-r7
+Agent: main
+Task: Hoola Route R7 - accounts, variables, settings, versions, sharing (owner: "GO R7")
+
+Work Log:
+- route/workspace.py: variables, sealed sign-ins (site-bound), accounts, versions + restore, share links, team runs.
+- Engine hooks (versions on save, env, http auth, staff guards), API, page (Settings / Versions tabs, Variables, Sign-ins).
+- Renumbered 244 -> 246 (main moved to the Risk Desk and the Hoola Code fix pass).
+
+Stage Summary:
+- v0.999.246; deploy with Actions > VPS ops > deploy. R8 (runs, insights, n8n import) next on her word.
