@@ -25,7 +25,7 @@ TRIGGERS = {"manualTrigger": "manual", "start": "manual", "scheduleTrigger": "sc
             "interval": "schedule", "webhook": "webhook", "formTrigger": "form", "chatTrigger": "chat",
             "errorTrigger": "error", "executeWorkflowTrigger": "route", "rssFeedReadTrigger": "event",
             "gmailTrigger": "event", "googleSheetsTrigger": "event", "googleDriveTrigger": "event",
-            "googleCalendarTrigger": "event", "mcpTrigger": "tool"}
+            "googleCalendarTrigger": "event", "mcpTrigger": "tool", "telegramTrigger": "webhook"}
 SUB_NODE = re.compile(r"(lmChat|lmOpenAi|lm[A-Z]|memory|tool[A-Z]|toolWorkflow|embeddings|vectorStore|outputParser|"
                       r"textSplitter|document[A-Z]|retriever|reranker)")
 OPS = {"equals": "eq", "equal": "eq", "notEquals": "ne", "notEqual": "ne", "contains": "contains",
@@ -127,6 +127,7 @@ class _Conv:
         # their own Hoola step; a later {{ $json.<that field> }} reads that step's output instead
         self.fieldmap: dict[tuple[str, str], str] = {}
         self.trig_app = ""
+        self.sends = False           # v0.999.278 SENDING: it has Send steps (her Allow sending tap is needed)
         self.textsrc: set = set()
         self.report: dict[str, list] = {"converted": [], "check": [], "placeholders": [], "skipped": [], "notes": []}
 
@@ -252,7 +253,9 @@ class _Conv:
                                         "fails in its Settings (When it fails)")
         if not starts:
             return "", "manual", {}, settings
-        starts.sort(key=lambda n: (0 if _short(n.get("type")) in TRIGGERS else 1,
+        conns = self.doc.get("connections") or {}
+        starts.sort(key=lambda n: (0 if any(any(o) for o in ((conns.get(n["name"]) or {}).get("main") or [])) else 1,
+                                   0 if _short(n.get("type")) in TRIGGERS else 1,
                                    (n.get("position") or [0, 0])[0] if isinstance(n.get("position"), list) else 0))
         main, rest = starts[0], starts[1:]
         for n in rest:
@@ -266,6 +269,10 @@ class _Conv:
         self.done.add(name)
         if kind == "schedule":
             spec = self._schedule(name, t, p)
+        elif kind == "webhook" and t == "telegramTrigger":       # v0.999.278 SENDING: her Telegram bot starts it
+            self.report["notes"].append("It starts when someone writes to your Telegram bot: save the bot's token under "
+                                        "Sign-ins (kind Telegram), then tap Connect the bot on the route's page")
+            self.refs[name] = "vars.body"
         elif kind == "webhook":
             self.report["notes"].append("It starts when data is sent to its address. Its n8n address does not move: "
                                         "make the new address on the route's page and give it to the sender")
@@ -1026,13 +1033,27 @@ class _Conv:
                 return None
             to = p.get("toEmail") if t == "emailSend" else (p.get("sendTo") or p.get("toList"))
             body = p.get("message") if t == "gmail" else (p.get("text") or p.get("html") or p.get("message"))
-            args = {"to": E(to or ""), "subject": E(p.get("subject") or ""), "body": E(body or "")}
-            if not args["to"]:
-                args.pop("to")
+            if res == "draft":
+                args = {"to": E(to or ""), "subject": E(p.get("subject") or ""), "body": E(body or "")}
+                if not args["to"]:
+                    args.pop("to")
+                    self.check(name, "Say who the mail goes to")
+                return then({"id": sid, "type": "tool", "name": "email_draft", "args": args}, f"steps.{sid}.output", "email")
+            # v0.999.278 SENDING: a mail n8n sent at once is a real Send step - it goes from her mailbox once she
+            # allows the route to send (the route's page), never before
+            o = p.get("options") or p.get("additionalFields") or {}
+            step: dict[str, Any] = {"id": sid, "type": "send", "via": "email", "to": E(to or ""),
+                                    "subject": E(p.get("subject") or ""), "body": E(body or "")}
+            for k, src in (("cc", "ccList"), ("cc", "ccEmail"), ("bcc", "bccList"), ("bcc", "bccEmail")):
+                if o.get(src) and not step.get(k):
+                    step[k] = E(o.get(src))
+            if str(p.get("emailType") or p.get("emailFormat") or "") == "html" or (t == "emailSend" and p.get("html")):
+                step["markdown"] = False
+            if not step["to"]:
+                step.pop("to")
                 self.check(name, "Say who the mail goes to")
-            if res != "draft":
-                self.check(name, "n8n sent this mail at once; here it is a draft that waits for your OK in Hoola")
-            return then({"id": sid, "type": "tool", "name": "email_draft", "args": args}, f"steps.{sid}.output", "email")
+            self.sends = True
+            return then(step, f"steps.{sid}.output", "email")
         if t == "gmail" and res == "message" and op == "reply":
             return then({"id": sid, "type": "tool", "name": "email_draft",
                          "args": {"reply_to_id": E(p.get("messageId") or ""), "body": E(p.get("message") or "")}},
@@ -1081,24 +1102,61 @@ class _Conv:
         return None
 
     def _message(self, name: str, sid: str, t: str, op: str, p: dict, prev: str, stop: set, then):
+        """v0.999.278 SENDING: a post to Telegram / Slack / Discord / Mattermost is a real Send step through her saved
+        sign-in for that app (Sign-ins); a reply to whoever wrote to her Telegram bot goes back to that chat."""
         app = {"telegram": "Telegram", "slack": "Slack", "discord": "Discord", "mattermost": "Mattermost"}[t]
+        E = lambda v: self.expr(v, prev, name)                      # noqa: E731
         res = str(p.get("resource") or "message")
-        if res != "message" or (op and op not in ("sendMessage", "post", "send")):
+        photo = None
+        if t == "telegram" and op == "sendPhoto" and not p.get("binaryData") and p.get("file"):
+            photo = p.get("file")
+        elif res != "message" or (op and op not in ("sendMessage", "post", "send", "sendLegacy")):
             return None
+        o = p.get("additionalFields") or p.get("otherOptions") or p.get("options") or {}
         text = p.get("text") or p.get("content") or p.get("message")
-        if not text:
+        if not text and t == "slack" and isinstance(p.get("attachments"), list) and p["attachments"]:
+            text = (p["attachments"][0] or {}).get("text") or (p["attachments"][0] or {}).get("fallback")
+        if photo:
+            text = o.get("caption") or ""
+        if not text and not photo:
             return None
-        if self.trig_app == t:
-            return self.placeholder(name, f"it answers people who write to a {app} bot; connect {app} in Connections "
-                                    "and use its 'send message' action here", prev, stop)
-        where = p.get("chatId") or p.get("channelId") or p.get("channel") or p.get("webhookUri") or ""
-        self.check(name, f"n8n posted this to {app}" + (f" ({_rl(where)[:60]})" if where and not str(_rl(where)).startswith("=")
-                   else "") + "; here Hoola tells you in your Hoola chat. To post to " + app +
-                   " instead, connect it in Connections and swap this step")
-        said = self.expr(text, prev, name)
-        if not str(said).strip():
+        step: dict[str, Any] = {"id": sid, "type": "send", "via": t, "text": E(text or "")}
+        if not str(step["text"]).strip() and not photo:
             return None
-        return then({"id": sid, "type": "notify", "text": said}, prev, "tell me")
+        if photo:
+            step["photo"] = E(photo)
+        if t == "telegram":
+            step["chat"] = E(p.get("chatId") or "")
+            pm = str(o.get("parse_mode") or "")
+            if pm:
+                step["format"] = "html" if pm.upper() == "HTML" else "markdown"
+            if o.get("disable_notification"):
+                step["silent"] = True
+            if not step["chat"]:
+                self.check(name, "Say which Telegram chat it goes to (a chat id)")
+        elif t == "slack":
+            ch = p.get("channelId") or p.get("channel") or (p.get("user") if p.get("select") == "user" else "")
+            step["channel"] = E(self._rlv(ch) if isinstance(ch, dict) else ch or "")
+            if p.get("messageType") == "block" or (isinstance(p.get("attachments"), list) and p["attachments"]):
+                self.check(name, "n8n sent Slack blocks / attachments; here it sends the words only")
+        elif t == "discord":
+            ch = p.get("channelId")
+            step["channel"] = E(self._rlv(ch) if isinstance(ch, dict) else ch or "")
+            if p.get("webhookUri") and "<" not in str(p["webhookUri"]):
+                self.check(name, "n8n posted through a Discord webhook: save it under Sign-ins (kind Discord) and "
+                                 "pick it on this step")
+        else:
+            ch = p.get("channelId")
+            step["channel"] = E(self._rlv(ch) if isinstance(ch, dict) else ch or "")
+        step = {k: v for k, v in step.items() if v not in ("", None) or k == "text"}
+        if (p.get("replyMarkup") and p.get("replyMarkup") != "none") or p.get("inlineKeyboard"):
+            self.check(name, f"n8n showed buttons under the {app} message; here it sends the words only")
+        if t == "telegram" and self.trig_app == "telegram":
+            self.check(name, "It answers whoever wrote to your Telegram bot: on the route's page, Connect the bot")
+        else:
+            self.check(name, f"It posts to {app}: save a {app} sign-in under Sign-ins and pick it on this step")
+        self.sends = True
+        return then(step, f"steps.{sid}.output", app)
 
     def placeholder(self, name: str, why: str, prev: str, stop: set, extra: str = "") -> tuple[list[dict], str, str]:
         step = self.place(name, why, prev, extra)
@@ -1500,6 +1558,9 @@ class _Conv:
             elif _short(nd.get("type")) == "stickyNote" and nm not in self.done and nd.get("parameters", {}).get("content"):
                 self.report["notes"].append("Note in n8n: " + str(nd["parameters"]["content"])[:300])
         self._tidy(steps)
+        if self.sends:
+            self.report["notes"].append("It sends messages. Nothing goes out until you tap Allow sending on the route's "
+                                        "page; a test run shows what it would send and sends nothing.")
         self.report["notes"].append("n8n runs a step once for every item; a Hoola step runs once with the whole list. "
                                     "Where a step must run per item, put it in a Repeat for each.")
         name = _slug(str(self.doc.get("name") or "n8n_route"), set(), "route")

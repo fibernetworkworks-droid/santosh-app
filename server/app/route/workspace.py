@@ -23,7 +23,8 @@ from urllib.parse import urlparse
 VAR_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,49}$")
 VARS_MAX = 100
 VAR_BYTES = 20_000
-CRED_KINDS = ("bearer", "header", "basic", "query", "oauth2")
+CRED_KINDS = ("bearer", "header", "basic", "query", "oauth2", "telegram", "slack", "discord", "mattermost")
+MSG_KINDS = ("telegram", "slack", "discord", "mattermost")      # v0.999.278 SENDING: used only by a Send step
 CREDS_MAX = 50
 VERSIONS_KEEP = 50
 SHARE_DAYS = 30
@@ -142,6 +143,8 @@ def save_credential(tenant: str, body: dict) -> dict:
     kind = str(body.get("kind") or "")
     if kind not in CRED_KINDS:
         raise WorkspaceError(f"The kind of sign-in must be one of: {', '.join(CRED_KINDS)}")
+    if kind in MSG_KINDS:
+        return _save_messaging(tenant, name, kind, body)
     host = _host(body.get("host"))
     need = {"bearer": ("token",), "header": ("header", "value"), "basic": ("user", "password"), "query": ("param", "value"),
             "oauth2": ("token_url", "client_id", "client_secret")}[kind]
@@ -178,6 +181,78 @@ def save_credential(tenant: str, body: dict) -> dict:
     return {"name": name, "kind": kind, "host": host, "hint": _hint(secret)}
 
 
+_TG_TOKEN = re.compile(r"^\d{5,15}:[A-Za-z0-9_-]{30,60}$")
+
+
+def _save_messaging(tenant: str, name: str, kind: str, body: dict) -> dict:
+    """v0.999.278 SENDING: a Telegram bot token, a Slack / Discord / Mattermost webhook or bot token. Sealed like every
+    sign-in; only a Send step uses it, only towards its own app."""
+    g = {k: str(body.get(k) or "").strip() for k in ("token", "webhook", "server")}
+    keep: dict[str, str] = {}
+    if kind == "telegram":
+        if not _TG_TOKEN.match(g["token"]):
+            raise WorkspaceError("A Telegram bot token looks like 123456789:AA... (from @BotFather)")
+        keep, host, secret = {"token": g["token"]}, "api.telegram.org", g["token"]
+    elif kind == "slack":
+        if g["webhook"]:
+            if not g["webhook"].startswith("https://hooks.slack.com/services/"):
+                raise WorkspaceError("A Slack webhook starts with https://hooks.slack.com/services/")
+            keep, secret = {"webhook": g["webhook"]}, g["webhook"]
+        elif g["token"].startswith(("xoxb-", "xoxp-")):
+            keep, secret = {"token": g["token"]}, g["token"]
+        else:
+            raise WorkspaceError("Give a Slack incoming webhook (https://hooks.slack.com/services/...) or a bot token (xoxb-...)")
+        host = "slack.com"
+    elif kind == "discord":
+        if g["webhook"]:
+            if not re.match(r"^https://(discord|discordapp)\.com/api/webhooks/\d+/[A-Za-z0-9_-]+$", g["webhook"]):
+                raise WorkspaceError("A Discord webhook looks like https://discord.com/api/webhooks/<number>/<key>")
+            keep, secret = {"webhook": g["webhook"].replace("discordapp.com", "discord.com")}, g["webhook"]
+        elif len(g["token"]) >= 50:
+            keep, secret = {"token": g["token"]}, g["token"]
+        else:
+            raise WorkspaceError("Give a Discord channel webhook, or a bot token")
+        host = "discord.com"
+    else:
+        if g["webhook"]:
+            if not g["webhook"].startswith("https://") or "/hooks/" not in g["webhook"]:
+                raise WorkspaceError("A Mattermost incoming webhook looks like https://your-server/hooks/<key>")
+            keep, secret, host = {"webhook": g["webhook"]}, g["webhook"], _host(g["webhook"])
+        else:
+            if not g["server"].startswith("https://") or len(g["token"]) < 20:
+                raise WorkspaceError("Give a Mattermost incoming webhook, or your server (https://...) and a bot token")
+            keep, secret, host = {"server": g["server"].rstrip("/"), "token": g["token"]}, g["token"], _host(g["server"])
+    con = _con(tenant)
+    try:
+        n = con.execute("SELECT COUNT(*) FROM route_creds WHERE name != ?", (name,)).fetchone()[0]
+        if n >= CREDS_MAX:
+            raise WorkspaceError(f"Up to {CREDS_MAX} sign-ins")
+        con.execute("INSERT OR REPLACE INTO route_creds (name, kind, host, sealed, hint, note, created_at, used_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, NULL)",
+                    (name, kind, host, _vault().seal(json.dumps(keep)), _hint(secret), str(body.get("note") or "")[:200], time.time()))
+        con.commit()
+    finally:
+        con.close()
+    return {"name": name, "kind": kind, "host": host, "hint": _hint(secret)}
+
+
+def messaging_secret(tenant: str, name: str, kind: str) -> dict:
+    """The sealed Telegram / Slack / Discord / Mattermost sign-in, opened for a Send step of that same app only."""
+    con = _con(tenant)
+    try:
+        r = con.execute("SELECT * FROM route_creds WHERE name = ?", (str(name),)).fetchone()
+        if r is not None:
+            con.execute("UPDATE route_creds SET used_at = ? WHERE name = ?", (time.time(), str(name)))
+            con.commit()
+    finally:
+        con.close()
+    if r is None:
+        raise WorkspaceError(f"There is no saved sign-in named {name}")
+    if r["kind"] != kind:
+        raise WorkspaceError(f"The sign-in {name} is not a {kind.capitalize()} sign-in")
+    return json.loads(_vault().open(r["sealed"]))
+
+
 def drop_credential(tenant: str, name: str) -> None:
     con = _con(tenant)
     try:
@@ -209,6 +284,8 @@ def apply_auth(tenant: str, name: str, url: str, headers: dict) -> tuple[str, di
     host = urlparse(url).hostname or ""
     if not _host_ok(host, r["host"]):
         raise WorkspaceError(f"The sign-in {name} is only for {r['host']} - this request goes to {host or 'an unknown site'}")
+    if r["kind"] in MSG_KINDS:
+        raise WorkspaceError(f"The sign-in {name} is for a Send step ({r['kind'].capitalize()}), not a web request")
     d = json.loads(_vault().open(r["sealed"]))
     h = dict(headers or {})
     kind = r["kind"]

@@ -13222,3 +13222,223 @@ Built:
 Tests: tests/test_v0999_264_workflow_library.py (11): the shipped index, search / filters / pages, sha256 check + server copy,
 keys taken out, the new nodes, a bot reply not turned into a message to her, unreadable expressions, most of the library comes in,
 the three routes, a browser walk (desktop + phone width), the version. NOT VERIFIED on her server (GitHub reachable from it).
+
+
+## v0.999.270 NOC DESK (owner: "NOC same as finance desks")
+
+The NOC (ISP network) employee (hire key `noc`) gets its own section like the finance desks: `/console/noc` (`static/console/ncdesk.html/.js/.css`)
+with the NOC chat (Conversation kind `noc`, `server/app/ncchat.py`, routes `/api/ncdesk/{chat, chat/new, chat/{conv}/ok, desk, do/{part}}`) beside the
+desk's pages, on the existing NOC engine (`server/app/ispnoc`):
+- Today: needs (changes waiting for her tap, faults without a ticket, tickets past SLA, collectors offline, no network / country / teams), tiles,
+  open faults, the alarm box, 30 days (faults by kind with time to fix, by PON, teams in SLA, tips).
+- Faults: the alarm box (OLT log / syslog / SNMP trap / alert email as data, which OLT), list by status; one fault = affected / how sure / who fixes /
+  due, what happened + why + where to go (Maps), tickets (WhatsApp / call / on site / fixed), open a ticket, the customer message (copy text + numbers,
+  open in WhatsApp - she sends it), a change card from Hoola's suggestion, affected customers (phones masked), close it (fixed / not a real fault), log.
+- Tickets: open tickets with their SLA. Changes: each card with its commands and the way back, how to do it yourself, edit, approve (asked twice on the
+  page) / decline with the hash, "done, it worked" after she ran it; ask for a change.
+- Network: OLTs (add / remove), customers with light and state (search), CSV import (a password column ignored), the light budget.
+- Collectors: on her own network, the secret shown once, may run approved changes or reads only, the collector script download.
+- Settings: ISP, country, model, upstream, optics, morning time, alarm window, franchise SLA hours, rules, teams, hours to fix by kind.
+GLOBAL: `IspnocSettings.country` (new nullable column, "" = India as before); `service.india()` - TRAI's outage notes, the Telecom Cyber Security Rules
+and the BSNL franchise lines only for India, elsewhere a large outage says 'check this' for her own regulator (`OTHER_OUTAGE`); `_phone` keeps an Indian
+mobile as 10 digits and any other number as +country code, `_mask_phone` / `_tel` / the WhatsApp link follow it; team names neutral ("Electricity
+company", "BSNL / the ISP you are a franchise of"); the change risk line in English ("Affects N customers", was "Asar"). Tool `noc action=settings` and
+PUT /api/ispnoc/settings take `country`. Tests `server/tests/test_nc_desk.py` (5 incl. a browser walk at 1440 and 390). NOT VERIFIED on her server, with
+a real OLT or a real collector.
+
+
+## v0.999.271 3D STUDIO DESK (owner: "3D Studio same as finance desks")
+
+The 3D Studio artist (hire key `blender_3d`) gets its own section like the finance desks: `/console/3d` (`static/console/b3desk.html/.js/.css`)
+with the 3D chat (Conversation kind `studio3d`, `server/app/b3chat.py`, routes `/api/b3desk/{chat, chat/new, chat/{conv}/ok, desk, do/{part}}`) beside
+the desk's pages, on the existing 3D Studio engine (`server/app/blender3d`, real Blender in a locked box):
+- Today: models, being built (live bar), Blender ready or not, sizes unit, needs (Blender missing, a model that could not be built, open edges before
+  printing, first model, usual choices), files by format, latest models as cards.
+- Make a model: six idea cards that fill the brief, name, files (GLB / STL / OBJ / FBX / USDZ / .blend), up to 4 views, quality, picture shape, style,
+  background, 360 degree video, 3D print, transparent.
+- Models: cards with a filter; one model = the build bar + Stop while it builds (the page follows it every 4 s), renders, the spin video, size in her
+  units, parts, triangles, print check, downloads (signed links), what to look at, change it in words (a new version) or new files / views without
+  words, earlier versions, the Blender script, delete (asked twice on the page).
+- Settings: sizes in mm / cm or inches, her usual choices (used for every new model, her choice on a job wins), Blender on the server, what Hoola never makes.
+Engine: NEW `blender3d.service.B3Settings` (table `blender3d_settings`: defaults, units) + `settings` / `save_settings`; `start` merges her defaults;
+the stage word and the result line English ("ready", was "taiyaar"), the tool says "AI-generated" (was "AI se bana"). Tests `server/tests/test_b3_desk.py`
+(4 incl. a browser walk at 1440 and 390). PRE-EXISTING red, not this release: `test_v141_blender.py::test_tool_and_refusals` expects the old Hinglish
+word 'suraksha' (fails on untouched main too). NOT VERIFIED on her server with real Blender.
+
+
+## v0.999.272 ENGINE LIKE CLAUDE CODE
+(owner, after the read of anthropics/claude-code: 'Build items 1, 2, 3, 4 and 8-9 first'): Hoola Code's engine now works like Claude Code's in six places. (1) PARALLEL READS: the read-only calls of one reply (read / glob / grep / ls / web_fetch / web_search) that no rule or PreToolUse hook must decide run side by side (`engine.parallel_reads`, `dev_parallel_width` 8) - only the run BEFORE the first call that may change something, so a read after an edit always sees the edit; one that fails never cancels another. (2) BIG OUTPUTS SAVED: a tool result over 50K characters (bash over 30K, MCP over 30K) is kept whole in the session folder and the model gets its start, its end and a path - `read @out/oN.txt` by lines, `grep` with path @out/oN.txt (`Tools.spill`, newest 50 kept). (3) FALLBACK MODELS: when Claude is overloaded / down / the connection drops / the model is not found, the same request goes to up to 3 backup models (`dev_fallback_models`, `brain.fallback_worthy`); credit, rate-limit, bad-request and too-long errors still show at once; a model that does not exist is skipped from then on; compaction uses the chain too; the page says which model answered. (4) COMPACTION GUARDS: 'prompt is too long' = summarise and ask once more; 3 failed summaries = no more tries this round (trim instead); 3 summaries within 2 steps of each other = the round stops and says something in it is too big; a session over ~200k tokens idle for 4 minutes is summarised THROUGH ITS OWN CACHED REQUEST (the round's system prompt + tools saved in prefix.json, the conversation, plus one line) just before the 5-minute prompt cache runs out, once per idle spell (`engine.idle_compact`, `service._idle_compact`, Claude brain only). (8) 11 MORE HOOK EVENTS - SubagentStart, PermissionRequest (a hook answers the prompt for her: allow / deny / changed input), PermissionDenied (retry: true), PostToolUseFailure (a refused / failed step or a command exiting non-zero), PostToolBatch, PostCompact, StopFailure, InstructionsLoaded (session start + a folder's rules), UserPromptExpansion (before her custom command), TaskCreated, TaskCompleted (a block keeps the task open) - 20 in all. (9) HOOK TYPES: prompt (a model judges, {ok, reason}), agent (a read-only agent checks, same answer), http (the event POSTed to an https address - only a host this repo's network already allows, since it leaves the box), mcp_tool (a tool of a repo MCP server she allowed); onFailure: block; JSON fields updatedToolOutput, retry, defer, sessionTitle (renames the session). FIXED on the way: the idle summary looked for a git copy it does not need. 12 tests incl. a full round with fakes and a real 5,000-line saved output. NOT VERIFIED: a real overloaded Claude answer, real Docker hooks, a real http hook delivery; the 5-minute cache window is Hoola's own setting.
+
+
+## v0.999.273 COMPILER DESK (built as 0.999.272; owner: "Compiler Construction Engineer -- TOP DEVLOPENT OF IT AND DESIGN SAME AS OTHER SECTIONS")
+
+The Compiler Construction Engineer (hire key `compiler_eng`, was a "not live" Hub card) goes live with a NEW engine and its own
+section like the finance desks: `/console/compiler` (`static/console/lcdesk.html/.js/.css`) with the Compiler chat (Conversation
+kind `langlab`, `server/app/lcchat.py`, routes `/api/lcdesk/{chat, chat/new, chat/{conv}/ok, desk, do/{part}, zip/{id}}`).
+
+THE ENGINE `server/app/langlab/`:
+- `hoola_lang.py` - Hoola's own parser generator in plain Python (no other packages; it also ships in the sandbox and in her zip).
+  Grammar notation: lower-case rules, UPPER-CASE tokens (/regex/ or "text"), ( ) | * + ?, %ignore, %allow_keywords, ?rule (inline
+  when one child), !rule (keep fixed words). PEG with packrat memo and a 2,000,000-step limit. Checks: undefined names, left recursion
+  (with the loop form to write instead), repeats that can match nothing, choices that can never win ("=" before "=="), duplicate
+  choices, slow nested-repeat token patterns, unused rules / tokens, empty-matching tokens / ignores, bad regexes. Errors carry line,
+  column, the expected set, what was found and a pointer under the line. Fixed words match whole words and are reserved from NAME-like
+  tokens. GLOBAL: `\w` in token patterns also takes combining marks (Python's \w leaves out the vowel signs of दाम, Arabic harakat,
+  Thai vowels - names in those scripts broke in the middle; found by the starter's own test). A sampler makes example programs from
+  the grammar (with a small regex sampler) for fuzzing.
+- `service.py` - languages (`langlab_langs`: grammar, interpreter, tests, versions, last run, fuzz, proposal) + desk settings
+  (`langlab_settings`: time per program, fuzz count, interpreter or compiler). Her interpreter runs ONLY in the pylab sandbox
+  (`pylab.runner`: no network, no secrets, no server files, limits) through a harness with a per-program timer: a clean LangError, a
+  crash (with its line), an endless loop and a sandbox refusal are told apart. Golden tests (output / error / tree), "Keep this
+  answer" = her approval, fuzzing (made-up programs must read; mutated programs must give a clean error and never crash the
+  interpreter; reading speed), spec Markdown, railroad SVGs (`railroad.py`, text escaped), a TextMate grammar, and an export zip
+  (parser, grammar, interpreter, cli.py, run_tests.py, tests.json, SPEC.md, README.md, railroad/, editor/ VS Code extension).
+- `ai.py` - design from her words + examples (checked; up to two fix rounds with the checker's problems), improve (kept only when no
+  more tests fail, else a proposal she applies or drops), more tests (added with no expectation, she approves what they print).
+  Model calls through the door, job `langlab` (tier row web), counted as feature `langlab`.
+- Every save of the grammar or interpreter is a version; any version comes back as a new version.
+
+NEW tool `lang_lab` (agent/langlab_tools.py, family langlab, admit keys: grammar, parser, compiler, interpreter, dsl, ...; registry
+702 -> 703, 26 count pins moved). Hub entry live with does / needs / never; employees.js + v2.js open /console/compiler.
+
+FOUND AND FIXED while building: keeping a test's answer mutated the stored JSON in place so it was never saved; a designed language
+showed "ready" before its tests had run; tests the model re-sent were added twice. Tests `server/tests/test_lc_desk.py` (5 incl. a
+browser walk at 1440 and 390; the walk runs a real sandbox, the zip's cli.py and run_tests.py in a subprocess). NOT VERIFIED on her
+server with a real model (the design / improve paths ran against a fake model).
+
+
+## v0.999.274 SAFETY REVIEWER + BACKGROUND AGENTS
+(owner: 'GO NEXT - SAFETY REVIEWER AND BACKGROUND AGENTS'): two more Claude Code parts in Hoola Code. (1) AUTO MODE'S SAFETY REVIEWER (`devsahayak/judge.py`): in Auto mode no person approves each step, so a risky step is checked by a model (`dev_judge_model`, haiku) against what she asked before it runs - a shell command that is not plainly read-only, an edit of a sensitive path (.git/, .claude/, .github/workflows/, .husky/, .env*, keys, .npmrc / .netrc, .mcp.json) or an MCP call; it answers allow / ask her / refuse with one short reason; her `autoMode.hard_deny` rules in .claude/settings.json refuse a match with no model call; a wildcard allow rule does not skip it (an exact one does); it fails CLOSED (she is asked); one verdict per exact step per session; reads and ordinary edits never wait. Bash permission rules now take Claude Code's `*` anywhere (Bash(npm run *), Bash(git * main)), not only a trailing :*. (2) BACKGROUND AGENTS (`subagent.start_bg`): `agent` takes run_in_background - a read / run agent starts and the coder keeps working; its report arrives by itself between steps (screened: a report that reads like orders to the coder is flagged), `agent_output` checks or waits, `send_message` writes to a running agent or wakes a finished one with its history, `kill_agent` stops it; edit agents stay in the foreground (no separate working copies yet); at most `dev_bg_agents_max` 4; `done` waits once while agents still run; the round's end stops them. Web + phone show 'in the background' and the reviewer's verdict rows. NOT VERIFIED with a real model.
+
+
+## v0.999.275 WORKTREES FOR AGENTS
+(owner: 'GO NEXT - WORKTREES FOR AGENTS'): Claude Code's `isolation: worktree` in Hoola Code (`devsahayak/worktree.py`). An agent can work in ITS OWN copy of the working copy (`agent` isolation=worktree, or `isolation: worktree` in a .claude/agents file): the copy carries her uncommitted edits and the hidden secrets stay hidden; every read, edit and command of that agent goes to the copy, so several editing agents work at the same time and an editing agent can now run in the background. An unchanged copy is removed by itself; a changed one is KEPT and the coder's result says which files changed and that they are not in its working copy yet. The coder's new tool `agent_worktree` lists / shows / applies / discards a copy: apply brings the changes in as one patch, plainly when nothing moved under it, else a three-way merge whose conflicts are marked in the files and named; secret files and paths the coder may not write (CI workflows unless she allowed them) never come in; in 'ask each step' mode she is asked first. She can do the same from the session (web: Show changes / Bring in / Discard on the copy's row; phone: the row's menu; routes GET/POST /api/devsahayak/tasks/{id}/worktrees...). One difference from Claude Code, on purpose: a `git worktree` keeps a .git pointer to a server path the locked box cannot see, so each copy is self-contained (reflink copy + its own git start). Limits: 8 open copies a session, a working copy over 2000 MB gets none, a copy is refused when the disk is too full, kept copies live 7 days, a copy whose agent died with a restart keeps what it changed; ids are reserved at once (found by its own test: two agents started together got the same id). WorktreeCreate / WorktreeRemove hook events. NOT VERIFIED with a real model or in the real box.
+
+
+## v0.999.276 KERNEL DESK (built as 0.999.274; owner: "Kernel / OS Developer same as finance desks")
+
+The Kernel / OS Developer (hire key `kernel_dev`, was a "not live" Hub card) goes live with a NEW engine and its own section like
+the finance desks: `/console/kernel` (`static/console/kddesk.html/.js/.css`) with the Kernel chat (Conversation kind `kernel`,
+`server/app/kdchat.py`, routes `/api/kddesk/{chat, chat/new, chat/{conv}/ok, desk, do/{part}, driver.zip}`). Pages: Today,
+Crashes, Patches, Kernel config, Boot & CI, Drivers, Settings.
+
+THE ENGINE `server/app/kerneldesk/` - all code, no model, nothing run / pushed / sent:
+- `crash.py` - a kernel crash log (Oops, BUG / BUG_ON, panic, WARNING, KASAN, KFENCE, UBSAN, lockdep, hung task, soft / hard
+  lockup, RCU stall, OOM, general protection fault; x86_64 RIP, arm64 pc / lr, riscv64 epc; dmesg / syslog / journal prefixes
+  stripped): the kind, kernel, taint letters decoded, CPU / task, address, where it stopped, the cleaned call trace (unreliable "?"
+  frames marked), modules + out-of-tree ones, KASAN access / object / allocate + free stacks, lockdep lines, OOM victim, poison
+  values (LIST_POISON with an offset, slab poisons). `explain` names the REAL function past the reporting / allocator / scheduler
+  machinery (`NOISE`, clone suffixes like .constprop.0 removed), what the evidence points at by rule (NULL + small address = field
+  offset, freed-in / used-in, the lock a hung task waits on, the link register's module, taint and "fix the first report"), and
+  the commands for HER tree (faddr2line on the .ko or vmlinux, decode_stacktrace.sh, git log -L on a real file:line). `signature`
+  = kind + the first three real frames, so the same bug groups; a crash marked fixed that comes back is said.
+- `patch.py` - Hoola's own patch rules from Documentation/process (not checkpatch.pl, none of its code): subsystem prefix,
+  length, imperative, full stop, a body, 75-column message, Signed-off-by from the author, Fixes: format, Cc stable, Reported-by
+  + Closes:, SPDX on new files, Kconfig help; code rules on added lines (tabs, trailing whitespace, if( spacing, printk without a
+  level, BUG_ON, strcpy / strlcpy / strncpy / sprintf / simple_strto*, short msleep, kmalloc(n * size), packed, volatile,
+  typedef struct, return (x), NULL comparisons, jiffies comparisons, long udelay, extern in .c, #ifdef CONFIG_, the opening brace
+  of a function, line length). Ends with checkpatch.pl / get_maintainer.pl / send-email to run herself.
+- `kconfig.py` - profiles as data with their source (KSPP hardening, QEMU boot test, debugging, container host; "check this"
+  against her version), by architecture; a fragment for merge_config.sh; compare two configs.
+- `bootlog.py` - a boot / serial log: stages reached with times, errors with meaning (driver probe errors with the errno spelled
+  out incl. -517 EPROBE_DEFER and -121 EREMOTEIO, missing firmware, root not mounted, no init, I/O / ext4 errors, panics, Oops),
+  and whether the boot-test marker printed.
+- `scaffold.py` - starter drivers from fixed templates (module with a parameter, misc character device, platform driver with a
+  regmap and DT match, I2C driver), Makefile, Kconfig, a .dtsi node, README; they pass the desk's own style checks.
+- `ci.py` - a GitHub Actions workflow for HER kernel repository: tools, defconfig + her fragment, build, her out-of-tree module
+  built against it, an initramfs whose init is a tiny STATIC C program (compiled with the same cross compiler, so no busybox per
+  architecture; it mounts /proc + /dev, loads every module with finit_module, prints the marker, powers off), boot in QEMU
+  (x86_64 q35 / arm64 virt / riscv64 virt), pass only on the marker, keep the serial log. Inputs checked (no spaces or ..).
+- `service.py` - items (crash / patch / config / boot; numbered C- / P- / K- / B-, statuses, signature groups, 400 kept) and
+  settings (arch, kernel, defconfig, fragment, module folder, branch, line length, author, vendor prefix).
+
+NEW tool `kernel_desk` (agent/kernel_tools.py, family kernel; registry 703 -> 704, 27 count pins moved). Hub entry live with does /
+needs / never; employees.js + v2.js open /console/kernel.
+
+Tests `server/tests/test_kd_desk.py` (5 incl. a browser walk at 1440 and 390) + `tests/kernel_samples.py` (x86_64 NULL deref,
+KASAN use-after-free, arm64 list poison, hung task, boot ok / fail, bad / good patch, .config). The tests check the workflow is
+valid YAML for all three architectures, every shell step passes `bash -n`, the C init compiles with gcc -static -Wall -Werror,
+and every driver template passes the style rules. FOUND AND FIXED while building: taint letters read as the kernel version,
+KASAN / hung-task reports pointing at dump_stack / kasan_save_stack / __schedule instead of the real code, a KASAN function name
+treated as a file path, list poison with an offset missed, one crash counted twice, the init printing a backslash instead of a
+new line. NOT VERIFIED: the workflow has not run on GitHub and no real kernel was built or booted in QEMU here.
+
+
+## v0.999.277 GRAPHICS DESK (owner: "Graphics Engine Programmer same as finance desks")
+
+The Hub's `graphics_eng` card goes live, built like the finance desks: its own page `/console/graphics` (`static/console/gxdesk.{html,js,css}`)
+and its own chat (Conversation kind `graphics`, `app/gfxchat.py`, routes `/api/gxdesk/*`), kept out of every Hoola chat list
+(callconv / convs), with the desk block + the `gfx` tool family in view in that chat and in a call started from it.
+
+Engine `app/gfxdesk/` - all code, no model, no money:
+- `pathtrace.py`: a numpy CPU path tracer (spheres, planes, boxes; diffuse / metal / glass / light; sky gradient; ACES or clamp;
+  fixed seed = the same picture every time), limits checked (512 x 512 pixels, 64 samples worth of work, 64 objects). Three
+  reference scenes: the white furnace (an albedo-1 sphere under a uniform sky must vanish - mean 0.5, deviation 0, energy
+  conserved), three materials, a closed box with a ceiling lamp (noisy at 32 samples; compare with a blur of 2 or by SSIM).
+- `compare.py`: PSNR, SSIM (luminance, 7 x 7 box windows), mean / max error, share of pixels over her threshold, optional blur,
+  a heat map PNG, the worst regions.
+- `shaders.py`: a GLSL / WGSL / HLSL check in code (not a compiler): GLSL ES 3.00 removals (gl_FragColor, texture2D, varying),
+  missing precision / out vec4 / main, #version placement, unused uniforms, float ==, NaN traps, brace balance. The real compile is
+  her browser: the page compiles the fragment shader with WebGL2 (u_res, u_time), shows the driver's own error lines, and takes the
+  golden picture / the test picture at u_time = 1.0; the server compares them against her limits.
+- `vklog.py`: Vulkan validation (VUIDs, SYNC-HAZARD, BestPractices), D3D12 debug layer (#id NAME), Metal API validation
+  assertions and OpenGL debug messages - grouped by ID, counted, errors first, categorised (synchronization, layouts / resource
+  state, descriptors, render pass, pipeline, memory, lifetime, performance) with the usual fix and the Vulkan spec link; handles
+  masked.
+- `frames.py`: PresentMon CSV (MsBetweenPresents / FrameTime + CPUBusy / GPUBusy) or plain milliseconds -> average FPS, median,
+  p95 / p99, 1% / 0.1% lows, stutters (over twice the rolling median and over budget), share over the budget, CPU- or GPU-bound;
+  GPU pass timings -> share of the frame and of the budget.
+- `service.py`: items (shader / compare / vklog / frames / passes, numbered S- / I- / V- / F- / G-), shader versions (30 kept) +
+  golden picture, settings (API, engine, GPU, target FPS, PSNR / SSIM limits, pixel threshold, blur).
+
+Tool `gfx_desk` (`agent/gfx_tools.py`, family gfx, registry 704 -> 705). Pages: Today, Shaders (editor + WebGL2 preview, Run /
+Play / Set golden / Test, compiler log, versions), Images (reference scenes rendered on demand, compare form), Validation, Frame
+times (chart against the budget, histogram, stutters, CPU vs GPU), Settings. Guards: paused = reads only, secrets refused outside
+the data fields, logs and shaders are data. Hoola never runs anything on her machines, pushes or ships a build.
+
+Tests `tests/test_gx_desk.py` (4): the path tracer + compare + shader check, the validation / frame readers, hire + chat + wiring +
+store + guards, and a browser walk at 1440 / 390 in which Chromium's WebGL2 (SwiftShader) really compiles the starter shader, sets
+the golden picture, fails the test after a colour change and reports a real compile error.
+NOT VERIFIED: on her server; with renders from her own engine; WGSL / HLSL are checked in code only.
+
+## v0.999.278 SENDING (built as 0.999.275 - 0.999.277; their WORKTREES FOR AGENTS, KERNEL DESK and GRAPHICS DESK took those, all kept)
+
+Owner, on the two limits the workflow library said out loud ("Email: where n8n sent mail straight away, Hoola makes a draft that
+waits for your OK" / "Chat apps: posts to Telegram, Slack, Discord or Mattermost become a message to you in Hoola ... A bot that
+answers other people stays a step to redo"): "MAKE THIS FUCTIONAL FOR HOOLA ROUTE".
+
+The house rule (sending -> her tap) is kept per ROUTE instead of per message:
+- New step type `send` (`server/app/route/send.py`): via email (to, cc, bcc, subject, body, account, markdown) from one of her
+  connected mailboxes (the same mailbox code as a chat-sent mail, no draft card, no undo window); telegram (chat, text, photo by
+  https address, format markdown / html, silent) through her bot; slack (incoming webhook, or a bot token + channel + thread);
+  discord (channel webhook, or a bot token + channel id); mattermost (incoming webhook, or server + bot token + channel id; both
+  SSRF-guarded).
+- New sign-in kinds telegram / slack / discord / mattermost in Sign-ins (`workspace._save_messaging`, `messaging_secret`):
+  sealed, last 4 only, used only by a Send step of that app; a web request step refuses them. Format-checked (bot token shape,
+  hooks.slack.com, discord.com/api/webhooks, https Mattermost). A step with no sign-in named uses her only one of that app (two =
+  "pick one"); a Telegram step uses the route's connected bot.
+- Her tap: GET / POST /api/route/routes/{id}/sending. "Allow sending" is bound to a fingerprint of every Send step's
+  destination (way, sign-in, account, to / cc / bcc / chat / channel as written). New words keep it allowed; a new destination
+  stops sending until she allows again. The page's bar lists what the route sends, asks twice ("Yes, let it send these"), shows
+  sent today / per day, and has Stop sending. Unsaved changes must be saved first.
+- Limits: a test run (editor Test route, Test step, pinned data) sends nothing and shows what it would send; 50 sends a run;
+  sends_per_day per route (default 100, max 2,000, route Settings). Every send (and every refusal) written to route_sends
+  (30 days) with its reason.
+- A Telegram bot starts a route: POST / DELETE /api/route/routes/{id}/bot. The route's start must be its web address; Connect
+  the bot mints a new address and calls Telegram's setWebhook (allowed updates message + callback_query) - the bot's update is
+  {{vars.body}}, a reply goes to {{vars.body.message.chat.id}}. Kept in route_bots (not in settings, which a settings save
+  rewrites). Disconnect calls deleteWebhook. Slack / Discord bots that start a route are NOT built (Slack Events need a URL check
+  answer + signing secret, Discord needs a live gateway connection).
+- Importer: Gmail send / Send Email -> Send step (cc / bcc / html kept; a Gmail draft in n8n stays a draft); Telegram (text,
+  photo by URL, parse mode, silent), Slack (channel id / name / user, words only - blocks said), Discord, Mattermost posts -> Send
+  steps with a check to save / pick the sign-in; Telegram Trigger -> a webhook start read as {{vars.body}} ("Connect the bot"); a
+  workflow with two starts uses the one that has steps after it; a note that nothing goes out until Allow sending. Library index
+  rebuilt: 1,920 workflows (139 run as they are, 266 with checks, 1,515 with steps to redo), 81 left out.
+- Editor: a Send group in Add a step (mail, Telegram, Slack, Discord, Mattermost), a field-by-field panel (Send by switches the
+  fields), the Allow sending bar under the top bar, a Telegram bot box on the web-address start panel, chat-app kinds on the
+  Sign-ins page, sends a day in Settings; the Test route note says Send steps send nothing in a test.
+
+Tests: server/tests/test_v0999_278_sending.py (14): the step's checks, nothing before Allow sending, new words vs a new address,
+a test run, the run / day limits, the sign-ins, each app's request, a refusal written down, two sign-ins need a pick, the bot
+start + its reply through the real webhook path, the importer, the routes, a browser walk (desktop + phone width, the bar, the
+panel, the Sign-ins page). NOT VERIFIED with a real Telegram bot, Slack / Discord / Mattermost workspace or mailbox on her server.

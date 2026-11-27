@@ -85,7 +85,7 @@ _TASKS: set["asyncio.Task"] = set()
 
 _STEP_TYPES = ("tool", "code", "condition", "loop", "wait", "notify", "approval", "set", "http",
                "router", "filter", "data", "subroute", "stop", "respond", "ai",
-               "store", "var")   # v0.999.254 MAKE PARITY: data stores + Make's variable tools   # v0.999.243 ROUTE R6: AI steps      # v0.999.87 HOOLA ROUTE: a router with named routes + a filter gate
+               "store", "var", "send")   # v0.999.254 MAKE PARITY: data stores + Make's variable tools   # v0.999.243 ROUTE R6: AI steps      # v0.999.87 HOOLA ROUTE: a router with named routes + a filter gate
 _COND_OPS = ("eq", "ne", "gt", "lt", "contains", "empty")
 # v0.999.87 HOOLA ROUTE filter language (the Make / n8n filter idea, own code): one condition is
 # {left, op, right, ci?}; groups are {"all": [...]} (AND) / {"any": [...]} (OR), nested up to _FILTER_DEPTH.
@@ -640,6 +640,9 @@ def validate_steps(steps: list) -> list[dict]:
         elif typ == "http":                              # v0.999.254: Make's HTTP app (every method, body, page)
             from ..route import http as HT
             HT.validate(st_, sid)
+        elif typ == "send":                              # v0.999.278 SENDING: mail / Telegram / Slack / Discord / Mattermost
+            from ..route import send as SN
+            SN.validate(st_, sid)
         if "on_error" in st_:
             st_["on_error"] = validate_on_error(st_.get("on_error"), sid)
             if st_["on_error"] is None:
@@ -1470,6 +1473,9 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
             return True, {"sent": True}, ""
         if typ == "approval":
             return True, None, "__APPROVE__"
+        if typ == "send":                                  # v0.999.278 SENDING: only once she allowed this route to send
+            from ..route import send as SN
+            return await SN.run(tenant_id, step, ctx, resolve, run_id)
         if typ == "data":                                  # v0.999.237 ROUTE R3: sort, dates, files, ...
             from . import dhara_data as DD
             try:
@@ -2355,6 +2361,11 @@ def validate_settings(st: Any, tenant_id: str = "") -> dict:
             out["stop_after_errors"] = max(1, min(int(st["stop_after_errors"]), 20))
         except (TypeError, ValueError):
             raise ToolError("stop_after_errors must be a number 1-20")
+    if st.get("sends_per_day") not in (None, ""):    # v0.999.278 SENDING: messages a route may send a day
+        try:
+            out["sends_per_day"] = max(1, min(int(st["sends_per_day"]), 2000))
+        except (TypeError, ValueError):
+            raise ToolError("sends_per_day must be a number 1-2000")
     if st.get("runs_per_day") not in (None, ""):
         try:
             out["runs_per_day"] = max(1, min(int(st["runs_per_day"]), 10000))
@@ -2962,7 +2973,7 @@ DHARA_TOOLS = [
         "Create or update one of her WORKFLOWS (v0.502, the n8n idea house-sized): a named, saved graph of steps "
         "that runs on a trigger without anyone asking again. Steps (max 40): tool (ANY registered tool by name + args), "
         "code (python in the pylab sandbox), condition (left/op/right with then/else), loop (items + body, cap 50), "
-        "wait (duration_s / until HH:MM; see below), notify (a chat line to her), approval (pauses until SHE says yes), set (a "
+        "wait (duration_s / until HH:MM; see below), notify (a chat line to her), send (really sends: via email {to, cc, subject, body, account} or telegram {chat, text} / slack {channel, text} / discord / mattermost {channel, text} with connection = her saved sign-in; it sends only after SHE taps Allow sending on the route page - never claim it sent before that), approval (pauses until SHE says yes), set (a "
         "variable), http (SSRF-guarded GET/POST). Expressions like {{steps.get_data.output.total}} / {{vars.x}} / "
         "{{item}} / {{now}}. Triggers: manual | schedule | webhook (token minted once). Validate-first: unknown step "
         "types / caps / unsafe names are refused with the exact problem. "

@@ -349,8 +349,8 @@ def has_secret(text: str) -> bool:
 
 # ---------------------------------------------------------------- teams + SLA starters
 TEAMS = {
-    "field_fibre": "Field fibre team", "noc": "NOC / OLT team", "bsnl": "BSNL (franchise / upstream)", "upstream": "Upstream ISP / bandwidth",
-    "customer": "Customer side", "electricity": "Electricity (MSEB / DISCOM)", "vendor": "OLT vendor / support",
+    "field_fibre": "Field fibre team", "noc": "NOC / OLT team", "bsnl": "BSNL / the ISP you are a franchise of", "upstream": "Upstream ISP / bandwidth",
+    "customer": "Customer side", "electricity": "Electricity company", "vendor": "OLT vendor / support",
 }
 # Starter hours to fix (clock). TRAI's Aug 2026 draft proposes MTTR <= 10 h for wireline broadband (not final); the 2006
 # broadband QoS rule was fault repair by the next working day. Her own / her BSNL agreement's hours always win.
@@ -796,7 +796,7 @@ def command_problems(cmds: list[str]) -> list[str]:
 
 
 def risk_of(action: str, n: int) -> str:
-    return f"{_ACTION_RISK.get(action, '')} Asar: {n} customer." if n else _ACTION_RISK.get(action, "")
+    return f"{_ACTION_RISK.get(action, '')} Affects {n} customer{'' if n == 1 else 's'}." if n else _ACTION_RISK.get(action, "")
 
 
 # ---------------------------------------------------------------- regulation facts (cited in the app + tool)

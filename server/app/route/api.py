@@ -472,6 +472,44 @@ def make_router(require_key, current_tenant) -> APIRouter:
             raise HTTPException(404, "No such tool")
         return t
 
+    # v0.999.278 SENDING: what a route sends, her tap that allows it, and a Telegram bot that starts it
+    @r.get("/routes/{wf_id}/sending")
+    async def route_sending(wf_id: str, tenant: str = Depends(current_tenant)):
+        from . import send as SN
+        return await run(lambda: SN.status(tenant, _wf_or_404(tenant, wf_id)))
+
+    @r.post("/routes/{wf_id}/sending")
+    async def route_sending_allow(wf_id: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from . import send as SN
+
+        def go():
+            try:
+                return SN.allow(tenant, _wf_or_404(tenant, wf_id), str((body or {}).get("hash") or ""),
+                                bool((body or {}).get("allow", True)))
+            except SN.SendError as e:
+                raise HTTPException(409, str(e))
+        return await run(go)
+
+    @r.post("/routes/{wf_id}/bot")
+    async def route_bot(wf_id: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        from ..config import get_settings
+        from . import send as SN
+        from . import workspace as WS
+
+        def go():
+            wf = _wf_or_404(tenant, wf_id)
+            base = str(getattr(get_settings(), "public_base_url", "") or "")
+            try:
+                return SN.connect_bot(tenant, wf, str((body or {}).get("connection") or ""), base)
+            except (SN.SendError, WS.WorkspaceError) as e:
+                raise HTTPException(400, str(e))
+        return await run(go)
+
+    @r.delete("/routes/{wf_id}/bot")
+    async def route_bot_drop(wf_id: str, tenant: str = Depends(current_tenant)):
+        from . import send as SN
+        return await run(lambda: SN.disconnect_bot(tenant, _wf_or_404(tenant, wf_id)))
+
     @r.post("/routes/{wf_id}/switch")
     async def route_switch(wf_id: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         def go():

@@ -753,6 +753,44 @@ def ws_rewind(tenant: str, ref: str, n: int, what: str = "both") -> dict[str, An
     return out
 
 
+def ws_worktrees(tenant: str, ref: str, wid: str = "", action: str = "list") -> dict[str, Any]:
+    """v0.999 the agents' own copies of one session (Claude Code's worktrees): list | show | apply | discard. Bringing one
+    in or throwing it away waits while Hoola works in the session (it would change the copy under it)."""
+    from . import engine as EN
+    from . import worktree as WT
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        tid, running = t.id, t.id in _RUNNING
+    if not EN.exists(tid):
+        return {"rows": []}
+    ses = EN.Session(tid)
+    try:
+        if action == "list":
+            return {"rows": WT.listing(ses)}
+        if action == "show":
+            return {"id": wid, "diff": WT.show(ses, wid, limit=200000)}
+        if action not in ("apply", "discard"):
+            raise DevError("Choose list, show, apply or discard.")
+        if running or tid in EN.LIVE:
+            raise DevError("Hoola is working in this session right now - stop it first, or let Hoola bring it in.")
+        if action == "apply":
+            r = WT.apply(None, ses, wid, _cfg(tenant).allow_workflows)
+            ev = {"k": "worktree", "id": wid, "state": "applied", "by_her": True, "files": r["files"][:40],
+                  "conflicts": r["conflicts"], "text": r["how"]}
+        else:
+            WT.discard(None, ses, wid)
+            r, ev = {"ok": True}, {"k": "worktree", "id": wid, "state": "discarded", "by_her": True}
+    except WT.WTError as e:
+        raise DevError(str(e)[:1].upper() + str(e)[1:] + ".")
+    _Step(tid).event(ev)
+    if action == "apply" and r.get("ok"):
+        ses.meta["pending_note"] = ((ses.meta.get("pending_note") or "") + f" She brought agent copy {wid}'s changes into the "
+                                    f"working copy ({', '.join(r['files'][:12])}). Read those files again before you edit them."
+                                    + (f" CONFLICT markers wait in {', '.join(r['conflicts'])}." if r["conflicts"] else "")).strip()
+        ses.save_meta()
+    return {**r, "rows": WT.listing(ses)}
+
+
 def _env_label(t: DevTask) -> dict[str, Any]:
     """v0.878 the session's environment chip: Auto, or the environment's name."""
     if not getattr(t, "env_id", None):
@@ -1790,6 +1828,8 @@ class _Step:
                 if row is None:
                     return
                 steps = _j(row.steps or "", [])
+                if ev.get("k") == "title" and str(ev.get("text") or "").strip():   # v0.999 a hook's sessionTitle names the session
+                    row.title = str(ev["text"]).strip()[:120]
                 last_n = max((int(x.get("n", -1)) for x in steps if isinstance(x, dict)), default=len(steps) - 1)
                 steps.append({**ev, "at": now().isoformat(), "n": int(last_n) + 1})   # v0.944 a stable number per step
                 row.steps = json.dumps(fold_steps(steps))
@@ -3948,6 +3988,61 @@ def _plan_reminders(at: datetime) -> None:
                                   "Hoola starts as soon as you say so, or tell it what to change.")
 
 
+_IDLE_BUSY: set[str] = set()
+
+
+def _idle_compact(at: datetime | None = None) -> list[str]:
+    """Claude Code's idle compaction: a long session (dev_idle_compact_chars) whose conversation has not moved for
+    dev_idle_compact_after_s - just inside the 5-minute prompt cache - is summarised through its own cached request, once
+    per idle spell, in its own thread. Only on the Claude brain (the cache it relies on is Claude's)."""
+    from ..config import get_settings
+    from . import brain as B
+    from . import engine as EN
+    st = get_settings()
+    if not bool(getattr(st, "dev_idle_compact", True)) or B.brain_name() != "claude":
+        return []
+    after = int(getattr(st, "dev_idle_compact_after_s", 240) or 240)
+    root = EN.folder("x").parent
+    started = []
+    if not root.is_dir():
+        return []
+    for d in list(root.iterdir())[:2000]:
+        mp = d / "messages.json"
+        tid = d.name
+        try:
+            age = time.time() - mp.stat().st_mtime
+        except OSError:
+            continue
+        if not (after <= age <= after + 90) or tid in _IDLE_BUSY or tid in _RUNNING or tid in EN.LIVE:
+            continue
+        ses = EN.Session(tid)
+        if ses.meta.get("idle_at") == int(mp.stat().st_mtime):          # once per idle spell
+            continue
+        if mp.stat().st_size < int(getattr(st, "dev_idle_compact_chars", 800000) or 800000):
+            continue
+        ses.meta["idle_at"] = int(mp.stat().st_mtime)
+        ses.save_meta()
+        _IDLE_BUSY.add(tid)
+
+        def run(tid=tid):
+            try:
+                with session() as s:
+                    t = s.get(DevTask, tid)
+                    if t is None:
+                        return
+                    B.session(t)
+                    s.expunge(t)
+                if EN.idle_compact(tid):
+                    _Step(tid).event({"k": "compact", "text": "Summarised while idle, before the model's cache ran out - your next message starts light"})
+            except Exception:  # noqa: BLE001
+                log.debug("idle compaction of %s failed", tid, exc_info=True)
+            finally:
+                _IDLE_BUSY.discard(tid)
+        threading.Thread(target=run, name=f"dev-idle-{tid}", daemon=True).start()
+        started.append(tid)
+    return started
+
+
 def tick(at: datetime | None = None) -> None:
     """Every minute: open Hoola PRs' CI every 5 min (card when the result changes), running deploys every minute."""
     at = at or now()
@@ -3963,6 +4058,10 @@ def tick(at: datetime | None = None) -> None:
         _plan_reminders(at)
     except Exception:
         log.debug("plan reminders failed", exc_info=True)
+    try:
+        _idle_compact(at)                       # v0.999 long idle sessions summarised before their prompt cache expires
+    except Exception:
+        log.debug("idle compaction failed", exc_info=True)
     try:
         from . import around as AR
         AR.tick_schedules(at)                   # Phase 5: scheduled coding tasks that are due

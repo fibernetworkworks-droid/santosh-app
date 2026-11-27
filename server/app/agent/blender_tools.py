@@ -22,7 +22,7 @@ BLENDER_TOOLS = [
         "no words + new exports / views / quality = same model, new files. action=run_code: YOUR OWN Blender Python script "
         "(code) - only when she wants something exact you can script; same rules (no files / network / settings; H helpers). "
         "action=status / list / show (objects, sizes, the script) / cancel / delete. Results come back as her files with a "
-        "card; renders carry an 'AI se bana' label. Never famous characters, real brand logos or real people; never working "
+        "card; renders carry an 'AI-generated' label. Never famous characters, real brand logos or real people; never working "
         "weapon parts."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["make", "change", "run_code", "status", "list", "show", "cancel", "delete"]},

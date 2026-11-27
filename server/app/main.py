@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.269"   # v0.999.269 THE WORKFLOW LIBRARY (owner: "https://github.com/Zie619/n8n-workflows.git -- now this is repo having readymade workflows for n8n ---- make it fully fuctional for hoola route -- make a workflow section in sidebar in route tool ---- first read then design and deployment"): a Workflows section in the Route sidebar = 1,904 ready-made n8n workflows (MIT) read at the repo's last whole commit f8639776 (the next commit's 'workflow fixer' dropped every connection), index shipped (route/n8nlib_index.json.gz, built by tools/n8nlib_build.py through Hoola's own importer + checks), a file fetched from GitHub only when opened and checked against its sha256, keys written into a workflow taken out to {{env.N8N_...}} before anything is shown, search / app / category / start / runs-now filters, preview of what it becomes, Bring it in = switched off; the n8n importer now does Google Sheets / Gmail / email (drafts for her OK) / Drive / Calendar / weather, dates (Luxon + Moment formats), hashes, HTML picks, Markdown, XML, RSS, rename, compare, itemLists, files, every web request method, Set in JSON mode, chat-app messages told to her in Hoola, fields an earlier node added, and an expression it cannot read becomes text, never a broken route (clean imports 221 -> 408 of 2,057, median share 57% -> 70%); 11 tests incl. a browser walk. NOT VERIFIED on her server. Previous head: v0.999.268 EVERY COMMAND TYPED (owner: 'Typing every built-in command --- WORK ON IT'): in a Hoola Code session the message box takes Claude Code's built-in commands, each doing the same job here (web `code.js` BUILTIN, phone lib/ui/code): /help (every command + the repo's own), /clear (a new session on the same repo - this one stays), /compact [what to keep], /context, /init, /review (a careful review of this branch, nothing changed), /security-review, /pr-comments, /export, /rewind (pick the checkpoint, then code / conversation / both), /resume (all sessions), /model (the quality tier that picks the model), /output-style, /cost and /usage (this session's cost, an estimate, + the month), /status, /doctor (status + what is wrong: GitHub, the repo, MCP servers that cannot be used, a full context), /todos, /bashes (the terminal), /agents, /hooks and /permissions (.claude/settings.json, a template when there is none), /memory (CLAUDE.md), /mcp, /plugin, /config, /add-dir, /login /logout /install-github-app (Settings > GitHub). Built-in names win over a repo command of the same name, as in Claude Code; the terminal-only ones (/vim /terminal-setup /statusline /ide /exit /quit /upgrade /bug /release-notes /privacy-settings) say they are not needed here instead of being sent to Hoola. The / picker lists them all. 3 tests incl. a real-browser walk. Previous head: v0.999.267 TECHNICAL WRITER DESK (owner: "Technical writer same as finance desks"): the Technical writer gets its own section /console/docs + Docs chat (kind docs, `dwchat.py`) on the Docs engine: Today (needs, docs by kind and language, latest docs), Write a doc (quick start / how-to / manual / FAQ / admin / API reference, release notes), Docs (sections with screenshots, checks, her own edits kept, change / translate / Word + PDF + Markdown, publish card on her tap with the hash, take a page down), Sources (made in Hoola, her proved live site, GitHub read-only, her files; read again, bring the docs in step), Screenshots (steps in the safe step language on her own site), Settings (readers, tone, languages, glossary, GitHub token sealed); GLOBAL: docs in 50 languages (right to left printed right to left), Hinglish only when she picks it, phone numbers of any country covered; 5 tests incl. a browser walk. NOT VERIFIED on her server. Previous head: v0.999.266 REWIND LIKE CLAUDE CODE (owner: 'Rewind just the code or just the conversation --- WORK ON IT'): going back to a checkpoint now asks WHAT goes back, Claude Code's /rewind choices - Code and conversation (as before), Conversation only (the conversation returns to that checkpoint, the files keep every change made since), Code only (the files return, the conversation stays), Never mind. `Session.rewind(n, what)`, `engine.rewind`, `service.ws_rewind(..., what)`, POST /tasks/{id}/rewind {n, what}. A partial rewind keeps the later checkpoints, so she can go forward to one again; the next round is told once what changed under the conversation (`pending_note` -> <rewind_note> in her next message: re-read files before editing / run git diff to see the kept changes). The feed row says which it was ('Put the files back', 'Took the conversation back'). WEB: a choice dialog with the three options; PHONE: checkpoint, then the three choices. 6 tests incl. a real git working copy and a real-browser walk.
+APP_VERSION = "0.999.278"   # v0.999.278 SENDING (owner, on the workflow library's limits - mails as drafts, chat posts only told to her: "MAKE THIS FUCTIONAL FOR HOOLA ROUTE"): a Send step really sends - mail from her mailbox, Telegram (her bot, text or photo), Slack / Discord / Mattermost (webhook or bot token) through sealed sign-ins of new kinds; nothing goes out until she taps Allow sending on the route, bound to WHERE it sends (a new address / chat / channel stops it again, new words do not); a test run sends nothing, 50 a run, sends_per_day per route (100 default, 2,000 max), every send written down (route_sends); a Telegram bot starts a route (Connect the bot = Telegram setWebhook to the route's address) and the reply goes back to {{vars.body.message.chat.id}}; the n8n importer turns sent mail + chat-app posts into Send steps and a Telegram trigger into the bot start (library rebuilt: 1,920 workflows, 139 run as they are, 266 with checks); `route/send.py`, Send group in Add a step, Allow sending bar, bot box on the start panel, chat-app sign-ins; 14 tests incl. a browser walk. NOT VERIFIED with a real bot / workspace / mailbox on her server. Previous head: v0.999.277 GRAPHICS DESK (owner: "Graphics Engine Programmer same as finance desks"): the Graphics Engine Programmer goes live with its own section /console/graphics + Graphics chat (kind graphics, `gfxchat.py`) on a NEW engine `app/gfxdesk/` (all code, no model): shaders kept with every version, checked in code (GLSL ES 3.00 rules, precision, unused uniforms, float ==, NaN traps; WGSL / HLSL basics) and compiled + drawn by HER browser's WebGL2, a golden picture per shader and later versions tested against it (PSNR / SSIM / heat map); reference scenes rendered by Hoola's own numpy CPU path tracer (white furnace energy test, three materials, a lit box; fixed seed); two renders compared against her limits; Vulkan / Direct3D 12 / Metal / OpenGL validation output grouped by message ID with its kind, usual fix and spec link; PresentMon frame times (average, p95 / p99, 1% / 0.1% lows, stutters, over budget, CPU- or GPU-bound) and GPU passes; NEW tool gfx_desk (registry 705); 4 tests incl. a browser walk (a real WebGL2 compile + golden test). NOT VERIFIED: on her server or with her own engine's renders. Previous head: v0.999.276 KERNEL DESK (built as 0.999.274; their HOOLA CODE releases took 0.999.274-0.999.275, all kept; owner: "Kernel / OS Developer same as finance desks"): the Kernel / OS Developer goes live with its own section /console/kernel + Kernel chat (kind kernel, `kdchat.py`) on a NEW engine `app/kerneldesk/` (all code, no model): crash logs read (Oops, BUG, panic, WARNING, KASAN, KFENCE, UBSAN, lockdep, hung task, soft / hard lockup, RCU stall, OOM, GPF; x86_64 / arm64 / riscv64) - kind, the real function past the reporting / allocator / scheduler machinery, module, taint decoded, KASAN alloc / free stacks, poison values, faddr2line commands - grouped by signature and told when a fixed one comes back; patches checked against the kernel rules (subject, Signed-off-by, Fixes:, Closes:, SPDX, coding style); .config profiles (hardening, QEMU boot, debugging, container host; sources named, check this) + a fragment + compare; boot logs stage by stage with errnos spelled out; driver starters (module, misc, platform, I2C) + zip; the GitHub Actions QEMU boot test (static C init, her module loaded, marker) she adds herself; NEW tool kernel_desk (registry 704); 5 tests incl. a browser walk. NOT VERIFIED: the workflow has not run on GitHub, no real QEMU / kernel build here.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2196,6 +2196,51 @@ def qa_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/graphics")
+@app.get("/console/graphics/")
+def graphics_desk_page():
+    """GRAPHICS DESK: the Graphics Engine Programmer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "gxdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/kernel")
+@app.get("/console/kernel/")
+def kernel_desk_page():
+    """KERNEL DESK: the Kernel / OS Developer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "kddesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/compiler")
+@app.get("/console/compiler/")
+def compiler_desk_page():
+    """COMPILER DESK: the Compiler Construction Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "lcdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/3d")
+@app.get("/console/3d/")
+def studio3d_desk_page():
+    """3D STUDIO DESK: the 3D Studio artist's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "b3desk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/noc")
+@app.get("/console/noc/")
+def noc_desk_page():
+    """NOC DESK: the NOC employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "ncdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/docs")
 @app.get("/console/docs/")
 def docs_desk_page():
@@ -2880,6 +2925,16 @@ from . import archat as _archat_mod                             # noqa: E402  AP
 _archat_mod.mount(app, current_tenant, require_key)             # /api/ardesk/*
 from . import dwchat as _dwchat_mod                             # noqa: E402  TECHNICAL WRITER DESK
 _dwchat_mod.mount(app, current_tenant, require_key)             # /api/dwdesk/*
+from . import ncchat as _ncchat_mod                             # noqa: E402  NOC DESK
+_ncchat_mod.mount(app, current_tenant, require_key)             # /api/ncdesk/*
+from . import b3chat as _b3chat_mod                             # noqa: E402  3D STUDIO DESK
+_b3chat_mod.mount(app, current_tenant, require_key)             # /api/b3desk/*
+from . import lcchat as _lcchat_mod                             # noqa: E402  COMPILER DESK
+_lcchat_mod.mount(app, current_tenant, require_key)             # /api/lcdesk/*
+from . import kdchat as _kdchat_mod                             # noqa: E402  KERNEL DESK
+_kdchat_mod.mount(app, current_tenant, require_key)             # /api/kddesk/*
+from . import gfxchat as _gxchat_mod                            # noqa: E402  GRAPHICS DESK
+_gxchat_mod.mount(app, current_tenant, require_key)             # /api/gxdesk/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

@@ -154,21 +154,26 @@ def test_more_nodes_become_real_steps():
     row = sheet["args"]["rows"][0]
     assert row["Day"] == "{{steps.today.output}}", "a field an earlier node added reads that node's step"
     assert row["Title"].startswith("{{steps.pick_title.output[0]")
-    mail = by["Mail"]
-    assert mail["name"] == "email_draft" and mail["args"]["to"] == "boss@example.com" and "{{steps.today.output}}" in mail["args"]["subject"]
+    mail = by["Mail"]   # v0.999.275: a real Send step (it goes once she allows the route to send)
+    assert mail["type"] == "send" and mail["via"] == "email" and mail["to"] == "boss@example.com" and "{{steps.today.output}}" in mail["subject"]
     assert by["Hash"]["action"] == "sha256"
-    assert by["Tell"]["type"] == "notify" and "steps.hash.output" in by["Tell"]["text"]
+    assert by["Tell"]["type"] == "send" and by["Tell"]["via"] == "telegram" and by["Tell"]["chat"] == "123" and "steps.hash.output" in by["Tell"]["text"]
     assert by["Sorted"]["op"] == "sort" and by["Sorted"]["by"] == "Day"
     assert [s["type"] for s in steps[-2:]] == ["http", "data"] and steps[-1]["action"] == "xml_to_data"
     whys = " ".join(c["why"] for c in plan["report"]["check"])
-    assert "draft that waits for your OK" in whys and "Hoola tells you in your Hoola chat" in whys
+    assert "save a Telegram sign-in" in whys and any("Allow sending" in n for n in plan["report"]["notes"])
 
 
-def test_a_bot_reply_is_not_turned_into_a_message_to_her():
+def test_a_bot_reply_goes_back_to_whoever_wrote():
+    # v0.999.275: the Telegram bot starts the route (its web address) and the reply goes to that chat
     doc = _wf([("Bot", "n8n-nodes-base.telegramTrigger", {"updates": ["message"]}),
-               ("Answer", "telegram", {"chatId": "={{ $json.message.chat.id }}", "text": "Hi"})], [("Bot", "Answer")])
+               ("Answer", "telegram", {"chatId": "={{ $json.message.chat.id }}", "text": "=You said {{ $json.message.text }}"})],
+              [("Bot", "Answer")])
     plan = N.convert(doc)
-    assert plan["report"]["placeholders"] and plan["steps"][0]["type"] == "stop"
+    assert plan["trigger"] == "webhook" and not plan["report"]["placeholders"]
+    st = D.validate_steps(plan["steps"])[0]
+    assert st["type"] == "send" and st["chat"] == "{{vars.body.message.chat.id}}" and "{{vars.body.message.text}}" in st["text"]
+    assert any("Connect the bot" in c["why"] for c in plan["report"]["check"])
 
 
 def test_an_expression_hoola_cannot_read_is_text_not_a_broken_route():
@@ -297,10 +302,11 @@ def test_the_workflows_page_by_clicking(bz, monkeypatch):
                     p.click("[data-pg='1']")
                     p.wait_for_function("() => document.querySelector('#libN').textContent.startsWith('1-')")
                 p.select_option("#libCat", index=1)
-                p.wait_for_function("() => !document.querySelector('#libN').textContent.endsWith('of 1,905')")
+                total = f"of {len(items):,}"
+                p.wait_for_function(f"() => !document.querySelector('#libN').textContent.endsWith('{total}')")
                 assert len(set(p.locator("#libG .wlc .tf .mut").all_inner_texts())) == 1, "one category"
                 p.select_option("#libCat", index=0)
-                p.wait_for_function("() => document.querySelector('#libN').textContent.endsWith('of 1,905')")
+                p.wait_for_function(f"() => document.querySelector('#libN').textContent.endsWith('{total}')")
                 # search, open, bring in
                 p.fill("#libQ", "quokka")
                 p.press("#libQ", "Enter")
@@ -309,7 +315,7 @@ def test_the_workflows_page_by_clicking(bz, monkeypatch):
                 p.wait_for_selector("#libUse")
                 body = p.inner_text("#main")
                 assert "Keys taken out" in body and "N8N_GET_X_API_KEY" in body and "abcd1234efgh5678" not in body
-                assert "The steps" in body and "Web request" in body and "Email (draft for your OK)" in body
+                assert "The steps" in body and "Web request" in body and ("Send: Mail" in body or "Email" in body)
                 if os.environ.get("HOOLA_SHOTS"):
                     p.screenshot(path=os.path.join(os.environ["HOOLA_SHOTS"], f"lib_one_{w}.png"), full_page=True)
                 name = "lib_page_" + str(w)

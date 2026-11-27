@@ -43,6 +43,7 @@
     up: '<path d="M12 19V5M6 11l6-6 6 6"/>', play: '<path d="M7 5l12 7-12 7z"/>', plus: '<path d="M12 5v14M5 12h14"/>',
     route: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="12" r="2"/><path d="M8 6h3a5 5 0 0 1 5 5M8 18h3a5 5 0 0 0 5-5"/>',
     back: '<path d="M15 6l-6 6 6 6"/>', check: '<path d="M5 12l5 5 9-10"/>', x: '<path d="M6 6l12 12M18 6 6 18"/>',
+    send: '<path d="M21 3 10 14M21 3l-7 18-4-7-7-4z"/>',
     http: '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
     code: '<path d="M8 8l-4 4 4 4M16 8l4 4-4 4"/>', wait: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', notify: '<path d="M4 5h16v11H9l-5 4z"/>',
     router: '<path d="M4 12h6M10 12l6-6M10 12l6 6M10 12h10"/>', filter: '<path d="M4 5h16l-6 8v6l-4-2v-4z"/>', loop: '<path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18 3v4h-4M6 21v-4h4"/>',
@@ -82,7 +83,7 @@
   // the engine's error text, said plainly: "step 'x' (tool): route 'Paid online': ..." -> "Paid online › x: ..."
   const human = e => S(e).replace(/route '([^']+)': /g, '$1 › ').replace(/step '([^']+)' \([a-z_]+\): /g, (m, id) => id.replace(/_/g, ' ') + ': ')
     .replace(/^([^›:]+): ([^:]+ › )/, '$2');
-  const KIND_TILE = {data: 'data', approval: 'warm', notify: 'warm', condition: 'flow', router: 'flow', filter: 'flow', loop: 'flow', wait: 'flow',
+  const KIND_TILE = {data: 'data', approval: 'warm', notify: 'warm', send: 'warm', condition: 'flow', router: 'flow', filter: 'flow', loop: 'flow', wait: 'flow',
     subroute: 'flow', stop: 'flow', ai: 'ai', set: 'data', code: 'data', http: 'core', respond: 'core', store: 'data', var: 'data'};
   function appTile(a, type, op) {
     a = a || {};
@@ -484,7 +485,7 @@
   function libSteps(steps, depth) {
     return `<ul class="lsteps">${(steps || []).map(st => {
       const redo = st.type === 'stop' && st.n8n;
-      const kind = st.type === 'data' ? (DATAW[st.op] || 'Data') : st.type === 'ai' ? (AIW[st.op] || 'AI') : st.type === 'tool' ? (LIBTOOL[st.name] || nice(st.name)) : (KIND[st.type] || st.type);
+      const kind = st.type === 'data' ? (DATAW[st.op] || 'Data') : st.type === 'ai' ? (AIW[st.op] || 'AI') : st.type === 'tool' ? (LIBTOOL[st.name] || nice(st.name)) : st.type === 'send' ? `Send: ${VIAW[st.via] || st.via}` : (KIND[st.type] || st.type);
       const kids = [];
       if (st.then) kids.push(['If yes', st.then]); if (st.else) kids.push(['If no', st.else]); if (st.type === 'loop' && st.body) kids.push(['For each', st.body]);
       (st.routes || []).forEach(r => kids.push([r.label || 'Way', r.steps || []]));
@@ -543,7 +544,17 @@
     file: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>', crypto: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'};
   const KIND = {data: 'Data', tool: 'Uses a tool', http: 'Web request', code: 'Code', wait: 'Wait', notify: 'Tell me', approval: 'Ask me first',
     set: 'Set a value', filter: 'Filter', condition: 'If / else', loop: 'Repeat for each', router: 'Switch',
-    subroute: 'Run another route', stop: 'Stop the run', respond: 'Answer the caller', ai: 'AI', store: 'Data store', var: 'Variables'};
+    subroute: 'Run another route', stop: 'Stop the run', respond: 'Answer the caller', ai: 'AI', store: 'Data store', var: 'Variables', send: 'Send'};
+  // v0.999.278 SENDING: mail and chat-app messages that really go out (after her Allow sending tap on the route)
+  const VIAW = {email: 'Mail', telegram: 'Telegram', slack: 'Slack', discord: 'Discord', mattermost: 'Mattermost'};
+  const SCON = ['connection', 'Send with', 'con'];
+  const SENDF = {
+    email: [['to', 'To', 'text', 'Addresses with commas; {{ }} works'], ['cc', 'Copy to', 'text'], ['bcc', 'Hidden copy to', 'text'], ['subject', 'Subject', 'text'], ['body', 'The mail', 'area', 'Markdown works: **bold**, lists, links'], ['account', 'From', 'acct']],
+    telegram: [SCON, ['chat', 'Chat id', 'text', 'A number like 123456789 or @channelname; a reply to your bot: {{vars.body.message.chat.id}}'], ['text', 'Message', 'area'], ['photo', 'Photo (https:// address, optional)', 'text', 'Sent as a photo with the message under it'], ['format', 'Format', 'sel', [['', 'Plain text'], ['markdown', 'Markdown'], ['html', 'HTML']]], ['silent', 'Without a sound', 'sel', [['', 'No'], ['true', 'Yes']]]],
+    slack: [SCON, ['channel', 'Channel (with a bot token)', 'text', 'Like #general or C0123; a webhook already knows its channel'], ['text', 'Message', 'area'], ['thread', 'Reply in a thread (its ts, optional)', 'text']],
+    discord: [SCON, ['channel', 'Channel id (with a bot token)', 'text', 'A webhook already knows its channel'], ['text', 'Message', 'area']],
+    mattermost: [SCON, ['channel', 'Channel id', 'text', 'Needed with a bot token; with a webhook it is optional'], ['text', 'Message', 'area']],
+  };
   // v0.999.243 ROUTE R6: the AI steps (engine type "ai", told apart by op)
   const AIW = {write: 'Ask AI', summarise: 'Summarise', classify: 'Sort into categories', extract: 'Pull out fields',
     sentiment: 'How it feels', answer: 'Answer from my files', agent: 'AI agent'};
@@ -592,6 +603,7 @@
     if (t === 'subroute') return nice(s.route) + (s.wait === false ? ' (goes on)' : '');
     if (t === 'stop') return (s.as === 'done' ? 'Ends as done' : 'Ends with an error') + (s.message ? ': ' + S(s.message).slice(0, 30) : '');
     if (t === 'respond') return `Answers ${S(s.status || 200)}`;
+    if (t === 'send') return `${VIAW[s.via] || 'Mail'} to ${S(s.via === 'email' ? s.to : s.via === 'telegram' ? s.chat : s.channel || 'its webhook').replace(/\{\{\s*|\s*\}\}/g, '').slice(0, 30)}`;
     if (t === 'notify') return S(s.text).slice(0, 40);
     if (t === 'approval') return S(s.question).slice(0, 40);
     if (t === 'set') return S(s.name);
@@ -604,7 +616,7 @@
     if (t === 'router' && s.ai) return `AI picks of ${(s.routes || []).length} ways`;
     return '';
   }
-  const titleOfStep = s => S(s.label) || (s.type === 'tool' ? nice(s.name) : s.type === 'data' ? (DATAW[s.op] || 'Data') : s.type === 'ai' ? (AIW[s.op] || 'AI') : KIND[s.type] || s.type);
+  const titleOfStep = s => S(s.label) || (s.type === 'send' ? (s.via === 'email' ? 'Send a mail' : `${VIAW[s.via] || 'Chat'} message`) : s.type === 'tool' ? nice(s.name) : s.type === 'data' ? (DATAW[s.op] || 'Data') : s.type === 'ai' ? (AIW[s.op] || 'AI') : KIND[s.type] || s.type);
 
   let ED = null;
   function stopEditor() {
@@ -704,12 +716,64 @@
       const r = await api('PUT', `/api/route/routes/${enc(ED.r.id)}/graph`, {steps: ED.steps, trigger: ED.trig.kind, trigger_spec: ED.trig.spec, base: ED.base});
       const keepPos = ED.pos, keepNotes = ED.notes;
       load(r); ED.pos = keepPos; ED.notes = keepNotes; ED.saving = false;
-      changed(false); toast('Saved.'); return true;
+      changed(false); toast('Saved.'); sendBar(); return true;
     } catch (e) {
       ED.saving = false; topState();
       if (e.status === 409) banner(e.message, true); else toast(e.message, true);
       return false;
     }
+  }
+  // v0.999.278 SENDING: a Telegram bot starts the route (Telegram delivers its messages to the route's address)
+  async function botBox() {
+    const bx = $('#botBox'); if (!bx || !ED) return;
+    if (ED.r.trigger !== 'webhook') { bx.innerHTML = '<span class="mut sm">Save first, then connect your bot here.</span>'; return; }
+    const [st, cr] = await Promise.all([api('GET', `/api/route/routes/${enc(ED.r.id)}/sending`).catch(() => ({})), api('GET', '/api/route/credentials').catch(() => ({}))]);
+    if (!ED || !document.body.contains(bx)) return;
+    const bot = st.bot, mine = (cr.credentials || []).filter(c => c.kind === 'telegram');
+    if (bot) {
+      bx.innerHTML = `<div class="okbox sm">Your bot${bot.username ? ' <b>@' + esc(bot.username) + '</b>' : ''} starts this route (sign-in ${esc(bot.connection)}). Its message is <code>{{vars.body.message.text}}</code>; reply to <code>{{vars.body.message.chat.id}}</code>.</div>
+        <div class="crow"><button class="btn s soft" type="button" id="botOff">Disconnect the bot</button></div>`;
+      $('#botOff').addEventListener('click', async () => { try { await api('DELETE', `/api/route/routes/${enc(ED.r.id)}/bot`); toast('The bot is disconnected.'); } catch (e) { toast(e.message, true); } botBox(); });
+      return;
+    }
+    if (!mine.length) { bx.innerHTML = '<span class="mut sm">Save your bot\'s token under <a href="#/signins/telegram">Sign-ins</a> (kind Telegram, from @BotFather), then connect it here.</span>'; return; }
+    bx.innerHTML = `<div class="crow"><select id="botCon" aria-label="Which bot">${mine.map(c => `<option value="${esc(c.name)}">${esc(c.name)} (${esc(c.hint)})</option>`).join('')}</select>
+      <button class="btn s" type="button" id="botGo">Connect the bot</button></div><p class="mut sm">Messages to the bot start this route. The address above changes (the old one stops working).</p>`;
+    $('#botGo').addEventListener('click', async () => {
+      const g = $('#botGo'); g.disabled = true;
+      try { const o = await api('POST', `/api/route/routes/${enc(ED.r.id)}/bot`, {connection: $('#botCon').value}); toast(o.bot ? `@${o.bot} now starts this route.` : 'The bot now starts this route.'); }
+      catch (e) { toast(e.message, true); }
+      botBox();
+    });
+  }
+  // v0.999.278 SENDING: what this route sends, and her tap that allows it (bound to where it sends)
+  async function sendBar() {
+    const b = $('#edSend'); if (!b || !ED) return;
+    let st; try { st = await api('GET', `/api/route/routes/${enc(ED.r.id)}/sending`); } catch { b.hidden = true; return; }
+    if (!ED || !document.body.contains(b)) return;
+    if (!(st.sends || []).length) { b.hidden = true; b.innerHTML = ''; return; }
+    const list = st.sends.map(x => `<li>${esc(x.label || x.words)}${x.label ? ` <span class="mut sm">(${esc(x.words)})</span>` : ''}</li>`).join('');
+    const say = st.allowed ? `Sending is allowed · ${fmtN(st.today)} sent today of ${fmtN(st.per_day)} a day`
+      : st.changed ? 'Where it sends changed since you allowed it - it sends nothing until you allow it again'
+      : 'It sends nothing until you allow it';
+    b.className = 'sendbar' + (st.allowed ? ' ok' : ' wait');
+    b.innerHTML = `<div class="sbt"><b>${esc(say)}</b><ul>${list}</ul></div><span class="crow">${st.allowed
+      ? '<button class="btn s soft" type="button" id="sendOff">Stop sending</button>'
+      : `<button class="btn s" type="button" id="sendOk" data-hash="${esc(st.hash)}">${st.changed ? 'Allow again' : 'Allow sending'}</button>`}</span>`;
+    b.hidden = false;
+    const ok = $('#sendOk');
+    if (ok) ok.addEventListener('click', async () => {
+      if (ED.dirty) { toast('Save the route first - you allow what is saved.', true); return; }
+      if (ok.dataset.sure !== '1') { ok.dataset.sure = '1'; ok.textContent = 'Yes, let it send these'; return; }
+      try { await api('POST', `/api/route/routes/${enc(ED.r.id)}/sending`, {hash: ok.dataset.hash, allow: true}); toast('This route may send now.'); }
+      catch (e) { toast(e.message, true); }
+      sendBar();
+    });
+    const off = $('#sendOff');
+    if (off) off.addEventListener('click', async () => {
+      try { await api('POST', `/api/route/routes/${enc(ED.r.id)}/sending`, {allow: false}); toast('It sends nothing now.'); } catch (e) { toast(e.message, true); }
+      sendBar();
+    });
   }
   function banner(msg, reload) {
     const b = $('#edBanner'); if (!b) return;
@@ -1144,7 +1208,8 @@
     if (s.type === 'tool') tinfo = await toolInfo(s.name);
     // v0.999.246 ROUTE R7: which of her accounts a step uses, and the saved sign-in a web request uses
     if (tinfo && (tinfo.fields || []).some(f => f.name === 'account') && !ED.accts) ED.accts = ((await api('GET', '/api/route/accounts').catch(() => ({}))).accounts) || [];
-    if (s.type === 'http' && !ED.creds) ED.creds = ((await api('GET', '/api/route/credentials').catch(() => ({}))).credentials) || [];
+    if (s.type === 'send' && s.via === 'email' && !ED.accts) ED.accts = ((await api('GET', '/api/route/accounts').catch(() => ({}))).accounts) || [];
+    if ((s.type === 'http' || s.type === 'send') && !ED.creds) ED.creds = ((await api('GET', '/api/route/credentials').catch(() => ({}))).credentials) || [];
     if (!ED) return;
     if (!ED || ED.sel !== s.id || (box.id === 'edPanel' ? (ED.tab !== 'step' || ED.modal) : ED.modal !== s.id)) return;
     if (box.id === 'edPanel') parts.push(`<div class="phead">${appTile(s.app || (tinfo && tinfo.app), s.type, s.op)}<div><div class="pk">${esc(KIND[s.type] || s.type)}</div><div class="pt">${esc(titleOfStep(s))}</div></div>
@@ -1171,6 +1236,19 @@
     } else if (s.type === 'notify') parts.push(field('Message to you', s.text || '', {k: 'text', area: true}));
     else if (s.type === 'approval') parts.push(field('The question', s.question || '', {k: 'question', area: true, help: 'The run waits here until you tap Approve.'}));
     else if (s.type === 'set') { parts.push(field('Value name', s.name || '', {k: 'name', ref: false, mono: true, help: 'Later steps read it as {{vars.' + (s.name || 'name') + '}}'})); parts.push(field('Value', typeof s.value === 'string' ? s.value : JSON.stringify(s.value ?? ''), {k: 'value', area: true})); }
+    else if (s.type === 'send') {
+      parts.push(field('Send by', s.via || 'email', {k: 'd:via', options: Object.entries(VIAW)}));
+      (SENDF[s.via] || []).forEach(([key, lab, kind, extra]) => {
+        const v = s[key] === undefined || s[key] === null ? '' : typeof s[key] === 'string' ? s[key] : JSON.stringify(s[key]);
+        if (kind === 'con') { const mine = (ED.creds || []).filter(c => c.kind === s.via);
+          parts.push(field(lab, v, {k: 'd:connection', options: [['', mine.length === 1 ? mine[0].name + ' (your only one)' : '- pick one -']].concat(mine.map(c => [c.name, `${c.name} (${c.hint})`])).concat(v && !mine.some(c => c.name === v) ? [[v, v + ' (not saved yet)']] : []),
+            help: mine.length ? 'A saved sign-in of this app, used only by this step.' : `Save a ${VIAW[s.via]} sign-in first (Sign-ins, kind ${VIAW[s.via]}).`})); return; }
+        if (kind === 'acct') { parts.push(field(lab, v, {k: 'd:account', options: [['', 'My main mailbox']].concat((ED.accts || []).filter(a => a.kind !== 'google' || a.value.includes('@')).map(a => [a.value, a.label])), help: 'One of your connected mailboxes'})); return; }
+        if (kind === 'sel') { parts.push(field(lab, v === '' ? extra[0][0] : v, {k: 'd:' + key, options: extra})); return; }
+        parts.push(field(lab, v, {k: 'd:' + key, area: kind === 'area', rows: 5, help: typeof extra === 'string' ? extra : ''}));
+      });
+      parts.push('<p class="mut sm">It sends only after you tap <b>Allow sending</b> above the canvas. A test sends nothing - it shows what it would send.</p>');
+    }
     else if (s.type === 'http' || s.type === 'data' || s.type === 'ai' || s.type === 'store' || s.type === 'var') {
       // v0.999.254: one field-by-field panel for the data, AI, data store, variables and web request steps
       const spec = s.type === 'http' ? HTTPF : ({ai: AIF, data: DATAF, store: STOREF, var: VARF}[s.type] || {})[s.op] || [];
@@ -1307,6 +1385,7 @@
       else if (k === 'oe_retries') { s.on_error.retries = Math.max(0, Math.min(10, parseInt(v, 10) || 0)); }
       else if (k === 'oe_wait') { s.on_error.wait_min = Math.max(1, Math.min(1440, parseInt(v, 10) || 1)); }
       else if (k === 'oe_value') s.on_error.value = v;
+      else if (k === 'd:via') { ['to', 'cc', 'bcc', 'subject', 'body', 'account', 'markdown', 'chat', 'channel', 'text', 'photo', 'format', 'silent', 'thread', 'connection'].forEach(x => delete s[x]); s.via = v; if (v === 'email') { s.to = ''; s.subject = ''; s.body = ''; } else s.text = ''; }
       else if (k.startsWith('d:')) { const key = k.slice(2); if (v === '') delete s[key]; else if (v === 'true') s[key] = true;
         else if (v === 'false' && ['overwrite', 'parse', 'fail_on_error', 'redirects', 'global', 'case_sensitive'].includes(key)) s[key] = false;
         else s[key] = /^-?\d+(\.\d+)?$/.test(v.trim()) && ['count', 'amount', 'length', 'max_steps', 'max_tokens', 'timeout', 'limit', 'by'].includes(key) ? Number(v) : v; }
@@ -1320,7 +1399,7 @@
       else if (k.startsWith('dobj:')) { try { s[k.slice(5)] = v.trim() ? JSON.parse(v) : {}; el.classList.remove('err'); } catch { el.classList.add('err'); return; } }
       else s[k] = v;
       ED.dirty = snap() !== ED.saved; draw(); topState();
-      if (['method', 'oe_do', 'd:action', 'd:how', 'd:mode', 'wkind', 'd:memory', 'd:method', 'd:body_type', 'pg:type', 'lkind', 'd:op'].includes(k)) { if (box.parentNode) stepPanel(box.parentNode); }
+      if (['method', 'oe_do', 'd:action', 'd:how', 'd:mode', 'wkind', 'd:memory', 'd:method', 'd:body_type', 'pg:type', 'lkind', 'd:op', 'd:via'].includes(k)) { if (box.parentNode) stepPanel(box.parentNode); }
       if (el.tagName !== 'SELECT') previewSoon(el, s);
     };
     box.addEventListener('input', e => { if (e.target.dataset.k && e.target.tagName !== 'SELECT') apply(e.target); else if (e.target.closest('.fgroup')) applyFilter(e.target); });
@@ -1413,7 +1492,8 @@
     let zones = []; try { zones = Intl.supportedValuesOf('timeZone'); } catch {}
     let body = '';
     if (t.kind === 'manual') body = '<p class="mut sm">It runs when you test it here, run it from a chat, or another route calls for it.</p>';
-    else if (t.kind === 'webhook') body = `<p class="mut sm">Another app starts it by sending data to a secret web address. What it sends is <code>{{vars.body}}</code> in your steps. An “Answer the caller” step sends the app an answer.</p><div id="addrBox">${addrBox('webhook')}</div>`;
+    else if (t.kind === 'webhook') body = `<p class="mut sm">Another app starts it by sending data to a secret web address. What it sends is <code>{{vars.body}}</code> in your steps. An “Answer the caller” step sends the app an answer.</p><div id="addrBox">${addrBox('webhook')}</div>
+        <div class="psub">Or your Telegram bot</div><div id="botBox"><span class="mut sm">…</span></div>`;
     else if (t.kind === 'schedule') body = `
         ${field('At these times (HH:MM, 24-hour)', (sp.at || []).join(', '), {k: 'at', ref: false, ph: '09:00, 17:30'})}
         <div class="fld"><label>On these days <span class="mut sm">(none = every day)</span></label><div class="days">${days.map(d => `<button type="button" data-day="${d}" aria-pressed="${(sp.days || []).includes(d)}">${dayW[d]}</button>`).join('')}</div></div>
@@ -1530,6 +1610,7 @@
       const [key, i] = b.dataset.rdel.split(':'); before(); (t.spec[key] || []).splice(+i, 1); changed(false); trigPanel(box);
     }));
     box.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => navigator.clipboard.writeText(b.dataset.copy).then(() => toast('Copied.'), () => toast('Copy it by hand.', true))));
+    if ($('#botBox')) botBox();
     const an = $('#addrNew');
     if (an) an.addEventListener('click', async () => {
       const had = /new/i.test(an.textContent);
@@ -1574,7 +1655,7 @@
   }
 
   // the add-a-step panel: search + groups (step kinds and Hoola's tools / connected apps)
-  const GROUPS = [['AI', IC.ai, 'k-ai'], ['Human in the loop', IC.approval, 'k-warm'], ['Flow', IC.route, 'k-flow'], ['Data', IC.store, 'k-data'],
+  const GROUPS = [['AI', IC.ai, 'k-ai'], ['Human in the loop', IC.approval, 'k-warm'], ['Send', IC.send, 'k-warm'], ['Flow', IC.route, 'k-flow'], ['Data', IC.store, 'k-data'],
     ['Data store', IC.store, 'k-data'], ['Variables', IC.set, 'k-data'], ['Text parser', IC.set, 'k-data'], ['Core', IC.http, 'k-core']];
   async function addPanel(box) {
     const q0 = ED.addQ || '';
@@ -1989,6 +2070,8 @@
   // ---------------------------------------------------------------- the editor page
   async function viewEditor(id, tab, runId) {
     const r = await api('GET', `/api/route/routes/${enc(id)}`);
+    const hb = location.hash.replace(/^#\/?/, '').split('/');
+    if (hb[0] !== 'r' || decodeURIComponent(hb[1] || '') !== id) return;   // she went to another page while it loaded
     if (ED && ED.r && ED.r.id !== id) stopEditor();
     shell(true); setNav('routes');
     if (tab === 'runs' || tab === 'settings' || tab === 'versions') { await viewRouteTab(r, tab); return; }
@@ -2007,7 +2090,7 @@
             <button type="button" class="tb" id="tTidy" title="Tidy up" aria-label="Tidy up">${svg(IC.tidy)}</button></div>
           <div class="zoom"><button type="button" id="zOut" aria-label="Zoom out">−</button><span id="zl">100%</span><button type="button" id="zIn" aria-label="Zoom in">+</button><button type="button" id="zFit">Fit</button></div>
           <div class="mini" id="mini" aria-label="Map of the route"></div>
-          <div class="testask" id="testAsk" hidden><b>A test runs the real steps.</b><span class="mut sm">Messages are really sent and rows really added. Steps that ask you first still wait for your tap.</span>
+          <div class="testask" id="testAsk" hidden><b>A test runs the real steps.</b><span class="mut sm">Rows are really added and tools really run. Send steps show what they would send and send nothing. Steps that ask you first still wait for your tap.</span>
             <div class="crow"><button class="btn s" type="button" id="testGo">Test now</button><button class="btn s soft" type="button" id="testNo">Not now</button></div></div>
           <div class="edlog" id="edLog" hidden></div>
         </div>
@@ -2031,7 +2114,7 @@
     document.querySelectorAll('.ptab').forEach(b => b.addEventListener('click', () => { ED.tab = b.dataset.ptab; if (ED.tab === 'step') ED.addAt = null; panel(); }));
     canvasWire();
     window.addEventListener('keydown', edKeys); window.addEventListener('beforeunload', edLeave);
-    draw(); fit(); topState(); panel(); loadData();
+    draw(); fit(); topState(); panel(); loadData(); sendBar();
     if (r.steps === 1 && (r.graph[0] || {}).id === 'tell_me' && !sessionStorage.getItem(ASK_KEY)) setTimeout(() => { const a = $('#askIn'); if (a) a.focus(); }, 300);
   }
   function edTop(r, tab) {
@@ -2044,7 +2127,7 @@
       ${tab === 'editor' ? `<button class="btn soft s ib" type="button" id="edUndo" aria-label="Undo" title="Undo (Ctrl Z)">${svg(IC.undo)}</button><button class="btn soft s ib" type="button" id="edRedo" aria-label="Redo" title="Redo (Ctrl Shift Z)">${svg(IC.redo)}</button>
       <button class="btn soft s" type="button" id="edSave" disabled title="Save (Ctrl S)">Save</button>
       <button class="btn s" type="button" id="edTest">${svg(IC.play)}Test route</button>` : ''}
-    </div><div class="edbanner" id="edBanner" hidden></div>`;
+    </div><div class="edbanner" id="edBanner" hidden></div>${tab === 'editor' ? '<div class="sendbar" id="edSend" hidden></div>' : ''}`;
   }
   function edKeys(e) {
     if (!ED) return;
@@ -2184,6 +2267,7 @@
           <datalist id="stTzList">${zones.map(z => `<option value="${esc(z)}">`).join('')}</datalist><span class="fh">Used by its schedule, its waits and its dates.</span></div>
         <div class="two">${field('Switch it off after this many failed runs in a row', S(st.stop_after_errors || ''), {k: 'stop_after_errors', ref: false, num: true, help: '1-20; empty = never'})}
           ${field('At most this many runs a day', S(st.runs_per_day || ''), {k: 'runs_per_day', ref: false, num: true, help: 'Empty = no limit'})}</div>
+        ${field('At most this many messages sent a day', S(st.sends_per_day || ''), {k: 'sends_per_day', ref: false, num: true, help: 'Its Send steps: mail, Telegram, Slack, Discord, Mattermost. Empty = 100; up to 2,000'})}
         <div class="two">${field('When it fails, run', st.error_route || '', {k: 'error_route', options: [['', 'Nothing'], ...others.map(x => [x.name, nice(x.name)])]})}
           ${field('Currency', st.currency || '', {k: 'currency', ref: false, ph: 'Like EUR, USD, INR'})}</div>
         <div class="two">${field('Keep its runs for (days)', S(st.keep_runs_days || ''), {k: 'keep_runs_days', ref: false, num: true, help: '1-3650; empty = the server default'})}
@@ -2217,7 +2301,7 @@
       const o = {};
       MAIN.querySelectorAll('#setForm [data-k]').forEach(el => { const v = el.value.trim(); if (v) o[el.dataset.k] = v; });
       if (o.tags) o.tags = o.tags.split(',').map(x => x.trim()).filter(Boolean);
-      ['stop_after_errors', 'runs_per_day', 'keep_runs_days', 'keep_runs', 'queue_max'].forEach(k => { if (o[k]) o[k] = parseInt(o[k], 10) || o[k]; });
+      ['stop_after_errors', 'runs_per_day', 'sends_per_day', 'keep_runs_days', 'keep_runs', 'queue_max'].forEach(k => { if (o[k]) o[k] = parseInt(o[k], 10) || o[k]; });
       ['in_order', 'confidential', 'auto_commit', 'queue_when_off'].forEach(k => { if (o[k]) o[k] = o[k] === 'true'; });
       if (o.keep_incomplete) o.keep_incomplete = o.keep_incomplete !== 'false';
       if (o.allow_ips) o.allow_ips = o.allow_ips.split(/[,\s]+/).filter(Boolean);
@@ -2432,19 +2516,24 @@
       try { await api('DELETE', `/api/route/variables/${enc(b.dataset.vdel)}`); viewVariables(); } catch (err) { toast(err.message, true); }
     }));
   }
-  const CREDW = {bearer: 'A token (Bearer)', header: 'A key in a header', basic: 'A user and a password', query: 'A key in the address', oauth2: 'OAuth2 (app sign-in)'};
+  const CREDW = {bearer: 'A token (Bearer)', header: 'A key in a header', basic: 'A user and a password', query: 'A key in the address', oauth2: 'OAuth2 (app sign-in)',
+    telegram: 'Telegram bot', slack: 'Slack', discord: 'Discord', mattermost: 'Mattermost'};
+  const MSGK = ['telegram', 'slack', 'discord', 'mattermost'];
   async function viewSignins(kind) {
     shell(false); setNav('signins');
     const c = await api('GET', '/api/route/credentials');
     kind = kind || 'bearer';
     const F = {bearer: [['token', 'The token', 1]], header: [['header', 'Header name'], ['value', 'The key', 1]], basic: [['user', 'User'], ['password', 'Password', 1]],
-      query: [['param', 'Its name in the address'], ['value', 'The key', 1]], oauth2: [['token_url', 'Token address (https://)'], ['client_id', 'Client id'], ['client_secret', 'Client secret', 1], ['scope', 'Scope (optional)']]}[kind];
+      query: [['param', 'Its name in the address'], ['value', 'The key', 1]], oauth2: [['token_url', 'Token address (https://)'], ['client_id', 'Client id'], ['client_secret', 'Client secret', 1], ['scope', 'Scope (optional)']],
+      telegram: [['token', 'Bot token (from @BotFather)', 1]], slack: [['webhook', 'Incoming webhook (https://hooks.slack.com/...)', 1], ['token', 'Or a bot token (xoxb-...)', 1]],
+      discord: [['webhook', 'Channel webhook (https://discord.com/api/webhooks/...)', 1], ['token', 'Or a bot token', 1]],
+      mattermost: [['webhook', 'Incoming webhook (https://your-server/hooks/...)', 1], ['server', 'Or your server (https://...)'], ['token', 'and a bot token', 1]]}[kind] || [];
     const rows = (c.credentials || []).map(x => `<tr><td class="c-name mono">${esc(x.name)}</td><td>${esc(CREDW[x.kind] || x.kind)}</td><td class="mono sm">${esc(x.host)}</td>
       <td class="mono sm">${esc(x.hint)}</td><td class="mut sm">${x.used_at ? 'Used ' + esc(at(x.used_at)) : 'Not used yet'}</td><td class="c-act"><button class="btn soft s bad" type="button" data-cdel="${esc(x.name)}">Delete</button></td></tr>`).join('');
-    MAIN.innerHTML = `<div class="top"><h1>Sign-ins</h1></div><p class="lead">For web request steps that need a key. Saved locked, never shown again (only the last 4), never seen by the AI, and only ever sent to the site you name.</p>
+    MAIN.innerHTML = `<div class="top"><h1>Sign-ins</h1></div><p class="lead">For web request steps that need a key, and for Send steps to Telegram, Slack, Discord and Mattermost. Saved locked, never shown again (only the last 4), never seen by the AI, and only ever sent to the site you name.</p>
       <section class="card"><form id="credForm" class="pform" autocomplete="off">
         <div class="two">${field('Name', '', {k: 'name', ref: false, mono: true, ph: 'SHOP_API'})}${field('Kind', kind, {k: 'kind', options: Object.entries(CREDW)})}</div>
-        ${field('For this site only', '', {k: 'host', ref: false, mono: true, ph: 'api.example.com'})}
+        ${MSGK.includes(kind) ? `<p class="mut sm">Used only by a Send step of ${esc(CREDW[kind])}, only towards ${esc(CREDW[kind])}.</p>` : field('For this site only', '', {k: 'host', ref: false, mono: true, ph: 'api.example.com'})}
         ${F.map(([k, lab, secret]) => `<div class="fld"><label for="cr_${k}">${esc(lab)}</label><div class="fc"><input id="cr_${k}" data-k="${k}" ${secret ? 'type="password" autocomplete="new-password"' : ''} class="mono"></div></div>`).join('')}
         <div class="crow"><button class="btn s" type="submit">Save the sign-in</button></div></form></section>
       <section class="card flat">${rows ? `<div class="tw"><table class="rt"><thead><tr><th>Name</th><th>Kind</th><th>Site</th><th>Key</th><th>Last use</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="empty">No sign-ins yet.</div>'}</section>`;
