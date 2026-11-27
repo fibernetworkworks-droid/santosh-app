@@ -12870,3 +12870,26 @@ NOT VERIFIED on her server; country packs other than India are unchecked.
 
 ## v0.999.251 CLAUDE CODE, THE REST
 Claude Code, the rest. `devlab/box.py` (start_bg / bg_state / bg_output / bg_kill / bg_sweep, run_in share_with), `devsahayak/engine.py` (TOOLS bash run_in_background + bash_output + kill_shell, WEB_FETCH_TOOL / WEB_SEARCH_TOOL / MCP_TOOL / SKILL_TOOL in tools_for_round behind dev_web / dev_mcp / dev_skills, `_arun`, Tools._bg / _bg_running / _start_bg / t_bash_output / t_kill_shell / t_web_fetch / t_web_search / t_mcp / t_skill, PERMIT / PERM_MODE / cmd_prefix / needs_ok / wait_ok / give_ok / asking, gate in the tool loop, events bgstart / bgout / bgkill / perm / web / websearch / mcp / skill, terminal / stop_shell, forget sweeps bg, SYSTEM lines), `devsahayak/service.py` (MODES + steps, _asking in live_state / delta / task_view, set_mode, permit, terminal, stop_shell, compact_now, init_rules INIT_WORDS, edit_message, fork), `devsahayak/api.py` (PATCH mode, /permit, /terminal, /terminal/{bid}/stop, /compact, /init, /edit, /fork). Web `static/console/code.js` (askHTML, sessModeMenu, termHTML / openTerm / termLoad, compactNow / initNow / forkNow, editable + editmsg, forkcp, new step cases, yesPill, 'The run' rail, stages Plan / Own review / GitHub checks / Merge, home headline) + `hoolacode.css` (v0.999 CLAUDE CODE, THE REST block). Phone `lib/ui/code/code_session.dart`, `code_words.dart` (CodeTerm, CodeTermBox, CodeEditCard, codeHost), `code_home.dart`, `code_start.dart`, NEW `code_terminal.dart`; `lib/ui/hoola_theme.dart` HoolaTerminal. Tests `test_v0999_251_claude_code_all.py`; moved: test_v0748 / v0768 / v0807 / v0924 / v0999_206 / v0999_249 / v0962 / chatkit.
+
+
+## v0.999.252 QA DESK (owner: "App tester (QA) same as finace desks")
+
+Software & Systems check first (owner: "check the existing code and AI employees available"): 22 employees, 12 working; nine of them
+(QA, DevOps, Cyber, IT Admin, Product, App reviewer, Technical writer, NOC, 3D Studio) had full engines, server routes and phone
+screens but opened only the generic Department desk on the console. QA is the first to get its own section.
+- /console/qa (`qadesk.html/.js/.css`) + QA chat (kind `qa`, `qachat.py`, out of every chat list; desk block + family qa in view).
+- Pages: Today (targets, open bugs by severity ring, fixes to check, last run pass rate, release readiness per target, runs as
+  stacked pass / fail / blocked columns, Needs you); What I test (add a Hoola website / app design / Android preview or her own site
+  by address; proof by DNS TXT / meta tag / file with Check now; name, who it is for, daily test time, government-facing; test
+  accounts sealed, never shown; stop testing); Test cases (write from a real-browser look + her requirements, filter, priority, by
+  hand cases marked pass / fail, run one, retire, CSV); Runs (start all / smoke / regression / failing / one type in the background;
+  a run page with failures first: expected vs actual, the step, the screenshot fetched with her key; passes as one line); Bugs
+  (filter, steps, expected vs actual, page, console, screenshot, history; It is fixed -> Test it again; Will not fix / Close need a
+  reason; severity; Prepare a GitHub issue -> a card filed only on her tap); Release (verdict, cases by result meter, blockers,
+  risks, the accessibility law); Settings (team name, her testing rules, country).
+- Guards: nothing tested before proof; no OTP / CVV / PIN / card number anywhere; a password only into a test account.
+- GLOBAL: `qa/rules.standard(country, sector, govt)` - India's sector table checked, GB / US / EU members / DE / FR / CA / AU / AE / SG
+  / JP from memory as "check this", others WCAG 2.2 AA + check this; readiness says "your accessibility law" outside India; daily
+  runs (`qa.tick`) and the register file date in HER time zone (were India time); `QaSettings.country`.
+- Tests: test_qa_desk.py 5 incl. a browser walk at 1440 / 390. Two older QA engine tests (tools tick wording, crash reports) fail the
+  same way before this change. NOT VERIFIED on her server.
