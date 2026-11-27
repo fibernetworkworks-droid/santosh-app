@@ -400,6 +400,58 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
     return r;
   }
 
+  /// v0.999 an agent's own copy: show its diff, bring it in, or discard it.
+  Future<void> _worktree(String id, String act) async {
+    final path = '$_base/worktrees/${Uri.encodeComponent(id)}';
+    if (act == 'show') {
+      final r = await codeCall(context, widget.app, 'GET', path);
+      if (!mounted || r == null) return;
+      final diff = cs(r['diff']);
+      final c = HoolaColors.of(context);
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        backgroundColor: c.surface,
+        builder: (ctx) => DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: .7,
+          maxChildSize: .94,
+          builder: (ctx, scroll) => ListView(controller: scroll, padding: const EdgeInsets.fromLTRB(16, 0, 16, 24), children: [
+            Text("Changes in the agent's own copy $id", style: codeSans(c, size: 16, weight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text('Not in your working copy yet.', style: codeSans(c, size: 13, color: c.ink3)),
+            const SizedBox(height: 12),
+            for (final ln in diff.split('\n').take(3000))
+              Text(ln, style: codeMono(c, size: 12, color: ln.startsWith('+') ? c.ok : (ln.startsWith('-') ? c.bad : c.ink2))),
+          ]),
+        ),
+      );
+      return;
+    }
+    if (act == 'discard') {
+      final yes = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('Discard $id?'),
+          content: const Text("The agent's changes in its own copy are thrown away. Your working copy is not touched."),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep them')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Discard')),
+          ],
+        ),
+      );
+      if (yes != true || !mounted) return;
+    }
+    final r = await _run('POST', '$path/$act');
+    if (!mounted || r == null) return;
+    final conf = r['conflicts'] is List ? (r['conflicts'] as List).map((x) => '$x').toList() : <String>[];
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(
+        content: Text(act == 'discard'
+            ? 'Discarded $id.'
+            : (conf.isEmpty ? "Brought $id's changes into the working copy." : 'Brought in $id - settle the conflicts in ${conf.join(', ')}.'))));
+  }
+
   bool _canRevise(Map<String, dynamic> t) => codeCanRevise.contains(cs(t['status'])) || t['can_continue'] == true;
 
   /// note | answer | plan | revise | off
@@ -2007,8 +2059,46 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
       case 'agent':
         return _line(c, Icons.groups_outlined, [
           TextSpan(text: cs(s['text']).isNotEmpty ? cs(s['text']) : 'A helper agent: ${cs(s['name'])}'),
+          if (s['background'] == true) TextSpan(text: ' · in the background', style: TextStyle(color: c.ink3)),
+          if (cs(s['worktree']).isNotEmpty) TextSpan(text: ' · in its own copy ${cs(s['worktree'])}', style: TextStyle(color: c.ink3)),
           if (cs(s['model']).isNotEmpty) TextSpan(text: ' · on ${cs(s['model'])}', style: TextStyle(color: c.ink3)),
         ]);
+      case 'worktree': // v0.999 an agent's own copy (Claude Code's worktrees): kept until it is brought in
+        {
+          final st = cs(s['state']);
+          final id = cs(s['id']);
+          final who = cs(s['title']).isNotEmpty ? cs(s['title']) : (cs(s['agent']).isNotEmpty ? cs(s['agent']) : 'The agent');
+          final conf = s['conflicts'] is List ? (s['conflicts'] as List).map((x) => '$x').toList() : <String>[];
+          if (st == 'removed') {
+            return _line(c, Icons.layers_clear_outlined,
+                [TextSpan(text: '$who worked in its own copy $id; it changed nothing, so the copy was removed.', style: TextStyle(color: c.ink3))]);
+          }
+          if (st == 'applied') {
+            return _line(c, Icons.call_merge_rounded, [
+              TextSpan(text: '${s['by_her'] == true ? 'You brought in' : 'Brought in'} the changes from $id'),
+              if (conf.isNotEmpty) TextSpan(text: ' · conflicts in ${conf.join(', ')}', style: TextStyle(color: c.bad)),
+            ], iconColor: conf.isNotEmpty ? c.bad : c.ok);
+          }
+          if (st == 'discarded') {
+            return _line(c, Icons.delete_outline_rounded,
+                [TextSpan(text: '${s['by_her'] == true ? 'You discarded' : 'Discarded'} the changes in $id.', style: TextStyle(color: c.ink3))]);
+          }
+          final files = (s['files'] is List ? s['files'] as List : const []).map((x) => '$x'.replaceFirst(RegExp(r'^[A-Z] '), '')).toList();
+          return _line(c, Icons.layers_outlined, [
+            TextSpan(text: "$who's own copy $id"),
+            TextSpan(text: ' · ${files.length} file${files.length == 1 ? '' : 's'} waiting (+${ci(s['added'])} -${ci(s['removed'])})', style: TextStyle(color: c.ink3)),
+          ],
+              trailing: PopupMenuButton<String>(
+                tooltip: 'What to do with these changes',
+                icon: Icon(Icons.more_horiz_rounded, size: 20, color: c.ink2),
+                onSelected: (v) => _worktree(id, v),
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'show', child: Text('Show changes')),
+                  PopupMenuItem(value: 'apply', child: Text('Bring in')),
+                  PopupMenuItem(value: 'discard', child: Text('Discard')),
+                ],
+              ));
+        }
       case 'bgstart':
         {
           final what = cs(s['desc']).isNotEmpty ? cs(s['desc']) : cs(s['cmd']);
@@ -2092,6 +2182,15 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         return _claudeFileRow(c, s);
       case 'title':
         return null;
+      case 'judge':
+        {
+          final deny = cs(s['verdict']) == 'deny';
+          return _line(c, deny ? Icons.gpp_bad_outlined : Icons.shield_outlined, [
+            TextSpan(text: deny ? 'The safety reviewer stopped a step' : 'The safety reviewer asked you'),
+            if (cs(s['what']).isNotEmpty) TextSpan(text: ' · ${cs(s['what'])}'),
+            if (cs(s['reason']).isNotEmpty) TextSpan(text: ' - ${cs(s['reason'])}', style: TextStyle(color: c.ink3)),
+          ], iconColor: deny ? c.bad : null);
+        }
       case 'fallback':
         return _line(c, Icons.swap_horiz_rounded, [TextSpan(text: cs(s['text']).isEmpty ? 'A backup model answered' : cs(s['text']))]);
       default:

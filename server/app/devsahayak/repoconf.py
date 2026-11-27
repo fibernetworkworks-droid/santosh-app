@@ -32,7 +32,8 @@ HOOK_EVENTS = ("PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", 
                "SessionEnd", "Notification",
                # v0.999 the rest of Claude Code's events that mean something in Hoola Code
                "SubagentStart", "PermissionRequest", "PermissionDenied", "PostToolUseFailure", "PostToolBatch", "PostCompact",
-               "StopFailure", "InstructionsLoaded", "UserPromptExpansion", "TaskCreated", "TaskCompleted")
+               "StopFailure", "InstructionsLoaded", "UserPromptExpansion", "TaskCreated", "TaskCompleted",
+               "WorktreeCreate", "WorktreeRemove")              # v0.999 an agent's own copy made / removed
 HOOK_TYPES = ("command", "prompt", "agent", "http", "mcp_tool")
 MENTION = re.compile(r"(?<![\w/])@((?:[\w.-]+/)*[\w.-]+\.[\w]+|(?:[\w.-]+/)+[\w.-]+)")
 MENTION_MAX = 5
@@ -112,7 +113,7 @@ def settings(repo: Path, plugins: list[Path] | tuple = ()) -> dict[str, Any]:
     """permissions {allow, ask, deny}, hooks {event: [{matcher, commands}]}, env {name: value}, mode, style - merged from
     .claude/ and .hoola/ settings(.local).json and the hooks of her enabled plugins (hooks/hooks.json)."""
     out: dict[str, Any] = {"allow": [], "ask": [], "deny": [], "hooks": {}, "env": {}, "mode": "", "accept_edits": False,
-                           "style": ""}
+                           "style": "", "hard_deny": []}
     files = [Path(repo) / d / name for d in DIRS for name in ("settings.json", "settings.local.json")]
     files += [Path(pl) / "hooks" / "hooks.json" for pl in plugins]
     for f in files:
@@ -134,6 +135,10 @@ def settings(repo: Path, plugins: list[Path] | tuple = ()) -> dict[str, Any]:
         if mode in MODES_MAP:
             out["mode"], out["accept_edits"] = MODES_MAP[mode], mode == "acceptedits"
         _hook_groups(out, j.get("hooks"))
+        am = j.get("autoMode") if isinstance(j.get("autoMode"), dict) else {}
+        for r in am.get("hard_deny") or []:               # v0.999 Auto mode: refused with no review (Claude Code's own key)
+            if isinstance(r, str) and r.strip():
+                out["hard_deny"].append(r.strip()[:300])
         env = j.get("env") if isinstance(j.get("env"), dict) else {}
         for k, v in list(env.items())[:40]:           # plain settings for commands; anything that looks secret is left out
             if ENV_OK.match(str(k)) and not ENV_NEVER.search(str(k)) and isinstance(v, (str, int, float, bool)):
@@ -177,6 +182,12 @@ def rule_matches(rule: str, tool: str, inp: dict[str, Any]) -> bool:
         cmd = " ".join(str(inp.get("command") or "").split())
         if spec.endswith(":*"):
             return cmd == spec[:-2] or cmd.startswith(spec[:-2] + " ") or cmd.startswith(spec[:-2])
+        if "*" in spec:                                  # v0.999 Claude Code's wildcard anywhere: Bash(npm run *), Bash(git * main)
+            want = " ".join(spec.split())
+            pat = "".join(".*" if ch == "*" else re.escape(ch) for ch in want)
+            if want.endswith(" *"):                      # 'ls *' also matches a bare 'ls' (Claude Code's word boundary)
+                return bool(re.fullmatch(pat, cmd, re.S)) or cmd == want[:-2]
+            return bool(re.fullmatch(pat, cmd, re.S))
         return cmd == spec.strip()
     if cname == "WebFetch":
         if spec.startswith("domain:"):
@@ -394,7 +405,8 @@ def agents(repo: Path, plugins: list[Path] | tuple = ()) -> dict[str, dict[str, 
             out[name] = {"name": name, "title": name.replace("-", " ").replace("_", " ").title(), "tools": level,
                          "prompt": f"THIS {'REPO' if origin == 'repo' else origin.upper()}'S OWN AGENT (from " + str(f.relative_to(rel_to)) + "):\n" + body.strip()[:20000],
                          "description": meta.get("description", "")[:300], "repo": "1", "origin": origin,
-                         "model": str(meta.get("model", "") or "").strip()[:80]}       # v0.999 Claude Code's `model:` line
+                         "model": str(meta.get("model", "") or "").strip()[:80],       # v0.999 Claude Code's `model:` line
+                         "isolation": "worktree" if str(meta.get("isolation", "") or "").strip().lower() == "worktree" else ""}
     return out
 
 

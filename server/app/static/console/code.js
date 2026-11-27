@@ -763,6 +763,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       case 'mcp': return `<div class="hcd-step">${svg('spark')}<span>${s.action === 'list' ? 'Looked at your MCP servers' : `Used ${esc(s.server || 'an MCP server')} · ${p(s.tool || '')}`}</span>${at}</div>`;
       case 'skill': return `<div class="hcd-step dim">${svg('read')}<span>${s.action === 'list' ? 'Looked at your skills' : `Read the skill ${p(s.name || '')}`}</span>${at}</div>`;
       case 'asked': return `<div class="hcd-step">${svg('dot')}<span>Asked you: <b>${esc(s.question || '')}</b>${s.answer ? ` · you said <i>${esc(s.answer)}</i>` : ' · no answer'}</span>${at}</div>`;
+      case 'judge': return `<div class="hcd-step${s.verdict === 'deny' ? ' bad' : ''}">${svg(s.verdict === 'deny' ? 'x' : 'spark')}<span>${s.verdict === 'deny' ? '<b>The safety reviewer stopped a step</b>' : '<b>The safety reviewer asked you</b>'}${s.what ? ' · ' + esc(s.what) : ''}${s.reason ? ` <span class="hcd-mut">- ${esc(s.reason)}</span>` : ''}</span>${at}</div>`;
       case 'fallback': return `<div class="hcd-step dim">${svg('spark')}<span>${esc(s.text || 'A backup model answered')}</span>${at}</div>`;
       case 'title': return '';
       case 'claudefile': return `<div class="hcd-step dim">${svg('pencil')}<span>You ${s.what === 'deleted' ? 'deleted' : 'changed'} <code>${esc(s.path || '')}</code></span>${at}</div>`;
@@ -782,9 +783,17 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       case 'ckpt': return `<div class="hcd-step dim">${svg('ok')}<span>Checkpoint ${esc(String(s.num ?? s.n))} saved - you can go back to here</span>${at}</div>`;
       case 'rewind': return `<div class="hcd-step">${svg('list')}<span><b>${s.what === 'code' ? 'Put the files back' : s.what === 'conversation' ? 'Took the conversation back' : 'Went back'} to checkpoint ${esc(String(s.num ?? s.n))}.</b> ${s.what === 'code' ? 'The conversation is unchanged.' : s.what === 'conversation' ? 'The files keep every change made since.' : 'The working copy and the conversation are as they were then.'}</span>${at}</div>`;
       case 'agent': { /* v0.794 ECC agents (Claude Code-style subagents) */
-        if (s.state === 'start') return `<div class="hcd-step">${svg('dot')}<span><b>Asked ${esc(s.title || s.name)}</b> (${esc(s.tools || 'read')}${s.model ? ' · on ' + esc(s.model) : ''}) · ${esc(s.task || '')}</span>${at}</div>`;
+        if (s.state === 'start') return `<div class="hcd-step">${svg('dot')}<span><b>${s.background ? 'Started' : 'Asked'} ${esc(s.title || s.name)}</b>${s.background ? ` <span class="hcd-bgtag">in the background${s.id ? ' · ' + esc(s.id) : ''}</span>` : ''}${s.worktree ? ` <span class="hcd-bgtag">in its own copy · ${esc(s.worktree)}</span>` : ''} (${esc(s.tools || 'read')}${s.model ? ' · on ' + esc(s.model) : ''}) · ${esc(s.task || '')}</span>${at}</div>`;
         const lab = `<b>${esc(s.title || s.name)}</b> reported · ${plural(s.steps || 0, 'step')}${s.edits ? ` · changed ${plural(s.edits, 'file')}` : ''}${s.secs ? ` · ${esc(String(s.secs))} s` : ''}`;
         return s.report ? fold('a' + i, lab, `<pre class="hcd-term">${esc(s.report)}</pre>`, 'row', verbose) : `<div class="hcd-step ok">${svg('ok')}<span>${lab}</span>${at}</div>`; }
+      case 'worktree': { /* v0.999 an agent's own copy (Claude Code's worktrees): kept until it is brought in */
+        const who = esc(s.title || s.agent || 'The agent'), id = esc(s.id || '');
+        if (s.state === 'removed') return `<div class="hcd-step dim">${svg('list')}<span>${who} worked in its own copy ${id}; it changed nothing, so the copy was removed.</span>${at}</div>`;
+        if (s.state === 'applied') return `<div class="hcd-step ${s.conflicts && s.conflicts.length ? 'bad' : 'ok'}">${svg(s.conflicts && s.conflicts.length ? 'bad' : 'ok')}<span><b>${s.by_her ? 'You brought in' : 'Brought in'} the changes from ${id}</b>${s.conflicts && s.conflicts.length ? ` · <span class="del">conflicts in ${esc(s.conflicts.join(', '))}</span>` : ''}</span>${at}</div>`;
+        if (s.state === 'discarded') return `<div class="hcd-step dim">${svg('x')}<span>${s.by_her ? 'You discarded' : 'Discarded'} the changes in ${id}.</span>${at}</div>`;
+        const fl = (s.files || []).map(x => String(x).replace(/^[A-Z] /, ''));
+        return `<div class="hcd-step hcd-wt">${svg('list')}<span><b>${who}'s own copy ${id}</b> · ${plural(fl.length, 'file')} waiting (<span class="add">+${s.added || 0}</span> <span class="del">-${s.removed || 0}</span>)${fl.length ? ' · ' + esc(fl.slice(0, 4).join(', ')) + (fl.length > 4 ? ' …' : '') : ''}
+          <span class="hcd-wtb"><button type="button" class="hcd-btn sm" data-act="wtshow" data-wt="${id}">Show changes</button><button type="button" class="hcd-btn sm" data-act="wtapply" data-wt="${id}">Bring in</button><button type="button" class="hcd-btn sm" data-act="wtdiscard" data-wt="${id}">Discard</button></span></span>${at}</div>`; }
       case 'memory': { /* Hoola Code memory: the repo's notes from earlier sessions */
         const what = s.action === 'remembered' ? `Wrote ${plural(s.num ?? s.n ?? 0, 'note')} to this repo's memory` : s.action === 'save' ? `Saved a note to this repo's memory${s.title ? ': ' + esc(s.title) : ''}`
           : s.action === 'search' ? `Searched this repo's memory${s.q ? ' for ' + p(s.q) : ''} · ${plural(s.num ?? s.n ?? 0, 'note')}` : `Read ${plural(s.num ?? s.n ?? 0, 'note')} from this repo's memory`;
@@ -1722,6 +1731,18 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       if (!['both', 'code', 'conversation'].includes(r)) return;
       await busy(b, async () => { await api('POST', `/api/devsahayak/tasks/${tid()}/rewind`, {n, what: r}); await again();
         toast(r === 'code' ? `Files back at checkpoint ${n}. The conversation is unchanged.` : r === 'conversation' ? `Conversation back at checkpoint ${n}. The files keep their changes.` : `Back at checkpoint ${n}.`); }); },
+    wtshow: async b => { const w = b.dataset.wt;   /* v0.999 an agent's own copy: its diff */
+      try { const r = await api('GET', `/api/devsahayak/tasks/${tid()}/worktrees/${encodeURIComponent(w)}`);
+        await dialog(`<h2>Changes in the agent's own copy ${esc(w)}</h2><p class="hcd-mut">Not in your working copy yet.</p>${diffHTML(String(r.diff || '').split('\n').slice(0, 3000)) || '<p>No changes.</p>'}
+          <div class="hcd-dlgb"><button class="hcd-btn" value="no" formnovalidate>Close</button></div>`); } catch (e) { toast(e.message, true); } },
+    wtapply: async b => { const w = b.dataset.wt;
+      await busy(b, async () => { const r = await api('POST', `/api/devsahayak/tasks/${tid()}/worktrees/${encodeURIComponent(w)}/apply`); await again();
+        toast(r.conflicts && r.conflicts.length ? `Brought in ${w} - settle the conflicts in ${r.conflicts.join(', ')}.` : `Brought ${w}'s changes into the working copy.`, !!(r.conflicts && r.conflicts.length)); }); },
+    wtdiscard: async b => { const w = b.dataset.wt;
+      const ok = await dialog(`<h2>Discard ${esc(w)}?</h2><p class="hcd-mut">The agent's changes in its own copy are thrown away. Your working copy is not touched.</p>
+        <div class="hcd-dlgb"><button class="hcd-btn" value="no" formnovalidate>Keep them</button><button class="hcd-btn pri" value="yes">Discard</button></div>`);
+      if (ok !== 'yes') return;
+      await busy(b, async () => { await api('POST', `/api/devsahayak/tasks/${tid()}/worktrees/${encodeURIComponent(w)}/discard`); await again(); toast(`Discarded ${w}.`); }); },
     starter: b => { const l = $('#hcdLine'), st = STARTS[+b.dataset.i]; if (!l || !st) return; l.value = st[2]; l.focus(); l.setSelectionRange(l.value.length, l.value.length); },
     unkind: () => { HOME.kind = 'auto'; drawTray(); },
     unissue: () => { HOME.issue = 0; drawTray(); },

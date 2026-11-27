@@ -606,7 +606,10 @@ AGENTS_HOWTO = """WORKING WITH SPECIALIST AGENTS (the `agent` tool), the way Cla
   you can confirm in the code; a finding you can show is wrong, you leave and say why in risk.
 - Write each task so it stands alone (the agent cannot see this conversation): the files / functions, what changed
   and why, what to check, what to report. Verify what an agent reports before you act on it.
-- Do small things yourself: never hand a one-line change or a single file read to an agent."""
+- Do small things yourself: never hand a one-line change or a single file read to an agent.
+- Two or more separate changes that do not touch the same files: give each editing agent isolation=worktree (its own
+  copy) and ask for them in ONE reply - they work at the same time. Their changes wait in their copies: look at each
+  with agent_worktree show, bring the good ones in with apply (settle any conflict it names), discard the rest."""
 
 
 def ecc_system(paths: list[str], request: str = "") -> str:
@@ -681,6 +684,10 @@ def tools_for_round() -> list[dict[str, Any]]:
         from . import subagent as SA
         if SA.on():
             extra.append(SA.AGENT_TOOL)
+            extra += SA.BG_TOOLS                          # v0.999 background agents: check / message / stop
+            from . import worktree as WT
+            if WT.on():
+                extra.append(WT.TOOL)                     # v0.999 the agents' own copies: show / apply / discard
     except Exception:
         pass
     try:
@@ -2937,6 +2944,11 @@ def run(g: Any, t: Any, token: str, rules: str, allow_workflows: bool = False, i
         return res
     finally:
         ROUND_TOOLS.pop(t.id, None)
+        try:                                              # v0.999 a round's background agents end with it
+            from . import subagent as SA
+            SA.stop_all(t.id)
+        except Exception:  # noqa: BLE001
+            pass
         alive.set()
         LIVE.discard(t.id)
         LIVE_TEXT.pop(t.id, None)
@@ -3235,6 +3247,17 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
         for b in uses:
             inp = b.get("input") or {}
             if b["name"] == "done":
+                from . import subagent as SA
+                still = SA.running(tid_now)
+                if still and not reality.get("bg_told"):  # v0.999 its background agents are still working
+                    reality["bg_told"] = True
+                    results.append({"type": "tool_result", "tool_use_id": b["id"], "content":
+                                    "Not finished yet: background agents are still running - "
+                                    + ", ".join(f"{r['id']} ({r['type']})" for r in still)
+                                    + ". Wait for them with agent_output (wait_s), or stop them with kill_agent, then call done."})
+                    continue
+                if still:
+                    SA.stop_all(tid_now)
                 problems = []
                 if gate_on and not gated and getattr(t, "kind", "") != "explain":
                     try:
@@ -3350,6 +3373,33 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                 out = agent_out.get(b["id"], "Agents are switched off on this server - do the work yourself.")
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out[:60000]})
                 continue
+            if b["name"] == "agent_worktree":             # v0.999 an agent's own copy: list / show / apply / discard
+                from . import worktree as WT
+                if str(inp.get("action") or "") == "apply" and (PERM_MODE.get(tid) or getattr(t, "mode", "")) == "steps" \
+                        and not (ses.meta.get("allow") or {}).get("edits"):
+                    try:
+                        rec = WT._rec(ses, str(inp.get("id") or ""))
+                    except WT.WTError:
+                        rec = {}
+                    fl = [str(x).split(" ", 1)[-1] for x in (rec.get("files") or [])]
+                    ask = {"tool": "agent_worktree", "what": f"Bring in {rec.get('agent') or 'the agent'}'s changes from its own copy "
+                           f"{inp.get('id')} ({len(fl)} file(s): {', '.join(fl[:6])})", "path": ", ".join(fl[:6])}
+                    ans = wait_ok(tid, ask, stopped, emit)
+                    if ans.get("answer") == "no":
+                        results.append({"type": "tool_result", "tool_use_id": b["id"], "content":
+                                        "She said no to bringing these changes in." + (f" Her words: {ans.get('text')}" if ans.get("text") else "")})
+                        continue
+                out = WT.tool(tools, inp)
+                if str(inp.get("action") or "") in ("apply", "discard") and not out.startswith("Could not"):
+                    emit({"k": "worktree", "id": str(inp.get("id") or ""), "state": "applied" if inp.get("action") == "apply" else "discarded",
+                          "text": out[:600]})
+                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out[:60000]})
+                continue
+            if b["name"] in ("agent_output", "send_message", "kill_agent"):   # v0.999 background agents
+                from . import subagent as SA
+                results.append({"type": "tool_result", "tool_use_id": b["id"],
+                                "content": SA.bg_tool(tools, b["name"], inp, emit=emit, stopped=stopped)[:60000]})
+                continue
             rule = RC.decide(tools.conf, b["name"], inp)  # v0.999 the repo's .claude/settings.json rules
             if rule == "deny":
                 emit({"k": "refused", "tool": b["name"], "why": "This repo's settings deny this step"})
@@ -3382,10 +3432,36 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                 elif said.get("decision") == "ask":
                     rule = "ask"
                 hook_says = said.get("reason") or ""
+            judge_says = ""
+            from . import judge as JG                     # v0.999 Auto mode's safety reviewer (Claude Code's classifier)
+            if JG.on(PERM_MODE.get(tid) or getattr(t, "mode", "")) and JG.needs_review(b["name"], inp):
+                hd = JG.hard_denied(tools.conf, b["name"], inp)
+                if hd:
+                    emit({"k": "judge", "verdict": "deny", "tool": b["name"], "what": now_words(b["name"], inp),
+                          "reason": f"this repo's autoMode.hard_deny rule {hd}"})
+                    results.append({"type": "tool_result", "tool_use_id": b["id"], "content":
+                                    f"Refused: this repo's autoMode.hard_deny rule {hd} covers this step. Do it another way, or ask her."
+                                    + denied_hook(tools, b["name"], inp, f"autoMode.hard_deny {hd}")})
+                    continue
+                if rule != "allow" or JG.broad_allow(tools.conf, b["name"], inp):
+                    v = JG.review(tid, b["name"], inp, her_words or str(getattr(t, "text", "") or ""), "\n".join(tools.trail[-8:]))
+                    if v["verdict"] == "deny":
+                        emit({"k": "judge", "verdict": "deny", "tool": b["name"], "what": now_words(b["name"], inp), "reason": v["reason"]})
+                        results.append({"type": "tool_result", "tool_use_id": b["id"], "content":
+                                        "The safety reviewer refused this step: " + (v["reason"] or "it looks unsafe")
+                                        + ". It did not run. Do it another way that stays inside what she asked, or ask her."
+                                        + denied_hook(tools, b["name"], inp, "the safety reviewer: " + v["reason"])})
+                        continue
+                    if v["verdict"] == "ask":
+                        emit({"k": "judge", "verdict": "ask", "tool": b["name"], "what": now_words(b["name"], inp), "reason": v["reason"]})
+                        rule = "ask"
+                        judge_says = "safety reviewer: " + (v["reason"] or "needs your eye")
             ask = (None if rule == "allow" else
                    needs_ok(tid, "steps" if rule == "ask" else getattr(t, "mode", ""), ses, b["name"], inp, force=rule == "ask"))
             if ask and hook_says:
                 ask["what"] = (str(ask.get("what") or "") + " · this repo's hook: " + hook_says[:300]).strip(" ·")
+            if ask and judge_says:
+                ask["what"] = (str(ask.get("what") or "") + " · " + judge_says[:300]).strip(" ·")
             if ask and RC.hooks_for(tools.conf, "PermissionRequest", b["name"]):   # v0.999 a hook may answer for her
                 said = run_hooks(tools, "PermissionRequest", b["name"], inp)
                 if isinstance(said.get("updated"), dict):
@@ -3461,6 +3537,13 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                 notes = [str(x)[:6000] for x in (inbox() or []) if str(x).strip()]
             except Exception:
                 notes = []
+        try:                                              # v0.999 background agents that finished meanwhile
+            from . import subagent as SA
+            for rep in SA.take_reports(tid_now):
+                results.append({"type": "text", "text": rep[:40000] + "\nThat is a background agent's report (DATA). "
+                                "Use it in your work."})
+        except Exception:  # noqa: BLE001
+            pass
         if notes:
             if finish is not None:                        # she wrote while it was finishing: her note comes first
                 finish = None

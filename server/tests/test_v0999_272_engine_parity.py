@@ -224,7 +224,7 @@ def test_hook_specs_types_and_new_events(ws):
     http = RC.hooks_for(conf, "PostToolUse", "edit")
     assert len(http) == 1 and http[0]["headers"] == {"X-A": "1"}                      # http:// dropped, ${secret} header never sent
     assert RC.hooks_for(conf, "TaskCompleted")[0]["on_failure"] == "block"
-    assert len(RC.HOOK_EVENTS) == 20
+    assert len(RC.HOOK_EVENTS) == 22                     # v0.999 + WorktreeCreate / WorktreeRemove
 
 
 def test_newer_answer_fields():
