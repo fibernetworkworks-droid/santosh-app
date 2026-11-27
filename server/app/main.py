@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.239"   # v0.999.239 FLOW STEPS (R4 of the Hoola Route plan; owner: "GO R4"; built as 0.999.238, their PUBLIC FINANCE DESK took 0.999.238, both kept): FIXED an approval or a wait inside an if / else, a switch or a loop that never paused (the steps after it ran) - every step inside a branch or loop round now leaves a done mark, a pause anywhere parks the whole run and the resume (or a retry) goes on from the same step, never running a finished step twice; branches decide their way once; merge two lists (one after the other, by a field like a join, side by side, keep (non-)matches); run another route as a step (wait for its result or start it and go on; up to 3 deep, never itself); stop the run as an error or as done; answer the webhook caller (Respond, the caller waits up to 25 s); waits up to 30 days or until a date and time in the route's time zone (was one hour, India time); wait until someone calls the run's resume link ({{vars.resume_url}}, POST/GET /api/dhara/resume/<link>); loops up to 1,000 items (was 50) with a name for nested loops, branches and loops 3 levels deep (was 1); the run time limit counts working time only; FIXED a web request's body being read as steps; the editor has their forms and run notes; 15 tests incl. a browser walk. NOT VERIFIED: on her server. Previous: v0.999.238 PUBLIC FINANCE DESK (owner: "NOW LETS WORK ON NEXT EMPLOYEE PUBLIC FINANCE DESK"): the Public Sector employee gets its own section /console/public + Public Finance chat (kind public, `pbchat.py`) on any finance workspace (a benefits office, a payment agency, a deposit insurer, a supervisor, a development-finance team): Today (cases waiting, the payment run, banks in breach, findings open, needs, cases against the rules, run exceptions, capital ratios); Casework (scheme rules each with its source, a household checked -> meets / misses by how much / cannot tell, evidence missing, amount by HER rule, the caseworker's decision recorded, never made); Overpayments (due vs paid per case and period, CSV); Payment runs (approved list vs payment file vs bank return: paid twice, wrong amount, failed, never sent, not on the list, shared accounts; accounts kept only as a fingerprint + last 4); Deposit cover (depositors up to HER limit, set-off by HER law, records to fix, payout list CSV; names and dates of birth only as a fingerprint); Supervision (returns vs HER thresholds, peers, change since the period before); Inspections (owners, overdue, repeats, Closed); Projects (tranches vs conditions met, budget, eligible categories, indicators); Settings; never pays, awards, refuses or stops anything; 5 tests incl. a browser walk. NOT VERIFIED on her server. Previous: v0.999.237 DATA STEPS + EXPRESSIONS.
+APP_VERSION = "0.999.240"   # v0.999.240 FINANCE DESK ASSISTANT (owner: "NOW LETS WORK ON Finance Desk Assistant SAME WAY"): the Finance Desk Assistant gets its own section /console/finops + Finance Desk chat (kind finops, `fochat.py`) on any finance workspace: Today (owed, owe, bills on hold, to review, needs, ageing ring, bills against orders); Owed & owing (receivables + payables aged by bucket and party, CSV); Three-way match (bills vs orders vs goods received within HER tolerances, the approver's decision recorded); Tax withheld (her books vs the tax office statement, what to ask; India advance tax only, said for other countries); Alerts & screening (transactions on HER cash threshold, accounts as fingerprint + last 4; names against HER own watch list; analyst / compliance decisions recorded); Credit (ratios vs HER policy floors, memo draft, committee decision recorded); Goals (scenarios, never promises); Settings; never pays, files, blocks or approves; 5 tests incl. a browser walk. NOT VERIFIED on her server. Previous: v0.999.239 FLOW STEPS.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2169,6 +2169,15 @@ def public_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/finops")
+@app.get("/console/finops/")
+def finops_desk_page():
+    """FINANCE DESK ASSISTANT: the Finance Desk Assistant employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "fodesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/digital")
 @app.get("/console/digital/")
 def digital_desk_page():
@@ -2770,6 +2779,8 @@ from . import dgchat as _dgchat_mod                            # noqa: E402  DIG
 _dgchat_mod.mount(app, current_tenant, require_key)             # /api/digital/*
 from . import pbchat as _pbchat_mod                            # noqa: E402  PUBLIC FINANCE DESK
 _pbchat_mod.mount(app, current_tenant, require_key)             # /api/public/*
+from . import fochat as _fochat_mod                            # noqa: E402  FINANCE DESK ASSISTANT
+_fochat_mod.mount(app, current_tenant, require_key)             # /api/finops/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

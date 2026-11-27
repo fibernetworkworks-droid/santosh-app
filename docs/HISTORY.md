@@ -12636,3 +12636,21 @@ Owner: "NOW LETS WORK ON NEXT EMPLOYEE PUBLIC FINANCE DESK". The Public Sector e
   "Waiting for a call to its resume link", "Waiting for another route"); catalog keys merge / wait_call / subroute / stop / respond.
 - Tests `server/tests/test_v0999_239_route_flow.py` (15 incl. a Chromium walk); test_v0502 / test_v0999_87 nesting and mark
   pins moved to the new rules. NOT VERIFIED: on her server.
+
+
+## v0.999.240 FINANCE DESK ASSISTANT (owner: "NOW LETS WORK ON Finance Desk Assistant SAME WAY")
+
+The Finance Desk Assistant employee (`vitt_sahayak`, the finops engine of v0.602) gets its own section like Public Finance and Digital
+Assets: `/console/finops` (`static/console/fodesk.html/.js/.css`) and its own chat (kind `finops`, `server/app/fochat.py`, routes
+`/api/finops/*`), kept out of her chat lists; a turn in it gets the desk block and the `finops` tool family.
+
+The engine stays stateless; the desk keeps her rows in the workspace settings under `finops_desk`: receivables / payables (aged by
+bucket and party), purchase orders / goods received / suppliers' bills (three-way match within HER quantity and rate tolerances),
+tax withheld in her books vs the tax office's statement (advance tax worked out only for India and said for other countries),
+transactions (alerts only on HER cash threshold; account numbers kept as a fingerprint + last 4), names screened only against HER own
+watch list, borrowers (ratios against HER policy floors, a credit memo draft as Markdown), goals (low / mid / high scenarios, never
+promises). Decisions on a held bill, an alert, a name match or a borrower are recorded as the approver's / analyst's / compliance
+officer's / committee's own words (`decide`), never made. Desk writes refuse a PIN / OTP / CVV / password / full card number.
+Roles as Books & Accounts (owner / accountant / approver change; auditor / viewer read). Downloads: ageing CSVs, the match, the
+tax-withheld check, alerts, the memo. Tests `server/tests/test_fo_desk.py` (5, incl. a browser walk at 1440 and 390).
+NOT VERIFIED on her server.

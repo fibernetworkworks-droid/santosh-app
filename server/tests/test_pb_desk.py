@@ -51,7 +51,7 @@ def test_hire_setup_chat_block_and_wiring(pb):
     from app.agent.tools import FAMILY_OF
     assert FAMILY_OF["public_finance"] in pb.FAMILIES
     for f_ in ("callconv.py", "convs.py"):
-        assert '"public")' in (root / "server/app" / f_).read_text()
+        assert '"public"' in (root / "server/app" / f_).read_text()
     from app.main import APP_VERSION, app
     r = TestClient(app).get("/console/public")
     assert r.status_code == 200 and "Content-Security-Policy" in r.headers and "pbdesk.js" in r.text

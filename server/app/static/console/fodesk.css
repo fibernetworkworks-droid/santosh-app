@@ -1,0 +1,62 @@
+/* FINANCE DESK ASSISTANT - the Finance Desk Assistant employee's own section. Everything shared comes from the earlier desks (seodesk
+   ... pbdesk); the page-scoped rules are repeated here for #foPage. Only this desk's own parts are new: the ageing bar and its colours,
+   a ratio against her floor, the memo draft, the alert note and the name-match score. */
+#foPage{display:flex;flex-direction:column;gap:20px;padding-top:4px}
+#foPage table.tb .num{font-variant-numeric:normal}
+#foPage .r{text-align:right}
+#foPage table.tb,#foPage .md-kpi .v,#foPage .cs-hero .v{font-variant-numeric:normal}
+#foPage td.r,#foPage th.r{text-align:right;font-variant-numeric:normal}
+#foPage table.tb td{vertical-align:middle}
+#foPage form[data-form=prices]+.ins-drop,#foPage .md-acts+.ins-drop{margin-top:14px}
+#foPage .cr-grid{align-items:end}
+#foPage .cr-grid>.in:not(textarea),#foPage .cr-grid .ins-lab .in:not(textarea),#foPage .cr-grid>.btn{height:42px;min-height:0;box-sizing:border-box}
+#foPage .iv-add{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+#foPage .iv-add>*{flex:1 1 130px;min-width:0}
+#foPage .iv-add>.btn{flex:0 0 auto;padding:0 18px}
+#foPage .iv-add>.btn.wide{flex:1 1 100%}
+#foPage .iv-add>.ins-lab{flex:1 1 130px}
+#foPage .cr-grid .wide{grid-column:1/-1}
+#foPage .iv-grid .in{height:42px;min-height:0;box-sizing:border-box;width:100%}
+#foPage .md-kpi .v.warn{color:var(--warn)}
+#foPage .mk-list td,#foPage .mk-list th{padding-top:7px;padding-bottom:7px}
+#foPage .mk-add .in{height:40px;min-height:0;box-sizing:border-box;width:100%}
+#foPage .cs-pos{color:var(--okt,var(--ok))}
+#foPage .cm-grid5 .in{height:42px;min-height:0;box-sizing:border-box;width:100%}
+#foPage table.cm-meet td{padding-top:5px;padding-bottom:5px}
+#foPage table.cm-meet .in{height:36px;min-height:0;width:100%;min-width:64px;box-sizing:border-box}
+#foPage .dg-check .in{height:42px;min-height:0;box-sizing:border-box;width:100%}
+@media (max-width:600px){#foPage .iv-kpis.mk-k2{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+
+/* ageing buckets: one stacked bar and its legend */
+.fo-age{display:flex;height:16px;border-radius:999px;overflow:hidden;background:var(--soft);gap:2px}
+.fo-age b{display:block;height:100%}
+.fo-leg{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:13px}.fo-leg span{display:inline-flex;align-items:center;gap:6px}
+.fo-leg i{width:10px;height:10px;border-radius:3px;display:inline-block}.fo-leg b{font-weight:600;font-variant-numeric:tabular-nums}
+.fo-age .a0,.fo-leg i.a0{background:var(--ok)}.fo-age .a1,.fo-leg i.a1{background:var(--acc)}
+.fo-age .a2,.fo-leg i.a2{background:color-mix(in srgb,var(--warn) 70%,var(--acc))}.fo-age .a3,.fo-leg i.a3{background:var(--warn)}
+.fo-age .a4,.fo-leg i.a4{background:var(--bad)}
+.iv-seg.fo-a0{stroke:var(--ok)}.iv-seg.fo-a1{stroke:var(--acc)}.iv-seg.fo-a2{stroke:color-mix(in srgb,var(--warn) 70%,var(--acc))}
+.iv-seg.fo-a3{stroke:var(--warn)}.iv-seg.fo-a4{stroke:var(--bad)}
+.iv-dleg i.fo-a0{background:var(--ok)}.iv-dleg i.fo-a1{background:var(--acc)}.iv-dleg i.fo-a2{background:color-mix(in srgb,var(--warn) 70%,var(--acc))}
+.iv-dleg i.fo-a3{background:var(--warn)}.iv-dleg i.fo-a4{background:var(--bad)}
+
+/* a ratio against her floor */
+.fo-rats{display:flex;flex-direction:column;gap:10px}
+.fo-rat{display:grid;grid-template-columns:170px minmax(0,1fr) auto;gap:12px;align-items:center;font-size:14px}
+.fo-rat i{position:relative;display:block;height:10px;border-radius:999px;background:var(--soft)}
+.fo-rat i b{display:block;height:100%;border-radius:999px;background:var(--acc)}.fo-rat i b.ok{background:var(--ok)}.fo-rat i b.bad{background:var(--bad)}
+.fo-rat i u{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink)}
+.fo-rat em{font-style:normal;font-variant-numeric:tabular-nums;white-space:nowrap}
+.fo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.fo-grid .in{height:42px;min-height:0;box-sizing:border-box;width:100%}
+.fo-memo{border:1px solid var(--line);border-radius:12px;padding:6px 16px;margin-top:8px;background:var(--page);font-size:14px}
+.fo-memo h1{font-size:18px}.fo-memo h2,.fo-memo h3{font-size:15px}
+
+/* alerts and name matches */
+.fo-draft{border-left:3px solid var(--acc);padding:4px 0 4px 12px;margin:8px 0}.fo-draft p{margin:2px 0 0;font-size:14px}
+.fo-hit{display:grid;grid-template-columns:minmax(0,1fr) 140px 44px;gap:10px;align-items:center;font-size:13.5px;padding:4px 0}
+.fo-hit i{display:block;height:8px;border-radius:999px;background:var(--soft)}.fo-hit i b{display:block;height:100%;border-radius:999px;background:var(--bad)}
+.fo-hit em{font-style:normal;text-align:right;font-variant-numeric:tabular-nums}.fo-hit .pb-tests{grid-column:1/-1}
+@media (max-width:700px){.fo-rat{grid-template-columns:minmax(0,1fr) auto}.fo-rat i{grid-column:1/-1;grid-row:2}.fo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .fo-hit{grid-template-columns:minmax(0,1fr) 44px}.fo-hit i{grid-column:1/-1;grid-row:2}}
+.fo-rat em,.fo-leg b,.fo-hit em,.fo-rat em .mut{font-family:inherit;font-variant-numeric:normal}
+#foPage .pb-tests code.bad{font-family:inherit;font-size:13px}
