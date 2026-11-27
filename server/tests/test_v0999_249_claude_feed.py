@@ -256,7 +256,7 @@ def test_the_phone_says_it_the_same_way():
     words = (ROOT / "lib/ui/code/code_words.dart").read_text()
     sess = (ROOT / "lib/ui/code/code_session.dart").read_text()
     assert "sans: true" not in words                                       # the reply font = the web page's (Literata, her Chat font)
-    assert "s['did']" in words and "class CodeHunk" in words and "CodeHunk(rows: hunk)" in words
+    assert "s['did']" in words and "class CodeHunk" in words and "CodeHunk(rows: rows, bare: true)" in words
     assert "String codeMatches(" in words and "matches')} in ${codeCount(f, 'file')}" in words
     assert "_liveOut(t)" in sess and "next['now_info'] = ni" in sess and "cs(s['did'])" in sess
     assert "'Found ${codeCount(s['n'], 'file')} · '" in sess

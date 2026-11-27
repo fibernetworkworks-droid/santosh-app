@@ -39,7 +39,7 @@ def test_every_home_greeting_is_the_greeting():
     for p, words in [
         ("lib/ui/shell/hoola_shell.dart", "Text(_greeting(), textAlign: TextAlign.center, style: HoolaType.hero(c))"),
         ("lib/ui/code/code_home.dart", "Text('What should we build today?', style: HoolaType.hero(c))"),
-        ("lib/ui/code/code_start.dart", "Text('Ready when you are', textAlign: TextAlign.center, style: HoolaType.hero(c))"),
+        ("lib/ui/code/code_start.dart", "Text('What should we build today?', textAlign: TextAlign.center, style: HoolaType.hero(c))"),
         ("lib/ui/create/create_home.dart", "style: HoolaType.hero(c)),"),
         ("lib/ui/vocal/vocal_home.dart", "Text('What should Hoola say?', textAlign: TextAlign.center, style: HoolaType.hero(c))"),
         ("lib/ui/create/create_music.dart", "Text('What shall we make?', textAlign: TextAlign.center, style: HoolaType.hero(c))"),

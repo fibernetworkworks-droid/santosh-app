@@ -790,3 +790,15 @@ class CodeColors {
   /// The set for the nearest HoolaTheme (Light / Dark / System, like every redesigned screen).
   static CodeColors of(BuildContext context) => HoolaColors.of(context).dark ? darkSet : lightSet;
 }
+
+
+/// v0.999 Hoola Code's terminal card (the approved design): a dark card, light text, red / green for how a command
+/// ended, grey for the command line, violet for "running". The same in light and dark.
+class HoolaTerminal {
+  static const bg = Color(0xFF17171C);
+  static const ink = Color(0xFFE8E8EE);
+  static const red = Color(0xFFFF8A80);
+  static const green = Color(0xFF7BDBA0);
+  static const grey = Color(0xFF9C9CA8);
+  static const run = Color(0xFFB9AEFF);
+}

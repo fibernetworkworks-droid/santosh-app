@@ -1195,3 +1195,54 @@ html,body{background:var(--bg)}
 #app .hcd-term .hcd-cmd{color:var(--ink)}
 #app .hcd-fold.think{color:var(--mut)}
 #app .hcd-fold.think+.hcd-fin .hcd-think{margin-left:26px}
+
+/* v0.999 CLAUDE CODE, THE REST + THE APPROVED DESIGN: "The run" timeline, one status pill per state, the ask card,
+   dark terminal cards, the Terminal pane, Edit on her messages, the mode chip. Colours from the approved prototype. */
+#app .hcd-hero h1{font:400 40px/1.15 var(--fr);letter-spacing:-.01em}
+#app .hcd-pill.need{background:#FFF3E0;color:#8A4300;font-weight:600}
+#app .hcd-pill.need .hcd-ic{width:8px;height:8px;color:#C46A00}
+#app .hcd-pill.need .hcd-ic circle{r:9}
+#app .hcd-prpill.ok,#app .hcd-pill.ok{background:#E5F4EB;color:#155C38}
+#app .hcd-live{font-weight:600}
+#app .hcd-runrc h2 .hcd-stat{font-weight:400}
+#app .hcd-run{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column}
+#app .hcd-rs{position:relative;display:grid;grid-template-columns:22px minmax(0,1fr);column-gap:12px;padding-bottom:14px;min-height:22px}
+#app .hcd-rs:last-child{padding-bottom:0}
+#app .hcd-rsd{grid-row:1;width:22px;height:22px;border-radius:50%;box-sizing:border-box;display:grid;place-items:center;font-size:12px;font-weight:600;background:var(--surface,#FFF);border:2px solid #DEDEE3;color:#FFF;z-index:1}
+#app .hcd-rsl{position:absolute;left:10px;top:22px;bottom:0;width:2px;background:#E4E4EA}
+#app .hcd-rs.done .hcd-rsd{background:#1C7C4A;border-color:#1C7C4A}
+#app .hcd-rs.done .hcd-rsl{background:#1C7C4A}
+#app .hcd-rs.now .hcd-rsd{background:#EEEBFD;border-color:#5B45E0;animation:hcdring 1.6s ease-out infinite}
+#app .hcd-rs.bad .hcd-rsd{background:var(--bad);border-color:var(--bad)}
+#app .hcd-rs.off .hcd-rsd{border-style:dashed}
+#app .hcd-rst{display:flex;flex-direction:column;gap:2px;min-width:0;padding-top:1px}
+#app .hcd-rst b{font-size:14px;font-weight:600;color:var(--ink);line-height:20px}
+#app .hcd-rs.todo .hcd-rst b,#app .hcd-rs.off .hcd-rst b{font-weight:400;color:#8A8A94}
+#app .hcd-rst small{font-size:12.5px;line-height:1.4;color:var(--mut);overflow:hidden;text-overflow:ellipsis}
+@keyframes hcdring{0%{box-shadow:0 0 0 0 rgba(91,69,224,.45)}100%{box-shadow:0 0 0 10px rgba(91,69,224,0)}}
+/* commands: the dark terminal of the design */
+#app .hcd-term{background:#17171C;border-color:#17171C;color:#E8E8EE}
+#app .hcd-term .hcd-cmd{color:#9C9CA8}
+#app .hcd-term .hcd-dim{color:#8F80FF}
+#app .hcd-out{background:#17171C;color:#C9C9D1}
+#app .hcd-dlg pre.hcd-term{background:#17171C;color:#E8E8EE}
+/* the ask card ('Ask each step') */
+#app .hcd-perm{border:2px solid #5B45E0;background:#FBFAFF;align-items:stretch}
+#app .hcd-perm .hcd-term,#app .hcd-perm .hcd-diff{margin:4px 0;max-height:260px}
+#app .hcd-perm code{font-family:var(--mono);font-size:12.5px}
+/* the Terminal pane */
+#app .hcd-termwrap{display:flex;flex-direction:column;gap:14px;padding:12px 16px 20px;overflow:auto}
+#app .hcd-shellh{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13.5px}
+#app .hcd-shellout{margin:0;max-height:none;min-height:60px}
+/* Edit on her own messages (shown on hover / focus, always on touch) */
+#app .hck-me{position:relative}
+#app .hcd-editmsg{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:0;border-radius:8px;background:transparent;color:var(--mut);font:500 12.5px var(--fd);cursor:pointer;opacity:0;transition:opacity var(--t,.15s)}
+#app .hcd-editmsg .hcd-ic{width:14px;height:14px}
+#app .hck-me:hover .hcd-editmsg,#app .hcd-editmsg:focus-visible{opacity:1}
+#app .hcd-editmsg:hover{background:var(--sunk);color:var(--ink)}
+@media (hover:none){#app .hcd-editmsg{opacity:1}}
+/* the mode chip under the box: tap to change how Hoola works */
+#app .hcd-modechip{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border:0;border-radius:999px;background:transparent;color:var(--mut);font:500 12px var(--fd);cursor:pointer}
+#app .hcd-modechip:hover{background:var(--sunk);color:var(--ink)}
+#app .hcd-modechip .hcd-ic{width:12px;height:12px}
+@media (prefers-reduced-motion:reduce){#app .hcd-rs.now .hcd-rsd{animation:none}}

@@ -145,7 +145,7 @@ def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
     pg.locator(".sn[data-v='code']").click()                   # v0.768: the row opens Hoola Code's own page
     pg.wait_for_selector(".hcd-home")
     home = pg.locator(".hcd").text_content()
-    assert "Ready when you are" in home and "<b>Orders to Postgres</b>" in home      # v0.914 the approved design: one line per session in Recents
+    assert "What should we build today?" in home and "<b>Orders to Postgres</b>" in home      # v0.914 the approved design: one line per session in Recents
     tips = " ".join(pg.locator("#hcdSide .hcd-sessb").evaluate_all("bs => bs.map(b => b.title)"))
     assert "Working" in tips and "Plan waits for your OK" in tips                    # its state rides the row's tooltip + its marks
     assert pg.locator("#hcdModeBtn").count() == 1              # Phase 3: the kind is read from her words; the row has the mode (v0.999.27 a menu)

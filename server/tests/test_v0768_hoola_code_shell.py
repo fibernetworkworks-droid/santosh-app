@@ -185,7 +185,7 @@ def _shot(pg, name):
 def test_typing_survives_a_refresh_and_steps_fold(arena_server):  # noqa: F811
     ctx, pg, errs, calls, state = _console(arena_server)
     home = pg.locator(".hcd").text_content()
-    assert "Ready when you are" in home and "<b>Orders to Postgres</b>" in home       # her title is text, never HTML
+    assert "What should we build today?" in home and "<b>Orders to Postgres</b>" in home       # her title is text, never HTML
     assert pg.locator(".hcd-lbl").all_text_contents()[:1] == ["Recents"]                            # v0.914 one Recents list, like the design (group by repo is in the sort menu)
     _shot(pg, "1-home")
     pg.locator("[data-tid='dt1']").click()
@@ -209,7 +209,7 @@ def test_typing_survives_a_refresh_and_steps_fold(arena_server):  # noqa: F811
     assert pg.locator("#hcdCol .hcd-fin").first.is_visible()                                      # the fold she opened stays open
     # no rotating ring anywhere (CRISP TEXT)
     assert pg.locator(".hcd-spin").count() == 0
-    assert pg.evaluate("getComputedStyle(document.querySelector('.hcd-pulse')).animationName") == "hcdpulse"
+    assert pg.evaluate("getComputedStyle(document.querySelector('.hcd-rs.now .hcd-rsd')).animationName") == "hcdring"   # v0.999 the run's working stage pulses (the design's ring)
     _shot(pg, "2-session")
     # a queued note comes back into the box, in front of what she typed
     assert "use Decimal" in pg.locator("#hcdQueue").text_content()
@@ -228,7 +228,7 @@ def test_layout_rail_sidebar_menus(arena_server):  # noqa: F811
     box = lambda sel: pg.locator(sel).bounding_box()                                              # noqa: E731
     assert box("#hcdRail")["width"] == 320 and box("#hcdCol")["width"] >= 600                 # the chat is never squeezed
     rail = pg.locator("#hcdRail").text_content()
-    assert "Changes" in rail and "Progress" in rail and "Run your tests" in rail and "app/auth/views.py" in rail
+    assert "Changes" in rail and "The run" in rail and "Run your tests" in rail and "app/auth/views.py" in rail
     for sel in ("#hcdSteer", "#hcdStop", "#hcdTop"):                                              # nothing pushed out of view
         b = box(sel)
         assert b["x"] >= 0 and b["x"] + b["width"] <= 1280 and b["y"] + b["height"] <= 900, sel

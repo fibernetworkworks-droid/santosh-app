@@ -24,6 +24,7 @@ import 'code_kit.dart';
 import 'code_made.dart';
 import 'code_vps.dart';
 import 'code_start.dart';
+import 'code_terminal.dart';
 import 'code_words.dart';
 
 /// Her comments on lines of a change, kept per session until they go with her next message.
@@ -131,6 +132,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
     final cleared = writing.isEmpty && cs(t['live']).trim().isNotEmpty;
     final next = <String, dynamic>{...t, 'live': cleared ? t['live'] : _streamLive};
     if (p.containsKey('now')) next['now'] = p['now'];
+    if (p.containsKey('ask')) next['ask'] = p['ask'];   // v1.0 "Ask each step": the step waiting for her yes (or null)
     if (p.containsKey('out') || p.containsKey('tool') || p.containsKey('t0')) {   // v0.999 the running command's live lines
       final ni = <String, dynamic>{...?(t['now_info'] as Map?)?.cast<String, dynamic>()};
       for (final k in const ['out', 'tool', 't0']) {
@@ -410,6 +412,16 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
     if (t == null) return;
     final mode = _mode(t);
     final text = (words ?? _msg.text).trim();
+    // v1.0 /compact sums up the conversation, /init has Hoola write the repo's AGENTS.md - never sent as a message
+    if (words == null && (text == '/compact' || text == '/init')) {
+      if (text == '/compact' && codeRunning(t)) {
+        codeToast(context, 'Wait until Hoola finishes, then compact.');
+        return;
+      }
+      _msg.clear();
+      await _run('POST', '$_base/${text.substring(1)}', const <String, dynamic>{});
+      return;
+    }
     final comments = (mode == 'note' || mode == 'revise') ? CodeComments.of(widget.id) : const <Map<String, dynamic>>[];
     if (mode == 'off' || (text.isEmpty && comments.isEmpty && mode != 'plan')) return;
     if (text.isNotEmpty && mode != 'plan') {
@@ -507,6 +519,11 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
               if (cl(t['files']).isNotEmpty) row(ctx, Icons.difference_outlined, 'See the changes', 'changes'),
               if ((t['ws'] as Map?)?['exists'] == true) row(ctx, Icons.folder_open_outlined, 'Browse the files', 'files'),
               if (cs(t['pr_url']).isNotEmpty) row(ctx, Icons.open_in_new_rounded, 'Open on GitHub', 'github'),
+              row(ctx, Icons.terminal_rounded, 'Terminal', 'terminal'),
+              row(ctx, Icons.tune_rounded, 'How it works: ${_modeLabel(t)}', 'mode'),
+              if (!codeRunning(t)) row(ctx, Icons.compress_rounded, 'Compact the conversation', 'compact'),
+              if (!codeRunning(t)) row(ctx, Icons.description_outlined, 'Write AGENTS.md (/init)', 'init'),
+              row(ctx, Icons.call_split_rounded, 'Fork this session', 'fork'),
               if (!codeRunning(t) && cps.length > 1) row(ctx, Icons.undo_rounded, 'Go back to an earlier checkpoint', 'rewind'),
               if (cs(t['status']) == 'plan_wait') row(ctx, Icons.close_rounded, 'Cancel this job', 'cancel'),
               row(ctx, Icons.add_rounded, 'New session', 'new'),
@@ -525,6 +542,17 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         _files();
       case 'github':
         codeOpenGithub(cs(t['pr_url']));
+      case 'terminal':
+        Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => HoolaTheme(appearance: widget.app.appearance, child: CodeTerminalPage(app: widget.app, id: widget.id))));
+      case 'mode':
+        _pickMode(t);
+      case 'compact':
+        _run('POST', '$_base/compact', const <String, dynamic>{});
+      case 'init':
+        _run('POST', '$_base/init', const <String, dynamic>{});
+      case 'fork':
+        _fork(cps);
       case 'rewind':
         _rewind(cps);
       case 'cancel':
@@ -539,6 +567,247 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
       case 'delete':
         await _delete();
     }
+  }
+
+  String _modeLabel(Map<String, dynamic> t) {
+    final m = cs(t['mode']);
+    return codeModes.firstWhere((x) => x.$1 == m, orElse: () => codeModes.first).$2;
+  }
+
+  /// v1.0 how this session works from now on: ask first, plan first, ask each step or on its own (PATCH /tasks/{id}).
+  Future<void> _pickMode(Map<String, dynamic> t) async {
+    final now = cs(t['mode']).isEmpty ? codeModes.first.$1 : cs(t['mode']);
+    final pick = await codeSheet<String>(context, widget.app,
+        title: 'How it works',
+        body: (ctx) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              for (final (id, label, sub) in codeModes) CodeChoiceRow(label: label, sub: sub, on: id == now, onTap: () => Navigator.pop(ctx, id)),
+              Text('A step already running keeps what it started with. Nothing is ever merged without your tap.',
+                  style: codeSans(HoolaColors.of(ctx), size: 13, color: HoolaColors.of(ctx).ink3)),
+            ]));
+    if (pick == null || pick == now || !mounted) return;
+    await _run('PATCH', _base, {'mode': pick});
+  }
+
+  void _openSession(String id) {
+    Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
+        builder: (_) => HoolaTheme(appearance: widget.app.appearance, child: CodeSessionPage(app: widget.app, id: id))));
+  }
+
+  /// v1.0 a copy of this session to try another way; the copy opens (POST /tasks/{id}/fork).
+  Future<void> _fork(List<Map<String, dynamic>> cps) async {
+    var at = 0;
+    if (cps.length > 1) {
+      final n = await codeSheet<int>(context, widget.app,
+          title: 'Fork this session',
+          body: (ctx) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Text('A copy of the conversation and the working copy opens as a new session. This one stays as it is.',
+                    style: codeSans(HoolaColors.of(ctx), size: 13.5, color: HoolaColors.of(ctx).ink2)),
+                const SizedBox(height: 10),
+                CodeChoiceRow(label: 'From where it is now', on: false, onTap: () => Navigator.pop(ctx, 0)),
+                for (final cp in cps.reversed.take(8))
+                  CodeChoiceRow(label: 'From checkpoint ${ci(cp['n'])}', sub: cs(cp['label']), on: false, onTap: () => Navigator.pop(ctx, ci(cp['n']))),
+              ]));
+      if (n == null || !mounted) return;
+      at = n;
+    }
+    final r = await _run('POST', '$_base/fork', {'checkpoint': at});
+    final id = cs(r?['id']);
+    if (id.isNotEmpty && id != widget.id && mounted) _openSession(id);
+  }
+
+  /// v1.0 her earlier message changed in place (POST /tasks/{id}/edit). Her first message (step -1) starts a NEW
+  /// session from the changed words, which then opens.
+  Future<void> _editMessage(int step, String text) async {
+    if (_t != null && codeRunning(_t!)) {
+      codeToast(context, 'Wait until Hoola finishes this step.');
+      return;
+    }
+    final box = TextEditingController(text: text);
+    final first = step < 0;
+    final go = await codeSheet<bool>(context, widget.app,
+        title: 'Edit your message',
+        body: (ctx) {
+          final c = HoolaColors.of(ctx);
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            CodeField(controller: box, label: 'Your message', lines: 4),
+            Text(
+                first
+                    ? 'Hoola starts a new session from your changed words. This one stays as it is.'
+                    : 'Hoola carries on from your changed words.',
+                style: codeSans(c, size: 13, color: c.ink3)),
+            const SizedBox(height: 14),
+            Row(children: [
+              Expanded(child: CodeOutline('Cancel', onTap: () => Navigator.pop(ctx, false))),
+              const SizedBox(width: 10),
+              Expanded(flex: 2, child: CodeMain('Send', icon: Icons.arrow_upward_rounded, onTap: () => Navigator.pop(ctx, true))),
+            ]),
+          ]);
+        });
+    final words = box.text.trim();
+    Future<void>.delayed(const Duration(milliseconds: 500), box.dispose);   // after the sheet has closed
+    if (go != true || !mounted) return;
+    if (words.isEmpty) {
+      codeToast(context, 'Write something first.');
+      return;
+    }
+    final r = await _run('POST', '$_base/edit', {'step': step, 'text': words});
+    final id = cs(r?['id']);
+    if (id.isNotEmpty && id != widget.id && mounted) _openSession(id);
+  }
+
+  // ---------------------------------------------------------------------------------------------- ask each step
+  bool _permitting = false;
+
+  /// v1.0 her answer to the step Hoola asked about: yes, yes and do not ask again, or no with what to do instead.
+  Future<void> _permit(Map<String, dynamic> ask, String answer) async {
+    if (_permitting) return;
+    var note = '';
+    if (answer == 'no') {
+      final box = TextEditingController();
+      final go = await codeSheet<bool>(context, widget.app,
+          title: 'Say no',
+          body: (ctx) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                CodeField(controller: box, label: 'Tell Hoola what to do instead (optional)', lines: 3),
+                Row(children: [
+                  Expanded(child: CodeOutline('Back', onTap: () => Navigator.pop(ctx, false))),
+                  const SizedBox(width: 10),
+                  Expanded(flex: 2, child: CodeMain('Send', onTap: () => Navigator.pop(ctx, true))),
+                ]),
+              ]));
+      note = box.text.trim();
+      Future<void>.delayed(const Duration(milliseconds: 500), box.dispose);
+      if (go != true || !mounted) return;
+    }
+    setState(() => _permitting = true);
+    final api = widget.app.api;
+    var ok = false;
+    try {
+      if (api != null) {
+        await api.call('POST', '$_base/permit', body: {'id': cs(ask['id']), 'answer': answer, 'note': note});
+        ok = true;
+      }
+    } catch (e) {
+      if (mounted) codeToast(context, '$e'.replaceFirst('Exception: ', ''));
+    }
+    if (!mounted) return;
+    setState(() {
+      _permitting = false;
+      final t = _t;
+      if (ok && t != null && cs(cm(t['ask'])['id']) == cs(ask['id'])) _t = {...t, 'ask': null};
+    });
+    if (ok) _load(full: true);
+  }
+
+  /// v1.0 the card above the typing box while Hoola waits for her yes on one step (a command or a file edit).
+  Widget _askCard(HoolaColors c, Map<String, dynamic> ask) {
+    final tool = cs(ask['tool']);
+    final bash = tool == 'bash';
+    final what = cs(ask['what']).isNotEmpty ? cs(ask['what']) : (bash ? 'Run a command' : 'Edit ${cs(ask['path'])}');
+    final prefix = cs(ask['prefix']).trim();
+    final rows = (ask['rows'] as List?) ?? const [];
+    var add = 0, rem = 0;
+    for (final r in rows) {
+      if (r is List && r.isNotEmpty) {
+        if (r[0] == '+') add++;
+        if (r[0] == '-') rem++;
+      }
+    }
+    final always = bash
+        ? (prefix.isEmpty ? '' : "Yes, don't ask again for $prefix commands")
+        : 'Yes, allow all edits in this session';
+    return Padding(
+      key: ValueKey('ask${cs(ask['id'])}'),
+      padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .5),
+        child: _waitBox(
+          c,
+          SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+              Semantics(
+                liveRegion: true,
+                child: Text.rich(TextSpan(children: [
+                  TextSpan(text: 'Hoola wants to: ', style: codeSans(c, size: 14, color: c.ink2)),
+                  TextSpan(text: what, style: codeSans(c, size: 14, weight: FontWeight.w600)),
+                ])),
+              ),
+              const SizedBox(height: 10),
+              if (bash) ...[
+                CodeTermBox(cmd: cs(ask['cmd'])),
+                if (ask['background'] == true)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text('It keeps running in the background. You can stop it from Terminal.', style: codeSans(c, size: 12.5, color: c.ink3)),
+                  ),
+              ] else
+                CodeEditCard(verb: tool == 'write' ? 'Write' : 'Edit', path: cs(ask['path']), added: add, removed: rem, rows: rows),
+              const SizedBox(height: 12),
+              CodeMain('Yes', icon: Icons.check_rounded, height: 48, busy: _permitting, onTap: () => _permit(ask, 'yes')),
+              if (always.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                CodeOutline(always, height: 48, onTap: _permitting ? null : () => _permit(ask, 'always')),
+              ],
+              const SizedBox(height: 8),
+              CodeOutline('No', height: 48, color: c.bad, onTap: _permitting ? null : () => _permit(ask, 'no')),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// v1.0 a card that waits for her (the plan, a step to allow): a violet border, a faint violet page (the design).
+  Widget _waitBox(HoolaColors c, Widget child) => Container(
+        decoration: BoxDecoration(
+          color: Color.alphaBlend(c.accent.withOpacity(0.03), c.surface),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: c.accent, width: 2),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: child,
+      );
+
+  /// v1.0 the state of the session as one coloured pill in the top bar (Working, Needs your yes, Ready to merge, Merged).
+  Widget _statePill(HoolaColors c, Map<String, dynamic> t) {
+    final st = cs(t['status']);
+    final asking = cm(t['ask']).isNotEmpty;
+    final ciState = cs(cm(t['ci'])['state']);
+    // (words, page, ink, dot) - the design's light colours, the theme's own in dark
+    (String, Color, Color, Color)? v;
+    final violet = (c.accentSoft, c.accent, c.accent);      // the theme's own colours (the design rules: no raw colours in a screen)
+    final amber = (c.warnSoft, c.warn, c.warn);
+    final green = (c.okSoft, c.ok, c.ok);
+    if (asking || st == 'plan_wait' || st == 'ready') {
+      v = ('Needs your yes', amber.$1, amber.$2, amber.$3);
+    } else if (cs(t['question']).isNotEmpty && !codeRunning(t)) {
+      v = ('Needs you', amber.$1, amber.$2, amber.$3);
+    } else if (codeRunning(t)) {
+      v = ('Working', violet.$1, violet.$2, violet.$3);
+    } else if (st == 'merged') {
+      v = ('Merged', green.$1, green.$2, green.$3);
+    } else if (st == 'pr_open' && ciState != 'failure' && ciState != 'pending') {
+      v = ('Ready to merge', green.$1, green.$2, green.$3);
+    } else if (st == 'checks_failed') {
+      v = ('CI failed', c.badSoft, c.bad, c.bad);
+    }
+    if (v == null) return const SizedBox(width: 44);
+    final pill = v;
+    return Semantics(
+      label: 'Status: ${pill.$1}',
+      excludeSemantics: true,
+      child: Container(
+        height: 28,
+        margin: const EdgeInsets.only(left: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(color: pill.$2, borderRadius: BorderRadius.circular(999)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 6, height: 6, decoration: BoxDecoration(color: pill.$4, shape: BoxShape.circle)),
+          const SizedBox(width: 6),
+          Text(pill.$1, maxLines: 1, style: codeSans(c, size: 12.5, weight: FontWeight.w600, color: pill.$3, height: 1.2)),
+        ]),
+      ),
+    );
   }
 
   Future<void> _delete() async {
@@ -611,10 +880,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
             title: t == null ? 'Hoola Code' : codeTitle(t),
             sub: t == null ? '' : [cRepoShort(cs(t['repo'])), _envName(t)].where((e) => e.isNotEmpty).join(' · '),
             actions: [
-              if (t != null && codeRunning(t))
-                Semantics(label: 'Hoola is working', child: const SizedBox(width: 44, height: 44, child: Center(child: CodeRing(size: 20))))
-              else
-                const SizedBox(width: 44),
+              if (t != null) _statePill(c, t) else const SizedBox(width: 44),
               CodeIconButton(icon: Icons.more_vert_rounded, label: 'Session menu', onTap: t == null ? null : _more),
             ],
           ),
@@ -675,6 +941,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
                   ),
           ),
           if (t != null && _todoItems(t).isNotEmpty) _planDock(c, _todoItems(t)),
+          if (t != null && cm(t['ask']).isNotEmpty) _askCard(c, cm(t['ask'])),
           if (t != null) _composer(c, t),
         ]),
       ),
@@ -1017,12 +1284,9 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
             ]),
            ),
            if (_liveOut(t).isNotEmpty)                // v0.999 the command's last lines as it prints them (Claude Code's live output)
-             Container(
-               margin: const EdgeInsets.only(left: 32, top: 2, bottom: 6),
-               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-               decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(10), border: Border.all(color: c.line)),
-               child: Text(_liveOut(t).join('\n'), maxLines: 6, overflow: TextOverflow.ellipsis,
-                   style: codeMono(c, size: 12, color: c.ink3)),
+             Padding(
+               padding: const EdgeInsets.only(left: 32, top: 2, bottom: 6),
+               child: CodeTermBox(lines: _liveOut(t)),   // v1.0 the design's dark terminal card
              ),
           ]),
         ),
@@ -1077,6 +1341,9 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
 
   void _herMenu(String text, String key) => codeMessageMenu(context, widget.app, text,
       mine: true,
+      // v1.0 her first message (step -1) or a later one (its step number) can be changed in place
+      onRewrite: _editStep(key) == null ? null : () => _editMessage(_editStep(key)!, text),
+      rewriteOff: _t != null && codeRunning(_t!),
       onQuote: _mode(_t ?? const {}) == 'off' ? null : () => codeQuoteInto(_msg, _focus, text),
       onEdit: _mode(_t ?? const {}) == 'off'
           ? null
@@ -1086,6 +1353,13 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
               _focus.requestFocus();
             },
       onSelect: () => setState(() => _selecting = key));
+
+  /// v1.0 the step number the server's edit wants for her bubble ('ask' = her first message = -1), or null.
+  static int? _editStep(String key) {
+    if (key == 'ask') return -1;
+    if (key.startsWith('note')) return int.tryParse(key.substring(4));
+    return null;
+  }
 
   Widget _her(HoolaColors c, String text, List<Map<String, dynamic>> attach, {bool small = false, String key = 'ask'}) => Padding(
         padding: EdgeInsets.only(top: small ? 12 : 0, left: 48),
@@ -1175,6 +1449,12 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
       if (n({'check'}) > 0) 'ran your tests',
       if (edits.length == 1) 'edited ${edits.first}' else if (edits.length > 1) 'edited ${cPlural(edits.length, 'file')}',
       if (n({'agent'}) > 0) 'asked ${cPlural(n({'agent'}), 'helper')}',
+      if (n({'bgstart'}) > 0) 'started ${cPlural(n({'bgstart'}), 'background command')}',
+      if (n({'bgout', 'bgkill'}) > 0) 'checked the background',
+      if (n({'websearch'}) > 0) 'searched the web',
+      if (n({'web'}) > 0) 'read ${cPlural(n({'web'}), 'web page')}',
+      if (n({'mcp', 'skill'}) > 0) 'used your tools',
+      if (n({'perm'}) > 0) 'asked your OK',
     ];
     if (parts.isEmpty) return _passTitle(g);
     final line = parts.take(3).join(', ');
@@ -1259,6 +1539,50 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         }
       case 'agent':
         return _line(c, Icons.groups_outlined, [TextSpan(text: cs(s['text']).isNotEmpty ? cs(s['text']) : 'A helper agent: ${cs(s['name'])}')]);
+      case 'bgstart':
+        {
+          final what = cs(s['desc']).isNotEmpty ? cs(s['desc']) : cs(s['cmd']);
+          return _line(c, Icons.terminal_rounded,
+              [TextSpan(text: cs(s['did']).isNotEmpty ? cs(s['did']) : 'Started in the background: $what')]);
+        }
+      case 'bgout':
+        {
+          final end = s['running'] == true ? ' · still running' : (s['rc'] != null ? ' · exited ${ci(s['rc'])}' : '');
+          return _line(c, Icons.terminal_rounded, [
+            const TextSpan(text: 'Read the output of '),
+            _code(c, cs(s['id'])),
+            TextSpan(text: end, style: TextStyle(color: s['running'] != true && s['rc'] != null && ci(s['rc']) != 0 ? c.bad : c.ink3)),
+          ]);
+        }
+      case 'bgkill':
+        return _line(c, Icons.stop_circle_outlined, [const TextSpan(text: 'Stopped '), _code(c, cs(s['id']))]);
+      case 'perm':
+        {
+          final yes = cs(s['answer']) != 'no';
+          final note = cs(s['note']).trim();
+          return _line(c, yes ? Icons.check_circle_outline_rounded : Icons.block_rounded, [
+            TextSpan(text: yes ? 'You allowed: ' : 'You said no: '),
+            TextSpan(text: cs(s['what'])),
+            if (!yes && note.isNotEmpty) TextSpan(text: ' · “$note”', style: TextStyle(color: c.ink3)),
+          ], iconColor: yes ? c.ok : c.bad);
+        }
+      case 'web':
+        return _line(c, Icons.public_rounded, [
+          TextSpan(text: 'Read ${codeHost(cs(s['url']))}'),
+          if (s['ok'] == false) TextSpan(text: ' · could not open it', style: TextStyle(color: c.bad)),
+        ]);
+      case 'websearch':
+        return _line(c, Icons.search_rounded, [
+          TextSpan(text: 'Searched the web for “${cs(s['q'])}”${s['num'] is num ? ' · ${codeCount(s['num'], 'result')}' : ''}'),
+        ]);
+      case 'mcp':
+        return _line(c, Icons.hub_outlined, [
+          TextSpan(text: cs(s['action']) == 'list' ? 'Listed your MCP servers' : 'Used ${cs(s['server'])}${cs(s['tool']).isEmpty ? '' : ' · ${cs(s['tool'])}'}'),
+        ]);
+      case 'skill':
+        return _line(c, Icons.menu_book_outlined, [
+          TextSpan(text: cs(s['action']) == 'list' ? 'Listed your skills' : 'Read the skill ${cs(s['name'])}'),
+        ]);
       case 'compact' || 'ws' || 'gate' || 'reality' || 'memory':
         {
           final txt = cs(s['text']);
@@ -1415,10 +1739,9 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
     final done = (p['done_when'] as List?) ?? const [];
     return Padding(
       padding: const EdgeInsets.only(top: 14),
-      child: CodeCard(
-        edge: c.warn,
-        lifted: true,
-        radius: 18,
+      child: _waitBox(           // v1.0 a violet border while it waits for her yes (the design)
+        c,
+        Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
@@ -1458,6 +1781,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
           const SizedBox(height: 8),
           Text('Nothing in the repo is touched until you say yes. A note in the box below goes with your yes.', style: codeSans(c, size: 12.5, color: c.ink3)),
         ]),
+        ),
       ),
     );
   }

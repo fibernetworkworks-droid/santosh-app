@@ -31,8 +31,11 @@ Future<void> codeShareText(BuildContext context, String text) async {
 
 /// The long-press sheet on a message: Copy, Quote in my reply, Edit and send again (hers), Read aloud (Hoola's),
 /// Select text.
+/// v1.0 [onRewrite] = "Edit": her message changed in place (Hoola carries on from the new words); [rewriteOff] greys it
+/// out while Hoola is working.
 void codeMessageMenu(BuildContext context, Santosh app, String text,
-    {required bool mine, VoidCallback? onQuote, VoidCallback? onEdit, VoidCallback? onSelect}) {
+    {required bool mine, VoidCallback? onQuote, VoidCallback? onEdit, VoidCallback? onSelect, VoidCallback? onRewrite,
+    bool rewriteOff = false}) {
   final plain = mine ? text : mdPlain(text);
   if (plain.trim().isEmpty) return;
   HapticFeedback.mediumImpact();
@@ -41,8 +44,9 @@ void codeMessageMenu(BuildContext context, Santosh app, String text,
     showDragHandle: true,
     builder: (ctx) {
       final c = HoolaColors.of(ctx);
-      Widget row(IconData icon, String label, VoidCallback onTap, {String? sub}) => ListTile(
-            leading: Icon(icon, color: c.ink2),
+      Widget row(IconData icon, String label, VoidCallback onTap, {String? sub, bool enabled = true}) => ListTile(
+            enabled: enabled,
+            leading: Icon(icon, color: enabled ? c.ink2 : c.ink3),
             title: Text(label),
             subtitle: sub == null ? null : Text(sub),
             onTap: () {
@@ -62,6 +66,10 @@ void codeMessageMenu(BuildContext context, Santosh app, String text,
             if (context.mounted) codeToast(context, 'Copied');
           }),
           if (onQuote != null) row(Icons.format_quote_rounded, 'Quote in my reply', onQuote),
+          if (mine && onRewrite != null)
+            row(Icons.edit_rounded, 'Edit', onRewrite,
+                sub: rewriteOff ? 'Wait until Hoola finishes this step' : 'Change this message; Hoola carries on from your new words',
+                enabled: !rewriteOff),
           if (mine && onEdit != null) row(Icons.edit_outlined, 'Edit and send again', onEdit, sub: 'Your words go back in the box to change'),
           if (!mine) row(Icons.volume_up_outlined, 'Read aloud', () => app.readAloud(plain)),
           if (!mine) row(Icons.ios_share_rounded, 'Share', () => codeShareText(context, plain)),
@@ -416,31 +424,82 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
         return (Icons.fact_check_outlined, 'Ran', s['ok'] == true ? 'your tests · passed' : 'your tests · failed', false);
       case 'agent':
         return (Icons.groups_outlined, 'Asked', _s(s['name']).isNotEmpty ? 'a helper: ${_s(s['name'])}' : 'a helper', false);
+      case 'bgstart':
+        {
+          final did = _s(s['did']);
+          if (did.isNotEmpty) {
+            final at = did.indexOf(' ');
+            return (Icons.terminal_rounded, at < 0 ? did : did.substring(0, at), at < 0 ? '' : did.substring(at + 1), false);
+          }
+          final what = _s(s['desc']).isNotEmpty ? _s(s['desc']) : _s(s['cmd']);
+          return (Icons.terminal_rounded, 'Started', what.isEmpty ? 'a background command' : 'in the background: $what', false);
+        }
+      case 'bgout':
+        return (Icons.terminal_rounded, 'Read', 'the output of ${_s(s['id'])}${_bgEnd(s)}', _tail(s).isNotEmpty);
+      case 'bgkill':
+        return (Icons.stop_circle_outlined, 'Stopped', _s(s['id']), false);
+      case 'perm':
+        {
+          final yes = _s(s['answer']) != 'no';
+          final note = _s(s['note']).trim();
+          return (
+            yes ? Icons.check_circle_outline_rounded : Icons.block_rounded,
+            yes ? 'You allowed' : 'You said no',
+            '${_s(s['what'])}${!yes && note.isNotEmpty ? ' · “$note”' : ''}',
+            false
+          );
+        }
+      case 'web':
+        return (Icons.public_rounded, 'Read', '${codeHost(_s(s['url']))}${s['ok'] == false ? ' · could not open it' : ''}', false);
+      case 'websearch':
+        return (Icons.search_rounded, 'Searched', 'the web for “${_s(s['q'])}”${s['num'] is num ? ' · ${codeCount(s['num'], 'result')}' : ''}', false);
+      case 'mcp':
+        return _s(s['action']) == 'list'
+            ? (Icons.hub_outlined, 'Listed', 'your MCP servers', false)
+            : (Icons.hub_outlined, 'Used', '${_s(s['server'])}${_s(s['tool']).isEmpty ? '' : ' · ${_s(s['tool'])}'}', false);
+      case 'skill':
+        return _s(s['action']) == 'list'
+            ? (Icons.menu_book_outlined, 'Listed', 'your skills', false)
+            : (Icons.menu_book_outlined, 'Read', 'the skill ${_s(s['name'])}', false);
       default:
         return (Icons.circle_outlined, '', '', false);
     }
+  }
+
+  static List<String> _tail(Map<String, dynamic> s) => [for (final x in (s['tail'] as List?) ?? const []) _s(x)];
+
+  /// " · still running" / " · exited 0" for a look at a background command.
+  static String _bgEnd(Map<String, dynamic> s) {
+    if (s['running'] == true) return ' · still running';
+    if (s['rc'] != null) return ' · exited ${_s(s['rc'])}';
+    return '';
+  }
+
+  /// The icon's colour when it says something (a yes in green, a no in red).
+  static Color? _tint(HoolaColors c, Map<String, dynamic> s) {
+    if (_s(s['k']) != 'perm') return null;
+    return _s(s['answer']) == 'no' ? c.bad : c.ok;
   }
 
   static bool _hasChange(Map<String, dynamic> s) =>
       ((s['hunk'] as List?)?.isNotEmpty ?? false) || ((s['diff'] as List?)?.isNotEmpty ?? false);
 
   Widget _detail(HoolaColors c, Map<String, dynamic> s) {
-    final mono = codeMono(c, size: 12.5, color: c.ink2);
     final box = BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.line));
+    if (_s(s['k']) == 'bgout') {
+      final tail = _tail(s);
+      return CodeTermBox(
+          lines: tail.length > 24 ? tail.sublist(tail.length - 24) : tail,
+          end: s['running'] == true ? 'still running' : (s['rc'] != null ? 'exited ${_s(s['rc'])}' : ''),
+          endOk: s['running'] == true ? null : s['rc'] == 0);
+    }
     if (_s(s['k']) == 'bash') {
       final rc = s['rc'];
       final ok = rc == 0 && s['timed_out'] != true;
-      final tail = [for (final x in (s['tail'] as List?) ?? const []) _s(x)];
+      final tail = _tail(s);
       final secs = s['seconds'];
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: box,
-          child: Text.rich(TextSpan(children: [
-            TextSpan(text: '\$ ${_s(s['cmd'])}', style: codeMono(c, size: 12.5, color: c.ink)),
-            if (tail.isNotEmpty) TextSpan(text: '\n${tail.take(24).join('\n')}', style: mono),
-          ])),
-        ),
+        CodeTermBox(cmd: _s(s['cmd']), lines: tail.length > 24 ? tail.sublist(tail.length - 24) : tail),
         const SizedBox(height: 6),
         Text(
             [
@@ -452,7 +511,14 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
       ]);
     }
     final hunk = (s['hunk'] as List?) ?? const [];
-    if (hunk.isNotEmpty) return CodeHunk(rows: hunk);
+    if (hunk.isNotEmpty) {
+      return CodeEditCard(
+          verb: _s(s['k']) == 'new' ? 'Wrote' : 'Edited',
+          path: _s(s['path']),
+          added: (s['added'] as num?)?.toInt() ?? 0,
+          removed: (s['removed'] as num?)?.toInt() ?? 0,
+          rows: hunk);
+    }
     final lines = [for (final x in (s['diff'] as List?) ?? const []) _s(x)];
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -522,7 +588,7 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
                   child: Center(
                       child: verb.isEmpty
                           ? Container(width: 5, height: 5, decoration: BoxDecoration(color: c.lineStrong, shape: BoxShape.circle))
-                          : Icon(icon, size: 21, color: c.ink2))),
+                          : Icon(icon, size: 21, color: _tint(c, s) ?? c.ink2))),
               if (!last) Expanded(child: Center(child: Container(width: 1, color: c.lineStrong))),
             ]),
           ),
@@ -582,18 +648,19 @@ String codeCount(Object? n, String one, [String? many]) {
 /// v0.999 the real change as Claude Code shows it: old and new line numbers, red removed, green added, context grey.
 /// Rows come from the server as [kind, old line, new line, text]; '@' is a gap between two parts.
 class CodeHunk extends StatelessWidget {
-  const CodeHunk({super.key, required this.rows});
+  const CodeHunk({super.key, required this.rows, this.bare = false});
   final List rows;
+  final bool bare;                    // v1.0 inside a CodeEditCard: no box of its own
 
   @override
   Widget build(BuildContext context) {
     final c = HoolaColors.of(context);
-    final small = codeMono(c, size: 11.5, color: c.ink3);
+    final small = codeMono(c, size: 12, color: c.ink3);
     String cell(Object? v) => v == null ? '' : '$v';
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 6),
-      decoration: BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.line)),
-      clipBehavior: Clip.antiAlias,
+      decoration: bare ? null : BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.line)),
+      clipBehavior: bare ? Clip.none : Clip.antiAlias,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -620,6 +687,93 @@ class CodeHunk extends StatelessWidget {
                     ),
         ]),
       ),
+    );
+  }
+}
+
+/// v1.0 the host of a web address ("docs.python.org"), or the address itself.
+String codeHost(String url) {
+  final u = Uri.tryParse(url.trim());
+  final h = u?.host ?? '';
+  return h.isEmpty ? url : (h.startsWith('www.') ? h.substring(4) : h);
+}
+
+/// v1.0 the terminal's colours (the design: a dark card, light text, red and green for how it ended, grey for the
+/// command line).
+class CodeTerm {
+  static const bg = HoolaTerminal.bg;
+  static const ink = HoolaTerminal.ink;
+  static const red = HoolaTerminal.red;
+  static const green = HoolaTerminal.green;
+  static const grey = HoolaTerminal.grey;
+}
+
+/// v1.0 a command run as a dark terminal card: "$ command" in grey, its output, and how it ended (green / red).
+class CodeTermBox extends StatelessWidget {
+  const CodeTermBox({super.key, this.cmd = '', this.lines = const [], this.end = '', this.endOk, this.size = 12});
+  final String cmd;
+  final List<String> lines;
+  final String end;
+  final bool? endOk;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    final endColor = endOk == true ? CodeTerm.green : (endOk == false ? CodeTerm.red : CodeTerm.grey);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: CodeTerm.bg,
+        borderRadius: BorderRadius.circular(12),
+        border: c.dark ? Border.all(color: c.line) : null,
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+        if (cmd.isNotEmpty) Text('\$ $cmd', style: codeMono(c, size: size, color: CodeTerm.grey)),
+        if (lines.isNotEmpty)
+          Padding(
+            padding: EdgeInsets.only(top: cmd.isNotEmpty ? 3 : 0),
+            child: Text(lines.join('\n'), style: codeMono(c, size: size, color: CodeTerm.ink)),
+          ),
+        if (end.isNotEmpty)
+          Padding(
+            padding: EdgeInsets.only(top: cmd.isNotEmpty || lines.isNotEmpty ? 3 : 0),
+            child: Text(end, style: codeMono(c, size: size, color: endColor)),
+          ),
+      ]),
+    );
+  }
+}
+
+/// v1.0 one file's change as a card: a header row ("Edited path +3 −1") over its lines.
+class CodeEditCard extends StatelessWidget {
+  const CodeEditCard({super.key, required this.verb, required this.path, this.added = 0, this.removed = 0, required this.rows});
+  final String verb, path;
+  final int added, removed;
+  final List rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    return Container(
+      decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.line)),
+      clipBehavior: Clip.antiAlias,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          constraints: const BoxConstraints(minHeight: 40),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+          decoration: BoxDecoration(color: c.sunk, border: Border(bottom: BorderSide(color: c.line))),
+          child: Row(children: [
+            Text(verb, style: codeSans(c, size: 13.5, weight: FontWeight.w600)),
+            const SizedBox(width: 8),
+            Expanded(child: Text(path, maxLines: 1, overflow: TextOverflow.ellipsis, style: codeMono(c, size: 12.5, color: c.ink2))),
+            const SizedBox(width: 8),
+            CodeStat(added, removed, size: 12),
+          ]),
+        ),
+        if (rows.isNotEmpty) CodeHunk(rows: rows, bare: true),
+      ]),
     );
   }
 }
