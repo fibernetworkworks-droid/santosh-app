@@ -167,7 +167,8 @@ def test_page_source_carries_the_fixes():
     assert "s.type === 'condition'" in js and "s.type === 'loop'" in js, "if / else and loop contents are drawn"
     assert 'data-l="Runs when"' in js and "table.rt td[data-l]::before" in css, "tables become cards on a phone"
     assert "/address`" in js and "'DELETE'" in js and "Switch back on" in js
-    assert ".lane{flex-direction:column" in css, "the flow reads top to bottom on a phone"
+    # v0.999.231: the flow is a canvas now (the editor); on a phone the canvas sits above its side panel
+    assert ".edbody{grid-template-columns:1fr" in css, "the editor stacks on a smaller screen"
     assert ".tog::before" in css, "a bigger tap area for the switch"
     assert "JSON.stringify(rest, null, 2)" not in js, "step details in plain rows, not a JSON dump"
 
@@ -233,21 +234,16 @@ def test_every_page_fits_a_phone_and_the_new_parts_work(br):
         time.sleep(0.4)
         over = p.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
         assert over <= 1, f"{h or 'home'} scrolls sideways by {over}px on a phone"
-    # the route: both ways of the if / else and the loop body are drawn, top to bottom
+    # the route: both ways of the if / else and the loop body are drawn (v0.999.231: on the editor's canvas)
     p.goto(base + "#/r/" + inv["id"])
-    p.wait_for_selector(".flow .node")
-    flow = p.inner_text(".flow")
+    p.wait_for_selector("#world .nd")
+    flow = p.inner_text("#world")
     assert "If yes" in flow and "If no" in flow and "For each item" in flow and "Set a value" in flow
-    assert p.evaluate("getComputedStyle(document.querySelector('.lane')).flexDirection") == "column"
-    p.click(".node[data-step='each']")
-    box = p.inner_text("#stepBox")
-    assert "Repeat for each" in box and "{" not in box.split("If it fails")[0][:5]
-    # Change it: an in-page box, not the browser's prompt
-    p.click("#changeIt")
-    assert p.is_visible("#chgText")
-    p.click("#chgCancel")
-    # the webhook route shows how to get its address; two taps make it
-    p.goto(base + "#/r/" + hook["id"])
+    p.click(".nd[data-node='each']")
+    p.wait_for_selector("#edPanel [data-k='items']")
+    assert "Repeat for each" in p.inner_text("#edPanel")
+    # the webhook route shows how to get its address; two taps make it (its Settings tab)
+    p.goto(base + "#/r/" + hook["id"] + "/settings")
     p.wait_for_selector("#addrNew")
     p.click("#addrNew")
     assert "stops working" in p.inner_text("#addrNew")

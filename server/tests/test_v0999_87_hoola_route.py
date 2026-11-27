@@ -470,12 +470,16 @@ def test_route_page_in_a_real_browser(br_route):
     assert pg.inner_text("#needCount") == "1"
     assert pg.locator("#brandMark svg").count() == 1, "the Hoola Orbit mark"
     # the route: its flow, the router's labelled routes, a step's details, how it runs
+    # (v0.999.231: the route opens in the editor - a canvas, the step's settings in the side panel, Settings its own tab)
     pg.click("a.rn")
-    pg.wait_for_selector(".flow .node")
-    flow = pg.inner_text(".flow")
+    pg.wait_for_selector("#world .nd")
+    flow = pg.inner_text("#world")
     assert "Cash" in flow and "Paid online" in flow and "Anything else" in flow
-    pg.click(".node[data-step='ok']")
-    assert "Send the receipt for order 2291?" in pg.inner_text("#stepBox")
+    pg.click(".nd[data-node='ok']")
+    pg.wait_for_selector("#edPanel [data-k='question']")
+    assert pg.input_value("#edPanel [data-k='question']") == "Send the receipt for order 2291?"
+    pg.click(".segtabs a[href$='/settings']")
+    pg.wait_for_selector("#delAsk")
     how = pg.inner_text("#main")
     assert "Europe/London" in how and "21:00" in how and "GB" in how and "Always wait for your tap" in how
     # approve from the page: the run carries on past the gate

@@ -12477,3 +12477,44 @@ Owner: "NOW LETS WORK ON NEXT EMPLOYEE COMMUNITY FINANCE DESK". The Community, I
 - FIXED: `fin/laws._ACT_WORDS` refused the F11 tool's own `remit` action (a fee comparison) as "moving money", so the chat could never
   compare remittance providers; the words are now `remit_now|send_remittance` (send_money / pay / transfer still refused).
 - Tests `server/tests/test_cm_desk.py` (6, incl. a Chromium walk at 1440 and 390). NOT VERIFIED on her server.
+
+
+## v0.999.232 THE ROUTE EDITOR (R1 of the Hoola Route plan)
+
+Owner: "NOW LETS WORK ON HOOLA ROUTE --- FIRST CHECK IS ALL n8n WIRED ... WE WANT ALL 100 % N8N FEATURE ... SHOW ME THE DESIGN" ->
+design canvas claude.ai/artifact/AfdPogRtMSqNY4ztAZ9dxq (the check + 8 screens + the R1-R8 plan) -> "GO BUILD".
+
+The check (27 Nov 2026, engine dhara_tools.py + route/api.py + route.js against n8n's feature list): 69 features - 15 work fully, 14 partly,
+37 missing, 3 not for Hoola (self-hosting, community nodes = strangers' code, SSO). The engine was real (schedule / webhook / manual, tools,
+if / switch / filter / loop / wait / approval, per-step on error); the page could only look and every change went through chat.
+
+Built (R1):
+- Home: "What should run by itself?" - her words create a new route (OFF, one placeholder step) and open it in the editor with the words handed
+  to its Ask Hoola chat; Blank canvas; numbers (routes on, runs this week + failed, went well in 30 days, needs you); Needs you cards; routes
+  table with the last 7 days per route (`days7`) and the On switch; templates (Use this = a new route + the template's words to Ask Hoola);
+  sidebar Needs you + All routes counts, folders, runs today + her time zone. New views #/needs, #/routes/<folder>.
+- The editor #/r/<id>: the route on a canvas (auto layout of the engine's nested steps: If yes / If no, Switch ways + Anything else, For each
+  item; positions she drags kept in `route_meta`), pan / wheel / ctrl-wheel zoom, Fit, mini-map (click to move), Tidy up, sticky notes
+  (5 colours), undo / redo (Ctrl Z / Ctrl Shift Z), Delete key, + after every step and at the end of every branch.
+- Add a step: search over the step kinds (Ask me first, Tell me, If / else, Switch, Filter, Repeat for each, Wait, Set a value, Code,
+  Web request) and Hoola's tools (`/api/route/catalog?q=`: scored by name / label / description, with the tool's argument fields).
+- Step panel: label, tool + Change, the tool's own fields (selects for choices, JSON for lists / objects, {} menu of earlier steps' values),
+  message / question / value / code / address / wait, filter builder (All / Any of these), Switch ways, If it fails (every on_error choice),
+  the step's name (renaming rewrites `steps.<id>` references), Duplicate, Delete (asks once). Trigger panel: by hand / schedule (times, days,
+  every N minutes / hours, time zone, holidays, quiet hours) / when data arrives (make its address).
+- Save (Ctrl S) -> PUT /api/route/routes/<id>/graph: the engine's own validate_steps / validate_schedule, `base` = the version she opened
+  (409 when Hoola or another tab saved meanwhile), drawing keys stripped, a value the page only saw masked restored from the stored route
+  (`editor.unmask`); leaving with unsaved changes asks in the page; beforeunload too.
+- Test route -> POST /routes/<id>/test: a real run even while the route is off (first time: "A test runs the real steps"); the canvas colours
+  each step and edge; a log strip with each step's result, Approve when a step waits, Open the full run.
+- Ask Hoola: GET /routes/<id>/chat = the route's own Conversation (kind 'route', out of callconv.not_call / convs.current); a turn there gets
+  `<route_editor>` (the route's JSON + rules: dhara_save with this exact name, keep untouched steps, labels, never switch on or run) and the
+  dhara family in view; after Hoola answers the page reloads the route and lists what changed with Keep / Undo (Undo saves the earlier steps back).
+- Runs and Settings tabs of a route (its runs; how it runs, webhook address, delete).
+
+Files: `server/app/route/editor.py`, `server/app/route/chat.py`, `server/app/route/api.py`, `static/console/route.js|css|html`,
+santosh.py (block + admission), callconv.py / convs.py (kind route).
+Tests: `server/tests/test_v0999_232_route_editor.py` (11, incl. a Chromium walk at 1440 and one at 390); the v0.999.87 / v0.999.128 browser
+walks moved to the editor.
+NOT VERIFIED: on her server; Ask Hoola with a real model. NOT BUILT (R2-R8): test data / pinned output / drag-to-map, more data and flow
+steps, app-event / form / chat triggers, AI steps, accounts per step + variables + versions + sharing, insights, n8n import.

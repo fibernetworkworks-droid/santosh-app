@@ -140,6 +140,7 @@ def _waiting_question(wf: dict, run: dict) -> str:
 def make_router(require_key, current_tenant) -> APIRouter:
     from ..agent import dhara_tools as D
     from ..agent.tools import Ctx, ToolError
+    from . import editor as E
     r = APIRouter(prefix="/api/route", dependencies=[Depends(require_key)])
 
     async def run(fn, *a, **kw):
@@ -159,7 +160,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
                                   (wf["id"], time.time() - 30 * 86400)).fetchone()[0])
         finally:
             con.close()
-        return {"id": wf["id"], "name": wf["name"], "description": wf.get("description") or "",
+        return {"id": wf["id"], "name": wf["name"], "description": wf.get("description") or "", "days7": _days7(tenant, wf["id"]),
                 "enabled": bool(wf.get("enabled")), "trigger": wf["trigger_kind"], "when": _when(wf),
                 "folder": (wf.get("settings") or {}).get("folder") or "", "apps": apps_of(wf.get("steps") or []),
                 "steps": len(_walk(wf.get("steps") or [])), "runs_30d": n30,
@@ -167,12 +168,39 @@ def make_router(require_key, current_tenant) -> APIRouter:
                 "next_due_at": wf.get("next_due_at"), "status": _status(wf, last),
                 "errors_in_a_row": int(wf.get("consecutive_errors") or 0)}
 
+    def _days7(tenant: str, wf_id: str) -> list[dict]:
+        """v0.999.232: the last 7 days of this route, oldest first - runs that went well and runs that did not."""
+        day0 = time.time() - 6 * 86400
+        start = time.mktime(time.localtime(day0)[:3] + (0, 0, 0, 0, 0, -1))
+        out = [{"ok": 0, "bad": 0} for _ in range(7)]
+        con = D._con(tenant)
+        try:
+            for x in con.execute("SELECT status, created_at FROM runs WHERE workflow_id = ? AND created_at >= ?",
+                                 (wf_id, start)).fetchall():
+                i = int((float(x["created_at"]) - start) // 86400)
+                if 0 <= i < 7:
+                    if x["status"] in ("failed", "incomplete"):
+                        out[i]["bad"] += 1
+                    elif x["status"] == "done":
+                        out[i]["ok"] += 1
+        finally:
+            con.close()
+        return out
+
     def _summary(tenant: str) -> dict:
         wfs = D.list_workflows(tenant, 200)
         con = D._con(tenant)
         try:
             day = time.time() - 86400
             runs_today = int(con.execute("SELECT COUNT(*) FROM runs WHERE created_at >= ?", (day,)).fetchone()[0])
+            week = time.time() - 7 * 86400
+            runs_7d = int(con.execute("SELECT COUNT(*) FROM runs WHERE created_at >= ?", (week,)).fetchone()[0])
+            failed_7d = int(con.execute("SELECT COUNT(*) FROM runs WHERE created_at >= ? AND status IN ('failed','incomplete')",
+                                        (week,)).fetchone()[0])
+            m30 = time.time() - 30 * 86400
+            ended = con.execute("SELECT SUM(status = 'done'), SUM(status IN ('failed','incomplete')) FROM runs WHERE created_at >= ?",
+                                (m30,)).fetchone()
+            ok30, bad30 = int(ended[0] or 0), int(ended[1] or 0)
             waiting = [dict(x) for x in con.execute(
                 "SELECT id, wf_name, workflow_id, cursor, updated_at FROM runs WHERE status = 'waiting_approval' "
                 "ORDER BY updated_at DESC LIMIT 20").fetchall()]
@@ -201,7 +229,10 @@ def make_router(require_key, current_tenant) -> APIRouter:
                 needs.append({"kind": "stopped", "route": wf["name"], "route_id": wf["id"],
                               "text": f"Switched off after {wf['consecutive_errors']} failed runs in a row"})
         return {"routes_total": len(wfs), "routes_on": sum(1 for w in wfs if w.get("enabled")),
-                "runs_today": runs_today, "needs_you": needs[:30], "needs_count": len(needs)}
+                "runs_today": runs_today, "runs_7d": runs_7d, "failed_7d": failed_7d,
+                "success_30d": (round(100 * ok30 / (ok30 + bad30)) if ok30 + bad30 else None),
+                "folders": sorted({(w.get("settings") or {}).get("folder") for w in wfs} - {None, ""}),
+                "needs_you": needs[:30], "needs_count": len(needs)}
 
     @r.get("/summary")
     async def route_summary(tenant: str = Depends(current_tenant)):
@@ -213,33 +244,101 @@ def make_router(require_key, current_tenant) -> APIRouter:
             return {"routes": [_card(tenant, wf) for wf in D.list_workflows(tenant, 200)]}
         return await run(go)
 
+    def _full(tenant: str, wf: dict) -> dict:
+        out = _card(tenant, wf)
+        steps = wf.get("steps") or []
+
+        def deco(lst):
+            res = []
+            for s in lst or []:
+                if not isinstance(s, dict):
+                    continue
+                d = {k: v for k, v in s.items() if k not in ("then", "else", "body", "fallback", "routes")}
+                d["app"] = app_of(s)
+                for k in ("then", "else", "body", "fallback"):
+                    if s.get(k):
+                        d[k] = deco(s[k])
+                if s.get("routes"):
+                    d["routes"] = [{**{k: v for k, v in rt.items() if k != "steps"}, "steps": deco(rt.get("steps"))}
+                                   for rt in s["routes"] if isinstance(rt, dict)]
+                res.append(d)
+            return res
+        out["graph"] = D._masked(deco(steps))
+        out["trigger_spec"] = wf.get("trigger_spec") or {}
+        out["settings"] = wf.get("settings") or {}
+        m = E.meta(tenant, wf["id"])
+        out["layout"] = {"pos": m["pos"], "notes": m["notes"]}
+        out["version"] = wf.get("updated_at")
+        return out
+
     @r.get("/routes/{wf_id}")
     async def route_one(wf_id: str, tenant: str = Depends(current_tenant)):
+        return await run(lambda: _full(tenant, _wf_or_404(tenant, wf_id)))
+
+    # ---------------------------------------------------------------- v0.999.232 the editor
+    @r.post("/routes")
+    async def route_new(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """A new route made from the page: OFF, with one placeholder step, ready for the canvas or Ask Hoola."""
+        def go():
+            try:
+                wf = E.new_route(tenant, str((body or {}).get("title") or "New route")[:120], str((body or {}).get("folder") or ""))
+            except ToolError as e:
+                raise HTTPException(400, str(e))
+            return _full(tenant, wf)
+        return await run(go)
+
+    @r.put("/routes/{wf_id}/graph")
+    async def route_graph(wf_id: str, body: dict = Body(...), tenant: str = Depends(current_tenant)):
         def go():
             wf = _wf_or_404(tenant, wf_id)
-            out = _card(tenant, wf)
-            steps = wf.get("steps") or []
-
-            def deco(lst):
-                res = []
-                for s in lst or []:
-                    if not isinstance(s, dict):
-                        continue
-                    d = {k: v for k, v in s.items() if k not in ("then", "else", "body", "fallback", "routes")}
-                    d["app"] = app_of(s)
-                    for k in ("then", "else", "body", "fallback"):
-                        if s.get(k):
-                            d[k] = deco(s[k])
-                    if s.get("routes"):
-                        d["routes"] = [{**{k: v for k, v in rt.items() if k != "steps"}, "steps": deco(rt.get("steps"))}
-                                       for rt in s["routes"] if isinstance(rt, dict)]
-                    res.append(d)
-                return res
-            out["graph"] = D._masked(deco(steps))
-            out["trigger_spec"] = wf.get("trigger_spec") or {}
-            out["settings"] = wf.get("settings") or {}
-            return out
+            try:
+                new = E.save_graph(tenant, wf, body or {})
+            except ToolError as e:
+                raise HTTPException(400, str(e))
+            except ValueError as e:
+                if str(e) == "conflict":
+                    raise HTTPException(409, "This route changed since you opened it (Hoola or another tab saved it). "
+                                             "Reload to see the new version, then make your change again.")
+                raise HTTPException(400, str(e))
+            return _full(tenant, new)
         return await run(go)
+
+    @r.put("/routes/{wf_id}/layout")
+    async def route_layout(wf_id: str, body: dict = Body(...), tenant: str = Depends(current_tenant)):
+        def go():
+            wf = _wf_or_404(tenant, wf_id)
+            try:
+                return E.save_layout(tenant, wf["id"], body or {})
+            except ValueError as e:
+                raise HTTPException(400, str(e))
+        return await run(go)
+
+    @r.post("/routes/{wf_id}/test")
+    async def route_test(wf_id: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """Test route: one real run now, even while the route is switched off (the editor's Test button)."""
+        wf = await run(_wf_or_404, tenant, wf_id)
+        vars_ = (body or {}).get("vars")
+        rid = await run(D.create_run, tenant, wf, vars_ if isinstance(vars_, dict) else {})
+        t = asyncio.ensure_future(D.execute_run(tenant, rid))
+        D._TASKS.add(t)
+        t.add_done_callback(lambda _t: D._TASKS.discard(_t))
+        return {"run_id": rid, "status": "queued"}
+
+    @r.get("/routes/{wf_id}/chat")
+    async def route_chat(wf_id: str, tenant: str = Depends(current_tenant)):
+        from . import chat as RC
+        return await run(lambda: RC.chat_for(tenant, _wf_or_404(tenant, wf_id)))
+
+    @r.get("/catalog")
+    async def route_catalog(q: str = ""):
+        return {"kinds": E.KINDS, "tools": await run(E.tools, q[:120])}
+
+    @r.get("/catalog/tool/{name}")
+    async def route_catalog_tool(name: str):
+        t = await run(E.tool_one, name[:80])
+        if t is None:
+            raise HTTPException(404, "No such tool")
+        return t
 
     @r.post("/routes/{wf_id}/switch")
     async def route_switch(wf_id: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
@@ -344,6 +443,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
                 con.commit()
             finally:
                 con.close()
+            E.forget(tenant, wf["id"])
             return {"deleted": wf["id"], "name": wf["name"]}
         return await run(go)
 
