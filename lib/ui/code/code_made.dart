@@ -336,7 +336,12 @@ class _CodeMadeViewerState extends State<CodeMadeViewer> {
 
   Future<void> _load() async {
     final api = widget.app.api;
-    if (api == null) return;
+    if (api == null) {
+      await Future<void>.value();   // this can run from initState: setState only after it
+      if (mounted && _d == null) setState(() => _error = codeLoadFailedLine);
+      return;
+    }
+    if (_error != null && _d == null) setState(() => _error = null);
     try {
       final d = cm(await api.call('GET', _path, query: _v > 0 ? {'v': '$_v'} : null));
       if (!mounted) return;
@@ -364,8 +369,9 @@ class _CodeMadeViewerState extends State<CodeMadeViewer> {
         _poll?.cancel();
         _poll = null;
       }
-    } catch (e) {
-      if (mounted) setState(() => _error = '$e');
+    } catch (_) {
+      // never the raw exception on her screen: one plain line, and Try again while nothing is shown yet
+      if (mounted) setState(() => _error = codeLoadFailedLine);
     }
   }
 
@@ -461,7 +467,7 @@ class _CodeMadeViewerState extends State<CodeMadeViewer> {
           if (making) LinearProgressIndicator(minHeight: 2, color: c.accent, backgroundColor: c.accentSoft),
           Expanded(
             child: d == null
-                ? Center(child: _error == null ? const CodeRing(size: 22) : Padding(padding: const EdgeInsets.all(24), child: Text(_error!, style: codeSans(c, color: c.ink2))))
+                ? (_error == null ? const Center(child: CodeRing(size: 22)) : CodeLoadFailed(text: _error!, onRetry: _load))
                 : _body(c, d, kind),
           ),
           _askBar(c, kind),

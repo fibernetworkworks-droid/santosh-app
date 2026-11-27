@@ -12730,3 +12730,7 @@ The Risk Desk employee (`risk_desk`, the v0.603 riskdesk engine) gets its own se
 - Wiring: main.py route + mount, convs/callconv kinds, santosh.py block + admission, employees.js `risk_desk: 'rkdesk'`, v2.js redirect,
   phone `hoola_employees.dart`, test_fin_f7 own map.
 - Tests: `server/tests/test_rk_desk.py` (5, incl. a browser walk at 1440 and 390). NOT VERIFIED on her server.
+
+
+## v0.999.245 HOOLA CODE FIX PASS
+Hoola Code fix pass. Web `static/console/code.js` (hcdQual, P.rail out of the comment, share radio read, sideFresh 20 s, wsCard todo count only, no Model kv, locale dates, wording) + `hoolacode.css` (merge marker removed, --mono, FIX PASS block: .hcd-cpmeta width, 760 px rules). Phone `lib/ui/code/` (code_kit CodeLoadFailed + codeLoadFailedLine; code_more _failed + CodeArchivedPage; code_vps; code_home _archivedLink + Semantics; code_session / code_made plain errors, setState after the first await; NEW code_env.dart CodeEnvPage; code_start opens it; devsahayak_drawer devOpenSession -> CodeSessionPage when newLook). Server `devsahayak/service.py` (_pr_body heading + true footer, module doc), WIRING.md, `config.py` (5 dev_* settings), `devlab/box.py` (check_timeout, prune default), `devlab/service.py`, `devlab/__main__.py`, `devsahayak/vps.py` (Look only refuses, _idle_too_long auto-off in check_in, poll_s in config), `deploy/hoola-vps/agent.py` 1.1.0 (CONF, not_allowed, _program, _inside, time limit). Tests `test_v0999_245_code_fix_pass.py` (7); test_v0794 share now ticks 'Anyone with the link'. NOT VERIFIED on her server / phone.

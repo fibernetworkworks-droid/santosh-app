@@ -155,6 +155,13 @@ class Settings(BaseSettings):
     dev_lab: bool = True                    # v0.533 PRAYOGSHALA ON: her VPS answered lab_check with every wall holding (docker 29.8.1, base image built, pass + fail caught, network blocked, read-only root, uid 1000)
     dev_lab_timeout: int = 600              # ... seconds one check may run (her .hoola/lab.json may lower it)
     dev_lab_keep: int = 12                  # ... per-repo dependency snapshots kept before the oldest are dropped
+    # v0.999.245 five settings the Hoola Code code already read with a fallback but that were never defined here, so they
+    # could not be changed from the server's .env - same defaults as the code's fallbacks
+    dev_auto_continue: int = 3              # a round that ended unfinished continues by itself this many more times
+    dev_session_inr_cap: float = 1500.0     # one session never spends past this many rupees (0 = no limit)
+    dev_ci_poll_s: int = 60                 # one CI look per session at most this often (seconds)
+    dev_plan_remind_h: float = 2.0          # a plan waiting for her yes is said once more after this many hours (0 = never)
+    dev_unclear_steps: int = 10             # a vague ask gets at most this many steps before Hoola asks her one question
     dev_plan_first: bool = True             # v0.451 ECC PHASE 4: a standard / large job gets a read-only PLAN pass before any edit
     research_engines_allowed: str = "hoola"   # v0.477 R6: comma list of engines she lets run research ("hoola" is always allowed); a vendor must be listed here ...
     research_vendor_terms_ack: str = ""       # ... AND here: the vendors whose current terms SHE has read and accepts for this use (storing + showing the result to her). Nothing is assumed.

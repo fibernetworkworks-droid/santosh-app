@@ -1,7 +1,7 @@
 # WIRING for devsahayak
-summary: Developer Sahayak (software developer in HER GitHub repos via the official REST API: write / fix / tests / docs / explain on a hoola/* branch + pull request with test plan and risk notes, secrets in a diff refused, OWASP 2025 + DPDP checks, CI read from the Checks API + fix-CI commits, reviews of her team's PRs as drafts she posts, MERGE and DEPLOY (her repo's own workflow_dispatch) only on her tap with head-sha guard and a CI gate; repo code never runs on Hoola's server)
+summary: Developer Sahayak (software developer in HER GitHub repos via the official REST API: write / fix / tests / docs / explain on a hoola/* branch + pull request with test plan and risk notes, secrets in a diff refused, OWASP 2025 + DPDP checks, CI read from the Checks API + fix-CI commits, reviews of her team's PRs as drafts she posts, MERGE and DEPLOY (her repo's own workflow_dispatch) only on her tap with head-sha guard and a CI gate; repo code runs on Hoola's server only inside the locked devlab box)
 db: app.devsahayak.models
-router: app.devsahayak.api            (make_router(require_key, current_tenant); all routes under /api/devsahayak, key-protected; no public routes)
+router: app.devsahayak.api            (make_router(require_key, current_tenant); key routes under /api/devsahayak; make_public_router adds the few that need no key: shared link, schedule trigger, GitHub webhook / App return, signed made-file link, labcheck, the VPS helper's enroll / check-in / report + installer)
 tools: app.agent.devsahayak_tools     (DEV_TOOLS / DEV_LABELS / DEV_HANDLERS; the same objects are also exported as DEVSAHAYAK_TOOLS / DEVSAHAYAK_LABELS / DEVSAHAYAK_HANDLERS) ; voice: yes (dev, dev_dekho)
 employee: duty dev_work = [dev, dev_dekho, file_read] {label "Software developer", say "code likhna / review, bug samjhana aur fix PR, tests aur docs (merge aur deploy sirf aapki haan se)"} ; role software_developer {label "Software developer", duties [dev_work, records, research]} ; preset software_dev {label "Software / app company", role software_developer, rules ["Main branch par seedha push kabhi nahi: hamesha hoola/* branch + pull request", "Merge aur deploy sirf owner ke tap se", "Token / password / key kabhi chat mein nahi"]} ; READ tools: [dev_dekho]
   - staff (staff:<id>) may start work, revise, review (draft only), ask for merge / deploy CARDS; the tool refuses customer actors, and owner-only actions repo_add / repo_remove / settings. Nothing is merged, deployed, posted or (public repo) opened by any tool: only the app's API taps below.
@@ -59,7 +59,7 @@ claude_md: |
     (409 = moved -> stale; 405 = merge queue / protection -> plain message). Deploy (`deploy_request`): only her repo's own workflow file
     with `on: workflow_dispatch`, inputs checked against the file (<= 25, no secrets), ref head sha + CI on the card, her tap ->
     dispatch (200 + workflow_run_id, or older 204 -> run found by head sha), tick follows the run -> success / FAIL card.
-  - Never: pushing to the default branch, running repo code / tests on the Hoola server, merging / deploying / posting / opening a public
+  - Never: pushing to the default branch, running repo code / tests on the Hoola server outside the locked devlab box, merging / deploying / posting / opening a public
     PR without her tap, committing a secret, editing CI workflows unless allowed, accepting a token in chat.
   - Sources (23 Oct 2026): docs.github.com/en/rest/actions/workflows (Create a workflow dispatch event: Actions write; now returns 200
     with workflow_run_id / html_url), docs.github.com/en/rest/pulls/pulls (Create PR: Pull requests write; head / base / draft),

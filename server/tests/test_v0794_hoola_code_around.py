@@ -431,6 +431,12 @@ def test_phase5_in_a_browser(arena_server):  # noqa: F811
     pg.get_by_role("menuitem", name="Share a read-only link").click()
     dlg = pg.locator("#hcdDlg")
     assert "No sign-in needed" in dlg.inner_text() and not any(c[0] == "share" for c in calls)   # nothing is shared before her yes
+    dlg.get_by_role("button", name="Make the link").click()              # v0.999.245 "Private" (ticked first) makes no link
+    assert _until(pg, lambda: "It stays private" in pg.locator("#toast").inner_text())
+    assert not any(c[0] == "share" for c in calls)
+    pg.locator('[data-menu="title"]').click()
+    pg.get_by_role("menuitem", name="Share a read-only link").click()
+    dlg.locator("input[name=hcdVis][value=link]").check()
     dlg.get_by_role("button", name="Make the link").click()
     pg.wait_for_selector("#hcdShareUrl")
     assert pg.locator("#hcdShareUrl").inner_text().endswith("/console/code/shared/" + "t" * 43)

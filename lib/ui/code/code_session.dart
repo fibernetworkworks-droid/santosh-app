@@ -209,7 +209,12 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
 
   Future<void> _load({bool full = false, bool replace = false}) async {
     final api = widget.app.api;
-    if (api == null) return;
+    if (api == null) {
+      // not signed in to a server: say so instead of a ring that turns for ever
+      await Future<void>.value();   // this can run from initState: setState only after it
+      if (mounted && _t == null) setState(() => _error = codeLoadFailedLine);
+      return;
+    }
     if (_loading) {
       if (full) _wantFull = true;                     // v0.945 never lost: it runs as soon as this check ends
       return;
@@ -333,8 +338,8 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         _lookedForMerge = true;
         _findMerge(t);
       }
-    } catch (e) {
-      if (mounted && _t == null) setState(() => _error = '$e'.replaceFirst('Exception: ', ''));
+    } catch (_) {
+      if (mounted && _t == null) setState(() => _error = codeLoadFailedLine);
     } finally {
       _loading = false;
       if (_wantFull && mounted) {
@@ -608,10 +613,14 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
           ),
           Expanded(
             child: t == null
-                ? Center(
-                    child: _error == null
-                        ? const CodeRing(size: 22)
-                        : Padding(padding: const EdgeInsets.all(24), child: Text(_error!, textAlign: TextAlign.center, style: codeSans(c, color: c.ink2))))
+                ? (_error == null
+                    ? const Center(child: CodeRing(size: 22))
+                    : CodeLoadFailed(
+                        text: _error!,
+                        onRetry: () {
+                          setState(() => _error = null);
+                          _load(full: true);
+                        }))
                 : RefreshIndicator(
                     onRefresh: () => _load(full: true, replace: true),
                     color: c.ink,

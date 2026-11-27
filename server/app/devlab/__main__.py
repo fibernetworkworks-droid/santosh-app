@@ -17,7 +17,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--setup", default="", help="dependency install command (run)")
     ap.add_argument("--token", default="", help="GitHub token for a private repo (run)")
     ap.add_argument("--timeout", type=int, default=0)
-    ap.add_argument("--keep", type=int, default=12, help="snapshots to keep (prune)")
+    ap.add_argument("--keep", type=int, default=None, help="snapshots to keep (prune; default = the dev_lab_keep setting)")
     ap.add_argument("--log", default="", help="log path (grep)")
     ap.add_argument("--pattern", default="", help="what to look for (grep)")
     ap.add_argument("--rebuild", action="store_true", help="rebuild the base image from scratch (setup)")
