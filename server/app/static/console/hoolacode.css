@@ -1280,3 +1280,5 @@ html,body{background:var(--bg)}
 #app .hcd-rwopt:hover,#app .hcd-rwopt:focus-visible{background:var(--hov)}
 #app .hcd-rwopt b{font-weight:600;font-size:14px}
 #app .hcd-rwopt span{font-size:13px;color:var(--mut)}
+#app .hcd-cmdlist{max-height:46vh;overflow:auto;margin:6px 0}
+#app .hcd-cmdlist code{white-space:nowrap}

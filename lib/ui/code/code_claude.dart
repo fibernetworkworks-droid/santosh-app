@@ -106,7 +106,8 @@ Future<void> codeExportConversation(BuildContext context, Santosh app, String id
 
 // ---------------------------------------------------------------------------------------------- output style
 /// How Hoola writes in this session: the built-in styles and the repo's own (.claude/output-styles).
-Future<void> showCodeStylePicker(BuildContext context, Santosh app, String id) async {
+/// [name] (typed as "/output-style NAME") picks that style at once when it exists; otherwise the list opens.
+Future<void> showCodeStylePicker(BuildContext context, Santosh app, String id, {String name = ''}) async {
   final r = await CodeCommands.of(app, id, fresh: true);
   if (!context.mounted) return;
   final styles = cl(r['styles']);
@@ -115,7 +116,10 @@ Future<void> showCodeStylePicker(BuildContext context, Santosh app, String id) a
     codeToast(context, 'Output styles show once this session has its working copy.');
     return;
   }
-  final pick = await codeSheet<String>(context, app,
+  final want = name.trim().toLowerCase();
+  final named = want.isEmpty ? '' : cs(styles.firstWhere((s) => cs(s['name']).toLowerCase() == want, orElse: () => const <String, dynamic>{})['name']);
+  if (want.isNotEmpty && named.isEmpty) codeToast(context, 'No output style called "${name.trim()}". Pick one from the list.');
+  final pick = named.isNotEmpty ? named : await codeSheet<String>(context, app,
       title: 'Output style',
       body: (ctx) {
         final c = HoolaColors.of(ctx);
@@ -132,6 +136,10 @@ Future<void> showCodeStylePicker(BuildContext context, Santosh app, String id) a
           Text('Add your own in .claude/output-styles - Edit the files, then Add.', style: codeSans(c, size: 13, color: c.ink3)),
         ]);
       });
+  if (named.isNotEmpty && named == now) {
+    codeToast(context, 'The output style is already $now.');
+    return;
+  }
   if (pick == null || pick == now || !context.mounted) return;
   final (got, why) = await _ask(app, 'PUT', '${_tBase(id)}/style', body: {'style': pick});
   if (!context.mounted) return;
@@ -395,6 +403,18 @@ String _starter(String id, String name) {
 /// Opens the list of the repo's Claude Code files.
 Future<void> openCodeClaudeFiles(BuildContext context, Santosh app, String id) =>
     _push<void>(context, app, CodeClaudeFilesPage(app: app, id: id));
+
+/// Opens one Claude Code file of the repo in the editor (typed as /memory, /hooks, /permissions). A file the working copy
+/// does not have yet starts from [starter]; Save writes it into this session's working copy like any other change.
+Future<void> openCodeClaudeFile(BuildContext context, Santosh app, String id, String path, String starter) async {
+  final r = await CodeCommands.of(app, id, fresh: true);
+  if (!context.mounted) return;
+  final has = [for (final f in (r['files'] as List?) ?? const []) cs(f)].contains(path);
+  final what = await _push<String>(context, app, CodeClaudeFileEditor(app: app, id: id, path: path, starter: has ? null : starter));
+  if (!context.mounted || what == null) return;
+  codeToast(context, what == 'deleted' ? 'Deleted $path' : 'Saved $path');
+  CodeCommands.of(app, id, fresh: true);
+}
 
 class CodeClaudeFilesPage extends StatefulWidget {
   const CodeClaudeFilesPage({super.key, required this.app, required this.id});
