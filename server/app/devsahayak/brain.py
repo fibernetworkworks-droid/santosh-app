@@ -523,10 +523,77 @@ def _claude_stream(client, kw: dict, sink) -> Any:
         return s.get_final_message()
 
 
+# v0.999 FALLBACK MODELS, Claude Code's `fallbackModel`: when the model is overloaded, down, gone or the connection drops
+# (after the SDK's own retries), the same request goes to up to 3 backup models in order. A model the API says does not
+# exist is skipped for the rest of the process. Credit, rate-limit, bad-request and too-long errors are not retried on
+# another model - they show at once.
+FALLBACK = threading.local()                 # .note = (from, to, why) of the last switch in this thread, for the step line
+GONE: set[str] = set()
+
+
+def fallback_models(primary: str) -> list[str]:
+    raw = str(getattr(_settings(), "dev_fallback_models", "") or "")
+    out = []
+    for m in [x.strip() for x in raw.split(",") if x.strip()]:
+        if m != primary and m not in out and m not in GONE:
+            out.append(m)
+    return out[:3]
+
+
+def too_long(e: Exception) -> bool:
+    """The request is bigger than the model takes (Claude: 'prompt is too long'; OpenRouter: context length)."""
+    m = str(e).lower()
+    return any(w in m for w in ("prompt is too long", "context length", "maximum context", "context_length_exceeded",
+                                "too many tokens", "input is too long"))
+
+
+def pretty(m: str) -> str:
+    """claude-opus-5-5 -> Opus 5.5; an OpenRouter id -> its last part."""
+    x = re.search(r"claude-(haiku|sonnet|opus|fable)-(\d+)[.-](\d+)", m or "")
+    return f"{x.group(1).title()} {x.group(2)}.{x.group(3)}" if x else (m or "").split("/")[-1]
+
+
+def fallback_worthy(e: Exception) -> str:
+    """Why this error should move to a backup model ('' = it should not)."""
+    code = getattr(e, "status_code", None)
+    name = e.__class__.__name__
+    msg = str(e).lower()
+    if code in (500, 502, 503, 504, 529) or "overloaded" in msg or name in ("InternalServerError", "OverloadedError"):
+        return "overloaded" if (code == 529 or "overloaded" in msg) else "unavailable"
+    if code == 404 or name == "NotFoundError" or ("model" in msg and "not found" in msg):
+        return "not_found"
+    if name in ("APIConnectionError", "APITimeoutError") or isinstance(e, (ConnectionError, TimeoutError)):
+        return "connection"
+    return ""
+
+
 def _claude_call(system: str, messages: list[dict], tools: list[dict], max_tokens: int,
                  think: bool | None) -> tuple[list[dict], str]:
     st = _settings()
-    model = model_for()
+    first = model_for()
+    chain = ([first] if first not in GONE else []) + fallback_models(first)
+    last: Exception | None = None
+    for i, model in enumerate(chain or [first]):
+        try:
+            out = _claude_once(st, model, system, messages, tools, max_tokens, think)
+        except Exception as e:  # noqa: BLE001
+            why = fallback_worthy(e)
+            if not why or i == len(chain) - 1:
+                raise
+            if why == "not_found":
+                GONE.add(model)
+            STATE["fallbacks"] = STATE.get("fallbacks", 0) + 1
+            log.warning("Hoola Code: %s %s - trying %s", model, why, chain[i + 1])
+            last = e
+            continue
+        if model != first:
+            FALLBACK.note = (first, model, fallback_worthy(last) if last else "")
+        return out
+    raise last or RuntimeError("no model answered")
+
+
+def _claude_once(st: Any, model: str, system: str, messages: list[dict], tools: list[dict], max_tokens: int,
+                 think: bool | None) -> tuple[list[dict], str]:
     sys_blocks, tl, msgs = _cacheable(system, tools, messages)
     kw: dict[str, Any] = dict(model=model, max_tokens=max_tokens, system=sys_blocks, messages=msgs)
     if tl:

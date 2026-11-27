@@ -763,6 +763,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       case 'mcp': return `<div class="hcd-step">${svg('spark')}<span>${s.action === 'list' ? 'Looked at your MCP servers' : `Used ${esc(s.server || 'an MCP server')} · ${p(s.tool || '')}`}</span>${at}</div>`;
       case 'skill': return `<div class="hcd-step dim">${svg('read')}<span>${s.action === 'list' ? 'Looked at your skills' : `Read the skill ${p(s.name || '')}`}</span>${at}</div>`;
       case 'asked': return `<div class="hcd-step">${svg('dot')}<span>Asked you: <b>${esc(s.question || '')}</b>${s.answer ? ` · you said <i>${esc(s.answer)}</i>` : ' · no answer'}</span>${at}</div>`;
+      case 'fallback': return `<div class="hcd-step dim">${svg('spark')}<span>${esc(s.text || 'A backup model answered')}</span>${at}</div>`;
+      case 'title': return '';
       case 'claudefile': return `<div class="hcd-step dim">${svg('pencil')}<span>You ${s.what === 'deleted' ? 'deleted' : 'changed'} <code>${esc(s.path || '')}</code></span>${at}</div>`;
       case 'cmd': return `<div class="hcd-step dim">${svg('spark')}<span>${s.repo ? 'Ran your command' : 'Started'} <span class="hcd-cmd">/${esc(s.name || '')}</span>${s.repo ? ' from this repo' : ''}</span>${at}</div>`;
       case 'mention': return `<div class="hcd-step">${svg('read')}<span>Read the files you pointed at · ${(s.files || []).map(p).join(', ')}</span>${at}</div>`;

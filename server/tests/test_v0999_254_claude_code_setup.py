@@ -72,7 +72,7 @@ def test_commands_agents_and_rules_are_read_from_dot_claude(ws):
     assert d("bash", command="rm -rf build") == "deny" and d("read", path=".env") == "deny"
     assert d("edit", path="docs/a.md") == "allow" and d("edit", path="src/a.py") == ""
     assert d("web_fetch", url="https://api.evil.example/x") == "deny" and d("web_fetch", url="https://good.dev") == ""
-    assert RC.hooks_for(conf, "PreToolUse", "bash") == [("./scripts/guard.sh", 60)] and RC.hooks_for(conf, "PreToolUse", "read") == []
+    assert [(h["command"], h["timeout"]) for h in RC.hooks_for(conf, "PreToolUse", "bash")] == [("./scripts/guard.sh", 60)] and RC.hooks_for(conf, "PreToolUse", "read") == []
 
 
 def test_her_message_carries_her_command_and_her_files(ws):

@@ -171,6 +171,17 @@ def _run_one(tools: Any, spec: dict, task: str, files: list[str] | None, emit, s
     first = (f"<task>\n{task[:12000]}\n</task>\n"
              + (f"Start from: {', '.join(flist)}\n" if flist else "")
              + f"Repo: {tools.s.meta.get('repo', '')}. Your tools: {', '.join(sorted(allowed - {'report'}))}, report.")
+    try:                                                   # v0.999 SubagentStart: the repo's hook may stop it or add notes
+        from . import repoconf as RC
+        if spec.get("name") != "hook-check" and RC.hooks_for(getattr(tools, "conf", {}) or {}, "SubagentStart"):
+            said = EN.run_hooks(tools, "SubagentStart", extra={"agent_type": spec["name"], "agent_id": spec["name"] + "-" + str(STATS["agents"])})
+            if said.get("block") or said.get("stop"):
+                return (f"[{spec['title']} did not start: this repo's SubagentStart hook said no]\n"
+                        + (said.get("text") or said.get("stop_reason") or "")[:2000])
+            if said.get("context"):
+                first += "\n<subagent_start_hook>\n" + said["context"][:4000] + "\n</subagent_start_hook>"
+    except Exception:  # noqa: BLE001 - a hook never stops an agent that could run
+        pass
     msgs: list[dict[str, Any]] = [{"role": "user", "content": first}]
     say({"k": "agent", "state": "start", "name": spec["name"], "title": spec["title"], "tools": level, "model": model_label(own),
          "task": task[:300]})
@@ -230,7 +241,7 @@ def _run_one(tools: Any, spec: dict, task: str, files: list[str] | None, emit, s
     head = f"[{spec['title']}" + (f" on {model_label(own)}" if own else "") + (f" ({why})" if why else "") + f" - {steps} steps" + (f", changed {edits} file(s): re-read before you edit them" if edits else "") + "]\n"
     try:                                                   # v0.999 the repo's SubagentStop hook may add its word
         from . import repoconf as RC
-        if RC.hooks_for(getattr(tools, "conf", {}) or {}, "SubagentStop"):
+        if spec.get("name") != "hook-check" and RC.hooks_for(getattr(tools, "conf", {}) or {}, "SubagentStop"):
             said = EN.run_hooks(tools, "SubagentStop")
             if said.get("block") and said.get("text") and not said.get("stop"):
                 report += "\n\n[This repo's SubagentStop hook says the agent is not done:]\n" + said["text"][:3000]

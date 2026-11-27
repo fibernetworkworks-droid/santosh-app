@@ -2090,6 +2090,10 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         return _line(c, Icons.stop_circle_outlined, [const TextSpan(text: 'Stopped. Nothing was pushed.')], iconColor: c.bad);
       case 'claudefile':
         return _claudeFileRow(c, s);
+      case 'title':
+        return null;
+      case 'fallback':
+        return _line(c, Icons.swap_horiz_rounded, [TextSpan(text: cs(s['text']).isEmpty ? 'A backup model answered' : cs(s['text']))]);
       default:
         {
           final txt = cs(s['text']);
