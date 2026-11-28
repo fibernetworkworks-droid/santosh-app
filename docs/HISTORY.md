@@ -14170,7 +14170,32 @@ and fails on exactly what the desk reports).
 
 NOT VERIFIED: on her server, with her own scanners' output, sites, certificates and code, or the workflow running on GitHub.
 
-## v0.999.313 DEVSECOPS ENGINEER DESK (owner: "DevSecOps Engineer same as finance desks")
+
+## v0.999.313 MEMORY GUARD EVERYWHERE
+(owner: 'NOW WORK ON CHECKING MEMORY BEFORE IT'S SAVED', item 7). Files: server/app/coder/guard.py (negation, cache, in_her_words, last_user_words, check_memory, why, STATS), yaad.py (save_fact + relevant_facts), agent/life_tools.py (remember), life.py (memory_facts safe_only, imported heading), main.py + memory.py (her screen safe_only=False), coder/store.py, coder/skills_tool.py, agent/sandarbh_tools.py (kgmemory), devsahayak/memory.py, aboutme.py. Tests: test_v0999_313_memory_guard.py (13). NOT VERIFIED on her server.
+## v0.999.314 ALL WORLD PROMPTS (built as 0.999.313; their MEMORY GUARD EVERYWHERE took 0.999.313, both kept) (owner: "INCLUDE ALL 100 %" on the list of what the World shelf left out, then "MAKE IT GLOBAL NOT INDIA NATIVE")
+
+v0.999.311 kept 1,635 of the 3,235 rows in prompts.chat's old CSV and dropped the rest for 10 reasons. Now every prompt is
+kept, and nothing is India-specific.
+- Source: the live site's own full export (https://prompts.chat/prompts.json?full_content=true, 28 Nov 2026), 3,275
+  prompts, CC0. `python -m app.prompting.world build <prompts.json|prompts.csv> [commit]` reads either (`world._read`, `_row`).
+- Nothing dropped: `judge()` returns every prompt with `notes` (long 1,159, JSON / YAML 333, many blanks 216, code style
+  137, another language 115, near copy 68, unsafe words 62, very short 46, gibberish 11, ignore-your-rules 8). A
+  repeated title + text gets its own id suffix.
+- Global: the site's 53 categories (group = category slug, label = its name) and 7 kinds (text, pictures, video, agent
+  skills, code style, audio, JSON / YAML); another language is a label, not a problem. Search sorts by the site's votes.
+- How a prompt is used (`world._use_how`): fits a brief (2,000 characters) and no safety note = the workbench, as before;
+  longer = filled in place (POST /api/prompting/world/{wid}/fill: her values in, empty blanks left [Name]) then Copy or Put
+  in the Hoola chat; a safety note (jailbreak / sexual / malware words, or "ignore all previous instructions") = shown and
+  copied only, Hoola never runs it. `use()` refuses the last two with the reason.
+- The safety words were narrowed: "explicit" alone had flagged 466 prompts, a run of spaces in JSON read as gibberish,
+  "you are now" and any web link failed the share screen. Only real jailbreak / sexual / malware words and the
+  ignore-your-rules phrase flag a prompt now (70 copy-only, was 559 under the old checks).
+- Page: category dropdown + kind chips, "Long" and "Copy only" tags on cards, notes shown on a prompt, Copy / Put in the
+  Hoola chat for long ones. `paste.blanks(limit=)` reads up to 40 blanks for world prompts.
+- Shelf file world/world.json.gz 4.5 MB. Tests test_v0829_world_paste_dupe.py rewritten for the include-all rule (14,
+  incl. a browser walk). NOT VERIFIED on her server; the shelf is fixed to the 28 Nov export until rebuilt.
+## v0.999.315 DEVSECOPS ENGINEER DESK (built as 0.999.313; their MEMORY GUARD EVERYWHERE and ALL WORLD PROMPTS took 0.999.313-314, all kept; owner: "DevSecOps Engineer same as finance desks")
 
 The DevSecOps Engineer gets its own section `/console/devsecops` and DevSecOps chat (Conversation kind `devsecops`, `dsochat.py`)
 on a NEW all-code engine `server/app/dsodesk/` (no model):

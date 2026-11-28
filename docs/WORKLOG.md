@@ -4126,3 +4126,12 @@ Work Log:
 - 13 tests; 3 stale prompting version pins (0.999.169) healed
 Stage Summary:
 - NOT VERIFIED on her server
+
+---
+Task ID: v0.999.314-all-world-prompts (built as 0.999.313; their MEMORY GUARD took 0.999.313)
+Agent: Claude (session 019P5N4aeALTCREAqUMzjCNe)
+Task: Owner "INCLUDE ALL 100 %" + "MAKE IT GLOBAL NOT INDIA NATIVE" - every prompts.chat prompt on the World shelf.
+Work: world.py rebuilt from the live prompts.json (3,275 kept, notes instead of drops, 53 categories, 7 kinds, every
+language); use rules workbench / fill / copy; POST /api/prompting/world/{wid}/fill; page category dropdown + kind chips;
+safety words narrowed (70 copy-only); tests rewritten (14 pass incl. browser). Version 0.999.313 (main was 0.999.312).
+Not verified on her server.

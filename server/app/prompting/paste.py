@@ -81,7 +81,7 @@ def find(text: str) -> list[dict[str, Any]]:
     return sorted(out, key=lambda x: x["start"])
 
 
-def blanks(text: str) -> list[dict[str, str]]:
+def blanks(text: str, limit: int = MAX_BLANKS) -> list[dict[str, str]]:
     """One entry per distinct blank (a name used twice is asked once): {key, label, eg}."""
     got: dict[str, dict[str, str]] = {}
     for v in find(text):
@@ -89,7 +89,7 @@ def blanks(text: str) -> list[dict[str, str]]:
             got[v["key"]] = {"key": v["key"], "label": v["label"], "eg": v["default"]}
         elif v["default"] and not got[v["key"]]["eg"]:
             got[v["key"]]["eg"] = v["default"]
-    return list(got.values())[:MAX_BLANKS]
+    return list(got.values())[:limit]
 
 
 def fill(text: str, values: dict[str, Any] | None = None) -> dict[str, Any]:

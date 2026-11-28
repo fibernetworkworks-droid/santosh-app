@@ -21,6 +21,10 @@ class BriefBody(BaseModel):
     drop: Optional[list[str]] = None
 
 
+class WorldFillBody(BaseModel):
+    values: Optional[dict[str, str]] = None
+
+
 class PasteBody(BaseModel):
     text: str
     values: Optional[dict[str, str]] = None
@@ -174,10 +178,10 @@ def make_router(require_key, current_tenant) -> APIRouter:
 
     # ---- World prompts: the prompts.chat library (CC0), read-only; opening one makes a brief like a recipe
     @r.get("/world")
-    async def world_list(q: str = "", group: str = "", page: int = 1):
+    async def world_list(q: str = "", group: str = "", page: int = 1, kind: str = ""):
         _on()
         from . import world as W
-        return await asyncio.to_thread(W.search, q, group, page)
+        return await asyncio.to_thread(W.search, q, group, page, kind)
 
     @r.get("/world/{wid}")
     async def world_one(wid: str):
@@ -187,6 +191,15 @@ def make_router(require_key, current_tenant) -> APIRouter:
         if got is None:
             raise HTTPException(404, "No such prompt.")
         return got
+
+    @r.post("/world/{wid}/fill")
+    async def world_fill(wid: str, body: WorldFillBody):
+        _on()
+        from . import world as W
+        try:
+            return await asyncio.to_thread(W.fill, wid, body.values)
+        except ValueError as e:
+            raise HTTPException(404, str(e))
 
     # ---- Paste reader: blanks of every shape in a prompt she pasted; fill = her values in, empty ones left [Name]
     @r.post("/paste")
