@@ -290,7 +290,7 @@ unchanged** in `server/app/devsahayak/ecc_skills/` (its language / framework / d
 general coding skills; the skills that set up Claude Code or ECC itself, need outside services, or are not about coding
 were left out). Hoola Code reads them through `server/app/devsahayak/eccskills.py`. The `gdscript-reviewer` agent
 (`server/app/devsahayak/ecc/reviewers_lang.py`), the config protection (`configguard.py`) and the MCP health check
-(`mcphealth.py`) are Hoola's own text and code, adapted from ECC's agent and hooks. ECC is distributed under the MIT
+(`mcphealth.py`) are Hoola's own text and code, adapted from ECC's agent and hooks. So are the repo rule files (`hookify.py`, ECC's Hookify rule-file format), the two-reviewer check (`santa.py`, ECC's Santa method skill by Ronald Skelton), `/test-coverage` (`testcover.py`), the epic commands (`epic.py`) and the learnings export / import (`learnshare.py`, ECC's instinct-export / instinct-import). ECC is distributed under the MIT
 License:
 
 ```

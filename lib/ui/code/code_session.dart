@@ -2087,6 +2087,50 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
           _code(c, cs(s['name'])),
           TextSpan(text: s['auto'] == true ? ' skill for this kind of work' : ' skill'),
         ]);
+      case 'santa': // v0.999 ECC's Santa method: two independent reviewers must both pass
+        {
+          final ok = s['ok'] == true, round = ci(s['round']), of = ci(s['of']);
+          final said = s['ran'] != true ? 'could not run' : (ok ? 'both passed' : (round < of ? 'not both passed - back to it' : 'not both passed - left for you'));
+          final issues = [for (final x in (s['issues'] as List?) ?? const []) cs(x)];
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+            _line(c, ok ? Icons.verified_outlined : Icons.rate_review_outlined, [
+              TextSpan(text: 'Two reviewers · round $round of $of · '),
+              TextSpan(text: said, style: TextStyle(color: ok ? c.ok : c.bad)),
+            ]),
+            for (final x in issues.take(6))
+              Padding(padding: const EdgeInsets.only(left: 28, bottom: 2), child: Text(x, style: codeSans(c, size: 12.5, color: c.ink2))),
+          ]);
+        }
+      case 'epic': // v0.999 ECC's epic commands: a big job as linked GitHub issues, created only on her tap
+        {
+          final iss = (s['issues'] as Map?) ?? const {}, st = (s['states'] as Map?) ?? const {};
+          final tasks = [for (final x in (s['tasks'] as List?) ?? const []) if (x is Map) x];
+          final published = s['published'] == true, parent = ci(s['parent']);
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+            _line(c, Icons.account_tree_outlined, [
+              TextSpan(text: cs(s['title']).isEmpty ? 'Epic' : cs(s['title']), style: TextStyle(color: c.ink, fontWeight: FontWeight.w600)),
+              TextSpan(text: parent > 0 ? ' · #$parent' : ' · not on GitHub yet'),
+            ]),
+            for (final x in tasks)
+              Padding(
+                padding: const EdgeInsets.only(left: 28, bottom: 2),
+                child: Text(
+                  '${iss['${x['n']}'] != null ? '#${iss['${x['n']}']}' : '${x['n']}.'} ${cs(x['title'])}',
+                  style: codeSans(c, size: 13, color: st['${iss['${x['n']}']}'] == 'closed' ? c.ink3 : c.ink2),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.only(left: 20, top: 4, bottom: 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: () => _send(published ? '/epic-sync' : '/epic-publish'),
+                  child: Text(published ? 'Check progress' : 'Create ${cPlural(tasks.length, 'issue')} on GitHub'),
+                ),
+              ),
+            ),
+          ]);
+        }
       case 'cmd':
         return _line(c, Icons.terminal_rounded, [
           TextSpan(text: s['repo'] == true ? 'Ran your command ' : 'Started '),

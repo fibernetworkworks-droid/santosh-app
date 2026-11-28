@@ -173,6 +173,9 @@ def run_one(tools: Any, name: str, task: str, files: list[str] | None = None,
     """One agent, start to report. Returns the text the coder gets as the tool result."""
     from . import engine as EN
     spec = (getattr(tools, "repo_agents", None) or {}).get(str(name or "").lower()) or ecc.get(name)   # v0.999 the repo's own first
+    if spec is None and str(name or "").lower() == "santa-reviewer":
+        from . import santa as SN                          # v0.999 Hoola's own reviewer for two-reviewer mode (not in the catalogue)
+        spec = SN.SPEC
     if spec is None:
         known = ", ".join(sorted(list(ecc.catalog()) + list(getattr(tools, "repo_agents", None) or {})))
         return f"Unknown agent '{name}'. Use one of: {known}."

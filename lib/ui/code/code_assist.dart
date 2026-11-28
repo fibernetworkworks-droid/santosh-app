@@ -64,6 +64,15 @@ const List<(String, String)> codeOwnCommands = [
   ('brainstorm', 'Shape an idea with Hoola before any code'),
   ('write-plan', 'A step-by-step plan, each step with its check'),
   ('execute-plan', 'Carry out the approved plan task by task'),
+  ('hookify', 'Add a rule for this repo as a plain Markdown file'),
+  ('hookify-list', "This repo's rule files"),
+  ('santa', 'Two independent reviewers must both pass: on or off'),
+  ('test-coverage', 'Which changed lines no test runs, then the missing tests'),
+  ('epic', 'Break a big job into linked GitHub issues'),
+  ('epic-publish', 'Create the planned issues on GitHub'),
+  ('epic-sync', 'Tick the epic from the issues on GitHub'),
+  ('learnings-export', 'Save what Hoola learned here to a file'),
+  ('learnings-import', 'Bring in what Hoola learned in another repo'),
   ('init', 'Write AGENTS.md'),
   ('status', 'Repo, branch, pull request, context and cost'),
   ('context', 'How full the conversation is'),
@@ -103,7 +112,8 @@ final Set<String> codeBuiltinNames = {for (final x in codeOwnCommands) x.$1, ...
 
 /// Own commands that go to Hoola as her message (the server knows them), not done on the phone.
 const Set<String> codeSentToHoola = {
-  'security-review', 'ponytail-review', 'ponytail-audit', 'ponytail-debt', 'brainstorm', 'write-plan', 'execute-plan'
+  'security-review', 'ponytail-review', 'ponytail-audit', 'ponytail-debt', 'brainstorm', 'write-plan', 'execute-plan',
+  'hookify', 'hookify-list', 'santa', 'test-coverage', 'epic', 'epic-publish', 'epic-sync', 'learnings-export', 'learnings-import'
 };
 
 // ---------------------------------------------------------------------------------------------- @ files and / commands

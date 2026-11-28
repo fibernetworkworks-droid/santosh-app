@@ -254,6 +254,27 @@ def make_router(require_key, current_tenant) -> APIRouter:
         return {"on": M.on(), "repo": repo, "observations": rows, "summaries": await run(M.summaries, tenant, repo, 10),
                 "counts": await run(M.counts, tenant, repo)}
 
+    @r.get("/memory/export")
+    async def memory_export(repo: str = "", tenant: str = Depends(current_tenant)):
+        """v0.999 ECC's instinct-export: what Hoola learned in one repo, as one learnings file (learnshare.py)."""
+        from . import learnshare as LS
+        if not repo:
+            raise HTTPException(400, "Name the repo (owner/name).")
+        return await run(LS.export, tenant, repo)
+
+    @r.post("/memory/import")
+    async def memory_import(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """v0.999 ECC's instinct-import: bring learnings into a repo from her other repo or a learnings file."""
+        from . import learnshare as LS
+        b = _b(body)
+        repo = str(b.get("repo") or "")
+        if not repo:
+            raise HTTPException(400, "Name the repo (owner/name).")
+        got = await run(LS.import_, tenant, repo, b.get("data"), str(b.get("from_repo") or ""), bool(b.get("dry_run")))
+        if not got.get("ok"):
+            raise HTTPException(400, got.get("said") or "Could not import.")
+        return got
+
     @r.get("/memory/{oid}")
     async def memory_one(oid: int, repo: str = "", tenant: str = Depends(current_tenant)):
         from . import memory as M

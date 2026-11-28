@@ -299,6 +299,11 @@ class Settings(BaseSettings):
     # v0.814 THE AGENCY (owner: "GO 1 2 3"): 35 more agents in devsahayak/ecc/agency_*.py + the reality check before done
     dev_truth: bool = True                  # G9: a round's "done" judged from facts (exit codes, push, PR, CI) + its end notice told once
     dev_ecc_skills: bool = True             # v0.999 ECC's 132 coding skills in Hoola Code (eccskills.py)
+    dev_hookify: bool = True                # v0.999 repo rule files in plain Markdown (hookify.py, ECC's Hookify)
+    dev_santa: bool = True                  # v0.999 /santa: two independent reviewers must both pass (santa.py)
+    dev_santa_rounds: int = 3               # fix-and-review-again rounds before the open issues go to her
+    dev_test_coverage: bool = True          # v0.999 /test-coverage on the lines a session changed (testcover.py)
+    dev_epic: bool = True                   # v0.999 /epic: a big job as linked GitHub issues, on her command (epic.py)
     dev_config_protect: bool = True         # v0.999 ECC's config protection: lint / format / test settings (configguard.py)
     dev_mcp_health: bool = True             # v0.999 ECC's MCP health check (mcphealth.py)
     dev_superpowers: bool = True            # v0.999 Superpowers skills in Hoola Code + its two iron laws (superpowers.py)
