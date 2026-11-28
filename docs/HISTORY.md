@@ -14231,3 +14231,30 @@ NOT VERIFIED: on her server, with her own pipelines, SBOMs and repositories, or 
 
 ## v0.999.317 CODE FLOW CHECK
 (owner: 'NOW CHECK ALL HOOLA CODE'). Probe: 14 asks through guess_kind / plan.assess / superpowers.pick / eccskills.for_words + the fixed prompt size. Files: server/app/devsahayak/service.py (_TESTS_PHRASE, _SYMPTOM, _BUILD_ASK, guess_kind), server/app/devsahayak/eccskills.py (WORDS). Tests: test_v0999_317_code_flow.py (16). NOT VERIFIED: no live coding round (needs the model key on her server: vps-ops code_card_hard).
+
+## v0.999.318 SRE DESK DEEPER (owner: "Site Reliability Engineer same as finance desks" -> "Rebuild it deeper")
+
+The Site Reliability Engineer desk already existed (v0.999.285, `/console/sre`). Asked for it again, the owner chose to make it
+deeper. Four new jobs and a CI tab, all in code, on the same desk, chat and tool:
+- `sredesk/oncall.py` - a page history (time, who, alert, ack_at): pages per person and a week, night pages in her time zone (a
+  night belongs to the evening it started), nights broken in a row, 12-hour shifts over her limit (the Google SRE book's two a
+  shift by default), time to acknowledge (median, p90), share against an even split.
+- `changes.py` - a deploy history (deployed_at, service, result, committed_at, restored_at, commits): deploy frequency, lead time,
+  change failure rate, time to restore against the DORA 2021 bands (said as such - later reports moved them), per service, by
+  weekday and out of hours, the biggest quarter of changes against the rest. A column called "failed" reads yes as failed.
+- `runbook.py` - Markdown runbooks (`## path.md` for several): what it means / impact / check / fix / undo / who parts, destructive
+  commands (rm -rf, DROP, kubectl delete with no namespace, terraform destroy, force push, disk wipes) with no warning beside them,
+  secrets shown masked, placeholders, review age; with her rules: alerts with no runbook_url and links that match no runbook.
+- `toil.py` - a weekly summary or a dated log: hours a week per task and person, share of the working week against her cap, the
+  tasks to automate first by payback (her own estimates).
+- `ci.py` - `.github/workflows/alert-rules-check.yml`: fails a pull request on an alert with no severity, a raw counter without
+  rate(), or two alerts with the same name and severity (Prometheus allows the same name at different severities); at "anything
+  to fix" also no `for`, summary or runbook; optional promtool from the official Prometheus release.
+
+New settings (added to the existing table by the column self-heal): night hours, pages a shift, runbook review days, working week,
+toil cap, rules path, CI level, promtool version, runner. Bugs caught while building: a short column name ("at") matching inside
+"automate_hours" (new lookup ignores short names inside longer ones), "time" matching "times_week", a deploy id read from
+"deployed_at". Tests `server/tests/test_sr_desk_deeper.py` (6, incl. the CI script run on a sample file and a browser walk at 1440
+and 390); the original `test_sr_desk.py` still passes.
+
+NOT VERIFIED: on her server, with her own page / deploy history, runbooks and toil list, or the workflow running on GitHub.
