@@ -254,6 +254,12 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                  "end effector", "end-effector", "joint torque", "payload", "manipulator", "robot arm", "cobot", "moveit", "ros2_control",
                  "pid tuning", "tune the pid", "pid gains", "step response", "overshoot", "settling time", "ziegler", "simc", "dead time",
                  "trapezoidal profile", "s-curve", "jerk limit", "motion profile", "gazebo", "nav2"),
+    # v0.999.296 the Computer Vision Engineer: her vision words
+    "vision": ("computer vision", "object detection", "detector", "yolo", "yolov", "ultralytics", "detectron", "mmdetection", "coco json", "coco format",
+               "map50", "map@0.5", "mean average precision", "bounding box", "bbox", "annotation", "labelled images", "labeled images", "label files",
+               "roboflow", "cvat", "label studio", "image classifier", "image classification", "confusion matrix", "segmentation", "opencv",
+               "camera calibration", "camera_info", "intrinsics", "field of view", "focal length", "pixels per", "lens for", "motion blur",
+               "depth of field", "stereo camera", "disparity", "tensorrt", "onnx", "openvino", "jetson", "inference fps", "frames per second", "nms"),
     # v0.999.283 the Distributed Systems Engineer: her distributed-systems words
     "dist": ("distributed system", "linearizab", "linearisab", "jepsen", "quorum", "consensus", "raft", "paxos", "split brain", "split-brain",
              "exponential backoff", "retry policy", "retry storm", "thundering herd", "idempotency", "idempotent", "failover", "fencing token",

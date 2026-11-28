@@ -13792,3 +13792,35 @@ NEW tool `robotics_desk` (`agent/robotics_tools.py`, family robotics, registry 7
 tools.py, admit.py, santosh.py (block + admission), main.py, db.py, convs.py / callconv.py, v2.js, employees.js, hire.py.
 Tests `server/tests/test_rb_desk.py` (5, incl. a browser walk at 1440 and 390 px). NOT VERIFIED: on her server, her own robots and
 logs, or the workflow on GitHub; robot safety standards (ISO 10218, ISO/TS 15066) are not checked and the page says so.
+
+
+## v0.999.296 VISION DESK (owner: "Computer Vision Engineer same as finance desks")
+
+The Computer Vision Engineer (`cv_eng`, Software Architecture group) goes live with its own section `/console/vision`
+(`static/console/cvdesk.html/.js/.css`, prefix `cvk-`, page `#cvPage`) and its own Vision chat (Conversation kind `vision`,
+`server/app/cvchat.py`, routes `/api/cvdesk/*`), built like the finance desks. NEW all-code engine `server/app/cvdesk/`:
+
+- `detect.py` - ground truth and predictions as COCO JSON or one box per line (xyxy / xywh; a line with only an image name = an
+  annotated image with no objects). COCO's own matching (best IoU, score order, ignored crowd and out-of-range boxes, 100 detections
+  per image and class), monotone precision, 101-point interpolation, mAP over IoU 0.50:0.95, AP50, AP75, small / medium / large.
+  Checked against pycocotools 2.0.8 COCOeval on generated sets (crowd regions, empty images): equal to 1e-6 (the test pins the
+  numbers; pycocotools is NOT a dependency). Also precision / recall / F1 by threshold, classes confused, errors by kind.
+- `classify.py` - image, true, predicted, score per line: accuracy with a Wilson interval, per-class precision / recall / F1, macro
+  and weighted F1, Cohen's kappa, the confusion matrix, expected calibration error with a reliability table, and for two classes ROC
+  AUC (checked against the brute-force pair count), the precision-recall curve and the threshold for a target precision or recall.
+- `dataset.py` - YOLO files under `## path/name.txt` headers (classes.txt / *.names read as the class names) or COCO JSON: boxes
+  outside the image or with no size, duplicates, two classes on one object, unknown class ids, tiny boxes, extreme shapes, images
+  without labels, imbalance, classes missing from val / test, the same image in two splits, object sizes.
+- `camera.py` - sensor (pixel size, sensor mm, or a nominal format) + lens or field of view, then questions: distance, object at a
+  distance, the lens needed for N pixels, covering a width, motion blur, depth of field, stereo depth error; ROS camera_info /
+  OpenCV calibration YAML checked (fx vs fy, principal point, reprojection error, distortion at the corner).
+- `pipeline.py` - stage times (GPU stages share the GPU), latency vs fps pipelined and in turn against the camera / target, latency
+  samples (warm-up left out, percentiles, late frames, histogram), objects after the resize to the model input with tiling advice.
+- `ci.py` - GitHub Actions model check: her evaluation command writes a metrics JSON, compared with a committed baseline; scores may
+  drop at most N points, times may rise at most N %; the compare script is tested (passes a small drop, fails a big one).
+- `service.py` - tables `cvdesk_items` / `cvdesk_settings`, numbers D- C- L- K- P-.
+
+NEW tool `vision_desk` (`agent/vision_tools.py`, family vision, registry 713 -> 714), admit keys `vision`, wiring as for the other
+desks. The desk refuses face recognition of people without their consent and surveillance she has no right to run (chat rules,
+hire card). Tests `server/tests/test_cv_desk.py` (5, incl. a browser walk at 1440 and 390 px). NOT VERIFIED: on her server, her own
+models, labels and cameras, or the workflow on GitHub.
