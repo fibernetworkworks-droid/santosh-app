@@ -14227,3 +14227,7 @@ group). Console `dsodesk.html/.js/.css`. Tests `server/tests/test_dso_desk.py` (
 while building: workflow line numbers one too high, a dual licence (MIT OR GPL) marked denied, a swapped-letter lookalike missed.
 
 NOT VERIFIED: on her server, with her own pipelines, SBOMs and repositories, or the guard workflow running on GitHub.
+
+
+## v0.999.317 CODE FLOW CHECK
+(owner: 'NOW CHECK ALL HOOLA CODE'). Probe: 14 asks through guess_kind / plan.assess / superpowers.pick / eccskills.for_words + the fixed prompt size. Files: server/app/devsahayak/service.py (_TESTS_PHRASE, _SYMPTOM, _BUILD_ASK, guess_kind), server/app/devsahayak/eccskills.py (WORDS). Tests: test_v0999_317_code_flow.py (16). NOT VERIFIED: no live coding round (needs the model key on her server: vps-ops code_card_hard).
