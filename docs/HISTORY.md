@@ -14071,3 +14071,163 @@ Tests: `server/tests/test_v0999_306_dod.py` now 10 (+ the config a real Gateway 
 
 NOT VERIFIED: on her VPS with a real model and real OpenRouter keys; whether her VPS lets a container reach
 172.18.0.1:8077 (set DOD_HOOLA_URL if not); a real website through the coworker's browser (this sandbox's network blocks it).
+
+
+## v0.999.309 BRING YOUR OLD ASSISTANT
+(owner: 'NOW WORK ON IT' on item 5 of the Hermes / OpenClaw comparison). Files: server/app/migrate.py (new), db.py (init_db registers migrate), main.py (4 routes), static/console/v2.js + v2.css (Memory > Bring from another assistant), lib/api.dart (memoryImportPreview / Apply / imports / Undo), lib/ui/memory_page_screen.dart (the card). Tests: test_v0999_309_bring_old_assistant.py (6). NOT VERIFIED with real exports from real accounts.
+
+
+## v0.999.310 CLOUD ENGINEER DESK (built as 0.999.306; their HOOLA DOD, LEARNERS ON, DOD PENDING WORK and BRING YOUR OLD ASSISTANT took 0.999.306-309, all kept)
+
+Owner: "Cloud Engineer same as finance desks". The Cloud Engineer gets its own section `/console/cloud` and its own Cloud chat
+(Conversation kind `cloudeng`, `server/app/clchat.py`, key `cloud_eng`, family `cloudeng`), on a new all-code engine
+`server/app/cldesk/` (no model, no money, nothing runs on her cloud):
+
+- `bill.py` - a cost export (FOCUS columns, AWS Cost and Usage Report, Google Cloud billing export, Azure cost details, or any CSV with a
+  cost and a date; columns found by name): totals by day / service / account / region / her owner tag (a `tag_x` column or a Tags JSON /
+  key:value column), spend with no owner tag, credits, spike days (above the median of the previous 14 days by sens x the robust spread,
+  25% and 0.5% of the bill) with the service that grew, services growing last 7 vs previous 7 days, the month = spend so far + the last 7
+  days' average x days left (a run rate), budget check. Two currencies in one export are refused, never converted.
+- `waste.py` - inventory CSV: unattached disks, unused addresses, Azure stopped without deallocation (still billed for compute), machines
+  stopped past her keep days, running machines under her idle CPU line (marked check this), old snapshots, idle load balancers / databases,
+  older generations and gp2 volumes (no number - check the price). Money only from the table's monthly cost, only for delete / release.
+- `commit.py` - hourly (or daily, said) usage + on-demand and committed price (or discount; spend-per-hour usage takes the discount): the
+  level that cost least (searched over every usage value - pinned by a brute-force test), a safer level keeping 90% of the saving, the
+  break-even use (committed / on-demand price), her current commitment's use and coverage, a curve of saving by level.
+- `iam.py` - AWS policy documents / trust policies / get-account-authorization-details, Google Cloud IAM policies, Azure role
+  assignments: full admin, all actions of a service, NotAction / NotResource, writes on *, escalation actions, PassRole *, open to anyone,
+  GitHub OIDC trust with no `:sub` condition, cross-account without ExternalId, allUsers, basic owner / editor, impersonation roles, personal
+  accounts, Owner / User Access Administrator at subscription or root. Read as text, nothing changed.
+- `network.py` - `vpc` / `subnet` / `rule` / `plan` lines or describe-security-groups / firewall-rules JSON: networks overlapping, subnets
+  outside, overlapping, below the provider's smallest size, usable addresses (AWS / Azure keep 5, GCP 4), free space, admin / database ports
+  or every port open to the internet, and a plan splitting a range across zones x tiers with spare blocks.
+- `ci.py` - a GitHub Actions access guard over her policy folder: fails a pull request with a wide policy; needs no cloud access.
+
+Keys are refused everywhere: AWS access keys, secret key lines, private keys, Azure account keys and client secrets in a field, in the
+pasted text or through the tool. NEW tool `cloud_desk` (`agent/cloudeng_tools.py`), registry 718. Hire key `cloud_eng` (live, Software
+group); console `cldesk.html/.js/.css` assembled from the Platform desk shell. Tests `server/tests/test_cl_desk.py` (5, incl. a browser
+walk at 1440 and 390). Fixed while looking at the screenshots: credits no longer counted as untagged owner spend, a 1% change no longer
+"growing", the saving curve includes the best level itself, the waste bars no longer show a count as money, a left edge that hid the
+first letters of a flagged row, Google Cloud roles shown in their own case.
+
+NOT VERIFIED: on her server, with her own bills, inventories, usage and policies, or the workflow running on GitHub.
+## v0.999.311 WORLD PROMPTS + PASTE READER + DUPLICATE CHECK (owner, after the prompts.chat read: "GO BUILD 1 2 3")
+
+Items 1-3 of docs/research/prompting/01_prompts_chat.md.
+
+1. **World prompts** (`server/app/prompting/world.py`, data `world/world.json.gz`, 551 KB): prompts.chat's prompts.csv at
+   c3e7767 (CC0 1.0) built by `python -m app.prompting.world build <prompts.csv> [commit]`. 3,235 read, 1,635 kept. Dropped:
+   too long for a brief (>1,800 chars) 743, JSON / YAML 377, code only 296, too short 45, not English 41, unsafe words 38, Hoola's
+   share screen 29, gibberish 13, more than 8 blanks 10, near copies 8. Each kept prompt: section chat (1,324), image (264, by its
+   type or picture words) or video (47), a group (Pictures, Video clips, Business, Writing, Learning, Career, Health and life, Fun,
+   Experts, Everything else), its blanks read by the paste reader and written ${key}. `use(world:<id>, values)` = a brief: her
+   values in, an empty blank stays [Label] (the writer's default is shown as an example only), chat prompts get goal "Use the
+   <title> prompt"; the text is the writer's, word for word. Ledger recipe `world:<id>` (kept counts shown like starters). Not on
+   Hoola's public /prompts pages. Switch `prompting_world` (default on). Routes GET /api/prompting/world?q=&group=&page=,
+   GET /api/prompting/world/{id}; /recipes/use takes world ids.
+2. **Paste reader** (`prompting/paste.py`): [[x]], {{x}}, [X], {Your Name}, <TOPIC>, %CODE%, ${x} / ${x:default}; HTML tags, code
+   words, Markdown link text, [x] ticks and lowercase JSON keys are not blanks; an upper-case placeholder is a blank even if it is
+   a code word. POST /api/prompting/paste (blanks), /paste/fill (her values in, empty = [Label]). The page asks for found blanks
+   before reading her words (#/pb), with "Use my words as they are".
+3. **Duplicate check** (`prompting/dupe.py`): normalised text, word Jaccard x 0.6 + trigram x 0.4; SAME 0.85, CLOSE 0.6. A community
+   recipe almost the same as a starter, a world prompt or a waiting / approved community recipe is refused on submit; the owner's
+   review list shows `similar` and `copy_of` and puts copies last.
+
+Detector and similarity ported from prompts.chat (MIT) - THIRD_PARTY_NOTICES.md. Tests `test_v0829_world_paste_dupe.py` (13); three
+stale prompting version pins (0.999.169) moved to the current version. NOT VERIFIED on her server.
+
+## v0.999.312 SECURITY ENGINEER DESK (built as 0.999.311; their WORLD PROMPTS + PASTE READ took 0.999.311, both kept)
+
+Owner: "Security Engineer same as finance desks". The Security Engineer gets its own section `/console/security` and its own Security
+chat (Conversation kind `seceng`, `server/app/secchat.py`, key `security_eng`, family `seceng`), on a new all-code engine
+`server/app/secdesk/` (no model; nothing fetched, scanned or run against her systems). The Cyber Security desk keeps alerts, incidents
+and the security programme; this desk is the engineer's hands-on work:
+
+- `findings.py` - SARIF (CodeQL, Semgrep, any SARIF tool; `security-severity` mapped the CVSS way), Trivy (vulnerabilities, failed
+  misconfigurations, secrets), Grype, Semgrep JSON, OWASP ZAP JSON and CSV. One shape; the same CVE on a package or the same rule at a
+  place merged across tools at the worse severity; counts by severity / tool / rule / place; package upgrades that close the most (the
+  lowest fixed version above the installed one - a test caught the first listed version being older than the installed one); an older
+  scan after `## baseline` = new / fixed / still open; due dates = scan date + her fix-time days.
+- `headers.py` - `curl -sI` output, redirects hop by hop: HSTS age / subdomains, CSP script sources (unsafe-inline without nonce or
+  hash, unsafe-eval, wildcards unless nonces + strict-dynamic), object-src, base-uri, framing (frame-ancestors or X-Frame-Options),
+  nosniff, Referrer-Policy, Permissions-Policy, version banners, CORS (any origin with credentials, null), each cookie's Secure /
+  HttpOnly (session-looking names) / SameSite and the __Host- / __Secure- prefix rules, a redirect to plain HTTP.
+- `certs.py` - PEM chains or `openssl s_client -showcerts`: days left vs her warning, not yet valid, key (RSA < 2048, small curves,
+  DSA), SHA-1 / MD5 signatures, chain order, self-signed, leaf over 398 days, names covered (one-label wildcards), no SANs. Private keys
+  refused.
+- `tokens.py` - JWTs decoded never verified: alg none, unexpected algorithm, jku / x5u / jwk, path-like kid, empty signature, no exp,
+  life over her hours, missing iss / aud, personal or secret claims. Signatures are removed before the text is stored.
+- `code.py` - a unified diff (added lines only, real line numbers) or files with `## path`: about 30 rules over Python, JS / TS, Java /
+  Kotlin, Go, PHP, Ruby, C# with CWE ids and the safe way; placeholders and env reads are not hard-coded secrets; secrets shown masked
+  and stored cut to 4 characters.
+- `ci.py` - a GitHub Actions security gate: the same rules on the pull request's added lines (git diff against the base sha), failing
+  at her level (high / medium / low), hits written to the run summary; no keys, contents: read.
+
+Keys refused everywhere (AWS keys, secret key lines, private keys, Azure account keys, client secrets). NEW tool `security_desk`
+(`agent/seceng_tools.py`), registry 719. Hire key `security_eng` (live, Software group). Console `secdesk.html/.js/.css` assembled from
+the Cloud desk shell. Tests `server/tests/test_sec_desk.py` (5, incl. a browser walk at 1440 and 390; the gate is run on the same diff
+and fails on exactly what the desk reports).
+
+NOT VERIFIED: on her server, with her own scanners' output, sites, certificates and code, or the workflow running on GitHub.
+
+
+## v0.999.313 MEMORY GUARD EVERYWHERE
+(owner: 'NOW WORK ON CHECKING MEMORY BEFORE IT'S SAVED', item 7). Files: server/app/coder/guard.py (negation, cache, in_her_words, last_user_words, check_memory, why, STATS), yaad.py (save_fact + relevant_facts), agent/life_tools.py (remember), life.py (memory_facts safe_only, imported heading), main.py + memory.py (her screen safe_only=False), coder/store.py, coder/skills_tool.py, agent/sandarbh_tools.py (kgmemory), devsahayak/memory.py, aboutme.py. Tests: test_v0999_313_memory_guard.py (13). NOT VERIFIED on her server.
+## v0.999.314 ALL WORLD PROMPTS (built as 0.999.313; their MEMORY GUARD EVERYWHERE took 0.999.313, both kept) (owner: "INCLUDE ALL 100 %" on the list of what the World shelf left out, then "MAKE IT GLOBAL NOT INDIA NATIVE")
+
+v0.999.311 kept 1,635 of the 3,235 rows in prompts.chat's old CSV and dropped the rest for 10 reasons. Now every prompt is
+kept, and nothing is India-specific.
+- Source: the live site's own full export (https://prompts.chat/prompts.json?full_content=true, 28 Nov 2026), 3,275
+  prompts, CC0. `python -m app.prompting.world build <prompts.json|prompts.csv> [commit]` reads either (`world._read`, `_row`).
+- Nothing dropped: `judge()` returns every prompt with `notes` (long 1,159, JSON / YAML 333, many blanks 216, code style
+  137, another language 115, near copy 68, unsafe words 62, very short 46, gibberish 11, ignore-your-rules 8). A
+  repeated title + text gets its own id suffix.
+- Global: the site's 53 categories (group = category slug, label = its name) and 7 kinds (text, pictures, video, agent
+  skills, code style, audio, JSON / YAML); another language is a label, not a problem. Search sorts by the site's votes.
+- How a prompt is used (`world._use_how`): fits a brief (2,000 characters) and no safety note = the workbench, as before;
+  longer = filled in place (POST /api/prompting/world/{wid}/fill: her values in, empty blanks left [Name]) then Copy or Put
+  in the Hoola chat; a safety note (jailbreak / sexual / malware words, or "ignore all previous instructions") = shown and
+  copied only, Hoola never runs it. `use()` refuses the last two with the reason.
+- The safety words were narrowed: "explicit" alone had flagged 466 prompts, a run of spaces in JSON read as gibberish,
+  "you are now" and any web link failed the share screen. Only real jailbreak / sexual / malware words and the
+  ignore-your-rules phrase flag a prompt now (70 copy-only, was 559 under the old checks).
+- Page: category dropdown + kind chips, "Long" and "Copy only" tags on cards, notes shown on a prompt, Copy / Put in the
+  Hoola chat for long ones. `paste.blanks(limit=)` reads up to 40 blanks for world prompts.
+- Shelf file world/world.json.gz 4.5 MB. Tests test_v0829_world_paste_dupe.py rewritten for the include-all rule (14,
+  incl. a browser walk). NOT VERIFIED on her server; the shelf is fixed to the 28 Nov export until rebuilt.
+
+
+## v0.999.315 STUDIO FIXES
+(owner: 'NOW COME BACK TO WEB DEVLOPMENT IN HOOLA --- GO THROUGH ENTIER TOOL --- CHECK THE FLAWS IT HAS' -> 22 flaws found by a real-browser walk of the Web Studio + two code reads -> 'GO FIX ALL').
+Server: agent/site_tools.py (_HER_TAP_ONLY: delete, takedown, restore_version, moves_ok, shop_order to=confirmed refuse and say where she taps; website_dekho staff wall), site/hosting.py (connect_domain plans first, old domains retired only when the new one turns active: _retire_others in _check_pending + _check_direct), site/service.py (_find: escaped LIKE, drafts by id only, exact name first, ambiguous = SiteError, newest=False refuses an empty ref; brand_name 2-4 capitalised words; _say ready line; choose_look busy + start-failure restore; delete drops drafts), site/drafts.py (drop shared by discard + delete), site/galti.py (build_problem once per version, ignored stays ignored, record tolerates odd shapes), site/stream.py (WAIT_POOL 32 + wait_async), site/wapas.py (no empty-ref restore), main.py (_bint -> 400; stream uses wait_async).
+Studio page: static/console/webstudio.js (readThread retries with backoff, generation counter stops polling on leaving, ask() puts words + files back on failure, ensureConv only replaces a 404/410 chat and captures the site first, paneTyping keeps typing across server redraws, list-failed home, plain labels, plainErr for non-JSON errors, toast fallbacks, HEX() on liked colours, loadTpl request token, upgrade banner gated + dismissable) + webstudio.css (phone sidebar full width, panel bar + History rows wrap at phone width).
+Tests changed to the safe behaviour: test_v0808_wapas (tool restore refuses), test_v0623_koi_pata (tool moves_ok refuses), test_v122_hosting (tool takedown refuses).
+Left red, all red on unchanged HEAD too: test_v0623 test_version (stale pin), test_chatkit_webstudio x2, test_v0667_premium_studio::test_design_markers, test_v0777_chat_jaisa x2.
+NOT VERIFIED on her server.
+## v0.999.316 DEVSECOPS ENGINEER DESK (built as 0.999.313; their MEMORY GUARD EVERYWHERE, ALL WORLD PROMPTS and STUDIO FIXES took 0.999.313-315, all kept; owner: "DevSecOps Engineer same as finance desks")
+
+The DevSecOps Engineer gets its own section `/console/devsecops` and DevSecOps chat (Conversation kind `devsecops`, `dsochat.py`)
+on a NEW all-code engine `server/app/dsodesk/` (no model):
+- `workflows.py` - GitHub Actions files (`## path` chunks): third-party actions not pinned to a commit sha (actions/ and github/ trusted
+  by default, her own trusted owners added), script injection (PR title / body / branch / comment text inside run:), no or write-all
+  permissions, secrets for the whole workflow, self-hosted runners on pull requests, pull_request_target / workflow_run checking out
+  the PR head (runs PR code with secrets), curl | bash, no timeout, persist-credentials. Real line numbers.
+- `sbom.py` - CycloneDX and SPDX: licence family (strong / weak copyleft, permissive, unknown), her deny / allow lists with `*`; an OR
+  licence is denied only if every alternative is denied; no licence / version / purl; packages at several versions; ecosystems.
+- `deps.py` - package.json + lock (install scripts), requirements.txt, go.mod, Cargo.toml: not pinned, from git or a URL, extra
+  indexes, local replaces, names one edit off popular npm / PyPI packages (a swap counts as one).
+- `repo.py` - `gh api repos/O/R` and its branch protection JSON: reviews, stale reviews, code owners, status checks, force pushes,
+  deletion, admins, signed commits, secret scanning, Dependabot.
+- `metrics.py` - a findings CSV (id, severity, opened, closed, team): open, past due, median / p90 fix days, in-SLA share per severity
+  against her days, weekly backlog, age buckets, teams, the past-due list.
+- `ci.py` - `.github/workflows/pipeline-guard.yml` running the same line rules on her workflow files, failing at her level.
+
+Keys refused everywhere. NEW tool `devsecops_desk` (`agent/devsecops_tools.py`), registry 720. Hire key `devsecops_eng` (live, Software
+group). Console `dsodesk.html/.js/.css`. Tests `server/tests/test_dso_desk.py` (5, incl. a browser walk at 1440 and 390). Bugs caught
+while building: workflow line numbers one too high, a dual licence (MIT OR GPL) marked denied, a swapped-letter lookalike missed.
+
+NOT VERIFIED: on her server, with her own pipelines, SBOMs and repositories, or the guard workflow running on GitHub.
+
+
+## v0.999.317 CODE FLOW CHECK
+(owner: 'NOW CHECK ALL HOOLA CODE'). Probe: 14 asks through guess_kind / plan.assess / superpowers.pick / eccskills.for_words + the fixed prompt size. Files: server/app/devsahayak/service.py (_TESTS_PHRASE, _SYMPTOM, _BUILD_ASK, guess_kind), server/app/devsahayak/eccskills.py (WORDS). Tests: test_v0999_317_code_flow.py (16). NOT VERIFIED: no live coding round (needs the model key on her server: vps-ops code_card_hard).

@@ -4112,3 +4112,26 @@ Work Log:
 - 48 views walked: no findings
 Stage Summary:
 - NOT VERIFIED on her server
+
+---
+Task ID: 0.999.311
+Agent: Claude Code
+Task: WORLD PROMPTS + PASTE READER + DUPLICATE CHECK (prompts.chat items 1-3)
+Work Log:
+- read github.com/f/prompts.chat (c3e7767): code MIT, data CC0; notes docs/research/prompting/01_prompts_chat.md
+- prompting/world.py + world/world.json.gz: 1,635 of 3,235 prompts kept, drops counted by reason; /api/prompting/world
+- prompting/paste.py: blanks of every shape; /api/prompting/paste + /fill; page asks for them before reading her words
+- prompting/dupe.py: Jaccard + trigram; community copy refused, review shows close ones, copies last
+- page: Recipes shelf switch, World prompts view, paste step, review notes; THIRD_PARTY_NOTICES
+- 13 tests; 3 stale prompting version pins (0.999.169) healed
+Stage Summary:
+- NOT VERIFIED on her server
+
+---
+Task ID: v0.999.314-all-world-prompts (built as 0.999.313; their MEMORY GUARD took 0.999.313)
+Agent: Claude (session 019P5N4aeALTCREAqUMzjCNe)
+Task: Owner "INCLUDE ALL 100 %" + "MAKE IT GLOBAL NOT INDIA NATIVE" - every prompts.chat prompt on the World shelf.
+Work: world.py rebuilt from the live prompts.json (3,275 kept, notes instead of drops, 53 categories, 7 kinds, every
+language); use rules workbench / fill / copy; POST /api/prompting/world/{wid}/fill; page category dropdown + kind chips;
+safety words narrowed (70 copy-only); tests rewritten (14 pass incl. browser). Version 0.999.313 (main was 0.999.312).
+Not verified on her server.

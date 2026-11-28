@@ -464,6 +464,18 @@ def _kg_write_locked(action: str) -> dict | None:
                                        "Tell her plainly; nothing to fix from the chat."))
 
 
+def _guard_hit(text: str) -> str:
+    """v0.999 the memory guard on the knowledge graph: '' when it may be kept, else why not."""
+    try:
+        from ..coder import guard as _guard
+        hit = _guard.scan(text)
+        if hit:
+            _guard.STATS["blocked"] += 1
+        return _guard.why(hit) if hit else ""
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def _do_kg_create(con: sqlite3.Connection, entities: Any) -> dict:
     if not isinstance(entities, list) or not entities:
         return _kg_bad("create", "create needs entities: [{name, type}]",
@@ -477,6 +489,8 @@ def _do_kg_create(con: sqlite3.Connection, entities: Any) -> dict:
             return _kg_bad("create", "every entity needs a name")
         name = _clean(ent.get("name"), _NAME_CHARS)
         etype = _clean(ent.get("type"), _TYPE_CHARS)
+        if _guard_hit(f"{name} {etype}"):
+            return _kg_bad("create", f"not kept: {_guard_hit(f'{name} {etype}')}", "write it without that part, or ask her.")
         clean.append((name, etype))
     if e_total + len({n for n, _ in clean}) > _MAX_ENTITIES_TOTAL:
         return _kg_envelope("create", error=(CONFLICT, "the graph is at its entity cap",
@@ -551,6 +565,8 @@ def _do_kg_observe(con: sqlite3.Connection, observations: Any) -> dict:
             if len(text) > _OBS_CHARS:
                 return _kg_bad("observe", f"one observation is over the {_OBS_CHARS}-char cap",
                                "observations are facts, not documents - split or shorten.")
+            if _guard_hit(text):
+                return _kg_bad("observe", f"not kept: {_guard_hit(text)}", "write it without that part, or ask her.")
             clean.append((name, _clean(text, _OBS_CHARS)))
         if len(clean) > _MAX_OBS_CALL:
             return _kg_bad("observe", f"at most {_MAX_OBS_CALL} observations per call")

@@ -1872,6 +1872,24 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_cvc.block, tenant_id)
     except Exception:
         log.exception("vision desk block failed")
+    try:   # DEVSECOPS ENGINEER DESK: a turn in the DevSecOps chat (or a call started from it) knows the desk
+        from .. import dsochat as _dso
+        if _dso.is_devsecops(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_dso.block, tenant_id)
+    except Exception:
+        log.exception("devsecops desk block failed")
+    try:   # SECURITY ENGINEER DESK: a turn in the Security chat (or a call started from it) knows the desk
+        from .. import secchat as _sec
+        if _sec.is_security(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_sec.block, tenant_id)
+    except Exception:
+        log.exception("security desk block failed")
+    try:   # CLOUD ENGINEER DESK: a turn in the Cloud chat (or a call started from it) knows the desk
+        from .. import clchat as _clc
+        if _clc.is_cloud(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_clc.block, tenant_id)
+    except Exception:
+        log.exception("cloud desk block failed")
     try:   # PLATFORM ENGINEER DESK: a turn in the Platform chat (or a call started from it) knows the desk
         from .. import pfchat as _pfc
         if _pfc.is_platform(conversation_id):
@@ -2965,6 +2983,30 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "vision desk chat"
     except Exception:
         log.exception("vision desk chat admission failed")
+    try:   # DEVSECOPS ENGINEER DESK: the DevSecOps tool in view in the DevSecOps chat
+        from .. import dsochat as _dso
+        if adm is not None and _dso.is_devsecops(conversation_id):
+            adm.admit_families(_dso.FAMILIES)
+            for f in _dso.FAMILIES:
+                adm.why[f] = "devsecops desk chat"
+    except Exception:
+        log.exception("devsecops desk chat admission failed")
+    try:   # SECURITY ENGINEER DESK: the security tool in view in the Security chat
+        from .. import secchat as _sec
+        if adm is not None and _sec.is_security(conversation_id):
+            adm.admit_families(_sec.FAMILIES)
+            for f in _sec.FAMILIES:
+                adm.why[f] = "security desk chat"
+    except Exception:
+        log.exception("security desk chat admission failed")
+    try:   # CLOUD ENGINEER DESK: the cloud tool in view in the Cloud chat
+        from .. import clchat as _clc
+        if adm is not None and _clc.is_cloud(conversation_id):
+            adm.admit_families(_clc.FAMILIES)
+            for f in _clc.FAMILIES:
+                adm.why[f] = "cloud desk chat"
+    except Exception:
+        log.exception("cloud desk chat admission failed")
     try:   # PLATFORM ENGINEER DESK: the platform tool in view in the Platform chat
         from .. import pfchat as _pfc
         if adm is not None and _pfc.is_platform(conversation_id):

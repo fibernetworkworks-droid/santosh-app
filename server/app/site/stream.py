@@ -13,12 +13,14 @@ polling.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
 import re
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
@@ -276,6 +278,16 @@ def wait(site_id: str, since: int, timeout: float = 15.0) -> dict[str, Any]:
                 break
             _COND.wait(left)
     return snapshot(site_id, since)
+
+
+# v0.999.315 every open Studio tab parks a thread here for up to 15 s at a time; on the default pool ~8 tabs starved
+# every other asyncio.to_thread call of the server. The waits have their own pool.
+WAIT_POOL = ThreadPoolExecutor(max_workers=32, thread_name_prefix="site-live")
+
+
+async def wait_async(site_id: str, since: int, timeout: float = 15.0) -> dict[str, Any]:
+    """wait() for the live stream, on the stream's own threads (never the default executor)."""
+    return await asyncio.get_running_loop().run_in_executor(WAIT_POOL, wait, site_id, since, timeout)
 
 
 def dumps(ev: dict[str, Any]) -> str:

@@ -224,4 +224,7 @@ def test_tool_actions_and_her_tap(site_env):
     got = asyncio.run(SITE_HANDLERS["website"](ctx, "moves", site=v["id"]))
     assert got["total"] == 1 and got["hash"] and "'yes'" in got["say"]
     done = asyncio.run(SITE_HANDLERS["website"](ctx, "moves_ok", site=v["id"], hash=got["hash"]))
+    # v0.999.308 the live 301s are HER tap (Publish > Old site addresses): the tool says where, applies nothing
+    assert done["needs_her_tap"] and not done["done"] and "Old site addresses" in done["say"]
+    done = MV.apply(T, v["id"], got["hash"], [])
     assert done["ok"] and done["redirects"] == 1 and done["live_addresses"] == 0

@@ -21,6 +21,15 @@ class BriefBody(BaseModel):
     drop: Optional[list[str]] = None
 
 
+class WorldFillBody(BaseModel):
+    values: Optional[dict[str, str]] = None
+
+
+class PasteBody(BaseModel):
+    text: str
+    values: Optional[dict[str, str]] = None
+
+
 class UseBody(BaseModel):
     recipe_id: str
     values: Optional[dict[str, str]] = None
@@ -166,6 +175,45 @@ def make_router(require_key, current_tenant) -> APIRouter:
         _on()
         from . import recipes as R
         return await asyncio.to_thread(R.listing, section, q)
+
+    # ---- World prompts: the prompts.chat library (CC0), read-only; opening one makes a brief like a recipe
+    @r.get("/world")
+    async def world_list(q: str = "", group: str = "", page: int = 1, kind: str = ""):
+        _on()
+        from . import world as W
+        return await asyncio.to_thread(W.search, q, group, page, kind)
+
+    @r.get("/world/{wid}")
+    async def world_one(wid: str):
+        _on()
+        from . import world as W
+        got = await asyncio.to_thread(W.get, wid)
+        if got is None:
+            raise HTTPException(404, "No such prompt.")
+        return got
+
+    @r.post("/world/{wid}/fill")
+    async def world_fill(wid: str, body: WorldFillBody):
+        _on()
+        from . import world as W
+        try:
+            return await asyncio.to_thread(W.fill, wid, body.values)
+        except ValueError as e:
+            raise HTTPException(404, str(e))
+
+    # ---- Paste reader: blanks of every shape in a prompt she pasted; fill = her values in, empty ones left [Name]
+    @r.post("/paste")
+    async def paste_read(body: PasteBody):
+        _on()
+        from . import paste as PR
+        text = body.text[:6000]
+        return {"blanks": PR.blanks(text), "found": len(PR.find(text))}
+
+    @r.post("/paste/fill")
+    async def paste_fill(body: PasteBody):
+        _on()
+        from . import paste as PR
+        return PR.fill(body.text[:6000], body.values)
 
     @r.post("/recipes/use")
     async def recipe_use(body: UseBody):

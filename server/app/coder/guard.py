@@ -25,6 +25,7 @@ in pieces of at most 20,000 characters, so a check can never hang.
 """
 from __future__ import annotations
 
+import functools
 import re
 import unicodedata
 
@@ -84,22 +85,92 @@ def _secret_kind(text: str) -> str:
     return ""
 
 
-def scan(text: str) -> list[str]:
-    """The kinds of hit in this text ('' text = none), each kind once."""
-    if not text:
-        return []
+_NEGATED = re.compile(r"(?i)\b(never|don'?t|do\s+not|must\s+not|should\s+not|shouldn'?t|not|no|kabhi\s+mat|kabhi\s+nahi|"
+                      r"mat|nahi|na)\b[^.!?\n]{0,40}$")
+
+
+_NEG_AFTER = re.compile(r"(?i)^[^.!?\n]{0,50}\b(mat|nahi|nahin|na)\s+(karna|karo|karein|kare|hai)\b")
+
+
+def _hit(rx: re.Pattern, kind: str, flat: str) -> bool:
+    """A match; for 'her tap' a rule that FORBIDS it ('never pay without asking me') protects her and is not a hit."""
+    for m in rx.finditer(flat):
+        if kind == "her_tap" and (_NEGATED.search(flat[max(0, m.start() - 60):m.start()])
+                                  or _NEG_AFTER.match(flat[m.end():m.end() + 60])):
+            continue
+        return True
+    return False
+
+
+@functools.lru_cache(maxsize=8192)
+def _scan(text: str) -> tuple[str, ...]:
     hits: list[str] = []
     if any(ch in _HIDDEN for ch in text):
         hits.append("hidden")
     for piece in _pieces(unicodedata.normalize("NFKC", text)):
         flat = re.sub(r"\s+", " ", piece)
         for rx, kind in _COMPILED:
-            if kind not in hits and rx.search(flat):
+            if kind not in hits and _hit(rx, kind, flat):
                 hits.append(kind)
     k = _secret_kind(text)
     if k and k not in hits:
         hits.append(k)
-    return hits
+    return tuple(hits)
+
+
+def scan(text: str) -> list[str]:
+    """The kinds of hit in this text ('' text = none), each kind once."""
+    if not text:
+        return []
+    return list(_scan(str(text)))
+
+
+def safe(text: str) -> bool:
+    return not scan(text)
+
+
+_WORD = re.compile(r"[a-z0-9\u0900-\u097f@.]+")
+
+
+def in_her_words(text: str, hers: str, need: float = 0.8) -> bool:
+    """True when this note is (almost) all words SHE typed - her own rule, not a planted one."""
+    mine = {w for w in _WORD.findall((text or "").lower()) if len(w) > 2}
+    if not mine:
+        return False
+    said = set(_WORD.findall((hers or "").lower()))
+    return len(mine & said) / len(mine) >= need
+
+
+def last_user_words(conversation_id: str, n: int = 3) -> str:
+    """Her last few messages in this chat (what she really typed), '' when unknown."""
+    if not conversation_id:
+        return ""
+    try:
+        from sqlalchemy import select
+        from ..db import Message, session
+        with session() as s:
+            rows = s.scalars(select(Message).where(Message.conversation_id == conversation_id, Message.role == "user")
+                             .order_by(Message.id.desc()).limit(n)).all()
+            out = []
+            for r in rows:
+                c = r.display or r.content
+                if isinstance(c, list):
+                    c = " ".join(str(b.get("text") or "") for b in c if isinstance(b, dict))
+                out.append(str(c or ""))
+            return "\n".join(out)
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+MEANING = {"injection": "it looked like an instruction to override your rules",
+           "her_tap": "it tried to skip your approval for money or sending",
+           "leaving": "it tried to send your data somewhere",
+           "secret": "it had a key, password, card or ID number",
+           "hidden": "it had hidden characters"}
+
+
+def why(hits: list[str]) -> str:
+    return "; ".join(MEANING.get(h, h) for h in hits)
 
 
 def obs_text(o: dict) -> str:
@@ -119,3 +190,24 @@ def check_obs(o: dict) -> list[str]:
 
 def check_skill(name: str, desc: str, body: str) -> list[str]:
     return scan(f"{name}\n{desc}\n{body}")
+
+
+ALWAYS = ("injection", "hidden", "secret")
+STATS = {"checked": 0, "blocked": 0, "hers": 0}
+
+
+def check_memory(text: str, conversation_id: str = "", hers: str | None = None) -> list[str]:
+    """The ONE check before any memory is kept. Hidden instructions, secrets and invisible characters never pass. A note
+    about skipping her approval or sending data out passes only when it is her own words in this chat (her real rule,
+    e.g. 'always CC my CA on invoices') - never when it came from a page, a mail, a file or the model's own guess."""
+    STATS["checked"] += 1
+    hits = scan(text)
+    if not hits:
+        return []
+    if not any(h in ALWAYS for h in hits):
+        words = last_user_words(conversation_id) if hers is None else hers
+        if words and in_her_words(text, words):
+            STATS["hers"] += 1
+            return []
+    STATS["blocked"] += 1
+    return hits

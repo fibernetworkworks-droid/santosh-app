@@ -30,8 +30,9 @@ SITE_TOOLS = [
         "SHOP (v0.351 DUKAAN): action=shop + site + shop {on, cod, pickup, delivery (rupees), free_above, min_order, pincodes, upi} "
         "+ products [{title, price (rupees), stock, unit}] (+ from_lists true = her priced list items become products) = her "
         "online shop: cart, checkout, UPI to HER UPI ID or cash on delivery; only HER prices, never invented. Customers pay in "
-        "their own UPI app; YOU never mark money received - action=shop_order + site + number (O-1001) + to (confirmed | packed "
-        "| shipped | delivered | cancelled) only on her word (confirmed = she saw the money). website_dekho what=orders. "
+        "their own UPI app; YOU never mark money received - action=shop_order + site + number (O-1001) + to (packed "
+        "| shipped | delivered | cancelled) only on her word; 'confirmed' (= she saw the money) is HER tap in the Shop tab, "
+        "the tool refuses it. website_dekho what=orders. "
         "CATALOGUE (v0.538, 100s-10,000s of products / doctors / properties from HER data): action=catalog + site + coll "
         "(the list address: products / doctors / flats) + sheet (her Google Sheet link / name, + tab) OR dataset (a ds_ id "
         "from data_fetch / an ERP read) -> a PREVIEW only (new / changed / rejected rows, thin + duplicate pages, the column "
@@ -42,9 +43,9 @@ SITE_TOOLS = [
         "site + file + search (the EXACT text from that file, it must appear once) + replace. No AI rewrite, the same safety "
         "cleaner, one Undo, a version checked on that page in seconds. action=write_file + file + code = the whole file (rare). "
         "action=change only for new sections, layout changes or many parts at once. "
-        "action=restore_version + site + version = put the WORKING site back to that version's code and design (v0.808: it "
-        "becomes a new version, undoable; enquiries / orders / data are never touched) - for 'v3 wapas lao', 'pehle jaisa "
-        "karo'; action=rollback is only for her LIVE address. v0.837 DRAFTS: for a big or risky change ('naya design try "
+        "action=restore_version + site + version = NEVER done by you: it answers where she taps Restore in History "
+        "(v0.808: it becomes a new version, undoable; enquiries / orders / data are never touched) - for 'v3 wapas lao', "
+        "'pehle jaisa karo'; action=rollback is only for her LIVE address. v0.837 DRAFTS: for a big or risky change ('naya design try "
         "karo', 'pehle alag se dekhna hai'), action=draft_new + site + name makes a DRAFT copy with its own preview link "
         "- the website is not touched; change the draft by passing the DRAFT's id as site; action=draft_list shows them. "
         "Merging a draft into the website (Accept) is HER tap in the Studio, never yours; a draft has its own data. "
@@ -82,7 +83,7 @@ SITE_TOOLS = [
         "the card lists the records for her registrar; + primary root|www = which address is main, default root, the other "
         "redirects); status then goes Verifying -> Setting up -> Live by itself (website_dekho what=hosting); action=dns_check + plan (is it visible worldwide?); action=email_dns "
         "+ domain + provider (google|zoho) + report_to = mail records card; action=rollback + version = card to put an "
-        "older version live; action=takedown* stops the live site. "
+        "older version live; action=takedown* = never done by you: it answers where SHE taps 'Take the site down' in Settings. "
         "DOMAINS (her name, her account; you NEVER buy): action=domain_ideas (+ name / city) = free names with first-year AND "
         "renewal price in rupees from the registry; action=domain_check + domains [list]; action=domain_buy + domain (+ "
         "auto_renew) = sends HER fingerprint card (no refunds; .in needs her own NIXI e-KYC on the registrar page); "
@@ -95,8 +96,8 @@ SITE_TOOLS = [
         "becomes her design, the other two stay Hoola alternatives. A screenshot of someone else's site gives only a STYLE, "
         "never their words / logo / photos; 'exactly like their site' stays refused. HER OWN OLD SITE MOVING (v0.622): "
         "design_use + keep=true when she says 'purana jaisa rakho' (her page list + section order kept); action=moves = her "
-        "old addresses -> new pages (the list + hash, nothing served yet); action=moves_ok + hash (+ drop: old paths she "
-        "unticked) ONLY after her yes = live 301s; action=compare_old + url (old path) = old page vs new at the same width. "
+        "old addresses -> new pages (the list + hash, nothing served yet); action=moves_ok = never done by you: it answers where SHE "
+        "approves them (Publish > Old site addresses) = live 301s; action=compare_old + url (old path) = old page vs new at the same width. "
         "ANIMATION / 3D (v0.568): action=animation + file_id (her Lottie .json file) + name = keep her own animation for "
         "the site (checked; a link to another server or a file over 1.5 MB is refused); then action=change can put it on a "
         "page by name. Built-in animations (pulse, check, sparkle, scroll, dots, wave) and 3D hero scenes (orb, knot, "
@@ -104,7 +105,7 @@ SITE_TOOLS = [
         "AFTER LAUNCH: action=care (+ days) = visits, enquiries, uptime, SSL / domain dates, what to improve; action=github (+ "
         "repo, private) = card to put the code in HER GitHub (her tap pushes). AGENCY: action=assign* + client / staff (staff "
         "member id) = whose site it is and who may work on it (a staff member only touches sites given to them); "
-        "action=client_report + client. action=delete*. action=upgrade = where \"Upgrade this site\" (her HTML website in the new design engine) stands - read only, she starts / keeps / undoes it in the Web Studio. (* owner only)"),
+        "action=client_report + client. action=delete* = never done by you: it answers where SHE taps Delete. action=upgrade = where \"Upgrade this site\" (her HTML website in the new design engine) stands - read only, she starts / keeps / undoes it in the Web Studio. (* owner only)"),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "edit_lines", "write_file", "rx_edit", "rx_undo", "upgrade", "restore_version", "draft_new", "draft_list", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "catalog", "design_from", "design_use", "moves", "moves_ok", "compare_old", "animation", "stop", "resume",
                                                "export", "launch", "domain", "dns_check", "email_dns", "rollback",
@@ -166,6 +167,24 @@ SITE_LABELS = {"website": "Building the website", "website_dekho": "Checking the
 _OWNER_ONLY = {"delete", "takedown", "domain_buy", "domain_kyc", "assign", "github"}
 _NO_SITE = {"new", "domain_check", "client_report", "architect", "architect_data", "architect_change", "architect_ok", "design_from", "design_use"}
 _TAP_LIKE = {"plan_ok", "look", "architect_ok", "logic_ok", "design_use", "moves_ok"}
+# v0.999.315 her tap only: deleting, going offline, bringing back an old version, serving old addresses as live 301s
+# and marking money received never run from the chat - the tool says where SHE taps it and changes nothing.
+_HER_TAP_ONLY = {
+    "delete": "Delete it yourself in the Web Studio: open the website's menu (the ... next to its name) and tap Delete.",
+    "takedown": "Take it down yourself in the Web Studio: open the website, Settings, then 'Take the site down'.",
+    "restore_version": "Bring that version back yourself in the Web Studio: open the website, History, then Restore on "
+                       "that version.",
+    "moves_ok": "Approve the old addresses yourself in the Web Studio: open the website, Publish, 'Old site addresses', "
+                "untick any you don't want and tap the approve button.",
+}
+_SHOP_HER_TAP = {"confirmed": "Confirm it yourself after you see the money in your bank / UPI app: console > Website > "
+                              "Shop, then Confirm on that order."}
+
+
+def _her_tap(action: str, where: str) -> dict[str, Any]:
+    return {"ok": False, "done": False, "needs_her_tap": True, "action": action,
+            "say": f"Nothing was changed. Only she can do this, with her own tap. {where} Tell her that plainly; "
+                   "never say it is done."}
 
 
 def _owner(ctx: Ctx) -> bool:
@@ -179,6 +198,10 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         raise ToolError("Only the owner can do this.")
     if action in _TAP_LIKE and not _owner(ctx):
         raise ToolError("Only the owner picks the plan / look (on the card in the app).")
+    if action in _HER_TAP_ONLY:
+        return _her_tap(action, _HER_TAP_ONLY[action])
+    if action == "shop_order" and str(a.get("to") or "").strip().lower() in _SHOP_HER_TAP:
+        return _her_tap(action, _SHOP_HER_TAP[str(a.get("to") or "").strip().lower()])
     conv = ctx.conversation_id or ""
     if action not in _NO_SITE and str(ctx.actor).startswith("staff:"):
         from ..site import care as SC
@@ -440,10 +463,24 @@ async def website(ctx: Ctx, action: str, **a) -> dict[str, Any]:
         raise
 
 
+_READ_NO_SITE = {"library", "brief", "understand"}
+_READ_OWNER_ONLY = {"domains", "clients"}
+
+
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
     from ..site import library as L
     from ..site import service as S
     t, site = ctx.tenant_id, str(a.get("site") or "")
+    if str(ctx.actor).startswith("staff:") and what not in _READ_NO_SITE:   # v0.999.315 the same wall as `website`
+        from ..site import care as SC
+        if what in _READ_OWNER_ONLY:
+            raise ToolError("Only the owner can see this.")
+        if what == "sites":
+            return {"sites": [v for v in S.sites(t) if SC.staff_ok(t, v["id"], ctx.actor)]}
+        if not site:
+            raise ToolError("Name the website you were given (its name or number).")
+        if not SC.staff_ok(t, site, ctx.actor):
+            raise ToolError("This website was not given to you; ask the owner to assign it to you.")
     if what == "sites":
         return {"sites": S.sites(t)}
     if what == "site":

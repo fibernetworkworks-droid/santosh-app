@@ -111,7 +111,7 @@ def current(tenant: str) -> str:
         row = s.get(ConvFocus, tenant)
         if row is not None and row.conversation_id not in outside:
             c = s.get(Conversation, row.conversation_id)
-            if c is not None and c.tenant_id == tenant and not c.deleted and c.kind not in ("call", "computer", "seo", "social", "video", "image", "music", "accounts", "leads", "telecall", "support", "vocal", "money", "books", "payroll", "interactive", "tax", "cash", "credit", "firm", "payments", "institution", "investments", "markets", "community", "route", "digital", "public", "finops", "risk", "insurance", "qa", "devops", "cyber", "itadmin", "product", "appreview", "docs", "noc", "studio3d", "langlab", "kernel", "graphics", "dbengine", "distsys", "sre", "virt", "lowlat", "mainframe", "embedded", "robotics", "vision", "mleng", "dataeng", "platform"):
+            if c is not None and c.tenant_id == tenant and not c.deleted and c.kind not in ("call", "computer", "seo", "social", "video", "image", "music", "accounts", "leads", "telecall", "support", "vocal", "money", "books", "payroll", "interactive", "tax", "cash", "credit", "firm", "payments", "institution", "investments", "markets", "community", "route", "digital", "public", "finops", "risk", "insurance", "qa", "devops", "cyber", "itadmin", "product", "appreview", "docs", "noc", "studio3d", "langlab", "kernel", "graphics", "dbengine", "distsys", "sre", "virt", "lowlat", "mainframe", "embedded", "robotics", "vision", "mleng", "dataeng", "platform", "cloudeng", "seceng", "devsecops"):
                 return c.id
         from .callconv import not_call   # v0.646
         q = select(Conversation).where(Conversation.tenant_id == tenant, Conversation.deleted.is_not(True), not_call(),

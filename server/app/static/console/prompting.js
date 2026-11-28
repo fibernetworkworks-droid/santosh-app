@@ -58,7 +58,7 @@
     app: ['hoola.prompt.toApp', '/console/apps', 'Opens the App Studio with this in its box. Nothing is built until you press Build there.'],
     code: ['', '/console/code', 'Opens Hoola Code with this in its box. Nothing starts until you press Send there.']};
   const CHAT_NOTE = 'Puts this in the chat box. Nothing is sent until you press Send; a paid job shows its price first.';
-  const st = {secs: [], known: [], section: '', text: '', view: null, pack: null, savedId: '', mine: null, fill: null, cmp: null, ready: null, recipe: null, q: '', rsec: ''};
+  const st = {secs: [], known: [], section: '', text: '', view: null, pack: null, savedId: '', mine: null, fill: null, cmp: null, ready: null, recipe: null, q: '', rsec: '', shelf: 'hoola', wq: '', wgroup: '', wkind: '', wpage: 1, wfill: null, paste: null};
 
   function shell(active, body) {
     const nav = (key, hash, label, icon) => `<a class="hp-nav" href="${hash}" ${active === key ? 'aria-current="page"' : ''}>${ICON[icon || key]}<span>${esc(label)}</span></a>`;
@@ -78,7 +78,7 @@
       .map(([k, l]) => `<button type="button" data-sec="${esc(k)}" aria-pressed="${st.section === k}">${esc(l)}</button>`).join('')}</span>`;
   }
   const cards = items => items.map(r => `<button type="button" class="hp-card" data-recipe="${esc(r.id)}"><b>${esc(r.title)}</b><span>${esc(r.makes || '')}${r.community ? esc(' · by ' + (r.by || 'a Hoola user')) : ''}</span>
-      <i><span class="hp-tag">${esc((st.secs.find(s => s.key === r.section) || {label: r.section}).label)}</span> ${r.kept ? `<span class="hp-kept">kept ${r.kept.kept} of ${r.kept.of} times</span> ` : ''}${r.blanks && r.blanks.length ? esc(r.blanks.length + ' blank' + (r.blanks.length > 1 ? 's' : '') + ' to fill') : 'ready to use'}</i></button>`).join('');
+      <i><span class="hp-tag">${esc(r.world ? r.kind_label : (st.secs.find(s => s.key === r.section) || {label: r.section}).label)}</span> ${r.safety ? '<span class="hp-tag hp-warn">Copy only</span> ' : r.use === 'fill' ? '<span class="hp-tag hp-long">Long</span> ' : ''}${r.kept ? `<span class="hp-kept">kept ${r.kept.kept} of ${r.kept.of} times</span> ` : ''}${r.blanks && r.blanks.length ? esc(r.blanks.length + ' blank' + (r.blanks.length > 1 ? 's' : '') + ' to fill') : 'ready to use'}</i></button>`).join('');
 
   /* ---------- home / a section ---------- */
   async function home(section) {
@@ -205,7 +205,7 @@
       <p class="hp-lead">${c.on ? esc('Recipes people offered from their saved prompts. Each one is read by Hoola before it goes on the shelf. ' + c.note) : 'Switched off. People cannot offer recipes until the owner switches community recipes on.'}</p>
       ${mineRows.length ? `<h3 class="hp-sub3">Yours</h3><div class="hp-rows">${mineRows.map(x => `<div class="hp-rowi hp-wrapr"><div><b>${esc(x.title)}</b><span>${esc(stl[x.status] || x.status)}${x.kept ? esc(' · results kept ' + x.kept.kept + ' of ' + x.kept.of) : ''}${x.reason ? esc(' · ' + x.reason) : ''}</span></div>
         ${x.status === 'submitted' || x.status === 'approved' ? `<button type="button" class="hp-b sm ghost" data-cwd="${esc(x.id)}">Take back</button>` : ''}</div>`).join('')}</div>` : ''}
-      ${c.owner && (c.review || []).length ? `<h3 class="hp-sub3">Waiting for your review</h3><div class="hp-rows">${c.review.map(x => `<div class="hp-rowi hp-wrapr"><div><b>${esc(x.title)} · ${esc(x.by)}</b><span>${esc(x.brief.intent || '')}</span>${(x.problems || []).length ? `<span>${esc('Cannot go on the shelf: ' + x.problems.join('; '))}</span>` : ''}</div>
+      ${c.owner && (c.review || []).length ? `<h3 class="hp-sub3">Waiting for your review</h3><div class="hp-rows">${c.review.map(x => `<div class="hp-rowi hp-wrapr"><div><b>${esc(x.title)} · ${esc(x.by)}</b><span>${esc(x.brief.intent || '')}</span>${(x.problems || []).length ? `<span>${esc('Cannot go on the shelf: ' + x.problems.join('; '))}</span>` : ''}${x.copy_of ? `<span class="hp-bad">${esc('Almost the same as "' + x.copy_of.title + '" (' + Math.round(x.copy_of.score * 100) + '% alike)')}</span>` : (x.similar || []).length ? `<span>${esc('Close to: ' + x.similar.map(y => y.title + ' (' + Math.round(y.score * 100) + '%)').join(', '))}</span>` : ''}</div>
         <button type="button" class="hp-b sm pri" data-cdec="${esc(x.id)}" data-act="approve" ${(x.problems || []).length ? 'disabled' : ''}>Approve</button><button type="button" class="hp-b sm ghost" data-cdec="${esc(x.id)}" data-act="refuse">Refuse</button></div>`).join('')}</div>` : ''}`;
   }
   /* ---------- P8 MUQABLA: this prompt (A) against another (B) ---------- */
@@ -300,9 +300,13 @@
       ${(r.problems || []).length ? `<p class="hp-bad">This prompt cannot be copied: ${esc(r.problems.join('; '))}.</p>`
         : `<div class="hp-acts"><button type="button" class="hp-b pri" id="hpCopyShared" data-token="${esc(token)}">Save a copy to My prompts</button></div>`}`);
   }
-  async function understand(text, section, keep) {
+  async function understand(text, section, keep, pasted) {
     text = String(text || '').trim();
     if (text.length < 3) { toast('Write one line about what you want to make.', true); return; }
+    if (!keep && !pasted) {
+      const pb = await api('POST', '/api/prompting/paste', {text}).catch(() => null);
+      if (pb && (pb.blanks || []).length) { st.paste = {text, section, blanks: pb.blanks}; go('#/pb'); return; }
+    }
     st.text = text;
     const btn = document.querySelector('#hpAsk [type=submit], #hpAgain'); if (btn) { btn.disabled = true; btn.textContent = 'Reading…'; }
     try {
@@ -332,9 +336,11 @@
   }
 
   /* ---------- recipes ---------- */
+  const shelfSeg = () => `<span class="hp-seg" role="group" aria-label="Shelf">${[['hoola', "Hoola's starters"], ['world', 'World prompts']].map(([k, l]) => `<button type="button" data-shelf="${k}" aria-pressed="${st.shelf === k}">${l}</button>`).join('')}</span>`;
   async function recipes() {
+    if (st.shelf === 'world') return worldShelf();
     const r = await api('GET', `/api/prompting/recipes?section=${encodeURIComponent(st.rsec)}&q=${encodeURIComponent(st.q)}`).catch(e => { toast(e.message, true); return {items: []}; });
-    shell('recipes', `<div class="hp-top"><h1>Recipes</h1><span class="hp-tag">Hoola's starters</span></div>
+    shell('recipes', `<div class="hp-top"><h1>Recipes</h1><span class="hp-sp"></span>${shelfSeg()}</div>
       <form class="hp-find" id="hpFind"><input type="search" id="hpQ" value="${esc(st.q)}" placeholder="Search: poster, reel, salon, Diwali, bakery…" aria-label="Search recipes">
         <span class="hp-seg" role="group" aria-label="Kind">${[['', 'All'], ...st.secs.map(s => [s.key, s.label])].map(([k, l]) => `<button type="button" data-rsec="${esc(k)}" aria-pressed="${st.rsec === k}">${esc(l)}</button>`).join('')}</span>
         <button class="hp-b" type="submit">Search</button></form>
@@ -343,7 +349,50 @@
       <div id="hpComm"></div>`);
     communityBox().catch(() => null);
   }
+  /* ---------- World prompts: the prompts.chat library (CC0), after Hoola's own checks ---------- */
+  async function worldShelf() {
+    const r = await api('GET', `/api/prompting/world?q=${encodeURIComponent(st.wq)}&group=${encodeURIComponent(st.wgroup)}&kind=${encodeURIComponent(st.wkind || '')}&page=${st.wpage}`).catch(e => { toast(e.message, true); return {items: [], groups: [], kinds: []}; });
+    const src = r.source || {};
+    shell('recipes', `<div class="hp-top"><h1>Recipes</h1><span class="hp-sp"></span>${shelfSeg()}</div>
+      ${r.on === false ? '<p class="hp-empty">World prompts are switched off.</p>' : `
+      <form class="hp-find" id="hpWFind"><input type="search" id="hpWQ" value="${esc(st.wq)}" placeholder="Search: interviewer, travel guide, poster, story…" aria-label="Search world prompts">
+        <select id="hpWCat" aria-label="Category"><option value="">All categories</option>${(r.groups || []).map(g => `<option value="${esc(g.key)}"${st.wgroup === g.key ? ' selected' : ''}>${esc(g.label)} (${esc(g.n)})</option>`).join('')}</select>
+        <button class="hp-b" type="submit">Search</button></form>
+      <span class="hp-seg hp-wseg" role="group" aria-label="Kind">${[{key: '', label: 'All'}, ...(r.kinds || [])].map(g => `<button type="button" data-wkind="${esc(g.key)}" aria-pressed="${(st.wkind || '') === g.key}">${esc(g.label)}${g.n ? ' ' + esc(g.n) : ''}</button>`).join('')}</span>
+      <p class="hp-lead">${esc(r.total)} prompt${r.total === 1 ? '' : 's'}${st.wq || st.wgroup || st.wkind ? ' match' : ''}. Written by people around the world, in their own words. Fill the blanks you know - anything you leave empty stays open, never a made-up value.</p>
+      <div class="hp-grid">${cards(r.items || []) || '<p class="hp-empty">Nothing matches. Try one word, like "interview" or "story".</p>'}</div>
+      ${(r.pages || 1) > 1 ? `<div class="hp-acts">${st.wpage > 1 ? '<button type="button" class="hp-b sm" data-wpage="-1">Previous</button>' : ''}<span class="hp-tag">Page ${esc(r.page)} of ${esc(r.pages)}</span>${st.wpage < r.pages ? '<button type="button" class="hp-b sm" data-wpage="1">Next</button>' : ''}</div>` : ''}
+      <p style="margin-top:16px;color:var(--dim);font-size:13px">All ${esc(src.kept || 0)} prompts from <a href="${esc(src.url || '')}" target="_blank" rel="noopener">${esc(src.name || 'prompts.chat')}</a>, ${esc(src.licence || 'public domain')}, in their own categories and languages. Short ones open in your workbench; long ones are filled here and copied. Prompts Hoola's checks flagged are shown and can be copied, but Hoola does not run them.</p>`}`);
+  }
+  async function openWorld(id) {
+    const r = await api('GET', '/api/prompting/world/' + encodeURIComponent(id));
+    st.recipe = r; st.wfill = null;
+    const btn = r.use === 'workbench' ? 'Use this prompt' : 'Fill it in';
+    shell('recipes', `<div class="hp-top"><a class="hp-b sm ghost" href="#/recipes">${ICON.back} Recipes</a><h1>${esc(r.title)}</h1><span class="hp-sp"></span><span class="hp-tag">${esc(r.kind_label)}</span><span class="hp-tag">${esc(r.group_label)}</span></div>
+      ${r.notes.length ? `<p class="hp-wnotes${r.safety ? ' hp-warn' : ''}">${r.safety ? "Hoola's checks flagged this prompt, so Hoola does not run it. You can still read and copy it. " : ''}Notes: ${esc(r.notes.join(' · '))}.</p>` : ''}
+      <pre class="hp-pre" tabindex="0" id="hpWText">${esc(r.text)}</pre>
+      <form class="hp-form" id="hpFill">${r.blanks.length ? `<p style="color:var(--mut)">Fill what you know. The example is the writer's; it is not used unless you type it.</p>
+        ${r.blanks.map(b => `<div><label for="bl_${esc(b.key)}">${esc(b.label)}</label><input id="bl_${esc(b.key)}" name="${esc(b.key)}" maxlength="120" placeholder="${esc(b.eg ? 'for example: ' + b.eg : '')}" autocomplete="off"></div>`).join('')}` : ''}
+        <div class="hp-acts">${r.use === 'workbench' || r.blanks.length ? `<button class="hp-b pri" type="submit">${btn}</button>` : ''}${r.use !== 'workbench' ? '<button type="button" class="hp-b" id="hpWCopy">Copy</button>' : ''}${r.use === 'fill' ? '<button type="button" class="hp-b ghost" id="hpWChat">Put in the Hoola chat</button>' : ''}</div></form>
+      <p style="margin-top:10px;color:var(--dim);font-size:13px">A prompt from prompts.chat${r.by ? esc(' by ' + r.by) : ''}, public domain${r.tags && r.tags.length ? esc(' · ' + r.tags.join(', ')) : ''}.${r.use === 'workbench' ? ' It opens in your workbench, where Hoola scores it and writes it for the tool.' : ''}</p>`);
+  }
+  async function worldFilled() {
+    const v = {}; document.querySelectorAll('#hpFill input').forEach(i => { v[i.name] = i.value.trim(); });
+    const got = await api('POST', '/api/prompting/world/' + encodeURIComponent(st.recipe.id) + '/fill', {values: v});
+    st.wfill = got.text; const pre = $('#hpWText'); if (pre) pre.textContent = got.text;
+    return got.text;
+  }
+  /* ---------- paste reader: blanks in a prompt she pasted ---------- */
+  function pasteForm() {
+    const p = st.paste;
+    shell(p.section || 'home', `<div class="hp-top"><a class="hp-b sm ghost" href="#/">${ICON.back} Back</a><h1>Your prompt has blanks</h1></div>
+      <p class="hp-lead">The text you pasted has ${esc(p.blanks.length)} blank${p.blanks.length === 1 ? '' : 's'} to fill. Fill what you know; anything you leave empty stays in the prompt as an open part, never a made-up value.</p>
+      <form class="hp-form" id="hpPaste">${p.blanks.map(b => `<div><label for="pb_${esc(b.key)}">${esc(b.label)}</label><input id="pb_${esc(b.key)}" name="${esc(b.key)}" maxlength="120" placeholder="${esc(b.eg ? 'for example: ' + b.eg : '')}" autocomplete="off"></div>`).join('')}
+        <div class="hp-acts"><button class="hp-b pri" type="submit">Put these in</button><button type="button" class="hp-b ghost" id="hpPasteSkip">Use my words as they are</button></div></form>`);
+    $('#hpPaste input')?.focus();
+  }
   async function openRecipe(id) {
+    if (id.startsWith('world:')) return openWorld(id);
     const list = await api('GET', '/api/prompting/recipes?section=' + (id.startsWith('web:') ? 'web' : '') + '&q=' + (id.startsWith('web:') ? encodeURIComponent(st.q) : '')).catch(() => ({items: []}));
     const r = (list.items || []).find(x => x.id === id) || {id, title: 'Recipe', blanks: []};
     if (!r.blanks || !r.blanks.length) return useRecipe(id, {});
@@ -469,6 +518,7 @@
       else if (h === '#/saved') await saved();
       else if (h === '#/c') { if (st.pack) await cmpStart(); else go('#/'); }
       else if (h === '#/cx') { if (st.cmp && st.cmp.b) await cmpShow(); else go('#/'); }
+      else if (h === '#/pb') { if (st.paste) pasteForm(); else go('#/'); }
       else if (h === '#/f') { if (st.fill) fillForm(); else go('#/saved'); }
       else if (h.startsWith('#/v/')) await history(decodeURIComponent(h.slice(4)));
       else if (h.startsWith('#/shared/')) await sharedView(decodeURIComponent(h.slice(9)));
@@ -483,6 +533,9 @@
   document.addEventListener('submit', e => {
     if (e.target.id === 'hpAsk') { e.preventDefault(); understand($('#hpText').value, st.section); }
     if (e.target.id === 'hpOfferF') { e.preventDefault(); api('POST', '/api/prompting/community', {saved_id: st.savedId, title: (st.mine && st.mine.title) || '', by: e.target.by.value.trim()}).then(() => { toast('Offered. Hoola reads it before it goes on the shelf.'); return offerRow(); }).catch(er => toast(er.message, true)); return; }
+    if (e.target.id === 'hpWFind') { e.preventDefault(); st.wq = $('#hpWQ').value.trim(); st.wgroup = $('#hpWCat') ? $('#hpWCat').value : st.wgroup; st.wpage = 1; worldShelf(); return; }
+    if (e.target.id === 'hpPaste') { e.preventDefault(); const v = {}; e.target.querySelectorAll('input').forEach(i => { v[i.name] = i.value.trim(); });
+      api('POST', '/api/prompting/paste/fill', {text: st.paste.text, values: v}).then(f => { const p = st.paste; st.paste = null; return understand(f.text, p.section, false, true); }).catch(er => toast(er.message, true)); return; }
     if (e.target.id === 'hpFind') { e.preventDefault(); st.q = $('#hpQ').value.trim(); recipes(); }
     if (e.target.id === 'hpFillSaved') { e.preventDefault(); const v = {}; e.target.querySelectorAll('input').forEach(i => { v[i.name] = i.value.trim(); });
       api('POST', `/api/prompting/saved/${encodeURIComponent(st.fill.id)}/fill`, {values: v}).then(pk => { st.pack = pk; st.fill = null; go('#/w'); }).catch(er => toast(er.message, true)); return; }
@@ -491,12 +544,21 @@
     if (e.target.id === 'hpSched') { e.preventDefault(); const f = new FormData(e.target);
       api('PUT', `/api/prompting/saved/${encodeURIComponent(st.savedId)}/schedule`, {repeat: f.get('repeat'), at: f.get('at')})
         .then(() => { toast('Scheduled. The result will come to your Hoola chat.'); mine(); }).catch(er => toast(er.message, true)); return; }
-    if (e.target.id === 'hpFill') { e.preventDefault(); const v = {}; e.target.querySelectorAll('input').forEach(i => { v[i.name] = i.value.trim(); }); useRecipe(st.recipe.id, v); }
+    if (e.target.id === 'hpFill') { e.preventDefault();
+      if (st.recipe && st.recipe.world && st.recipe.use !== 'workbench') { worldFilled().then(() => toast(st.recipe.blanks.length ? 'Filled in. Copy it when you are ready.' : 'Ready.')).catch(er => toast(er.message, true)); return; }
+      const v = {}; e.target.querySelectorAll('input').forEach(i => { v[i.name] = i.value.trim(); }); useRecipe(st.recipe.id, v); }
   });
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && e.target.id === 'hpText') { e.preventDefault(); $('#hpAsk').requestSubmit(); } });
   document.addEventListener('click', async e => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.sec !== undefined) { st.section = b.dataset.sec; document.querySelectorAll('[data-sec]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); return; }
+    if (b.dataset.shelf) { st.shelf = b.dataset.shelf; recipes(); return; }
+    if (b.id === 'hpWCopy') { worldFilled().then(t => copy(t)).catch(er => toast(er.message, true)); return; }
+    if (b.id === 'hpWChat') { worldFilled().then(t => run({to: 'chat', text: t})).catch(er => toast(er.message, true)); return; }
+    if (b.dataset.wkind !== undefined) { st.wkind = b.dataset.wkind; st.wpage = 1; st.wq = $('#hpWQ') ? $('#hpWQ').value.trim() : st.wq; worldShelf(); return; }
+    if (b.dataset.wgroup !== undefined) { st.wgroup = b.dataset.wgroup; st.wpage = 1; st.wq = $('#hpWQ') ? $('#hpWQ').value.trim() : st.wq; worldShelf(); return; }
+    if (b.dataset.wpage) { st.wpage = Math.max(1, st.wpage + Number(b.dataset.wpage)); worldShelf(); return; }
+    if (b.id === 'hpPasteSkip') { const p = st.paste; st.paste = null; understand(p.text, p.section, false, true); return; }
     if (b.dataset.rsec !== undefined) { st.rsec = b.dataset.rsec; st.q = $('#hpQ') ? $('#hpQ').value.trim() : st.q; recipes(); return; }
     if (b.dataset.recipe) { openRecipe(b.dataset.recipe); return; }
     if (b.dataset.who !== undefined) { st.everyone = !!b.dataset.who; results().catch(er => toast(er.message, true)); return; }
@@ -549,6 +611,7 @@
       try { await api('DELETE', '/api/prompting/saved/' + encodeURIComponent(b.dataset.del)); toast('Deleted.'); route(); } catch (er) { toast(er.message, true); } }
   });
   document.addEventListener('change', async e => {
+    if (e.target.id === 'hpWCat') { st.wgroup = e.target.value; st.wpage = 1; st.wq = $('#hpWQ') ? $('#hpWQ').value.trim() : st.wq; worldShelf(); return; }
     if (e.target.id !== 'hpLedger' && e.target.id !== 'hpShare') return;
     try { await api('PUT', '/api/prompting/ledger/prefs', e.target.id === 'hpLedger' ? {ledger: e.target.checked} : {share: e.target.checked}); toast('Saved.'); }
     catch (er) { e.target.checked = !e.target.checked; toast(er.message, true); }

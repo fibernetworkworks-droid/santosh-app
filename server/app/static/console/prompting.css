@@ -164,3 +164,9 @@ body.hp-page{background:#fff;font-family:"Schibsted Grotesk",system-ui,sans-seri
 /* P11 BAHAR: the copy panel for tools outside Hoola */
 .hp-out{margin-top:12px;display:grid;gap:10px}
 .hp-out .hp-pre{max-height:320px;overflow:auto}
+.hp-wseg{margin:4px 0 12px}
+/* World prompts: every prompt kept, notes instead of drops */
+#hpWFind select{height:40px;max-width:240px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit;font-size:14px;padding:0 10px}
+.hp-wnotes{margin:0 0 12px;padding:10px 12px;border-radius:10px;background:var(--hov);color:var(--mut);font-size:13.5px}
+.hp-wnotes.hp-warn{background:color-mix(in srgb,#d97706 12%,transparent);color:var(--ink)}
+.hp-tag.hp-warn{background:color-mix(in srgb,#d97706 16%,transparent);color:var(--ink)}

@@ -501,6 +501,9 @@ function go(v, arg) {
   if (v === 'mldesk') { location.assign('/console/ml'); return; }   // ML DESK: its own section
   if (v === 'dedesk') { location.assign('/console/data'); return; }   // DATA ENGINEER DESK: its own section
   if (v === 'pfdesk') { location.assign('/console/platform'); return; }   // PLATFORM ENGINEER DESK: its own section
+  if (v === 'cldesk') { location.assign('/console/cloud'); return; }   // CLOUD ENGINEER DESK: its own section
+  if (v === 'secdesk') { location.assign('/console/security'); return; }   // SECURITY ENGINEER DESK: its own section
+  if (v === 'dsodesk') { location.assign('/console/devsecops'); return; }   // DEVSECOPS ENGINEER DESK: its own section
   if (v === 'ncdesk') { location.assign('/console/noc'); return; }   // NOC DESK: its own section
   if (v === 'dwdesk') { location.assign('/console/docs'); return; }   // TECHNICAL WRITER DESK: its own section
   if (v === 'ardesk') { location.assign('/console/appreview'); return; }   // APP REVIEWER DESK: its own section
@@ -2668,6 +2671,18 @@ async function drawMain() {   // v0.999.223 CUSTOMIZE, PREMIUM (design claude.ai
           <span class="cz-inp cz-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg><input id="czMemQ" type="search" placeholder="Search memories" aria-label="Search memories"></span></div>
         <div class="cz-pad"><div class="cz-list" id="mfacts"><div class="cz-empty">Loading…</div></div>
           <span class="cz-hint" id="czMemHint">Tell Hoola "remember that…" in any chat to add one. Pinned ones are always in Hoola's mind.</span></div>
+        <div class="cz-pad cz-imp" id="czImp"><h3>Bring from another assistant</h3>
+          <p class="cz-hint">Bring your memories, skills and past chats from OpenClaw, Hermes, ChatGPT or Claude. You see everything first; nothing comes in until you tap Bring in. Keys and settings files are never read.</p>
+          <details class="cz-imphow"><summary>What to upload</summary><ul>
+            <li><b>OpenClaw</b>: zip your workspace folder (usually <code>~/.openclaw/workspace</code>).</li>
+            <li><b>Hermes</b>: zip the <code>memories</code> and <code>skills</code> folders inside <code>~/.hermes</code>.</li>
+            <li><b>ChatGPT</b>: Settings &gt; Data controls &gt; Export data, then upload the zip. Your saved memories are not in that zip: copy them from Settings &gt; Personalization &gt; Manage memories and paste them below.</li>
+            <li><b>Claude</b>: Settings &gt; Privacy &gt; Export data, then upload the zip.</li></ul></details>
+          <div class="cz-impin"><input type="file" id="czImpFiles" multiple accept=".zip,.md,.markdown,.txt,.json" aria-label="Files from your old assistant">
+            <select id="czImpSrc" aria-label="Where it is from"><option value="">Find out from the files</option><option value="openclaw">OpenClaw</option><option value="hermes">Hermes</option><option value="chatgpt">ChatGPT</option><option value="claude">Claude</option></select></div>
+          <textarea id="czImpText" rows="3" maxlength="200000" placeholder="Or paste memories here, one per line (for example from ChatGPT's Manage memories)" aria-label="Pasted memories"></textarea>
+          <div class="cz-impact"><button type="button" class="cz-btn" id="czImpGo">Preview</button></div>
+          <div id="czImpOut" aria-live="polite"></div><div id="czImpList"></div></div>
       </section>
       <section class="cz-card" id="about" aria-labelledby="czhAb">
         <div class="cz-hd">${CZ_ICON.srv}<div><h2 id="czhAb">About this server</h2><p>The Hoola version you are on and what is switched on.</p></div>
@@ -2700,6 +2715,7 @@ async function drawMain() {   // v0.999.223 CUSTOMIZE, PREMIUM (design claude.ai
     try { const r = await api('PUT', '/api/console/password', {password: n, current: $('#pwc')?.value || ''}); ME.has_password = true; toast(`Password set. You can now sign in with ${r.handle} + password.`); drawMain(); } catch (er) { toast(er.message, true); } });
   czMemory();
   $('#czMemQ').addEventListener('input', () => czMemDraw());
+  czImpBind();
   fetch('/healthz').then(r => r.json()).then(h => { const fs = h.features || [];
     $('#czVer').textContent = 'v' + (h.version || ''); $('#czUp').innerHTML = `<i class="up${h.ok === false ? ' down' : ''}"></i>${h.ok === false ? 'Needs a look' : 'Online'}`; $('#czFeatN').textContent = String(fs.length);
     $('#feat').innerHTML = fs.map(f => `<span class="cz-chip">${esc(f.replace(/_/g, ' '))}</span>`).join('') || '<span class="cz-hint">No features reported.</span>'; })
@@ -2745,6 +2761,46 @@ document.addEventListener('click', async e => {   // pin / forget a memory; forg
     if (b.hasAttribute('data-czdel')) toast('Forgotten.');
   } catch (er) { toast(er.message, true); }
 });
+
+/* v0.999 Bring from another assistant: upload -> preview -> her tap -> undo any time */
+function czImpBind() {
+  const go = $('#czImpGo'); if (!go) return;
+  go.addEventListener('click', async () => {
+    const fs = $('#czImpFiles').files, text = $('#czImpText').value.trim(), out = $('#czImpOut');
+    if (!fs.length && !text) { toast('Choose your old assistant\'s files or paste your memories first.', true); return; }
+    const form = new FormData(); for (const f of fs) form.append('files', f, f.name);
+    form.append('text', text); form.append('source', $('#czImpSrc').value);
+    go.disabled = true; out.innerHTML = '<div class="cz-empty">Reading your files…</div>';
+    try { const p = await api('POST', '/api/memory/import/preview', undefined, {form}); czImpShow(p); }
+    catch (e) { out.innerHTML = `<div class="cz-empty">${esc(e.message)}</div>`; }
+    finally { go.disabled = false; }
+  });
+  czImpList();
+}
+function czImpShow(p) {
+  const out = $('#czImpOut'), c = p.counts || {};
+  const skip = (p.skipped || []).map(x => `<li>${esc(String(x.n))} left out: ${esc(x.what)}</li>`).join('');
+  out.innerHTML = `<div class="cz-imppv"><b>From ${esc(p.label)}: ${c.facts || 0} facts, ${c.notes || 0} notes and past chats, ${c.skills || 0} skills</b>
+    ${(p.facts || []).length ? `<ul class="cz-impf">${p.facts.slice(0, 12).map(f => `<li>${esc(f)}</li>`).join('')}${p.facts.length > 12 ? `<li class="cz-hint">and ${p.facts.length - 12} more</li>` : ''}</ul>` : ''}
+    ${(p.skills || []).length ? `<p class="cz-hint">Skills: ${p.skills.map(s => esc(s.name)).join(', ')}</p>` : ''}
+    ${p.persona && p.persona.name ? `<p class="cz-hint">Your old assistant was called ${esc(p.persona.name)}. Its personality and rules files stay behind: Hoola keeps its own.</p>` : ''}
+    ${skip ? `<ul class="cz-hint">${skip}</ul>` : ''}
+    <div class="cz-impact"><button type="button" class="cz-btn pri" id="czImpYes">Bring in</button><button type="button" class="cz-btn" id="czImpNo">Cancel</button></div></div>`;
+  $('#czImpNo').onclick = () => { out.innerHTML = ''; };
+  $('#czImpYes').onclick = async () => {
+    try { const r = await api('POST', '/api/memory/import/apply', {token: p.token}); out.innerHTML = ''; toast(r.said); czMemory(); czImpList(); }
+    catch (e) { toast(e.message, true); }
+  };
+}
+async function czImpList() {
+  const box = $('#czImpList'); if (!box) return;
+  let rows = []; try { rows = (await api('GET', '/api/memory/imports')).imports || []; } catch { return; }
+  box.innerHTML = rows.length ? '<h3>Brought in before</h3>' + rows.map(r => `<div class="cz-fact"><span class="tx">${esc(r.label)}: ${r.counts.facts || 0} facts, ${r.counts.notes || 0} notes, ${r.counts.skills || 0} skills</span><span class="wh">${esc(czWhen(r.at))}</span>${r.undone ? '<span class="cz-tag">Taken back out</span>' : `<button type="button" class="cz-btn sm" data-czundo="${esc(r.id)}">Undo</button>`}</div>`).join('') : '';
+  box.querySelectorAll('[data-czundo]').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Take everything from this import back out of Hoola\'s memory?')) return;
+    try { await api('POST', `/api/memory/imports/${encodeURIComponent(b.dataset.czundo)}/undo`); toast('Taken back out.'); czMemory(); czImpList(); } catch (e) { toast(e.message, true); }
+  }));
+}
 
 /* ================= Baat: live voice in the browser ================= */
 let CALL = null;

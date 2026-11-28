@@ -790,6 +790,7 @@ def init_db(url: str | None = None):
     from .kaan import models as _kaan_models  # noqa: F401  v0.589 KAAN PACK (transcripts)
     from .design import models as _design_models  # noqa: F401  v0.777 HOOLA DESIGN (files, journal, versions, comments, shares)
     from . import bahar as _bahar  # noqa: F401  v0.616 BAHAR SE BAAT (outside channels)
+    from . import migrate as _migrate  # noqa: F401  v0.999 bring your old assistant (memory_imports)
     from . import emailauth as _emailauth  # noqa: F401  SIGN UP (email sign-in codes)
     from . import computer as _computer  # noqa: F401  v0.890 HOOLA COMPUTER (her PC switch)
     from .pc import vault as _pc_vault  # noqa: F401  v0.999.47 saved sign-ins
@@ -1034,6 +1035,9 @@ def init_db(url: str | None = None):
     from .mldesk import service as _mldesk  # noqa: F401  (v0.999.299 the Machine Learning Engineer)
     from .dedesk import service as _dedesk  # noqa: F401  (v0.999.303 the Data Engineer)
     from .pfdesk import service as _pfdesk  # noqa: F401  (v0.999.304 the Platform Engineer)
+    from .cldesk import service as _cldesk  # noqa: F401  (v0.999.310 the Cloud Engineer)
+    from .secdesk import service as _secdesk  # noqa: F401  (v0.999.312 the Security Engineer)
+    from .dsodesk import service as _dsodesk  # noqa: F401  (v0.999.313 the DevSecOps Engineer)
     from .dod import models as _dod_models  # noqa: F401  (v0.999.306 HOOLA DOD - the coworker)
     from .engineering import service as _engineering  # noqa: F401  (v0.357 Engineering Desk)
     from .bahi import models as _bahi_models  # noqa: F401  (v0.807 BAHI - the GST & Accounts employee, A0)

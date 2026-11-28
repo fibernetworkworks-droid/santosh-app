@@ -713,6 +713,11 @@ def save_fact(tenant: str, text: str, source: str = "auto", conversation_id: str
     if why:
         STATS["facts_refused"] += 1
         return None
+    from .coder import guard as _guard            # v0.999 checked before it is kept (hidden instructions, her tap, secrets)
+    if _guard.check_memory(text, conversation_id):
+        STATS["facts_unsafe"] = STATS.get("facts_unsafe", 0) + 1
+        log.warning("fact not kept (memory guard): %s", ",".join(_guard.scan(text)))
+        return None
     old_ids = set()
     for x in replaces or []:
         try:
@@ -902,7 +907,8 @@ def relevant_facts(tenant: str, query: str, skip: set[int] | None = None, top: i
     v0.246 with a chat: fenced to its Session."""
     if not (query or "").strip():
         return []
-    known = [k for k in _known(tenant, 2000, conversation_id) if not skip or k[0] not in skip]
+    from .coder import guard as _guard            # v0.999 a fact saved before the memory guard never reaches the model
+    known = [k for k in _known(tenant, 2000, conversation_id) if (not skip or k[0] not in skip) and _guard.safe(k[1])]
     if not known:
         return []
     from . import semantic

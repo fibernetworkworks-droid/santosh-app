@@ -392,6 +392,9 @@ def use(recipe_id: str, values: dict[str, str] | None = None) -> dict[str, Any]:
         p = T.prompt(recipe_id[4:])
         return {"ready": {"section": "web", "title": p.get("title") or "Website", "prompt": p["prompt"],
                           "run": {"to": "web", "text": p["prompt"], "label": "Open in Web Studio"}}}
+    if recipe_id.startswith("world:"):           # World prompts (prompts.chat, CC0): her blanks in, empty ones left open
+        from . import world as W
+        return W.use(recipe_id, values)
     if recipe_id.startswith("com:"):             # P11 SAMUDAAY: an approved community recipe, screened again
         from . import samudaay as SM
         return SM.use(recipe_id)
