@@ -13648,3 +13648,42 @@ under a real runtime.
 
 ## v0.999.289 KARPATHY RULES
 (owner: 'feed this properly to hoola code thus to perform well. first check it perfectly', on github.com/multica-ai/andrej-karpathy-skills = forrestchang's, MIT, commit 2c60614, read whole: README, CLAUDE.md, the skill, the Cursor rule, EXAMPLES.md; text only, nothing to run): four coding rules from Andrej Karpathy's notes on how coding models go wrong, checked line by line against Hoola Code first. ALREADY THERE: read before changing, smallest change in the repo's style, a failing test first for a bug, one question for a vague ask, scratch files deleted, the formatter's whole-file rewrites put back. ADDED (`devsahayak/karpathy.py`, switch `dev_karpathy` on): (1) THINK FIRST - two readings are named and asked instead of one picked quietly, a simpler way is said before the bigger one is built, and the done tool gets `assumptions`: shown under her answer as 'I assumed: ...' and as an Assumptions section in the pull request; (2) SIMPLE FIRST - no features, options, abstractions or impossible-case handling nobody asked for, 'would a senior engineer call this overcomplicated?'; (3) SURGICAL CHANGES - nothing next to the task tidied, dead code mentioned not deleted, only the leftovers of its own change removed, and CHECKED IN CODE: a hunk that only changes layout (indent, spaces, quote style) or deletes an existing comment is named on show_diff and sends the round back once before done (not when her request asks for formatting / tidying / a refactor, not for files the repo's own formatter changed, never for new files); (4) GOAL FIRST - every to-do step carries its check ('... -> check: test_x passes'). The rules ride the coder's fixed prompt right after its own (cached), editing agents get a short form, Hoola's own review and the reality checker treat unasked-for extras as a finding, the older step loop gets them too; the coding card counts tidying per job (`drive_by`, not part of its pass mark yet). Credit in THIRD_PARTY_NOTICES.md (no upstream file copied). 12 tests incl. a full round with a fake model. NOT VERIFIED with a real model: whether the rules make its changes smaller is for the next coding card run to show.
+
+
+## v0.999.290 LOW LATENCY DESK
+(owner: "Backend Systems Engineer (Low Latency) same as finance desks"; built as 0.999.288 - their NINE TO ELEVEN FROM OPENCODE took
+0.999.288 and their KARPATHY RULES 0.999.289 while it was being built, all kept.) The Backend Systems Engineer (Low Latency) becomes live in the Hub (key lowlatency_eng)
+with its own section `/console/latency` (`static/console/lldesk.{html,js,css}`, page `#llPage`, prefix `llk-`) and its own chat
+(Conversation kind `lowlat`, `server/app/lowlatchat.py`, routes `/api/lldesk/*`, block `<lowlat_desk>`), on a NEW all-code engine
+`server/app/lldesk/` - no model, no money, nothing runs on her machines:
+
+- `latency.py` - raw samples (any unit), HdrHistogram percentile output, wrk / wrk2 distributions, or `p99: 1.2 ms` lines -> p50 / p90 /
+  p99 / p99.9 / p99.99 / max (nearest rank, as HdrHistogram reports), each marked when fewer than 10 samples stand beyond it; heavy tail,
+  single long stall, two groups of samples (modes), mean-vs-spread; wrk's closed loop named as coordinated omission, and the correction
+  done from her fixed send interval (HdrHistogram's recordValueWithExpectedInterval); 2-6 runs under `## name` headings compared, with a
+  seeded bootstrap interval of the p99 / p50 change (slower / faster / within the noise; no interval without 200+ raw samples a side).
+- `budget.py` - `stage` / `fanout` (waits for all N) / `hedge` / `target` lines; each stage a log-normal fitted to her p50 + p99, the path
+  sampled 20,000 times with a fixed seed (max of N via the inverse normal for big fan-outs); end-to-end percentiles, share of the median,
+  how much the tail drops if each stage always took its median (the biggest win), fan-out slow chance 1-0.99^N, what-ifs (halve the
+  fan-out, hedge a heavy-tailed call after its p95 at ~5% more load), the sum of p99s shown as the bound it is.
+- `hotpath.py` - C / C++, Rust, Go, Java detected; 45 rules (allocation, locks, logging, sleeps, std::endl, shared_ptr by value,
+  node containers, push_back without reserve, a syscall per message, defer in a loop, json reflection, boxing, regex compiles ...), loop
+  bodies found from the braces, strings and comments skipped; patterns, said as not measurements.
+- `layout.py` - C / C++ structs and Rust structs laid out on System V LP64 or Windows LLP64: offsets, padding, the cache lines each field
+  sits on, fields crossing a line, atomics sharing a line (false sharing, alignas(64) / 128 / CachePadded), the order with the least
+  padding, packed / alignas / bit-fields / std::atomic / std::array / Option, Rust without repr(C) said; libstdc++ sizes said as such.
+- `profile.py` - perf report --stdio (children or not), folded stacks, perf stat: self time by kind (allocation and GC, locks, page
+  faults, the scheduler, the network stack, copying, logging, serialisation, the kernel), top functions, IPC, cache / branch misses,
+  context switches, CPU migrations, page faults per second.
+- `tuning.py` - /proc/cmdline, sysctl, lscpu, governor, THP, ethtool -c / -g, irqbalance, tuned-adm, the clock source -> each setting
+  that adds latency with the line to change and its trade-off; what was not pasted listed as not seen.
+- `ci.py` - `.github/workflows/latency.yml`: base and head checked out, built, run interleaved N times on one runner (pinned to a CPU),
+  an embedded Python compare that fails the job when the head's percentile is over her tolerance and writes a job summary; commands with
+  `${{` or newlines refused; the results file emptied with `: >` (no removal command).
+- `service.py` - tables lldesk_items / lldesk_settings, kinds latency L / budget B / code H / layout S / profile P / tuning T.
+
+NEW tool `latency_desk` (`agent/lowlat_tools.py`, family lowlat, registry 709 -> 710; the 17 count pins moved). Wiring: tools.py,
+admit.py EXTRA_KEYS["lowlat"], santosh.py block + admission, main.py page + mount, db.py, the convs.py / callconv.py kind lists,
+v2.js `lldesk`, employees.js, hire.py (live, does / needs / never). Tests `server/tests/test_ll_desk.py` (4: engine, engine 2 incl.
+running the CI compare step on a 30%-slower head (fails) and the same code (passes), hire / chat / wiring / store / guards, a browser
+walk at 1440 and 390 with screenshots). NOT VERIFIED: on her server, with her own services and load tests, or the workflow on GitHub.

@@ -237,7 +237,7 @@ def test_hire_chat_wiring_store_and_guards(vtc):
     s_ = (root / "server/app/agent/santosh.py").read_text()
     assert "_vtc.is_virt(conversation_id)" in s_ and "adm.admit_families(_vtc.FAMILIES)" in s_
     for f_ in ("callconv.py", "convs.py"):
-        assert '"virt")' in (root / "server/app" / f_).read_text()
+        assert '"virt"' in (root / "server/app" / f_).read_text()
     from app.main import APP_VERSION, app
     r = TestClient(app).get("/console/virtualization")
     assert r.status_code == 200 and "Content-Security-Policy" in r.headers and "hvdesk.js" in r.text
