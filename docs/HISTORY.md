@@ -13687,3 +13687,33 @@ admit.py EXTRA_KEYS["lowlat"], santosh.py block + admission, main.py page + moun
 v2.js `lldesk`, employees.js, hire.py (live, does / needs / never). Tests `server/tests/test_ll_desk.py` (4: engine, engine 2 incl.
 running the CI compare step on a 30%-slower head (fails) and the same code (passes), hire / chat / wiring / store / guards, a browser
 walk at 1440 and 390 with screenshots). NOT VERIFIED: on her server, with her own services and load tests, or the workflow on GitHub.
+
+
+## v0.999.291 MAINFRAME DESK (owner: "Mainframe Modernization Architect same as finance desks")
+
+The Mainframe Modernization Architect gets its own section `/console/mainframe` and Mainframe chat (Conversation kind
+`mainframe`, `server/app/mainframechat.py`, routes `/api/mfdesk/*`), built like the finance desks, on a NEW all-code engine
+`server/app/mfdesk/` (no model call):
+
+- `cobol.py` - COBOL programs (fixed or free format, several in one paste): paragraphs in order with lines, PERFORM / GO TO,
+  paragraphs never reached, static and dynamic CALLs (the values the data name is given), COPY members, EXEC SQL tables, EXEC CICS,
+  SELECT / ASSIGN files and their FILE STATUS, decisions, packed fields, risks (ALTER, GO TO, COMPUTE without ROUNDED, two-digit years,
+  files without FILE STATUS).
+- `layout.py` - copybooks laid out the IBM Enterprise COBOL way (DISPLAY / COMP / COMP-3 / COMP-1/2, zoned signs, OCCURS, REDEFINES,
+  88 levels, groups), types for Java / SQL / Python, a CREATE TABLE (OCCURS as child tables), a Java record, a generated Python decoder,
+  and a sample record decoded from EBCDIC (cp037 / cp1140 / cp500 / cp273 / cp1047) or ASCII with bad packed bytes named.
+- `jcl.py` - jobs and steps, the real program under IKJEFT01 / IKJEFT1B (RUN PROGRAM / PLAN), utilities, datasets read / written /
+  deleted, data passed between steps, GDGs, sort cards, procedures, rerun risks (NEW,CATLG with no delete).
+- `inventory.py` - programs, copybooks and JCL under `## name` headings mapped into callers, waves (a program moves after what it calls),
+  call cycles, pieces referenced but not pasted, tables that move together, and a suggested approach per program with its reason.
+- `proof.py` - old vs new output (fixed-width through a copybook, CSV with a header, or lines) matched by key or order; differences
+  named as rounding, sign, truncation, spaces, zeros, low-values, case, decimals, or missing / added records; EBCDIC vs ASCII order.
+- `ci.py` - a GitHub Actions workflow that builds the new code, runs it on the saved input and fails a pull request whose output
+  differs from the saved old output (field by field through the copybook, with keys, ignored fields and a tolerance).
+- `service.py` - tables `mfdesk_items` / `mfdesk_settings` (P- / C- / J- / I- / D- numbers), settings (encoding, target language, keys,
+  run / build commands, golden path, CI copybook).
+
+NEW tool `mainframe_desk` (`agent/mainframe_tools.py`, family `mainframe`, registry 711). Pages: Today, Programs, Data layouts,
+Batch, Map and plan, Proof, CI check, Settings (`static/console/mfdesk.{html,js,css}`). Hire key `mainframe_arch` (live). Nothing
+is run on her mainframe or servers; what she pastes is data, never instructions. Tests `server/tests/test_mf_desk.py` (4, incl. a
+Chromium walk at 1440 and 390). NOT VERIFIED: on her server, with her own sources, or the workflow on GitHub.

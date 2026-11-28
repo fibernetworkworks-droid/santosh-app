@@ -1272,6 +1272,10 @@ from .lowlat_tools import LOWLAT_HANDLERS, LOWLAT_LABELS, LOWLAT_TOOLS  # noqa: 
 TOOLS.extend(LOWLAT_TOOLS)
 TOOL_LABELS.update(LOWLAT_LABELS)
 HANDLERS.update(LOWLAT_HANDLERS)
+from .mainframe_tools import MAINFRAME_HANDLERS, MAINFRAME_LABELS, MAINFRAME_TOOLS  # noqa: E402
+TOOLS.extend(MAINFRAME_TOOLS)
+TOOL_LABELS.update(MAINFRAME_LABELS)
+HANDLERS.update(MAINFRAME_HANDLERS)
 # v0.357 Engineering Desk: the hired CAD Engineer (cad_part)
 from .eng_tools import ENG_HANDLERS, ENG_LABELS, ENG_TOOLS  # noqa: E402
 

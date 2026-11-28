@@ -242,7 +242,7 @@ def test_hire_chat_wiring_store_and_guards(llc):
     s_ = (root / "server/app/agent/santosh.py").read_text()
     assert "_llc.is_lowlat(conversation_id)" in s_ and "adm.admit_families(_llc.FAMILIES)" in s_
     for f_ in ("callconv.py", "convs.py"):
-        assert '"lowlat")' in (root / "server/app" / f_).read_text()
+        assert '"lowlat"' in (root / "server/app" / f_).read_text()
     from app.main import APP_VERSION, app
     r = TestClient(app).get("/console/latency")
     assert r.status_code == 200 and "Content-Security-Policy" in r.headers and "lldesk.js" in r.text

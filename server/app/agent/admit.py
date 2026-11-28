@@ -236,6 +236,11 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                "cache-line", "struct layout", "struct padding", "lock-free", "lock free", "wait-free", "spsc", "ring buffer", "busy poll",
                "busy-poll", "isolcpus", "nohz_full", "kernel bypass", "dpdk", "io_uring", "perf report", "perf stat", "flame graph",
                "flamegraph", "hot path", "hot loop", "microbenchmark", "micro-benchmark", "c-state", "cstate", "interrupt coalescing"),
+    # v0.999.291 the Mainframe Modernization Architect: her mainframe words
+    "mainframe": ("mainframe", "cobol", "copybook", "jcl", "z/os", "zos", "cics", "db2", "vsam", "ims db", "ebcdic", "packed decimal",
+                  "comp-3", "picture clause", "pic x", "pic 9", "procedure division", "working-storage", "ikjeft01", "iefbr14", "dfsort",
+                  "gdg", "legacy modernization", "modernise the mainframe", "modernize the mainframe", "mainframe migration", "rehost",
+                  "migration wave", "golden file", "side by side proof"),
     # v0.999.283 the Distributed Systems Engineer: her distributed-systems words
     "dist": ("distributed system", "linearizab", "linearisab", "jepsen", "quorum", "consensus", "raft", "paxos", "split brain", "split-brain",
              "exponential backoff", "retry policy", "retry storm", "thundering herd", "idempotency", "idempotent", "failover", "fencing token",
