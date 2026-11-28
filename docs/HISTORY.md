@@ -14071,3 +14071,7 @@ Tests: `server/tests/test_v0999_306_dod.py` now 10 (+ the config a real Gateway 
 
 NOT VERIFIED: on her VPS with a real model and real OpenRouter keys; whether her VPS lets a container reach
 172.18.0.1:8077 (set DOD_HOOLA_URL if not); a real website through the coworker's browser (this sandbox's network blocks it).
+
+
+## v0.999.309 BRING YOUR OLD ASSISTANT
+(owner: 'NOW WORK ON IT' on item 5 of the Hermes / OpenClaw comparison). Files: server/app/migrate.py (new), db.py (init_db registers migrate), main.py (4 routes), static/console/v2.js + v2.css (Memory > Bring from another assistant), lib/api.dart (memoryImportPreview / Apply / imports / Undo), lib/ui/memory_page_screen.dart (the card). Tests: test_v0999_309_bring_old_assistant.py (6). NOT VERIFIED with real exports from real accounts.
