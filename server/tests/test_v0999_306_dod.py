@@ -171,7 +171,7 @@ def test_a_whole_task_with_her_yes(dod, monkeypatch, tmp_path):
         assert c.post(f"/api/dod/tasks/{tid}/answer", json={"id": q["id"], "hash": q["hash"], "choice": "yes"}).status_code == 409
         # what OpenClaw was sent: Hoola's tools, the rules, one session per task, continuation by response id
         b0 = claw.bodies[0]
-        assert {x["name"] for x in b0["tools"]} == {"hoola_step", "hoola_ask", "hoola_deliver", "hoola_done"}
+        assert {x["name"] for x in b0["tools"]} == {"hoola_step", "hoola_ask", "hoola_deliver", "hoola_done", "hoola_check"}  # v0.999.334 + hoola_check
         assert "Ananya" in b0["instructions"] and "Never type card numbers" in b0["instructions"] and b0["stream"] is True
         assert claw.headers[0]["x-openclaw-session-key"] == f"hoola-dod-{tid}" and claw.headers[0]["authorization"].startswith("Bearer ")
         assert claw.bodies[1]["previous_response_id"] == "resp_1"

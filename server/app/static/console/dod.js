@@ -94,11 +94,12 @@
   }
   const STATUS = {
     queued: ['live', 'Starting'], working: ['live', 'Working'], needs_you: ['warn', 'Needs your OK'],
+    checking: ['live', 'Checking'], review: ['warn', 'To review'],
     done: ['ok', 'Done'], failed: ['bad', 'Did not finish'], stopped: ['mute', 'Stopped'],
   };
   function tag(st) {
     const [c, w] = STATUS[st] || ['mute', st];
-    const live = (st === 'working' || st === 'queued') ? ' dd-live' : '';
+    const live = (st === 'working' || st === 'queued' || st === 'checking') ? ' dd-live' : '';
     return `<span class="dd-tag ${c}${live}">${live ? '<span class="dd-dot"></span>' : ''}${esc(w)}</span>`;
   }
   function ring(src, px, on, alt) {
@@ -140,13 +141,52 @@
     const e = ext(f.name);
     return `<button type="button" class="dd-file" data-file="${esc(f.name)}" data-task="${esc(t.id)}"><span class="dd-ft ${esc(e)}">${esc(e.toUpperCase() || 'FILE')}</span><div style="min-width:0"><b>${esc(f.title || f.name)}</b><small>${esc(f.name)} · ${size(f.size || 0)}</small></div></button>`;
   }
+  // v0.999.334 "done" means checked: what Hoola's own checks found
+  const VERDICT = {
+    passed: ['ok', 'Checked: passed', 'Hoola ran the checks itself and they passed.'],
+    failed: ['bad', 'A check failed', 'Hoola ran the checks itself and one failed. Look at it, then send it back or say it is good.'],
+    needs_you: ['warn', 'Needs you', 'A check waits for your OK, or a part of your request is not met.'],
+    not_checked: ['mute', 'Done, not checked', 'Nothing Hoola could run shows it is done. Add a check, or look at it yourself.'],
+  };
+  const CK_STATE = {passed: ['ok', 'Passed'], failed: ['bad', 'Failed'], error: ['warn', "Couldn't run"],
+    needs_approval: ['warn', 'Waiting for your OK'], declined: ['mute', 'Declined'], pending: ['mute', 'Runs when it is done']};
+  const PART = {passed: ['ok', 'Passed'], not_met: ['bad', 'Not met'], no_check: ['mute', 'No check']};
+  function checksBox(t) {
+    const v = VERDICT[t.verdict];
+    const rv = t.review || {};
+    const head = v ? `<div class="dd-verdict ${v[0]}"><b>${esc(v[1])}</b><span>${esc(v[2])}</span></div>`
+      : `<div class="dd-quiet" style="padding:0 0 6px">When ${esc(NAME())} says it is done, Hoola runs these checks itself. ${esc(NAME())}'s word is not the proof.</div>`;
+    const parts = (rv.parts || []).length ? `<div class="dd-ck-h">Your request, part by part${rv.model ? ` <small>· a second look by another AI</small>` : ''}</div>${rv.parts.map(p => {
+      const [c, w] = PART[p.result] || PART.no_check;
+      return `<div class="dd-ck"><span class="dd-tag ${c}">${esc(w)}</span><div class="t"><b>${esc(p.part)}</b>${p.why ? `<small>${esc(p.why)}</small>` : ''}</div></div>`;
+    }).join('')}` : '';
+    const list = (t.checks || []).map(c => {
+      const [cl, w] = CK_STATE[c.status] || CK_STATE.pending;
+      const who = c.by === 'you' ? 'Yours' : `${NAME()} suggested`;
+      const ask = c.status === 'needs_approval' ? `<div class="dd-ck-act"><button class="dd-btn s ink" type="button" data-ck="approve" data-cid="${esc(c.id)}">Approve</button><button class="dd-btn s" type="button" data-ck="decline" data-cid="${esc(c.id)}">Decline</button></div>` : '';
+      return `<div class="dd-ck"><span class="dd-tag ${cl}">${esc(w)}</span><div class="t"><b>${esc(c.what)}</b><small>${esc(c.label)} · ${esc(who)}${c.why ? ' · ' + esc(c.why) : ''}</small>${c.result ? `<pre class="dd-ck-out">${esc(c.result)}</pre>` : ''}${ask}</div></div>`;
+    }).join('');
+    const cant = (rv.couldnt || []).length ? `<div class="dd-ck-h">Couldn't check</div><ul class="dd-cant">${rv.couldnt.map(x => `<li><b>${esc(x.what)}</b> ${esc(x.why)}</li>`).join('')}</ul>` : '';
+    const acts = t.status === 'review' ? `<div class="dd-ck-review"><button class="dd-btn ink" type="button" data-rv="accept">Looks good</button>
+      <form class="dd-ck-back" id="backForm"><input id="backText" aria-label="What is missing or wrong" placeholder="What is missing or wrong?"><button class="dd-btn" type="submit">Send back</button></form></div>` : '';
+    const again = (t.status === 'review' || t.status === 'done') && (t.checks || []).length ? `<button type="button" class="dd-lnk" data-rv="recheck">Check again</button>` : '';
+    return `${head}${acts}${parts}<div class="dd-ck-h">Checks ${again}</div>${list || `<div class="dd-quiet" style="padding:4px 0">No checks yet.</div>`}${cant}
+      <details class="dd-ck-add"><summary>Add a check</summary><form id="ckForm">
+        <select id="ckKind" aria-label="Kind of check"><option value="file_exists">A file is there</option><option value="file_contains">A file contains words</option><option value="web">A web address answers</option><option value="page">Its page shows words</option><option value="command">A command runs without an error</option></select>
+        <input id="ckPath" placeholder="File name, like report.pdf" aria-label="File name">
+        <input id="ckUrl" placeholder="https://…" aria-label="Web address" hidden>
+        <input id="ckText" placeholder="Words that must be there" aria-label="Words" hidden>
+        <input id="ckCmd" placeholder="Command, like python test.py" aria-label="Command" hidden>
+        <button class="dd-btn s ink" type="submit">Add</button></form></details>`;
+  }
   function taskCard(t) {
     const steps = t.steps || [];
     const now = [...steps].reverse().find(s => s.state === 'now');
     const done = steps.filter(s => !s.you).slice(-3);
-    const timeLine = t.status === 'needs_you' ? 'Waiting for you' : (t.started_at ? dur(t.started_at) : 'Starting');
+    const timeLine = t.status === 'needs_you' || t.status === 'review' ? 'Waiting for you' : (t.started_at ? dur(t.started_at) : 'Starting');
     let body = '';
     if (t.status === 'needs_you') body = done.map(s => stepRow(s, t.started_at)).join('') + questionBox(t);
+    else if (t.status === 'review') body = `<div class="dd-q"><div class="what"><span class="qt">${esc(VERDICT[t.verdict] ? VERDICT[t.verdict][1] : 'Finished')}</span><div>${esc(VERDICT[t.verdict] ? VERDICT[t.verdict][2] : '')}</div></div><a class="dd-btn ink" href="#/t/${enc(t.id)}">Look at it</a></div>`;
     else if (now) body = stepRow(now, t.started_at);
     else body = `<div class="dd-step"><span class="dd-sm now"></span><div class="t"><span class="dd-shimmer">${esc(NAME())} is getting ready</span></div><span></span></div>`;
     const files = (t.files || []).slice(-1).map(f => fileCard(t, f)).join('');
@@ -330,8 +370,8 @@
   async function drawHomeLists() {
     await loadTasks('');
     const s = ST.summary || {};
-    const open = TASKS.filter(t => ['queued', 'working', 'needs_you'].includes(t.status))
-      .sort((a, b) => (b.status === 'needs_you') - (a.status === 'needs_you'));
+    const open = TASKS.filter(t => ['queued', 'working', 'needs_you', 'checking', 'review'].includes(t.status))
+      .sort((a, b) => (['needs_you', 'review'].includes(b.status)) - (['needs_you', 'review'].includes(a.status)));
     const today = new Date().toDateString();
     const done = TASKS.filter(t => t.status === 'done' && t.ended_at && new Date(t.ended_at).toDateString() === today);
     const hs = $('#heroState');
@@ -339,6 +379,7 @@
       const bits = [];
       if (s.working) bits.push(`${s.working} task${s.working > 1 ? 's' : ''}`);
       if (s.needs_you) bits.push(`${s.needs_you} need${s.needs_you > 1 ? '' : 's'} your OK`);
+      if (s.to_review) bits.push(`${s.to_review} to review`);
       hs.innerHTML = bits.length ? `<div class="dd-state dd-live"><span class="dd-dot"></span>Working now · ${esc(bits.join(' · '))}</div>`
         : `<div class="dd-state idle">Ready for work</div>`;
     }
@@ -346,7 +387,7 @@
     if (ol) ol.innerHTML = open.length ? open.slice(0, 6).map(taskCard).join('')
       : `<div class="dd-card dd-quiet">Nothing running. Give ${esc(NAME())} a task above.</div>`;
     const dl = $('#doneList');
-    if (dl) dl.innerHTML = done.length ? done.slice(0, 5).map(t => `<a class="it" href="#/t/${enc(t.id)}"><span class="dd-tag ok" style="flex:none">Done</span><div style="min-width:0"><b>${esc(t.title)}</b><small>${esc(dur(t.started_at, t.ended_at))}${(t.files || []).length ? ' · ' + t.files.length + ' file' + (t.files.length > 1 ? 's' : '') : ''}</small></div></a>`).join('')
+    if (dl) dl.innerHTML = done.length ? done.slice(0, 5).map(t => `<a class="it" href="#/t/${enc(t.id)}"><span class="dd-tag ${t.verdict === 'passed' ? 'ok' : 'mute'}" style="flex:none">${t.verdict === 'passed' ? 'Checked' : 'Done'}</span><div style="min-width:0"><b>${esc(t.title)}</b><small>${esc(dur(t.started_at, t.ended_at))}${(t.files || []).length ? ' · ' + t.files.length + ' file' + (t.files.length > 1 ? 's' : '') : ''}</small></div></a>`).join('')
       : `<div class="dd-quiet" style="padding:14px">Finished work shows here.</div>`;
     const st = $('#stats');
     if (st) st.innerHTML = `<div><span>Tasks done</span><b>${s.done_week || 0}</b></div><div><span>Hours worked</span><b>${s.hours_week || 0}</b></div>
@@ -406,7 +447,7 @@
       <div class="dd-thead"><h1 id="tTitle"></h1><div id="tHead" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"></div></div>
       <div class="dd-tcols"><div style="display:flex;flex-direction:column;gap:18px;min-width:0">
         <div id="tQ"></div><section class="dd-card dd-tl" aria-label="Steps"><div class="dd-sect"><h2>Steps</h2><small id="tClock" style="color:var(--lab)"></small></div><div id="tSteps"></div></section>
-        <div id="tThink"></div><div id="tReply"></div>
+        <div id="tThink"></div><div id="tReply"></div><section class="dd-card dd-checks" id="tChecks" aria-label="Checks"></section>
         <form class="dd-card dd-steer" id="steer" aria-label="Tell ${esc(NAME())} something"><textarea id="steerText" rows="1" placeholder="Tell ${esc(NAME())} something while they work…"></textarea><button class="dd-send" type="submit" aria-label="Send">${IC.up}</button></form>
       </div><aside style="display:flex;flex-direction:column;gap:18px">
         <section id="tScreenBox"><div class="dd-sect"><h2>Screen</h2><button type="button" class="dd-lnk" id="watchBtn">Watch the screen</button></div>
@@ -423,7 +464,46 @@
       try { await api('POST', `/api/dod/tasks/${enc(id)}/note`, {text}); ta.value = ''; ta.style.height = 'auto'; toast(`${NAME()} will read it at the next step.`); await draw(); }
       catch (ex) { toast(ex.message); }
     });
-    let lastQ = '', SAY = {q: '', r: ''};
+    let lastQ = '', lastCk = '', SAY = {q: '', r: ''};
+    function ckFields() {
+      const k = $('#ckKind'); if (!k) return;
+      const v = k.value;
+      $('#ckPath').hidden = !(v === 'file_exists' || v === 'file_contains');
+      $('#ckUrl').hidden = v !== 'web';
+      $('#ckText').hidden = !(v === 'file_contains' || v === 'page' || v === 'web');
+      $('#ckText').placeholder = v === 'web' ? 'Words on it (optional)' : 'Words that must be there';
+      $('#ckCmd').hidden = v !== 'command';
+    }
+    main.addEventListener('change', function onCk(e) { if (gen !== GEN) { main.removeEventListener('change', onCk); return; } if (e.target.id === 'ckKind') ckFields(); });
+    main.addEventListener('submit', async function onCkForm(e) {
+      if (gen !== GEN) { main.removeEventListener('submit', onCkForm); return; }
+      if (e.target.id === 'ckForm') {
+        e.preventDefault();
+        const kind = $('#ckKind').value, spec = {kind};
+        if (!$('#ckPath').hidden) spec.path = $('#ckPath').value.trim();
+        if (!$('#ckUrl').hidden) spec.url = $('#ckUrl').value.trim();
+        if (!$('#ckText').hidden && $('#ckText').value.trim()) spec.text = $('#ckText').value.trim();
+        if (!$('#ckCmd').hidden) spec.command = $('#ckCmd').value.trim();
+        try { await api('POST', `/api/dod/tasks/${enc(id)}/checks`, spec); toast('Check added.'); lastCk = ''; document.activeElement.blur(); await draw(); }
+        catch (ex) { toast(ex.message); }
+      } else if (e.target.id === 'backForm') {
+        e.preventDefault();
+        const note = $('#backText').value.trim(); if (!note) { toast('Say what is missing or wrong.'); return; }
+        try { await api('POST', `/api/dod/tasks/${enc(id)}/sendback`, {note}); toast(`Sent back to ${NAME()}.`); lastCk = ''; document.activeElement.blur(); await draw(); poll(draw, 2000); }
+        catch (ex) { toast(ex.message); }
+      }
+    });
+    main.addEventListener('click', async function onCkClick(e) {
+      if (gen !== GEN) { main.removeEventListener('click', onCkClick); return; }
+      const b = e.target.closest('[data-ck],[data-rv]'); if (!b) return;
+      b.disabled = true;
+      try {
+        if (b.dataset.ck) await api('POST', `/api/dod/tasks/${enc(id)}/checks/${enc(b.dataset.cid)}/${b.dataset.ck}`);
+        else if (b.dataset.rv === 'accept') { await api('POST', `/api/dod/tasks/${enc(id)}/accept`); toast('Marked as good.'); }
+        else if (b.dataset.rv === 'recheck') { toast('Checking again…'); await api('POST', `/api/dod/tasks/${enc(id)}/recheck`); }
+        lastCk = ''; await draw();
+      } catch (ex) { toast(ex.message); b.disabled = false; }
+    });
     main.addEventListener('click', function onSay(e) {
       if (gen !== GEN) { main.removeEventListener('click', onSay); return; }
       const b = e.target.closest('[data-say]'); if (b && SAY[b.dataset.say]) speak(SAY[b.dataset.say]);
@@ -432,7 +512,7 @@
       const {task: t} = await api('GET', `/api/dod/tasks/${enc(id)}`);
       if (gen !== GEN) return;
       $('#tTitle').textContent = t.title;
-      const open = ['queued', 'working', 'needs_you'].includes(t.status);
+      const open = ['queued', 'working', 'needs_you', 'checking'].includes(t.status);
       $('#tHead').innerHTML = tag(t.status) + (open ? `<button class="dd-btn s bad" type="button" id="stopBtn">Stop</button>` : `<a class="dd-btn s" href="#/">Give another task</a>`);
       $('#tClock').textContent = t.started_at ? (open ? 'Working for ' : 'Took ') + dur(t.started_at, open ? null : t.ended_at) : '';
       const qKey = t.question ? t.question.id : '';
@@ -443,6 +523,11 @@
       $('#tReply').innerHTML = t.reply ? `<div class="dd-card dd-reply">${esc(t.reply)}<div><button type="button" class="dd-lnk" data-say="r">${IC.play}Read aloud</button></div></div>` : (t.error ? `<div class="dd-banner">${esc(t.error)}</div>` : '');
       $('#tFiles').innerHTML = (t.files || []).length ? t.files.map(f => fileCard(t, f)).join('') : `<div class="dd-card dd-quiet" style="padding:14px">Files ${esc(NAME())} makes show here.</div>`;
       $('#tAsk').textContent = t.ask;
+      const ckKey = JSON.stringify([t.status, t.verdict, t.checks, t.review]);
+      if (ckKey !== lastCk && !(document.activeElement && document.activeElement.closest && document.activeElement.closest('#tChecks'))) {
+        lastCk = ckKey; const keepOpen = $('#tChecks .dd-ck-add') && $('#tChecks .dd-ck-add').open;
+        $('#tChecks').innerHTML = checksBox(t); if (keepOpen) $('#tChecks .dd-ck-add').open = true; ckFields();
+      }
       $('#steer').hidden = !open;
       $('#tScreenBox').hidden = !open;
       if (!open) { clearInterval(POLL); stopWatch(); }

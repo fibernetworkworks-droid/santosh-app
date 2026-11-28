@@ -14754,3 +14754,37 @@ FOUND WHILE BUILDING: archify requires meta.output and, for repository evidence,
 TESTS: test_v0999_333_diagram_d4.py 12 - built kinds as versioned cards without the tenant on them; refused until the files are read (no files, unread files, unread archify sources, paths outside the copy); a login-flow diagram becomes a checked card linked to its files with archify's source check, no chat page, nothing written to the repo, update = version 2, another session cannot read it; a cited line not in the file is sent back; Code Analysis on a fixture repo finds the planted auth <-> db cycle, re-run = version 2, scope outside refused, scratch cleaned, no server paths on the page; the PR walkthrough lists exactly the changed files and HEAD / index / status stay as they were; the snapshot commit is not on her branch; language picking + missing toolchains said; an editable diagram stays in the session and her edit becomes its version 2; the loop offers the tool; web + phone wiring; a real-browser walk of the web rail card -> full-screen viewer -> Edit by hand. Nearby suites (D1-D3, make, Hoola Code shell / review / engine / composer, devsahayak, routines): green except two old version pins and the D1 setting check under a test env var.
 
 NOT VERIFIED: not deployed on her VPS (deploy, then vps-ops diagram_setup for node). A full scripted Hoola Code round with the diagram tool was not run here (no Docker); the tool itself was driven on a real working copy. No real model has drawn a code diagram yet. Next: D5 on her word.
+
+
+## v0.999.334 HOOLA DOD, DONE MEANS CHECKED
+
+Owner, after the kwant read (AGPL-3.0, ideas only, zero code copied): '"Done" means checked. A task is Verified only when
+kwant itself runs a check ... DOD today trusts the coworker when it calls hoola_done. ---- work on it'.
+
+- **Hoola checks, not the coworker.** After `hoola_done` (or a final answer with no tool call) the task goes to
+  `checking`: `dod/checks.py` runs every approved check itself.
+  - `file_exists` / `file_contains`: Hoola's own copy taken at hand-over (the coworker cannot change it afterwards), else
+    the workspace; text from .txt / .csv / PDF / Word / Excel / PowerPoint.
+  - `web`: a public address answers (status, optional words); the house guard on every redirect hop.
+  - `page`: words on the page its browser has open for this task (`gateway.page_text`, OpenClaw's browser `text`, a read).
+  - `command`: a fresh box from her coworker's own image, the workspace mounted READ-ONLY, `--network none`,
+    `--read-only`, 512 MB, 1 CPU, 256 processes, no-new-privileges, 120 s (`dod_check_command_s`); a box past its time is
+    removed (`docker rm -f`). Exit 0 = passed.
+- **Who adds checks.** She does (with the task: `checks` on POST /api/dod/tasks, or later on the task page) and hers count
+  at once. The coworker may suggest one with the new client tool `hoola_check`; it waits for her Approve / Decline, so it
+  can never verify its own work. A check outside the workspace is refused.
+- **A second look.** A reviewer on another company's model (`dod_review_model`, else GLM-5.3 / Qwen 27B / DeepSeek, never the
+  coworker's company) reads her request, the coworker's claim, its steps, its files and the check results, and answers part
+  by part: Passed / Not met / No check. It can stop a Pass (Not met), never make one. No OpenRouter key = said in Couldn't check.
+- **Verdict.** failed (an approved check failed) > needs_you (a check waits for her, or a part is not met) > passed (at
+  least one check Hoola ran passed) > not_checked. Plus a Couldn't check list, each with its reason.
+- **What happens.** failed: the work goes back to the coworker with what failed (up to `dod_check_rounds` 2), then
+  **To review**. needs_you: To review. passed: Done ("Checked"). not_checked: Done, said plainly ("Done, not checked").
+  To review = Looks good (done, her OK written down, the verdict kept), Send back with her words (continues from its done
+  call, checks run again), Check again, Add a check. Status `checking` is open (Stop works), `review` shows under Needs you.
+- Files: `dod/checks.py` (new), `dod/service.py` (`hoola_check`, rule 8, `_checked_finish`, `recheck`, `add_check`,
+  `decide_check`, `accept`, `send_back`, view + summary), `dod/api.py` (6 routes), `dod/models.py` (checks / verdict /
+  review columns, self-healed), `dod/gateway.py` (`page_text`), `config.py` (4 settings), `static/console/dod.js` + `dod.css`
+  (Checks section, To review). Tests `test_v0999_334_dod_checked.py` 7 incl. a browser walk at 1440 and 390.
+- NOT VERIFIED: the page check (OpenClaw browser `text`) and the command box were not run on the real OpenClaw image;
+  no real reviewer model has answered; not run on her server (DOD is still switched off there).

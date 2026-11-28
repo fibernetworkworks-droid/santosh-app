@@ -503,6 +503,32 @@ async def screenshot(tenant: str, session_key: str) -> bytes | None:
     return None
 
 
+async def page_text(tenant: str, session_key: str) -> str | None:
+    """v0.999.334 the text of the page its browser has open for this task (OpenClaw's browser tool, action text - a
+    read). For a check 'its page shows ...'. None when its computer is off or no page is open. Never wakes it."""
+    g = _row(tenant)
+    if g.state != "awake" or not g.port or not g.token_enc:
+        return None
+    from ..bazar.security import vault
+    token = vault().open(g.token_enc)
+    args: dict[str, Any] = {"maxChars": 40000}
+    target = view_of(session_key).get("target")
+    if target:
+        args["targetId"] = target
+    try:
+        async with httpx.AsyncClient(transport=TRANSPORT, timeout=30) as c:
+            r = await c.post(f"http://127.0.0.1:{g.port}/tools/invoke", headers={"Authorization": f"Bearer {token}"},
+                             json={"tool": "browser", "action": "text", "args": args, "sessionKey": session_key})
+        if r.status_code != 200:
+            return None
+        res = (r.json() or {}).get("result") or {}
+        parts = [p.get("text", "") for p in (res.get("content") or []) if isinstance(p, dict) and p.get("type") == "text"]
+        text = "\n".join(parts).strip()
+        return text or None
+    except Exception:  # noqa: BLE001 - no page is a fine answer
+        return None
+
+
 # ------------------------------------------------------------------------------------------------ her hands on its browser
 # v0.999.332 when a page needs HER (her sign-in, a CAPTCHA, a one-time code) the coworker asks (hoola_ask kind=browser)
 # and waits; she takes over its browser from the Hoola DOD page: what she clicks on the live picture and what she types

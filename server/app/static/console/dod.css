@@ -211,6 +211,32 @@ button{font:inherit;color:inherit}
 
 .dd-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--pill);color:var(--onpill);padding:11px 18px;border-radius:12px;font-size:13.5px;box-shadow:var(--shadow);z-index:50;max-width:90vw}
 
+/* v0.999.334 "done" means checked */
+.dd-checks{padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.dd-checks:empty{display:none}
+.dd-verdict{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:12px;background:var(--soft)}
+.dd-verdict b{font-size:15px}
+.dd-verdict span{font-size:13px;color:var(--mut)}
+.dd-verdict.ok{background:var(--okbg)}.dd-verdict.ok b{color:var(--ok)}
+.dd-verdict.bad{background:var(--badbg)}.dd-verdict.bad b{color:var(--bad)}
+.dd-verdict.warn{background:var(--warnbg)}.dd-verdict.warn b{color:var(--warn)}
+.dd-ck-h{font-size:12px;font-weight:600;color:var(--lab);text-transform:uppercase;letter-spacing:.06em;margin-top:6px;display:flex;align-items:center;gap:10px}
+.dd-ck-h small{text-transform:none;letter-spacing:0;font-weight:500}
+.dd-ck{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start;padding:8px 0;border-top:1px solid var(--line)}
+.dd-ck .dd-tag{white-space:nowrap}
+.dd-ck .t b{display:block;font-size:13.5px;font-weight:550;overflow-wrap:anywhere}
+.dd-ck .t small{display:block;color:var(--mut);font-size:12.5px;overflow-wrap:anywhere}
+.dd-ck-out{margin:6px 0 0;padding:8px 10px;border-radius:8px;background:var(--soft);font:12px/1.45 ui-monospace,Menlo,monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:160px;overflow:auto}
+.dd-ck-act{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.dd-cant{margin:0;padding-left:18px;color:var(--mut);font-size:13px;display:flex;flex-direction:column;gap:4px}
+.dd-cant b{color:var(--ink);font-weight:550}
+.dd-ck-review{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.dd-ck-back{display:flex;gap:8px;flex:1;min-width:240px}
+.dd-ck-back input,.dd-ck-add input,.dd-ck-add select{height:36px;border-radius:10px;border:1px solid var(--line2);background:var(--card);color:var(--ink);font:inherit;font-size:13.5px;padding:0 10px;min-width:0}
+.dd-ck-back input{flex:1}
+.dd-ck-add summary{cursor:pointer;font-size:13.5px;font-weight:550;color:var(--acct)}
+.dd-ck-add form{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.dd-ck-add form input{flex:1 1 180px}
 /* v0.999.332 her hands on its browser: the Take control window */
 .dd-ctl{position:fixed;inset:0;z-index:60;background:rgba(10,10,9,.55);display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .dd-ctl-in{width:min(1100px,100%);max-height:100%;overflow:auto;background:var(--card);border-radius:20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px;padding:16px}

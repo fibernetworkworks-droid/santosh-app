@@ -53,7 +53,8 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.post("/tasks", dependencies=auth)
     async def new_task(body: dict = Body(...), tenant: str = Depends(current_tenant)) -> dict[str, Any]:
         try:
-            return {"task": S.create(tenant, str(body.get("ask") or ""), str(body.get("kind") or "task"))}
+            checks = body.get("checks") if isinstance(body.get("checks"), list) else None
+            return {"task": S.create(tenant, str(body.get("ask") or ""), str(body.get("kind") or "task"), checks)}
         except ValueError as e:
             raise HTTPException(400, str(e)) from e
 
@@ -103,6 +104,40 @@ def make_router(require_key, current_tenant) -> APIRouter:
         if not img:
             raise HTTPException(404, "No page open right now.")
         return Response(img, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+    # ---------------------------------------------------------------- v0.999.334 "done" means checked
+    async def _aguard(coro):
+        try:
+            return await coro
+        except KeyError as e:
+            raise HTTPException(404, "No such task.") from e
+        except ValueError as e:
+            raise HTTPException(409, str(e)) from e
+
+    @r.post("/tasks/{task_id}/checks", dependencies=auth)
+    async def task_add_check(task_id: str, body: dict = Body(...), tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        """HER check (a file, text in a file, a web address, text on its page, a command): it counts at once."""
+        return {"task": await _aguard(S.add_check(tenant, task_id, body if isinstance(body, dict) else {}))}
+
+    @r.post("/tasks/{task_id}/checks/{check_id}/approve", dependencies=auth)
+    async def task_check_yes(task_id: str, check_id: str, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"task": await _aguard(S.decide_check(tenant, task_id, check_id, True))}
+
+    @r.post("/tasks/{task_id}/checks/{check_id}/decline", dependencies=auth)
+    async def task_check_no(task_id: str, check_id: str, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"task": await _aguard(S.decide_check(tenant, task_id, check_id, False))}
+
+    @r.post("/tasks/{task_id}/recheck", dependencies=auth)
+    async def task_recheck(task_id: str, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"task": await _aguard(S.recheck(tenant, task_id))}
+
+    @r.post("/tasks/{task_id}/accept", dependencies=auth)
+    def task_accept(task_id: str, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"task": _guard(S.accept, tenant, task_id)}
+
+    @r.post("/tasks/{task_id}/sendback", dependencies=auth)
+    async def task_sendback(task_id: str, body: dict = Body(...), tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"task": _guard(S.send_back, tenant, task_id, str((body or {}).get("note") or ""))}
 
     @r.post("/tasks/{task_id}/control", dependencies=auth)
     async def task_control(task_id: str, body: dict = Body(...), tenant: str = Depends(current_tenant)) -> dict[str, Any]:

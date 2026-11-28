@@ -25,6 +25,7 @@ from typing import Any
 
 from .. import db
 from ..config import get_settings
+from . import checks as CK
 from . import gateway as GW
 from .looks import known
 from .models import DodProfile, DodTask, ensure_tables
@@ -33,7 +34,7 @@ log = logging.getLogger("hoola.dod")
 
 KINDS = ("task", "browser", "code", "long")
 ASK_KINDS = ("pay", "send", "delete", "book", "choice", "info", "browser")   # browser: v0.999.332 she takes over its page
-OPEN = ("queued", "working", "needs_you")
+OPEN = ("queued", "working", "needs_you", "checking")   # checking: v0.999.334 Hoola checks its work
 _RUNS: dict[str, asyncio.Task] = {}
 _WAKE: dict[str, asyncio.Event] = {}
 _RECOVERED = False
@@ -65,6 +66,18 @@ TOOLS: list[dict[str, Any]] = [
      "parameters": {"type": "object", "properties": {
          "path": {"type": "string", "description": "Path inside your workspace"},
          "title": {"type": "string"}}, "required": ["path"]}},
+    {"type": "function", "name": "hoola_check",
+     "description": "Suggest ONE check that proves part of the work is really done (v0.999.334). Hoola runs it itself after "
+                    "hoola_done - your word is never the proof. Your own checks run only after your owner approves them. "
+                    "kind: file_exists (path), file_contains (path, text), web (url, optional text / status), "
+                    "page (text on the page your browser has open), command (a command run on your workspace read-only, "
+                    "no network; exit 0 = passed).",
+     "parameters": {"type": "object", "properties": {
+         "kind": {"type": "string", "enum": list(CK.KINDS)},
+         "path": {"type": "string"}, "text": {"type": "string"}, "url": {"type": "string"},
+         "code": {"type": "integer", "description": "web: the answer code expected, e.g. 200"}, "command": {"type": "string"},
+         "why": {"type": "string", "description": "Which part of her request it proves"}},
+         "required": ["kind", "why"]}},
     {"type": "function", "name": "hoola_done",
      "description": "The work is finished. Give the result in 2-4 short lines with the real figures.",
      "parameters": {"type": "object", "properties": {"summary": {"type": "string"}}, "required": ["summary"]}},
@@ -86,6 +99,8 @@ def instructions(name: str, kind: str) -> str:
         "(6) When finished call hoola_done with the result and real figures; never say done before it is done. "
         "(7) When a website needs her sign-in, a CAPTCHA or a one-time code, call hoola_ask kind=browser naming the site "
         "and leave the page open; never try to get past it yourself. Her sign-ins stay in your browser for later tasks. "
+        "(8) Hoola checks your work itself after hoola_done; if a check fails you get the work back. You may suggest "
+        "checks with hoola_check; they run only after she approves them. "
         + hint
     )
 
@@ -113,7 +128,21 @@ def view(t: DodTask) -> dict[str, Any]:
                                                  for f in _j(t.files, [])],
             "question": _j(t.question, None), "reply": t.reply, "thought": t.thought, "error": t.error,
             "rounds": t.rounds, "created_at": _iso(t.created_at), "started_at": _iso(t.started_at),
-            "ended_at": _iso(t.ended_at)}
+            "ended_at": _iso(t.ended_at), "checks": [_check_view(c) for c in _j(getattr(t, "checks", "") or "[]", [])],
+            "verdict": getattr(t, "verdict", "") or "", "review": _review_view(_j(getattr(t, "review", "") or "", {}))}
+
+
+def _check_view(c: dict[str, Any]) -> dict[str, Any]:
+    out = {k: c.get(k) for k in ("id", "kind", "path", "text", "url", "code", "command", "by", "why", "result", "ran_at")
+           if c.get(k) not in (None, "")}
+    out.update({"approved": bool(c.get("approved")), "status": c.get("status") or "pending", "what": CK.describe(c),
+                "label": CK.LABEL.get(c.get("kind"), "")})
+    return out
+
+
+def _review_view(rv: dict[str, Any]) -> dict[str, Any]:
+    return {"parts": rv.get("parts") or [], "couldnt": rv.get("couldnt") or [], "model": rv.get("model") or "",
+            "rounds": int(rv.get("rounds") or 0), "accepted": bool(rv.get("accepted")), "at": rv.get("at") or ""}
 
 
 def _get(tenant: str, task_id: str) -> DodTask:
@@ -187,8 +216,8 @@ def list_tasks(tenant: str, state: str = "", limit: int = 60) -> list[dict[str, 
         q = ss.query(DodTask).filter(DodTask.tenant_id == tenant)
         if state == "open":
             q = q.filter(DodTask.status.in_(OPEN))
-        elif state == "needs":
-            q = q.filter(DodTask.status == "needs_you")
+        elif state == "needs":   # v0.999.334 finished work waiting for her look needs her too
+            q = q.filter(DodTask.status.in_(("needs_you", "review")))
         elif state == "done":
             q = q.filter(DodTask.status == "done")
         elif state:
@@ -213,13 +242,15 @@ def summary(tenant: str) -> dict[str, Any]:
             secs += max(0.0, (b - a).total_seconds())
     return {"working": sum(1 for t in rows if t.status in ("working", "queued")),
             "needs_you": sum(1 for t in rows if t.status == "needs_you"),
+            "to_review": sum(1 for t in rows if t.status == "review"),
+            "checked_week": sum(1 for t in week if t.status == "done" and (t.verdict or "") == "passed"),
             "done_week": sum(1 for t in week if t.status == "done"),
             "files_week": sum(len(_j(t.files, [])) for t in week),
             "hours_week": round(secs / 3600, 1),
             "asked_week": sum(1 for t in week for s in _j(t.steps, []) if s.get("ask"))}
 
 
-def create(tenant: str, ask: str, kind: str = "task") -> dict[str, Any]:
+def create(tenant: str, ask: str, kind: str = "task", checks: list[dict] | None = None) -> dict[str, Any]:
     ask = (ask or "").strip()
     if len(ask) < 3:
         raise ValueError("Say what the work is.")
@@ -236,7 +267,8 @@ def create(tenant: str, ask: str, kind: str = "task") -> dict[str, Any]:
         pass
     ensure_tables()
     with db.session() as ss:
-        t = DodTask(tenant_id=tenant, title=_title(ask), ask=ask, kind=kind, status="queued")
+        mine = [CK.new(c, "you") for c in (checks or [])[:CK.MAX_CHECKS]]   # hers count at once (v0.999.334)
+        t = DodTask(tenant_id=tenant, title=_title(ask), ask=ask, kind=kind, status="queued", checks=json.dumps(mine))
         ss.add(t)
         ss.commit()
         ss.refresh(t)
@@ -509,10 +541,13 @@ async def _run(task_id: str, resume: list[dict] | None) -> None:
             text = " ".join(c.get("text", "") for o in (resp.get("output") or []) if o.get("type") == "message"
                             for c in (o.get("content") or []) if c.get("type") == "output_text").strip()
             if not calls:
-                _finish(task_id, "done", reply=text or "".join(buf).strip())
-                return
+                back = await _checked_finish(task_id, text or "".join(buf).strip(), "")
+                if back is None:
+                    return
+                items = [{"type": "message", "role": "user", "content": back}]
+                continue
             outputs: list[dict] = []
-            finished = ""
+            finished, done_cid = "", ""
             for call in calls:
                 name, cid = call.get("name"), call.get("call_id")
                 try:
@@ -525,8 +560,10 @@ async def _run(task_id: str, resume: list[dict] | None) -> None:
                 elif name == "hoola_deliver":
                     out = _deliver(_upd(task_id), str(args.get("path") or ""), str(args.get("title") or ""))
                 elif name == "hoola_done":
-                    finished = str(args.get("summary") or text or "Done.")
+                    finished, done_cid = str(args.get("summary") or text or "Done."), cid or ""
                     out = "ok"
+                elif name == "hoola_check":
+                    out = _suggest_check(task_id, args)
                 elif name == "hoola_ask":
                     q = {"id": f"q{(_upd(task_id).rounds)}{cid[-6:] if cid else ''}", "call_id": cid,
                          "kind": args.get("kind") if args.get("kind") in ASK_KINDS else "info",
@@ -544,8 +581,12 @@ async def _run(task_id: str, resume: list[dict] | None) -> None:
                     out = f"Unknown tool {name}"
                 outputs.append({"type": "function_call_output", "call_id": cid, "output": out})
             if finished:
-                _finish(task_id, "done", reply=finished)
-                return
+                back = await _checked_finish(task_id, finished, done_cid)
+                if back is None:
+                    return
+                outputs = [{**o, "output": back} if o.get("call_id") == done_cid else o for o in outputs]
+                if not done_cid:
+                    outputs.append({"type": "message", "role": "user", "content": back})
             items = outputs
     except asyncio.CancelledError:
         return
@@ -566,8 +607,147 @@ def _finish(task_id: str, status: str, reply: str = "", error: str = "") -> None
             st["state"] = "done"
     if status == "done":
         steps.append({"at": _iso(db.now()), "title": "Finished", "detail": reply[:400], "state": "done"})
+    elif status == "review":
+        steps.append({"at": _iso(db.now()), "title": "Finished, waiting for your look", "detail": reply[:400], "state": "done"})
     _upd(task_id, status=status, reply=reply[:4000], error=error[:600], ended_at=db.now(), question="", thought="",
          steps=json.dumps(steps))
+
+
+# ------------------------------------------------------------------------------------------------ v0.999.334 checked done
+def _suggest_check(task_id: str, args: dict[str, Any]) -> str:
+    """The coworker's own check: kept, but it runs only after HER approval (it never verifies its own work)."""
+    t = _upd(task_id)
+    have = _j(t.checks if t else "[]", [])
+    if len(have) >= CK.MAX_CHECKS:
+        return "There are enough checks already."
+    try:
+        c = CK.new({k: v for k, v in args.items() if k != "why"}, "coworker", str(args.get("why") or ""))
+    except ValueError as e:
+        return f"Not added: {e}"
+    if any(CK.describe(x) == CK.describe(c) for x in have):
+        return "That check is already there."
+    _upd(task_id, checks=json.dumps(have + [c]))
+    return "Noted. It runs after your owner approves it; Hoola runs it itself after hoola_done."
+
+
+async def _checked_finish(task_id: str, summary: str, done_cid: str) -> str | None:
+    """Her coworker says it is done: Hoola checks. -> None when the task ended (done or waiting for her look), or the
+    words that send the work back to it (a check failed, within dod_check_rounds)."""
+    s = get_settings()
+    t = _upd(task_id)
+    if t is None:
+        return None
+    _add_step(task_id, "Checking the work", "Hoola runs the checks itself; the coworker's word is not the proof.")
+    _upd(task_id, status="checking", thought="")
+    t = _upd(task_id) or t
+    rv = _j(t.review or "", {}) or {}
+    res = await CK.verify(t.tenant_id, t.id, t.ask, summary, _j(t.steps, []), _j(t.files, []), _j(t.checks, []))
+    rounds = int(rv.get("rounds") or 0)
+    rv.update({"parts": res["parts"], "couldnt": res["couldnt"], "model": res["model"], "at": res["at"],
+               "summary": summary[:4000], "done_cid": done_cid, "accepted": False})
+    cur = _upd(task_id)
+    if cur is None or cur.status != "checking":   # she stopped it while it was checked
+        return None
+    bad = [c for c in res["checks"] if c.get("approved") and c.get("status") == "failed"]
+    if res["verdict"] == "failed" and rounds < int(s.dod_check_rounds):
+        rv["rounds"] = rounds + 1
+        _upd(task_id, checks=json.dumps(res["checks"]), verdict="failed", review=json.dumps(rv), status="working")
+        _add_step(task_id, "A check failed, sent back", "; ".join(CK.describe(c) for c in bad)[:400])
+        return ("Not done yet. Hoola ran these checks itself and they failed:\n"
+                + "\n".join(f"- {CK.describe(c)}: {c.get('result', '')[:300]}" for c in bad)
+                + "\nFix it, then call hoola_done again.")
+    _upd(task_id, checks=json.dumps(res["checks"]), verdict=res["verdict"], review=json.dumps(rv))
+    # passed = checked; not_checked = done, said plainly ("Done, not checked"); failed / needs_you = waits for her look
+    _finish(task_id, "done" if res["verdict"] in ("passed", "not_checked") else "review", reply=summary)
+    return None
+
+
+def _owned(tenant: str, task_id: str) -> DodTask:
+    return _get(tenant, task_id)
+
+
+async def recheck(tenant: str, task_id: str) -> dict[str, Any]:
+    """Run the checks again (after she added or approved one). The reviewer's earlier parts are kept."""
+    t = _owned(tenant, task_id)
+    if t.status not in ("review", "done"):
+        raise ValueError("Checks run when your coworker says it is done.")
+    rv = _j(t.review or "", {}) or {}
+    res = await CK.verify(t.tenant_id, t.id, t.ask, rv.get("summary") or t.reply, _j(t.steps, []), _j(t.files, []),
+                          _j(t.checks, []), prior_parts=rv.get("parts") or [])
+    rv.update({"parts": res["parts"], "couldnt": res["couldnt"], "at": res["at"]})
+    status = t.status
+    if status == "review" and res["verdict"] in ("passed", "not_checked"):
+        status = "done"
+    elif status == "done" and res["verdict"] in ("failed", "needs_you") and not rv.get("accepted"):
+        status = "review"
+    _upd(task_id, checks=json.dumps(res["checks"]), verdict=res["verdict"], review=json.dumps(rv), status=status)
+    return view(_get(tenant, task_id))
+
+
+async def add_check(tenant: str, task_id: str, spec: dict[str, Any]) -> dict[str, Any]:
+    """HER check: counts at once. On finished work it runs now."""
+    t = _owned(tenant, task_id)
+    if t.status in ("failed", "stopped"):
+        raise ValueError("This task did not finish. Give it again with the check.")
+    have = _j(t.checks, [])
+    if len(have) >= CK.MAX_CHECKS:
+        raise ValueError(f"A task has at most {CK.MAX_CHECKS} checks.")
+    c = CK.new(spec, "you")
+    _upd(task_id, checks=json.dumps(have + [c]))
+    if t.status in ("review", "done"):
+        return await recheck(tenant, task_id)
+    return view(_get(tenant, task_id))
+
+
+async def decide_check(tenant: str, task_id: str, check_id: str, approve: bool) -> dict[str, Any]:
+    """HER yes / no on a check the coworker suggested."""
+    t = _owned(tenant, task_id)
+    have = _j(t.checks, [])
+    hit = [c for c in have if c.get("id") == check_id]
+    if not hit or hit[0].get("status") != "needs_approval":
+        raise ValueError("That check is not waiting for you.")
+    hit[0].update({"approved": approve, "status": "pending" if approve else "declined", "decided": "you"})
+    _upd(task_id, checks=json.dumps(have))
+    if t.status in ("review", "done"):
+        return await recheck(tenant, task_id)
+    return view(_get(tenant, task_id))
+
+
+def accept(tenant: str, task_id: str) -> dict[str, Any]:
+    """HER Looks good on work that is waiting for her look. The verdict stays as it was; her OK is recorded."""
+    t = _owned(tenant, task_id)
+    if t.status != "review":
+        raise ValueError("This task is not waiting for your look.")
+    rv = _j(t.review or "", {}) or {}
+    rv["accepted"] = True
+    steps = _j(t.steps, []) + [{"at": _iso(db.now()), "title": "You looked and said it is good", "state": "done", "you": True}]
+    _upd(task_id, status="done", review=json.dumps(rv), steps=json.dumps(steps))
+    return view(_get(tenant, task_id))
+
+
+def send_back(tenant: str, task_id: str, note: str) -> dict[str, Any]:
+    """HER Send back: the coworker continues with her words (the checks run again when it is done)."""
+    note = (note or "").strip()[:2000]
+    if not note:
+        raise ValueError("Say what is missing or wrong.")
+    t = _owned(tenant, task_id)
+    if t.status not in ("review", "done"):
+        raise ValueError("Send back works on finished work.")
+    try:
+        from ..credits import wallet
+        if not wallet.can_run(tenant):
+            raise ValueError("Your Hoola Credits have run out. Add credits and send it back again.")
+    except ImportError:
+        pass
+    rv = _j(t.review or "", {}) or {}
+    words = f"Your owner looked at the work and sent it back: {note}\nFix it, then call hoola_done again."
+    cid = rv.get("done_cid") or ""
+    rv.update({"rounds": 0, "accepted": False, "done_cid": ""})
+    steps = _j(t.steps, []) + [{"at": _iso(db.now()), "title": "You sent it back", "detail": note, "state": "done", "you": True}]
+    _upd(task_id, status="working", review=json.dumps(rv), steps=json.dumps(steps), ended_at=None, error="")
+    start(task_id, resume=[{"type": "function_call_output", "call_id": cid, "output": words}] if cid
+          else [{"type": "message", "role": "user", "content": words}])
+    return view(_get(tenant, task_id))
 
 
 async def _push(tenant: str, task_id: str, q: dict[str, Any]) -> None:

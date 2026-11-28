@@ -1525,6 +1525,10 @@ class Settings(BaseSettings):
     dod_max_rounds: int = 600               # tool rounds in one task before it stops and says so
     dod_file_max_mb: int = 50
     dod_data_dir: str = ""                  # default data/dod
+    dod_review: bool = True                 # v0.999.334 a second look at a finished task by a model of another company
+    dod_review_model: str = ""              # "" = the first of GLM-5.3 / Qwen 27B / DeepSeek not of the coworker's company
+    dod_check_command_s: float = 120.0      # longest a check command may run in its locked box
+    dod_check_rounds: int = 2               # a failed check sends the work back this many times, then it waits for her
     # HOOLA DIAGRAM (docs/DIAGRAM_TOOL_PLAN.md): three vendored engines in app/diagram/vendor (archify, diagram-design,
     # draw.io via next-ai-draw-io); the draw.io editor is fetched by `python -m app.diagram setup` (vps-ops diagram_setup)
     diagram_enabled: bool = True

@@ -22,7 +22,7 @@ class DodProfile(Base):
 
 
 class DodTask(Base):
-    """One piece of work. status: queued | working | needs_you | done | failed | stopped."""
+    """One piece of work. status: queued | working | needs_you | checking | review | done | failed | stopped."""
     __tablename__ = "dod_tasks"
     id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("dod"))
     tenant_id: Mapped[str] = mapped_column(String(64), index=True)
@@ -39,6 +39,9 @@ class DodTask(Base):
     response_id: Mapped[str] = mapped_column(String(80), default="")   # OpenClaw's last response id (continuation)
     rounds: Mapped[int] = mapped_column(Integer, default=0)
     error: Mapped[str] = mapped_column(Text, default="")
+    checks: Mapped[str] = mapped_column(Text, default="[]")            # v0.999.334 JSON list of checks (hers + suggested)
+    verdict: Mapped[str] = mapped_column(String(16), default="")       # passed | failed | needs_you | not_checked
+    review: Mapped[str] = mapped_column(Text, default="")              # JSON: parts, couldnt, model, rounds, done_cid
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -64,9 +67,15 @@ class DodGateway(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+_HEALED: list[int] = []
+
+
 def ensure_tables() -> None:
     """Self-heal: create the three tables when an older database lacks them."""
     from .. import db
     eng = db._engine
     if eng is not None:
         Base.metadata.create_all(eng, tables=[DodProfile.__table__, DodTask.__table__, DodGateway.__table__])
+        if not _HEALED:   # v0.999.334 new columns on an older dod_tasks table
+            db.add_missing_columns_for(eng, DodTask.__table__)
+            _HEALED.append(1)
