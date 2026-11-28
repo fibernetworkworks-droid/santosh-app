@@ -51,6 +51,27 @@ def test_every_new_kit_part_passes_the_apps_own_rules_and_parses():
     assert "vitest.config.ts" in RL.LOCKED and (ROOT / "template" / "vitest.config.ts").exists()
 
 
+def test_hoola_is_told_what_each_part_is_for(gate_env):
+    from app.agent.appengine_tools import APPENGINE_TOOLS
+    from app.appengine import kit as KIT, service as AE
+    desc = APPENGINE_TOOLS[0]["description"]
+    for name in ("DataTable", "Guard", "QrCode", "upiLink", "Schedule", "Flow", "PdfButton", "Prose", "zustand", "action=test"):
+        assert name in desc, name
+    assert {"data-table", "qr-code", "schedule", "flow", "pdf", "markdown", "error-guard"} <= set(KIT.ui_parts())
+    agents = (ROOT / "template" / "AGENTS.md").read_text()
+    assert "DataTable" in agents and "action=test" in agents and len(agents) < 4000          # the whole guide reaches the model
+    from app.agent import turnmode as TM
+    aid = _tool(action="create", name="Shop", brief="x")["id"]
+    tok = TM.APP.set(aid)
+    try:
+        block = AE.prompt_block(T)
+    finally:
+        TM.APP.reset(tok)
+    assert "React parts (src/components/ui, already in every app): DataTable" in block and "no tests yet" in block
+    writer = (ROOT / "writer.py").read_text()
+    assert "qr-code = QrCode + upiLink" in writer and "markdown =\n  Prose" in writer
+
+
 def test_test_tools_only_in_test_files():
     from app.appengine import rules as RL
     t = 'import { it } from "vitest";\nimport { render } from "@testing-library/react";\nit("x", () => {});\n'
@@ -189,10 +210,20 @@ def test_a_real_app_with_every_part_builds_and_its_tests_run(site_env, monkeypat
     aid = AE.create(T, "Sweets", "A shop")["id"]
     AE.write(T, aid, "src/pages/Shop.tsx", PAGE)
     AE.write(T, aid, "src/pages/Shop.test.tsx", SPEC)
+    d = AE.src_dir(AE._load(T, aid))
+    app = (d / "src/App.tsx").read_text().replace('import { Routes, Route } from "react-router-dom";',
+                                                  'import { Routes, Route } from "react-router-dom";\nimport Shop from "./pages/Shop";')
+    AE.write(T, aid, "src/App.tsx", app.replace('<Route path="*"', '<Route path="/shop" element={<Shop />} />\n      <Route path="*"'))
+    home = (d / "src/pages/Home.tsx").read_text()
+    AE.write(T, aid, "src/pages/Home.tsx", 'import { Link } from "react-router-dom";\n' + home.replace("</main>", '<Link to="/shop">Shop</Link></main>', 1))
     b = AE.build(T, aid)
     assert b["built"], b["say"]
-    lb = AE._load(T, aid).last_build
-    assert json.loads(lb)["types_ok"], json.loads(lb).get("types")               # every part type-checks for real
+    lb = json.loads(AE._load(T, aid).last_build)
+    assert lb["types_ok"], lb.get("types")                                       # every part type-checks for real
+    assert lb["prerender"]["ok"] and lb["prerender"]["pages"] == 2 and not lb["prerender"]["failed"], lb["prerender"]
+    r = AE._load(T, aid)
+    html = (AE.ver_dir(r, r.version) / "dist" / "shop" / "index.html").read_text()   # rendered on the server, as finished HTML
+    assert "<table" in html and "<svg" in html and "rbc-calendar" in html and "react-flow" in html and "<b>raw</b>" not in html
     t = AE.run_tests(T, aid)
     assert t["ok"] and t["passed"] == 5 and t["failed"] == 0, [x["message"][:700] for x in t["tests"] if x["status"] == "failed"]
     # a broken behaviour is caught with the test's name and the reason

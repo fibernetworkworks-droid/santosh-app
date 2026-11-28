@@ -24,3 +24,10 @@
   `src/components/` or `src/islands/` that starts with `"use client";` (forms, booking, accordions, carts, filters).
   Island props must be plain data. A page for signed-in people or live data is wrapped in `<AppPage>` (`@/lib/seo`)
   and runs as the full app. An APP (render "app") runs whole in the browser after its first pre-rendered paint.
+- React parts (v0.999.326, `src/components/ui/`): DataTable (sort, search, pages), Guard / AppGuard (a crash shows a box,
+  never a blank page), QrCode + upiLink (UPI pay QR), Schedule (month / week / day calendar), Flow (flowcharts),
+  PdfButton (PDFs made in the browser), Prose (Markdown; raw HTML never drawn); zustand for shared state. On a SITE page
+  the ones with clicks or state go inside a `"use client";` island.
+- Tests (v0.999.326): a behaviour gets a small test next to it (`X.test.tsx`; vitest + @testing-library/react +
+  @testing-library/user-event, only in test files), run with `app_engine action=test`; with tests, done needs them passing.
+

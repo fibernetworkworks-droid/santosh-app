@@ -1548,7 +1548,7 @@ def prompt_block(tenant: str) -> str:
     except Exception:                                # noqa: BLE001
         kit_line = ""
     try:
-        agents = (src_dir(r) / "AGENTS.md").read_text()[:3000]
+        agents = (src_dir(r) / "AGENTS.md").read_text()[:4000]
     except OSError:
         agents = ""
     try:
@@ -1572,6 +1572,9 @@ def prompt_block(tenant: str) -> str:
     if r.branch_of:                                  # v0.978 a branch knows it is one
         from . import branches as BR
         state += "; " + BR.prompt_line(r)
+    tests = test_files(r)                            # v0.999.326 tests in the box
+    state += (f"; it has {len(tests)} test file(s) - run app_engine action=test after a change, done needs them passing"
+              if tests else "; no tests yet - write one next to each behaviour you add (X.test.tsx), then action=test")
     return (f"<app_engine_project>\nYou are working on App Engine app {r.number} \"{r.name}\" (app id {r.id}), a real "
             f"React 18 + TypeScript + Vite + Tailwind v4 app; {state}. Change it ONLY with the app_engine tool "
             "(view / search before you edit; edit_lines for small changes; write for a new file). Rules the tool "
@@ -1581,7 +1584,17 @@ def prompt_block(tenant: str) -> str:
             "src/components/ui; packages only from the vetted list; no outside address (data comes through "
             "src/lib/hoola.ts, which is not connected yet - keep data on the page and say so). After changes, call "
             "action=build and read the result before you say it is done. Going live is HER tap in the Studio.\n"
-            f"Packages: {', '.join(deps)}\nFiles: {', '.join(files)}\n{kit_line}AGENTS.md:\n{agents}\n</app_engine_project>")
+            f"Packages: {', '.join(deps)}\nFiles: {', '.join(files)}\n{kit_line}{REACT_PARTS}\nAGENTS.md:\n{agents}\n</app_engine_project>")
+
+
+# v0.999.326 what each React part added from the awesome-react read is FOR (every app has them, old apps too)
+REACT_PARTS = ("React parts (src/components/ui, already in every app): DataTable (data-table - any list of rows: sort, "
+               "search, pages), Guard (error-guard - wrap a part that may break; the whole app already has AppGuard), "
+               "QrCode + upiLink (qr-code - UPI pay QR, tickets, share links), Schedule (schedule - month / week / day "
+               "views: bookings, rotas, classes), Flow (flow - flowcharts, org charts, process maps), PdfButton (pdf - "
+               "invoices, receipts, certificates made in the browser), Prose (markdown - formatted text; raw HTML never "
+               "drawn); zustand for state shared by far-apart parts. On a SITE page, anything with clicks or state "
+               "(DataTable, Schedule, Flow, PdfButton) goes inside a \"use client\"; island file.")
 
 
 def status() -> dict[str, Any]:

@@ -14591,3 +14591,25 @@ title + caption) - fixed; the test files needed the cleanup step - added.
 
 NOT VERIFIED: on her server (the rev 3 image is built there on the next build), or with a real model writing tests;
 @react-pdf/renderer and react-big-calendar were type-checked and bundled but not opened in a browser here.
+
+
+## v0.999.327 REACT PARTS DEFINED - every place Hoola learns the kit names the new parts and the tests
+
+Owner: "IS ALL DEFINED" on v0.999.326. The check: the libraries were in the image, the parts in the kit, the tool's
+description named them - but three places Hoola reads did not:
+- the per-turn app summary (`service.prompt_block`) listed the parts by file name only and said nothing about tests ->
+  it now carries `REACT_PARTS` (what each part is for; old apps too, whose AGENTS.md predates them) and whether the app
+  has tests ("run app_engine action=test after a change, done needs them passing" / "no tests yet - write one ...");
+- each app's `AGENTS.md` (the guide inside that summary) -> two lines for the parts and the test rules; the summary's
+  cut of it raised from 3,000 to 4,000 characters so the whole guide reaches the model (3,301 now);
+- the website writer's custom-section prompt (`writer.py`) had a fixed list of usable parts -> adds qr-code (QrCode +
+  upiLink), markdown (Prose), data-table (DataTable) and schedule (Schedule), the last two only with "use client".
+`kit.ui_parts()` already read the folder, so the kit line had them.
+
+Checked for real (local runner, the image's packages): a page using every part, routed and linked, builds in both render
+modes and is PRE-RENDERED on the server - dist/shop/index.html is finished HTML carrying the table, the QR svg, the
+calendar and the flowchart, and the raw HTML in the Prose text is not there; in site mode the build answer tells Hoola to
+move the interactive parts into a "use client" island (the existing dead-code check).
+
+Tests: `server/tests/test_v0999_326_react_parts.py` 7 (+ `test_hoola_is_told_what_each_part_is_for`; the real build test
+now routes the page and checks its pre-rendered HTML). NOT VERIFIED on her server.
