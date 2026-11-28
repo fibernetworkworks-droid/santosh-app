@@ -82,6 +82,27 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def task_stop(task_id: str, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
         return {"task": _guard(S.stop, tenant, task_id)}
 
+    _SHOTS: dict[str, tuple[float, bytes]] = {}
+
+    @r.get("/tasks/{task_id}/screen", dependencies=auth)
+    async def task_screen(task_id: str, tenant: str = Depends(current_tenant)):
+        """What her coworker's browser shows right now (a picture; at most one fresh one every 3 s per task)."""
+        import time as _t
+        from fastapi.responses import Response
+        t = _guard(S._get, tenant, task_id)
+        if t.status not in S.OPEN:
+            raise HTTPException(404, "The task has finished.")
+        hit = _SHOTS.get(task_id)
+        if hit and _t.time() - hit[0] < 3:
+            img = hit[1]
+        else:
+            img = await GW.screenshot(tenant, f"hoola-dod-{task_id}")
+            if img:
+                _SHOTS[task_id] = (_t.time(), img)
+        if not img:
+            raise HTTPException(404, "No page open right now.")
+        return Response(img, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
     @r.get("/tasks/{task_id}/files/{name}", dependencies=auth)
     def task_file(task_id: str, name: str, tenant: str = Depends(current_tenant)):
         p = _guard(S.file_path, tenant, task_id, name)

@@ -224,6 +224,12 @@ def create(tenant: str, ask: str, kind: str = "task") -> dict[str, Any]:
     if profile(tenant) is None:
         raise ValueError("Meet your coworker first: pick a face and a name.")
     kind = kind if kind in KINDS else "task"
+    try:
+        from ..credits import wallet
+        if not wallet.can_run(tenant):
+            raise ValueError("Your Hoola Credits have run out. Add credits and give the task again.")
+    except ImportError:
+        pass
     ensure_tables()
     with db.session() as ss:
         t = DodTask(tenant_id=tenant, title=_title(ask), ask=ask, kind=kind, status="queued")
@@ -431,6 +437,7 @@ async def _run(task_id: str, resume: list[dict] | None) -> None:
                 body["previous_response_id"] = t.response_id
             resp = await GW.respond(t.tenant_id, body, session_key, on_text)
             _upd(task_id, response_id=str(resp.get("id") or t.response_id), rounds=t.rounds + 1)
+            await GW.charge_usage(t.tenant_id)
             if resp.get("status") == "failed":
                 err = ((resp.get("error") or {}).get("message") or "the work stopped with an error")[:300]
                 _finish(task_id, "failed", error=f"Your coworker hit a problem: {err}")
@@ -467,6 +474,7 @@ async def _run(task_id: str, resume: list[dict] | None) -> None:
                     q["hash"] = question_hash(q)
                     _add_step(task_id, "Asked you", q["question"], ask=True)
                     _upd(task_id, status="needs_you", question=json.dumps(q))
+                    await _push(t.tenant_id, task_id, q)
                     outputs.extend(await _wait_answer(task_id))
                     continue
                 else:
@@ -497,6 +505,20 @@ def _finish(task_id: str, status: str, reply: str = "", error: str = "") -> None
         steps.append({"at": _iso(db.now()), "title": "Finished", "detail": reply[:400], "state": "done"})
     _upd(task_id, status=status, reply=reply[:4000], error=error[:600], ended_at=db.now(), question="", thought="",
          steps=json.dumps(steps))
+
+
+async def _push(tenant: str, task_id: str, q: dict[str, Any]) -> None:
+    """A notification on her phone when her coworker needs her (when the phone is linked; never the amount alone)."""
+    try:
+        from .. import push
+        if not push.configured():
+            return
+        ev = {"kind": "dod_ask", "id": task_id, "at": q.get("at", ""),
+              "payload": {"name": (profile(tenant) or {}).get("name") or "Your coworker", "kind": q.get("kind"),
+                          "question": q.get("question"), "task": task_id}}
+        await asyncio.to_thread(push._send, tenant, ev)
+    except Exception as e:  # noqa: BLE001 - the page shows the question anyway
+        log.info("dod push for %s not sent: %s", task_id, e)
 
 
 def recover() -> None:

@@ -14022,7 +14022,58 @@ view of the coworker's screen (the HTTP stream carries no tool events; that need
 push when it needs her, connecting her Hoola accounts as an MCP server inside her OpenClaw, credits deducted from the key's usage.
 
 
-## v0.999.307 CLOUD ENGINEER DESK (built as 0.999.306; their HOOLA DOD took 0.999.306, both kept)
+## v0.999.307 LEARNERS ON
+(owner: 'WORK ON IT FOR HOOLA FIRST' on item 1 of the Hermes / OpenClaw comparison). Files: server/app/coder/guard.py (new), nudge.py / dreams.py / curator.py (guard on every write, blocked counters, curator usage gate), config.py (coder_nudge / coder_curator / coder_dreams True), tests/conftest.py (pinned off for older suites), .github/workflows/vps-ops.yml (coder_learn_on), THIRD_PARTY_NOTICES.md (Hermes, idea only). Tests: test_v0999_307_learn_on.py (25). NOT VERIFIED on her server.
+
+
+## v0.999.308 HOOLA DOD, THE PENDING WORK (their LEARNERS ON took 0.999.307, both kept)
+
+Owner: "GO BUILD THE PENDING DOD WORK" (the four things v0.999.306 left out).
+
+**Tested against the real thing.** The official OpenClaw image (`ghcr.io/openclaw/openclaw:2026.11.10` and its
+`-browser` variant) was run in Docker here, with Hoola's own config, a scripted OpenAI-compatible model server (no paid key)
+and the real Hoola server on the host. It found five things the stand-in Gateway of v0.999.306 never could, all fixed in
+`dod/gateway.py`:
+1. The Gateway refuses to start without `gateway.mode` ("existing config is missing gateway.mode") -> `"mode": "local"`.
+2. It refuses a state folder others can write to, and runs as `node` (uid 1000) -> `_own()` hands her folder to
+   `dod_uid` with 700 folders (her `openclaw.json` stays 600, now readable by the Gateway); links left alone.
+3. It hides client tools and MCP tools behind its Tool Search (the model saw only a short core list + tool_search) ->
+   `tools.toolSearch.exclude` keeps `source: client` (hoola_step / hoola_ask / hoola_deliver / hoola_done) and
+   `hoola__*` directly visible.
+4. Chrome cannot start its own sandbox under Docker's defaults ("No usable sandbox") -> `browser.noSandbox: true`; her
+   container is the wall around the browser.
+5. A first start runs OpenClaw's own repair step and plugin fetch for minutes -> `dod_start_wait_s` 600.
+Also learned: OpenClaw cancels a run when its config's access changes mid-run ("Gateway requester authority changed") -
+Hoola writes the config only before starting a container, never into a running one.
+Then a whole task ran on the real Gateway: the model saw Hoola's four tools and the 21 Hoola account tools, called
+`hoola__memory_search` from inside the container through Hoola's MCP door (a real answer came back), reported a step,
+asked the pay question, Hoola's page showed it, her yes went back ("The owner APPROVED this payment of INR 549 ..." reached
+the model), and the task finished. A real screenshot came back from the `-browser` image through `gateway.screenshot`.
+
+**New:**
+- Her Hoola accounts inside her coworker: `dod/mcp.py`, POST /mcp/dod (JSON-RPC, streamable-http): 21 read-only tools
+  (mail, Drive, Calendar, Sheets, Docs, her memory) run through Hoola's own dispatcher on her account. Two locks: her
+  coworker's own MCP token (sealed, matched by hash) and the request must come from her container's Docker network
+  (`DodGateway.subnet`, read from `docker network inspect` when the network is made). Anything that sends, books, deletes
+  or pays stays with hoola_ask and her tap. `dod_hoola_url` (default http://172.18.0.1:8077) is how the container reaches
+  Hoola; `mcp.servers.hoola` in her config carries it.
+- The live screen: "Watch the screen" on a task page -> GET /api/dod/tasks/{id}/screen -> OpenClaw's `/tools/invoke`
+  browser screenshot (jpeg) for that task's session; never wakes her coworker or starts a browser just to look; one fresh
+  picture per 3 s per task.
+- A phone notification when her coworker needs her: push kind `dod_ask` ("Ananya needs your OK" / "has a question").
+- Credits: after every round, what her own model key used since the last look (OpenRouter GET /key) is charged through
+  the same credits meter as every model call (`wallet.note(..., "dod")`, `usage_seen` so nothing is charged twice); a new
+  task is refused when her credits have run out.
+
+Tests: `server/tests/test_v0999_306_dod.py` now 10 (+ the config a real Gateway accepts, her private folder, the MCP door
+- no token / wrong token / not her network refused, read-only list, a write tool refused, a read answered - screen + usage
++ push, and Watch the screen in the browser walk).
+
+NOT VERIFIED: on her VPS with a real model and real OpenRouter keys; whether her VPS lets a container reach
+172.18.0.1:8077 (set DOD_HOOLA_URL if not); a real website through the coworker's browser (this sandbox's network blocks it).
+
+
+## v0.999.309 CLOUD ENGINEER DESK (built as 0.999.306; their HOOLA DOD, LEARNERS ON and DOD PENDING WORK took 0.999.306-308, all kept)
 
 Owner: "Cloud Engineer same as finance desks". The Cloud Engineer gets its own section `/console/cloud` and its own Cloud chat
 (Conversation kind `cloudeng`, `server/app/clchat.py`, key `cloud_eng`, family `cloudeng`), on a new all-code engine

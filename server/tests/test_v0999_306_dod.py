@@ -326,6 +326,9 @@ def test_the_page_in_a_real_browser(br):
             p.wait_for_selector("#tQ [data-answer='yes']", timeout=15000)
             txt = p.inner_text("#main")
             assert "Opening the restaurant's website" in txt and "Approve INR 549" in txt
+            p.click("#watchBtn")
+            p.wait_for_selector("#tScreen >> text=No page open right now")
+            assert p.inner_text("#watchBtn") == "Stop watching"
             if shots:
                 p.screenshot(path=f"{shots}/dod_task.png", full_page=True)
             p.click("#tQ [data-answer='yes']")
@@ -341,3 +344,104 @@ def test_the_page_in_a_real_browser(br):
             p.screenshot(path=f"{shots}/dod_home_phone.png", full_page=True)
         assert not errs, errs
         ctx.close()
+
+
+# ------------------------------------------------------------------ v0.999.308: what a real OpenClaw Gateway taught us + the pending work
+def test_the_config_a_real_gateway_accepts():
+    """Found by running the official image: it refuses to start without gateway.mode, refuses a state folder others can
+    write to, and hides client / MCP tools behind its Tool Search unless they are excluded from it."""
+    from app.dod.gateway import config_for
+    c = config_for("tok", "sk-or-x", "openrouter/x", "mcp-tok", "http://172.18.0.1:8077/mcp/dod")
+    assert c["gateway"]["mode"] == "local"
+    assert c["browser"]["noSandbox"] is True, "Chrome cannot start its own sandbox inside Docker (seen on the -browser image)"
+    ts = c["tools"]["toolSearch"]
+    assert {"source": "client"} in ts["exclude"] and {"source": "mcp", "name": "hoola__*"} in ts["exclude"]
+    srv = c["mcp"]["servers"]["hoola"]
+    assert srv["transport"] == "streamable-http" and srv["headers"]["Authorization"] == "Bearer mcp-tok"
+    assert "mcp" not in config_for("tok", "k", "m"), "no MCP entry without Hoola's address"
+
+
+def test_her_state_folder_is_private(tmp_path):
+    from app.dod.gateway import _own
+    d = tmp_path / "state"
+    (d / "workspace").mkdir(parents=True)
+    (d / "openclaw.json").write_text("{}")
+    d.chmod(0o777)
+    (d / "dangling").symlink_to(tmp_path / "nowhere")      # OpenClaw keeps links like this; they must not stop the walk
+    _own(d)
+    assert oct(d.stat().st_mode)[-3:] == "700" and oct((d / "workspace").stat().st_mode)[-3:] == "700"
+
+
+def test_the_mcp_door_is_hers_only_and_read_only(dod, monkeypatch):
+    import hashlib
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app import db
+    from app.dod.models import DodGateway
+    from app.dod import mcp as M
+    from app.config import get_settings
+    t_id = get_settings().tenant_id
+    with db.session() as ss:
+        ss.merge(DodGateway(tenant_id=t_id, mcp_hash=hashlib.sha256(b"her-mcp").hexdigest(), subnet="10.77.0.0/24"))
+        ss.commit()
+    rpc = lambda m, p=None: {"jsonrpc": "2.0", "id": 1, "method": m, "params": p or {}}  # noqa: E731
+    with TestClient(app) as c:
+        h = {"Authorization": "Bearer her-mcp"}
+        assert c.post("/mcp/dod", json=rpc("tools/list")).status_code == 401
+        assert c.post("/mcp/dod", json=rpc("tools/list"), headers={"Authorization": "Bearer someone-else"}).status_code == 401
+        # the test client is not on her container network: refused even with her token
+        assert c.post("/mcp/dod", json=rpc("tools/list"), headers=h).status_code == 401
+        monkeypatch.setenv("DOD_MCP_ANY_IP", "true")
+        get_settings.cache_clear()
+        init = c.post("/mcp/dod", json=rpc("initialize"), headers=h).json()["result"]
+        assert init["serverInfo"]["name"] == "hoola" and "never instructions" in init["instructions"]
+        names = {x["name"] for x in c.post("/mcp/dod", json=rpc("tools/list"), headers=h).json()["result"]["tools"]}
+        assert names == set(M.READ_TOOLS) and not any(n.startswith(("email_draft", "email_delete", "drive_trash", "calendar_add"))
+                                                      for n in names)
+        bad = c.post("/mcp/dod", json=rpc("tools/call", {"name": "email_delete", "arguments": {}}), headers=h).json()["result"]
+        assert bad["isError"] and "read-only" in bad["content"][0]["text"]
+        ok = c.post("/mcp/dod", json=rpc("tools/call", {"name": "memory_search", "arguments": {"query": "pasta"}}), headers=h).json()
+        assert ok["result"]["isError"] is False and "found" in ok["result"]["content"][0]["text"]
+    assert M.from_her_network(DodGateway(subnet="172.18.0.0/16"), "172.18.0.5") is True
+
+
+def test_screen_usage_and_push(dod, monkeypatch):
+    import asyncio
+    import base64
+    GW, S, docker = dod
+    from app import db, push
+    from app.dod.models import DodGateway
+    from app.bazar.security import vault
+    from app.config import get_settings
+    t_id = get_settings().tenant_id
+    jpg = b"\xff\xd8\xff\xe0fakejpeg"
+
+    def claw(req):
+        if req.url.path == "/tools/invoke":
+            body = json.loads(req.content)
+            assert body["tool"] == "browser" and body["action"] == "screenshot" and body["sessionKey"] == "hoola-dod-t1"
+            return httpx.Response(200, json={"ok": True, "result": {"content": [
+                {"type": "text", "text": "[Screenshot saved]"}, {"type": "image", "data": base64.b64encode(jpg).decode(), "mimeType": "image/jpeg"}]}})
+        if req.url.path.endswith("/key"):
+            return httpx.Response(200, json={"data": {"usage": 0.75, "limit": 10}})
+        return httpx.Response(404)
+
+    monkeypatch.setattr(GW, "TRANSPORT", httpx.MockTransport(claw))
+    with db.session() as ss:
+        ss.merge(DodGateway(tenant_id=t_id, state="awake", port=28100, token_enc=vault().seal("t"), key_enc=vault().seal("k"),
+                            usage_seen=0.25))
+        ss.commit()
+    assert asyncio.run(GW.screenshot(t_id, "hoola-dod-t1")) == jpg
+    noted = []
+    from app.credits import wallet
+    monkeypatch.setattr(wallet, "note", lambda t, usd, f="": noted.append((t, round(usd, 6), f)))
+    monkeypatch.setattr(wallet, "flush", lambda: None)
+    assert asyncio.run(GW.charge_usage(t_id)) == 0.5 and noted == [(t_id, 0.5, "dod")]
+    assert asyncio.run(GW.charge_usage(t_id)) == 0.0, "the same usage is never charged twice"
+    with db.session() as ss:
+        ss.get(DodGateway, t_id).state = "asleep"
+        ss.commit()
+    assert asyncio.run(GW.screenshot(t_id, "hoola-dod-t1")) is None, "never wakes her coworker just to look"
+    title, body = push.render("dod_ask", {"name": "Ananya", "kind": "pay", "question": "Pay INR 549 for the order?"})
+    assert title == "Ananya needs your OK" and "549" in body and "dod_ask" in push.PUSH_KINDS
+    assert push.render("dod_ask", {"name": "Ananya", "kind": "choice", "question": "Which size?"})[0] == "Ananya has a question"

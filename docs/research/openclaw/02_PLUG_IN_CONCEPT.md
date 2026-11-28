@@ -77,5 +77,7 @@ AND GIVE THE NAME TO IT --- CHECK THE APP SIDE ALREADY AVATHAR IS BUILD."
   and result, so her yes stays Hoola's without OpenClaw's approval screens.
 - Her model key is her own, minted by OpenRouter's provisioning API with a spending limit; the server's key never goes into her
   container.
-- Still to do: a live screen view (WebSocket + device pairing), phone push, Hoola's tools inside her OpenClaw as an MCP server,
-  credits from the key's usage, and the first real run on her server.
+- v0.999.308: run against the real official image (fixes: gateway.mode, private state folder owned by uid 1000, Hoola's tools
+  kept out of Tool Search, browser.noSandbox, 600 s first start); her Hoola accounts inside it as MCP (read-only, her token +
+  her network); the live screen via tools-invoke browser screenshot (no WebSocket pairing needed); phone push; credits from
+  her key's usage. Still to do: the first real run on her VPS with a real model.

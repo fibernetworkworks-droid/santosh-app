@@ -1,4 +1,4 @@
-"""v0.999.307 cloud_desk: the Cloud Engineer's tool - the cloud bill read (spikes, growth, owners, the month against her budget),
+"""v0.999.309 cloud_desk: the Cloud Engineer's tool - the cloud bill read (spikes, growth, owners, the month against her budget),
 resources nobody uses, commitments sized from her usage, access policies read for what lets too much in, networks and firewall
 rules checked, and the CI access guard. Nothing runs on her cloud; it never takes keys."""
 from __future__ import annotations

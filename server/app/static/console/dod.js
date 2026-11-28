@@ -395,6 +395,8 @@
         <div id="tThink"></div><div id="tReply"></div>
         <form class="dd-card dd-steer" id="steer" aria-label="Tell ${esc(NAME())} something"><textarea id="steerText" rows="1" placeholder="Tell ${esc(NAME())} something while they work…"></textarea><button class="dd-send" type="submit" aria-label="Send">${IC.up}</button></form>
       </div><aside style="display:flex;flex-direction:column;gap:18px">
+        <section id="tScreenBox"><div class="dd-sect"><h2>Screen</h2><button type="button" class="dd-lnk" id="watchBtn">Watch the screen</button></div>
+          <div class="dd-card dd-screen" id="tScreen"><div class="dd-quiet" style="padding:14px">See the page ${esc(NAME())} is working on, live.</div></div></section>
         <section><div class="dd-sect"><h2>Files</h2></div><div id="tFiles" style="display:flex;flex-direction:column;gap:10px"></div></section>
         <section class="dd-card"><div class="dd-sect" style="padding:16px 18px 0"><h2>Your task</h2></div><div id="tAsk" style="padding:4px 18px 18px;white-space:pre-wrap;color:var(--mut)"></div></section>
         <div class="dd-card dd-safe">${IC.lock}<div>${esc(NAME())} asks before paying, sending, deleting or booking, and never types card numbers, PINs, OTPs or passwords.</div></div>
@@ -423,8 +425,26 @@
       $('#tFiles').innerHTML = (t.files || []).length ? t.files.map(f => fileCard(t, f)).join('') : `<div class="dd-card dd-quiet" style="padding:14px">Files ${esc(NAME())} makes show here.</div>`;
       $('#tAsk').textContent = t.ask;
       $('#steer').hidden = !open;
-      if (!open) clearInterval(POLL);
+      $('#tScreenBox').hidden = !open;
+      if (!open) { clearInterval(POLL); stopWatch(); }
     }
+    let WATCH = null, lastUrl = '';
+    function stopWatch() { clearInterval(WATCH); WATCH = null; const b = $('#watchBtn'); if (b) b.textContent = 'Watch the screen'; }
+    async function shot() {
+      const box = $('#tScreen'); if (!box || document.hidden) return;
+      try {
+        const r = await fetch(`/api/dod/tasks/${enc(id)}/screen`, {headers: {Authorization: 'Bearer ' + TOKEN}});
+        if (!r.ok) { if (!lastUrl) box.innerHTML = `<div class="dd-quiet" style="padding:14px">No page open right now. It shows here when ${esc(NAME())} uses a website.</div>`; return; }
+        const url = URL.createObjectURL(await r.blob());
+        box.innerHTML = `<img src="${url}" alt="The page ${esc(NAME())} is working on"><span class="dd-tag live dd-live"><span class="dd-dot"></span>Live</span>`;
+        if (lastUrl) URL.revokeObjectURL(lastUrl);
+        lastUrl = url;
+      } catch (e) { /* the next look tries again */ }
+    }
+    $('#watchBtn').addEventListener('click', () => {
+      if (WATCH) { stopWatch(); return; }
+      $('#watchBtn').textContent = 'Stop watching'; shot(); WATCH = setInterval(() => { if (gen !== GEN) { stopWatch(); return; } shot(); }, 3000);
+    });
     const gen = GEN;
     main.addEventListener('click', async function onStop(e) {
       if (gen !== GEN) { main.removeEventListener('click', onStop); return; }

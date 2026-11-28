@@ -260,7 +260,7 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                "roboflow", "cvat", "label studio", "image classifier", "image classification", "confusion matrix", "segmentation", "opencv",
                "camera calibration", "camera_info", "intrinsics", "field of view", "focal length", "pixels per", "lens for", "motion blur",
                "depth of field", "stereo camera", "disparity", "tensorrt", "onnx", "openvino", "jetson", "inference fps", "frames per second", "nms"),
-    # v0.999.307 the Cloud Engineer: her cloud words
+    # v0.999.309 the Cloud Engineer: her cloud words
     "cloudeng": ("cloud engineer", "cloud engineering", "cloud bill", "cloud cost", "cloud spend", "aws bill", "azure bill", "gcp bill",
                  "cost and usage report", "cur report", "focus export", "billing export", "cost explorer", "finops", "untagged",
                  "cost anomaly", "cost spike", "idle instance", "idle vm", "unattached volume", "unattached disk", "orphaned disk",
