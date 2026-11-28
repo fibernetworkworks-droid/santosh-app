@@ -14135,3 +14135,37 @@ Items 1-3 of docs/research/prompting/01_prompts_chat.md.
 
 Detector and similarity ported from prompts.chat (MIT) - THIRD_PARTY_NOTICES.md. Tests `test_v0829_world_paste_dupe.py` (13); three
 stale prompting version pins (0.999.169) moved to the current version. NOT VERIFIED on her server.
+
+## v0.999.312 SECURITY ENGINEER DESK (built as 0.999.311; their WORLD PROMPTS + PASTE READ took 0.999.311, both kept)
+
+Owner: "Security Engineer same as finance desks". The Security Engineer gets its own section `/console/security` and its own Security
+chat (Conversation kind `seceng`, `server/app/secchat.py`, key `security_eng`, family `seceng`), on a new all-code engine
+`server/app/secdesk/` (no model; nothing fetched, scanned or run against her systems). The Cyber Security desk keeps alerts, incidents
+and the security programme; this desk is the engineer's hands-on work:
+
+- `findings.py` - SARIF (CodeQL, Semgrep, any SARIF tool; `security-severity` mapped the CVSS way), Trivy (vulnerabilities, failed
+  misconfigurations, secrets), Grype, Semgrep JSON, OWASP ZAP JSON and CSV. One shape; the same CVE on a package or the same rule at a
+  place merged across tools at the worse severity; counts by severity / tool / rule / place; package upgrades that close the most (the
+  lowest fixed version above the installed one - a test caught the first listed version being older than the installed one); an older
+  scan after `## baseline` = new / fixed / still open; due dates = scan date + her fix-time days.
+- `headers.py` - `curl -sI` output, redirects hop by hop: HSTS age / subdomains, CSP script sources (unsafe-inline without nonce or
+  hash, unsafe-eval, wildcards unless nonces + strict-dynamic), object-src, base-uri, framing (frame-ancestors or X-Frame-Options),
+  nosniff, Referrer-Policy, Permissions-Policy, version banners, CORS (any origin with credentials, null), each cookie's Secure /
+  HttpOnly (session-looking names) / SameSite and the __Host- / __Secure- prefix rules, a redirect to plain HTTP.
+- `certs.py` - PEM chains or `openssl s_client -showcerts`: days left vs her warning, not yet valid, key (RSA < 2048, small curves,
+  DSA), SHA-1 / MD5 signatures, chain order, self-signed, leaf over 398 days, names covered (one-label wildcards), no SANs. Private keys
+  refused.
+- `tokens.py` - JWTs decoded never verified: alg none, unexpected algorithm, jku / x5u / jwk, path-like kid, empty signature, no exp,
+  life over her hours, missing iss / aud, personal or secret claims. Signatures are removed before the text is stored.
+- `code.py` - a unified diff (added lines only, real line numbers) or files with `## path`: about 30 rules over Python, JS / TS, Java /
+  Kotlin, Go, PHP, Ruby, C# with CWE ids and the safe way; placeholders and env reads are not hard-coded secrets; secrets shown masked
+  and stored cut to 4 characters.
+- `ci.py` - a GitHub Actions security gate: the same rules on the pull request's added lines (git diff against the base sha), failing
+  at her level (high / medium / low), hits written to the run summary; no keys, contents: read.
+
+Keys refused everywhere (AWS keys, secret key lines, private keys, Azure account keys, client secrets). NEW tool `security_desk`
+(`agent/seceng_tools.py`), registry 719. Hire key `security_eng` (live, Software group). Console `secdesk.html/.js/.css` assembled from
+the Cloud desk shell. Tests `server/tests/test_sec_desk.py` (5, incl. a browser walk at 1440 and 390; the gate is run on the same diff
+and fails on exactly what the desk reports).
+
+NOT VERIFIED: on her server, with her own scanners' output, sites, certificates and code, or the workflow running on GitHub.
