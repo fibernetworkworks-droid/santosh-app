@@ -150,6 +150,8 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("DEV_ECC_SKILLS", "false")        # v0.999 ECC skills change the coder's prompt; test_v0999 ecc_skills turns them on
     monkeypatch.setenv("DEV_CONFIG_PROTECT", "false")    # v0.999 older scripted rounds may edit a settings file; its own test turns it on
     monkeypatch.setenv("DEV_MCP_HEALTH", "false")        # v0.999 older MCP suites call a failing server on purpose; its own test turns it on
+    for _k in ("CODER_NUDGE", "CODER_CURATOR", "CODER_DREAMS"):   # v0.999 on by default; older suites expect them off
+        monkeypatch.setenv(_k, "false")
     monkeypatch.setenv("DEV_SUPERPOWERS", "false")       # v0.999 scripted rounds do not expect the proof check / picked skills; its own test turns it on
     monkeypatch.setenv("GOAL_VERIFY_LINKS", "false")   # v0.443 the done=verified gate never reaches the network in tests
     monkeypatch.setenv("CHAT_HEAL_AI", "false")        # v0.158 no model judge of call cards in tests

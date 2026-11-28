@@ -38,7 +38,7 @@ import logging
 import os
 import time
 
-from . import parser, prompts, store
+from . import guard, parser, prompts, store
 
 log = logging.getLogger("coder.dreams")
 
@@ -47,7 +47,7 @@ _CURATED_SHOWN = 12             # curated titles shown so the pass merges, not r
 
 _BG: set = set()                # running passes (GC protection, the nudge._BG pattern)
 _stats = {"runs": 0, "light": 0, "deep": 0, "written": 0, "rewritten": 0, "preimages": 0,
-          "skipped": 0, "dropped": 0}
+          "skipped": 0, "dropped": 0, "blocked": 0}
 
 
 # ---------------------------------------------------------------- knobs
@@ -260,6 +260,11 @@ async def consolidate(tenant: str, kind: str) -> dict:
             curated_titles = {store.norm_title(c["title"]) for c in curated}
             conv = f"dreams-{_safe(tenant)}"   # per-tenant bucket: the (conv, hash) dedup pair can
             for o in obs[:max(0, budget)]:     # never meet another tenant's curated row
+                hit = guard.check_obs(o)       # v0.999 the memory guard: what it teaches itself is checked
+                if hit:
+                    _stats["blocked"] += 1
+                    log.warning("dreams memory write blocked (%s): %s", tenant, ",".join(hit))
+                    continue
                 if kind == "deep" and store.norm_title(o["title"]) in curated_titles:
                     row = next((c for c in curated
                                 if store.norm_title(c["title"]) == store.norm_title(o["title"])), None)

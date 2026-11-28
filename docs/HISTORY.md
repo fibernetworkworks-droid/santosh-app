@@ -14020,3 +14020,7 @@ NOT VERIFIED: against a real OpenClaw Gateway or a real OpenRouter provisioning 
 docs/gateway/openresponses-http-api.md; the config keys are from its docs and were not loaded by a real Gateway). Not built: a live
 view of the coworker's screen (the HTTP stream carries no tool events; that needs the Gateway WebSocket with device pairing), phone
 push when it needs her, connecting her Hoola accounts as an MCP server inside her OpenClaw, credits deducted from the key's usage.
+
+
+## v0.999.307 LEARNERS ON
+(owner: 'WORK ON IT FOR HOOLA FIRST' on item 1 of the Hermes / OpenClaw comparison). Files: server/app/coder/guard.py (new), nudge.py / dreams.py / curator.py (guard on every write, blocked counters, curator usage gate), config.py (coder_nudge / coder_curator / coder_dreams True), tests/conftest.py (pinned off for older suites), .github/workflows/vps-ops.yml (coder_learn_on), THIRD_PARTY_NOTICES.md (Hermes, idea only). Tests: test_v0999_307_learn_on.py (25). NOT VERIFIED on her server.
