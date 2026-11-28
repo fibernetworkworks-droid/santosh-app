@@ -39,8 +39,9 @@ TEST_PATH = re.compile(r"(?i)(^|/)(tests?|spec|__tests__)(/|$)|(^|/)test_[^/]*$|
 DOC_PATH = re.compile(r"(?i)\.(md|mdx|rst|txt|adoc)$|(^|/)docs?/")
 CLAIM = re.compile(r"(?i)\b(all )?(tests? )?(pass(es|ed|ing)?|green|fixed|works?|working|succeed(s|ed)?|"
                    r"build(s)? (fine|ok|clean)|verified|done)\b")
-NOT_RUN = re.compile(r"(?i)\b(not run|didn'?t run|did not run|could ?n[o']t (run|be run)|cannot run|can'?t run|unable to "
-                     r"run|no tests?( exist| in)|not (be )?(checked|verified|tested))\b")
+NOT_RUN = re.compile(r"(?i)\b(not run|nothing (was )?run|none run|no (tests?|checks?|commands?) (were |was )?run|didn'?t run|"
+                     r"did not run|could ?n[o']t (run|be run)|cannot run|can'?t run|unable to run|no tests?( exist| in)|"
+                     r"not (be )?(checked|verified|tested)|untested)\b")
 BUG = re.compile(r"(?i)\b(bug|error|exception|traceback|stack ?trace|crash\w*|fail(s|ed|ing|ure)?|broken|not working|"
                  r"doesn'?t work|regression|flaky|wrong (result|value|output)|500|segfault|panic)\b")
 CHANGE = re.compile(r"(?i)\b(add|implement|build|create|make|support|change|refactor|rewrite|feature|new)\b")

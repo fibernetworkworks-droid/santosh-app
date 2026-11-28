@@ -384,7 +384,7 @@ def test_the_pages_in_a_real_browser(br):
         p.wait_for_selector(".log .lrow")
         assert p.locator(".lrow.inner").count() == 2 and "in each: round 2" in p.inner_text(".log")
         p.goto(base + "#/")
-        p.wait_for_selector(".needs .need")
+        p.wait_for_selector(".rh-need")      # v0.999.297 the redesigned home lists what needs her beside the routes
         main_txt = p.inner_text("main")
         assert "Send 50 payment?" in main_txt and "{{vars.a}}" not in main_txt
         p.goto(base + "#/routes")

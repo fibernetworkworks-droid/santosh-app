@@ -1,4 +1,4 @@
-"""v0.999.296 vision_desk: the Computer Vision Engineer's tool - detectors scored the COCO way, classifiers scored, labelled
+"""v0.999.298 vision_desk: the Computer Vision Engineer's tool - detectors scored the COCO way, classifiers scored, labelled
 datasets checked, cameras and lenses worked out, pipeline speed against the frame rate, and the CI workflow that fails a pull request
 whose scores drop. Nothing runs on her cameras or machines."""
 from __future__ import annotations

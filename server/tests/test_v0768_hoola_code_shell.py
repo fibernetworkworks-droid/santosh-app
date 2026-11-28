@@ -271,7 +271,7 @@ def test_layout_rail_sidebar_menus(arena_server):  # noqa: F811
     pg.locator("[data-tid='dt3']").click()
     pg.wait_for_selector(".hcd-recap")
     done = pg.locator("#hcdCol").text_content()
-    assert "Worked for" in done and "Two links pointed at old pages." in done and "CI passed. Merging is your tap." in done
+    assert "Read 2 files" in done and "Worked for" not in done and "Two links pointed at old pages." in done   # v0.999 the fold names what was done and "CI passed. Merging is your tap." in done
     assert pg.locator(".hcd-recap [data-act='mergereq']").is_visible()                            # reachable with the rail hidden too
     assert pg.locator("#hcdRail [data-act='mergereq']").count() == 1 and pg.locator("#hcdRail a[href='https://github.com/meghana/site/pull/7']").count() == 1
     assert "Ask for a change" in pg.locator("#hcdNote").get_attribute("placeholder")

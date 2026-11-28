@@ -4079,3 +4079,14 @@ Task: align and fix every Hoola Route page (owner: "NOW GO DEEP ON EVERY PAGE OF
 Work: 144 page views walked + measured + looked at (1440 / 1024 / 390, light + dark), 74 with findings -> 0; route.css end block, route.js fixes;
 test_v0999_282_route_aligned.py.
 Not verified: on her server.
+
+---
+Task ID: 0.999.297
+Agent: Claude Code
+Task: ROUTE HOME REDESIGN - build the approved home design
+Work Log:
+- route.js viewHome rebuilt; routes table tiles / steps / dot; sidebar groups + hourly foot; route.css end block
+- api.py summary: runs_prev_7d, week_days, hours12, failed_30d
+- walked in Chromium, light + dark, 1440 / 1024 / 390: no findings
+Stage Summary:
+- test_v0999_297_route_home.py; NOT VERIFIED on her server

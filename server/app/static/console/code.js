@@ -874,6 +874,19 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     if (t.status === 'cancelled') return ['soft', 'Stopped.', 'Nothing more will be pushed for this session.'];
     return null;
   }
+  /* v0.999 Claude Code's "Created 7 files" card under the answer: what changed, file by file, the total, See all and
+     Undo (the files go back to the checkpoint before the newest round - her pick of what, in the rewind dialog) */
+  function filesCard(t) {
+    const fs = (t.file_diffs || []).length ? t.file_diffs : (t.files || []).map(f => typeof f === 'string' ? {path: f} : f);
+    const all = fs.length, made = fs.filter(f => f.new).length, add = fs.reduce((a, f) => a + (+f.added || 0), 0), rem = fs.reduce((a, f) => a + (+f.removed || 0), 0);
+    const verb = made === all && all ? 'Created' : !made ? 'Edited' : 'Changed';
+    const cps = (t.ws || {}).checkpoints || [], back = cps.length > 1 ? cps[cps.length - 2].n : 0;
+    const undo = !shared && back && !t.running && t.status !== 'merged' ? `<button type="button" class="hcd-link" data-act="rewind" data-n="${back}" title="The files go back to how they were before the newest round">Undo</button>` : '';
+    const row = f => `<li><span class="hcd-fic" aria-hidden="true">&lt;&gt;</span><span class="hcd-fnm" title="${esc(f.path)}">${esc(base(f.path))}</span>${f.added != null ? `<em class="add">+${+f.added || 0}</em>${+f.removed ? ` <em class="del">−${+f.removed}</em>` : ''}` : ''}</li>`;
+    return `<section class="hcd-files" aria-label="${verb} ${plural(all, 'file')}"><div class="hcd-fh"><b>${verb} ${plural(all, 'file')}</b>${undo}</div>
+      <ul>${fs.slice(0, 3).map(row).join('')}</ul>
+      <button type="button" class="hcd-fall" id="hcdFull" data-act="changes"><span>See all</span>${add + rem ? `<em class="add">+${add}</em>${rem ? ` <em class="del">−${rem}</em>` : ''}` : ''}</button></section>`;
+  }
   function doneHTML(t) {
     const parts = [];
     if (t.error && ['failed', 'refused'].includes(t.status)) parts.push(`<div class="hcd-block bad"><b>${t.status === 'refused' ? 'A safety rule stopped this change.' : 'It could not finish.'}</b> ${esc(t.error)}</div>`);
@@ -883,7 +896,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
         return `<div class="hcd-cm"><div>${o.severity ? `<span class="hcd-pill ${o.severity === 'high' ? 'bad' : 'warn'}">${esc(o.severity)}</span>` : ''}${where ? `<code>${esc(where)}</code> ` : ''}${esc(o.body || o.text || o.problem || '')}</div>
           <div class="hcd-acts">${where ? `<button type="button" class="hcd-btn sm" data-act="walk" data-path="${esc(o.path)}">Show in diff</button>` : ''}${canFix ? `<button type="button" class="hcd-btn sm" data-act="fixone" data-i="${i}">Fix this one</button>` : ''}</div></div>`; }).join('')}
       ${canFix && pts.length > 1 ? `<div class="hcd-acts"><button type="button" class="hcd-btn pri" data-act="fixall">Fix all ${pts.length}</button></div>` : ''}</section>`);
-    if ((t.file_diffs || []).length || t.diff) parts.push(`<button type="button" class="hcd-fold row" id="hcdFull" data-act="changes">${svg('chev', 'hcd-chev')}<span>See the full change · ${plural((t.files || []).length, 'file')}</span></button>`);
+    if ((t.file_diffs || []).length || t.diff) parts.push(filesCard(t));
     if (t.risk) parts.push(`<p class="hcd-mut"><b>Risk:</b> ${esc(t.risk)}</p>`);
     const rc = shared ? null : recap(t), acts = actsFor(t); if (rc) parts.push(`<div class="hcd-recap ${rc[0]}"><span><b>${esc(rc[1])}</b> ${esc(rc[2])}</span>${acts.length ? `<div class="hcd-acts">${acts.join('')}</div>` : ''}</div>`);
     return parts.join('');
@@ -1017,13 +1030,69 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       thLater(() => { thOpen(); k.ho.insertBefore(g.node, k.work); }); }
     k.cur.to = i + 1;
   }
+  /* v0.999 the fold says WHAT was done, like Claude Code ("Ran 5 commands, read 2 files", "Read app.py"), in the order
+     the kinds first came - never a time measured from the step before it (that read "Worked for 25920m" after a gap) */
+  const base = x => String(x || '').split('/').pop();
+  function workLabel(list) {
+    const order = [], b = {}, put = (k, x) => { if (!b[k]) { b[k] = []; order.push(k); } b[k].push(x); };
+    const KIND = {bash: 'cmd', check: 'check', read: 'read', rules: 'read', mention: 'read', search: 'search', grep: 'search', usages: 'search',
+      list: 'list', edit: 'edit', new: 'new', compact: 'compact', look: 'look', web: 'web', websearch: 'websearch', agent: 'agent',
+      todo: 'todo', asked: 'asked', perm: 'asked', mcp: 'tools', skill: 'skill', bgstart: 'bg', bgout: 'bg', bgkill: 'bg', cmd: 'cmd2', hook: 'hook', diff: 'diff'};
+    list.forEach(s => { const k = s.k === 'ws' && /compact/i.test(s.text || '') ? 'compact' : KIND[s.k]; if (k) put(k, s); });
+    const one = (k, xs) => {
+      const n = xs.length, u = k === 'read' || k === 'edit' || k === 'new' ? [...new Set(xs.map(s => s.path).filter(Boolean))] : null;
+      switch (k) {
+        case 'cmd': { if (n > 1) return `ran ${plural(n, 'command')}`; const s = xs[0], c = String(s.cmd || '').trim();
+          return s.did ? s.did.replace(/^Ran /, 'ran ') : s.desc ? 'ran: ' + s.desc.charAt(0).toLowerCase() + s.desc.slice(1) : c ? 'ran ' + (c.length > 42 ? c.slice(0, 40) + '…' : c) : 'ran a command'; }
+        case 'check': return 'ran your tests';
+        case 'read': return u.length === 1 ? 'read ' + base(u[0]) : `read ${plural(u.length || n, 'file')}`;
+        case 'search': return n === 1 && xs[0].q ? 'searched for ' + String(xs[0].q).slice(0, 40) : `searched ${n === 1 ? 'once' : n + ' times'}`;
+        case 'list': return xs.some(s => s.glob) ? 'found files' : `listed ${plural(n, 'folder')}`;
+        case 'edit': return u.length === 1 ? 'edited ' + base(u[0]) : `edited ${plural(u.length, 'file')}`;
+        case 'new': return u.length === 1 ? 'created ' + base(u[0]) : `created ${plural(u.length, 'file')}`;
+        case 'compact': return 'compacted the session';
+        case 'look': return `checked ${n === 1 ? 'the page' : plural(n, 'page')} in a browser`;
+        case 'web': return `read ${plural(n, 'web page')}`;
+        case 'websearch': return 'searched the web';
+        case 'agent': return `asked ${plural(n, 'agent')}`;
+        case 'todo': return 'updated the to-do list';
+        case 'asked': return n === 1 ? 'asked you' : `asked you ${n} times`;
+        case 'tools': return 'used your tools';
+        case 'skill': return n === 1 && xs[0].name ? 'used the ' + xs[0].name + ' skill' : `used ${plural(n, 'skill')}`;
+        case 'bg': return 'worked with background commands';
+        case 'cmd2': return 'ran your command';
+        case 'hook': return "ran this repo's hooks";
+        case 'diff': return 'checked its own change';
+      }
+      return '';
+    };
+    const parts = order.map(k => one(k, b[k])).filter(Boolean), line = parts.slice(0, 4).join(', ') + (parts.length > 4 ? ' and more' : '');
+    return line ? line.charAt(0).toUpperCase() + line.slice(1) : 'Worked';
+  }
+  const SHOT = {};
+  function shotThumbs(list) {            // the screenshots it took, small, at the end of the line (Claude Code shows them)
+    if (shared) return '';
+    const names = []; list.forEach(s => { if (s.k === 'look') (s.shots || []).forEach(n => names.push(String(n))); });
+    if (!names.length) return '';
+    return `<span class="hcd-thumbs">${names.length > 3 ? `<em>+${names.length - 3}</em>` : ''}${names.slice(0, 3).map(n => `<img data-shot="${esc(n)}" alt="Screenshot ${esc(base(n))}">`).join('')}</span>`;
+  }
+  function loadShots(node) {
+    node.querySelectorAll('img[data-shot]:not([src])').forEach(img => {
+      const n = img.dataset.shot, k = tid() + '/' + n;
+      (SHOT[k] = SHOT[k] || api('GET', `/api/devsahayak/tasks/${tid()}/shots/${encodeURIComponent(n)}`, undefined, {raw: true})
+        .then(r => r.blob()).then(bl => URL.createObjectURL(bl))).then(u => { img.src = u; }).catch(() => { img.remove(); });
+    });
+  }
   function thGroupDraw(g) {
     const t = K.task, steps = t.steps || [], inner = rowsHTML(t, g.from, g.to); let html = inner;
     if (inner && g.done && P.view === 'normal') {
-      const secs = Math.round((Date.parse(steps[g.to - 1].at) - Date.parse(g.from > 0 ? steps[g.from - 1].at : t.at)) / 1000), key = 'w' + g.from;
-      html = `<details class="hck-fold" data-wk="${key}"${OPEN.has(key) ? ' open' : ''}><summary><span class="sm">Worked${isFinite(secs) ? ' for ' + esc(HoolaChat.fmtSecs(Math.max(1, secs))) : ''}</span>${DN}</summary><div class="hck-tl hcd-wk">${inner}</div></details>`;
+      const list = steps.slice(g.from, g.to), key = 'w' + g.from;
+      let add = 0, rem = 0; list.forEach(s => { if (s.k === 'edit' || s.k === 'new') { add += +s.added || 0; rem += +s.removed || 0; } });
+      const stat = add + rem ? ` <span class="hcd-wstat"><em class="add">+${add}</em> <em class="del">−${rem}</em></span>` : '';
+      html = `<details class="hck-fold" data-wk="${key}"${OPEN.has(key) ? ' open' : ''}><summary><span class="sm">${esc(workLabel(list))}</span>${stat}${DN}${shotThumbs(list)}</summary><div class="hck-tl hcd-wk">${inner}</div></details>`;
     }
     if (html === g.html) return; g.html = html; g.node.innerHTML = html; g.node.hidden = !html;
+    loadShots(g.node);
   }
   function thGroupDone() { const g = K.cur; if (!g) return; K.cur = null; g.done = true; thGroupDraw(g); }     // words follow it, or the round is over: it folds
   function thStep(s, i) {
@@ -1186,8 +1255,13 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     const acts = actsFor(t).filter(a => !a.includes('data-act="fixcomments"'));      // the reviewers' card below has that button
     const sg = {done: svg('ok', 'ok'), bad: svg('bad', 'bad'), now: '<i class="hcd-pulse sm" aria-hidden="true"></i>', off: svg('bad'), todo: '<i class="hcd-ring" aria-hidden="true"></i>'};
     const env = t.env || {id: 'auto', name: 'Auto'}, rows = stages(t), doneN = rows.filter(r => r[1] === 'done').length;
-    const last = (t.steps || []).length ? (t.steps || [])[(t.steps || []).length - 1].at : '', mins = Math.max(1, Math.round(((t.running ? Date.now() : Date.parse(last || t.at)) - Date.parse(t.at)) / 60000));
-    return `<section class="hcd-rc hcd-runrc" aria-labelledby="hcdRcP"><h2 id="hcdRcP">The run<span class="hcd-stat">${doneN} of ${rows.length} · ${mins} min</span></h2>
+    // v0.999 the time Hoola WORKED (its rounds), not the days a session stayed open ("25920 min" for a session revisited later)
+    const last = (t.steps || []).length ? (t.steps || [])[(t.steps || []).length - 1].at : '', worked = (t.steps || []).reduce((a, s) => a + (s.k === 'round' ? +s.secs || 0 : 0), 0);
+    const ats = [t.at].concat((t.steps || []).map(s => s.at)).map(x => Date.parse(x || '')).filter(isFinite);   // no rounds: gaps over 10 min do not count
+    const span = ats.reduce((a, x, i) => i ? a + Math.min(600, Math.max(0, (x - ats[i - 1]) / 1000)) : 0, 0) + (t.running && ats.length ? Math.min(600, Math.max(0, (Date.now() - ats[ats.length - 1]) / 1000)) : 0);
+    const took = worked > 0 ? worked : span;
+    const mins = isFinite(took) ? dur(Math.max(1, took)) : '';
+    return `<section class="hcd-rc hcd-runrc" aria-labelledby="hcdRcP"><h2 id="hcdRcP">The run<span class="hcd-stat">${doneN} of ${rows.length}${mins ? ' · ' + mins : ''}</span></h2>
         <ol class="hcd-run" role="list" aria-label="The run, stage by stage">${rows.map(([name, s, note], i) => `<li class="hcd-rs ${s}"><span class="hcd-rsd" aria-hidden="true">${s === 'done' ? '\u2713' : s === 'bad' ? '!' : ''}</span>${i < rows.length - 1 ? '<span class="hcd-rsl" aria-hidden="true"></span>' : ''}<span class="hcd-rst"><b>${name}</b>${note ? `<small>${esc(note)}</small>` : ''}</span><span class="hcd-sr">${{done: 'done', now: 'working now', bad: 'failed', off: 'not run', todo: 'not yet'}[s] || ''}</span></li>`).join('')}</ol></section>
       <section class="hcd-rc hcd-envrc" aria-labelledby="hcdRcE"><h2 id="hcdRcE">Environment</h2>
         <div class="hcd-envl">${svg('cloud')}<b>${esc(env.name || 'Auto')}</b><span class="hcd-flex"></span>${t.running ? '<span class="hcd-c ok">Ready</span>' : ''}${shared ? '' : `<button type="button" class="hcd-icb" data-menu="senv" aria-label="Change the cloud environment" title="Cloud environment">${svg('gear')}</button>`}</div>

@@ -14,6 +14,13 @@ ROOT = Path(__file__).resolve().parents[2]
 DEV = ROOT / "server" / "app" / "devsahayak"
 
 
+@pytest.fixture(autouse=True)
+def _on(monkeypatch):
+    monkeypatch.setenv("DEV_SUPERPOWERS", "true")         # conftest pins it off for the older suites
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), "dev_superpowers", True)
+
+
 @pytest.fixture
 def ws(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)

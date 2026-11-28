@@ -185,7 +185,8 @@ def test_the_session_thread_is_the_kit_and_a_refresh_only_adds(arena_server):  #
     pg.wait_for_function("() => document.querySelector('#hcdCol .hck-work:not([hidden]) .hck-label')")
     t = pg.evaluate(THREAD)
     assert t["kids"] == ["her", "say", "fold", "say", "rows", "work"], t                                 # in the order it happened, one turn
-    assert t["folds"] and t["folds"][0].startswith("Worked for ") and t["label"].startswith("Editing tests/test_cart.py") and t["same"], t
+    # v0.999 the fold names what was done, like Claude Code ("Read 2 files, searched for total(") - no gap-measured time
+    assert t["folds"] and t["folds"][0] == "Read 2 files, searched for total(" and t["label"].startswith("Editing tests/test_cart.py") and t["same"], t
     assert pg.locator("#hcdCol .hck-txt strong, #hcdCol .hck-txt b").count() >= 1                        # the kit's markdown (was plain text)
     assert pg.locator("#hcdCol .hcd-wgrp .hcd-diff span.add").count() == 2                                # the edit keeps its diff
     _shot(pg, "ck-2-landed")
@@ -242,7 +243,8 @@ def test_a_finished_session_opens_whole_in_light_and_dark(arena_server):  # noqa
             gap: getComputedStyle(col).rowGap, inner: getComputedStyle(ho).rowGap, para: getComputedStyle(p.firstChild).marginBottom, em: getComputedStyle(p.querySelector('em')).fontStyle,
             code: getComputedStyle(p.querySelector('code')).paddingLeft, ink: cs('#hcdCol .hck-txt', 'color'), bubbg: cs('#hcdCol .hck-bub', 'backgroundColor')};
           p.remove(); return out; }""")
-        assert "Literata" in got["font"] and got["size"] == "16px" and got["lh"] == "24px" and got["bub"] == "16px", got
+        # v0.999 Hoola Code's words are in the plain sans Claude Code uses (the main chat keeps its serif)
+        assert "Literata" not in got["font"] and "Grotesk" in got["font"] and got["size"] == "16px" and got["lh"] == "24px" and got["bub"] == "16px", got
         assert got["gap"] == "44px" and got["inner"] == "12px" and got["para"] == "16px" and got["em"] == "italic" and got["code"] == "4px", got
         lum = lambda c: sum(int(x) for x in re.findall(r"\d+", c)[:3])                                  # noqa: E731
         assert (lum(got["ink"]) > 600) == dark and (lum(got["bubbg"]) < 200) == dark, got               # the page's own tokens, in both themes
