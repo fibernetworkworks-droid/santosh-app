@@ -260,6 +260,13 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                "roboflow", "cvat", "label studio", "image classifier", "image classification", "confusion matrix", "segmentation", "opencv",
                "camera calibration", "camera_info", "intrinsics", "field of view", "focal length", "pixels per", "lens for", "motion blur",
                "depth of field", "stereo camera", "disparity", "tensorrt", "onnx", "openvino", "jetson", "inference fps", "frames per second", "nms"),
+    # v0.999.311 the Security Engineer: her application security words
+    "seceng": ("security engineer", "security engineering", "appsec", "application security", "sarif", "codeql", "semgrep", "trivy", "grype",
+               "snyk", "dependabot", "owasp zap", "zap report", "burp", "scanner report", "scan report", "vulnerability report", "cve-",
+               "security headers", "content-security-policy", "content security policy", "csp header", "hsts", "strict-transport-security",
+               "x-frame-options", "clickjacking", "cookie flags", "httponly", "samesite", "tls certificate", "ssl certificate", "certificate chain",
+               "cert expiry", "certificate expires", "s_client", "jwt", "json web token", "alg none", "security review", "code review for security",
+               "sql injection", "xss", "deserialization", "deserialisation", "hardcoded secret", "hard-coded password", "cwe-", "security gate"),
     # v0.999.310 the Cloud Engineer: her cloud words
     "cloudeng": ("cloud engineer", "cloud engineering", "cloud bill", "cloud cost", "cloud spend", "aws bill", "azure bill", "gcp bill",
                  "cost and usage report", "cur report", "focus export", "billing export", "cost explorer", "finops", "untagged",

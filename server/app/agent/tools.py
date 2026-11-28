@@ -1304,6 +1304,10 @@ from .cloudeng_tools import CLOUDENG_HANDLERS, CLOUDENG_LABELS, CLOUDENG_TOOLS  
 TOOLS.extend(CLOUDENG_TOOLS)
 TOOL_LABELS.update(CLOUDENG_LABELS)
 HANDLERS.update(CLOUDENG_HANDLERS)
+from .seceng_tools import SECENG_HANDLERS, SECENG_LABELS, SECENG_TOOLS  # noqa: E402
+TOOLS.extend(SECENG_TOOLS)
+TOOL_LABELS.update(SECENG_LABELS)
+HANDLERS.update(SECENG_HANDLERS)
 # v0.357 Engineering Desk: the hired CAD Engineer (cad_part)
 from .eng_tools import ENG_HANDLERS, ENG_LABELS, ENG_TOOLS  # noqa: E402
 
