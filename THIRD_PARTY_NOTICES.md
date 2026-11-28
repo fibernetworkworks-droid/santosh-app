@@ -311,3 +311,8 @@ WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEM
 COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
+
+## Hermes Agent (NousResearch/hermes-agent) - MIT
+Copyright (c) 2025 Nous Research. Read at commit d71a6574 (28 Nov 2026). Idea only, no code copied: its scan of
+every memory and skill write (`tools/threat_patterns.py`) is the model for Hoola's own `server/app/coder/guard.py`
+(Hoola's patterns, rules and code). Hoola's nudge / curator / dreams were already Hoola's own ports of the same ideas.

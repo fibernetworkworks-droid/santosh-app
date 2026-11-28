@@ -45,7 +45,7 @@ import re
 import time
 from collections import defaultdict
 
-from . import dedup, prompts, skills_store, store
+from . import dedup, guard, prompts, skills_store, store
 
 log = logging.getLogger("coder.curator")
 
@@ -56,7 +56,7 @@ _PAIR_RE = re.compile(r'<pair\b([^>]*)/>', re.DOTALL)
 _ATTR_RE = re.compile(r'(\w+)\s*=\s*"([^"]*)"')
 
 _stats = {"runs": 0, "scanned": 0, "pairs_decided": 0, "merged": 0, "distinct": 0,
-          "dismissed": 0, "skills": 0, "skipped": 0}
+          "dismissed": 0, "skills": 0, "skipped": 0, "blocked": 0}
 
 
 # ---------------------------------------------------------------- knobs
@@ -252,6 +252,14 @@ async def consolidate(tenant: str, st) -> dict:
     Best-effort end to end; every failure leaves the vault exactly as it was."""
     report = {"tenant": tenant, "new_candidates": 0, "decided": 0, "merged": 0,
               "distinct": 0, "dismissed": 0, "skills": 0, "nominated": 0, "brain": False}
+    try:   # v0.999 the house usage gate (the nudge and dreams rule): her plan pays for her own memory
+        from .. import usage
+        if not usage.allowed(tenant, "coder"):
+            _stats["skipped"] += 1
+            report["skipped"] = "usage"
+            return report
+    except Exception:
+        pass
     try:
         report["new_candidates"] = scan(tenant)
     except Exception:
@@ -315,6 +323,12 @@ async def consolidate(tenant: str, st) -> dict:
         for action, name, desc, body in _parse_skills(out or ""):
             if budget <= 0:
                 break
+            hit = guard.check_skill(name, desc, body)   # v0.999 the memory guard
+            if hit:
+                _stats["blocked"] += 1
+                report["blocked"] = report.get("blocked", 0) + 1
+                log.warning("curator skill write blocked (%s): %s", name, ",".join(hit))
+                continue
             if action == "update":
                 if not any(s["name"] == name for s in skills_now):
                     continue                # never heard of it: not updatable

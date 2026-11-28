@@ -134,6 +134,7 @@ on:
           - engine_attach
           - github_app
           - coder_flip
+          - coder_learn_on
           - docs7_flip
       lines:
         description: "Log lines for logs / errors (50-2000); for pc_pair = the 6-digit code from her app; for pc_card = [desktop|browser|portal@]PC name[:id,id], e.g. desktop@test laptop (left as is: browser@Hoola PC)"
@@ -1143,6 +1144,18 @@ jobs:
                 echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
                 echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 120s"; exit 1; }'
                 echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.config import get_settings; print(\"== effective coder_nudge =\", get_settings().coder_nudge)"' ;;
+              coder_learn_on)
+                # v0.999 the three learners ON (nudge, weekly curator, nightly dreams): the code default is ON
+                # since v0.999 with every self-written memory / skill checked by coder/guard.py; this sets all
+                # three to true in $CORE/.env too (an older explicit false would win over the default), restarts,
+                # and prints the EFFECTIVE values from a fresh process.
+                echo 'set -e'
+                echo 'touch $CORE/.env'
+                echo 'for K in CODER_NUDGE CODER_CURATOR CODER_DREAMS; do if grep -q "^$K=" $CORE/.env; then sed -i "s#^$K=.*#$K=true#" $CORE/.env; else printf "$K=true\n" >> $CORE/.env; fi; done'
+                echo 'grep -E "^CODER_(NUDGE|CURATOR|DREAMS)=" $CORE/.env'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 120s"; exit 1; }'
+                echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.config import get_settings as g; s=g(); print(\"== effective nudge / curator / dreams =\", s.coder_nudge, s.coder_curator, s.coder_dreams)"' ;;
               docs7_flip)
                 # v0.501.0 - the owner's flip slot for the Context7 surface: CODER_DOCS7=true in
                 # $CORE/.env, the same reviewed one-boolean shape as coder_flip (the code default
