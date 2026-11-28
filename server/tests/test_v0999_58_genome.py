@@ -88,7 +88,7 @@ def test_design_md_round_trips_and_imports_another_tools_file():
     g = GN.generate(seed="md", direction="festive_traditional", name="Asha weds Ravi")
     md = GN.design_md(g)
     assert md.startswith("---\n") and "colors:" in md and "typography:" in md and "hoola:" in md
-    assert "## Colours" in md and "## Imagery" in md
+    assert "## Colors" in md and "## Imagery" in md   # v0.999.316 the spec's own section names
     assert GN.from_design_md(md) == g
     other = """---
 name: Acme

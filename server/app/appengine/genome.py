@@ -592,48 +592,79 @@ def write_fonts(g: dict[str, Any], dest: Path) -> list[str]:
 
 # ---------------------------------------------------------------- DESIGN.md (Stitch format: YAML tokens + plain rules)
 def design_md(g: dict[str, Any]) -> str:
+    """v0.999.316 Google Stitch's DESIGN.md in the spec's own section order (Overview, Colors, Typography, Layout,
+    Elevation & Depth, Shapes, Motion & Micro-interaction, Components, Do's and Don'ts) - so the file also works in
+    Stitch, Cursor or Claude. Hoola's full genome rides under `hoola:` so it round-trips exactly."""
     import yaml
     m = g["colour"]["mode"]
+    other = "dark" if m == "light" else "light"
     p = palette(g["colour"], m)
-    q = palette(g["colour"], "dark" if m == "light" else "light")
+    q = palette(g["colour"], other)
     r = int(g["shape"]["radius"])
     t = g["type"]
+    dur, dist, ease = MOTION.get(g["motion"], MOTION["calm"])
+    ms = lambda s: f"{int(round(float(s.rstrip('s')) * 1000))}ms"  # noqa: E731
+    colors: dict[str, Any] = {k.replace("_", "-"): p[k] for k in TK.KEYS}
+    colors["on-primary"] = p["primary_ink"]
+    colors[other] = {k.replace("_", "-"): q[k] for k in TK.KEYS}
+    dw = int(t.get("display_weight") or 600)
     front = {
-        "name": (g.get("name") or g["direction"]["name"]),
         "version": "alpha",
-        "generator": f"hoola-genome/{VERSION}",
-        "colors": {k.replace("_", "-"): p[k] for k in TK.KEYS},
-        "colors-" + ("dark" if m == "light" else "light"): {k.replace("_", "-"): q[k] for k in TK.KEYS},
-        "typography": {"display": {"fontFamily": t["display"], "fontWeight": int(t.get("display_weight") or 600)},
-                       "body": {"fontFamily": t["text"], "fontWeight": 400},
-                       "devanagari": {"fontFamily": t["deva"]}, "scale": t["scale"]},
-        "rounded": {"card": f"{r + 4 if r else 0}px", "control": f"{max(2, r - 4) if r else 0}px"},
-        "spacing": {"base": DENSITY[g["density"]], "density": g["density"]},
-        "shadow": g["shape"]["shadow"],
-        "motion": g["motion"],
-        "imagery": dict(g["imagery"]),
-        "hoola": {"genome": g},
+        "name": (g.get("name") or g["direction"]["name"]),
+        "description": (f"{g['direction']['name']}: " + (g["direction"].get("words") or "") +
+                        f" {m.capitalize()} first, one brand colour {p['primary']}.").strip(),
+        "colors": colors,
+        "typography": {"headline-display": {"fontFamily": t["display"], "fontWeight": dw, "lineHeight": 1.1},
+                       "headline-md": {"fontFamily": t["display"], "fontWeight": dw, "lineHeight": 1.2},
+                       "body-md": {"fontFamily": t["text"], "fontWeight": 400, "lineHeight": 1.55},
+                       "label-md": {"fontFamily": t["text"], "fontWeight": 500, "lineHeight": 1.3},
+                       "body-devanagari": {"fontFamily": t["deva"], "fontWeight": 400, "lineHeight": 1.7}},
+        "rounded": {"none": "0px", "sm": f"{max(2, r - 4) if r else 0}px", "md": f"{r}px", "lg": f"{r + 4 if r else 0}px",
+                    "full": "9999px"},
+        "spacing": {"base": DENSITY[g["density"]], "sm": "8px", "md": "16px", "lg": "24px", "xl": "48px"},
+        "motion": {"surface-enter": {"duration": ms(dur), "timingFunction": ease},
+                   "state-change": {"duration": "160ms", "timingFunction": "ease-out"}},
+        "components": {"button-primary": {"backgroundColor": "{colors.primary}", "textColor": "{colors.on-primary}",
+                                          "typography": "{typography.label-md}", "rounded": "{rounded.sm}"},
+                       "card": {"backgroundColor": "{colors.surface}", "textColor": "{colors.ink}", "rounded": "{rounded.lg}"},
+                       "link": {"textColor": "{colors.primary}"}},
+        "hoola": {"genome": g, "generator": f"hoola-genome/{VERSION}", "shadow": g["shape"]["shadow"],
+                  "imagery": dict(g["imagery"]), "density": g["density"], "scale": t["scale"]},
     }
     body = f"""# {front['name']}
 
 ## Overview
 Direction: **{g['direction']['name']}**{(' - ' + g['direction']['words']) if g['direction'].get('words') else ''}.
-{m.capitalize()} first; the {'dark' if m == 'light' else 'light'} version is generated from the same hue.
+{m.capitalize()} first; the {other} version (`colors.{other}`) is generated from the same hue.
 
-## Colours
-- Brand colour (primary) {p['primary']} on {p['bg']}; text on it {p['primary_ink']}. Accent {p['accent']} for one detail
-  per screen, never a second brand colour. Every text colour reads at 4.5:1 or more (checked when this file was made).
+## Colors
+- **Primary** {{colors.primary}} ({p['primary']}) on {{colors.bg}} ({p['bg']}); text on it {{colors.on-primary}}. Accent
+  {{colors.accent}} for one detail per screen, never a second brand colour.
+- Every text colour reads at 4.5:1 or more on its background (checked when this file was made).
 - Gradients are an accent, not the page; never on a button.
 
-## Type
-- Headings: {t['display']}; text: {t['text']}; Indian scripts: {t['deva']}. Heading scale: {t['scale']}.
+## Typography
+- Headlines in {t['display']} (weight {dw}), text in {t['text']}, Indian scripts in {t['deva']}. Heading scale: {t['scale']}.
 - One heading style per level; sentences, not shouting; no tiny labels above headings.
 
-## Shape and space
-- Corners {r}px base, shadow {g['shape']['shadow']}, density {g['density']}.
+## Layout
+- Density {g['density']}: the spacing unit is {DENSITY[g['density']]}.
 
-## Motion
-- {g['motion'].capitalize()}: things arrive softly once; nothing bounces; reduced motion turns it off.
+## Elevation & Depth
+- Shadow: {g['shape']['shadow']}.
+
+## Shapes
+- Corners {{rounded.md}} ({r}px) for controls and {{rounded.lg}} for cards.
+
+## Motion & Micro-interaction
+- {g['motion'].capitalize()}: things arrive once over {dur}, {dist}, never bouncing; reduced motion turns it off.
+
+## Components
+- `button-primary`: the one filled button per screen. `card`: content on {{colors.surface}}.
+
+## Do's and Don'ts
+- Do keep the brand colour for the main button, focus and links.
+- Don't add a second bright colour, a gradient wash on a button, or a bounce.
 
 ## Imagery
 - {g['imagery']['style']}. Treatment: {g['imagery']['treatment']}. One style for every picture on the site.
@@ -643,40 +674,30 @@ Direction: **{g['direction']['name']}**{(' - ' + g['direction']['words']) if g['
 
 def from_design_md(text: str) -> dict[str, Any]:
     """A DESIGN.md (Hoola's, or one from another tool) -> a checked genome. Hoola's own carries the exact genome;
-    another tool's gives its brand colour, fonts (when Hoola bundles them), corners and light / dark - the rest is
+    another tool's is read by the Studio's one DESIGN.md reader (tolerant YAML, `canvas` / `display-xl` names, older
+    files with no tokens) for its brand colour, fonts (when Hoola bundles them), corners and light / dark - the rest is
     generated, and every colour pair is checked."""
-    import yaml
-    m = re.match(r"\s*---\s*\n(.*?)\n---\s*(?:\n|$)", text or "", re.S)
-    if not m:
-        raise ValueError("DESIGN.md needs its tokens between --- lines at the top (YAML)")
+    from ..site import designmd as DM
     try:
-        front = yaml.safe_load(m.group(1)) or {}
-    except yaml.YAMLError as e:
-        raise ValueError(f"the YAML at the top of DESIGN.md does not read: {str(e)[:160]}")
-    if not isinstance(front, dict):
-        raise ValueError("the YAML at the top of DESIGN.md is not a set of tokens")
+        doc = DM.parse(text)
+    except DM.DesignMdError as e:
+        raise ValueError(str(e))
+    front = doc.get("front") or {}
     hg = (front.get("hoola") or {}).get("genome") if isinstance(front.get("hoola"), dict) else None
     if isinstance(hg, dict):
         return clean(hg)
-    cols = front.get("colors") or {}
-    pin = str(cols.get("primary") or "").strip()
-    bg = str(cols.get("bg") or cols.get("background") or cols.get("surface") or "").strip()
-    mode = ""
-    if TK.HEX.match(bg):
-        mode = "dark" if hex_oklch(bg)[0] < 0.5 else "light"
-    ty = front.get("typography") or {}
-    pick = lambda k: str(((ty.get(k) or {}) if isinstance(ty.get(k), dict) else {}).get("fontFamily") or "")  # noqa: E731
-    fonts = {"display": pick("display") or pick("headline") or pick("heading"), "text": pick("body") or pick("text")}
-    rad = front.get("rounded") or {}
-    radius = None
-    if isinstance(rad, dict):
-        v = str(rad.get("card") or rad.get("md") or rad.get("default") or "")
-        mm = re.match(r"(\d+(?:\.\d+)?)\s*(px|rem)?", v)
-        if mm:
-            radius = float(mm.group(1)) * (16 if mm.group(2) == "rem" else 1)
-    g = generate(seed=f"md:{json.dumps(front, sort_keys=True, default=str)[:400]}", pin=pin if TK.HEX.match(pin) else "",
-                 mode=mode, name=str(front.get("name") or "")[:80], fonts=fonts,
-                 direction=str(front.get("direction") or ""), words=str(front.get("description") or ""))
+    if not DM.usable(doc):
+        raise ValueError("DESIGN.md needs its tokens between --- lines at the top (YAML), or at least a background or "
+                         "main colour in its words")
+    r = doc["roles"]
+    pin, bg = r.get("primary") or "", r.get("bg") or ""
+    mode = ("dark" if hex_oklch(bg)[0] < 0.5 else "light") if TK.HEX.match(bg) else ""
+    f = doc["fonts"]
+    fonts = {"display": f.get("display") or "", "text": f.get("text") or ""}
+    radius = doc.get("radius")
+    g = generate(seed=f"md:{json.dumps(front, sort_keys=True, default=str)[:400] or doc.get('name')}",
+                 pin=pin if TK.HEX.match(pin) else "", mode=mode, name=str(doc.get("name") or "")[:80], fonts=fonts,
+                 direction=str(front.get("direction") or ""), words=str(doc.get("description") or ""))
     if radius is not None:
         g["shape"]["radius"] = max(0, min(32, int(radius - 4 if radius > 4 else radius)))
     return clean(g)

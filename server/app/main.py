@@ -10262,6 +10262,9 @@ async def sites_new(body: dict, tenant: str = Depends(current_tenant)):
     brief = str(body.get("brief") or "")
     from .site import designq as DQ
     DQ.PENDING.set(DQ.ref_from(body.get("design")))   # v0.784 SAWAAL CARD: her picks ride into S.new (copied into the thread)
+    dref = await asyncio.to_thread(_design_md_ref, body)   # v0.999.316 a catalog design or her own DESIGN.md = look 1
+    if dref:
+        DQ.PENDING.set(dref)
     if body.get("deep") and not body.get("field"):     # v0.711 the Studio's Build mode: EVERY ask gets the architect's plan
         from .config import get_settings
         from .site import architect as AR
@@ -10931,6 +10934,69 @@ async def site_design_questions(brief: str = ""):
     type, the top of the home page); {skip: true, why} when her words already decide the design."""
     from .site import designq as DQ
     return await asyncio.to_thread(DQ.questions, brief[:2000])
+
+
+def _design_md_ref(body: dict):
+    """{design_look | design_md} -> the design_ref look 1 follows (None when neither was sent)."""
+    from .site import designmd as DM
+    b = body or {}
+    look, text = str(b.get("design_look") or "")[:80], b.get("design_md")
+    if not look and not (isinstance(text, str) and text.strip()):
+        return None
+    try:
+        return DM.ref_for(look_id=look, text="" if look else str(text))
+    except DM.DesignMdError as e:
+        raise HTTPException(e.code, str(e))
+
+
+def _dm(fn, *a):
+    from .site import designmd as DM
+    try:
+        return fn(*a)
+    except DM.DesignMdError as e:
+        raise HTTPException(e.code, str(e))
+
+
+@app.get("/api/site-design/looks", dependencies=[Depends(require_key)])
+async def site_design_looks(cat: str = "", q: str = ""):
+    """v0.999.316 the design catalog under the Studio's chat box: 83 looks read from real websites' DESIGN.md files."""
+    from .site import designmd as DM
+    return await asyncio.to_thread(DM.catalog, cat[:20], q[:80])
+
+
+@app.get("/api/site-design/looks/{lid}", dependencies=[Depends(require_key)])
+async def site_design_look(lid: str):
+    """One design: its prompt, colours in both modes, type, corners, rules, what Hoola adds, the checker's notes."""
+    from .site import designmd as DM
+    return await asyncio.to_thread(_dm, DM.look, lid[:80])
+
+
+@app.get("/api/site-design/looks/{lid}/page")
+async def site_design_look_page(lid: str, mode: str = ""):
+    """A full sample page in the look (public like the fonts: no script, no outside requests, framed only by the Studio)."""
+    from .site import designmd as DM
+    html = await asyncio.to_thread(_dm, DM.sample_page, lid[:80], mode[:8])
+    return Response(html, media_type="text/html; charset=utf-8", headers={
+        "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; font-src 'self'; img-src data:; "
+                                   "frame-ancestors 'self'; base-uri 'none'; form-action 'none'",
+        "Cache-Control": "public, max-age=3600", "X-Content-Type-Options": "nosniff"})
+
+
+@app.get("/api/site-design/looks/{lid}/md")
+async def site_design_look_md(lid: str):
+    """The look's DESIGN.md as a file (MIT, from awesome-design-md)."""
+    from .site import designmd as DM
+    text = await asyncio.to_thread(_dm, DM.md_text, lid[:80])
+    return Response(text, media_type="text/markdown; charset=utf-8", headers={
+        "Content-Disposition": f'attachment; filename="DESIGN-{re.sub(r"[^a-z0-9-]", "", lid.lower())[:40]}.md"',
+        "X-Content-Type-Options": "nosniff"})
+
+
+@app.post("/api/site-design/md/check", dependencies=[Depends(require_key)])
+async def site_design_md_check(body: dict):
+    """Her own DESIGN.md read and checked (Google's lint rules in plain words). Nothing is saved."""
+    from .site import designmd as DM
+    return await asyncio.to_thread(_dm, DM.check, str((body or {}).get("text") or ""))
 
 
 @app.get("/api/site-design/font/{fn}")
@@ -11802,6 +11868,9 @@ async def site_architect_list(tenant: str = Depends(current_tenant)):
 async def site_architect_new(body: dict, tenant: str = Depends(current_tenant)):
     """{words, conversation_id}: her ONE line -> the full spec card (pages, users, data, rules, features). Nothing built."""
     from .site import architect as AR
+    from .site import designq as DQ
+    dref = await asyncio.to_thread(_design_md_ref, body)   # v0.999.316 the DESIGN.md she attached rides with the plan
+    DQ.PENDING.set(dref)
     return await asyncio.to_thread(_site_logic, AR.draft, tenant, str(body.get("words") or ""),
                                    str(body.get("conversation_id") or ""))
 

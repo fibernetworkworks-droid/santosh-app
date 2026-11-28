@@ -250,12 +250,15 @@ def clean_critique(raw: Any, types: list[str]) -> dict[str, Any]:
     return out
 
 
-def critique(images: list[bytes], dna: dict[str, Any] | None, types: list[str], words: str) -> dict[str, Any] | None:
+def critique(images: list[bytes], dna: dict[str, Any] | None, types: list[str], words: str,
+             rules: list[str] | None = None) -> dict[str, Any] | None:
     if not critique_on() or not images:
         return None
     prompt = "\n".join([f"SECTIONS ON THIS PAGE (top to bottom): {', '.join(types)}",
                         dna_block(dna) or "DESIGN DNA: none (judge by premium small-business web design)",
-                        f"WHAT THE OWNER ASKED FOR (data): {words[:500]}"])
+                        f"WHAT THE OWNER ASKED FOR (data): {words[:500]}"]
+                       + ([("THE DESIGN.md SHE CHOSE - score how well the page keeps these rules (a broken rule is a "
+                            "weakness of that section): " + " | ".join(str(x)[:170] for x in rules[:10]))] if rules else []))
     try:
         raw = AI.parse_json(AI.ask(CRITIQUE_SYSTEM + "\n\nReply with ONLY one JSON object.", prompt, 2500, "site_critique",
                                    images[:2]))
