@@ -434,7 +434,7 @@ def test_enrich_fanout_through_the_api(env, monkeypatch):
 def test_registry_stays_562_and_the_tool_schemas_carry_p4(env):
     from app.agent.leads_tools import LEADS_TOOLS, LEADS_HANDLERS
     from app.agent.tools import TOOLS
-    assert len(TOOLS) == 717                                    # +1 kernel_desk (v0.999.274); +1 lang_lab (v0.999.272); +3 (v0.999.190); +7 calendar tools (v0.999.189); +7 slide tools (v0.999.188); +1 public_finance (F12); +2 community_finance + digital_assets (F11); +2 investments_desk + markets_desk (F10); +1 institution_desk (F9); +1 payments_desk (F8); +1 firm_practice (F7); +1 credit_lending (F6); +2 payroll_worldwide + cash_treasury (F5); +1 tax_worldwide (F4); +1 hoola_pc_batch (v0.885); +1 app_engine (v0.824); +1 seekh_video (v0.713 SEEKH MANCH); the registry pin, the lane rode leads_run
+    assert len(TOOLS) == 718                                    # +1 kernel_desk (v0.999.274); +1 lang_lab (v0.999.272); +3 (v0.999.190); +7 calendar tools (v0.999.189); +7 slide tools (v0.999.188); +1 public_finance (F12); +2 community_finance + digital_assets (F11); +2 investments_desk + markets_desk (F10); +1 institution_desk (F9); +1 payments_desk (F8); +1 firm_practice (F7); +1 credit_lending (F6); +2 payroll_worldwide + cash_treasury (F5); +1 tax_worldwide (F4); +1 hoola_pc_batch (v0.885); +1 app_engine (v0.824); +1 seekh_video (v0.713 SEEKH MANCH); the registry pin, the lane rode leads_run
     for t in LEADS_TOOLS:
         assert t["name"] in LEADS_HANDLERS
     run_tool = next(t for t in LEADS_TOOLS if t["name"] == "leads_run")
