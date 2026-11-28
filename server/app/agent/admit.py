@@ -223,6 +223,13 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
             "noisy alert", "alertmanager", "alert rules", "prometheus rule", "recording rule", "on-call", "oncall", "pagerduty",
             "opsgenie", "mttr", "mttd", "apdex", "histogram_quantile", "capacity plan", "capacity forecast", "service level objective",
             "slo target", "our slo", "the slo", "availability target", "nines of availability", "incident timeline", "toil"),
+    # v0.999.286 the Virtualization / Hypervisor Engineer: her container / VM words
+    "virt": ("hypervisor", "virtualization", "virtualisation", "libvirt", "virsh", "dumpxml", "qemu", "kvm guest", "kvm host", "domain xml",
+             "seccomp", "pod security", "podsecurity", "securitycontext", "security context", "runasnonroot", "privileged container",
+             "container hardening", "harden the container", "harden my container", "docker run", "docker-compose", "docker compose", "dockerfile",
+             "oci runtime", "runc", "crun", "gvisor", "kata containers", "firecracker", "cap_sys_admin", "capabilities drop",
+             "cap-drop", "live migration", "host-passthrough", "vcpu", "overcommit", "numa node", "hugepages", "virtio", "proc/cpuinfo",
+             "x86-64-v3", "x86-64-v4", "ovmf", "secure boot vm", "vm placement"),
     # v0.999.283 the Distributed Systems Engineer: her distributed-systems words
     "dist": ("distributed system", "linearizab", "linearisab", "jepsen", "quorum", "consensus", "raft", "paxos", "split brain", "split-brain",
              "exponential backoff", "retry policy", "retry storm", "thundering herd", "idempotency", "idempotent", "failover", "fencing token",

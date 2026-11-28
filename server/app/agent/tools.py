@@ -1264,6 +1264,10 @@ from .sre_tools import SRE_HANDLERS, SRE_LABELS, SRE_TOOLS  # noqa: E402
 TOOLS.extend(SRE_TOOLS)
 TOOL_LABELS.update(SRE_LABELS)
 HANDLERS.update(SRE_HANDLERS)
+from .virt_tools import VIRT_HANDLERS, VIRT_LABELS, VIRT_TOOLS  # noqa: E402
+TOOLS.extend(VIRT_TOOLS)
+TOOL_LABELS.update(VIRT_LABELS)
+HANDLERS.update(VIRT_HANDLERS)
 # v0.357 Engineering Desk: the hired CAD Engineer (cad_part)
 from .eng_tools import ENG_HANDLERS, ENG_LABELS, ENG_TOOLS  # noqa: E402
 

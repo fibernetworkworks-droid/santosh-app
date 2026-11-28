@@ -2205,6 +2205,15 @@ def sre_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/virtualization")
+@app.get("/console/virtualization/")
+def virt_desk_page():
+    """VIRTUALIZATION DESK: the Virtualization / Hypervisor Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "hvdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/distributed")
 @app.get("/console/distributed/")
 def distributed_desk_page():
@@ -2968,6 +2977,8 @@ from . import distchat as _dschat_mod                           # noqa: E402  DI
 _dschat_mod.mount(app, current_tenant, require_key)             # /api/dsdesk/*
 from . import srechat as _srchat_mod                            # noqa: E402  SRE DESK
 _srchat_mod.mount(app, current_tenant, require_key)             # /api/srdesk/*
+from . import virtchat as _vtchat_mod                           # noqa: E402  VIRTUALIZATION DESK
+_vtchat_mod.mount(app, current_tenant, require_key)             # /api/hvdesk/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through
