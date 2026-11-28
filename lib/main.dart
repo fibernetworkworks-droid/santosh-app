@@ -30,6 +30,7 @@ import 'ui/lock_safe.dart';
 import 'ui/phone_hoola.dart';
 import 'ui/video_shrink.dart';
 import 'ui/voice_screen.dart';
+import 'ui/shell/hoola_console_page.dart' show hoolaOpenConsole;
 import 'ui/shell/hoola_shell.dart';
 
 Future<void> main() async {
@@ -127,6 +128,11 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
       if (t.isEmpty) return;
       if (t.startsWith('conv:')) {   // v0.648 a call record's notification: open that call (the app still reopens on her chat)
         unawaited(widget.app.openChat(t.substring(5), remember: false));
+        return;
+      }
+      if (t.startsWith('page:/console/')) {   // v0.999.320 a Hoola DOD notification: open that task's page
+        final ctx = navKey.currentContext;
+        if (ctx != null) unawaited(hoolaOpenConsole(ctx, widget.app, t.substring(5), 'Hoola DOD'));
         return;
       }
       if (t.startsWith('wake:')) {

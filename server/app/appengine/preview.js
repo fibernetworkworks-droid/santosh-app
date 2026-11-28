@@ -26,11 +26,73 @@
   }
   addEventListener('error', e => { if (e.error || e.message) report('page', e.message || String(e.error), e.error && e.error.stack); });
   addEventListener('unhandledrejection', e => { const r = e.reason; report('promise', (r && r.message) || String(r), r && r.stack); });
-  const ce = console.error;
-  console.error = function (...a) {
-    try { const err = a.find(x => x instanceof Error); report('console', a.map(x => (x && x.message) || String(x)).join(' ').slice(0, 500), err && err.stack); } catch (e) { /* never break the app */ }
-    return ce.apply(this, a);
-  };
+  // v0.999.324 (the Dyad read): the app's console and its network calls, for Hoola to read (app_engine action=read_logs).
+  // Bounded: 20 arguments, 8 KB an argument, 64 KB a line, objects 6 deep / 50 keys, 400 lines a page load. Network =
+  // method, path, status, time - never a body, never a query value (only the names), never a header.
+  let logs = 0;
+  const seen = new WeakSet();
+  function show(x, depth) {
+    if (x === null || x === undefined || typeof x !== 'object') return typeof x === 'string' ? x : String(x);
+    if (x instanceof Error) return (x.name || 'Error') + ': ' + x.message;
+    if (depth > 6 || seen.has(x)) return '[...]';
+    seen.add(x);
+    try {
+      if (Array.isArray(x)) return '[' + x.slice(0, 50).map(v => show(v, depth + 1)).join(', ') + (x.length > 50 ? ', ...' : '') + ']';
+      if (typeof Element !== 'undefined' && x instanceof Element) return '<' + x.tagName.toLowerCase() + '>';
+      const ks = Object.keys(x);
+      return '{' + ks.slice(0, 50).map(k => k + ': ' + show(x[k], depth + 1)).join(', ') + (ks.length > 50 ? ', ...' : '') + '}';
+    } catch (e) { return '[object]'; }
+  }
+  function log(level, args) {
+    if (logs >= 400) return;
+    logs += 1;
+    try {
+      const text = [...args].slice(0, 20).map(a => show(a, 0).slice(0, 8192)).join(' ').slice(0, 65536);
+      post({t: 'log', l: level, a: text, p: location.pathname.split('/').slice(-1)[0] || '/'});
+    } catch (e) { /* never break the app */ }
+  }
+  for (const level of ['log', 'info', 'warn', 'error', 'debug']) {
+    const orig = console[level];
+    console[level] = function (...a) {
+      if (level === 'error') {
+        try { const err = a.find(x => x instanceof Error); report('console', a.map(x => (x && x.message) || String(x)).join(' ').slice(0, 500), err && err.stack); } catch (e) { /* never break the app */ }
+      }
+      log(level, a);
+      return orig.apply(this, a);
+    };
+  }
+  function where(u) {
+    try {
+      const x = new URL(String(u), location.href);
+      const q = [...x.searchParams.keys()].slice(0, 12);
+      return (x.origin === location.origin ? '' : x.origin) + x.pathname + (q.length ? '?' + q.join('&') : '');
+    } catch (e) { return String(u).split('?')[0].slice(0, 300); }
+  }
+  function net(method, url, status, t0, err) {
+    if (logs >= 400) return;
+    logs += 1;
+    post({t: 'net', m: String(method || 'GET').toUpperCase().slice(0, 8), u: where(url).slice(0, 400), s: status || 0,
+      ms: Math.round(performance.now() - t0), e: err ? String(err).slice(0, 200) : ''});
+  }
+  if (window.fetch) {
+    const of = window.fetch;
+    window.fetch = function (input, init) {
+      const t0 = performance.now();
+      const url = input && typeof input === 'object' && 'url' in input ? input.url : input;
+      const method = (init && init.method) || (input && typeof input === 'object' && input.method) || 'GET';
+      return of.apply(this, arguments).then(r => { net(method, url, r.status, t0); return r; },
+        e => { net(method, url, 0, t0, e && e.message); throw e; });
+    };
+  }
+  if (window.XMLHttpRequest) {
+    const oo = XMLHttpRequest.prototype.open, os = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function (m, u) { this.__h = {m, u}; return oo.apply(this, arguments); };
+    XMLHttpRequest.prototype.send = function () {
+      const h = this.__h || {}, t0 = performance.now();
+      this.addEventListener('loadend', () => net(h.m, h.u, this.status, t0, this.status ? '' : 'no answer'));
+      return os.apply(this, arguments);
+    };
+  }
 
   let mode = 'off', box = null, tip = null, hot = null;
   const tagOf = el => el && el.closest ? el.closest('[data-hs]') : null;

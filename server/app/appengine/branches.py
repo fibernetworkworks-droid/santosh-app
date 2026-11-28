@@ -120,6 +120,8 @@ def create(tenant: str, ref: str, name: str = "") -> dict[str, Any]:
         for f in ("schema.json", "migrations.json"):
             if (pc / f).exists():
                 shutil.copy2(pc / f, bc / f)
+        from . import herlocks as HL
+        HL.copy_to(p, b)                                       # v0.999.322 her locks come along
         sch = CL.schema(p)
         _meta_path(b).write_text(json.dumps({"base_version": int(p.version or 0), "base_schema": int(sch.get("version") or 0),
                                              "base_look": p.look or "{}", "base_deps": _deps_of(AE.src_dir(p))}))

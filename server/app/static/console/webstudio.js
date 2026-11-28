@@ -245,6 +245,7 @@
     try {
       if (p[0] === 'site' && p[1]) return await openSite(decodeURIComponent(p[1]), p[2] || '');
       if (p[0] === 'plan' && p[1]) return await openPlan(decodeURIComponent(p[1]));
+      if (p[0] === 'design' && p[1]) { CUR = null; CARD = null; await loadLists(); return await openDesign(decodeURIComponent(p[1])); }   // v0.999.316
       if ((p[0] === 'apps' || p[0] === 'app') && window.HoolaAppEngine) {   // v0.814 APP ENGINE 1: the React app lane
         CUR = null; CARD = null; await loadLists(); return await window.HoolaAppEngine.open(p);
       }
@@ -385,11 +386,13 @@
       <section class="hero"><span class="eyebrow"><b>New</b>Watch your website being built, live${ico('arrow', 14)}</span><h1 id="wsGreet">${esc(greetLine(''))}</h1>
         <p class="mut">Describe what you want to make in one line: for a business, for yourself, an event, a class, or just for fun. Hoola plans every page, shows it to you first, and builds it right in front of you. Nothing goes live until you tap.</p>
         <form class="ask" data-form="ask">
+          <div id="wsDChip">${dchip()}</div>
           <label for="wsAsk" class="sr">Describe your website</label>
           <textarea id="wsAsk" rows="3" maxlength="2000" placeholder="Ask Hoola to build a portfolio, a store, a wedding page, a game..." data-type-ph>${esc(PREFILL)}</textarea>
           <div class="bar">
             <button class="b ghost" type="button" data-src="old">${ico('globe', 15)}Use my old site</button>
             <button class="b ghost" type="button" data-src="shot">${ico('pic', 15)}From a screenshot</button>
+            <button class="b ghost" type="button" data-dx="mdopen">${ico('doc', 15)}Add a DESIGN.md</button>
             ${window.HoolaImprove ? `<button class="b ghost" type="button" data-improve title="See what Hoola understood and turn this into a complete website prompt">Improve</button>` : ''}
             <span class="sp"></span>
             <span class="mut sm mnote" id="wsModeNote">${mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: a prototype of every page first'}</span>
@@ -404,6 +407,7 @@
       </section>
       <section class="wrap" id="wsStarters" hidden><div class="sec"><h2 id="wsStartersH">Starting points</h2><span class="mut sm">Pick one, change any word, then send. Thumbnails show the look each one is built in.</span></div>
         <div class="sgrid" id="wsStartGrid"></div></section>
+      ${designSection()}
       ${SPECS.length ? `<section class="wrap"><div class="sec"><h2>Plans waiting for your approval</h2></div><div class="grid">${SPECS.slice(0, 4).map(specCard).join('')}</div></section>` : ''}
       <section class="wrap"><div class="sec"><h2>Your websites</h2>${SITES.length ? `<a class="more" href="#/sites">View all ${ico('arrow', 13)}</a>` : ''}</div>
         ${SITES.length ? `<div class="grid">${SITES.slice(0, 8).map(siteCard).join('')}</div>` : noSites('No website yet. Write one line above.')}</section>
@@ -416,7 +420,7 @@
     }
     APP.innerHTML = `<div class="home">${sidebar(page)}<main class="hmain">${main}</main></div>`;
     PREFILL = '';
-    if (page === 'home') homeLife();
+    if (page === 'home') { homeLife(); loadDesigns(); }
     if (page === 'templates') loadTpl(true);
     document.title = 'Hoola Web Studio';
   }
@@ -496,6 +500,175 @@
     t.scrollIntoView({block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
   }
 
+  /* ================= v0.999.316 DESIGN.md: the design catalog under the chat box =================
+     83 looks read from real websites' DESIGN.md files (awesome-design-md, MIT), each drawn from its own colours, corners
+     and type; a page per design with a full sample page (light and dark), the prompt, its tokens and rules; "Use this
+     design" puts it in the box as a card and the next website is built in that look. Her own DESIGN.md is checked first. */
+  const DCAT = {all: null, cats: [], cat: 'all', q: '', more: false, err: '', total: 0};
+  let DESIGN = null;                                   // the design riding the next website (never sent by itself)
+  const DPAGE = {id: '', mode: '', dev: 'computer', tab: 'preview', data: null, md: ''};
+  const DFIRST = 11;
+  const dvars = t => `--d-bg:${t.bg};--d-sf:${t.surf};--d-ink:${t.ink};--d-mu:${t.muted};--d-ac:${t.acc};--d-on:${t.on};--d-ln:${t.line};--d-r:${Math.min(Number(t.r) || 0, 14)}px;--d-br:${Number(t.r) >= 20 ? 999 : Number(t.r) || 0}px`;
+  function dthumb(x) {
+    const t = M(x.t);
+    return `<span class="dth k-${esc(S(t.kind) || 'sans')}${t.upper ? ' up' : ''}" style="${esc(dvars(t))}" aria-hidden="true">
+      <span class="dn"><i></i><b>${esc(x.name)}</b><span class="sp"></span><u></u><u></u><u></u><em>Start</em></span>
+      <span class="dh"><strong>${esc(x.name)}</strong><u class="l1"></u><u class="l2"></u><span class="db"><em>Get started</em><s>More</s></span></span>
+      <span class="dp"><u class="l1"></u><u class="l2"></u><u class="l3"></u><span class="dq"><i></i><i></i></span></span>
+      <span class="dc"><span><i></i><u></u></span><span><i></i><u></u></span><span><i></i><u></u></span></span>
+      <span class="dband"><b>Ready to start?</b><em></em></span></span>`;
+  }
+  const dsw = t => ['bg', 'surf', 'ink', 'acc'].map(k => `<i style="background:${esc(S(t[k]))}"></i>`).join('');
+  function dcard(x) {
+    return `<a class="dcard" href="#/design/${enc(S(x.id))}" title="${esc(S(x.line))}">${dthumb(x)}
+      <span class="dmeta"><b>${esc(x.name)}</b><span class="dcat">${esc(S(x.cat_short || x.cat_label))}</span></span>
+      <span class="dsub"><span class="mut sm ell">from ${esc(S(x.src))}</span><span class="dsw" aria-hidden="true">${dsw(M(x.t))}</span></span></a>`;
+  }
+  const dupCard = () => `<button class="dcard dup" type="button" data-dx="mdopen"><span class="dupb">${ico('doc', 26)}<b>Bring your own DESIGN.md</b>
+      <span class="mut sm">From Google Stitch, Figma, Cursor or a designer. Hoola checks it before using it.</span><span class="b pri sm">Choose file</span></span>
+      <span class="dmeta"><b>Your own look</b><span class="dcat">Any tool</span></span></button>`;
+  const designSection = () => `<section class="wrap dcatalog" id="wsDesigns" aria-labelledby="wsDesignsH">
+      <div class="dhead"><div class="dht"><span class="eyeb">Design catalog</span><h2 id="wsDesignsH">Start from a design</h2>
+        <p class="mut">Each look is a DESIGN.md read from a real website: its colours, type, corners and rules. Pick one and Hoola builds your site in that look with your own words and name. Never a copy of their site.</p></div>
+        <label class="find dfind">${ico('search', 16)}<input id="wsDQ" type="search" placeholder="Search designs" aria-label="Search designs" autocomplete="off" value="${esc(DCAT.q)}"></label></div>
+      <div class="dchips" id="wsDCats" role="group" aria-label="Kinds of design"></div>
+      <div class="dgrid" id="wsDGrid" aria-live="polite"><p class="mut sm">Loading designs…</p></div>
+      <div class="dmore"><button class="b" type="button" data-dx="more" hidden>Show all designs</button></div>
+    </section>`;
+  async function loadDesigns() {
+    if (!DCAT.all) {
+      try { const r = await api('GET', '/api/site-design/looks'); DCAT.all = L(r.looks); DCAT.cats = L(r.cats); DCAT.total = Number(r.total) || DCAT.all.length; DCAT.err = ''; }
+      catch (e) { DCAT.err = S(e.message) || BAD_ANSWER; }
+    }
+    drawDesigns();
+  }
+  function drawDesigns() {
+    const grid = $('#wsDGrid'), cats = $('#wsDCats'); if (!grid) return;
+    if (DCAT.err) { grid.innerHTML = `<div class="panel" role="alert"><b>The designs could not be loaded.</b> <span class="mut">${esc(DCAT.err)}</span>
+        <div class="inl" style="margin-top:8px"><button class="b" type="button" data-dx="reload">Try again</button></div></div>`; return; }
+    if (!DCAT.all) return;
+    if (cats) cats.innerHTML = DCAT.cats.map(c => `<button class="chip" type="button" data-dx="cat" data-v="${esc(S(c.id))}" aria-pressed="${S(c.id) === DCAT.cat}">${esc(S(c.label))}<span class="dn2">${Number(c.count) || 0}</span></button>`).join('');
+    const q = DCAT.q.trim().toLowerCase();
+    const rows = DCAT.all.filter(x => (DCAT.cat === 'all' || S(x.cat) === DCAT.cat) && (!q || `${x.name} ${x.line} ${x.src} ${x.cat_label}`.toLowerCase().includes(q)));
+    const show = DCAT.more || q ? rows : rows.slice(0, DFIRST);
+    grid.innerHTML = (DCAT.cat === 'all' && !q ? dupCard() : '') + (show.length ? show.map(dcard).join('') : `<p class="mut sm">No design matches “${esc(DCAT.q)}”.</p>`);
+    const mb = APP.querySelector('[data-dx="more"]');
+    if (mb) { mb.hidden = DCAT.more || !!q || rows.length <= DFIRST; mb.textContent = `Show all ${rows.length} designs`; }
+  }
+  function dchip() {
+    if (!DESIGN) return '';
+    return `<div class="dattach" role="group" aria-label="Design for this website"><span class="dmini" style="${esc(dvars(M(DESIGN.t)))}" aria-hidden="true"><u></u><u></u><i></i></span>
+      <span class="dat"><b>${esc(DESIGN.name)}</b><span class="mut sm">Design · ${esc(DESIGN.sub)}</span></span>
+      <button class="ib" type="button" data-dx="clear" aria-label="Remove the design">${ico('x', 15)}</button></div>`;
+  }
+  function attachDesign(x) {
+    DESIGN = x;
+    const box = $('#wsDChip'); if (box) box.innerHTML = dchip();
+  }
+
+  async function openDesign(id) {
+    if (DPAGE.id !== id) { DPAGE.id = id; DPAGE.mode = ''; DPAGE.tab = 'preview'; DPAGE.md = ''; DPAGE.data = null; }
+    if (!DPAGE.data) DPAGE.data = await api('GET', `/api/site-design/looks/${enc(id)}`);
+    if (!DPAGE.mode) DPAGE.mode = S(DPAGE.data.own_mode) || 'light';
+    drawDesign();
+  }
+  function drawDesign() {
+    const x = DPAGE.data, id = S(x.id), mode = DPAGE.mode, own = S(x.own_mode);
+    const seg = (k, opts) => `<div class="seg" role="group">${opts.map(([v, l]) => `<button type="button" data-dx="${k}" data-v="${v}" aria-pressed="${DPAGE[k] === v}">${l}</button>`).join('')}</div>`;
+    const sw = L(M(x.swatches)[mode]).map(c => `<div class="dsw2"><i style="background:${esc(S(c.hex))}"></i><span><b>${esc(S(c.role))}</b><code>${esc(S(c.hex))}</code></span></div>`).join('');
+    const ty = M(x.type), lint = L(x.lint).filter(r => S(r.severity) !== 'info');
+    const r = x.radius == null ? 8 : Number(x.radius);
+    APP.innerHTML = `<div class="home">${sidebar('home')}<main class="hmain dpage">
+      <div class="dtop"><a class="b ghost" href="#/" data-dx="back">${ico('back', 15)}All designs</a><span class="mut sm">Design catalog / ${esc(S(x.cat_label))} /</span><b class="ell">${esc(x.name)}</b><span class="sp"></span>
+        <a class="b" href="/api/site-design/looks/${enc(id)}/md" download>Download DESIGN.md</a><button class="b pri" type="button" data-dx="use">Use this design</button></div>
+      <div class="dbody">
+        <section class="dprev" aria-label="Sample page">
+          <div class="dtools">${seg('tab', [['preview', 'Preview'], ['md', 'DESIGN.md']])}<span class="sp"></span>${DPAGE.tab === 'preview' ? seg('dev', [['computer', 'Computer'], ['phone', 'Phone']]) + seg('mode', [['dark', 'Dark'], ['light', 'Light']]) : ''}</div>
+          ${DPAGE.tab === 'preview' && mode !== own ? `<p class="dnote sm">The source site has no ${esc(mode)} version. Hoola made this one from the same colours, and every text colour still reads at 4.5:1 or more.</p>` : ''}
+          <div class="dstage">${DPAGE.tab === 'md' ? `<pre class="dmd" id="wsDMd">${esc(DPAGE.md || 'Loading…')}</pre>`
+            : `<iframe id="wsDFrame" class="${DPAGE.dev === 'phone' ? 'ph' : ''}" title="Sample page in the ${esc(x.name)} look" src="/api/site-design/looks/${enc(id)}/page?mode=${enc(mode)}" sandbox="allow-same-origin" referrerpolicy="no-referrer"></iframe>`}</div>
+          <p class="mut sm">A sample page Hoola drew in this look - with your words and name it becomes your site. Prices stay [YOUR PRICE] until you give them.</p>
+        </section>
+        <aside class="dside">
+          <div class="dtags">${x.new ? '<span class="pill v">New</span>' : ''}<span class="pill">${esc(own === 'dark' ? 'Dark' : 'Light')}</span><span class="pill">${esc(S(x.cat_label))}</span></div>
+          <h1 class="dh1">${esc(x.name)}</h1>
+          <p class="dlead">${esc(S(x.description))}</p>
+          <p class="mut sm">${esc(S(x.source_note))}</p>
+          <div class="dpromptc"><div class="dph"><label for="wsDPrompt"><b>The prompt</b></label><span class="eyeb">Edit before using</span></div>
+            <textarea id="wsDPrompt" rows="6" maxlength="2000">${esc(S(x.prompt))}</textarea>
+            <div class="inl"><button class="b pri" type="button" data-dx="use" style="flex:1">Use this design</button><button class="b" type="button" data-dx="copy">Copy</button></div></div>
+          <div class="dblock"><h2>Colours <span class="mut sm">${esc(mode)}</span></h2><div class="dsws">${sw}</div></div>
+          <div class="dblock"><h2>Type</h2><div class="dtype"><div><span class="dtA" style="font-family:'${esc(S(ty.head))}'">Aa ${esc(S(ty.head))}</span><span class="mut sm">${esc(S(ty.note))}</span></div>
+            <p class="mut sm">${S(ty.source) && S(ty.source).toLowerCase() !== S(ty.head).toLowerCase() ? `Their font (${esc(S(ty.source))}) is replaced by ${esc(S(ty.head))} and ${esc(S(ty.body))}, which Hoola bundles, set to the same sizes and spacing.` : `Headlines ${esc(S(ty.head))}, text ${esc(S(ty.body))}.`}</p></div></div>
+          <div class="dblock"><h2>Corners</h2><div class="dcorn"><span style="border-radius:${Math.min(r, 6)}px">${Math.min(r, 6)}</span><span style="border-radius:${r}px">${r}</span><span style="border-radius:${r + 4}px">${r + 4}</span><span class="pl">pill</span></div></div>
+          ${L(x.rules).length ? `<div class="dblock"><h2>Rules the builder follows</h2><ul class="drules">${L(x.rules).map(t => `<li>${esc(S(t))}</li>`).join('')}</ul></div>` : ''}
+          <div class="dblock dadds"><h2>What Hoola adds</h2><ul>${L(x.adds).map(t => `<li>${esc(S(t))}</li>`).join('')}</ul></div>
+          ${lint.length ? `<div class="dblock"><h2>Checker notes</h2><ul class="dlint">${lint.map(r_ => `<li class="${esc(S(r_.severity))}">${esc(S(r_.message))}</li>`).join('')}</ul></div>` : ''}
+        </aside>
+      </div>
+      ${L(x.similar).length ? `<section class="wrap dsim"><div class="sec"><h2>Similar designs</h2></div><div class="dgrid">${L(x.similar).map(dcard).join('')}</div></section>` : ''}
+    </main></div>`;
+    const fr = $('#wsDFrame');
+    if (fr) fr.addEventListener('load', () => { try { fr.style.height = Math.max(900, fr.contentDocument.documentElement.scrollHeight + 4) + 'px'; } catch (e) { /* framed elsewhere */ } });
+    if (DPAGE.tab === 'md' && !DPAGE.md) {
+      fetch(`/api/site-design/looks/${enc(id)}/md`).then(r_ => r_.ok ? r_.text() : Promise.reject(new Error('The DESIGN.md could not be loaded.')))
+        .then(t => { DPAGE.md = t; const pre = $('#wsDMd'); if (pre) pre.textContent = t; })
+        .catch(e => { const pre = $('#wsDMd'); if (pre) pre.textContent = S(e.message); });
+    }
+    document.title = `${S(x.name)} · Design · Hoola Web Studio`;
+  }
+  function useDesign(prompt) {
+    const x = DPAGE.data; if (!x) return;
+    attachDesign({kind: 'look', id: S(x.id), name: S(x.name), t: M(x.t), sub: `${S(x.own_mode) === 'dark' ? 'dark' : 'light'} · from the catalog`});
+    PREFILL = S(prompt || x.prompt).slice(0, 2000);
+    go('#/');
+    setTimeout(() => {
+      const t = $('#wsAsk'); if (!t) return;
+      t.focus(); const i = t.value.indexOf('[your business]');
+      if (i >= 0) t.setSelectionRange(i, i + 15);
+      t.scrollIntoView({block: 'center'});
+    }, 60);
+  }
+  async function designAct(k, d) {
+    if (k === 'cat') { DCAT.cat = S(d.v) || 'all'; DCAT.more = false; drawDesigns(); return; }
+    if (k === 'more') { DCAT.more = true; drawDesigns(); return; }
+    if (k === 'reload') { DCAT.err = ''; DCAT.all = null; loadDesigns(); return; }
+    if (k === 'clear') { DESIGN = null; const box = $('#wsDChip'); if (box) box.innerHTML = ''; toast('Design removed. Hoola will choose the look.'); return; }
+    if (k === 'mdopen') { drawSource('md'); $('#wsSrc')?.scrollIntoView({block: 'center'}); return; }
+    if (k === 'mduse') {
+      const r = DMD.last; if (!r || !r.ok) return;
+      attachDesign({kind: 'md', text: DMD.text, name: S(r.name) || 'Your DESIGN.md', t: M(r.t), sub: `${S(r.own_mode)} · your file`});
+      drawSource(''); toast('Your DESIGN.md is in the box. Say what the website is for and send.'); $('#wsAsk')?.focus(); return;
+    }
+    if (k === 'tab' || k === 'dev' || k === 'mode') { DPAGE[k] = S(d.v); drawDesign(); return; }
+    if (k === 'use') { useDesign(S($('#wsDPrompt')?.value)); return; }
+    if (k === 'copy') { try { await navigator.clipboard.writeText(S($('#wsDPrompt')?.value)); toast('Prompt copied.'); } catch (e) { toast('Select the text and copy it.', true); } return; }
+  }
+  const DMD = {text: '', last: null};
+  async function checkDesignMd(f) {
+    const out = f.querySelector('[data-out]');
+    const file = f.file?.files?.[0];
+    let text = S(f.paste?.value);
+    if (file) {
+      if (file.size > 400000) { out.innerHTML = '<p class="li bad">That file is over 400 KB. A DESIGN.md is usually under 40 KB.</p>'; return; }
+      text = await file.text();
+    }
+    if (!text.trim()) { out.innerHTML = '<p class="li bad">Choose a DESIGN.md file or paste its text.</p>'; return; }
+    out.innerHTML = '<p class="mut sm">Checking…</p>';
+    let r;
+    try { r = await api('POST', '/api/site-design/md/check', {text}); }
+    catch (e) { out.innerHTML = `<p class="li bad">${esc(e.message)}</p>`; return; }
+    DMD.text = text; DMD.last = r;
+    const sev = {error: 'bad', warning: 'warn', info: 'mut'};
+    const lint = L(r.lint).map(x => `<li class="${sev[S(x.severity)] || ''}">${esc(S(x.message))}</li>`).join('');
+    const fd = M(r.found);
+    out.innerHTML = r.ok ? `<div class="dchk">${r.t ? `<span class="dmini big" style="${esc(dvars(M(r.t)))}" aria-hidden="true"><u></u><u></u><i></i></span>` : ''}
+        <div><b>${esc(S(r.name))}</b><p class="mut sm">${esc(S(r.own_mode))} · ${esc(S(r.style))} style · ${esc(S(r.fonts))} · ${Number(fd.colours) || 0} colours, ${L(fd.sections).length} sections, ${Number(fd.rules) || 0} rules</p></div></div>
+        ${lint ? `<ul class="dlint">${lint}</ul>` : '<p class="sm" style="color:var(--ok)">No problems found.</p>'}
+        <div class="inl" style="justify-content:flex-end"><button class="b pri" type="button" data-dx="mduse">Use this design</button></div>`
+      : `<p class="li bad">${esc(S(r.say))}</p>${lint ? `<ul class="dlint">${lint}</ul>` : ''}`;
+  }
+
   function tplCard(r) {
     return `<button class="tcard" type="button" data-tpl="${esc(r.id)}"><span class="tn">#${lakh(r.n)}</span><b>${esc(r.title)}</b>
       <span class="tl">${esc(r.line)}</span><span class="mut sm">${esc(r.sector_label)} · ${esc(r.city)}</span><span class="tchips"><i>${esc(r.type_label)}</i><i>${esc(r.style_label)}</i></span></button>`;
@@ -553,6 +726,11 @@
         <p class="mut sm">Write one line about the website in the box above. The picture's colours and style are measured; no words, logos or photos are taken from it.</p>
         <div class="inl"><input name="file" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Picture" required>
         <button class="b pri" type="submit">Read the design</button></div><div data-out></div></form>`;
+    else if (kind === 'md') box.innerHTML = `<form class="panel" data-form="dmd"><b>Use your own DESIGN.md</b>
+        <p class="mut sm">A DESIGN.md is one text file that says how a site should look (Google Stitch's format). Hoola checks it, then builds your site in that look with your own words.</p>
+        <div class="inl"><input name="file" type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" aria-label="DESIGN.md file"><button class="b pri" type="submit">Check it</button></div>
+        <details class="dpaste"><summary class="mut sm">Or paste its text</summary><textarea name="paste" class="in" rows="6" maxlength="400000" aria-label="DESIGN.md text"></textarea></details>
+        <div data-out></div></form>`;
     else if (kind === 'sheet') box.innerHTML = `<div class="panel"><b>From a product sheet</b><p class="mut sm">Write one line about the shop above and put the sheet link in it. After the website is built, Cloud previews the catalogue before anything is written.</p></div>`;
     else box.innerHTML = '';
   }
@@ -720,18 +898,20 @@
     return {qa, ticket};
   }
 
+  const designBody = () => !DESIGN ? {} : DESIGN.kind === 'look' ? {design_look: DESIGN.id} : {design_md: S(DESIGN.text)};
   async function startFromAsk(text, ticket = '') {
     const mode = store.get(MODE_KEY) === 'plan' ? 'plan' : 'build';
     const conv = await newConv('');
     try {
       if (mode === 'plan') {
-        const c = await api('POST', '/api/site-architect', {words: text, conversation_id: conv});
+        const c = await api('POST', '/api/site-architect', {words: text, conversation_id: conv, ...designBody()});
+        DESIGN = null;
         store.set('hoola.ws.spec.conv.' + c.id, conv); store.set('hoola.ws.spec.words.' + c.id, text);
         api('PATCH', `/api/conversations/${enc(conv)}`, {title: `Website plan · ${S(c.name) || 'new'}`}).catch(() => {});
         go('#/plan/' + enc(S(c.id)));
         return;
       }
-      const body = {brief: text, conversation_id: conv, deep: true, ticket};   // v0.708 a system ask is planned deep first
+      const body = {brief: text, conversation_id: conv, deep: true, ticket, ...designBody()};   // v0.708 a system ask is planned deep first; v0.999.316 + her design
       if (TPLSEL && text.includes('[Hoola template #')) Object.assign(body, {field: TPLSEL.field, goal: TPLSEL.goal, style: TPLSEL.style});   // v0.686 the template's library card
       TPLSEL = null;
       let v = await api('POST', '/api/sites', body);
@@ -740,6 +920,7 @@
         v = await api('POST', '/api/sites', {...body, ticket: got.ticket, qa: got.qa, asked: true});
       }
       store.set(convKey(v.id), conv);
+      DESIGN = null;                                   // v0.999.316 the design went with this website
       api('PATCH', `/api/conversations/${enc(conv)}`, {title: `Website · ${name(v)}`}).catch(() => {});
       if (S(v.status) === 'planned' && !v.mapping) {         // Build mode: no plan step - the prototype starts now (v0.999.24)
         try { await api('POST', `/api/sites/${enc(v.id)}/plan`, {conversation_id: conv}); } catch (e) { toast(e.message, true); }
@@ -789,7 +970,7 @@
     const log = (() => { try { return JSON.parse(sessionStorage.getItem('hoola.ws.spec.log.' + id) || '[]'); } catch { return []; } })();
     APP.innerHTML = `<div ${wspAttrs()}>
       <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true">${hoolaMark()}</div></a>
-        <span class="pname">${esc(S(CARD.name) || 'New website')}</span>${pill('Plan mode · nothing built yet', 'v')}<span class="sp"></span>
+        <span class="pname">${esc(S(CARD.name) || 'New website')}</span>${pill('Plan mode · nothing built yet', 'v')}${S(CARD.her_design) ? pill('Design: ' + S(CARD.her_design)) : ''}<span class="sp"></span>
         ${popen()}<a class="b ghost" href="#/sites">All websites</a></header>
       <div class="body">
         <section class="chat" aria-label="Chat with Hoola about this plan">
@@ -3115,6 +3296,7 @@
     if (b.closest('.hck-acts, .hck-bar')) return;            // Copy / Read aloud / Good answer / the kit's box: the kit handles them
     const d = b.dataset;
     if (d.menu) { e.preventDefault(); openMenu(b, d.menu); return; }
+    if (d.dx) { if (d.dx !== 'back') { e.preventDefault(); designAct(d.dx, d).catch(er => toast(er.message, true)); } return; }   // v0.999.316 the design catalog
     if (d.tpl) { openTpl(d.tpl); return; }
     if ('improve' in d) {                       // HOOLA PROMPTING: what Hoola understood, as chips she can change; never a silent rewrite
       const ta = $('#wsAsk'); if (!ta) return;
@@ -3333,6 +3515,10 @@
     TPL[k] = S(e.target.value); loadTpl(true);
   });
   APP.addEventListener('input', e => { if (e.target.id === 'wsPendTa') store.set(PEND_KEY, S(e.target.value)); });   // v0.986
+  APP.addEventListener('input', e => {             // v0.999.316 design search, as she types
+    if (e.target.id !== 'wsDQ') return;
+    clearTimeout(DCAT.t); DCAT.t = setTimeout(() => { DCAT.q = S(e.target.value); drawDesigns(); }, 140);
+  });
   APP.addEventListener('input', e => {
     if (e.target.id !== 'wsFind') return;
     const q = S(e.target.value).trim().toLowerCase(); let shown = 0;
@@ -3430,6 +3616,7 @@
         finally { clearInterval(drawPending._t); }
       }
       else if (kind === 'old' || kind === 'shot') await readDesign(f, kind);
+      else if (kind === 'dmd') await checkDesignMd(f);
       else if (kind === 'code') {
         const path = f.dataset.path, codeText = S(f.querySelector('textarea').value);
         const r = await api('PUT', `/api/sites/${enc(CUR.id)}/code`, {path, code: codeText}); toast(S(r?.say) || 'Saved as a new version.');

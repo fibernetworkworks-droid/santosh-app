@@ -476,6 +476,10 @@ def draft(tenant: str, words: str, conv: str = "", logic_ask=None, quiet: bool =
     spec = _deepen(spec, words, tier)
     _show(spec)
     p = _new_project(tenant, spec, conv)
+    from . import designq as DQ
+    her = DQ.PENDING.get()
+    if her and her.get("source") == "designmd":            # v0.999.316 the DESIGN.md she attached rides with the plan
+        _set_her_design(p.id, her)
     if needs_data(spec):
         _say("Writing the data and the rules: who can see and change what.")
     data = _data_draft(p, spec, logic_ask) if needs_data(spec) else dict(NO_DATA)
@@ -759,6 +763,7 @@ def card(tenant: str, ref: str) -> dict[str, Any]:
     ]
     body = {"spec": spec, "data_hash": data.get("hash") or "", "modules": [m["key"] for m in modules]}
     return {"id": p.id, "number": p.number, "status": a.get("status") or "waiting", "name": spec.get("name") or p.name,
+            "her_design": str((a.get("her_design") or {}).get("look") or "") if isinstance(a.get("her_design"), dict) else "",
             "summary": spec.get("summary") or "", "questions": (spec.get("questions") or []) + (data.get("questions") or [])[:2],
             "modules": modules, "hash": _hash(body), "data_ready": data_ok, "data_none": no_data, "site": a.get("site") or "",
             "kind": spec.get("kind") or "", "purpose": spec.get("purpose") or "", "complexity": spec.get("complexity") or "",
@@ -851,6 +856,17 @@ def _set_spec(pid: str, spec: dict[str, Any]) -> None:
         p.plan = json.dumps(plan, ensure_ascii=False)
 
 
+def _set_her_design(pid: str, ref: dict[str, Any]) -> None:
+    from ..appmaker.models import AppProject
+    with session() as s:
+        p = s.get(AppProject, pid)
+        plan = _j(p.plan, {})
+        a = plan.get("architect") or {}
+        a["her_design"] = ref
+        plan["architect"] = a
+        p.plan = json.dumps(plan, ensure_ascii=False)
+
+
 # ---------------------------------------------------------------- 3. her tap -> build
 def approve(tenant: str, ref: str, h: str, modules: list[str] | None = None, conv: str = "") -> dict[str, Any]:
     from ..appmaker import backend as BE
@@ -888,7 +904,9 @@ def approve(tenant: str, ref: str, h: str, modules: list[str] | None = None, con
     u = L.understand(hint) if hint else {}
     field = u.get("field") if u.get("field") in L.fields() else ""
     from . import designq as DQ
-    dtok = DQ.PENDING.set(design_ref(spec)) if DQ.PENDING.get() is None and design_ref(spec) else None   # v0.988 look 1 = the AI's design
+    her = a.get("her_design") if isinstance(a.get("her_design"), dict) else None   # v0.999.316 her DESIGN.md wins
+    dtok = (DQ.PENDING.set(her) if her and DQ.PENDING.get() is None else
+            DQ.PENDING.set(design_ref(spec)) if DQ.PENDING.get() is None and design_ref(spec) else None)   # v0.988 look 1 = the AI's design
     try:
         # the Architect's own page count always wins ('portal' in her words must not turn into a 25-page site map)
         v = S.new(tenant, brief, conv, spec.get("name") or "", field, spec.get("goal") or "", "", None, "", "",

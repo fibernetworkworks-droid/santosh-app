@@ -431,6 +431,12 @@ def _public_facts(f: dict[str, Any]) -> dict[str, Any]:
     return {k: f[k] for k in keep if f.get(k)}
 
 
+
+def _md_rules(r) -> list[str]:
+    """v0.999.316 the rules of the DESIGN.md she chose, for the critic (empty for any other design)."""
+    ref = _j(getattr(r, "facts", None), {}).get("design_ref") or {}
+    return [str(x) for x in (ref.get("rules") or [])][:10] if ref.get("source") == "designmd" else []
+
 def _say(v: dict[str, Any]) -> str:
     st = v["status"]
     if st == "planned" and v.get("mapping"):
@@ -2239,7 +2245,7 @@ def _critique_round(r: Site, plan: dict[str, Any], shots: Path, report: dict[str
     def look(args):
         pg, rep = args
         imgs = pics(rep, pg["slug"])
-        return Q.critique(imgs, dna, [x["type"] for x in pg.get("sections", [])], r.brief or "") if imgs else None
+        return Q.critique(imgs, dna, [x["type"] for x in pg.get("sections", [])], r.brief or "", _md_rules(r)) if imgs else None
 
     # 1. every page looked at, at once
     with ThreadPoolExecutor(max_workers=width, thread_name_prefix="site-look") as ex:
@@ -2349,7 +2355,7 @@ def _critique_page(r: Site, plan: dict[str, Any], page: dict[str, Any], shots: P
     first = pics(report)
     if not first:
         return report, {}
-    crit = Q.critique(first, dna, types, r.brief or "")
+    crit = Q.critique(first, dna, types, r.brief or "", _md_rules(r))
     weak = Q.weak(crit)
     if not weak:
         return report, ({"before": {k: v["score"] for k, v in crit["sections"].items()}} if crit else {})
@@ -2383,7 +2389,7 @@ def _critique_page(r: Site, plan: dict[str, Any], page: dict[str, Any], shots: P
         rep2 = C.run(_assemble_live(r), plan, shots, video=False)
     except C.CheckError:
         rep2 = None
-    crit2 = Q.critique(pics(rep2), dna, types, r.brief or "") if rep2 else None
+    crit2 = Q.critique(pics(rep2), dna, types, r.brief or "", _md_rules(r)) if rep2 else None
     worse_checks = rep2 is None or len(rep2.get("blocking", [])) > len(report.get("blocking", []))
     kept = {}
     for k, old in olds.items():

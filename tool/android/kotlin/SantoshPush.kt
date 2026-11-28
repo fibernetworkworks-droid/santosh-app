@@ -65,7 +65,9 @@ class SantoshPush : FirebaseMessagingService() {
                     val title = d["title"] ?: ""
                     // v0.648 a call record's news opens that call when tapped
                     if (body.isNotBlank()) Notify.message(this, if (title.isNotBlank() && title != "Hoola") "$title: $body" else body, eventId,
-                        d["open_conv"] ?: "", d["yes_card"] ?: "")
+                        d["open_conv"]?.takeIf { it.isNotEmpty() }
+                            ?: d["open_page"]?.takeIf { it.startsWith("/console/") }?.let { "page:$it" } ?: "",
+                        d["yes_card"] ?: "")
                 }
             }
         } finally {

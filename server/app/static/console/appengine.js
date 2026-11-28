@@ -158,11 +158,12 @@
       const dev = `<div class="seg ae-dev" role="group" aria-label="Device"><button type="button" data-ae="dev" data-ae-dev="pc" aria-pressed="${ST.device === 'pc'}">Computer</button><button type="button" data-ae="dev" data-ae-dev="phone" aria-pressed="${ST.device === 'phone'}">Phone</button></div>`;
       const sel = `<button class="b sm${ST.select ? ' on' : ''}" type="button" data-ae="select" aria-pressed="${ST.select}" title="Point at a part of the app (S)">${ico('edit', 15)}Select</button>`;
       const ebar = `<div id="aeEbar">${ebarHtml()}</div>`;
-      el.innerHTML = `<div class="ae-bar">${dev}${a.preview ? sel : ''}<span class="sp"></span>${a.preview ? `<a class="b ghost sm" href="${esc(a.preview)}" target="_blank" rel="noopener">${ico('ext', 15)}Open in a new tab</a>` : ''}</div>${ebar}${prob}
+      el.innerHTML = `<div class="ae-bar">${dev}${a.preview ? sel : ''}<span class="sp"></span>${a.preview ? `<a class="b ghost sm" href="${esc(a.preview)}" target="_blank" rel="noopener">${ico('ext', 15)}Open in a new tab</a>` : ''}</div>${ebar}<div id="aeWork">${workHtml(ST.work)}</div>${prob}
         ${a.preview ? `<div class="ae-stage"><div class="ae-frame ${ST.device}"><iframe title="App preview" id="aeFrame" sandbox="allow-scripts allow-forms allow-popups" referrerpolicy="no-referrer" src="${esc(a.preview)}?v=${esc(a.version)}"></iframe></div><div class="ae-sel" id="aeSel" ${ST.pick ? '' : 'hidden'}></div></div>`
           : `<div class="panel mut ae-empty">${S(a.status) === 'building' || a.dirty ? 'The first version is being built…' : 'No version yet.'}</div>`}`;
       ST.shown = a.version;
       if (ST.pick) drawPick();
+      drawWork();
       return;
     }
     if (ST.tab === 'code') {
@@ -173,8 +174,14 @@
       let code = '';
       if (ST.file) { try { code = S((await api('GET', `/api/appengine/${enc(a.id)}/file?path=${enc(ST.file)}&from_line=${Math.max(1, ST.line - 150)}`)).code); } catch (e) { code = e.message; } }
       if (!fresh()) return;
-      el.innerHTML = `<div class="ae-code"><nav class="ae-files" aria-label="Files">${files.map(f => `<button type="button" data-ae="file" data-ae-file="${esc(f.path)}" aria-current="${f.path === ST.file}">${esc(f.path)}${f.locked ? ' <span class="mut sm">locked</span>' : ''}</button>`).join('')}</nav>
-        <div class="ae-src"><div class="ae-bar"><code>${esc(ST.file)}</code><span class="sp"></span><span class="mut sm">Read only here - ask Hoola for changes</span></div><pre tabindex="0">${code.split('\n').map(l => { const n = Number((/^\s*(\d+)\|/.exec(l) || [])[1]) || 0; return `<span class="ln${n && n === ST.line ? ' hot' : ''}" data-ln="${n}">${esc(l)}</span>`; }).join('\n')}</pre></div></div>`;
+      const cur = files.find(f => S(f.path) === ST.file) || {}, dir = S(ST.file).includes('/') ? S(ST.file).replace(/\/[^/]*$/, '/') : '';
+      const herDir = S(cur.her_lock).endsWith('/') ? S(cur.her_lock) : '';
+      const lockBtns = cur.locked ? '<span class="mut sm">Hoola\'s own setup file - never changed</span>'
+        : `${herDir ? `<button class="b ghost sm" type="button" data-ae="lock" data-ae-path="${esc(herDir)}" data-ae-on="0" title="Unlock the whole folder">${ico('lock', 15)}Unlock ${esc(herDir)}</button>`
+            : `<button class="b ghost sm${cur.her_lock ? ' on' : ''}" type="button" data-ae="lock" data-ae-path="${esc(ST.file)}" data-ae-on="${cur.her_lock ? 0 : 1}" aria-pressed="${!!cur.her_lock}" title="Hoola cannot change a locked file">${ico('lock', 15)}${cur.her_lock ? 'Unlock this file' : 'Lock this file'}</button>
+               ${dir ? `<button class="b ghost sm" type="button" data-ae="lock" data-ae-path="${esc(dir)}" data-ae-on="1" title="Lock every file in this folder">Lock ${esc(dir)}</button>` : ''}`}`;
+      el.innerHTML = `<div class="ae-code"><nav class="ae-files" aria-label="Files">${files.map(f => `<button type="button" data-ae="file" data-ae-file="${esc(f.path)}" aria-current="${f.path === ST.file}">${esc(f.path)}${f.locked ? ' <span class="mut sm">Hoola\'s</span>' : ''}${f.her_lock ? ' <span class="pill ae-lockpill">Locked by you</span>' : ''}</button>`).join('')}</nav>
+        <div class="ae-src"><div class="ae-bar"><code>${esc(ST.file)}</code><span class="sp"></span>${lockBtns}<span class="mut sm">Read only here - ask Hoola for changes</span></div><pre tabindex="0">${code.split('\n').map(l => { const n = Number((/^\s*(\d+)\|/.exec(l) || [])[1]) || 0; return `<span class="ln${n && n === ST.line ? ' hot' : ''}" data-ln="${n}">${esc(l)}</span>`; }).join('\n')}</pre></div></div>`;
       el.querySelector('.ln.hot')?.scrollIntoView({block: 'center'});
       return;
     }
@@ -237,10 +244,14 @@
     if (ST.tab === 'versions') {
       const full = await api('GET', `/api/appengine/${enc(a.id)}`);
       if (!fresh()) return;
-      el.innerHTML = `<div class="ae-pad"><h3>Versions</h3><p class="mut sm">Every good build is a version. A failed build never replaces the one on screen.</p>
-        ${L(full.versions).length ? `<ol class="ae-vers">${L(full.versions).map(v => `<li><b>Version ${esc(v.version)}</b>${v.live ? ' <span class="pill ok">Live</span>' : ''}
+      const vs = L(full.versions), top = vs.length ? vs[0].version : 0, cks = L(full.checkpoints);
+      el.innerHTML = `<div class="ae-pad"><h3>Versions</h3><p class="mut sm">Every good build is a version. A failed build never replaces the one on screen. Bringing one back makes it the newest version; nothing is deleted, and your saved data and the live app are not changed.</p>
+        ${vs.length ? `<ol class="ae-vers">${vs.map(v => `<li><b>Version ${esc(v.version)}</b>${v.live ? ' <span class="pill ok">Live</span>' : ''}${v.restored_from ? ` <span class="pill">Version ${esc(v.restored_from)} brought back</span>` : v.from_checkpoint ? ' <span class="pill">Checkpoint brought back</span>' : ''}
           <span class="mut sm">${esc(k().ago(v.at) || '')}${v.seconds ? ' · ' + esc(v.seconds) + 's' : ''}${v.types_ok === false ? ' · TypeScript problems' : ''}</span>
-          <a class="b ghost sm" href="${esc(a.preview)}__v/${esc(v.version)}/" target="_blank" rel="noopener">Open</a></li>`).join('')}</ol>` : '<p class="mut">No version yet.</p>'}</div>`;
+          <a class="b ghost sm" href="${esc(a.preview)}__v/${esc(v.version)}/" target="_blank" rel="noopener">Open</a>
+          ${v.version !== top ? `<button class="b ghost sm" type="button" data-ae="restore" data-ae-v="${esc(v.version)}">Bring back</button>` : ''}</li>`).join('')}</ol>` : '<p class="mut">No version yet.</p>'}
+        ${cks.length ? `<h3>Checkpoints</h3><p class="mut sm">Changes that were never built, kept when a version was brought back.</p><ol class="ae-vers">${cks.map(c => `<li><b>Unbuilt changes after version ${esc(c.after_version)}</b>
+          <span class="mut sm">${esc(k().ago(c.at) || '')}</span><button class="b ghost sm" type="button" data-ae="restore" data-ae-ck="${esc(c.id)}">Bring back</button></li>`).join('')}</ol>` : ''}</div>`;
       return;
     }
     if (ST.tab === 'branches') {                                // v0.978 L13b: try a bigger change on a copy, merge it back by her tap
@@ -393,6 +404,38 @@
     btn.disabled = false;
   }
 
+  /* ----- v0.999.322 the done check: Hoola's plan for the change and what is proved after its last change ----- */
+  function workHtml(w) {
+    const bp = w && S(w.blueprint) ? `<details class="ae-task ae-bp"><summary><b>Blueprint</b> <span class="mut sm ell">What Hoola agreed to build first</span></summary><div class="ae-bptext sm">${esc0(S(w.blueprint).replace(/^# Blueprint\s*/, ''))}</div></details>` : '';
+    return bp + taskHtml(w);
+  }
+  function esc0(s) { return k().esc(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/^## (.+)$/gm, '<span class="ae-bph">$1</span>'); }
+  function taskHtml(w) {
+    const {esc} = k(), t = w && w.task;
+    if (!t || !t.status || t.status === 'none') return '';
+    const plan = t.plan || {}, crit = L(plan.criteria);
+    if (t.status === 'complete' || t.status === 'blocked') {
+      const e = t.end || {};
+      return `<details class="ae-task ${t.status === 'complete' ? 'ok' : 'bad'}"><summary><b>${t.status === 'complete' ? 'Finished and checked' : 'Hoola could not finish'}</b>
+        <span class="mut sm ell">${esc(S(plan.goal))}</span></summary>
+        <p class="sm">${esc(S(e.summary))}</p>${L(e.evidence).length ? `<ul class="sm">${L(e.evidence).map(x => `<li>${esc(S(x))}</li>`).join('')}</ul>` : ''}</details>`;
+    }
+    const mark = (ok, label, need = true) => need ? `<li class="${ok ? 'ok' : ''}"><span aria-hidden="true">${ok ? '✓' : '○'}</span> ${esc(label)}</li>` : '';
+    const br = t.browser === 'ok', brLabel = t.browser === 'not_run' ? 'Browser check could not run here' : 'Seen working in a browser (phone + computer)';
+    return `<details class="ae-task" open><summary><b>Hoola is working on this</b> <span class="mut sm ell">${esc(S(plan.goal))}</span></summary>
+      <ul class="ae-taskchk sm">${mark(!!t.edited, 'Changed the code')}${mark(!!t.built, 'Built after the last change')}${mark(!!t.types_ok, 'TypeScript clean')}
+        ${mark(!!t.rules_ok, 'Data rules tested', !!t.rules_needed)}${mark(br || t.browser === 'not_run', brLabel, !!t.browser_needed)}${mark(!!t.built && !t.preview_errors, 'No errors in the preview')}</ul>
+      ${crit.length ? `<p class="mut sm">What you should see when it is done:</p><ul class="sm">${crit.map(c => `<li>${esc(S(c.description))}</li>`).join('')}</ul>` : ''}
+      <p class="mut sm">It is only called finished once every check above has passed after its last change.</p></details>`;
+  }
+  async function drawWork() {
+    try {
+      const w = await k().api('GET', `/api/appengine/${enc(ST.id)}/work`);
+      ST.work = w;
+      const el = document.getElementById('aeWork'); if (el) el.innerHTML = workHtml(w);
+    } catch { /* the card is a convenience; the app works without it */ }
+  }
+
   /* ----- v0.832 L11 SABOOT: what Hoola proved before it says done ----- */
   function checksHtml(o) {
     const {esc} = k();
@@ -434,6 +477,18 @@
   }
   const toFrame = m => { const f = document.getElementById('aeFrame'); if (f && f.contentWindow) f.contentWindow.postMessage(Object.assign({hoola: 'ae-cmd'}, m), '*'); };
   let ERRQ = [], ERRT = null;
+  // v0.999.324 the preview's console lines + network calls go to the server for Hoola's read_logs (batched, 1 s)
+  const LOGQ = []; let LOGT = 0;
+  function queueLog(d) {
+    if (LOGQ.length < 400) LOGQ.push({t: d.t, l: d.l, a: d.a, p: d.p, m: d.m, u: d.u, s: d.s, ms: d.ms, e: d.e});
+    clearTimeout(LOGT);
+    LOGT = setTimeout(async () => {
+      while (LOGQ.length) {
+        const items = LOGQ.splice(0, 100);
+        try { await k().api('POST', `/api/appengine/${enc(ST.id)}/preview-logs`, {items, version: ST.shown}); } catch { return; }
+      }
+    }, 1000);
+  }
   function queueErr(d) {
     ERRQ.push({kind: d.kind, m: d.m, s: d.s, p: d.p, v: ST.shown});
     clearTimeout(ERRT);
@@ -498,6 +553,7 @@
       k().api('POST', `/api/appengine/${enc(ST.id)}/preview-errors`, {items: [], loaded: ST.shown}).then(readErrs).catch(() => {});
     }
     if (d.t === 'err') queueErr(d);
+    if (d.t === 'log' || d.t === 'net') queueLog(d);
     if (d.t === 'pick') onPick(d);
     if (d.t === 'mode') { ST.select = d.mode === 'select'; const b = document.querySelector('[data-ae="select"]'); if (b) { b.setAttribute('aria-pressed', String(ST.select)); b.classList.toggle('on', ST.select); } }
   });
@@ -627,6 +683,22 @@
     if (what === 'tab') { ST.tab = b.dataset.aeTab; history.replaceState(null, '', `#/app/${enc(ST.id)}/${ST.tab}`); drawTabs(); await drawView(); return; }
     if (what === 'dev') { ST.device = b.dataset.aeDev; await drawView(); return; }
     if (what === 'file') { ST.file = b.dataset.aeFile; ST.line = 0; await drawView(); return; }
+    if (what === 'restore') {
+      const v = b.dataset.aeV, ck = b.dataset.aeCk;
+      const q = v ? `Bring back version ${v} of "${S(ST.app.name)}"? It becomes the newest version; the versions after it stay in the list. Your saved data and the live app are not changed.`
+        : 'Bring back these unbuilt changes? They become the newest version.';
+      if (!(await confirmBox(q, v ? `Bring back version ${v}` : 'Bring back'))) return;
+      b.disabled = true; ST.app.status = 'building'; drawTop();
+      try { const r = await api('POST', `/api/appengine/${enc(ST.id)}/${v ? 'versions/' + enc(v) : 'checkpoints/' + enc(ck)}/restore`, {confirm: true}); toast(S(r.say), r.built === false); ST.app = {...ST.app, ...r}; }
+      catch (e) { toast(e.message, true); }
+      drawTop(); await drawView(); return;
+    }
+    if (what === 'lock') {
+      b.disabled = true;
+      try { const r = await api('PUT', `/api/appengine/${enc(ST.id)}/locks`, {path: b.dataset.aePath, locked: b.dataset.aeOn === '1'}); toast(S(r.say)); }
+      catch (e) { toast(e.message, true); }
+      await drawView(); return;
+    }
     if (what === 'select') { ST.select = !ST.select; toFrame({t: 'mode', mode: ST.select ? 'select' : 'off'}); b.setAttribute('aria-pressed', String(ST.select)); b.classList.toggle('on', ST.select); return; }
     if (what === 'pk-chip') { const f = b.dataset.aeF, v = S(b.dataset.aeV); ST.pend[f] = v; livePreview(); drawPick(); return; }
     if (what === 'pk-close' || what === 'pk-cancel') { toFrame({t: 'clear'}); ST.pick = null; ST.pend = {}; ST.ptext = null; drawPick(); return; }

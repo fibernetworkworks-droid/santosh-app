@@ -80,6 +80,17 @@
   const size = n => n < 1024 ? n + ' B' : n < 1048576 ? Math.round(n / 1024) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
   const ext = n => (String(n).split('.').pop() || '').toLowerCase().slice(0, 4);
   const NAME = () => (ST && ST.profile && ST.profile.name) || 'Your coworker';
+  // v0.999.320 the voice she picked is used: her coworker reads its question and its answer aloud in it, on her tap
+  const VOICES = {warm: [0.95, 1], bright: [1.08, 1.15], calm: [0.88, 0.92], confident: [1.0, 0.98]};
+  function speak(text, voice) {
+    try {
+      if (!('speechSynthesis' in window)) throw new Error('no speech');
+      const u = new SpeechSynthesisUtterance(String(text || '').slice(0, 1500));
+      const [rate, pitch] = VOICES[voice || (ST && ST.profile && ST.profile.voice)] || VOICES.warm;
+      u.rate = rate; u.pitch = pitch;
+      speechSynthesis.cancel(); speechSynthesis.speak(u); return true;
+    } catch (err) { toast('This browser cannot play the voice.'); return false; }
+  }
   const STATUS = {
     queued: ['live', 'Starting'], working: ['live', 'Working'], needs_you: ['warn', 'Needs your OK'],
     done: ['ok', 'Done'], failed: ['bad', 'Did not finish'], stopped: ['mute', 'Stopped'],
@@ -229,9 +240,7 @@
         drawFaces(); drawPreview(); return; }
       const v = e.target.closest('[data-voice]'); if (v) { voice = v.dataset.voice; drawVoices(); return; }
       if (e.target.closest('#hear')) {
-        try { const u = new SpeechSynthesisUtterance(`Hi, I'm ${nameOf()}. Ready when you are.`);
-          u.rate = {warm: 0.95, bright: 1.08, calm: 0.88, confident: 1.0}[voice]; u.pitch = {warm: 1, bright: 1.15, calm: 0.92, confident: 0.98}[voice];
-          speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (err) { toast('This browser cannot play the voice.'); }
+        speak(`Hi, I'm ${nameOf()}. Ready when you are.`, voice);
         return;
       }
       if (e.target.closest('#startBtn')) save();
@@ -409,7 +418,11 @@
       try { await api('POST', `/api/dod/tasks/${enc(id)}/note`, {text}); ta.value = ''; ta.style.height = 'auto'; toast(`${NAME()} will read it at the next step.`); await draw(); }
       catch (ex) { toast(ex.message); }
     });
-    let lastQ = '';
+    let lastQ = '', SAY = {q: '', r: ''};
+    main.addEventListener('click', function onSay(e) {
+      if (gen !== GEN) { main.removeEventListener('click', onSay); return; }
+      const b = e.target.closest('[data-say]'); if (b && SAY[b.dataset.say]) speak(SAY[b.dataset.say]);
+    });
     async function draw() {
       const {task: t} = await api('GET', `/api/dod/tasks/${enc(id)}`);
       if (gen !== GEN) return;
@@ -418,10 +431,11 @@
       $('#tHead').innerHTML = tag(t.status) + (open ? `<button class="dd-btn s bad" type="button" id="stopBtn">Stop</button>` : `<a class="dd-btn s" href="#/">Give another task</a>`);
       $('#tClock').textContent = t.started_at ? (open ? 'Working for ' : 'Took ') + dur(t.started_at, open ? null : t.ended_at) : '';
       const qKey = t.question ? t.question.id : '';
-      if (qKey !== lastQ) { $('#tQ').innerHTML = t.question ? `<div class="dd-card dd-task ask"><div class="head"><span class="dd-tag warn">Needs your OK</span><small>${esc(ago(t.question.at))}</small></div>${questionBox(t)}</div>` : ''; lastQ = qKey; }
+      if (qKey !== lastQ) { $('#tQ').innerHTML = t.question ? `<div class="dd-card dd-task ask"><div class="head"><span class="dd-tag warn">Needs your OK</span><small>${esc(ago(t.question.at))}</small></div>${questionBox(t)}<button type="button" class="dd-lnk" data-say="q">${IC.play}Read aloud</button></div>` : ''; lastQ = qKey; }
+      SAY = {q: t.question ? [t.question.question, t.question.details].filter(Boolean).join('. ') : '', r: t.reply || ''};
       $('#tSteps').innerHTML = (t.steps || []).map(s => stepRow(s, t.started_at)).join('') || `<div class="dd-step"><span class="dd-sm now"></span><div class="t"><span class="dd-shimmer">${esc(NAME())} is getting ready</span></div><span></span></div>`;
       $('#tThink').innerHTML = (open && t.thought) ? `<div class="dd-think" aria-label="What ${esc(NAME())} is writing">${esc(t.thought.slice(-500))}</div>` : '';
-      $('#tReply').innerHTML = t.reply ? `<div class="dd-card dd-reply">${esc(t.reply)}</div>` : (t.error ? `<div class="dd-banner">${esc(t.error)}</div>` : '');
+      $('#tReply').innerHTML = t.reply ? `<div class="dd-card dd-reply">${esc(t.reply)}<div><button type="button" class="dd-lnk" data-say="r">${IC.play}Read aloud</button></div></div>` : (t.error ? `<div class="dd-banner">${esc(t.error)}</div>` : '');
       $('#tFiles').innerHTML = (t.files || []).length ? t.files.map(f => fileCard(t, f)).join('') : `<div class="dd-card dd-quiet" style="padding:14px">Files ${esc(NAME())} makes show here.</div>`;
       $('#tAsk').textContent = t.ask;
       $('#steer').hidden = !open;

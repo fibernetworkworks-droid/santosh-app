@@ -632,6 +632,8 @@ def build(token: str, ev: dict[str, Any], name: str = "Santosh") -> dict[str, An
         if shown is None:
             return None
         data["title"], data["body"] = shown[0][:80], shown[1][:900]
+    if kind == "dod_ask" and p.get("task"):   # v0.999.320 a tap opens that task on the Hoola DOD page (was the chat)
+        data["open_page"] = "/console/dod#/t/" + "".join(c for c in str(p["task"]) if c.isalnum() or c in "-_")[:80]
     if kind == "bazar_approval" and quick_yes(p):
         data["yes_card"] = str(p["id"])   # v0.864 R4 Yes / Not now on the notification (never for money)
     if kind == "message" and p.get("role") == "assistant" and ev.get("conv") and token != "x":

@@ -1,0 +1,57 @@
+{
+  "archify": {
+    "repo": "https://github.com/tt-a1i/archify",
+    "commit": "b42e7d7",
+    "version": "3.3.2",
+    "license": "Apache-2.0 OR MIT (LICENSE, LICENSE-MIT, NOTICE)",
+    "copied": [
+      "archify/ -> vendor/archify/",
+      "archify-pr/ -> vendor/archify-pr/",
+      "LICENSE, LICENSE-MIT, NOTICE, THIRD_PARTY_NOTICES.md -> vendor/archify/"
+    ],
+    "left_out": [
+      "test/ and tests/ folders",
+      ".gitignore / .gitattributes",
+      "*.zip",
+      "website, docs, journal, benchmarks, experiments, community, integrations, viewer, sponsor material"
+    ],
+    "runtime": "node >= 18, no npm packages; Chrome / Chromium for its browser-check gate",
+    "role": "Engine A - main engine (code places boxes and lines)",
+    "tree_sha256": "27565c1de1d8bcb681b9a9ff00e78295f1d86b299e6fb2675be9e9b0298afd65",
+    "files": 452
+  },
+  "diagram-design": {
+    "repo": "https://github.com/cathrynlavery/diagram-design",
+    "commit": "795eec4",
+    "version": "2.6",
+    "license": "MIT (LICENSE)",
+    "copied": [
+      "skills/diagram-design/ -> vendor/diagram-design/",
+      "LICENSE -> vendor/diagram-design/LICENSE"
+    ],
+    "left_out": [
+      "website, docs, screenshots, plugin manifests, CI scripts"
+    ],
+    "runtime": "python 3 (checkers), playwright + chromium (export)",
+    "role": "Engine B - every other diagram type, designer look",
+    "tree_sha256": "035a7bc2f71c5ba3c3b637603d94e158398ea5e0b3c0a895021c452d791bef52",
+    "files": 327
+  },
+  "drawio-ai": {
+    "repo": "https://github.com/DayuanJiang/next-ai-draw-io",
+    "commit": "75f0df3",
+    "version": "mcp-server 0.4.15",
+    "license": "Apache-2.0 (LICENSE)",
+    "copied": [
+      "packages/mcp-server/{src,shell,drawio-files.txt,package.json,README.md} -> vendor/drawio-ai/",
+      "LICENSE -> vendor/drawio-ai/LICENSE"
+    ],
+    "left_out": [
+      "the Next.js web app, Electron, the 25 model providers, tests"
+    ],
+    "runtime": "the draw.io editor (jgraph/drawio draw.war, pinned in vendor/drawio-ai/src/drawio-version.json, sha-256 checked) fetched at setup into data/diagram/drawio, never in git",
+    "role": "Engine C - the editable draw.io canvas",
+    "tree_sha256": "dd99cee16e5794f56b1d4de3d973442313eb3d9959d6bf53bbbe7495ac7d6126",
+    "files": 60
+  }
+}

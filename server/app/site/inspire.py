@@ -716,8 +716,17 @@ def read(tenant: str, source: str, value: str = "", file_id: str = "", data: byt
         ref = from_figma(tenant, value)
     elif source == "site":
         ref = from_site(tenant, value)
+    elif source == "designmd":                              # v0.999.316 a catalog look (value = its id) or her own file
+        from . import designmd as DM
+        try:
+            ref = DM.ref_for(look_id=value, text="" if value else (data or b"").decode("utf-8", "replace"))
+        except DM.DesignMdError as e:
+            raise InspireError(str(e), e.code)
+        if not ref:
+            raise InspireError("Send a DESIGN.md or pick a design from the catalog.")
+        ref["content"], ref["palette"] = {}, []
     else:
-        raise InspireError("source = screenshot | figma | site")
+        raise InspireError("source = screenshot | figma | site | designmd")
     photos = ref.pop("_photos", [])
     tok = secrets.token_urlsafe(9)
     d = _dir(tenant) / tok
@@ -786,6 +795,9 @@ def use(tenant: str, token: str, ref_site: str = "", conv: str = "", brief: str 
         facts = S._j(r.facts, {})
         facts["design_ref"] = {k: ref[k] for k in ("source", "style", "fonts", "head", "body", "radius", "dark", "overrides",
                                                    "sections", "notes", "read_by")}
+        for k in ("rules", "look", "md_type"):              # v0.999.316 a DESIGN.md keeps its rules for the critic
+            if ref.get(k):
+                facts["design_ref"][k] = ref[k]
         facts["design_ref"]["keep"] = keep
         if keep:
             facts["design_ref"]["layout"] = ref["layout"][:PAGES_MAX]
@@ -834,6 +846,10 @@ def look_zero(facts: dict[str, Any]) -> dict[str, Any] | None:
 
 def brief_note(ref: dict[str, Any]) -> str:
     secs = ", ".join(T.label_of(s) for s in (ref.get("sections") or [])[:10])
+    if ref.get("source") == "designmd":                     # v0.999.316 a DESIGN.md she chose (catalog or her own file)
+        return ("\n\nTHE DESIGN.md SHE CHOSE (this look must follow it - its colours, its type sizes and spacing, its "
+                f"corner shape and its rules; built in Hoola's kit with her words, name and photos only, never the source "
+                f"site's name, logo, words or pictures): {ref.get('look') or 'her DESIGN.md'}. {ref.get('notes') or ''}")
     if ref.get("source") == "ai":                           # v0.988 PROMPT FIRST: chosen by Hoola from her words
         return ("\n\nTHE DESIGN HOOLA CHOSE FOR HER WORDS (this look follows it - these colours, this type, these text "
                 f"sizes, this corner shape): {ref.get('notes') or ''}")
