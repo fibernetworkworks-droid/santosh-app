@@ -1035,6 +1035,7 @@ def init_db(url: str | None = None):
     from .mldesk import service as _mldesk  # noqa: F401  (v0.999.299 the Machine Learning Engineer)
     from .dedesk import service as _dedesk  # noqa: F401  (v0.999.303 the Data Engineer)
     from .pfdesk import service as _pfdesk  # noqa: F401  (v0.999.304 the Platform Engineer)
+    from .cldesk import service as _cldesk  # noqa: F401  (v0.999.310 the Cloud Engineer)
     from .dod import models as _dod_models  # noqa: F401  (v0.999.306 HOOLA DOD - the coworker)
     from .engineering import service as _engineering  # noqa: F401  (v0.357 Engineering Desk)
     from .bahi import models as _bahi_models  # noqa: F401  (v0.807 BAHI - the GST & Accounts employee, A0)

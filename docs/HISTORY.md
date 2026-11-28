@@ -14075,7 +14075,43 @@ NOT VERIFIED: on her VPS with a real model and real OpenRouter keys; whether her
 
 ## v0.999.309 BRING YOUR OLD ASSISTANT
 (owner: 'NOW WORK ON IT' on item 5 of the Hermes / OpenClaw comparison). Files: server/app/migrate.py (new), db.py (init_db registers migrate), main.py (4 routes), static/console/v2.js + v2.css (Memory > Bring from another assistant), lib/api.dart (memoryImportPreview / Apply / imports / Undo), lib/ui/memory_page_screen.dart (the card). Tests: test_v0999_309_bring_old_assistant.py (6). NOT VERIFIED with real exports from real accounts.
-## v0.999.310 WORLD PROMPTS + PASTE READER + DUPLICATE CHECK (owner, after the prompts.chat read: "GO BUILD 1 2 3")
+
+
+## v0.999.310 CLOUD ENGINEER DESK (built as 0.999.306; their HOOLA DOD, LEARNERS ON, DOD PENDING WORK and BRING YOUR OLD ASSISTANT took 0.999.306-309, all kept)
+
+Owner: "Cloud Engineer same as finance desks". The Cloud Engineer gets its own section `/console/cloud` and its own Cloud chat
+(Conversation kind `cloudeng`, `server/app/clchat.py`, key `cloud_eng`, family `cloudeng`), on a new all-code engine
+`server/app/cldesk/` (no model, no money, nothing runs on her cloud):
+
+- `bill.py` - a cost export (FOCUS columns, AWS Cost and Usage Report, Google Cloud billing export, Azure cost details, or any CSV with a
+  cost and a date; columns found by name): totals by day / service / account / region / her owner tag (a `tag_x` column or a Tags JSON /
+  key:value column), spend with no owner tag, credits, spike days (above the median of the previous 14 days by sens x the robust spread,
+  25% and 0.5% of the bill) with the service that grew, services growing last 7 vs previous 7 days, the month = spend so far + the last 7
+  days' average x days left (a run rate), budget check. Two currencies in one export are refused, never converted.
+- `waste.py` - inventory CSV: unattached disks, unused addresses, Azure stopped without deallocation (still billed for compute), machines
+  stopped past her keep days, running machines under her idle CPU line (marked check this), old snapshots, idle load balancers / databases,
+  older generations and gp2 volumes (no number - check the price). Money only from the table's monthly cost, only for delete / release.
+- `commit.py` - hourly (or daily, said) usage + on-demand and committed price (or discount; spend-per-hour usage takes the discount): the
+  level that cost least (searched over every usage value - pinned by a brute-force test), a safer level keeping 90% of the saving, the
+  break-even use (committed / on-demand price), her current commitment's use and coverage, a curve of saving by level.
+- `iam.py` - AWS policy documents / trust policies / get-account-authorization-details, Google Cloud IAM policies, Azure role
+  assignments: full admin, all actions of a service, NotAction / NotResource, writes on *, escalation actions, PassRole *, open to anyone,
+  GitHub OIDC trust with no `:sub` condition, cross-account without ExternalId, allUsers, basic owner / editor, impersonation roles, personal
+  accounts, Owner / User Access Administrator at subscription or root. Read as text, nothing changed.
+- `network.py` - `vpc` / `subnet` / `rule` / `plan` lines or describe-security-groups / firewall-rules JSON: networks overlapping, subnets
+  outside, overlapping, below the provider's smallest size, usable addresses (AWS / Azure keep 5, GCP 4), free space, admin / database ports
+  or every port open to the internet, and a plan splitting a range across zones x tiers with spare blocks.
+- `ci.py` - a GitHub Actions access guard over her policy folder: fails a pull request with a wide policy; needs no cloud access.
+
+Keys are refused everywhere: AWS access keys, secret key lines, private keys, Azure account keys and client secrets in a field, in the
+pasted text or through the tool. NEW tool `cloud_desk` (`agent/cloudeng_tools.py`), registry 718. Hire key `cloud_eng` (live, Software
+group); console `cldesk.html/.js/.css` assembled from the Platform desk shell. Tests `server/tests/test_cl_desk.py` (5, incl. a browser
+walk at 1440 and 390). Fixed while looking at the screenshots: credits no longer counted as untagged owner spend, a 1% change no longer
+"growing", the saving curve includes the best level itself, the waste bars no longer show a count as money, a left edge that hid the
+first letters of a flagged row, Google Cloud roles shown in their own case.
+
+NOT VERIFIED: on her server, with her own bills, inventories, usage and policies, or the workflow running on GitHub.
+## v0.999.311 WORLD PROMPTS + PASTE READER + DUPLICATE CHECK (owner, after the prompts.chat read: "GO BUILD 1 2 3")
 
 Items 1-3 of docs/research/prompting/01_prompts_chat.md.
 

@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.310"   # v0.999.310 WORLD PROMPTS + PASTE READER + DUPLICATE CHECK (built as 0.999.309; their BRING YOUR OLD ASSISTANT took 0.999.309, both kept; owner, after the prompts.chat read: "GO BUILD 1 2 3"): the prompts.chat library (CC0) as a World prompts shelf on the Recipes page - 1,635 of its 3,235 prompts kept after Hoola's checks (no code-only / JSON, 80-1,800 characters, English, the share screen, unsafe words, near copies), each opened as a brief whose blanks are hers (empty = [Name], the writer's example never used), ledger recipe world:<id>, not on the public /prompts pages (prompting/world.py, world/world.json.gz, /api/prompting/world); a paste reader that finds blanks of every shape in a pasted prompt and asks for them first (prompting/paste.py, /api/prompting/paste); a near-copy check on community recipes - a copy is refused, the owner's review shows what each is close to and puts copies last (prompting/dupe.py); detector + similarity ported from prompts.chat (MIT); 13 tests. Previous: v0.999.309 BRING YOUR OLD ASSISTANT (owner: 'NOW WORK ON IT' on item 5 of the Hermes / OpenClaw comparison - each of them imports the other, Hoola had no way in): NEW ...
+APP_VERSION = "0.999.311"   # v0.999.311 WORLD PROMPTS + PASTE READER + DUPLICATE CHECK (built as 0.999.309; their BRING YOUR OLD ASSISTANT took 0.999.309 and CLOUD ENGINEER DESK 0.999.310, all kept; owner, after the prompts.chat read: "GO BUILD 1 2 3"): the prompts.chat library (CC0) as a World prompts shelf on the Recipes page - 1,635 of its 3,235 prompts kept after Hoola's checks (no code-only / JSON, 80-1,800 characters, English, the share screen, unsafe words, near copies), each opened as a brief whose blanks are hers (empty = [Name], the writer's example never used), ledger recipe world:<id>, not on the public /prompts pages (prompting/world.py, world/world.json.gz, /api/prompting/world); a paste reader that finds blanks of every shape in a pasted prompt and asks for them first (prompting/paste.py, /api/prompting/paste); a near-copy check on community recipes - a copy is refused, the owner's review shows what each is close to and puts copies last (prompting/dupe.py); detector + similarity ported from prompts.chat (MIT); 13 tests. Previous: v0.999.310 CLOUD ENGINEER DESK (built as 0.999.306; their HOOLA DOD, LEARNERS ON, DOD PENDING WORK and BRING YOUR OLD ASSISTANT took 0.999.306-309, all kept; ...
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2214,6 +2214,15 @@ def mainframe_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/cloud")
+@app.get("/console/cloud/")
+def cloud_desk_page():
+    """CLOUD ENGINEER DESK: the Cloud Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "cldesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/dod")
 @app.get("/console/dod/")
 def dod_page():
@@ -3076,6 +3085,8 @@ from . import dechat as _dechat_mod                             # noqa: E402  DA
 _dechat_mod.mount(app, current_tenant, require_key)              # /api/dedesk/*
 from . import pfchat as _pfchat_mod                             # noqa: E402  PLATFORM ENGINEER DESK
 _pfchat_mod.mount(app, current_tenant, require_key)              # /api/pfdesk/*
+from . import clchat as _clchat_mod                             # noqa: E402  CLOUD ENGINEER DESK
+_clchat_mod.mount(app, current_tenant, require_key)              # /api/cldesk/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through
