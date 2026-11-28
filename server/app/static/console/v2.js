@@ -495,6 +495,7 @@ function go(v, arg) {
   if (v === 'emdesk') { location.assign('/console/embedded'); return; }   // EMBEDDED DESK: its own section
   if (v === 'rbdesk') { location.assign('/console/robotics'); return; }   // ROBOTICS DESK: its own section
   if (v === 'cvdesk') { location.assign('/console/vision'); return; }   // VISION DESK: its own section
+  if (v === 'mldesk') { location.assign('/console/ml'); return; }   // ML DESK: its own section
   if (v === 'ncdesk') { location.assign('/console/noc'); return; }   // NOC DESK: its own section
   if (v === 'dwdesk') { location.assign('/console/docs'); return; }   // TECHNICAL WRITER DESK: its own section
   if (v === 'ardesk') { location.assign('/console/appreview'); return; }   // APP REVIEWER DESK: its own section
