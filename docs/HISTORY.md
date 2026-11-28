@@ -14170,7 +14170,10 @@ and fails on exactly what the desk reports).
 
 NOT VERIFIED: on her server, with her own scanners' output, sites, certificates and code, or the workflow running on GitHub.
 
-## v0.999.313 ALL WORLD PROMPTS (owner: "INCLUDE ALL 100 %" on the list of what the World shelf left out, then "MAKE IT GLOBAL NOT INDIA NATIVE")
+
+## v0.999.313 MEMORY GUARD EVERYWHERE
+(owner: 'NOW WORK ON CHECKING MEMORY BEFORE IT'S SAVED', item 7). Files: server/app/coder/guard.py (negation, cache, in_her_words, last_user_words, check_memory, why, STATS), yaad.py (save_fact + relevant_facts), agent/life_tools.py (remember), life.py (memory_facts safe_only, imported heading), main.py + memory.py (her screen safe_only=False), coder/store.py, coder/skills_tool.py, agent/sandarbh_tools.py (kgmemory), devsahayak/memory.py, aboutme.py. Tests: test_v0999_313_memory_guard.py (13). NOT VERIFIED on her server.
+## v0.999.314 ALL WORLD PROMPTS (built as 0.999.313; their MEMORY GUARD EVERYWHERE took 0.999.313, both kept) (owner: "INCLUDE ALL 100 %" on the list of what the World shelf left out, then "MAKE IT GLOBAL NOT INDIA NATIVE")
 
 v0.999.311 kept 1,635 of the 3,235 rows in prompts.chat's old CSV and dropped the rest for 10 reasons. Now every prompt is
 kept, and nothing is India-specific.

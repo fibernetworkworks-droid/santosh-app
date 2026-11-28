@@ -409,6 +409,11 @@ def store_observation(conv: str, tenant: str, obs: dict, turn_id: str = "", acto
     title = (obs.get("title") or "").strip()
     if not title:                      # claude-mem rule: an untitled observation is nobody's memory
         return None
+    from . import guard as _guard      # v0.999 checked before it is kept: tool output can carry a page's planted words
+    if _guard.check_obs(obs):
+        _guard.STATS["blocked"] += 1
+        log.warning("observation not kept (memory guard): %s", ",".join(_guard.check_obs(obs)))
+        return None
     narrative = (obs.get("narrative") or "").strip()
     chash = content_hash(conv, title, narrative)
     nk = title_norm_key(tenant, title)

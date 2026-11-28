@@ -56,6 +56,14 @@ async def skill_manage(ctx, operations=None, **_):
     st = get_settings()
     if not getattr(st, "coder_enabled", True) or not getattr(st, "coder_skills", True):
         return {"error": "skills are switched off (coder_skills)"}
+    from . import guard as _guard     # v0.999 a skill Hoola writes in a chat is checked before it is kept
+    for op in operations if isinstance(operations, list) else []:
+        if isinstance(op, dict) and op.get("action") in ("create", "update"):
+            hit = _guard.check_memory(f"{op.get('name') or ''}\n{op.get('description') or ''}\n{op.get('body') or ''}",
+                                      getattr(ctx, "conversation_id", "") or "")
+            if hit:
+                return {"error": f"Not saved: the skill {op.get('name')!r} - {_guard.why(hit)}. Write the steps "
+                                 "without that part, or ask her."}
     res = skills_store.apply(ctx.tenant_id, operations if isinstance(operations, list) else [])
     if res.get("ok"):
         nudge.reset_counter(ctx.tenant_id, ctx.conversation_id)
