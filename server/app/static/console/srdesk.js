@@ -36,13 +36,17 @@
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h0"/>'};
   window.HoolaQuality?.use(api);
 
-  const TABS = [['today', 'Today'], ['slos', 'SLOs'], ['alerts', 'Alerts'], ['incidents', 'Incidents'], ['capacity', 'Capacity'], ['settings', 'Settings']];
+  const TABS = [['today', 'Today'], ['slos', 'SLOs'], ['alerts', 'Alerts'], ['oncall', 'On-call'], ['incidents', 'Incidents'], ['changes', 'Changes'], ['capacity', 'Capacity'], ['runbooks', 'Runbooks & toil'], ['ci', 'CI'], ['settings', 'Settings']];
   const STARTERS = {
     today: ['What should my SLO be?', 'Where do I start with reliability?', 'How do I cut pager noise?'],
     slos: ['99.9 or 99.95?', 'What counts as a good event?', 'What do I do when the budget is spent?'],
     alerts: ['Which alerts should page?', 'How long should `for` be?', 'How do I alert on symptoms?'],
     incidents: ['Write the summary for this incident', 'What action items does this need?', 'How do we run a blameless review?'],
     capacity: ['How much headroom do I need?', 'Is my p99 good enough?', 'How many replicas do I need?'],
+    oncall: ['Is our on-call rota fair?', 'How many pages a shift is too many?', 'How do we hand over a shift?'],
+    changes: ['Are we shipping too big?', 'How do we cut change failure?', 'What makes a good rollback?'],
+    runbooks: ['What should a runbook have?', 'Which toil do I automate first?', 'How do I keep runbooks fresh?'],
+    ci: ['Which alert-rule checks should fail a PR?', 'Should I add promtool?', 'How do I make this a required check?'],
     settings: ['How long should the SLO window be?', 'Which metric should I use for errors?', 'What scrape interval is safe?']};
   const MAXF = 10, MAXB = 30 * 1024 * 1024;
 
@@ -191,7 +195,7 @@
   /* ---------------------------------------------------------------- pages */
   function showPage(keep) {
     const box = $('#srPage'); if (!box) return;
-    const fn = {today: pToday, slos: pSlos, alerts: pAlerts, incidents: pIncidents, capacity: pCapacity, settings: pSettings}[ST.tab] || pToday;
+    const fn = {today: pToday, slos: pSlos, alerts: pAlerts, oncall: pOncall, incidents: pIncidents, changes: pChanges, capacity: pCapacity, runbooks: pRunbooks, ci: pCi, settings: pSettings}[ST.tab] || pToday;
     const html = fn();
     const kept = keep ? typed(box) : null;
     box.innerHTML = html;
@@ -322,9 +326,9 @@
   const pct = (v, d = 2) => { if (v === null || v === undefined) return '—'; let t = (Number(v) * 100).toFixed(d); if (t.includes('.')) t = t.replace(/\.?0+$/, ''); return t + '%'; };
   const mins = m => m === null || m === undefined ? '—' : m < 1 ? Math.round(m * 60) + ' s' : m < 120 ? (Math.round(m * 10) / 10) + ' min' : (Math.round(m / 6) / 10) + ' h';
   const KN = {slo: 'SLO', burn: 'Burn rate', avail: 'Availability', latency: 'Latency', buckets: 'Histogram', capacity: 'Capacity', queue: 'Queue',
-    rules: 'Alert rules', noise: 'Alert noise', incident: 'Incident'};
+    rules: 'Alert rules', noise: 'Alert noise', incident: 'Incident', oncall: 'On-call load', changes: 'Changes', runbook: 'Runbooks', toil: 'Toil'};
   const ROUTE = {slo: 'slos', burn: 'slos', rules: 'alerts', noise: 'alerts', incident: 'incidents', latency: 'capacity', buckets: 'capacity',
-    capacity: 'capacity', queue: 'capacity', avail: 'capacity'};
+    capacity: 'capacity', queue: 'capacity', avail: 'capacity', oncall: 'oncall', changes: 'changes', runbook: 'runbooks', toil: 'runbooks'};
   function brief(x) {
     const b = x.brief || {};
     switch (x.kind) {
@@ -337,6 +341,10 @@
       case 'rules': return `${pl(b.alerts || 0, 'alert')} · ${pl(b.problems || 0, 'problem')} · ${pl(b.warnings || 0, 'warning')}`;
       case 'noise': return `${num(b.per_week)} pages a week · noisiest ${b.top || '—'}`;
       case 'incident': return `${b.severity || 'no severity'} · impact ${b.impact || '—'} · ${b.resolved ? 'resolved' : 'not resolved'}`;
+      case 'oncall': return `${pl(b.pages || 0, 'page')} · ${pl(b.people || 0, 'person', 'people')} · ${pl(b.over || 0, 'shift')} over the limit`;
+      case 'changes': return `${pl(b.deploys || 0, 'deploy')} · ${pct(b.cfr, 0)} failed${b.restore ? ' · restored in ' + b.restore : ''}`;
+      case 'runbook': return `${pl(b.runbooks || 0, 'runbook')} · ${num(b.score)}/100 · ${pl(b.problems || 0, 'serious problem')}`;
+      case 'toil': return `${num(b.hours)} h a week · ${pct(b.share, 0)} of the week`;
     }
     return '';
   }
@@ -385,7 +393,10 @@
       tile('Error budget', b ? `${esc(pct(1 - (b.used || 0), 1))}<small> left</small>` : '—', b ? `burn rate ${num(b.burn)} · ${b.number}` : 'set an SLO to see it', b && b.used >= 1),
       tile('Pages a week', k.pages_week === null || k.pages_week === undefined ? '—' : esc(num(k.pages_week)), 'from your alert history', k.pages_week > 14),
       tile('Incidents', esc(num(inc.count || 0)), inc.median && inc.median.resolve ? 'median to resolve ' + inc.median.resolve : 'timelines read', inc.open),
-      tile('Alert rules checked', esc(num(c.rules || 0)), 'noisy rules found and fixed')];
+      tile('Alert rules checked', esc(num(c.rules || 0)), 'noisy rules found and fixed'),
+      tile('Change failure', k.changes ? esc(pct(k.changes.cfr, 0)) : '—', k.changes ? num(k.changes.per_week) + ' deploys a week' + (k.changes.restore ? ' · restored in ' + k.changes.restore : '') : 'from your deploy history', k.changes && k.changes.cfr > 0.3),
+      tile('On-call', k.oncall ? esc(num(k.oncall.over || 0)) + '<small> shifts over</small>' : '—', k.oncall ? pl(k.oncall.nights || 0, 'night page') : 'from your page history', k.oncall && k.oncall.over),
+      tile('Toil', k.toil ? esc(pct(k.toil.share, 0)) + '<small> of the week</small>' : '—', k.toil ? num(k.toil.hours) + ' h a week · cap ' + pct(k.toil.cap, 0) : 'from your toil list', k.toil && k.toil.share > k.toil.cap)];
     return `<div><h1 class="sd-h">${esc(greet())}</h1><p class="lead">${esc(lead)}${s.service ? ' ' + esc(s.service) + ', SLO ' + esc(pct(s.target, 3)) + ' over ' + esc(s.window_days) + ' days.' : ''}</p></div>
       <section class="cs-hero"><div class="top">${tiles.join('')}</div></section>
       ${(k.needs || []).length ? `<section class="card"><h2 class="md-h2">Needs you</h2>${needsRows(k.needs)}</section>` : ''}
@@ -393,7 +404,10 @@
         <button type="button" class="srk-start" data-go="slos"><b>Set an SLO</b><span>Error budget, burn rate and the alert rules for it</span></button>
         <button type="button" class="srk-start" data-go="alerts"><b>Quiet the pager</b><span>Check alert rules, count the noise in your alert history</span></button>
         <button type="button" class="srk-start" data-go="incidents"><b>Read an incident</b><span>Timeline, the times between, a blameless postmortem</span></button>
-        <button type="button" class="srk-start" data-go="capacity"><b>Plan capacity</b><span>Latency, growth, queue waits and availability</span></button></div></section>
+        <button type="button" class="srk-start" data-go="capacity"><b>Plan capacity</b><span>Latency, growth, queue waits and availability</span></button>
+        <button type="button" class="srk-start" data-go="oncall"><b>Check on-call load</b><span>Pages per person and shift, broken nights, a fair split</span></button>
+        <button type="button" class="srk-start" data-go="changes"><b>Measure change risk</b><span>The four DORA numbers from your deploy history</span></button>
+        <button type="button" class="srk-start" data-go="runbooks"><b>Check runbooks and toil</b><span>What a paged person needs, and what to automate first</span></button></div></section>
       <section class="card"><h2 class="md-h2">Latest on the desk</h2>${itemRows((k.items || []).slice(0, 8))}</section>`;
   }
 
@@ -502,6 +516,117 @@
         <div class="md-acts" style="margin:0 0 6px"><code>postmortem-${esc(d.number.toLowerCase())}.md</code><span>${copyBtn(r.postmortem || '')} <button class="btn soft sm" type="button" data-dlpm="1">Download</button></span></div>${pre(r.postmortem || '', 'code')}</section>`;
   }
 
+  /* ---------------------------------------------------------------- on-call (v0.999.317) */
+  const BAND = {elite: ['Elite', 'ok'], high: ['High', 'ok'], medium: ['Medium', 'warn'], low: ['Low', 'bad']};
+  const band = b => b ? tag(BAND[b][0], BAND[b][1]) : tag('Not known', '');
+  function weekBars(rows, key, label, fmt) {
+    if (!(rows || []).length) return '';
+    return bars(rows.slice(-16).map(w => [dd(w.week), w[key] || 0, '', '']), fmt, label);
+  }
+  function pOncall() {
+    if (ST.arg) return one(ST.arg, 'oncall', pOne);
+    const s = st_();
+    return `<div><h1 class="sd-h">On-call load</h1><p class="lead">Who gets woken, how often, and whether one person carries the rota. Paste your page history from PagerDuty, Opsgenie, Grafana OnCall or a spreadsheet.</p></div>${ro()}
+      ${CAN() ? `<section class="card"><h2 class="md-h2">Read a page history</h2><form data-form="oncall" class="srk-grid">
+        ${area('text', 'CSV: time, who was paged, the alert - and when it was acknowledged, if you have it', 'time,who,alert,ack_at\n2026-11-20T02:14:00Z,asha,DiskFull,2026-11-20T02:19:00Z\n2026-11-20T10:05:00Z,ben,HighErrorRate,2026-11-20T10:06:00Z', 7)}
+        ${fld('tz', 'Time zone of the people paged', s.tz || 'UTC', '', 'Europe/London')}${fld('shift_max', 'Most pages a 12-hour shift should get', s.shift_max || 2, 'type="number" min="1" max="50" step="1"')}
+        ${fld('night_start', 'Night starts (hour)', s.night_start ?? 22, 'type="number" min="0" max="23" step="1"')}${fld('night_end', 'Night ends (hour)', s.night_end ?? 7, 'type="number" min="0" max="23" step="1"')}
+        ${subRow('Work it out')}</form></section>` : ''}
+      <section class="card"><h2 class="md-h2">Read</h2>${itemRows(items('oncall'))}</section>`;
+  }
+  function pOncallOne(d) {
+    const r = d.result || {}, t = r.table || [];
+    return `${head(d, 'oncall')}${verdict(r, isOk(r))}
+      <section class="cs-hero"><div class="top">${tile('Pages a week', esc(num(r.per_week)), pl(r.pages, 'page') + ' to ' + pl(r.people, 'person', 'people'), r.per_week > 14)}
+        ${tile('At night', esc(num(r.night_pages)), r.night + ' ' + r.tz, r.night_pages > r.pages * 0.3)}${tile('Shifts over the limit', esc(num(r.shifts_over)), 'more than ' + num(r.shift_max) + ' pages in 12 hours', r.shifts_over)}
+        ${tile('Time to acknowledge', r.ack_median_min === null || r.ack_median_min === undefined ? '—' : esc(mins(r.ack_median_min)), r.ack_p90_min !== null && r.ack_p90_min !== undefined ? '1 in 10 over ' + mins(r.ack_p90_min) : 'add ack_at to see it', r.ack_p90_min > 15)}</div></section>
+      <section class="card"><h2 class="md-h2">Share of the pages</h2>${bars(t.slice(0, 12).map(x => [x.who, x.pages, x.vs_even >= 1.5 ? 'cy-bad' : '', x.vs_even + 'x an even share']), v => pl(v, 'page'), 'Pages per person')}</section>
+      <section class="card"><h2 class="md-h2">Person by person</h2><div class="iv-tw"><table class="tb"><thead><tr><th>Who</th><th class="r">Pages</th><th class="r">A week</th><th class="r">At night</th><th class="r">Nights broken</th><th class="r">In a row</th><th class="r">Shifts over</th><th class="r">Ack (median)</th></tr></thead><tbody>${t.map(x => `<tr><td><b>${esc(x.who)}</b>${(x.advice || []).map(a => `<div class="mut" style="font-size:13px">${esc(a)}</div>`).join('')}</td><td class="r">${esc(num(x.pages))}</td><td class="r">${esc(num(x.per_week))}</td><td class="r">${esc(num(x.night_pages))}</td><td class="r">${esc(num(x.nights_broken))}</td><td class="r ${x.nights_in_a_row >= 3 ? 'cs-neg' : ''}">${esc(num(x.nights_in_a_row))}</td><td class="r ${x.shifts_over ? 'cs-neg' : ''}">${esc(num(x.shifts_over))}</td><td class="r">${esc(mins(x.ack_median_min))}</td></tr>`).join('')}</tbody></table></div></section>
+      <section class="card"><h2 class="md-h2">Pages by week</h2>${weekBars(r.by_week, 'count', 'Pages by week', v => pl(v, 'page'))}</section>
+      <section class="card"><h2 class="md-h2">What to fix</h2>${issueRows(r.issues)}</section>`;
+  }
+
+  /* ---------------------------------------------------------------- changes (v0.999.317) */
+  function pChanges() {
+    if (ST.arg) return one(ST.arg, 'changes', pOne);
+    return `<div><h1 class="sd-h">Changes and their risk</h1><p class="lead">The four DORA numbers - how often you deploy, how long a change takes to reach production, how many fail and how fast you restore - from your deploy history.</p></div>${ro()}
+      ${CAN() ? `<section class="card"><h2 class="md-h2">Read a deploy history</h2><form data-form="changes" class="srk-grid">
+        ${area('text', 'CSV: deploy time, service, result (ok / failed / rolled back) - and committed_at, restored_at, commits if you have them', 'deployed_at,service,result,committed_at,restored_at,commits\n2026-11-20T10:00:00Z,api,ok,2026-11-20T06:12:00Z,,4\n2026-11-20T15:30:00Z,api,rolled back,2026-11-19T22:00:00Z,2026-11-20T16:05:00Z,38', 7)}
+        <p class="cs-note wide" style="margin:0">Out of hours = outside ${esc(st_().work_start)}:00-${esc(st_().work_end)}:00 or on ${esc(st_().weekend)} in ${esc(st_().tz)} (Settings).</p>
+        ${subRow('Work it out')}</form></section>` : ''}
+      <section class="card"><h2 class="md-h2">Read</h2>${itemRows(items('changes'))}</section>`;
+  }
+  function pChangesOne(d) {
+    const r = d.result || {}, b = r.bands || {}, sv = r.services || [], o = r.out_of_hours || {};
+    const days = (r.by_day || []).map(x => [cap(x.day), x.deploys, x.cfr > (r.cfr || 0) * 1.5 && x.deploys >= 5 ? 'cy-bad' : '', x.deploys ? pct(x.cfr, 0) + ' failed' : '']);
+    return `${head(d, 'changes')}${verdict(r, isOk(r))}
+      <section class="cs-hero"><div class="top">${tile('Deploys a week', esc(num(r.per_week)), pl(r.deploys, 'deploy') + ' in ' + num(r.days) + ' days')}
+        ${tile('Lead time', esc(r.lead || '—'), r.lead ? 'change to production, median' : 'add committed_at to see it')}
+        ${tile('Change failure', esc(pct(r.cfr, 0)), pl(r.failed, 'change') + ' failed', r.cfr > 0.3)}
+        ${tile('Time to restore', esc(r.restore || '—'), r.restore ? 'median, ' + pl(r.restore_known, 'failure') : 'add restored_at to see it', r.restore_median_h >= 24)}</div></section>
+      <section class="card"><h2 class="md-h2">Against the DORA bands</h2><table class="tb"><thead><tr><th>Number</th><th>Yours</th><th>Band</th></tr></thead><tbody>
+        <tr><td>Deploy frequency</td><td>${esc(num(r.per_day))} a day</td><td>${band(b.frequency)}</td></tr><tr><td>Lead time for changes</td><td>${esc(r.lead || '—')}</td><td>${band(b.lead)}</td></tr>
+        <tr><td>Change failure rate</td><td>${esc(pct(r.cfr, 0))}</td><td>${band(b.cfr)}</td></tr><tr><td>Time to restore</td><td>${esc(r.restore || '—')}</td><td>${band(b.restore)}</td></tr></tbody></table><p class="cs-note">${esc(r.note)}</p></section>
+      ${sv.length > 1 ? `<section class="card"><h2 class="md-h2">Service by service</h2><div class="iv-tw"><table class="tb"><thead><tr><th>Service</th><th class="r">Deploys</th><th class="r">A week</th><th class="r">Failed</th><th class="r">Lead time</th><th class="r">Restore</th></tr></thead><tbody>${sv.map(x => `<tr><td><b>${esc(x.service)}</b></td><td class="r">${esc(num(x.deploys))}</td><td class="r">${esc(num(x.per_week))}</td><td class="r ${x.cfr > 0.3 ? 'cs-neg' : ''}">${esc(pct(x.cfr, 0))}</td><td class="r">${esc(x.lead || '—')}</td><td class="r">${esc(x.restore || '—')}</td></tr>`).join('')}</tbody></table></div></section>` : ''}
+      <section class="card"><h2 class="md-h2">By day of the week</h2>${bars(days, v => pl(v, 'deploy'), 'Deploys by weekday')}
+        <p class="cs-note">Out of working hours: ${esc(pl(o.deploys || 0, 'deploy'))}, ${esc(pct(o.cfr, 0))} failed (in hours ${esc(pct(o.cfr_in_hours, 0))}).${r.size ? ` The biggest quarter of changes (${esc(num(r.size.cut))}+) failed ${esc(pct(r.size.large_cfr, 0))}, the rest ${esc(pct(r.size.small_cfr, 0))}.` : ''}</p></section>
+      <section class="card"><h2 class="md-h2">Deploys by week</h2>${weekBars(r.weekly, 'deploys', 'Deploys by week', v => pl(v, 'deploy'))}</section>
+      ${(r.failures || []).length ? `<section class="card"><h2 class="md-h2">The failed changes</h2>${r.failures.slice(-15).reverse().map(f => `<div class="cs-row"><span class="cs-dot bad"></span><span style="flex:1">${esc(dt(f.at))} · ${esc(f.service)}${f.id ? ' · ' + esc(f.id) : ''}</span><span class="mut">${f.restore ? 'restored in ' + esc(f.restore) : 'restore time not given'}</span></div>`).join('')}</section>` : ''}
+      <section class="card"><h2 class="md-h2">What to fix</h2>${issueRows(r.issues)}</section>`;
+  }
+
+  /* ---------------------------------------------------------------- runbooks + toil (v0.999.317) */
+  function pRunbooks() {
+    if (ST.arg) return one(ST.arg, 'runbooks', pOne);
+    const s = st_();
+    return `<div><h1 class="sd-h">Runbooks and toil</h1><p class="lead">Whether a person woken at 3 am can act on your runbooks - and the repeated manual work worth automating first.</p></div>${ro()}
+      ${CAN() ? `<section class="card"><h2 class="md-h2">Check runbooks</h2><form data-form="runbook" class="srk-grid">
+        ${area('text', 'Runbooks in Markdown. For several, start each with ## path/to/file.md', '## runbooks/high-error-rate.md\n# High error rate\n## Summary\n...\n## Diagnosis\n...\n## Mitigation\n...\nLast reviewed: 2026-10-01', 9)}
+        ${area('rules', 'Your Prometheus rules file (optional) - to find alerts with no runbook', 'groups:\n  - name: api\n    rules:\n      - alert: HighErrorRate\n        annotations:\n          runbook_url: https://wiki/runbooks/high-error-rate.md', 4)}
+        ${fld('runbook_days', 'Review a runbook every (days)', s.runbook_days || 180, 'type="number" min="1" max="3650" step="1"')}
+        ${subRow('Check them')}</form></section>
+      <section class="card"><h2 class="md-h2">Count the toil</h2><form data-form="toil" class="srk-grid">
+        ${area('text', 'CSV: task, minutes each time, times a week, automate_hours - or a log: date, who, task, minutes', 'task,minutes,per_week,automate_hours\nrestart stuck workers,20,10,8\nanswer access requests,10,30,40', 6)}
+        ${fld('week_hours', 'A working week (hours)', s.week_hours || 40, 'type="number" min="1" max="100" step="any"')}${fld('toil_cap', 'Toil cap (% of the week)', s.toil_cap || 50, 'type="number" min="1" max="100" step="any"')}
+        ${fld('people', 'People who share it (optional)', '', 'type="number" min="1" max="1000" step="1"', 'from the who column')}
+        ${subRow('Work it out')}</form></section>` : ''}
+      <section class="card"><h2 class="md-h2">Checked</h2>${itemRows(items('runbook', 'toil'))}</section>`;
+  }
+  function pRunbookOne(d) {
+    const r = d.result || {}, docs = r.docs || [], ln = r.links || [];
+    const PARTN = {what: 'What', impact: 'Impact', check: 'Check', fix: 'Fix', undo: 'Undo', who: 'Who'};
+    return `${head(d, 'runbooks')}${verdict(r, !(r.counts || {}).bad)}
+      <section class="cs-hero"><div class="top">${tile('Runbooks', esc(num(r.runbooks)), 'average ' + num(r.score) + '/100')}${tile('Serious', esc(num((r.counts || {}).bad || 0)), 'a paged person cannot act or could break things', (r.counts || {}).bad)}
+        ${tile('Other findings', esc(num((r.counts || {}).warn || 0)), 'missing parts, old, placeholders')}${tile('Alerts linked', ln.length ? esc(num(r.linked)) + '<small> of ' + esc(num(r.alerts)) + '</small>' : '—', ln.length ? 'to a runbook you pasted' : 'paste your rules to see it', ln.length && r.linked < r.alerts)}</div></section>
+      <section class="card"><h2 class="md-h2">Runbook by runbook</h2><div class="iv-tw"><table class="tb"><thead><tr><th>Runbook</th>${Object.values(PARTN).map(p => `<th class="r">${p}</th>`).join('')}<th class="r">Score</th><th class="r">Reviewed</th></tr></thead><tbody>${docs.map(x => `<tr><td><b>${esc(x.title)}</b><div class="mut" style="font-size:13px">${esc(x.path)}</div></td>${Object.keys(PARTN).map(k => `<td class="r">${x.parts[k].found ? '<span class="srk-yes" aria-label="yes">' + tick + '</span>' : '<span class="cs-neg" aria-label="missing">✕</span>'}</td>`).join('')}<td class="r ${x.score < 70 ? 'cs-neg' : ''}">${esc(num(x.score))}</td><td class="r">${x.age_days === null || x.age_days === undefined ? '—' : esc(pl(x.age_days, 'day')) + ' ago'}</td></tr>`).join('')}</tbody></table></div></section>
+      ${docs.filter(x => x.issues.length).map(x => `<details class="card srk-rule" data-key="rb:${esc(d.id)}:${esc(x.path)}"${ST.open.has('rb:' + d.id + ':' + x.path) ? ' open' : ''}><summary><b>${esc(x.path)}</b><span style="flex:1"></span>${pl(x.issues.length, 'finding')}</summary>${issueRows(x.issues)}${x.dangers.length ? `<h3 class="md-h3">Commands that destroy things</h3>${x.dangers.map(g => `<div class="cs-row"><span class="cs-dot ${g.warned ? '' : 'bad'}"></span><code style="flex:1">${esc(g.text)}</code><span class="mut">line ${esc(g.line)} · ${esc(g.what)}${g.warned ? ' · warned' : ''}</span></div>`).join('')}` : ''}</details>`).join('')}
+      ${ln.length ? `<section class="card"><h2 class="md-h2">Alerts and their runbooks</h2><div class="iv-tw"><table class="tb"><thead><tr><th>Alert</th><th>runbook_url</th><th>Runbook</th></tr></thead><tbody>${ln.map(x => `<tr><td><b>${esc(x.alert)}</b></td><td><code>${esc(x.url || '—')}</code></td><td>${x.state === 'ok' ? esc(x.runbook) : tag(x.state === 'none' ? 'No link' : 'Not found', x.state === 'none' ? 'bad' : 'warn')}</td></tr>`).join('')}</tbody></table></div></section>` : ''}
+      <section class="card"><h2 class="md-h2">For all of them</h2>${issueRows(r.issues)}</section>`;
+  }
+  function pToilOne(d) {
+    const r = d.result || {}, t = r.table || [], f = r.automate_first || [];
+    const share = Math.min(1, r.share || 0);
+    return `${head(d, 'runbooks')}${verdict(r, isOk(r))}
+      <section class="cs-hero"><div class="top">${tile('Toil a week', esc(num(r.hours_week)) + '<small> h</small>', num(r.hours_year) + ' h a year')}${tile('Per person', esc(num(r.per_person_h)) + '<small> h</small>', pl(r.people, 'person', 'people'))}
+        ${tile('Of the week', esc(pct(r.share, 0)), 'cap ' + pct(r.cap, 0) + ' of ' + num(r.week_hours) + ' h', r.share > r.cap)}${tile('Tasks', esc(num(r.tasks)), r.shape === 'log' ? 'from a log of ' + num(r.weeks) + ' weeks' : 'from a weekly summary')}</div></section>
+      <section class="card"><h2 class="md-h2">Share of the working week</h2><div class="srk-meter" role="img" aria-label="${esc(pct(share, 0))} of the week"><i style="width:${(share * 100).toFixed(1)}%" class="${r.share > r.cap ? 'bad' : r.share > r.cap * 0.66 ? 'warn' : ''}"></i><b style="left:${(Math.min(1, r.cap) * 100).toFixed(1)}%" title="Your cap"></b></div><p class="cs-note">Bar = toil per person; the line = your cap. Above the line, engineering work stops.</p></section>
+      <section class="card"><h2 class="md-h2">Where the hours go</h2>${bars(t.slice(0, 12).map(x => [x.task, x.hours_week, '', x.times_week ? pl(x.times_week, 'time') + ' a week' : '']), v => num(v) + ' h', 'Toil hours a week by task')}</section>
+      ${f.length ? `<section class="card"><h2 class="md-h2">Automate first</h2><table class="tb"><thead><tr><th>Task</th><th class="r">Hours a week</th><th class="r">To automate</th><th class="r">Pays back in</th></tr></thead><tbody>${f.map(x => `<tr><td><b>${esc(x.task)}</b></td><td class="r">${esc(num(x.hours_week))} h</td><td class="r">${esc(num(x.automate_hours))} h</td><td class="r ${x.payback_weeks <= 12 ? 'cs-pos' : ''}">${esc(pl(x.payback_weeks, 'week'))}</td></tr>`).join('')}</tbody></table><p class="cs-note">The hours to automate are your own estimates.</p></section>` : ''}
+      ${(r.by_who || []).length ? `<section class="card"><h2 class="md-h2">Person by person</h2>${bars(r.by_who.map(x => [x.who, x.hours_week, x.share > r.cap ? 'cy-bad' : '', pct(x.share, 0) + ' of the week']), v => num(v) + ' h', 'Toil per person')}</section>` : ''}
+      <section class="card"><h2 class="md-h2">What to do</h2>${issueRows(r.issues)}</section>`;
+  }
+  function pOne(d) { return ({oncall: pOncallOne, changes: pChangesOne, runbook: pRunbookOne, toil: pToilOne}[d.kind] || pOncallOne)(d); }
+
+  /* ---------------------------------------------------------------- CI (v0.999.317) */
+  function pCi() {
+    const s = st_(), w = ST.out.ci;
+    return `<div><h1 class="sd-h">Alert rules in CI</h1><p class="lead">A GitHub Actions check that reads your Prometheus rules files on every pull request and fails on alerts that cannot work or will wake people for nothing.</p></div>
+      <section class="card"><h2 class="md-h2">The check</h2><p class="cs-note" style="margin-top:0">Rules files: <code>${esc(s.rules_glob)}</code> · fails on ${esc(s.ci_fail === 'warn' ? 'anything to fix' : 'serious problems only')} · ${s.promtool_version ? 'promtool ' + esc(s.promtool_version) + ' from the official Prometheus release' : 'no promtool (name a version in Settings)'} · runner ${esc(s.runner)}. Change these in Settings.</p>
+        <button class="btn soft" type="button" data-ci="1">Write the workflow</button>${w ? (w.error ? err(w) : `<div class="md-acts" style="margin:12px 0 6px"><code>${esc(w.file)}</code><span>${copyBtn(w.yaml)} <button class="btn soft sm" type="button" data-dlci="1">Download</button></span></div>${pre(w.yaml, 'code')}
+        <ol class="srk-steps">${w.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol><p class="cs-note">${esc(w.note)}</p>`) : ''}</section>
+      <section class="card"><h2 class="md-h2">What fails the check</h2><ul class="ar-never"><li>An alert with no severity label, a counter (<code>_total</code>) compared without rate() or increase(), or two alerts with the same name and severity.</li><li>At "anything to fix" also: no <code>for</code>, no summary or description, no runbook_url.</li><li>With a promtool version: anything promtool's own syntax check rejects.</li></ul></section>`;
+  }
+
   /* ---------------------------------------------------------------- capacity */
   function pCapacity() {
     if (ST.arg) return one(ST.arg, 'capacity', d => ({latency: pLatency, buckets: pBuckets, capacity: pCap, queue: pQueue, avail: pAvail}[d.kind] || pLatency)(d));
@@ -576,8 +701,15 @@
         ${fld('weekend', 'Days off', s.weekend, '', 'sat,sun or fri,sat')}${fld('scrape_s', 'Prometheus scrape interval (s)', s.scrape_s, 'type="number" min="1" max="3600" step="1"')}
         ${fld('latency_ms', 'Latency threshold (ms)', s.latency_ms, 'type="number" min="0.001" step="any"')}${fld('bad_metric', 'Bad-events counter', s.bad_metric, '', 'http_requests_errors_total')}
         ${fld('total_metric', 'All-events counter', s.total_metric, '', 'http_requests_total')}${fld('selector', 'Label selector (optional)', s.selector, '', '{job="api"}')}
+        <h2 class="md-h2 wide" style="margin:10px 0 0">On-call and toil</h2>
+        ${fld('night_start', 'Night starts (hour)', s.night_start ?? 22, 'type="number" min="0" max="23" step="1"')}${fld('night_end', 'Night ends (hour)', s.night_end ?? 7, 'type="number" min="0" max="23" step="1"')}
+        ${fld('shift_max', 'Most pages a 12-hour shift', s.shift_max ?? 2, 'type="number" min="1" max="50" step="1"')}${fld('runbook_days', 'Review runbooks every (days)', s.runbook_days ?? 180, 'type="number" min="1" max="3650" step="1"')}
+        ${fld('week_hours', 'A working week (hours)', s.week_hours ?? 40, 'type="number" min="1" max="100" step="any"')}${fld('toil_cap', 'Toil cap (% of the week)', s.toil_cap ?? 50, 'type="number" min="1" max="100" step="any"')}
+        <h2 class="md-h2 wide" style="margin:10px 0 0">The CI check</h2>
+        ${fld('rules_glob', 'Rules files (path pattern)', s.rules_glob, '', 'monitoring/**/*.yml')}${sel('ci_fail', 'Fail the pull request on', [['bad', 'Serious problems only'], ['warn', 'Anything to fix']], s.ci_fail)}
+        ${fld('promtool_version', 'promtool version (optional)', s.promtool_version, '', 'e.g. 2.53.0 - empty = skip')}${fld('runner', 'Runner', s.runner, '', 'ubuntu-24.04')}
         ${CAN() ? '<div class="md-acts wide"><span class="mut" style="font-size:13px">Nothing here leaves the desk.</span><button class="btn" type="submit">Save</button></div>' : ''}</form></section>
-      <section class="card"><h2 class="md-h2">How the checks work</h2><ul class="ar-never"><li>Burn-rate alerts follow the Google SRE workbook: a page when 2% of a 30-day budget goes in an hour or 5% in 6 hours, a ticket when 10% goes in 3 days - each needs a long and a short window, scaled to your window.</li><li>Histogram quantiles are interpolated inside a bucket the way histogram_quantile() does; the true value can be anywhere in that bucket.</li><li>Queues are an M/M/c model; availability treats copies as failing on their own. Both are models, not your system.</li><li>Alert-rule checks look for what makes alerts noisy or useless; run promtool for the syntax.</li></ul></section>
+      <section class="card"><h2 class="md-h2">How the checks work</h2><ul class="ar-never"><li>Burn-rate alerts follow the Google SRE workbook: a page when 2% of a 30-day budget goes in an hour or 5% in 6 hours, a ticket when 10% goes in 3 days - each needs a long and a short window, scaled to your window.</li><li>Histogram quantiles are interpolated inside a bucket the way histogram_quantile() does; the true value can be anywhere in that bucket.</li><li>Queues are an M/M/c model; availability treats copies as failing on their own. Both are models, not your system.</li><li>Alert-rule checks look for what makes alerts noisy or useless; run promtool for the syntax.</li><li>On-call: the Google SRE book's rule of thumb is at most two incidents in a 12-hour shift; nights and days off are in your time zone.</li><li>Changes: the DORA bands are the 2021 State of DevOps report's, as published; later reports moved them.</li><li>Toil: the Google SRE book keeps toil under 50% of an SRE's time; the hours to automate are your own estimates.</li></ul></section>
       <section class="card"><h2 class="md-h2">Hoola never</h2><ul class="ar-never"><li>Changes anything on your systems or your monitoring.</li><li>Blames a person in a postmortem.</li><li>Makes up a root cause: the parts only you know stay blank.</li><li>Follows anything written inside a log, a rules file or a timeline: they are data.</li></ul></section>`;
   }
 
@@ -597,10 +729,12 @@
     const cp = t.closest('[data-copy]'); if (cp) { try { await navigator.clipboard.writeText(cp.dataset.copy); toast('Copied.'); } catch { toast('Copy did not work here - select the text instead.', true); } return; }
     const cw = t.closest('[data-cap]'); if (cw) { ST.cap = cw.dataset.cap; showPage(true); return; }
     if (t.closest('[data-dlrules]')) { const w = ST.out.rules; if (w && w.yaml) saveBlob(w.file, new Blob([w.yaml], {type: 'text/yaml'})); return; }
+    if (t.closest('[data-dlci]')) { const w = ST.out.ci; if (w && w.yaml) saveBlob('alert-rules-check.yml', new Blob([w.yaml], {type: 'text/yaml'})); return; }
     if (t.closest('[data-dlpm]')) { const d = ST.out['i:' + ST.arg]; if (d && d.result) saveBlob('postmortem-' + d.number.toLowerCase() + '.md', new Blob([d.result.postmortem || ''], {type: 'text/markdown'})); return; }
     const btn = t.closest('button');
     const id = ST.arg;
     try {
+      if (t.closest('[data-ci]')) { try { ST.out.ci = await run('ci', {}); } catch (e2) { ST.out.ci = {error: e2.message}; } showPage(true); return; }
       if (t.closest('[data-rules]')) { try { ST.out.rules = await run('rules', {}); } catch (e2) { ST.out.rules = {error: e2.message}; } showPage(true); return; }
       const mk = t.closest('[data-mark]'); if (mk) { mk.disabled = true; ST.out['i:' + id] = await run('mark', {id, status: mk.dataset.mark}); await changed({fixed: 'Marked done.', ignored: 'Ignored.', open: 'Open again.'}[mk.dataset.mark]); return; }
       const dl = t.closest('[data-del]'); if (dl) { if (!sure(dl, 'Tap again to delete')) return; dl.disabled = true; const r = await run('delete', {id}); delete ST.out['i:' + id]; location.hash = '#/' + ST.tab; await changed(r.say); return; }
@@ -655,12 +789,17 @@
       else if (kind === 'buckets') await go('buckets', {text: S(fd.get('text')), inputs: pick(['threshold_ms', 'unit'])});
       else if (kind === 'capacity') await go('capacity', {text: S(fd.get('text')), inputs: pick(['limit', 'headroom', 'unit', 'what'])});
       else if (kind === 'queue') await go('queue', {inputs: pick(['rps', 'service_ms', 'servers'])});
+      else if (kind === 'oncall') await go('oncall', {text: S(fd.get('text')), inputs: pick(['tz', 'shift_max', 'night_start', 'night_end'])});
+      else if (kind === 'changes') await go('changes', {text: S(fd.get('text'))});
+      else if (kind === 'runbook') await go('runbook', {text: S(fd.get('text')), inputs: pick(['rules', 'runbook_days'])});
+      else if (kind === 'toil') await go('toil', {text: S(fd.get('text')), inputs: pick(['week_hours', 'toil_cap', 'people'])});
       else if (kind === 'avail') await go('avail', {inputs: {tree: parseTree(fd.get('tree')), ...pick(['target'])}});
-      else if (kind === 'settings') { await run('settings', pick(FIELDS_SET)); delete ST.out.rules; await changed('Saved.'); }
+      else if (kind === 'settings') { const a = pick(FIELDS_SET); a.promtool_version = g('promtool_version'); await run('settings', a); delete ST.out.rules; delete ST.out.ci; await changed('Saved.'); }
     } catch (err2) { toast(err2.message, true); }
     finally { if (btn && btn.isConnected) { btn.disabled = false; if (btn.dataset.was) btn.textContent = btn.dataset.was; } }
   }
-  const FIELDS_SET = ['service', 'target', 'window_days', 'tz', 'work_start', 'work_end', 'weekend', 'scrape_s', 'latency_ms', 'bad_metric', 'total_metric', 'selector'];
+  const FIELDS_SET = ['service', 'target', 'window_days', 'tz', 'work_start', 'work_end', 'weekend', 'scrape_s', 'latency_ms', 'bad_metric', 'total_metric', 'selector',
+    'night_start', 'night_end', 'shift_max', 'runbook_days', 'week_hours', 'toil_cap', 'rules_glob', 'ci_fail', 'runner'];
 
 
 
