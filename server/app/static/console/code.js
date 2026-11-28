@@ -73,6 +73,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   const CAN_REVISE = new Set(['pr_open', 'checks_failed', 'ready', 'refused']);
   const canRev = t => !shared && (CAN_REVISE.has(t.status) || !!t.can_continue);   // v0.784 a session with a working copy takes a follow-up, like a conversation
   const ICON = {
+    flow: '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="4" width="7" height="5" rx="1.5"/><rect x="14" y="15" width="7" height="5" rx="1.5"/><path d="M6.5 9v3.5H17.5V15" stroke-linecap="round"/></g>',
     repo: '<path d="M5 4h11l3 3v13H5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 4v5h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
     branch: '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 8v8M18 10c0 4-6 3-12 6"/></g>',
     read: '<path d="M6 3h9l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
@@ -750,7 +751,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       case 'todo': { const items = s.items || [], done = items.filter(x => x.status === 'completed').length;   // v0.999 the list shows once, the newest, updated in place
         return s.last === false ? `<div class="hcd-step dim">${svg('list')}<span>Updated the to-do list · ${done} of ${items.length} done</span>${at}</div>` : todoHTML(items); }
       case 'look': return `<div class="hcd-step ${s.errors ? 'bad' : ''}">${svg('read')}<span>Opened ${p(s.path || 'the page')} in a browser · ${plural((s.shots || []).length, 'screenshot')}${s.errors ? ` · <span class="del">${plural(s.errors, 'page error')}</span>` : ''}</span>${at}</div>`;
-      case 'made': return `<div class="hcd-step ok">${svg('new')}<span>Made version ${esc(String(s.v || 1))} of the document</span>${at}</div>`;
+      case 'made': return `<div class="hcd-step ok">${svg('new')}<span>${s.kind === 'diagram' ? 'Drew' : s.kind === 'analysis' ? 'Ran Code Analysis ·' : s.kind === 'review' ? 'Wrote the PR walkthrough ·' : 'Made'} ${s.kind === 'diagram' ? `the diagram ${esc(s.title || '')} · version ${esc(String(s.v || 1))}` : s.kind === 'analysis' || s.kind === 'review' ? `version ${esc(String(s.v || 1))}` : `version ${esc(String(s.v || 1))} of the document`}</span>${at}</div>`;
       case 'server': return `<div class="hcd-step ${s.state === 'refused' || s.state === 'offline' ? 'bad' : ''}">${svg('list')}<span>${s.state === 'waiting' ? 'Waiting for your tap to run' : s.state === 'refused' ? 'Refused on your server:' : s.state === 'offline' ? 'Your server is offline' : 'Ran on your server'}${s.cmd ? ' ' + p(s.cmd) : ''}${s.server ? ' · ' + esc(s.server) : ''}${s.reason ? ' · ' + esc(s.reason) : ''}</span>${at}</div>`;
       case 'bgstart': return `<div class="hcd-step">${svg('term')}<span>${esc(s.did || 'Started a command in the background')} · <span class="hcd-cmd">${esc(s.id)}</span></span>${at}</div>`;
       case 'bgout': { const lab = `Read the output of <span class="hcd-cmd">${esc(s.id)}</span> · ${s.running ? 'still running' : s.rc == null ? 'ended' : 'exited ' + esc(String(s.rc))}`;
@@ -1261,6 +1262,41 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       <div class="hcd-acts">${pc.length && !t.running && t.status !== 'ci_running' ? `<button type="button" class="hcd-btn pri" data-act="fixcomments">Fix ${plural(pc.length, 'comment')}</button>` : ''}<button type="button" class="hcd-btn" data-act="readcomments">Check for comments</button></div>
       <p class="hcd-mut">Hoola decides which comments are right and says which it did not follow.${t.auto_fix ? '' : ' Auto-fix is off, so they wait for your tap.'}</p></section>`;
   }
+  // HOOLA DIAGRAM D4: what Hoola made in this session (diagrams, Code Analysis, PR walkthrough, PRDs, prototypes, sheets)
+  const MADE_KIND = {diagram: 'flow', analysis: 'list', review: 'pr', doc: 'read', page: 'read', prototype: 'read', artboard: 'read', sheet: 'list'};
+  function madeCard(t) {
+    const ms = (t.made || []).slice().reverse();
+    if (!ms.length) return '';
+    return `<section class="hcd-rc hcd-madec" aria-labelledby="hcdRcM"><h2 id="hcdRcM">Made in this session<span class="hcd-stat">${ms.length}</span></h2>
+      ${ms.map(m => { const x = m.extra || {}, files = x.files || [];
+        const sub = [m.kind_label, 'v' + (m.version || 1), m.state === 'making' ? 'being made' : (m.line || '')].filter(Boolean).join(' · ');
+        return `<button type="button" class="hcd-made" data-act="made" data-mid="${esc(m.id)}"${shared ? ' disabled' : ''} title="Open ${esc(m.title)}">${svg(MADE_KIND[m.kind] || 'read')}<span><b>${esc(m.title)}</b><small>${esc(sub)}</small>${files.length ? `<small class="hcd-from">Drawn from ${files.slice(0, 3).map(f => `<code>${esc(f)}</code>`).join(' ')}${files.length > 3 ? ` +${files.length - 3}` : ''}</small>` : ''}</span></button>`; }).join('')}</section>`;
+  }
+  async function openMade(mid, v) {
+    const d = await api('GET', `/api/devsahayak/tasks/${tid()}/made/${encodeURIComponent(mid)}${v ? '?v=' + v : ''}`);
+    const dlg = $('#hcdDlg'), x = d.extra || {}, files = x.files || [];
+    const body = d.doc != null && window.HoolaMD ? `<div class="hcd-madedoc textmd">${HoolaMD.render(d.doc)}</div>`
+      : d.sheet ? (d.sheet[0] ? `<div class="hcd-madesheet"><table><tr>${(d.sheet[0].columns || []).map(c => `<th>${esc(c)}</th>`).join('')}</tr>${(d.sheet[0].rows || []).slice(0, 200).map(r => `<tr>${r.map(c => `<td>${esc(String(c ?? ''))}</td>`).join('')}</tr>`).join('')}</table></div>` : '')
+      : d.url ? `<iframe class="hcd-madeframe" title="${esc(d.title)}" sandbox="allow-scripts allow-popups allow-downloads" referrerpolicy="no-referrer" src="${esc(d.url)}"></iframe>`
+      : '<p class="hcd-mut">Nothing to show yet.</p>';
+    const vers = (d.versions || []).filter(z => z.state === 'ready');
+    dlg.classList.add('hcd-dlgw');
+    dlg.innerHTML = `<form method="dialog"><div class="hcd-madehd"><div><h2>${esc(d.title)}</h2><p class="hcd-mut">${esc([d.kind_label, 'version ' + d.shown, d.line].filter(Boolean).join(' · '))}</p>
+        ${files.length ? `<p class="hcd-from">Drawn from ${files.map(f => `<code>${esc(f)}</code>`).join(' ')}</p>` : ''}</div>
+      <div class="hcd-madeact">${d.editor ? `<button type="button" class="hcd-btn sm" data-made-hand>Edit by hand</button>` : ''}
+        ${vers.length > 1 ? `<select class="hcd-madev" aria-label="Version">${vers.map(z => `<option value="${z.v}"${z.v === d.shown ? ' selected' : ''}>Version ${z.v}${z.note ? ' · ' + esc(z.note) : ''}</option>`).join('')}</select>` : ''}
+        ${d.url ? `<a class="hcd-btn sm" href="${esc(d.url)}" target="_blank" rel="noopener noreferrer">Open in a new tab</a>` : ''}
+        <button class="hcd-btn sm" value="no">Close</button></div></div>
+      <div class="hcd-madebody">${body}</div></form>`;
+    dlg.querySelector('[data-made-hand]')?.addEventListener('click', e => {
+      const f = dlg.querySelector('.hcd-madeframe'); if (!f) return;
+      f.src = d.editor + '?lang=' + encodeURIComponent((document.documentElement.lang || navigator.language || 'en').toLowerCase());
+      f.classList.add('hand'); e.target.remove(); });
+    dlg.querySelector('.hcd-madev')?.addEventListener('change', e => { dlg.close(); openMade(mid, +e.target.value); });
+    dlg.addEventListener('close', () => { dlg.classList.remove('hcd-dlgw'); setTimeout(() => { if (!dlg.open) dlg.innerHTML = ''; }, 0);
+      refreshTask(TASK.id, false); }, {once: true});
+    if (!dlg.open) dlg.showModal();
+  }
   function railHTML(t) {
     const files = editedFiles(t), kv = (a, b) => `<div class="hcd-row"><span>${a}</span><b>${b}</b></div>`;
     const checks = []; const pf = PROOF[t.proof?.state]; if (pf) checks.push(kv('Proof', `<span class="hcd-c ${pf[0]}">${esc(pf[1])}</span>`));
@@ -1286,7 +1322,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
         ${files.length ? files.map(f => `<button type="button" class="hcd-file" data-act="file" data-path="${esc(f.path)}" title="Open ${esc(f.path)} in Changes"><code>${esc(f.path)}</code><span><em class="add">+${f.added || 0}</em> <em class="del">−${f.removed || 0}</em></span></button>`).join('') : '<p class="hcd-mut">No changes yet.</p>'}
         ${t.pr_number ? `<div class="hcd-row"><span>Pull request</span><b>#${t.pr_number} · ${esc(STATUS[t.status] || t.status)}</b>${shared ? '' : `<button type="button" class="hcd-icb" data-menu="pr" aria-label="Pull request menu: auto-fix, checkout command" title="Pull request menu">${svg('more')}</button>`}</div>` : ''}${checks.join('')}
         ${acts.length ? `<div class="hcd-acts">${acts.join('')}</div>` : ''}</section>
-      ${commentsCard(t)}${wsCard(t)}${passCard(t)}
+      ${madeCard(t)}${commentsCard(t)}${wsCard(t)}${passCard(t)}
 
       <section class="hcd-rc" aria-labelledby="hcdRcS"><h2 id="hcdRcS">Session</h2>${kv('Repo', esc(t.repo || ''))}${t.branch ? kv('Branch', `<code>${esc(t.branch)}</code>`) : ''}
         ${t.base ? kv('Works from', `<code>${esc(t.base)}</code>`) : ''}${kv('Kind', esc((KINDS.find(k => k[0] === t.kind) || [0, t.kind])[1]))}
@@ -1863,6 +1899,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     unref: b => { HOME.refs = HOME.refs.filter(r => r !== b.dataset.repo); HOME.also = HOME.also.filter(r => r !== b.dataset.repo); drawTray(); },
     changes: () => { PANE ? closePane() : openPane(''); },
     file: b => openPane(b.dataset.path),
+    made: b => busy(b, () => openMade(b.dataset.mid)),
     pclose: () => closePane(),
     walk: b => openPane(b.dataset.path),
     showall: () => { OPEN.add('all:' + PANE.path); drawPane(true); },

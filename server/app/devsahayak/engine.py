@@ -824,6 +824,12 @@ def tools_for_round() -> list[dict[str, Any]]:
     except Exception:
         pass
     try:
+        from . import diagrams as DG
+        if DG.on():
+            extra.append(DG.TOOL)                         # D4 diagrams of her code, Code Analysis, PR walkthrough
+    except Exception:
+        pass
+    try:
         from . import vps as VP
         if VP.on():
             extra.append(VP.SERVER_TOOL)                  # v0.941 run approved commands on her own server
@@ -4130,6 +4136,12 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
             system += "\n\n" + MD.HOWTO                 # v0.939 when she asks for a PRD / prototype / sheet: the make tool
     except Exception:
         pass
+    try:
+        from . import diagrams as DG
+        if DG.on():
+            system += "\n\n" + DG.HOWTO                 # D4 diagrams drawn from the code it has read
+    except Exception:
+        pass
     if netw:
         toolset = [({**x, "description": x["description"].replace("NO internet", "the network described under NETWORK")}
                     if x.get("name") == "bash" else x) for x in toolset]
@@ -4303,6 +4315,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
         results = []
         begin_step(ses, msgs, uses)                         # v0.999 written down BEFORE anything runs: a restart never repeats it
         look_pics: list[dict[str, Any]] = []               # v0.943 screenshots go after every tool result
+        dg_pics: list[dict[str, Any]] = []                 # D4 the diagram it drew, for it to look at
         agent_calls = [b for b in uses if b["name"] == "agent"]
         agent_out: dict[str, str] = {}
         if agent_calls:                                     # v0.794 ECC agents: read / run ones side by side
@@ -4450,6 +4463,22 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                     emit(ev)
                 tools.trail.append(f"make {inp.get('action', '')}")
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out[:20000]})
+                continue
+            if b["name"] == "diagram":                     # D4 a checked diagram / Code Analysis / PR walkthrough card
+                from . import diagrams as DG
+                NOW_STEP[tid] = {"analyze": "Analysing the code", "pr": "Walking through this change"}.get(
+                    str(inp.get("action") or ""), "Drawing the diagram")
+                try:
+                    out, pic, ev = DG.tool(tools, tid, str(getattr(t, "tenant_id", "") or ""), inp)
+                finally:
+                    NOW_STEP.pop(tid, None)
+                if ev:
+                    emit(ev)
+                tools.trail.append(f"diagram {inp.get('action', '')}")
+                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out[:60000]})
+                if pic:
+                    _drop_old_looks(msgs)                  # one picture at a time stays in the conversation
+                    dg_pics.append(pic)
                 continue
             if b["name"] == "server":                      # v0.941 run an approved command on her own server
                 from . import vps as VP
@@ -4707,6 +4736,9 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
         if look_pics:
             results.append({"type": "text", "text": "The screenshots from look (phone first, then computer):"})
             results.extend(look_pics)
+        if dg_pics:
+            results.append({"type": "text", "text": "The screenshots from look - here: the picture of the diagram you drew:"})
+            results.extend(dg_pics)
         msgs.append({"role": "user", "content": results})
         ses.save_messages(msgs)
         end_step(ses)

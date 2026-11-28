@@ -272,6 +272,7 @@ class Settings(BaseSettings):
     auto_cap_inr: float = 1500.0            # a new project's cost cap until the plan proposes one (she changes it at G3)
     auto_client_days: int = 30              # how long a client intake link works
     dev_make: bool = True                    # v0.939 Hoola Code makes PRDs / pages / prototypes / artboards / sheets as cards (DEV_MAKE)
+    dev_diagram: bool = True        # D4: the diagram tool in Hoola Code (diagrams of her code, Code Analysis, PR walkthrough)
     dev_vps: bool = False                    # v0.941 HOOLA CODE ON YOUR SERVER: pair a VPS (her server calls out), run approved commands as the hoola user. OFF until her first pair (DEV_VPS)
     dev_code_map: bool = True                # v0.943 Hoola Code's code map: names per file in the first message + the code_map tool (DEV_CODE_MAP)
     dev_look: bool = True                    # v0.943 the look tool: open a changed page in the server's browser, phone + computer (DEV_LOOK)

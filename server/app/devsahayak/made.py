@@ -30,6 +30,14 @@ KINDS: dict[str, tuple[str, str, str]] = {        # kind: (label, file extension
     "artboard": ("Artboard", "html", "screen"),
     "sheet": ("Sheet", "xlsx", "tab"),
 }
+WRITTEN = tuple(KINDS)                               # the kinds the model writes part by part with `make`
+# HOOLA DIAGRAM D4: things an ENGINE built and checked (never written part by part) - one page each, versions kept the same
+BUILT: dict[str, tuple[str, str, str]] = {
+    "diagram": ("Diagram", "html", "diagram"),
+    "analysis": ("Code analysis", "html", "report"),
+    "review": ("PR walkthrough", "html", "report"),
+}
+ALL_KINDS = {**KINDS, **BUILT}
 ALIASES = {"prd": "doc", "document": "doc", "spec": "doc", "markdown": "doc", "md": "doc", "report": "doc",
            "web": "page", "html": "page", "website": "page", "landing": "page", "webpage": "page",
            "proto": "prototype", "clickable": "prototype", "board": "artboard", "screens": "artboard", "mockup": "artboard",
@@ -61,7 +69,7 @@ TOOL: dict[str, Any] = {
     "input_schema": {"type": "object", "properties": {
         "action": {"type": "string", "enum": ["start", "write", "finish", "list"]},
         "id": {"type": "string", "description": "the thing's id (from start); with start = a new version of it"},
-        "kind": {"type": "string", "enum": list(KINDS)},
+        "kind": {"type": "string", "enum": list(WRITTEN)},
         "title": {"type": "string", "description": "a short name she will recognise, e.g. 'Salon booking · PRD'"},
         "parts": {"type": "array", "items": {"type": "string"}, "description": "section / screen / tab names, in order"},
         "part": {"type": "string", "description": "for write: which part"},
@@ -108,7 +116,7 @@ def _slug(s: str, n: int = 40) -> str:
 
 def _kind(k: Any) -> str:
     k = str(k or "").strip().lower()
-    return k if k in KINDS else ALIASES.get(k, "")
+    return k if k in WRITTEN else ALIASES.get(k, "")
 
 
 def _meta(tid: str, mid: str) -> dict[str, Any] | None:
@@ -657,19 +665,75 @@ def _finish(tid: str, inp: dict[str, Any]) -> tuple[str, dict[str, Any] | None]:
     return said, None
 
 
+# ---------------------------------------------------------------- D4: a page an engine built (diagram, code analysis, PR walkthrough)
+def keep_built(tid: str, kind: str, title: str, page: str, facts: dict[str, Any], mid: str = "", note: str = "",
+               extra: dict[str, Any] | None = None, cap: int = 0) -> dict[str, Any]:
+    """Keep a finished, checked page as a thing in her session: a new one, or the next version of `mid`. `extra` is
+    what the card shows beside it (the files it was drawn from, the diagram id, the engine's counts)."""
+    if kind not in BUILT:
+        raise ValueError("not a built kind")
+    if len(page) > (cap or 3_000_000):
+        raise ValueError("the page is too large to keep")
+    with _LOCK:
+        m = _meta(tid, _slug(mid, 48)) if mid else None
+        if m is None:
+            if len(_ids(tid)) >= MAX_THINGS * 3:
+                raise ValueError("This session already holds the most things it can keep.")
+            base = _slug(title or BUILT[kind][0])
+            mid = base
+            n = 2
+            while _meta(tid, mid) is not None:
+                mid, n = f"{base}-{n}", n + 1
+            m = {"id": mid, "kind": kind, "title": (title or BUILT[kind][0])[:120], "created": _now(), "versions": []}
+        if len(m["versions"]) >= MAX_VERSIONS:
+            m["versions"] = m["versions"][-(MAX_VERSIONS - 1):]   # the oldest version gives way (its page stays on disk)
+        v = (int(m["versions"][-1]["v"]) + 1) if m["versions"] else 1
+        d = _mdir(tid, m["id"]) / f"v{v}"
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "out.html").write_text(page, "utf-8")
+        if title:
+            m["title"] = title[:120]
+        m["extra"] = dict(extra or {})
+        m["versions"].append({"v": v, "state": "ready", "parts": [BUILT[kind][2].capitalize()], "done": ["0"],
+                              "changed": [] if v == 1 else [BUILT[kind][2].capitalize()], "note": note[:200],
+                              "at": _now(), "done_at": _now(), "file": "out.html",
+                              "facts": {**{k: v_ for k, v_ in (facts or {}).items() if k in ("line", "problems")}}})
+        _save(tid, m)
+        return _row(tid, m)
+
+
+def find_built(tid: str, key: str, value: str) -> dict[str, Any] | None:
+    for mid in _ids(tid):
+        m = _meta(tid, mid)
+        if m and m.get("kind") in BUILT and str((m.get("extra") or {}).get(key) or "") == str(value):
+            return m
+    return None
+
+
 # ---------------------------------------------------------------- what the phone reads
 def _row(tid: str, m: dict[str, Any]) -> dict[str, Any]:
     ver = _latest(m)
     show = ver if ver.get("state") == "ready" else (_ready(m) or ver)
     names = ver["parts"]
-    return {"id": m["id"], "kind": m["kind"], "kind_label": KINDS[m["kind"]][0], "title": m["title"],
+    return {"id": m["id"], "kind": m["kind"], "kind_label": ALL_KINDS[m["kind"]][0], "title": m["title"],
             "version": int(ver["v"]), "ready_version": int(show["v"]) if show.get("state") == "ready" else 0,
             "state": ver.get("state", "making"),
             "parts": [{"name": n, "done": str(i) in ver.get("done", [])} for i, n in enumerate(names)],
             "now": ver.get("now", "") if ver.get("state") == "making" else "",
             "changed": ver.get("changed", []) if int(ver["v"]) > 1 else [],
             "note": ver.get("note", ""), "line": (show.get("facts") or {}).get("line", ""),
-            "at": ver.get("at", ""), "done_at": ver.get("done_at", "")}
+            "at": ver.get("at", ""), "done_at": ver.get("done_at", ""),
+            **({"extra": _public_extra(m)} if m.get("kind") in BUILT else {})}
+
+
+def _public_extra(m: dict[str, Any]) -> dict[str, Any]:
+    """What a built thing's card may show: never the tenant or a path on the server."""
+    x = dict(m.get("extra") or {})
+    x.pop("tenant", None)
+    if m.get("kind") == "diagram" and x.get("editable") and x.get("diagram_id"):
+        x["editor_ready"] = True
+    return {k: x[k] for k in ("files", "diagram_id", "engine", "type", "editable", "editor_ready", "counts", "leads",
+                              "language", "base", "head", "changed_files") if k in x}
 
 
 def listing(tid: str) -> list[dict[str, Any]]:
@@ -706,8 +770,17 @@ def detail(tid: str, mid: str, v: int = 0, base_url: str = "") -> dict[str, Any]
         out["sheet"] = tabs
     if ver.get("state") == "ready" and ver.get("file"):
         out["url"] = base_url + link(tid, m["id"], int(ver["v"]), ver["file"])
-        out["file_name"] = f"{_slug(m['title'])}.{KINDS[kind][1]}"
-    elif kind in ("page", "prototype", "artboard") and texts:
+        out["file_name"] = f"{_slug(m['title'])}.{ALL_KINDS[kind][1]}"
+    x = m.get("extra") or {}
+    if kind == "diagram" and x.get("editable") and x.get("tenant") and x.get("diagram_id"):
+        try:                                             # D4: her draw.io editor for this diagram (signed, expires)
+            from ..diagram import live as DL
+            out["editor"] = base_url + DL.link(str(x["tenant"]), str(x["diagram_id"]))
+        except Exception:
+            pass
+    if kind in BUILT:
+        return out
+    if not (ver.get("state") == "ready" and ver.get("file")) and kind in ("page", "prototype", "artboard") and texts:
         name, _ = build(tid, m, ver)                     # Peek: the draft so far, built now (parts not written yet are empty)
         out["url"] = base_url + link(tid, m["id"], int(ver["v"]), name)
     return out
@@ -719,6 +792,14 @@ def restore(tid: str, mid: str, v: int) -> dict[str, Any]:
         m = _meta(tid, _slug(mid, 48))
         if m is None:
             raise ValueError("That thing was not found.")
+        if m.get("kind") in BUILT:
+            f = _mdir(tid, m["id"]) / f"v{int(v)}" / "out.html"
+            if not f.is_file():
+                raise ValueError("That version cannot be brought back.")
+            if m.get("kind") == "diagram" and (m.get("extra") or {}).get("editable"):
+                raise ValueError("An editable diagram goes back in its editor (Ctrl+Z) - its page follows the editor.")
+            return keep_built(tid, m["kind"], m["title"], f.read_text("utf-8"), {"line": f"Back to version {v}"},
+                              mid=m["id"], note=f"Back to version {v}", extra=m.get("extra"), cap=12_000_000)
         old = next((x for x in m["versions"] if int(x["v"]) == int(v) and x.get("state") == "ready"), None)
         if old is None:
             raise ValueError("That version cannot be brought back.")
