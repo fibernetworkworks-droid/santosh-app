@@ -3015,6 +3015,128 @@ def parallel_reads(tools: Any, uses: list[dict]) -> dict[str, str]:
     return out
 
 
+class EarlyReads:
+    """v0.999 OpenCode starts every tool call the moment its block is whole in the stream. Hoola Code does it for the
+    calls that cannot change anything - the leading run of read / glob / grep / ls / web reads that no rule asks about and
+    no PreToolUse hook has to see first (the same rule as the parallel reads); the first other call ends the run, so a read
+    never races an edit that comes before it. While the model is still writing the rest of its reply, those reads are
+    already running."""
+
+    def __init__(self, tools: Any):
+        self.tools, self.futs, self.ok, self.pool = tools, {}, True, None
+
+    def __call__(self, b: dict[str, Any]) -> None:
+        if not self.ok:
+            return
+        from . import repoconf as RC
+        conf = getattr(self.tools, "conf", {}) or {}
+        inp = b.get("input")
+        if (b.get("name") not in PAR_SAFE or not isinstance(inp, dict) or RC.decide(conf, b["name"], inp) in ("deny", "ask")
+                or RC.hooks_for(conf, "PreToolUse", b["name"])):
+            self.ok = False
+            return
+        import concurrent.futures as cf
+        import contextvars
+        if self.pool is None:
+            self.pool = cf.ThreadPoolExecutor(max_workers=int(_set("dev_parallel_width", 8) or 8), thread_name_prefix="dev-early")
+        self.futs[b["id"]] = self.pool.submit(contextvars.copy_context().run, self.tools.run, b["name"], inp)
+        STATS["early_reads"] = STATS.get("early_reads", 0) + 1
+
+    def results(self, uses: list[dict]) -> dict[str, str]:
+        want = {u["id"]: u for u in uses}
+        out: dict[str, str] = {}
+        for bid, f in self.futs.items():
+            u = want.get(bid)
+            if u is None:                                 # a block of an attempt that was thrown away (a retry)
+                continue
+            try:
+                out[bid] = f.result()
+            except (Stopped, Unavailable):
+                raise
+            except Exception as e:  # noqa: BLE001
+                out[bid] = f"This call could not run: {e.__class__.__name__}: {str(e)[:200]}"
+        if self.pool is not None:
+            self.pool.shutdown(wait=False)
+        return out
+
+
+# v0.999 OpenCode records every tool call before it runs, so a crash never replays a side effect. Hoola Code saved the
+# conversation only after a step's tools had all finished: a restart in the middle of a step lost the model's reply, the
+# resumed round asked again and the model could run the same command / send the same message twice.
+INFLIGHT = "inflight.json"
+SAFE_AGAIN = set(PAR_SAFE) | {"lsp", "list_mcp_resources", "read_mcp_resource", "mcp_tool_search", "show_diff", "code_map",
+                              "agent_output", "bash_output", "skill", "memory", "other_repo", "look"}
+
+
+def begin_step(ses: Any, msgs: list[dict], uses: list[dict]) -> None:
+    if not uses:
+        return
+    try:
+        ses.save_messages(msgs)                            # the reply with its tool calls, before any of them runs
+        (ses.dir / INFLIGHT).write_text(json.dumps({"at": time.time(), "ids": [u["id"] for u in uses],
+                                                    "names": {u["id"]: u.get("name") for u in uses}, "started": []}))
+    except (OSError, TypeError, ValueError):
+        log.debug("inflight record failed", exc_info=True)
+
+
+def mark_started(ses: Any, bid: str) -> None:
+    f = ses.dir / INFLIGHT
+    try:
+        rec = json.loads(f.read_text())
+        if bid not in rec["started"]:
+            rec["started"].append(bid)
+            tmp = f.with_name(f".{INFLIGHT}.{threading.get_ident()}.tmp")
+            tmp.write_text(json.dumps(rec))
+            os.replace(tmp, f)
+    except (OSError, ValueError, KeyError):
+        pass
+
+
+def end_step(ses: Any) -> None:
+    try:
+        (ses.dir / INFLIGHT).unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+def heal_cut_step(ses: Any, msgs: list[dict]) -> str:
+    """A step that a restart cut: its tool calls get answers that say what really happened - not started (safe to do),
+    a read that did not finish (run it again), or a change that MAY have run (check before doing it again). Nothing is
+    run again by Hoola. '' = nothing was cut."""
+    rec: dict[str, Any] = {}
+    f = ses.dir / INFLIGHT
+    try:
+        rec = json.loads(f.read_text()) if f.is_file() else {}
+    except ValueError:
+        rec = {}
+    last = msgs[-1] if msgs else None
+    uses = [b for b in (last.get("content") or []) if isinstance(b, dict) and b.get("type") == "tool_use"] \
+        if last and last.get("role") == "assistant" and isinstance(last.get("content"), list) else []
+    if not uses:
+        end_step(ses)
+        return ""
+    started = set(rec.get("started") or [])
+    results, maybe = [], []
+    for u in uses:
+        name = str(u.get("name") or "")
+        if u["id"] not in started:
+            txt = "Did not run: the server restarted before this step started. Run it if you still need it."
+        elif name in SAFE_AGAIN:
+            txt = "Did not finish: the server restarted while it ran. It only reads, so run it again if you still need it."
+        else:
+            maybe.append(name)
+            txt = ("INTERRUPTED by a server restart while it ran: it MAY OR MAY NOT have done its work. Check its effect "
+                   "first (git status / git diff, read the file, list what it would have made or sent) and do NOT simply "
+                   "run it again.")
+        results.append({"type": "tool_result", "tool_use_id": u["id"], "content": txt, "is_error": True})
+    msgs.append({"role": "user", "content": results})
+    ses.save_messages(msgs)
+    end_step(ses)
+    STATS["cut_steps_healed"] = STATS.get("cut_steps_healed", 0) + 1
+    return ("The server restarted in the middle of a step - " + (f"{', '.join(dict.fromkeys(maybe))} may have run; Hoola checks before "
+            "doing it again" if maybe else "nothing that changes anything had started"))
+
+
 FAIL_START = ("Refused", "Unknown tool", "Wrong arguments", "No file", "Could not", "Bad pattern", "This call could not run")
 
 
@@ -3590,6 +3712,9 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
     her_words = her_text(follow_up or str(getattr(t, "text", "") or ""))
     her_extra = her_blocks(tools, ses, her_words, emit)
     msgs = ses.messages()
+    healed = heal_cut_step(ses, msgs)                     # v0.999 a step cut by a restart: told what ran, never re-run
+    if healed:
+        emit({"k": "ws", "text": healed})
     ses.meta.pop("ask", None)                             # a new round: an earlier question of Hoola's is behind us
     resumed = bool(resume) and bool(msgs) and not made.get("refreshed") and (not follow_up or _said(msgs, follow_up))
     continuing = bool(msgs) and (bool(follow_up) or resumed)
@@ -3608,8 +3733,12 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
         emit({"k": "ws", "text": "The server restarted - going on from the last step"})
     elif continuing:
         STATS["continued"] += 1
-        msgs.append({"role": "user", "content": follow_up + (("\n\n" + her_extra) if her_extra else "") + "\n\n(The working copy is as you left it"
-                     + (", refreshed to the PR branch's newest commit" if made.get("refreshed") else "") + ".)"})
+        her_turn = (follow_up + (("\n\n" + her_extra) if her_extra else "") + "\n\n(The working copy is as you left it"
+                    + (", refreshed to the PR branch's newest commit" if made.get("refreshed") else "") + ".)")
+        if healed and msgs and msgs[-1].get("role") == "user":   # v0.999 the cut step's answers + her words: one turn
+            msgs[-1]["content"] = list(msgs[-1]["content"]) + [{"type": "text", "text": her_turn}]
+        else:
+            msgs.append({"role": "user", "content": her_turn})
     else:
         att_txt, pics = (attach or ("", []))
         first = _first_message(t, rules, issue_txt, plan_txt, att_txt, ses,
@@ -3653,6 +3782,9 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
         toolset = [({**x, "description": x["description"].replace("NO internet", "the network described under NETWORK")}
                     if x.get("name") == "bash" else x) for x in toolset]
     round_tools = toolset + [t_ for t_ in tools_for_round() if t_ not in TOOLS]   # + the ECC agent tool
+    notes = B.model_notes()                               # v0.999 OpenCode: a few words tuned to this model family
+    if notes:
+        system += "\n\n" + notes
     try:                                                  # v0.999 each MCP tool as a tool of its own (Claude Code's way)
         from . import mcptools as MT
         system += MT.attach(tools, round_tools)
@@ -3732,6 +3864,8 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
         tid = getattr(t, "id", "")
         LIVE_FULL.pop(tid, None)
         B.TEXT_SINK.fn = (lambda txt, _tid=tid, _r=list(recent): live_sink(_tid, txt, _r)) if tid else None   # v0.935 her phone reads the words as they come
+        early = EarlyReads(tools) if bool(_set("dev_early_reads", True)) else None
+        B.TOOL_SINK.fn = early                            # v0.999 OpenCode: a read starts while the model still writes
         _tc = time.time()
         if steps == max_steps and not getattr(tools, "last_step_told", False):   # v0.999 the last step: a proper ending
             tools.last_step_told = True
@@ -3759,6 +3893,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                 blocks, stop = B.call(system, msgs, round_tools)
         finally:
             B.TEXT_SINK.fn = None
+            B.TOOL_SINK.fn = None
         fb = getattr(B.FALLBACK, "note", None)            # v0.999 the model was busy / down: a backup answered
         if fb:
             B.FALLBACK.note = None
@@ -3805,14 +3940,18 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
             continue
         nudged, cut_in_row = 0, 0
         results = []
+        begin_step(ses, msgs, uses)                         # v0.999 written down BEFORE anything runs: a restart never repeats it
         look_pics: list[dict[str, Any]] = []               # v0.943 screenshots go after every tool result
         agent_calls = [b for b in uses if b["name"] == "agent"]
         agent_out: dict[str, str] = {}
         if agent_calls:                                     # v0.794 ECC agents: read / run ones side by side
             from . import subagent as SA
             if SA.on():
+                for ac in agent_calls:
+                    mark_started(ses, ac["id"])
                 agent_out = SA.run_many(tools, agent_calls, emit=emit, stopped=stopped)
-        pre = parallel_reads(tools, uses)                   # v0.999 read-only calls of this reply, side by side
+        pre = early.results(uses) if early is not None else {}   # v0.999 reads started while the model was still writing
+        pre.update(parallel_reads(tools, [u for u in uses if u["id"] not in pre]))   # v0.999 read-only calls side by side
         edited_now: list[str] = []
         for b in uses:
             inp = b.get("input") or {}
@@ -3959,6 +4098,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                         results.append({"type": "tool_result", "tool_use_id": b["id"], "content":
                                         "She said no to bringing these changes in." + (f" Her words: {ans.get('text')}" if ans.get("text") else "")})
                         continue
+                mark_started(ses, b["id"])
                 out = WT.tool(tools, inp)
                 if str(inp.get("action") or "") in ("apply", "discard") and not out.startswith("Could not"):
                     emit({"k": "worktree", "id": str(inp.get("id") or ""), "state": "applied" if inp.get("action") == "apply" else "discarded",
@@ -4059,6 +4199,8 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
             NOW_TOOL[tid] = b["name"]
             tools.live_tid = tid
             tools.before = _snap(tools, b["name"], inp)   # v0.999 the file as it was, so the step shows the real change
+            if b["id"] not in pre:
+                mark_started(ses, b["id"])                # v0.999 from here a restart says 'may have run - check first'
             try:
                 out = pre.pop(b["id"]) if b["id"] in pre else tools.run(b["name"], inp)
             finally:
@@ -4151,6 +4293,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
             results.extend(look_pics)
         msgs.append({"role": "user", "content": results})
         ses.save_messages(msgs)
+        end_step(ses)
         if hook_stop and finish is None:                   # v0.999 continue:false: the round ends, she gets the reason
             emit({"k": "hook", "event": "stop", "stop": True, "block": True, "text": hook_stop[:600]})
             finish = {"explain": "This repo's hook stopped the work: " + hook_stop[:1500],
