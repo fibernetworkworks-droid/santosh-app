@@ -41,7 +41,8 @@ FIX_SEARCHES_PER_TURN = 2
 SELF_CHECKS_PER_TURN = 2
 FIX_SEARCHES_GOAL = 6        # v0.186 goal mode: a long job gets more web fixes before it may give up
 SELF_CHECKS_GOAL = 4         # v0.186 goal mode: more self-checks before it may stop
-SKIP = {"remember", "forget", "memory_search", "seekhe_kaam", "google_status", "employee"}
+SKIP = {"remember", "forget", "memory_search", "seekhe_kaam", "google_status", "employee",
+        "diagram"}   # a failed diagram check carries its own exact fixes - no web search
 LADDER = ("Ladder for changing route: first the same tool with another input -> the previous fix -> google_search/web_sources -> "
           "read the docs (open_website) -> another tool or another route. Stop only if there is really no other way.")
 _progress_at: dict[str, float] = {}      # conv -> last "doosra tareeka" line (45 s throttle)
