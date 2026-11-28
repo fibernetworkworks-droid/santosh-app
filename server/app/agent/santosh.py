@@ -1872,6 +1872,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_cvc.block, tenant_id)
     except Exception:
         log.exception("vision desk block failed")
+    try:   # DATA ENGINEER DESK: a turn in the Data chat (or a call started from it) knows the desk
+        from .. import dechat as _dec
+        if _dec.is_dataeng(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_dec.block, tenant_id)
+    except Exception:
+        log.exception("data desk block failed")
     try:   # ML DESK: a turn in the ML chat (or a call started from it) knows the desk
         from .. import mlchat as _mlc
         if _mlc.is_mleng(conversation_id):
@@ -2953,6 +2959,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "vision desk chat"
     except Exception:
         log.exception("vision desk chat admission failed")
+    try:   # DATA ENGINEER DESK: the data tool in view in the Data chat
+        from .. import dechat as _dec
+        if adm is not None and _dec.is_dataeng(conversation_id):
+            adm.admit_families(_dec.FAMILIES)
+            for f in _dec.FAMILIES:
+                adm.why[f] = "data desk chat"
+    except Exception:
+        log.exception("data desk chat admission failed")
     try:   # ML DESK: the ML tool in view in the ML chat
         from .. import mlchat as _mlc
         if adm is not None and _mlc.is_mleng(conversation_id):

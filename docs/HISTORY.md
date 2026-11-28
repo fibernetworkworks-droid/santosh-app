@@ -13913,3 +13913,30 @@ Pages: Today, Training (loss / metrics / learning-rate charts), Data (columns ta
 CI check, Settings. NEW tool `ml_desk` (registry 715), Hub key `ml_eng`. Tests `server/tests/test_ml_desk.py` (5 incl. a browser walk
 at 1440 and 390). The test caught one wiring bug: the chat's FAMILIES said `mleng` while the tool family is `ml` - fixed.
 NOT VERIFIED: on her server, with her own runs and data, or the workflow on GitHub.
+
+
+## v0.999.303 DATA ENGINEER DESK (owner: "Data Engineer same as finance desks")
+
+The Data Engineer gets its own desk at /console/data beside its own chat (Conversation kind `dataeng`, `server/app/dechat.py`,
+family `dataeng`, Hub key `data_eng`), built like the finance desks. Engine `server/app/dedesk/` - all code, no model, nothing runs
+on her machines or her warehouse:
+- `dag.py` pipelines from Airflow lines (a >> b, [a, b] >> c, a << b), arrows, dependency lists (x: p1, p2), durations (task = 12m)
+  or a dbt manifest.json (nodes / parent_map; tests left out, sources kept as raw.orders): loops, levels, lone tasks, fan-in,
+  links implied by others, the critical path with each task's spare time (pinned to networkx's longest path on 40 random DAGs),
+  the run window, a Mermaid drawing.
+- `contract.py` schemas from CREATE TABLE, JSON Schema, Avro, JSON column lists, dbt YAML, 'name type' lines; types normalised
+  by family and size; breaking (removed, narrowed, family changed, time zone changed, made required, required-without-default
+  added, key changed) vs safe (widened, nullable added) vs warn; likely renames; one schema alone checked on its own (no key,
+  money as float, mixed time zones).
+- `recon.py` source vs target on her key: missing, extra, duplicate keys each side, changed rows by column (numbers within her
+  tolerance), totals, values lost to empty.
+- `runs.py` run history CSVs: failing now, flaky, median / p95 / last, slowing (first half vs second half), past her time limit,
+  zero-row and unusual row counts, stale data against the latest time or her as-of.
+- `storage.py` aws s3 ls / gsutil ls -l / hdfs dfs -ls / path,size listings: sizes, small files, files after compaction to her
+  target size, key=value partitions and skew, formats and uncompressed text, full-scan cost at her price per TB.
+- `ci.py` GitHub Actions data check: her data test command + a contract comparison (removed columns and changed types fail).
+Pages: Today, Pipelines (graph, timeline with spare time, levels, Mermaid), Contracts, Reconcile, Runs (sparklines), Storage, CI
+check, Settings. NEW tool `data_eng_desk` (registry 716). Tests `server/tests/test_de_desk.py` (5 incl. a browser walk at 1440 and
+390). The tests caught two real faults, both fixed: a dbt source and a model with the same last name collided (orders depending on
+itself), and Avro's 32-bit float was read as a 64-bit SQL float.
+NOT VERIFIED: on her server, with her own pipelines, tables and warehouse, or the workflow on GitHub.

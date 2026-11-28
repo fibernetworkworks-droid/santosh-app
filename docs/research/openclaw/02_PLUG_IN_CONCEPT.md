@@ -43,8 +43,26 @@ She (Hoola chat · voice call · phone · console · Hoola's WhatsApp/Telegram)
 - **Not used:** OpenClaw's own chat-app plugins (its WhatsApp is WhatsApp Web / Baileys, against Hoola's rule), its Control
   UI, its own update checks and telemetry. Hoola keeps its own channels.
 
+## Owner's decision 3 (28 Nov): a separate section, Hoola DOD
+
+"Hoola PC (computer jobs) and Hoola Code (coding) -- NEVER TOUCH ALREADY UPTO MARK ... KEEP IT IS EXSINTING DONT TOUCH ANYTHING.
+OPENCLAW WORK WITH SEPERATE SECTON NAME HOOLA DOD ( A COWORKER ) --- WHEN USER WILL USE COWORKER IT WILL CHOOSE THE AVTHAR OF IT
+AND GIVE THE NAME TO IT --- CHECK THE APP SIDE ALREADY AVATHAR IS BUILD."
+
+- Nothing existing changes: Hoola chat, Hoola PC, Hoola Code, desks, studios, Route, the main avatar. Someone who never opens
+  Hoola DOD sees no difference and nothing of OpenClaw ever runs for them.
+- **Hoola DOD** is a new section (console + phone). The first time she opens it she chooses her coworker's avatar and gives
+  it a name; then she gives it work and it does the work with her own background OpenClaw.
+- **The avatar is already built on the phone** (checked): `lib/ui/avatar_setup_screen.dart` (name in any language, checked
+  by `avatar/service.check_name`; male / female; call voice from 10 male / 12 female voices) and `lib/ui/avatar_look.dart`
+  `LookPickerScreen` (Santosh + 100 female + 100 male 3D looks from around the world, pre-rendered in `assets/avatars/`, the
+  same person as the live 3D avatar in calls, `assets/santosh3d/`). It is stored as ONE avatar per account (`avatars` table,
+  `/api/avatar`) - the main Hoola companion. The web console has no avatar picker and the server does not serve the look
+  images yet.
+- So Hoola DOD reuses those screens and the 200 looks, but saves its OWN coworker profile (name, look, gender, voice) so the
+  main Hoola avatar stays as it is; the console gets the same picker (the look images served by the server).
+
 ## Open points for the owner
 
-1. Which work goes to OpenClaw: every real task, while Hoola's own engines (Hoola PC, Hoola Code, desks, studios, Route)
-   stay for what they do, or OpenClaw replaces Hoola PC / Hoola Code for coworker tasks too.
+1. (Decided: Hoola DOD only; nothing existing touched.)
 2. Server capacity: about 1-2 GB RAM per user whose OpenClaw is awake; the server size limits how many work at once.

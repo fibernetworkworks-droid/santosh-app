@@ -1292,6 +1292,10 @@ from .ml_tools import ML_HANDLERS, ML_LABELS, ML_TOOLS  # noqa: E402
 TOOLS.extend(ML_TOOLS)
 TOOL_LABELS.update(ML_LABELS)
 HANDLERS.update(ML_HANDLERS)
+from .dataeng_tools import DATAENG_HANDLERS, DATAENG_LABELS, DATAENG_TOOLS  # noqa: E402
+TOOLS.extend(DATAENG_TOOLS)
+TOOL_LABELS.update(DATAENG_LABELS)
+HANDLERS.update(DATAENG_HANDLERS)
 # v0.357 Engineering Desk: the hired CAD Engineer (cad_part)
 from .eng_tools import ENG_HANDLERS, ENG_LABELS, ENG_TOOLS  # noqa: E402
 

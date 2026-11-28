@@ -260,6 +260,13 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                "roboflow", "cvat", "label studio", "image classifier", "image classification", "confusion matrix", "segmentation", "opencv",
                "camera calibration", "camera_info", "intrinsics", "field of view", "focal length", "pixels per", "lens for", "motion blur",
                "depth of field", "stereo camera", "disparity", "tensorrt", "onnx", "openvino", "jetson", "inference fps", "frames per second", "nms"),
+    # v0.999.303 the Data Engineer: her data pipeline words
+    "dataeng": ("data engineer", "data engineering", "data pipeline", "etl", "elt", "airflow", "dag", "dbt", "dagster", "prefect", "spark job",
+                "critical path", "schema change", "breaking change", "data contract", "schema drift", "reconcile", "reconciliation",
+                "row count", "row counts", "missing rows", "duplicate rows", "freshness", "stale data", "job failed", "pipeline failed",
+                "late data", "sla miss", "small files", "compaction", "partition", "partitioning", "parquet", "data lake", "lakehouse",
+                "delta lake", "iceberg", "s3 ls", "gsutil", "hdfs", "bytes scanned", "warehouse cost", "snowflake", "bigquery", "redshift",
+                "databricks", "backfill", "idempotent", "upsert", "merge into", "cdc", "kafka", "great expectations"),
     # v0.999.299 the Machine Learning Engineer: her ML words
     "ml": ("machine learning", "ml model", "ml engineer", "mlops", "training log", "training loss", "val_loss", "validation loss", "overfitting", "overfit",
               "underfitting", "early stopping", "learning rate", "epochs", "fine-tune", "fine tune", "finetune", "lora", "qlora", "feature engineering",

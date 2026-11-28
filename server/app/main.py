@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.302"   # v0.999.302 ML DESK (owner: "Machine Learning Engineer same as finance desks"): the Machine Learning Engineer goes live with its own section /console/ml + ML chat (kind mleng, `mlchat.py`) on a NEW engine `app/mldesk/` (all code, no model): training runs read from their logs (CSV, Keras, PyTorch Lightning, Hugging Face lines: the best epoch, overfitting, divergence, plateaus, a learning rate too high, where early stopping would stop); training tables profiled (types, missing values, ID-like and constant columns, duplicates, target balance, columns that leak the target, train / test shift); production data against training data (PSI over reference quantiles, Kolmogorov-Smirnov pinned to scipy, new categories, missing values); regression and forecast errors (MAE, RMSE, R2, WAPE, bias, MASE against the naive forecast, calibration, groups, interval coverage - pinned to numpy); GPU sizing (weights, KV cache, fit, largest batch, the bandwidth speed limit, LoRA / QLoRA / full training memory and GPU-hours); a GitHub Actions model check that fails a pull request whose scores drop; NEW tool ml_desk (registry 715); 5 tests incl. a browser walk. NOT VERIFIED: on her server, her own runs and data, or the workflow on GitHub. Previous head: v0.999.301 EDITOR AND ROUTE TABS IN THE HOME DESIGN (owner: "NOW SAME DESIGN FOR EDITOR AND ROUTE TABS"): the editor and the route's Runs / Versions / Settings in the home's design: the top bar with the route's name in the serif, tabs as pills, Saved / Not saved as a dot, Test route and Save as pills; the sending bar as the home's Needs-you card (an amber Needs you or green Sending on tag, the line, the destinations, its button); softer nodes and floating tools; Runs / Versions / Settings as pages in the home's frame - the route's name as the serif title, one line of where it stands (on / off, when it runs, steps, folder), one band of four numbers (runs in 30 days, went well this week, last run with its dot, next run) - then its runs / versions / settings cards. Walked in Chromium (editor, a step, the start, Add a step, a web request, Runs, Versions, Settings x 1440 / 1024 / 390 x light / dark = 48 views), no findings; test_v0999_297_route_home.py. NOT VERIFIED on her server.
+APP_VERSION = "0.999.303"   # v0.999.303 DATA ENGINEER DESK (owner: "Data Engineer same as finance desks"): the Data Engineer goes live with its own section /console/data + Data chat (kind dataeng, `dechat.py`) on a NEW engine `app/dedesk/` (all code, no model): pipelines read as graphs (Airflow lines, arrows, dependency lists, dbt manifest.json: loops, lone tasks, levels that run side by side, links already implied, the critical path with each task's spare time - pinned to networkx - against her run window, a Mermaid drawing); schemas against their contracts (CREATE TABLE, JSON Schema, Avro, dbt YAML, column lines: removed columns, types narrowed or changed, made required, keys changed, safe widenings, likely renames); source and target reconciled on a key (missing, extra, duplicate and changed rows, per-column differences, totals); run histories (failing and flaky jobs, median / p95 / last durations, slowing jobs, zero-row loads, stale data); storage from s3 / gsutil / hdfs listings (small files and files after compaction, partition skew, formats, scan cost); a GitHub Actions data check that runs her data tests and fails a pull request that drops a column or changes its type against the contract; NEW tool data_eng_desk (registry 716); 5 tests incl. a browser walk. NOT VERIFIED: on her server, with her own pipelines, tables and warehouse, or the workflow on GitHub. Previous head: v0.999.302 ML DESK (owner: "Machine Learning Engineer same as finance desks"): the Machine Learning Engineer goes live with its own section /console/ml + ML chat (kind mleng, `mlchat.py`) on a NEW engine `app/mldesk/` (all code, no model): training runs read from their logs (CSV, Keras, PyTorch Lightning, Hugging Face lines: the best epoch, overfitting, divergence, plateaus, a learning rate too high, where early stopping would stop); training tables profiled (types, missing values, ID-like and constant columns, duplicates, target balance, columns that leak the target, train / test shift); production data against training data (PSI over reference quantiles, Kolmogorov-Smirnov pinned to scipy, new categories, missing values); regression and forecast errors (MAE, RMSE, R2, WAPE, bias, MASE against the naive forecast, calibration, groups, interval coverage - pinned to numpy); GPU sizing (weights, KV cache, fit, largest batch, the bandwidth speed limit, LoRA / QLoRA / full training memory and GPU-hours); a GitHub Actions model check that fails a pull request whose scores drop; NEW tool ml_desk (registry 715); 5 tests incl. a browser walk. NOT VERIFIED: on her server, her own runs and data, or the workflow on GitHub.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2214,6 +2214,15 @@ def mainframe_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/data")
+@app.get("/console/data/")
+def data_desk_page():
+    """DATA ENGINEER DESK: the Data Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "dedesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/ml")
 @app.get("/console/ml/")
 def ml_desk_page():
@@ -3045,6 +3054,8 @@ from . import cvchat as _cvchat_mod                             # noqa: E402  VI
 _cvchat_mod.mount(app, current_tenant, require_key)              # /api/cvdesk/*
 from . import mlchat as _mlchat_mod                             # noqa: E402  ML DESK
 _mlchat_mod.mount(app, current_tenant, require_key)              # /api/mldesk/*
+from . import dechat as _dechat_mod                             # noqa: E402  DATA ENGINEER DESK
+_dechat_mod.mount(app, current_tenant, require_key)              # /api/dedesk/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through
