@@ -503,6 +503,7 @@ function go(v, arg) {
   if (v === 'pfdesk') { location.assign('/console/platform'); return; }   // PLATFORM ENGINEER DESK: its own section
   if (v === 'cldesk') { location.assign('/console/cloud'); return; }   // CLOUD ENGINEER DESK: its own section
   if (v === 'secdesk') { location.assign('/console/security'); return; }   // SECURITY ENGINEER DESK: its own section
+  if (v === 'dsodesk') { location.assign('/console/devsecops'); return; }   // DEVSECOPS ENGINEER DESK: its own section
   if (v === 'ncdesk') { location.assign('/console/noc'); return; }   // NOC DESK: its own section
   if (v === 'dwdesk') { location.assign('/console/docs'); return; }   // TECHNICAL WRITER DESK: its own section
   if (v === 'ardesk') { location.assign('/console/appreview'); return; }   // APP REVIEWER DESK: its own section

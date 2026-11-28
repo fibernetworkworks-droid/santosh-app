@@ -2214,6 +2214,15 @@ def mainframe_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/devsecops")
+@app.get("/console/devsecops/")
+def devsecops_desk_page():
+    """DEVSECOPS ENGINEER DESK: the DevSecOps Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "dsodesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/security")
 @app.get("/console/security/")
 def security_desk_page():
@@ -3098,6 +3107,8 @@ from . import clchat as _clchat_mod                             # noqa: E402  CL
 _clchat_mod.mount(app, current_tenant, require_key)              # /api/cldesk/*
 from . import secchat as _secchat_mod                           # noqa: E402  SECURITY ENGINEER DESK
 _secchat_mod.mount(app, current_tenant, require_key)             # /api/secdesk/*
+from . import dsochat as _dsochat_mod                           # noqa: E402  DEVSECOPS ENGINEER DESK
+_dsochat_mod.mount(app, current_tenant, require_key)             # /api/dsodesk/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through
