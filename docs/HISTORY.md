@@ -14358,3 +14358,53 @@ nav-count pins in test_v0804 / v0821 / v0822 / v0825 moved to the top bar (6); t
 
 NOT VERIFIED: on her server (the media copies are made there on first view; the VPS needs ffmpeg for video posters -
 it has it for the video tools); the model's "Make it yours" rewrites were only tested with a fake model.
+
+
+## v0.999.321 DESIGN.md CATALOG (built as 0.999.316)
+
+Owner: read https://getdesign.md/design-md and https://github.com/VoltAgent/awesome-design-md "for web design" -> asked
+for the catalog shown on getdesign.md under the Studio chat (prompt + full page per design) -> design canvas
+claude.ai/artifact/JARhTaL424pToX95u8e5J7 (4 boards: home with the catalog, one design, design in the box, phone) ->
+"GO BUILD".
+
+What DESIGN.md is: Google Stitch's plain-text design system (github.com/google-labs-code/design.md, Apache-2.0,
+version "alpha"): YAML tokens (colors, typography, rounded, spacing, motion, components) + written rules in up to ten
+sections in a fixed order (Overview, Colors, Typography, Layout, Elevation & Depth, Shapes, Motion & Micro-interaction,
+Voice & Content Strategy, Components, Do's and Don'ts). Its own philosophy: the prose matters more than the values.
+awesome-design-md (MIT, commit fcc7028) = 84 brand analyses; 74 with tokens, 10 older ones in prose only, 3 whose YAML
+does not parse (unquoted colon in the description). getdesign.md sells more (550) with no licence stated - not used.
+
+Before: Hoola's App Engine could export / import a DESIGN.md (v0.999.58) but its importer refused 13 of the 84 files,
+read 5 dark sites as light (it looked for `bg`, the files say `canvas`), never read `display-xl` fonts, lost 28 exact
+brand colours and threw away every written rule; the HTML website builder took no DESIGN.md at all.
+
+Built:
+- `server/app/site/designmd.py` - parse (tolerant), lint (Google's rule set in plain words), roles (scored prose reader
+  for the older files: a logo / footer / hover colour is never the page or the button), fonts + head kind (a stack's
+  `sans-serif` fallback never reads as serif), modes (own + the other mode made from the same colours; text 4.5:1,
+  buttons 4.5:1, main colour 3:1 against the page), to_ref (design_ref source 'designmd' with notes up to 1,800 chars:
+  description, type sizes, the Do's and Don'ts with the brand's name scrubbed), the catalog, look detail, the prompt
+  (made by code from the tokens), sample_page (full landing page, bundled fonts, no script, no outside request).
+- `server/app/site/designmd_lib/looks.json.gz` + LICENSE.txt, built by `server/tools/designmd_build.py <checkout>`
+  (Hoola names per look, categories from the README, 1win left out as a gambling site).
+- Writer: `inspire.brief_note` designmd branch ("THE DESIGN.md SHE CHOSE ... never the source site's name, logo, words
+  or pictures"); critic: `quality.critique(..., rules)` scores the page against the rules (`service._md_rules`).
+- Build + Plan: POST /api/sites and POST /api/site-architect take `design_look` / `design_md` (DQ.PENDING); a plan
+  keeps it in `architect.her_design` until approve; the plan card shows `her_design`; an existing site via
+  `inspire.read(source='designmd')` + use (rules / look kept on the site's design_ref).
+- App Engine: `genome.design_md` writes the spec's section order + motion / components tokens + the other mode as a
+  colour group (Hoola's genome still under `hoola:`); `genome.from_design_md` reads other tools' files through the same
+  reader - all 83 catalog files import with every colour pair checked.
+- Studio (`webstudio.js` / `.css`): catalog section under the chips (drawn cards from CSS variables, chips, search,
+  Show all, Bring your own DESIGN.md card), `#/design/<id>` page, the design card in the box (`#wsDChip`), Add a
+  DESIGN.md source panel (file or paste -> /md/check -> Use this design).
+- Routes: GET /api/site-design/looks, /looks/{id}, /looks/{id}/page (public, CSP default-src 'none', frame-ancestors
+  'self'), /looks/{id}/md (public download), POST /api/site-design/md/check.
+
+Tests: test_v0999_316_designmd.py (11), test_v0999_316_designmd_web.py (2: wiring + a Chromium walk light / dark /
+phone incl. the send carrying design_look and her own file checked and attached); test_v0999_58_genome.py now expects
+the spec's "## Colors".
+
+NOT VERIFIED: on her server; no model has built a site from a catalog design yet (the writer / critic notes are only
+tested as text); Google's official `@google/design.md` linter was not run here (installing it was blocked) - Hoola's
+checker follows its rules as read from its source.
