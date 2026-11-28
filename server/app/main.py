@@ -6611,6 +6611,8 @@ app.include_router(_hoolaauto_public())
 from .prompting.api import make_router as _prompting_router  # noqa: E402
 
 app.include_router(_prompting_router(require_key, current_tenant))
+from .prompting.worldmedia import make_router as _world_media_router  # noqa: E402
+app.include_router(_world_media_router())   # public: World prompts' pictures / videos, Hoola's own cached copies
 
 # v0.137 Tech suite: 9 Technology & software Sahayaks (each module owns its /api/<mod>/* routes; the few public ones
 # - ispnoc / devops collectors, docwriter / product published pages - verify their own signature / token in code)

@@ -155,6 +155,103 @@ KINDS = [("text", "Text"), ("image", "Pictures"), ("video", "Video"), ("skill", 
 KIND_LABEL = dict(KINDS)
 
 
+# Pictures and videos the authors made with their prompts. Only from the hosts prompts.chat really uses, https only;
+# they are fetched once by the server and kept as small copies (worldmedia.py), never hot-linked to her browser.
+MEDIA_HOSTS = ("prompts-chat-space.fra1.digitaloceanspaces.com", "v3b.fal.media", "cdn1.wiro.ai", "i.ibb.co",
+               "pbs.twimg.com", "ik.imagekit.io")
+_VIDEO_EXT, _AUDIO_EXT = (".mp4", ".webm", ".mov"), (".wav", ".mp3", ".m4a", ".ogg")
+
+
+def media_url(url: Any) -> str:
+    """The author's picture / video link when it is https on a known host, else ''."""
+    from urllib.parse import urlsplit
+    u = str(url or "").strip()
+    try:
+        p = urlsplit(u)
+    except ValueError:
+        return ""
+    if p.scheme != "https" or (p.hostname or "").lower() not in MEDIA_HOSTS or p.username or p.password or p.port:
+        return ""
+    return u[:500]
+
+
+def media_type(url: str) -> str:
+    path = url.split("?", 1)[0].lower()
+    return "video" if path.endswith(_VIDEO_EXT) else "audio" if path.endswith(_AUDIO_EXT) else "image"
+
+
+# The site's 53 categories in 8 families, for the category rail and the Make-a-prompt list. A category not listed
+# here (a new one on prompts.chat) goes to "Everything else" - nothing is ever hidden.
+FAMILIES: list[tuple[str, str, tuple[str, ...]]] = [
+    ("media", "Pictures, video & sound", ("image-generation", "video-generation", "design", "music")),
+    ("code", "Code & building", ("coding", "web-development", "vibe-coding", "devops", "data-science",
+                                 "mobile-development", "github-sponsors-profile")),
+    ("agents", "Agents & automation", ("agent-skill", "agent-workflows", "automations", "workflows",
+                                       "automation-workflows")),
+    ("writing", "Writing", ("creative", "writing", "academic-writing", "technical-writing", "blog-writing",
+                            "email-communication", "copywriting")),
+    ("work", "Business & work", ("productivity", "business", "marketing", "finance-budgeting", "hr-recruiting",
+                                 "startup-entrepreneurship", "sales", "market-analysis", "business-planning",
+                                 "note-taking", "leadership-management", "business-strategy", "marketing-sales",
+                                 "meeting-collaboration")),
+    ("learning", "Learning & research", ("research-analysis", "education", "learning-skills", "teaching-instruction",
+                                         "exam-preparation", "language-learning", "stem-science",
+                                         "kids-early-learning", "tutoring-homework-help", "course-creation")),
+    ("life", "Life & wellbeing", ("health-wellness", "self-improvement", "mindset-motivation", "habits-routines",
+                                  "journaling-reflection")),
+    ("other", "Everything else", ()),
+]
+FAMILY_OF = {g: k for k, _, gs in FAMILIES for g in gs}
+# Which Hoola section a category's "Make a prompt" opens in (the workbench, then the engine's own screen).
+CAT_SECTION = {"image-generation": "image", "design": "image", "video-generation": "video", "music": "music",
+               "web-development": "web", "mobile-development": "app", "vibe-coding": "code", "coding": "code",
+               "devops": "code", "github-sponsors-profile": "code", "data-science": "data",
+               "research-analysis": "research", "market-analysis": "research", "marketing": "marketing",
+               "marketing-sales": "marketing", "sales": "marketing", "copywriting": "marketing",
+               "blog-writing": "marketing", "email-communication": "marketing", "business": "doc",
+               "business-planning": "doc", "business-strategy": "doc", "finance-budgeting": "doc",
+               "hr-recruiting": "doc", "startup-entrepreneurship": "doc", "leadership-management": "doc",
+               "agent-skill": "aiapp", "agent-workflows": "aiapp"}
+
+
+def families(counts: dict[str, list] | None = None) -> list[dict[str, Any]]:
+    """[{key, label, total, cats: [{key, label, n, section}]}] in the order above, each family's categories by size."""
+    if counts is None:
+        counts = {}
+        for e in _load()["items"]:
+            c = counts.setdefault(e["group"], [e.get("cat") or GROUP_LABEL.get(e["group"], e["group"]), 0])
+            c[1] += 1
+    out = []
+    for key, label, _ in FAMILIES:
+        cats = sorted(({"key": g, "label": v[0], "n": v[1], "section": CAT_SECTION.get(g, "chat")}
+                       for g, v in counts.items() if FAMILY_OF.get(g, "other") == key), key=lambda c: -c["n"])
+        if cats:
+            out.append({"key": key, "label": label, "total": sum(c["n"] for c in cats), "cats": cats})
+    return out
+
+
+def outline(text: str, most: int = 10) -> dict[str, Any]:
+    """A long prompt as its parts: the lines before the first heading, then each heading (a line in CAPITALS or a
+    Markdown heading) with the start of what follows. Only for showing it; the prompt itself is never changed."""
+    lines = text.split("\n")
+    heads = []
+    for i, ln in enumerate(lines):
+        t = ln.strip()
+        md = re.match(r"#{1,4}\s+(.{2,80})$", t)
+        caps = re.fullmatch(r"[A-Z0-9][A-Z0-9 &/:,.'()\-]{2,60}", t) and sum(c.isalpha() for c in t) >= 3
+        if md or caps:
+            heads.append((i, (md.group(1) if md else t).strip().rstrip(":")))
+    if len(heads) < 2:
+        return {"lead": "", "parts": []}
+    lead = " ".join(" ".join(lines[:heads[0][0]]).split())[:600]
+    parts = []
+    for n, (i, h) in enumerate(heads[:most]):
+        end = heads[n + 1][0] if n + 1 < len(heads) else len(lines)
+        body = " ".join(" ".join(lines[i + 1:end]).split())
+        parts.append({"head": h[:80], "first": body[:220] + ("…" if len(body) > 220 else "")})
+    return {"lead": lead, "parts": parts, "more": max(0, len(heads) - most)}
+
+
 def _slug(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", str(name or "").lower()).strip("-")[:40] or "other"
 
@@ -164,14 +261,20 @@ def _row(raw: dict[str, Any]) -> dict[str, Any]:
     if "content" in raw or "category" in raw:
         cat = raw.get("category") or {}
         return {"title": str(raw.get("title") or "").strip()[:80], "text": str(raw.get("content") or ""),
-                "type": str(raw.get("type") or "TEXT").upper(), "cat": str(cat.get("name") or "").strip(),
+                # the site's own category; one it left without a category is its "Other", never Hoola's guess
+                "type": str(raw.get("type") or "TEXT").upper(), "cat": str(cat.get("name") or "").strip() or "Other",
                 "code": False, "by": str((raw.get("author") or {}).get("username") or "")[:40],
                 "tags": [str(t.get("name")) for t in (raw.get("tags") or []) if t.get("name")][:8],
-                "votes": int(raw.get("voteCount") or 0)}
+                "votes": int(raw.get("voteCount") or 0),
+                "name": str((raw.get("author") or {}).get("name") or "").strip()[:60],
+                "desc": " ".join(str(raw.get("description") or "").split())[:900],
+                "media": media_url(raw.get("mediaUrl")), "created": str(raw.get("createdAt") or "")[:10],
+                "needs": (str(raw.get("requiredMediaType") or "").lower() or "image") if raw.get("requiresMediaUpload") else ""}
     return {"title": str(raw.get("act") or "").strip()[:80], "text": str(raw.get("prompt") or ""),
             "type": str(raw.get("type") or "TEXT").upper(), "cat": "",
             "code": str(raw.get("for_devs") or "").strip().upper() == "TRUE",
-            "by": str(raw.get("contributor") or "").strip()[:40], "tags": [], "votes": 0}
+            "by": str(raw.get("contributor") or "").strip()[:40], "tags": [], "votes": 0,
+            "name": "", "desc": "", "media": "", "created": "", "needs": ""}
 
 
 def judge(raw: dict[str, Any]) -> dict[str, Any]:
@@ -210,7 +313,8 @@ def judge(raw: dict[str, Any]) -> dict[str, Any]:
     cat = r["cat"] or GROUP_LABEL[_group(title, text, sec)]
     return {"id": _id(title, text), "title": title, "section": sec, "kind": kind, "group": _slug(cat), "cat": cat,
             "text": _mark(text), "blanks": blanks, "by": r["by"], "tags": r["tags"], "votes": r["votes"],
-            "notes": notes}
+            "notes": notes, "name": r.get("name") or "", "desc": r.get("desc") or "", "media": r.get("media") or "",
+            "created": r.get("created") or "", "needs": r.get("needs") or ""}
 
 
 def _read(path: str | Path) -> list[dict[str, Any]]:
@@ -287,16 +391,34 @@ def _public(e: dict[str, Any], full: bool = False) -> dict[str, Any]:
            "kind": e.get("kind", "text"), "kind_label": KIND_LABEL.get(e.get("kind", "text"), "Text"),
            "blanks": e["blanks"], "starter": False, "world": True, "by": e.get("by") or "",
            "notes": [NOTES[n] for n in e.get("notes") or () if n in NOTES], "use": _use_how(e),
-           "safety": any(n in SAFETY for n in e.get("notes") or ()), "chars": len(e["text"])}
+           "safety": any(n in SAFETY for n in e.get("notes") or ()), "chars": len(e["text"]),
+           "name": e.get("name") or e.get("by") or "", "votes": e.get("votes") or 0, "created": e.get("created") or "",
+           "family": FAMILY_OF.get(e["group"], "other"), "make_in": CAT_SECTION.get(e["group"], "chat"),
+           "needs": e.get("needs") or ""}
+    desc = e.get("desc") or ""
+    out["desc"] = desc if full else desc[:220] + ("…" if len(desc) > 220 else "")
+    # her browser never loads the author's host: the picture / video comes through Hoola's own copy, and a prompt
+    # Hoola's checks flagged shows none
+    if e.get("media") and not out["safety"]:
+        out["media"] = {"type": media_type(e["media"]), "thumb": f"/api/prompting/world-media/{e['id']}?size=thumb",
+                        "full": f"/api/prompting/world-media/{e['id']}?size=full"}
+    else:
+        out["media"] = None
+    if not full and not out["media"]:
+        ex = re.sub(r"\$\{([^}:]+)(?::[^}]*)?\}", r"[\1]", e["text"][:600])
+        ex = re.sub(r"(?m)^\s*(#{1,6}\s*|[-*>]\s+|-{3,}\s*$)", "", ex)            # Markdown marks, not words
+        out["excerpt"] = " ".join(re.sub(r"\*\*|__|`+", "", ex).split())[:360]
     if full:
         out["text"] = e["text"]
         out["tags"] = e.get("tags") or []
+        out["outline"] = outline(e["text"]) if len(e["text"]) > 1200 else {"lead": "", "parts": []}
     return out
 
 
-def search(q: str = "", group: str = "", page: int = 1, kind: str = "") -> dict[str, Any]:
+def search(q: str = "", group: str = "", page: int = 1, kind: str = "", sort: str = "loved",
+           family: str = "", per: int = 0) -> dict[str, Any]:
     if not on():
-        return {"on": False, "items": [], "total": 0, "groups": [], "kinds": [], "source": SOURCE}
+        return {"on": False, "items": [], "total": 0, "groups": [], "kinds": [], "families": [], "source": SOURCE}
     d = _load()
     words = [w for w in (q or "").lower().split() if w][:8]
     hits = []
@@ -305,11 +427,18 @@ def search(q: str = "", group: str = "", page: int = 1, kind: str = "") -> dict[
             continue
         if kind and e.get("kind", "text") != kind:
             continue
+        if family and FAMILY_OF.get(e["group"], "other") != family:
+            continue
         if words and not all(w in e["_hay"] for w in words):
             continue
         score = sum(3 if w in e["title"].lower() else 1 for w in words) * 1000 + min(e.get("votes") or 0, 999)
+        if sort == "new":
+            score = (sum(3 if w in e["title"].lower() else 1 for w in words), e.get("created") or "")
+        elif sort == "media":           # loved, with the ones that show a picture or video first
+            score = (1 if e.get("media") and not any(n in SAFETY for n in e.get("notes") or ()) else 0, score)
         hits.append((score, e))
-    hits.sort(key=lambda x: -x[0])
+    hits.sort(key=lambda x: x[0], reverse=True)
+    per = max(1, min(int(per or PAGE), 60))
     try:                                         # NATIJA KHATA: kept counts, as on Hoola's own recipes
         from . import ledger as L
         rates = {k: v for k, v in L.recipe_rates().items() if k.startswith(PREFIX)}
@@ -317,7 +446,7 @@ def search(q: str = "", group: str = "", page: int = 1, kind: str = "") -> dict[
         rates = {}
     page = max(1, int(page or 1))
     items = []
-    for _, e in hits[(page - 1) * PAGE: page * PAGE]:
+    for _, e in hits[(page - 1) * per: page * per]:
         x = _public(e)
         if x["id"] in rates:
             x["kept"] = rates[x["id"]]
@@ -328,7 +457,8 @@ def search(q: str = "", group: str = "", page: int = 1, kind: str = "") -> dict[
         c = cats.setdefault(e["group"], [e.get("cat") or GROUP_LABEL.get(e["group"], e["group"]), 0])
         c[1] += 1
         kinds[e.get("kind", "text")] = kinds.get(e.get("kind", "text"), 0) + 1
-    return {"on": True, "items": items, "total": len(hits), "page": page, "pages": max(1, -(-len(hits) // PAGE)),
+    return {"on": True, "items": items, "total": len(hits), "page": page, "pages": max(1, -(-len(hits) // per)),
+            "all": len(d["items"]), "families": families(cats),
             "groups": [{"key": k, "label": v[0], "n": v[1]} for k, v in sorted(cats.items(), key=lambda x: -x[1][1])],
             "kinds": [{"key": k, "label": lab, "n": kinds[k]} for k, lab in KINDS if kinds.get(k)],
             "source": {**SOURCE, "kept": d["meta"].get("kept", 0), "read": d["meta"].get("read", 0)}}
@@ -378,6 +508,54 @@ def use(wid: str, values: dict[str, str] | None = None) -> dict[str, Any]:
         slots["goal"] = {"value": f"Use the \"{e['title']}\" prompt", "source": "recipe"}
     raw = {"section": e["section"], "intent": got["text"], "slots": slots, "recipe_id": PREFIX + e["id"]}
     return {"brief": B.validate(raw)}
+
+
+ADAPT_SYSTEM = (
+    "You change a prompt the way the person asks and keep everything else exactly as it was: same structure, same "
+    "headings, same level of detail, same language as the prompt. Do not add new instructions to an AI that the person "
+    "did not ask for, never add rules about ignoring other instructions, never add personal data. Reply with ONLY the "
+    "new prompt text, no notes before or after it.")
+
+
+def _default_adapt(system: str, prompt: str, max_tokens: int) -> str:
+    from ..net.ai import llm
+    return llm(system, prompt, max_tokens, timeout=120)
+
+
+ADAPT: list[Any] = [_default_adapt]           # tests replace ADAPT[0]
+ADAPT_MAX = 12000
+
+
+def adapt(wid: str, change: str, values: dict[str, str] | None = None) -> dict[str, Any]:
+    """"Make it yours": the prompt rewritten the way she says (one model call), checked before she sees it.
+    Never for a prompt Hoola's checks flagged; the new text must not carry unsafe words or ignore-your-rules lines,
+    must keep a real share of the original, and stays her copy - the shelf is never changed."""
+    e = _entry(wid)
+    if _use_how(e) == "copy":
+        raise ValueError("Hoola's checks flagged this prompt, so Hoola does not rewrite it. You can copy it.")
+    change = " ".join(str(change or "").split())[:300]
+    if len(change) < 3:
+        raise ValueError("Say what to change, in a few words.")
+    if _UNSAFE.search(change) or _IGNORE_RULES.search(change):
+        raise ValueError("Hoola cannot make that change.")
+    base = P.fill(e["text"], values or {})["text"]
+    if len(base) > ADAPT_MAX:
+        raise ValueError("This prompt is too long for Hoola to rewrite. Copy it and change it yourself.")
+    got = str(ADAPT[0](ADAPT_SYSTEM, f"THE PROMPT:\n{base}\n\nTHE CHANGE SHE WANTS: {change}",
+                       min(6000, len(base) // 3 + 600)) or "").strip()
+    got = re.sub(r"^```[a-z]*\n|\n```$", "", got).strip()
+    if not got:
+        raise ValueError("Hoola could not rewrite it this time. Try again.")
+    if len(got) > max(len(base) * 2 + 1500, 3000):
+        raise ValueError("The rewrite came back much longer than the prompt, so Hoola did not use it. Try again.")
+    if (_UNSAFE.search(got) and not _UNSAFE.search(base)) or (_IGNORE_RULES.search(got) and not _IGNORE_RULES.search(base)):
+        raise ValueError("The rewrite failed Hoola's checks, so Hoola did not use it.")
+    words = set(re.findall(r"[a-z]{4,}", base.lower()))
+    kept = len(words & set(re.findall(r"[a-z]{4,}", got.lower()))) / max(len(words), 1)
+    if words and kept < 0.2 and _english(base):
+        raise ValueError("The rewrite lost too much of the prompt, so Hoola did not use it. Try a smaller change.")
+    return {"text": got, "chars": len(got), "fits_brief": len(got) <= BRIEF_MAX, "section": e["section"],
+            "make_in": CAT_SECTION.get(e["group"], "chat")}
 
 
 if __name__ == "__main__":          # python -m app.prompting.world build <prompts.json|prompts.csv> [commit]

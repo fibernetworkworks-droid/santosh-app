@@ -202,7 +202,7 @@ def test_world_switch_off(pp, monkeypatch):  # noqa: F811
 
 def test_page_wiring():
     js = (CON / "prompting.js").read_text()
-    for needle in ("World prompts", "/api/prompting/world", "data-wkind", "hpWCat", "openWorld", "/fill", "hpWCopy",
+    for needle in ("Ready prompt library", "/api/prompting/world", "data-wkind", "hpWSort", "openWorld", "/fill", "hpWCopy",
                    "hpWChat", "Copy only", "/api/prompting/paste",
                    "#/pb", "hpPasteSkip", "Almost the same as", "Close to:"):
         assert needle in js, needle
@@ -232,9 +232,12 @@ def test_world_shelf_and_paste_in_a_real_browser(arena_server, monkeypatch):  # 
     pg.fill("#hpWQ", "")
     pg.click('[data-wkind="image"]')
     pg.wait_for_selector('[data-wkind="image"][aria-pressed="true"]')
-    pg.select_option("#hpWCat", "writing")
-    pg.wait_for_selector('#hpWCat option[value="writing"][selected]', state="attached")
-    pg.select_option("#hpWCat", "")
+    pg.click('.hl-rail [data-wfam="writing"]')                       # v0.999.315: the category rail, not a select
+    pg.wait_for_selector('.hl-sub [data-wgroup="writing"]')
+    pg.click('.hl-sub [data-wgroup="writing"]')
+    pg.wait_for_selector('.hl-sub [data-wgroup="writing"][aria-pressed="true"]')
+    pg.click('.hl-rail [data-wfam=""]')
+    pg.wait_for_selector('.hl-rail [data-wfam=""][aria-pressed="true"]')
     pg.click('[data-wkind="text"]')
     pg.wait_for_selector('[data-wkind="text"][aria-pressed="true"]')
     pg.fill("#hpWQ", "interviewer")

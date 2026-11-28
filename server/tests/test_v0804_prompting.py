@@ -256,7 +256,8 @@ def test_the_page_in_a_real_browser(arena_server, monkeypatch):  # noqa: F811
 
     pg.goto(base + "/console/prompting")
     pg.wait_for_selector("#hpText")
-    assert pg.locator(".hp-nav").count() == 19 and pg.locator(".hp-card").count() >= 3
+    pg.wait_for_selector(".hl-card")                                  # v0.999.315: the library under the box
+    assert pg.locator(".hp-nav").count() == 6 and pg.locator(".hp-card").count() >= 3
     snap("1_home")
     pg.fill("#hpText", "mere sweet shop ki website banao, Kaju Katli Rs 880 per kg")
     pg.click("#hpAsk button[type=submit]")
