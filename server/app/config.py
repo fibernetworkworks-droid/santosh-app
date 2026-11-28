@@ -1529,6 +1529,9 @@ class Settings(BaseSettings):
     dod_review_model: str = ""              # "" = the first of GLM-5.3 / Qwen 27B / DeepSeek not of the coworker's company
     dod_check_command_s: float = 120.0      # longest a check command may run in its locked box
     dod_check_rounds: int = 2               # a failed check sends the work back this many times, then it waits for her
+    dod_step_retries: int = 2               # v0.999.335 a failed round is tried again this many times before the task fails
+    dod_retry_s: float = 5.0                # wait before a retry (grows: 5 s, 10 s)
+    dod_nudges: int = 2                     # a coworker that stops halfway is told to go on this many times, then "Keep going?"
     # HOOLA DIAGRAM (docs/DIAGRAM_TOOL_PLAN.md): three vendored engines in app/diagram/vendor (archify, diagram-design,
     # draw.io via next-ai-draw-io); the draw.io editor is fetched by `python -m app.diagram setup` (vps-ops diagram_setup)
     diagram_enabled: bool = True

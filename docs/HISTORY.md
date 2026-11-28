@@ -14788,3 +14788,29 @@ kwant itself runs a check ... DOD today trusts the coworker when it calls hoola_
   (Checks section, To review). Tests `test_v0999_334_dod_checked.py` 7 incl. a browser walk at 1440 and 390.
 - NOT VERIFIED: the page check (OpenClaw browser `text`) and the command box were not run on the real OpenClaw image;
   no real reviewer model has answered; not run on her server (DOD is still switched off there).
+
+
+## v0.999.335 HOOLA DOD, NEVER STUCK QUIETLY
+
+Owner, after the kwant read (AGPL-3.0, ideas only): 'Stuck bots say so instead of stopping quietly. After a failed step
+the bot retries, then tries another way. If nothing works, its last line starts with Blocked: and says what would unblock
+it. A bot that stops halfway gets 2 more turns, then you get one "Keep going?" card. -- work on it'.
+
+- **Retries.** `_respond_retrying`: a round OpenClaw answers `failed`, or a lost connection, is sent again
+  (`dod_step_retries` 2, waits `dod_retry_s` 5 s then 10 s), each said as a step ("Something went wrong, trying again" /
+  "Lost contact for a moment, trying again"). Only then the task fails, with OpenClaw's reason
+  ("could not get past: ..."). A failed round is not saved as the conversation's last response.
+- **Its rules.** Rule 9 in the coworker's instructions: a failed step is tried again once, then another way; something
+  she said no to is never tried again, not even another way; when nothing works the last line starts `Blocked:` with what
+  would unblock it; never end a turn on "I will ...".
+- **Blocked.** `ending()` reads how a reply with no tool call ends: a last line starting `Blocked:` (a final answer or a
+  `hoola_done` summary) becomes Hoola's own question (`kind blocked`, `_ask_hoola`): the task waits in needs_you,
+  "Ananya is blocked: ..." with a box for her answer, push "Ananya is blocked". Her words go back as the done call's
+  output, or as a message when there is no call to answer. A `hoola_done` that says Blocked is not treated as done.
+- **Stopped halfway.** A reply with no `hoola_done` and no `Done:` / `Blocked:` line = it stopped before the work was
+  finished: it is told to carry on (up to `dod_nudges` 2, each a step), then one **Keep going?** card (`kind keep_going`,
+  its last words shown): Keep going (told to finish or end with Blocked:) or Stop here (status stopped, its last words kept
+  as the reply, nothing more runs). Push "Ananya stopped halfway".
+- Files: `dod/service.py`, `config.py` (3 settings), `push.py`, `static/console/dod.js`. Tests `test_v0999_335_dod_unstuck.py` 9.
+- NOT VERIFIED: with a real model on the real OpenClaw image (how often a real model ends without hoola_done), or on her
+  server (DOD is still switched off there).

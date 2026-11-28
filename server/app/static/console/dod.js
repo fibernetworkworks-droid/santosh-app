@@ -121,6 +121,14 @@
       return `<div class="dd-q"><div class="what"><div>${esc(q.question)}</div><span class="amt">${esc(amt)}</span>${q.details ? `<div>${esc(q.details)}</div>` : ''}</div>
         <button class="dd-btn ink" type="button" data-answer="yes" ${data}>Approve ${esc(amt)}</button><button class="dd-btn" type="button" data-answer="no" ${data}>Not now</button></div>`;
     }
+    if (q.kind === 'blocked') {   // v0.999.335 stuck: it says what would unblock it, she answers or stops it
+      return `<div class="dd-q"><div class="what"><span class="qt">${esc(NAME())} is blocked: ${esc(q.question)}</span><div>Tell ${esc(NAME())} what to do, or stop the task.</div></div>
+        <form class="dd-qform" ${data} style="display:flex;gap:8px;flex:1;min-width:240px"><input name="a" aria-label="What to do" placeholder="What should ${esc(NAME())} do?" style="flex:1;height:38px;border-radius:12px;border:1px solid var(--line2);background:var(--card);color:var(--ink);font:inherit;padding:0 12px"><button class="dd-btn ink" type="submit">Send</button></form></div>`;
+    }
+    if (q.kind === 'keep_going') {
+      return `<div class="dd-q"><div class="what"><span class="qt">${esc(q.question)}</span>${q.details ? `<div class="dd-last">It last said: ${esc(q.details.slice(-300))}</div>` : ''}</div>
+        <button class="dd-btn ink" type="button" data-answer="Keep going" ${data}>Keep going</button><button class="dd-btn" type="button" data-answer="Stop here" ${data}>Stop here</button></div>`;
+    }
     if (q.kind === 'browser') {   // v0.999.332 a page needs her: she takes over its browser, then says Done
       return `<div class="dd-q"><div class="what"><span class="qt">${esc(q.question)}</span>${q.details ? `<div>${esc(q.details)}</div>` : ''}<div>Take over ${esc(NAME())}'s browser, do it there, then press Done.</div></div>
         <button class="dd-btn ink" type="button" data-take="${esc(t.id)}">Take control</button><button class="dd-btn" type="button" data-answer="done" ${data}>Done</button><button class="dd-btn" type="button" data-answer="no" ${data}>I can't</button></div>`;
@@ -516,7 +524,7 @@
       $('#tHead').innerHTML = tag(t.status) + (open ? `<button class="dd-btn s bad" type="button" id="stopBtn">Stop</button>` : `<a class="dd-btn s" href="#/">Give another task</a>`);
       $('#tClock').textContent = t.started_at ? (open ? 'Working for ' : 'Took ') + dur(t.started_at, open ? null : t.ended_at) : '';
       const qKey = t.question ? t.question.id : '';
-      if (qKey !== lastQ) { $('#tQ').innerHTML = t.question ? `<div class="dd-card dd-task ask"><div class="head"><span class="dd-tag warn">${t.question.kind === 'browser' ? 'Needs you in its browser' : 'Needs your OK'}</span><small>${esc(ago(t.question.at))}</small></div>${questionBox(t)}<button type="button" class="dd-lnk" data-say="q">${IC.play}Read aloud</button></div>` : ''; lastQ = qKey; }
+      if (qKey !== lastQ) { $('#tQ').innerHTML = t.question ? `<div class="dd-card dd-task ask"><div class="head"><span class="dd-tag warn">${({browser: 'Needs you in its browser', blocked: 'Blocked', keep_going: 'Stopped halfway'})[t.question.kind] || 'Needs your OK'}</span><small>${esc(ago(t.question.at))}</small></div>${questionBox(t)}<button type="button" class="dd-lnk" data-say="q">${IC.play}Read aloud</button></div>` : ''; lastQ = qKey; }
       SAY = {q: t.question ? [t.question.question, t.question.details].filter(Boolean).join('. ') : '', r: t.reply || ''};
       $('#tSteps').innerHTML = (t.steps || []).map(s => stepRow(s, t.started_at)).join('') || `<div class="dd-step"><span class="dd-sm now"></span><div class="t"><span class="dd-shimmer">${esc(NAME())} is getting ready</span></div><span></span></div>`;
       $('#tThink').innerHTML = (open && t.thought) ? `<div class="dd-think" aria-label="What ${esc(NAME())} is writing">${esc(t.thought.slice(-500))}</div>` : '';
@@ -675,7 +683,7 @@
     const task = el.dataset.task;
     try {
       await api('POST', `/api/dod/tasks/${enc(task)}/answer`, {id: el.dataset.q, hash: el.dataset.hash, choice});
-      toast(choice === 'no' ? 'Told: not now.' : 'Done. Work goes on.');
+      toast(choice === 'no' ? 'Told: not now.' : choice === 'Stop here' ? 'Stopped. The work so far stays.' : 'Done. Work goes on.');
       route();
     } catch (ex) { toast(ex.message); }
   }

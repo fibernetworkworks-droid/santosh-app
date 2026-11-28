@@ -116,6 +116,10 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         return None
     if kind == "dod_ask":   # v0.999.308 HOOLA DOD: her coworker stopped and needs her yes / answer
         q = str(p.get("question") or "")[:300]
+        if p.get("kind") == "blocked":   # v0.999.335 stuck: it says so, with what would unblock it
+            return (f"{p.get('name') or 'Your coworker'} is blocked", q or "Open Hoola DOD")
+        if p.get("kind") == "keep_going":
+            return (f"{p.get('name') or 'Your coworker'} stopped halfway", "Keep going? Open Hoola DOD")
         if p.get("kind") == "browser":   # v0.999.332 a page needs her: she takes over its browser
             return (f"{p.get('name') or 'Your coworker'} needs you in its browser", q or "Open Hoola DOD to take over")
         return (f"{p.get('name') or 'Your coworker'} needs your OK" if p.get("kind") in ("pay", "send", "delete", "book")

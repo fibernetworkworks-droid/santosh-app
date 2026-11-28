@@ -18,7 +18,9 @@ import asyncio
 import hashlib
 import json
 import logging
+import re
 import shutil
+import uuid
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -33,7 +35,8 @@ from .models import DodProfile, DodTask, ensure_tables
 log = logging.getLogger("hoola.dod")
 
 KINDS = ("task", "browser", "code", "long")
-ASK_KINDS = ("pay", "send", "delete", "book", "choice", "info", "browser")   # browser: v0.999.332 she takes over its page
+ASK_KINDS = ("pay", "send", "delete", "book", "choice", "info", "browser")
+HOOLA_KINDS = ("blocked", "keep_going")   # v0.999.335 questions Hoola asks her itself (never the model's kind)   # browser: v0.999.332 she takes over its page
 OPEN = ("queued", "working", "needs_you", "checking")   # checking: v0.999.334 Hoola checks its work
 _RUNS: dict[str, asyncio.Task] = {}
 _WAKE: dict[str, asyncio.Event] = {}
@@ -101,6 +104,10 @@ def instructions(name: str, kind: str) -> str:
         "and leave the page open; never try to get past it yourself. Her sign-ins stay in your browser for later tasks. "
         "(8) Hoola checks your work itself after hoola_done; if a check fails you get the work back. You may suggest "
         "checks with hoola_check; they run only after she approves them. "
+        "(9) When a step fails, try it again once, then try another way; never stop after one failure. Something she "
+        "said no to is never tried again, not even another way. If nothing works, end with a last line starting "
+        "'Blocked:' that says exactly what would unblock you. Never end a turn on 'I will ...': do it, call hoola_done, "
+        "or write the Blocked: line. "
         + hint
     )
 
@@ -320,6 +327,10 @@ def answer(tenant: str, task_id: str, qid: str, choice: str, qhash: str) -> dict
     kind = q.get("kind")
     if kind in ("pay", "send", "delete", "book") and choice not in ("yes", "no"):
         raise ValueError("Answer yes or no.")
+    if kind == "keep_going" and choice not in (q.get("options") or []):
+        raise ValueError("Pick Keep going or Stop here.")
+    if kind == "blocked" and not choice:
+        raise ValueError("Tell your coworker what to do, or stop the task.")
     if kind == "browser" and choice not in ("done", "no"):
         raise ValueError("Say Done when the page is ready, or that you cannot do it.")
     if kind == "choice" and choice not in (q.get("options") or []) and choice != "no":
@@ -329,6 +340,16 @@ def answer(tenant: str, task_id: str, qid: str, choice: str, qhash: str) -> dict
         out = (f"The owner APPROVED this payment of {amt}. Finish it with the payment method already chosen on the "
                "site; never type card numbers, CVV, PINs, OTPs or passwords - if the site asks for one, stop and call "
                "hoola_ask kind=info.") if choice == "yes" else "The owner said NO to this payment. Do not pay. Ask what to do instead or stop."
+    elif kind == "blocked":
+        out = (f"The owner answered your Blocked line: {choice}\nCarry on with that. If you are still blocked, "
+               "end again with a line starting 'Blocked:'.")
+    elif kind == "keep_going":
+        if choice == KEEP[1]:   # Stop here: the work so far stays; nothing more runs
+            steps = _j(t.steps, []) + [{"at": _iso(db.now()), "title": "You stopped it here", "state": "done", "you": True}]
+            _upd(task_id, steps=json.dumps(steps), question="", reply=(q.get("details") or "")[:4000])
+            return stop(tenant, task_id)
+        out = ("The owner says: keep going until the task is fully done. When it is done call hoola_done; if something "
+               "stops you, end with a line starting 'Blocked:' that says what would unblock you.")
     elif kind == "browser":
         out = ("The owner says she has done what the page needed (signed in, solved the check or entered the code). "
                "Look at the page again before you go on; if it still needs her, ask again with kind=browser."
@@ -345,7 +366,8 @@ def answer(tenant: str, task_id: str, qid: str, choice: str, qhash: str) -> dict
     steps.append({"at": _iso(db.now()), "title": "You answered", "detail": detail, "state": "done", "you": True})
     _upd(task_id, status="working", question="", steps=json.dumps(steps))
     ev = _WAKE.get(task_id)
-    pending = {"type": "function_call_output", "call_id": q["call_id"], "output": out}
+    pending = ({"type": "function_call_output", "call_id": q["call_id"], "output": out} if q.get("call_id")
+               else {"type": "message", "role": "user", "content": out})
     if ev is not None and task_id in _RUNS and not _RUNS[task_id].done():
         q_out = _ANSWERS.setdefault(task_id, [])
         q_out.append(pending)
@@ -509,6 +531,7 @@ async def _run(task_id: str, resume: list[dict] | None) -> None:
         _add_step(task_id, "Starting its computer", "Its own computer was off. Starting it can take a few minutes.")
     buf: list[str] = []
     last_write = [0.0]
+    nudges = 0
 
     def on_text(delta: str) -> None:
         buf.append(delta)
@@ -530,22 +553,34 @@ async def _run(task_id: str, resume: list[dict] | None) -> None:
                     "instructions": instructions(prof["name"], t.kind), "user": f"hoola-{GW.slug(t.tenant_id)}"}
             if t.response_id:
                 body["previous_response_id"] = t.response_id
-            resp = await GW.respond(t.tenant_id, body, session_key, on_text)
-            _upd(task_id, response_id=str(resp.get("id") or t.response_id), rounds=t.rounds + 1)
-            await GW.charge_usage(t.tenant_id)
-            if resp.get("status") == "failed":
-                err = ((resp.get("error") or {}).get("message") or "the work stopped with an error")[:300]
-                _finish(task_id, "failed", error=f"Your coworker hit a problem: {err}")
+            resp = await _respond_retrying(task_id, t, body, session_key, on_text)
+            if resp is None:
                 return
             calls = [o for o in (resp.get("output") or []) if o.get("type") == "function_call"]
             text = " ".join(c.get("text", "") for o in (resp.get("output") or []) if o.get("type") == "message"
                             for c in (o.get("content") or []) if c.get("type") == "output_text").strip()
             if not calls:
-                back = await _checked_finish(task_id, text or "".join(buf).strip(), "")
+                said = text or "".join(buf).strip()
+                end, why = ending(said)
+                if end == "blocked":
+                    items = await _ask_hoola(t.tenant_id, task_id, "blocked", why, said, "")
+                    continue
+                if end == "stopped":
+                    nudges += 1
+                    if nudges <= int(s.dod_nudges):
+                        _add_step(task_id, "Stopped before the end, asked to go on", said[-300:])
+                        items = [{"type": "message", "role": "user", "content": NUDGE}]
+                        continue
+                    nudges = 0
+                    items = await _ask_hoola(t.tenant_id, task_id, "keep_going",
+                                             f"{prof['name']} stopped before the work was done. Keep going?", said, "")
+                    continue
+                back = await _checked_finish(task_id, said, "")
                 if back is None:
                     return
                 items = [{"type": "message", "role": "user", "content": back}]
                 continue
+            nudges = 0
             outputs: list[dict] = []
             finished, done_cid = "", ""
             for call in calls:
@@ -580,6 +615,10 @@ async def _run(task_id: str, resume: list[dict] | None) -> None:
                 else:
                     out = f"Unknown tool {name}"
                 outputs.append({"type": "function_call_output", "call_id": cid, "output": out})
+            if finished and ending(finished)[0] == "blocked":   # 'done' that says it is blocked is not done
+                ask = await _ask_hoola(t.tenant_id, task_id, "blocked", ending(finished)[1], finished, done_cid)
+                items = [o for o in outputs if o.get("call_id") != done_cid] + ask
+                continue
             if finished:
                 back = await _checked_finish(task_id, finished, done_cid)
                 if back is None:
@@ -611,6 +650,74 @@ def _finish(task_id: str, status: str, reply: str = "", error: str = "") -> None
         steps.append({"at": _iso(db.now()), "title": "Finished, waiting for your look", "detail": reply[:400], "state": "done"})
     _upd(task_id, status=status, reply=reply[:4000], error=error[:600], ended_at=db.now(), question="", thought="",
          steps=json.dumps(steps))
+
+
+# ------------------------------------------------------------------------------------------------ v0.999.335 never stuck quietly
+KEEP = ("Keep going", "Stop here")
+NUDGE = ("You stopped before the task was finished. Carry on with the next step. When it is done call hoola_done; if "
+         "something stops you, end with a last line starting 'Blocked:' that says exactly what would unblock you.")
+_BLOCKED = re.compile(r"^\W{0,3}blocked\s*:\s*(.+)$", re.I)
+_DONE = re.compile(r"^\W{0,3}done\s*:", re.I)
+
+
+def ending(text: str) -> tuple[str, str]:
+    """How a reply with no tool call ends. -> ("blocked", what would unblock it) when its last line starts 'Blocked:';
+    ("done", text) when a line starts 'Done:'; else ("stopped", text) - it stopped before the work was finished."""
+    lines = [ln.strip() for ln in (text or "").splitlines() if ln.strip()]
+    for ln in reversed(lines[-3:]):
+        m = _BLOCKED.match(ln)
+        if m:
+            return "blocked", m.group(1).strip()[:600]
+    if any(_DONE.match(ln) for ln in lines):
+        return "done", text
+    return "stopped", text
+
+
+async def _ask_hoola(tenant: str, task_id: str, kind: str, question: str, said: str, call_id: str) -> list[dict]:
+    """Hoola's own question to her (blocked / keep going): the task waits; returns what goes back to the coworker."""
+    t = _upd(task_id)
+    q = {"id": f"q{t.rounds if t else 0}{kind[:2]}{uuid.uuid4().hex[:4]}", "call_id": call_id, "kind": kind,
+         "question": question[:600], "amount": None, "currency": "",
+         "options": list(KEEP) if kind == "keep_going" else [], "details": said[-1500:], "at": _iso(db.now())}
+    q["hash"] = question_hash(q)
+    _add_step(task_id, "Blocked" if kind == "blocked" else "Stopped halfway", question[:400], ask=True)
+    _upd(task_id, status="needs_you", question=json.dumps(q), thought="")
+    await _push(tenant, task_id, q)
+    return await _wait_answer(task_id)
+
+
+async def _respond_retrying(task_id: str, t: DodTask, body: dict, session_key: str, on_text) -> dict | None:
+    """One agent round, tried again when it fails (dod_step_retries, with a growing wait). None = the task ended."""
+    s = get_settings()
+    tries = int(s.dod_step_retries) + 1
+    for n in range(tries):
+        try:
+            resp = await GW.respond(t.tenant_id, body, session_key, on_text)
+        except (asyncio.CancelledError, GW.NotReady):
+            raise
+        except Exception as e:  # noqa: BLE001 - a lost connection is tried again, then said
+            log.warning("dod task %s round failed (try %s): %s", task_id, n + 1, e)
+            if n + 1 >= tries:
+                raise
+            _add_step(task_id, "Lost contact for a moment, trying again", "")
+            await asyncio.sleep(float(s.dod_retry_s) * (n + 1))
+            continue
+        cur = _upd(task_id)
+        if resp.get("status") == "failed":
+            err = ((resp.get("error") or {}).get("message") or "the work stopped with an error")[:300]
+            _upd(task_id, rounds=(cur.rounds if cur else t.rounds) + 1)
+            await GW.charge_usage(t.tenant_id)
+            if n + 1 >= tries:
+                _finish(task_id, "failed", error=f"Your coworker hit a problem it could not get past: {err}")
+                return None
+            _add_step(task_id, "Something went wrong, trying again", err[:200])
+            await asyncio.sleep(float(s.dod_retry_s) * (n + 1))
+            continue
+        _upd(task_id, response_id=str(resp.get("id") or (cur.response_id if cur else "")),
+             rounds=(cur.rounds if cur else t.rounds) + 1)
+        await GW.charge_usage(t.tenant_id)
+        return resp
+    return None
 
 
 # ------------------------------------------------------------------------------------------------ v0.999.334 checked done
