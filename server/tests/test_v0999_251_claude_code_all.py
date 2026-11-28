@@ -212,8 +212,8 @@ def test_the_web_mcp_and_skills_from_a_coding_session(ws, monkeypatch):
     from app.coder import skills_store as SK
     monkeypatch.setattr(SK, "listing", lambda t: [{"name": "release", "description": "How we ship", "enabled": True}])
     monkeypatch.setattr(SK, "read", lambda t, n: {"body": "1. bump the version"})
-    listed = tl.t_skill("list").splitlines()              # hers first, then Hoola Code's own (v0.999 Superpowers)
-    assert listed[0] == "- release: How we ship" and all(x.startswith("- superpowers:") for x in listed[1:])
+    listed = tl.t_skill("list").splitlines()              # hers first, then Hoola Code's own (v0.999 Superpowers, ECC)
+    assert listed[0] == "- release: How we ship" and all(x.startswith(("- superpowers:", "- ecc:")) for x in listed[1:])
     assert "1. bump the version" in tl.t_skill("read", name="release")
 
 

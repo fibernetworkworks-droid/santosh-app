@@ -32,7 +32,7 @@ def test_the_agency_joins_the_catalogue():
     from app.devsahayak.ecc.base import GROUPS, TOOL_LEVELS
     cat = ecc.catalog()
     ours = {k: a for k, a in cat.items() if a["ecc"].startswith("agency:")}
-    assert len(AGENCY) == 35 and set(ours) == set(AGENCY) and len(cat) == 63 + 35
+    assert len(AGENCY) == 35 and set(ours) == set(AGENCY) and len(cat) == 64 + 35
     for name, a in ours.items():
         assert a["group"] in GROUPS and a["tools"] in TOOL_LEVELS, name
         assert 800 <= len(a["prompt"]) <= 2800, (name, len(a["prompt"]))
@@ -59,7 +59,7 @@ def test_the_route_lists_both_sources(env):
     r = c.get("/api/devsahayak/agents")
     if r.status_code == 200:
         names = {a["name"] for a in r.json()["agents"]}
-        assert {"reality-checker", "python-reviewer"} <= names and len(names) == 98
+        assert {"reality-checker", "python-reviewer"} <= names and len(names) == 99   # v0.999 + gdscript-reviewer (ECC)
 
 
 # ---------------------------------------------------------------- 2. the reality check before done

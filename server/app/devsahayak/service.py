@@ -4374,6 +4374,10 @@ def repo_commands(tenant: str, ref: str) -> dict[str, Any]:
         out["style"] = str(ses.meta.get("style") or conf.get("style") or "default")
         from . import ponytail as PT
         out["ponytail"] = PT.level(ses, conf)
+        from . import eccskills as EK                     # v0.999 ECC's skills that fit this repo
+        if EK.on():
+            out["skills"] += [{"name": "ecc:" + n, "description": EK.skills()[n]["description"], "origin": "ecc"}
+                              for n in EK.for_repo(repo, ses.walk())]
         from . import superpowers as SPW                  # v0.999 Hoola Code's own skills, beside the repo's
         if SPW.on():
             out["skills"] += [{"name": "superpowers:" + k, "description": v["description"], "origin": "superpowers"}

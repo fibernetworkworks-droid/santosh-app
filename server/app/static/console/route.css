@@ -712,3 +712,95 @@ a.rh-cell:hover{background:var(--side)}
   .rh-spark{display:none}
 }
 .rh table.rt td.c-name{width:40%}
+
+/* ---------------------------------------------------------------- v0.999.299 THE HOME'S DESIGN ON EVERY PAGE
+   (owner: "NOW SAME DESIGN FOR ALL ROUTE PAGES"): every page in the home's frame - one centred column, the serif title with a
+   plain line of where things stand under it, numbers as one band of cells, status as a coloured dot, cards with 16 px corners,
+   what needs her as the home's cards, quiet empty states. */
+body:not(.editing) .main{padding-top:36px}
+body:not(.editing) .main > *{width:100%;max-width:1160px;margin-left:auto;margin-right:auto}
+h1{font-size:38px;font-weight:350;letter-spacing:-.015em}
+.rtitle{font-weight:400}
+.lead,.top .lead.sm{font-size:15.5px;color:var(--mut);line-height:1.5}
+.main > .top + .lead{margin-top:-18px}
+.top > div > .lead.sm{margin-top:8px}
+.card{border-radius:16px}
+.hd h2{font-size:17px}
+/* numbers: one band, cells parted by hairlines (Insights, Grid, Bring in, a workflow) */
+.stats{gap:1px;background:var(--line);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.stats .stat{border:0;border-radius:0;background:var(--bg);padding:20px 24px;gap:6px}
+.stats .stat .k{font-size:13px}
+.stat b{font-size:34px;font-weight:400;letter-spacing:-.01em;line-height:1.1}
+.stat > .sm,.stat > small{font-size:12.5px;color:var(--dim)}
+/* status: a coloured dot and its word, as on the home */
+.pill{background:none!important;padding:0;height:auto;min-height:22px;font-size:13px;font-weight:500;gap:7px}
+.pill .dot{width:7px;height:7px;opacity:1}
+.pill:not(.ok):not(.bad):not(.warn):not(.v){color:var(--mut)}
+.pill:not(.ok):not(.bad):not(.warn):not(.v) .dot{background:var(--dim)}
+/* what needs her: the home's cards, two across */
+.needgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.needgrid > .card{min-width:0}
+/* quiet empty states, cards that lift under the pointer */
+.card.flat > .empty,.edpage .empty{padding:20px 22px;color:var(--mut)}
+.tc{border-radius:16px}
+.tc:hover,.card.lc:hover{border-color:var(--line2);box-shadow:var(--sh)}
+.errbox{border-radius:14px}
+@media (max-width:760px){
+  body:not(.editing) .main{padding-top:24px}
+  h1{font-size:30px}
+  .needgrid{grid-template-columns:minmax(0,1fr)}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stats .stat{padding:16px}
+  .stat b{font-size:28px}
+}
+body:not(.editing) .main:has(> .rh){padding-top:24px}
+/* the Insights chart in the home's colours: runs that went well in ink, the ones that did not in red */
+.bar .bd,.legend i.bd{background:var(--ink);opacity:.78}
+.bar .bf,.legend i.bf{background:var(--bad);opacity:.8}
+.bar .bd{border-radius:4px 4px 0 0}
+.bar{max-width:56px}
+.bars{justify-content:center}
+
+/* ---------------------------------------------------------------- v0.999.301 THE EDITOR AND THE ROUTE'S TABS IN THE HOME'S DESIGN
+   (owner: "NOW SAME DESIGN FOR EDITOR AND ROUTE TABS"): the top bar in the home's chips and pills, the route's name in the
+   serif, the sending bar as the home's Needs-you card, softer nodes and floating tools; Runs / Versions / Settings as pages
+   in the home's frame - the route's name as the title, one line of where it stands, one band of its numbers. */
+.edtop{height:60px;gap:12px;padding:0 18px}
+.edname b{font-family:'Literata',Georgia,serif;font-size:18px;font-weight:450;letter-spacing:-.005em}
+.edname > span.mut{font-size:13px}
+.segtabs{padding:3px;border-radius:999px;background:var(--seg);gap:2px;margin-left:10px}
+.segtabs a{height:30px;display:inline-flex;align-items:center;padding:0 14px;border-radius:999px;font-size:13.5px;font-weight:450}
+.segtabs a[aria-selected="true"]{font-weight:550;box-shadow:0 1px 2px rgba(0,0,0,.08),0 0 0 1px var(--line)}
+.edtop .btn.s{height:34px}
+.edtop .btn.s.ib{width:34px}
+.edtop #edTest{border-radius:999px;padding:0 16px}
+.edtop #edSave{border-radius:999px;padding:0 14px}
+.chipst{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;font-weight:500}
+.chipst::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--okt)}
+.chipst.warn::before{background:var(--warnl)}
+.onl{font-size:13.5px;color:var(--mut);display:inline-flex;align-items:center;gap:8px}
+.sendbar{margin:10px 18px 0;padding:12px 16px;border-radius:14px;border:1px solid var(--line2);box-shadow:var(--shn)}
+.sendbar.wait,.sendbar.ok{border-color:var(--line2)}
+.sendbar .sbt{align-items:center}
+.sendbar .rh-tag{align-self:center}
+.rh-tag.ok{background:var(--oks);color:var(--okt)}
+.nd{border-radius:14px}
+.nd.sel{box-shadow:0 0 0 4px var(--accs),var(--sh)}
+.tools,.mini{border-radius:14px;box-shadow:var(--sh)}
+.zoom{border-radius:12px;box-shadow:var(--sh)}
+.ptabs{padding:10px 14px 0}
+/* Runs / Versions / Settings: pages in the home's frame */
+.edpage{max-width:1160px;padding:36px 40px 64px;gap:28px}
+.tabhead h1{margin:0}
+.tabhead .lead{margin-top:8px}
+.tabstats{margin:0}
+.stat b.bt{font-size:20px;line-height:1.3;font-weight:450;overflow-wrap:anywhere}
+.stat b.bt .lr{font-family:'Schibsted Grotesk',system-ui,sans-serif;font-size:16px;font-weight:550}
+.edpage .card.flat > .hd{padding:16px 18px 12px}
+@media (max-width:760px){
+  .edtop{height:auto;padding:8px 12px}
+  .edname b{font-size:17px}
+  .sendbar{margin:8px 12px 0}
+  .edpage{padding:22px 16px 48px;gap:22px}
+  .stat b.bt{font-size:17px}
+}

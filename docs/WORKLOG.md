@@ -4090,3 +4090,25 @@ Work Log:
 - walked in Chromium, light + dark, 1440 / 1024 / 390: no findings
 Stage Summary:
 - test_v0999_297_route_home.py; NOT VERIFIED on her server
+
+---
+Task ID: 0.999.299
+Agent: Claude Code
+Task: EVERY ROUTE PAGE IN THE HOME DESIGN
+Work Log:
+- route.css end block: centred column, titles, status lines, number bands, dots, Needs you cards, cards, chart colours
+- route.js: status lines on All routes / Needs you / Runs, Needs you = home cards, workflow status dot
+- 144 views walked: no findings
+Stage Summary:
+- NOT VERIFIED on her server
+
+---
+Task ID: 0.999.301
+Agent: Claude Code
+Task: EDITOR AND ROUTE TABS IN THE HOME DESIGN
+Work Log:
+- route.css end block: top bar, pill tabs, Saved dot, sending card, nodes, tools; tab pages in the home frame
+- route.js: tabHead / routeCard on Runs, Versions, Settings; sending bar tag
+- 48 views walked: no findings
+Stage Summary:
+- NOT VERIFIED on her server
