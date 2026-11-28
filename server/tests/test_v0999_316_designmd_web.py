@@ -48,7 +48,7 @@ def test_catalog_design_page_and_the_box_in_a_browser(arena_server, site_env):
         assert page.locator("#wsDGrid .dup").count() == 1
         assert page.locator("#wsDCats .chip").count() >= 8
         page.click("[data-dx='more']")
-        assert page.locator("#wsDGrid a.dcard").count() == 83
+        assert page.locator("#wsDGrid a.dcard").count() == 84
         page.click("#wsDCats [data-v='fin']")
         n = page.locator("#wsDGrid a.dcard").count()
         assert 0 < n < 20 and page.locator("#wsDGrid .dup").count() == 0

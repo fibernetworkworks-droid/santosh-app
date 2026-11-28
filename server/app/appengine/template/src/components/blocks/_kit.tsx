@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { money } from "@/lib/format";
 
 export type Tone = "plain" | "surface" | "primary" | "ink";
 
@@ -83,7 +84,9 @@ export function Picture({ src, alt, ratio = "4/3", className, label }: {
   );
 }
 
-/** Indian rupees, the way people write them: Rs 1,499 -> "₹1,499". */
+/** v0.999.334 an amount in the app's own currency and country (src/lib/locale.ts): 1499 -> "₹1,499" in India,
+ * "$1,499" in the US, "1.499 €" in Germany. The old name stays so every block and page that calls it still works. */
 export function rupees(n: number): string {
-  return "₹" + n.toLocaleString("en-IN");
+  return money(n);
 }
+export { money };

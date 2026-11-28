@@ -18,9 +18,10 @@ READS = {"list", "status", "view", "search", "logs", "files", "check", "cloud", 
 GATE = {"plan", "done", "blueprint"}
 # v0.999.322 the changes the done check, her locks and the fingerprints watch
 EDITS = {"write", "edit_lines", "rename", "delete", "add_dependency", "tokens", "design_new", "design_import", "render_mode",
+         "locale",
          "cloud_change"}
 CHANGES = {"create", "write", "edit_lines", "rename", "delete", "add_dependency", "tokens", "build", "cloud_change", "branch_new",
-           "design_new", "design_import", "render_mode"}
+           "design_new", "design_import", "render_mode", "locale"}
 
 APPENGINE_TOOLS = [
     {"name": "app_engine", "description": (
@@ -108,7 +109,15 @@ APPENGINE_TOOLS = [
         "state shared by far-apart parts (only when props / context get tangled). TESTS (v0.999.326): for each behaviour you "
         "add, write a small test next to it (src/pages/X.test.tsx; import { describe, it, expect } from \"vitest\", { render, "
         "screen } from \"@testing-library/react\", userEvent from \"@testing-library/user-event\") and run action=test; once "
-        "an app has tests, action=done also needs them passing after your last change."),
+        "an app has tests, action=done also needs them passing after your last change. NUMBERS AND DATES (v0.999.334): show "
+        "money, numbers, percents, dates, times, ranges and 'how long ago' only through @/lib/format (money, num, percent, "
+        "compact, date, time, dateTime, range, ago) - never \"₹\" + n, a fixed 'en-IN' / 'en-US', toFixed(2) on money or a "
+        "date built from getMonth() + 1; they follow the app's country: action=locale {locale like en-US / de-DE / ar-AE, "
+        "currency like USD / EUR / AED, time_zone like America/New_York} sets it (no values = shows it) - set it when her "
+        "business is outside India. RESULT PAGES (v0.999.334): Result (src/components/ui/result: status success / error / "
+        "info / warning / 403 / 404 / 500 / offline, title, sub, extra buttons) after a form is sent, a payment, an "
+        "order, and for a page that cannot be shown; Empty (empty) for a list with nothing in it - each says what "
+        "happened and gives the way on."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": sorted(READS | CHANGES | GATE)},
          "goal": {"type": "string", "description": "plan: what she asked for, in one or two sentences"},
@@ -162,6 +171,9 @@ APPENGINE_TOOLS = [
          "genes": {"type": "object", "description": "design_new: change single genes of the current design, e.g. "
                    "{\"shape\": {\"radius\": 4}, \"motion\": \"calm\", \"density\": \"airy\"}"},
          "design_md": {"type": "string", "description": "design_import: a whole DESIGN.md (YAML tokens between --- lines + rules)"},
+         "locale": {"type": "string", "description": "locale: language + country tag, like en-IN, en-US, de-DE, ar-AE"},
+         "currency": {"type": "string", "description": "locale: three-letter currency code, like INR, USD, EUR, AED"},
+         "time_zone": {"type": "string", "description": "locale: time zone, like Asia/Kolkata, America/New_York, Europe/Berlin"},
          "render": {"type": "string", "enum": ["site", "app"], "description": "create / render_mode: site = pre-rendered "
                     "pages + islands (websites); app = the whole app in the browser"}},
          "required": ["action"]}},
@@ -207,6 +219,8 @@ def _call(ctx: Ctx, action: str, app: str, kw: dict[str, Any]) -> dict[str, Any]
             st = DG.progress(r, conv)
             return {**st, "say": ("No task is open on this app in this chat." if st["status"] == "none" else
                                   f"Task {st.get('status')}" + (f"; NEXT: {st['next']}" if st.get("next") else ""))}
+        if action == "locale" and not (kw.get("locale") or kw.get("currency") or kw.get("time_zone")):
+            return _run(ctx, action, a, kw)                 # no values = only shows the app's country
         path = AE.RL.norm(kw.get("path") or "") if kw.get("path") else ""
         if action in EDITS:
             if _gate_on("app_engine_blueprint") and DG.needs_blueprint(r):
@@ -334,6 +348,8 @@ def _run(ctx: Ctx, action: str, app: str, kw: dict[str, Any]) -> dict[str, Any]:
         if not kw.get("design_md"):
             raise ToolError("design_import needs design_md = the whole DESIGN.md text.")
         return AE.set_design(t, a, design_md=kw["design_md"])
+    if action == "locale":
+        return AE.set_locale(t, a, kw.get("locale") or "", kw.get("currency") or "", kw.get("time_zone") or "")
     if action == "render_mode":
         if not kw.get("render"):
             raise ToolError("render_mode needs render = site or app.")

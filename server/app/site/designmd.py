@@ -513,7 +513,8 @@ def scrub(s: str, brand: str) -> str:
     for b in sorted({brand, brand.split(".")[0], brand.split()[0]}, key=len, reverse=True):
         if len(b) < 3:
             continue
-        nb = rf"{re.escape(b)}(?!\s+(?:Display|Text|Sans|Mono|Serif|Grotesk|Headline)\b)(?!\.\w)"
+        nb = (rf"{re.escape(b)}(?:\s+(?:Group|Inc|Ltd|Corp)\b\.?)?"      # "Ant Group" reads as "the brand"
+              rf"(?!\s+(?:Display|Text|Sans|Mono|Serif|Grotesk|Headline)\b)(?!\.\w)")
         s = re.sub(rf"\b(the|The)\s+{nb}('s)?\b", lambda m: m.group(1) + " brand" + (m.group(2) or ""), s)
         s = re.sub(rf"\b([a-z]+),?\s+{nb}('s)?\b",
                    lambda m: m.group(1) + " "
@@ -673,8 +674,9 @@ def look(lid: str) -> dict[str, Any]:
     adds.append("Every text and background pair checked for readability")
     adds.append("Your own pages, words, photos and name - never the source site's")
     return {**_card(e), "description": _clip(scrub(_detok(doc.get("description") or section(doc, "Overview"), doc), e.get("brand") or ""), 600),
-            "source_note": f"Read from the public DESIGN.md analysis of {e['src']} (awesome-design-md, MIT). Hoola uses the look, "
-                           "never their name, logo, words or pictures.",
+            "source_note": (f"Read from the DESIGN.md that {(e.get('from') or {}).get('repo')} publishes (MIT). " if e.get("from") else
+                            f"Read from the public DESIGN.md analysis of {e['src']} (awesome-design-md, MIT). ")
+                           + "Hoola uses the look, never their name, logo, words or pictures.",
             "prompt": prompt_for(e["name"], doc), "rules": ref["rules"][:8], "type": {
                 "head": T.FONTS[fk]["head"], "body": T.FONTS[fk]["body"], "source": raw_font, "note": type_note(doc)},
             "radius": doc.get("radius"), "modes": md, "swatches": {"dark": _swatches(md["dark"]), "light": _swatches(md["light"])},

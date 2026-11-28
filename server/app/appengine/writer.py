@@ -1817,7 +1817,12 @@ Rules (a write that breaks one is refused):
 - parts from the kit only: "@/components/ui/<part>" (button, card, badge, tabs, accordion, input, label, textarea,
   select, separator, progress, slider, switch, tooltip, dialog, qr-code = QrCode + upiLink for a UPI pay QR, markdown =
   Prose for formatted text, data-table = DataTable for a price list / timetable, schedule = Schedule for a booking
-  calendar; DataTable and Schedule need "use client" as the first line) and icons from "lucide-react"; no other package.
+  calendar; DataTable and Schedule need "use client" as the first line; result = Result for what happened after a
+  form / payment / order and for a page that cannot be shown; empty = Empty for a list with nothing in it) and icons
+  from "lucide-react"; no other package.
+- money, numbers, percents, dates and times only through "@/lib/format" (money, num, percent, compact, date, time,
+  range, ago) - they follow the business's own country; never a typed "₹" / "$" before a value, toFixed on money, a
+  fixed "en-US" / "en-IN" or a date built from getMonth() + 1. Buttons name the action ("Send enquiry"), never "Submit".
 - no fetch, no browser storage, no alert()/confirm(); interactive state (useState) only if the file's FIRST line is
   "use client";  name what animates (transition-colors / transition-transform), never transition-all; no emoji.
 - headings: h2 for the section title (SectionHead does it), h3 inside; every <img> has alt.

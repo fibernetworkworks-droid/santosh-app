@@ -3,6 +3,7 @@ import * as React from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { ArrowDownRight, ArrowUpRight, Check, Clock, FilePlus2, Plus, Send, UserPlus } from "lucide-react";
 import { Section, Container, rupees, type Tone } from "./_kit";
+import { money, num } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -114,13 +115,11 @@ export const sample: Required<Omit<ScreenDashboardProps, "variant" | "tone">> = 
 function formatValue(k: Kpi): string {
   if (k.kind === "money") return rupees(k.value);
   if (k.kind === "percent") return `${k.value}%`;
-  return k.value.toLocaleString("en-IN");
+  return num(k.value);
 }
 
 function shortRupees(n: number): string {
-  if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
-  if (n >= 1000) return `₹${Math.round(n / 1000)}k`;
-  return rupees(n);
+  return n >= 1000 ? money(n, undefined, { compact: true }) : rupees(n);      // "₹1.2L" / "$12K" - the country's own short form
 }
 
 function Head({ title, sampleShown, children }: { title: string; sampleShown: boolean; children?: React.ReactNode }) {

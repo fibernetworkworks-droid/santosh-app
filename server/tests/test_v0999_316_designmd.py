@@ -30,10 +30,10 @@ def test_catalog_has_every_usable_look_and_leaves_out_gambling():
     assert raw["source"]["licence"] == "MIT" and any("1win" in x for x in raw["source"]["left_out"])
     assert (DM.LIB / "LICENSE.txt").read_text().count("MIT License") == 1
     c = DM.catalog()
-    assert c["total"] == 83 and len(c["looks"]) == 83
-    assert sum(x["count"] for x in c["cats"] if x["id"] != "all") == 83
+    assert c["total"] == 84 and len(c["looks"]) == 84
+    assert sum(x["count"] for x in c["cats"] if x["id"] != "all") == 84
     names = [x["name"] for x in c["looks"]]
-    assert len(set(names)) == 83                                           # every look its own Hoola name
+    assert len(set(names)) == 84                                           # every look its own Hoola name
     brands = {x["brand"].lower() for x in raw["looks"]}
     for x in c["looks"]:
         assert x["name"].lower() not in brands, x["name"]
@@ -139,7 +139,7 @@ def test_routes(site_env):
     from app.main import app
     c = TestClient(app)
     r = c.get("/api/site-design/looks").json()
-    assert r["total"] == 83 and r["looks"][0]["t"]["bg"]
+    assert r["total"] == 84 and r["looks"][0]["t"]["bg"]
     one = c.get("/api/site-design/looks/claude").json()
     assert one["name"] == "Warm editorial" and one["own_mode"] == "light" and one["swatches"]["dark"] and one["similar"]
     assert c.get("/api/site-design/looks/nope").status_code == 404

@@ -12,6 +12,11 @@ builders the rules that fit what they are building, with no model call and no su
   switched off, a map popup drawn from raw HTML, a map with no text for people who cannot see it). A problem found by
   code is a fact, not a guess: the critic loop sends it back to the writer as a rewrite note.
 
+v0.999.334 beside them: Ant Design's business-screen, number and wording rules (coder/bizrules.py) - results, errors
+and empty states; search-and-filter lists; record pages; dashboards; settings; long forms; numbers, money and dates in
+the business's own country; buttons and words - with their own code checks (a typed currency sign, toFixed on money, a
+fixed 'en-US' / 'en-IN', a date built from getMonth() + 1, 'Submit' / 'Click here' buttons, '!' on a button).
+
 The rules are recommendations; the house checks (tokens, AutoFix, the build, the critic's scores) still decide.
 """
 from __future__ import annotations
@@ -22,8 +27,11 @@ import os
 import re
 from typing import Any
 
+from . import bizrules as BR
+
 DATA = os.path.join(os.path.dirname(__file__), "uiux", "data", "ux-guidelines.csv")
-CHARS = 1600                        # a prompt block never grows past this
+CHARS = 1600                        # a prompt block never grows past this (a little more when it holds many topics)
+CHARS_MAX = 2600
 
 # what a section holds, read from its words or its code (lower case)
 SIGNALS = {
@@ -34,6 +42,20 @@ SIGNALS = {
     "maps": re.compile(r"maplibre|leaflet|mapbox|google\.com/maps|maps\.google|map[-_]hours|coverage[-_]areas|"
                        r"(?<![.\w])maps?\b(?!\s*[(<])|\b(store locator|find us|directions to)\b"),
     "dialogs": re.compile(r"<dialog\b|alertdialog|<Dialog\b|(?<![.\w])dialog\b(?!\s*[(<])|\bmodal\b"),
+    # v0.999.334 Ant Design's business screens
+    "states": re.compile(r"screen[-_][a-z]+|\bresult page\b|\b(404|403|500) page|page not found|empty state|<Result\b|"
+                         r"<Empty\b|usequery|hoola\.db|\bcheckout\b|\bpayment\b|order placed|thank you|\bportal\b"),
+    "tables": re.compile(r"screen[-_](table|approvals)|datatable|data-table|<table\b|<thead\b|query table|"
+                         r"\blist of (orders|students|customers|patients|bookings|invoices|leads|members|staff|products)\b"),
+    "detail": re.compile(r"screen[-_]detail|record detail|\bdetail page\b|\bprofile page\b"),
+    "dashboard": re.compile(r"screen[-_]dashboard|\bdashboard\b|\bkpis?\b|stats[-_]counters"),
+    "settings": re.compile(r"screen[-_]settings|\bsettings\b|\bpreferences\b"),
+    "long_forms": re.compile(r"screen[-_]form|multi-?step|step form|\bwizard\b|<steps\b|application form|\badmission\b"),
+    "numbers": re.compile(r"[₹€£¥]|\$\d|\bprice|\bamount|\btotal\b|\binvoice|\bfees?\b|\bsalary|\brevenue|\bbalance\b|"
+                          r"\bpercent|tofixed|tolocale|intl\.|\bdates?\b|\bschedule\b|\bcalendar\b|\bbooking|"
+                          r"\bappointment|\bkpis?\b|stats[-_]counters|pricing[-_]table|\bmoney\(|\bnum\("),
+    "words": re.compile(r"screen[-_][a-z]+|<form\b|onsubmit|contact[-_]block|booking[-_]slots|\brsvp\b|<dialog\b|"
+                        r"\bcheckout\b"),
 }
 DATA_MAP = re.compile(r"choropleth|heat ?map|geojson|by region|per district|per state|density map")
 
@@ -50,6 +72,8 @@ TOPICS: dict[str, dict[str, Any]] = {
     "data_maps": {"issues": ("Normalized Choropleth Map", "Perceptual Map Color Ramps",
                              "Large Geodata as Vector Tiles")},
     "dialogs": {"issues": ("Modal Dialog Focus", "Confirmation Dialogs")},
+    # v0.999.334 Hoola's own rows read from Ant Design's specs (coder/bizrules.py), in their order of weight
+    **{k: {"own": True} for k in BR.RULES},
 }
 
 
@@ -73,6 +97,8 @@ def topics_of(text: str) -> list[str]:
 
 def rules(topic: str, platform: str = "web") -> list[dict[str, str]]:
     """The topic's rules in the order that matters most for it (a name the data no longer has is left out)."""
+    if (TOPICS.get(topic) or {}).get("own"):
+        return BR.rules(topic)
     order = list((TOPICS.get(topic) or {}).get("issues") or ())
     plats = {"All", "Web"} if platform == "web" else {"All", "Mobile"}
     by = {r.get("Issue"): r for r in rows() if (r.get("Platform") or "All") in plats}
@@ -90,9 +116,11 @@ def _line(r: dict[str, str]) -> str:
 def block(topics: list[str], platform: str = "web", limit: int = CHARS, head: str = "") -> str:
     """Each topic gets an even share of `limit`, so a form never pushes the map rules out."""
     topics = [t for t in topics if t in TOPICS]
-    head = head or "UX RULES for what this holds (from Hoola's design database - follow them):"
+    head = head or "UX RULES for what this holds (Hoola's design rules - follow them):"
     if not topics:
         return ""
+    if limit == CHARS and len(topics) > 4:
+        limit = min(CHARS_MAX, CHARS + 220 * (len(topics) - 4))
     share = max(200, (limit - len(head)) // len(topics))
     body, seen = [], set()
     for t in topics:
@@ -148,6 +176,7 @@ def code_problems(code: str) -> list[str]:
         if re.search(r"\b(phone|mobile|tel|whatsapp)\b", named) and not re.search(r"type=[\"']tel[\"']", attrs):
             out.append("Input Types: the phone field is not type=\"tel\" - phones then show the number keypad")
             break
+    out += _biz_problems(c)
     if _MAP.search(c):
         if re.search(r"attributionControl\s*[:=]\s*\{?\s*false", c):
             out.append("Map Attribution Visible: the map's attribution is switched off - keep it visible (the map's "
@@ -160,4 +189,46 @@ def code_problems(code: str) -> list[str]:
         if not re.search(r"aria-label=|aria-labelledby=|role=[\"']region[\"']|title=", c):
             out.append("Map Text Alternative: the map has no label or text for people who cannot see it - label it "
                        "and give a short list of the places beside it")
+    return out
+
+
+# ---------------------------------------------------------------- v0.999.334 Ant Design's number and wording rules in code
+_SIGN = "[₹€£¥]"
+_MONEY_SIGN = re.compile(rf"(?<![\w\\]){_SIGN}\s*\{{(?!\s*[\"'`])|[\"'`]{_SIGN}[\"'`]\s*\+|`{_SIGN}\$\{{|"
+                         rf"\+\s*[\"'`]\s?{_SIGN}[\"'`]|\bRs\.?\s*\{{(?!\s*[\"'`])")
+_MONEY_FIXED = re.compile(r"\b\w*(price|amount|total|cost|fee|balance|mrp|tax|due|paid|salary)\w*\)?\.toFixed\(", re.I)
+_FIXED_LOCALE = re.compile(r"toLocale(?:String|DateString|TimeString)\(\s*[\"'][a-z]{2}-[A-Z]{2}[\"']|"
+                           r"Intl\.NumberFormat\(\s*[\"'][a-z]{2}-[A-Z]{2}[\"']")
+_HAND_DATE = re.compile(r"getMonth\(\)\s*\+\s*1")
+_BTN = re.compile(r"<(button|Button)\b(?:=>|[^>])*>\s*([^<{]*?)\s*</(?:button|Button)>")
+_VAGUE = re.compile(r"^(submit|ok|okay|click|click here|go|yes)$", re.I)
+_CLICK_HERE = re.compile(r">\s*click here\s*<", re.I)
+
+
+def _biz_problems(c: str) -> list[str]:
+    out: list[str] = []
+    if _MONEY_SIGN.search(c):
+        out.append("Currency the Country's Way: an amount is written with a typed currency sign - use money(n) from "
+                   "@/lib/format (or the site's own price format) so it shows the business's currency its country's way")
+    if _MONEY_FIXED.search(c):
+        out.append("Currency the Country's Way: money is rounded with toFixed - use money(n) from @/lib/format, which "
+                   "groups the digits and places the currency the country's way")
+    if _FIXED_LOCALE.search(c):
+        out.append("Digits in Groups: a number is fixed to one country's format ('en-US' / 'en-IN') - use num() / "
+                   "money() from @/lib/format so it follows the app's own country")
+    if _HAND_DATE.search(c):
+        out.append("Dates in Their Order: a date is built by hand from getMonth() + 1 - use date() / range() from "
+                   "@/lib/format (Intl) so it reads in the country's own order")
+    vague = bang = False
+    for m in _BTN.finditer(c):
+        text = m.group(2).strip()
+        if text and _VAGUE.match(text):
+            vague = True
+        if text.endswith("!"):
+            bang = True
+    if vague or _CLICK_HERE.search(c):
+        out.append("Button Says the Action: a button or link says 'Submit' / 'OK' / 'Click here' - name the action "
+                   "('Send enquiry', 'Book the visit', 'See the menu')")
+    if bang:
+        out.append("Calm Tone: a button ends with '!' - say the action calmly")
     return out

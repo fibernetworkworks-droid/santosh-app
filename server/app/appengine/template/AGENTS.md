@@ -28,6 +28,14 @@
   never a blank page), QrCode + upiLink (UPI pay QR), Schedule (month / week / day calendar), Flow (flowcharts),
   PdfButton (PDFs made in the browser), Prose (Markdown; raw HTML never drawn); zustand for shared state. On a SITE page
   the ones with clicks or state go inside a `"use client";` island.
+- Results and states (v0.999.334, Ant Design's specs): `Result` (`ui/result`: success / error / info / warning / 403 /
+  404 / 500 / offline - title, sub, at most two buttons) after a form is sent, a payment or an order, and for a page that
+  cannot be shown; `Empty` (`ui/empty`) for a list with nothing in it (what goes here + the first action, or Clear
+  filters). Each says what happened and the way on.
+- Numbers and dates (v0.999.334): money, numbers, percents, dates, times, ranges and "5 minutes ago" only through
+  `@/lib/format` (`money`, `num`, `percent`, `compact`, `date`, `time`, `dateTime`, `range`, `ago`). They follow the
+  app's country in `src/lib/locale.ts`, set with `app_engine action=locale` (never by hand) - never a typed currency
+  sign before a value, `toFixed` on money, a fixed `"en-US"` / `"en-IN"`, or a date built from `getMonth() + 1`.
 - Tests (v0.999.326): a behaviour gets a small test next to it (`X.test.tsx`; vitest + @testing-library/react +
   @testing-library/user-event, only in test files), run with `app_engine action=test`; with tests, done needs them passing.
 

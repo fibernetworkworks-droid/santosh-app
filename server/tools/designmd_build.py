@@ -89,13 +89,25 @@ def main(src: str) -> None:
     except Exception:
         commit = ""
     OUT.mkdir(parents=True, exist_ok=True)
+    try:                                       # looks added from other repos (tools/designmd_add.py) stay
+        old = json.loads(gzip.decompress((OUT / "looks.json.gz").read_bytes()))
+        looks += [x for x in old.get("looks", []) if x.get("from") and x["id"] not in {y["id"] for y in looks}]
+    except (OSError, ValueError):
+        pass
     data = {"source": {"repo": "github.com/VoltAgent/awesome-design-md", "licence": "MIT", "commit": commit,
                        "left_out": skipped}, "looks": looks}
     (OUT / "looks.json.gz").write_bytes(gzip.compress(json.dumps(data, ensure_ascii=False).encode(), 9, mtime=0))
     lic = root / "LICENSE"
+    keep = ""
+    try:                                       # the other repos' licences stay too
+        old_lic = (OUT / "LICENSE.txt").read_text(encoding="utf-8")
+        cut = old_lic.find("\n\n----------------------------------------------------------------")
+        keep = old_lic[cut:] if cut >= 0 else ""
+    except OSError:
+        pass
     if lic.is_file():
         (OUT / "LICENSE.txt").write_text("The DESIGN.md files in looks.json.gz come from github.com/VoltAgent/awesome-design-md"
-                                         f" ({commit}).\n\n" + lic.read_text(encoding="utf-8"), encoding="utf-8")
+                                         f" ({commit}).\n\n" + lic.read_text(encoding="utf-8").rstrip() + keep, encoding="utf-8")
     print(f"{len(looks)} looks written, {len(skipped)} left out", *skipped, sep="\n")
 
 

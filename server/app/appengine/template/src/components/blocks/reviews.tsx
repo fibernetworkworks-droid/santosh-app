@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Section, Container, SectionHead, type Tone } from "./_kit";
+import { num } from "@/lib/format";
 
 export const variants = ["cards", "spotlight", "summary"] as const;
 export type ReviewsVariant = (typeof variants)[number];
@@ -161,7 +162,7 @@ export default function Reviews({ variant = "cards", tone, ...rest }: ReviewsPro
                   <div className="pb-1">
                     <Stars n={p.rating.score} />
                     <p className={cn("mt-1.5 text-sm", quiet(t))}>
-                      {p.rating.count.toLocaleString("en-IN")} reviews on {p.rating.source}
+                      {num(p.rating.count)} reviews on {p.rating.source}
                     </p>
                   </div>
                 </div>

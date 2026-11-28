@@ -3,6 +3,7 @@
 // below the screen and scrolls in.
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { LOCALE } from "@/lib/locale";
 import { prefersReducedMotion, useInView } from "./use-in-view";
 
 export interface NumberTickerProps extends React.HTMLAttributes<HTMLSpanElement> {
@@ -39,7 +40,7 @@ export function NumberTicker({ value, decimals = 0, prefix = "", suffix = "", du
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
   }, [seen, value, duration]);
-  const text = shown.toLocaleString("en-IN", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  const text = shown.toLocaleString(LOCALE, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   return (
     <span ref={ref} className={cn("tabular-nums", className)} aria-label={`${prefix}${value}${suffix}`} {...props}>
       {prefix}

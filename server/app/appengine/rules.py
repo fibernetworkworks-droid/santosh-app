@@ -30,7 +30,9 @@ LOCKED = {"package.json", "package-lock.json", "vite.config.ts", "vitest.config.
           # v0.999.82 D8 wave 7: the visitor's sign-in on her website (her members, her rules on Hoola)
           "src/lib/member.ts",
           # v0.999.91 D8 wave 9: the browser-notification worker, served from her website's own address
-          "public/hoola-push-sw.js"}
+          "public/hoola-push-sw.js",
+          # v0.999.334 numbers / money / dates in the app's country - set with app_engine action=locale, never by hand
+          "src/lib/format.ts", "src/lib/locale.ts"}
 TEXT_EXT = {".tsx", ".ts", ".css", ".json", ".svg", ".md", ".txt", ".html", ".webmanifest"}
 CODE_EXT = {".tsx", ".ts", ".css"}
 MAX_FILE = 200_000

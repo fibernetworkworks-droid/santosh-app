@@ -63,7 +63,9 @@ TOOLING = ("vite.config.ts", "vitest.config.ts", "vitest.setup.ts", "tsconfig.js
            "src/lib/hoola.ts",
            # v0.999.64 D3: pre-rendering + islands
            "hoola.prerender.mjs", "src/entry-server.tsx", "src/islands-entry.tsx", "src/islands-wake.tsx", "src/lib/island.tsx",
-           "src/lib/seo.tsx", "src/lib/keep.ts", "src/lib/member.ts", "public/hoola-push-sw.js")
+           "src/lib/seo.tsx", "src/lib/keep.ts", "src/lib/member.ts", "public/hoola-push-sw.js",
+           # v0.999.334 numbers, money, dates in the app's own country (src/lib/locale.ts is written from its settings)
+           "src/lib/format.ts")
 
 # v0.999.64 D3 (docs/WEB_DESIGN_ENGINE_PLAN.md P6): how the pages go out. "site" = every page pre-rendered to plain HTML
 # that loads JavaScript only for its islands (fast, read by Google); a page with <AppPage> or an app screen stays the
@@ -1002,7 +1004,8 @@ def prerender_line(p: dict) -> str:
 # app gets them too (src/main.tsx, which is Hoola's, uses error-guard)
 NEW_KIT = ("src/components/ui/error-guard.tsx", "src/components/ui/data-table.tsx", "src/components/ui/qr-code.tsx",
            "src/components/ui/schedule.tsx", "src/components/ui/schedule.css", "src/components/ui/flow.tsx",
-           "src/components/ui/flow.css", "src/components/ui/pdf.tsx", "src/components/ui/markdown.tsx")
+           "src/components/ui/flow.css", "src/components/ui/pdf.tsx", "src/components/ui/markdown.tsx",
+           "src/components/ui/result.tsx")      # v0.999.334 Result: success / error / 403 / 404 / 500 / offline
 
 
 def _refresh_template(r: AppProject) -> None:
@@ -1025,6 +1028,93 @@ def _refresh_template(r: AppProject) -> None:
     t = _theme(r)
     _write_design(d, _genome(r), t)
     _write_theme_json(r, t)
+    _write_locale(r)
+
+
+# ---------------------------------------------------------------- v0.999.334 the app's country (src/lib/locale.ts)
+# Ant Design's data-format spec, read for every country: money, numbers, dates and times follow the app's own country.
+# Until one is set, an app keeps what every Hoola app has shown so far (Indian English, rupees, India time).
+LOCALE_DEFAULT = {"locale": "en-IN", "currency": "INR", "time_zone": "Asia/Kolkata"}
+_LOCALE_TAG = re.compile(r"^[a-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Z]{2}|\d{3}))?$")
+
+
+def locale_of(r: AppProject) -> dict[str, str]:
+    try:
+        v = json.loads(r.look or "{}").get("locale") or {}
+    except (ValueError, AttributeError):
+        v = {}
+    return {**LOCALE_DEFAULT, **{k: str(v[k]) for k in LOCALE_DEFAULT if isinstance(v, dict) and v.get(k)}}
+
+
+def _clean_locale(locale: str, currency: str, time_zone: str) -> dict[str, str]:
+    out: dict[str, str] = {}
+    if locale:
+        tag = str(locale).strip().replace("_", "-")
+        parts = tag.split("-")
+        tag = "-".join([parts[0].lower()] + [p.title() if len(p) == 4 else p.upper() for p in parts[1:]])
+        if not _LOCALE_TAG.match(tag):
+            raise AppEngineError(f"'{locale}' is not a language and country tag - use one like en-IN, en-US, de-DE, ar-AE or hi-IN.")
+        out["locale"] = tag
+    if currency:
+        c = str(currency).strip().upper()
+        if not re.fullmatch(r"[A-Z]{3}", c):
+            raise AppEngineError(f"'{currency}' is not a currency code - use the three letters, like INR, USD, EUR, GBP or AED.")
+        out["currency"] = c
+    if time_zone:
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+        z = str(time_zone).strip()
+        try:
+            ZoneInfo(z)
+        except (ZoneInfoNotFoundError, ValueError):
+            raise AppEngineError(f"'{time_zone}' is not a time zone - use one like Asia/Kolkata, America/New_York or Europe/Berlin.")
+        out["time_zone"] = z
+    return out
+
+
+def _write_locale(r: AppProject) -> None:
+    v = locale_of(r)
+    f = src_dir(r) / "src" / "lib" / "locale.ts"
+    body = ("// v0.999.334 the app's country: how its money, numbers, dates and times are shown (src/lib/format.ts reads it).\n"
+            "// Hoola writes this file from the app's settings (app_engine action=locale) - never edit it by hand.\n"
+            f"export const LOCALE = {json.dumps(v['locale'])};\nexport const CURRENCY = {json.dumps(v['currency'])};\n"
+            f"export const TIME_ZONE = {json.dumps(v['time_zone'])};\n")
+    f.parent.mkdir(parents=True, exist_ok=True)
+    if not f.exists() or f.read_text("utf-8") != body:
+        f.write_text(body, "utf-8")
+
+
+def _locale_line(r: AppProject) -> str:
+    v = locale_of(r)
+    try:
+        set_ = bool(json.loads(r.look or "{}").get("locale"))
+    except (ValueError, AttributeError):
+        set_ = False
+    return (f"money as {v['currency']}, numbers and dates the {v['locale']} way, times in {v['time_zone']}"
+            + ("" if set_ else " (Hoola's starting choice - if her business is in another country, set it with "
+                               "action=locale)"))
+
+
+def set_locale(tenant: str, ref: str, locale: str = "", currency: str = "", time_zone: str = "") -> dict[str, Any]:
+    """Her app's country: money in her currency, numbers / dates / times her country's way, hours in her time zone."""
+    r = _load(tenant, ref)
+    if not (locale or currency or time_zone):
+        v = locale_of(r)
+        return {"locale": v, "say": f"This app shows money as {v['currency']}, numbers and dates the {v['locale']} way, "
+                                    f"times in {v['time_zone']}."}
+    new = _clean_locale(locale, currency, time_zone)
+    with _lock(r.id):
+        try:
+            look = json.loads(r.look or "{}")
+        except ValueError:
+            look = {}
+        look["locale"] = {**locale_of(r), **new}
+        _save(r.id, look=json.dumps(look), dirty=True)
+        r = _load(tenant, r.id)
+        _write_locale(r)
+        schedule_build(r.tenant_id, r.id)
+    v = locale_of(r)
+    return {"locale": v, "say": f"Set: money as {v['currency']}, numbers and dates the {v['locale']} way, times in "
+                                f"{v['time_zone']}. Every price, date and time in the app follows it after this build."}
 
 
 def _genome(r: AppProject) -> dict | None:
@@ -1634,6 +1724,7 @@ def prompt_block(tenant: str) -> str:
             "src/lib/hoola.ts, which is not connected yet - keep data on the page and say so). After changes, call "
             "action=build and read the result before you say it is done. Going live is HER tap in the Studio.\n"
             f"Packages: {', '.join(deps)}\nFiles: {', '.join(files)}\n{kit_line}{REACT_PARTS}\n"
+            + f"Country: {_locale_line(r)}\n"
             + (ux + "\n" if (ux := ux_block(r)) else "") + f"AGENTS.md:\n{agents}\n</app_engine_project>")
 
 
@@ -1643,8 +1734,11 @@ REACT_PARTS = ("React parts (src/components/ui, already in every app): DataTable
                "QrCode + upiLink (qr-code - UPI pay QR, tickets, share links), Schedule (schedule - month / week / day "
                "views: bookings, rotas, classes), Flow (flow - flowcharts, org charts, process maps), PdfButton (pdf - "
                "invoices, receipts, certificates made in the browser), Prose (markdown - formatted text; raw HTML never "
-               "drawn); zustand for state shared by far-apart parts. On a SITE page, anything with clicks or state "
-               "(DataTable, Schedule, Flow, PdfButton) goes inside a \"use client\"; island file.")
+               "drawn), Result (result - after a form / payment / order, and 403 / 404 / 500 / offline pages), Empty "
+               "(empty - a list with nothing in it); zustand for state shared by far-apart parts. On a SITE page, "
+               "anything with clicks or state (DataTable, Schedule, Flow, PdfButton) goes inside a \"use client\"; island "
+               "file. Money, numbers, dates and times only through @/lib/format (money, num, percent, date, time, range, "
+               "ago) - they follow the app's country (action=locale).")
 
 
 def status() -> dict[str, Any]:

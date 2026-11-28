@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GridPattern } from "@/components/effects";
 import { Section, Container, SectionHead, type Tone } from "./_kit";
+import { TIME_ZONE } from "@/lib/locale";
 
 export const variants = ["card", "branches", "minimal"] as const;
 export type MapHoursVariant = (typeof variants)[number];
@@ -125,10 +126,10 @@ export function weekLine(hours: DayHours[]): string {
   return out.join(" · ");
 }
 
-/** Day of week (0 = Monday) and minutes past midnight, in India time. */
-function nowInIndia(): { dow: number; at: number } {
+/** Day of week (0 = Monday) and minutes past midnight, in the business's own time zone (src/lib/locale.ts). */
+function nowThere(): { dow: number; at: number } {
   const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Kolkata",
+    timeZone: TIME_ZONE,
     weekday: "short",
     hour: "2-digit",
     minute: "2-digit",
@@ -179,7 +180,7 @@ export function openState(hours: DayHours[], now: { dow: number; at: number }): 
 function useOpenState(hours: DayHours[]): OpenState | null {
   const [s, setS] = React.useState<OpenState | null>(null);
   React.useEffect(() => {
-    const tick = () => setS(openState(hours, nowInIndia()));
+    const tick = () => setS(openState(hours, nowThere()));
     tick();
     const t = setInterval(tick, 60_000);
     return () => clearInterval(t);
