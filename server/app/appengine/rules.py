@@ -19,7 +19,7 @@ import posixpath
 import re
 from typing import Any
 
-LOCKED = {"package.json", "package-lock.json", "vite.config.ts", "hoola.plugin.mjs", "tsconfig.json", "src/main.tsx", "src/index.css",
+LOCKED = {"package.json", "package-lock.json", "vite.config.ts", "vitest.config.ts", "vitest.setup.ts", "hoola.plugin.mjs", "tsconfig.json", "src/main.tsx", "src/index.css",
           "src/lib/hoola.ts", "src/lib/utils.ts", "src/styles/tokens.css", "src/lib/cloud.types.ts", "DESIGN.md",
           # v0.999.64 D3: pre-rendering + islands
           "hoola.prerender.mjs", "hoola.render.json", "src/entry-server.tsx", "src/islands-entry.tsx", "src/islands-wake.tsx",
@@ -203,6 +203,14 @@ def safety(path: str, code: str, deps: set[str]) -> list[dict[str, Any]]:
     return out
 
 
+TEST_PKGS = {"vitest", "@testing-library/react", "@testing-library/dom", "@testing-library/user-event"}
+
+
+def is_test(path: str) -> bool:
+    p = norm(path) if path else ""
+    return p.startswith("src/") and bool(re.search(r"\.test\.(ts|tsx)$", p))
+
+
 def _pkg_of(spec: str) -> str:
     if spec.startswith("@"):
         return "/".join(spec.split("/")[:2])
@@ -224,6 +232,9 @@ def _import_problem(path: str, spec: str, deps: set[str]) -> str:
     if spec.startswith("node:"):
         return f"'{spec}': Node's own modules do not run in the browser"
     name = _pkg_of(spec)
+    # v0.999.326 the test tools exist only in a test file (src/**/*.test.ts / .tsx); they never ship to visitors
+    if name in TEST_PKGS:
+        return "" if is_test(path) else (f"'{name}' is for tests only: use it in a file named like Screen.test.tsx")
     if name in deps or name in ("react", "react-dom"):
         return ""
     from .image import VETTED, EXTRA

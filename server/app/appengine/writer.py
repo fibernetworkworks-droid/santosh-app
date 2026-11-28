@@ -1815,7 +1815,9 @@ Rules (a write that breaks one is refused):
   border-line bg-accent (with /10 /20 opacity when needed); corners rounded-card / rounded-control; shadow-card;
   fonts font-head / font-body. Never a hex value, never a Tailwind palette colour (blue-600...), never [arbitrary] values.
 - parts from the kit only: "@/components/ui/<part>" (button, card, badge, tabs, accordion, input, label, textarea,
-  select, separator, progress, slider, switch, tooltip, dialog) and icons from "lucide-react"; no other package.
+  select, separator, progress, slider, switch, tooltip, dialog, qr-code = QrCode + upiLink for a UPI pay QR, markdown =
+  Prose for formatted text, data-table = DataTable for a price list / timetable, schedule = Schedule for a booking
+  calendar; DataTable and Schedule need "use client" as the first line) and icons from "lucide-react"; no other package.
 - no fetch, no browser storage, no alert()/confirm(); interactive state (useState) only if the file's FIRST line is
   "use client";  name what animates (transition-colors / transition-transform), never transition-all; no emoji.
 - headings: h2 for the section title (SectionHead does it), h3 inside; every <img> has alt.

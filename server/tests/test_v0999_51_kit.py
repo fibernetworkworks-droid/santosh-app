@@ -19,7 +19,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_image_rev_2_carries_the_whole_kit():
-    assert IMG.IMAGE_REV == "2" and 'hoola.appengine.rev="2"' in IMG.DOCKERFILE_TEXT
+    # v0.999.326 the image moved to rev 3 (the awesome-react libraries + tests in the box); the kit it carries is unchanged
+    assert IMG.IMAGE_REV == "3" and 'hoola.appengine.rev="3"' in IMG.DOCKERFILE_TEXT
     for p in ("@radix-ui/react-select", "@radix-ui/react-accordion", "@radix-ui/react-avatar", "cmdk", "vaul",
               "input-otp", "react-day-picker", "embla-carousel-react", "@radix-ui/react-navigation-menu"):
         assert p in IMG.CORE, p

@@ -14538,3 +14538,78 @@ Docker box and a real second model (both were stand-ins here). The review adds o
 ## v0.999.325 HOOLA DOD, EVERY PART WIRED
 
 v0.999.325 HOOLA DOD, EVERY PART WIRED (owner: "IS ALL DOD WORK DONE EVEN WIRING ALL SECTION PROPERLY WITH OPEN CLAW"): after v0.999.319's end-to-end run on the real OpenClaw image, every part around the page was checked too and two were not wired: (1) the voice she picks for her coworker was saved but never used after setup - now the coworker reads its question and its finished answer aloud in that voice on her tap (dod.js speak(), Read aloud on the question card and the reply; the setup preview uses the same); (2) tapping 'X needs your OK' on her phone opened the chat home - the dod_ask notification now carries open_page /console/dod#/t/<task> (push.build, only the task id rides the link), SantoshPush.kt passes it as page:<path> (a call record's open_conv still wins), MainActivity hands it on and lib/main.dart opens that task inside the app signed in (hoolaOpenConsole, only /console/ paths); 2 tests + the test_v0648 pin moved to the new line. NOT VERIFIED on her phone (Kotlin + Dart compile on CI first) or her server.
+
+
+## v0.999.326 REACT PARTS + TESTS (built as 0.999.325; their HOOLA DOD, EVERY PART WIRED took 0.999.325, both kept) - the awesome-react shortlist and tests in the box
+
+Owner: "https://github.com/enaqx/awesome-react.git -- NOW READ THIS REPO" -> the shortlist -> "ADD VERY REACT DEVLOPMENT FOR
+HOOLA WEB" (read as: everything on the "worth adding" list; the "not worth adding" list stays out - other component kits
+and CSS-in-JS would break the one design system, maps need outside tile requests the app rules block).
+
+**Libraries** (`appengine/image.py` CORE = in every new app; each the newest release at least two weeks old on 28 Nov 2026,
+MIT / ISC, React 18 peer ranges checked): @tanstack/react-table 9.3.1, react-error-boundary 6.1.6, qrcode.react 4.2.0,
+react-big-calendar 1.20.0 (+ @types/react-big-calendar 1.16.3 in DEV), @xyflow/react 12.12.1 (13.x was under two weeks
+old), @react-pdf/renderer 4.9.0, markdown-to-jsx 9.10.6, zustand 5.1.0. An unused library is not in an app's bundle.
+
+**Kit parts** (`appengine/template/src/components/ui/`, all on the app's tokens, all passing rules.py + the syntax check):
+- `data-table.tsx` DataTable - TanStack Table v9 (useTable + explicit features: sorting, global search, pagination);
+  plain rows + columns {key, label, sortable, align, render}; sortable headings with aria-sort, a search box, pages.
+- `error-guard.tsx` Guard (a part) + AppGuard (the whole app: src/main.tsx wraps <App/>): a crash shows a calm box with
+  Try again instead of a blank page; console.error keeps reporting it to the preview's error collector.
+- `qr-code.tsx` QrCode + upiLink({pa, pn, am, tn}) - always black on white (what phone scanners read best).
+- `schedule.tsx` + `schedule.css` Schedule - react-big-calendar with the date-fns localizer (en-IN), month / week / day /
+  agenda, select a slot, the calendar's CSS re-coloured on the tokens; loaded only where used.
+- `flow.tsx` + `flow.css` Flow - React Flow, draggable / joinable boxes, onChange to save, --xy-* vars on the tokens.
+- `pdf.tsx` PdfButton - @react-pdf/renderer imported only when pressed (pages stay light), the PDF built from its own
+  parts, saved with a file name, a plain error if it fails.
+- `markdown.tsx` Prose - markdown-to-jsx with disableParsingRawHTML (text people type never draws HTML), kit typography,
+  outside links in a new tab.
+Older apps get every new part on their next build (`service.NEW_KIT`, copied only when missing, never over her file),
+because Hoola's own src/main.tsx now uses error-guard.
+
+**Tests in the box**: DEV gains vitest 5.1.0, @testing-library/react 16.3.3, @testing-library/dom 10.4.2,
+@testing-library/user-event 14.6.10, jsdom 31.0.1. Locked `vitest.config.ts` (jsdom, src/**/*.test.ts(x), no CSS, 10 s a
+test, 2 workers) + `vitest.setup.ts` (cleanup after each test), both in TOOLING / rules.LOCKED. `runner.test` runs Vitest
+in the same box as a build (no network, read-only, uid 1000, caps) with NODE_ENV=test (React's act() needs it), parses its
+JSON report per test (file, name, status, first lines of the failure); local runner too. `service.run_tests` /
+`test_files` / `last_tests`; app_engine action=test; the test tools may be imported only in a test file (`rules.is_test`,
+`TEST_PKGS`; anywhere else: "for tests only"). The done check: once an app has a test file, action=done needs a passing
+test run after the last change ("NEXT: run them now"), and its evidence names how many passed; the Studio task card gets a
+"Tests passed" tick.
+
+**The image**: rev 2 -> 3 (`IMAGE_REV`, the Dockerfile label); the box rebuilds it by itself before the next build
+(boxcare) or vps-ops appengine_setup. The lock file was resolved fresh with `npm install --package-lock-only --before
+2026-11-14` because npm 10.9.9's arborist crashed ("reading 'edgesOut'") adding Vitest to the old lock; against the old
+lock: 43 packages moved by a patch (babel, rollup, postcss, ...), none removed, all dated before 14 Nov.
+
+Tests: `server/tests/test_v0999_326_react_parts.py` (6) - the pins (image, lock), every part through the rules + the
+parser, test tools only in test files, an older app getting the parts (never over hers), the done check needing passing
+tests, and a REAL app built here with the local runner (the image's packages from `npm ci`): a page using every part
+type-checks and builds, its 5 Vitest tests pass (table sort + search, upiLink, Prose drops raw HTML, Guard catches a crash,
+zustand), and a broken expectation is reported by its test name. Found by that run: QrCode said its label twice (picture
+title + caption) - fixed; the test files needed the cleanup step - added.
+
+NOT VERIFIED: on her server (the rev 3 image is built there on the next build), or with a real model writing tests;
+@react-pdf/renderer and react-big-calendar were type-checked and bundled but not opened in a browser here.
+
+
+## v0.999.327 REACT PARTS DEFINED - every place Hoola learns the kit names the new parts and the tests
+
+Owner: "IS ALL DEFINED" on v0.999.326. The check: the libraries were in the image, the parts in the kit, the tool's
+description named them - but three places Hoola reads did not:
+- the per-turn app summary (`service.prompt_block`) listed the parts by file name only and said nothing about tests ->
+  it now carries `REACT_PARTS` (what each part is for; old apps too, whose AGENTS.md predates them) and whether the app
+  has tests ("run app_engine action=test after a change, done needs them passing" / "no tests yet - write one ...");
+- each app's `AGENTS.md` (the guide inside that summary) -> two lines for the parts and the test rules; the summary's
+  cut of it raised from 3,000 to 4,000 characters so the whole guide reaches the model (3,301 now);
+- the website writer's custom-section prompt (`writer.py`) had a fixed list of usable parts -> adds qr-code (QrCode +
+  upiLink), markdown (Prose), data-table (DataTable) and schedule (Schedule), the last two only with "use client".
+`kit.ui_parts()` already read the folder, so the kit line had them.
+
+Checked for real (local runner, the image's packages): a page using every part, routed and linked, builds in both render
+modes and is PRE-RENDERED on the server - dist/shop/index.html is finished HTML carrying the table, the QR svg, the
+calendar and the flowchart, and the raw HTML in the Prose text is not there; in site mode the build answer tells Hoola to
+move the interactive parts into a "use client" island (the existing dead-code check).
+
+Tests: `server/tests/test_v0999_326_react_parts.py` 7 (+ `test_hoola_is_told_what_each_part_is_for`; the real build test
+now routes the page and checks its pre-rendered HTML). NOT VERIFIED on her server.

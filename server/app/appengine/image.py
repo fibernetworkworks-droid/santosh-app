@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 IMAGE = "hoola-appengine:base"
-IMAGE_REV = "2"                       # bump with any change below; status compares it with the built image
+IMAGE_REV = "3"                       # bump with any change below; status compares it with the built image
 HERE = Path(__file__).resolve().parent
 LOCK = HERE / "image" / "package-lock.json"
 
@@ -38,10 +38,19 @@ CORE = {
     "@radix-ui/react-alert-dialog": "1.2.1", "@radix-ui/react-aspect-ratio": "1.2.0",
     "@radix-ui/react-context-menu": "2.4.1", "@radix-ui/react-menubar": "1.2.1",
     "cmdk": "1.1.1", "vaul": "1.1.2", "input-otp": "1.5.0", "react-day-picker": "9.14.0",
+    # v0.999.326 from the awesome-react read: real data tables, a crash guard, QR codes, week / month calendars, flowcharts,
+    # PDFs made in the browser, formatted text, shared state - each behind a kit part (src/components/ui), MIT / ISC, each
+    # the newest release at least two weeks old when added
+    "@tanstack/react-table": "9.3.1", "react-error-boundary": "6.1.6", "qrcode.react": "4.2.0",
+    "react-big-calendar": "1.20.0", "@xyflow/react": "12.12.1", "@react-pdf/renderer": "4.9.0",
+    "markdown-to-jsx": "9.10.6", "zustand": "5.1.0",
 }
 DEV = {
     "vite": "7.3.7", "@vitejs/plugin-react": "5.2.0", "tailwindcss": "4.3.3", "@tailwindcss/vite": "4.3.3",
     "typescript": "5.9.3", "@types/react": "18.3.31", "@types/react-dom": "18.3.7", "@types/node": "22.20.5",
+    # v0.999.326 tests in the box: Hoola writes small tests for a screen and runs them (app_engine action=test)
+    "vitest": "5.1.0", "@testing-library/react": "16.3.3", "@testing-library/dom": "10.4.2",
+    "@testing-library/user-event": "14.6.10", "jsdom": "31.0.1", "@types/react-big-calendar": "1.16.3",
 }
 # Vetted extras: in the image, added to a project only by add_dependency (one word = one reason).
 EXTRA = {
@@ -49,10 +58,10 @@ EXTRA = {
 }
 VETTED = {**CORE, **{k: v[0] for k, v in EXTRA.items()}}
 
-DOCKERFILE_TEXT = r"""# v0.999.51 Hoola App Engine - the build image (rev 2: the full kit). Built once per server by `python -m app.appengine setup`.
+DOCKERFILE_TEXT = r"""# v0.999.51 Hoola App Engine - the build image (rev 3: the full kit + the awesome-react parts + tests in the box). Built once per server by `python -m app.appengine setup`.
 # Every vetted package is installed here from the committed lock file; a project build runs with --network none.
 FROM node:22-bookworm-slim
-LABEL hoola.appengine.rev="2"
+LABEL hoola.appengine.rev="3"
 ENV NODE_ENV=development NPM_CONFIG_FUND=false NPM_CONFIG_AUDIT=false NPM_CONFIG_UPDATE_NOTIFIER=false
 WORKDIR /opt/tpl
 COPY package.json package-lock.json ./

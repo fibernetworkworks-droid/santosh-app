@@ -1,0 +1,18 @@
+/* v0.999.326 the Schedule calendar (react-big-calendar) in the app's own design tokens - only loaded where it is used. */
+.hoola-schedule .rbc-calendar { font-family: var(--font-body); color: var(--color-ink); }
+.hoola-schedule .rbc-toolbar button { color: var(--color-ink); border-color: var(--color-line); border-radius: var(--radius-control); }
+.hoola-schedule .rbc-toolbar button:hover, .hoola-schedule .rbc-toolbar button:focus { background: color-mix(in oklab, var(--color-ink) 6%, transparent); }
+.hoola-schedule .rbc-toolbar button.rbc-active { background: var(--color-primary); color: var(--color-primary-ink); border-color: var(--color-primary); box-shadow: none; }
+.hoola-schedule .rbc-toolbar .rbc-toolbar-label { font-family: var(--font-head); font-weight: 600; }
+.hoola-schedule .rbc-month-view, .hoola-schedule .rbc-time-view, .hoola-schedule .rbc-agenda-view table.rbc-agenda-table,
+.hoola-schedule .rbc-header, .hoola-schedule .rbc-day-bg + .rbc-day-bg, .hoola-schedule .rbc-month-row + .rbc-month-row,
+.hoola-schedule .rbc-time-content, .hoola-schedule .rbc-time-header-content, .hoola-schedule .rbc-timeslot-group,
+.hoola-schedule .rbc-day-slot .rbc-time-slot, .hoola-schedule .rbc-time-content > * + * > * { border-color: var(--color-line); }
+.hoola-schedule .rbc-off-range-bg { background: var(--color-bg); }
+.hoola-schedule .rbc-off-range { color: var(--color-muted); }
+.hoola-schedule .rbc-today { background: color-mix(in oklab, var(--color-primary) 8%, transparent); }
+.hoola-schedule .rbc-event, .hoola-schedule .rbc-day-slot .rbc-background-event { background: var(--color-primary); color: var(--color-primary-ink); border-radius: var(--radius-control); border: 0; }
+.hoola-schedule .rbc-event.rbc-selected { background: color-mix(in oklab, var(--color-primary) 80%, var(--color-ink)); }
+.hoola-schedule .rbc-show-more { color: var(--color-primary); background: transparent; }
+.hoola-schedule .rbc-current-time-indicator { background: var(--color-accent); }
+.hoola-schedule .rbc-slot-selection { background: color-mix(in oklab, var(--color-primary) 25%, transparent); color: var(--color-ink); }
