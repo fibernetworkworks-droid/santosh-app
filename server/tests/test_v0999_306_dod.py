@@ -158,6 +158,7 @@ def test_a_whole_task_with_her_yes(dod, monkeypatch, tmp_path):
         assert q["kind"] == "pay" and q["amount"] == 549 and q["currency"] == "INR" and q["hash"]
         titles = [s["title"] for s in t["steps"]]
         assert "Opening the restaurant's website" in titles and "Asked you" in titles
+        assert "Starting its computer" in titles, "she is told why the first step waits"
         # her yes is bound to the question she saw
         bad = c.post(f"/api/dod/tasks/{tid}/answer", json={"id": q["id"], "hash": "0" * 16, "choice": "yes"})
         assert bad.status_code == 409
