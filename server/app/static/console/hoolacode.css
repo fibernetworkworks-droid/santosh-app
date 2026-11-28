@@ -1286,3 +1286,27 @@ html,body{background:var(--bg)}
 
 /* v0.999 an agent's own copy: its buttons sit under the line */
 .hcd-wtb{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+
+/* v0.999 THE FEED LIKE CLAUDE CODE: a fold names what was done, screenshots at the end of its line, the files card under
+   the answer, and Hoola Code's words in the plain sans Claude Code uses (the main chat keeps its serif) */
+#app .hcd .hck,#app .hcd{--hck-fr:var(--hck-fb)}
+#app .hcd-fh .hcd-link{border:0;background:transparent;padding:2px 4px;font:500 13px/1.4 var(--fd);color:var(--mut);text-decoration:none;cursor:pointer}
+#app .hcd-fh .hcd-link:hover,#app .hcd-fh .hcd-link:focus-visible{color:var(--ink)}
+#app .hcd-say,#app .hcd-col>.hcd-say{font-family:var(--fd)}
+#app .hcd .hcd-wgrp>.hck-fold>summary{display:flex;width:100%;box-sizing:border-box}
+#app .hcd .hcd-wstat{font:500 12px/1 var(--mono);font-variant-numeric:tabular-nums}
+#app .hcd .hcd-wstat em{font-style:normal}
+#app .hcd-thumbs{display:inline-flex;align-items:center;gap:4px;margin-left:auto;padding-left:12px}
+#app .hcd-thumbs img{width:22px;height:22px;object-fit:cover;object-position:top;border:1px solid var(--line);border-radius:4px;background:var(--sunk)}
+#app .hcd-thumbs em{font-style:normal;font-size:12px;color:var(--mut);margin-right:2px}
+#app .hcd-files{margin:14px 0 6px;max-width:680px;border:1px solid var(--line);border-radius:12px;background:var(--bg);overflow:hidden}
+#app .hcd-fh{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13.5px}
+#app .hcd-fh b{font-weight:600}
+#app .hcd-files ul{list-style:none;margin:0;padding:4px 0}
+#app .hcd-files li{display:flex;align-items:center;gap:10px;padding:6px 14px;font-size:13.5px}
+#app .hcd-fic{width:18px;color:var(--mut);font:500 12px/1 var(--mono);text-align:center}
+#app .hcd-fnm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono);font-size:12.5px}
+#app .hcd-files em{font:500 12px/1 var(--mono);font-style:normal;font-variant-numeric:tabular-nums}
+#app .hcd-fall{display:flex;align-items:center;gap:8px;width:100%;padding:9px 14px;border:0;border-top:1px solid var(--line);background:transparent;font:500 13px/1.4 var(--fd);color:var(--ink);cursor:pointer;text-align:left}
+#app .hcd-fall span{flex:1}
+#app .hcd-fall:hover,#app .hcd-fall:focus-visible{background:var(--sunk)}
