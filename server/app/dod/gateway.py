@@ -112,6 +112,9 @@ def config_for(token: str, key: str, model: str, mcp_token: str = "", mcp_url: s
         "telemetry": {"enabled": False},
         "env": {"vars": {"OPENROUTER_API_KEY": key}},
         "agents": {"defaults": {"model": {"primary": model}}},
+        # Chrome cannot start its own sandbox inside Docker's default limits (seen on the real -browser image: "No usable
+        # sandbox"); her container is the wall around the browser instead
+        "browser": {"noSandbox": True},
         # her container is the wall: commands run inside it, with no way to other users or Hoola's server
         "tools": {"exec": {"mode": "full"},
                   # OpenClaw hides most tool schemas behind its Tool Search; Hoola's own tools (hoola_step / hoola_ask /

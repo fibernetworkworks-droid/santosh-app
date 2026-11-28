@@ -114,7 +114,7 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
             return (f"{name}: task in progress",
                     f"{title} — {p['milestone']} steps done" + (f". Now: {stage}" if stage else ""))
         return None
-    if kind == "dod_ask":   # v0.999.307 HOOLA DOD: her coworker stopped and needs her yes / answer
+    if kind == "dod_ask":   # v0.999.308 HOOLA DOD: her coworker stopped and needs her yes / answer
         q = str(p.get("question") or "")[:300]
         return (f"{p.get('name') or 'Your coworker'} needs your OK" if p.get("kind") in ("pay", "send", "delete", "book")
                 else f"{p.get('name') or 'Your coworker'} has a question", q or "Open Hoola DOD")

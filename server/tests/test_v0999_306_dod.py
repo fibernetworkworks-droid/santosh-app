@@ -346,13 +346,14 @@ def test_the_page_in_a_real_browser(br):
         ctx.close()
 
 
-# ------------------------------------------------------------------ v0.999.307: what a real OpenClaw Gateway taught us + the pending work
+# ------------------------------------------------------------------ v0.999.308: what a real OpenClaw Gateway taught us + the pending work
 def test_the_config_a_real_gateway_accepts():
     """Found by running the official image: it refuses to start without gateway.mode, refuses a state folder others can
     write to, and hides client / MCP tools behind its Tool Search unless they are excluded from it."""
     from app.dod.gateway import config_for
     c = config_for("tok", "sk-or-x", "openrouter/x", "mcp-tok", "http://172.18.0.1:8077/mcp/dod")
     assert c["gateway"]["mode"] == "local"
+    assert c["browser"]["noSandbox"] is True, "Chrome cannot start its own sandbox inside Docker (seen on the -browser image)"
     ts = c["tools"]["toolSearch"]
     assert {"source": "client"} in ts["exclude"] and {"source": "mcp", "name": "hoola__*"} in ts["exclude"]
     srv = c["mcp"]["servers"]["hoola"]
