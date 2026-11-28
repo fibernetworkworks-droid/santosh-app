@@ -43,35 +43,40 @@
     results: I('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
     recipes: I('<path d="M5 4h14v16H5z"/><path d="M9 8h6M9 12h6"/>'), saved: I('<path d="M6 3h12v18l-6-4-6 4z"/>'),
     back: I('<path d="M15 6l-6 6 6 6"/>')};
-  const PH = {web: 'a website for my sweet shop', image: 'a Diwali sale poster, a bit premium, in gold',
-    script: 'a 30 second reel script for a coaching class', app: 'an app for my kirana shop: order, home delivery, UPI',
-    video: 'an 8 second clip of chai being poured, slow push in, for a reel',
-    music: 'a 15 second jingle for my sweet shop, female voice, Hinglish',
-    marketing: 'a WhatsApp message to my regular customers: flat 20% off till 15 Nov',
-    doc: 'a quotation PDF for ABC Industries: AMC for 10 ACs Rs 45,000',
-    code: 'fix the bug: the cart total shows Rs 0 after a coupon, in server/app/shop.py',
-    research: 'compare the cheapest couriers from Akola to Pune for 5 kg parcels, latest prices',
+  const PH = {web: 'a website for my bakery, with the menu and a way to order a cake',
+    image: 'a poster for our spring sale, a bit premium, soft green and gold',
+    script: 'a 30-second reel script for a language school',
+    app: 'an app for my grocery shop: order, home delivery, pay on the phone',
+    video: "a 10-second video of my bakery's morning bread coming out of the oven, warm and slow",
+    music: 'a 15-second jingle for my coffee shop, a warm female voice',
+    marketing: 'a message to my regular customers: 20% off everything this weekend',
+    doc: 'a quotation for a yearly maintenance contract on 10 air conditioners',
+    code: 'fix the bug: the cart total shows 0 after a coupon, in server/app/shop.py',
+    research: 'compare the cheapest couriers for 5 kg parcels between two cities, latest prices',
     data: 'in sales_october.xlsx, which 5 products made the most profit? a chart by product',
-    aiapp: 'an AI for my salon that takes bookings on WhatsApp, open 10 am to 8 pm, closed Tuesday',
-    chat: 'a polite reply to a customer who says the cake came 40 minutes late'};
+    aiapp: 'an AI for my salon that takes bookings, open 10 am to 8 pm, closed on Tuesday',
+    chat: 'a polite reply to a customer whose cake came 40 minutes late'};
   const RUN = {web: ['hoola.prompt.toWeb', '/console/web', 'Opens the Web Studio with this in its box. Nothing is built until you press Build there.'],
     app: ['hoola.prompt.toApp', '/console/apps', 'Opens the App Studio with this in its box. Nothing is built until you press Build there.'],
     code: ['', '/console/code', 'Opens Hoola Code with this in its box. Nothing starts until you press Send there.']};
   const CHAT_NOTE = 'Puts this in the chat box. Nothing is sent until you press Send; a paid job shows its price first.';
-  const st = {secs: [], known: [], section: '', text: '', view: null, pack: null, savedId: '', mine: null, fill: null, cmp: null, ready: null, recipe: null, q: '', rsec: '', shelf: 'hoola', wq: '', wgroup: '', wkind: '', wpage: 1, wfill: null, paste: null};
+  const st = {secs: [], known: [], section: '', text: '', view: null, pack: null, savedId: '', mine: null, fill: null, cmp: null, ready: null, recipe: null, q: '', rsec: '', shelf: 'hoola', wq: '', wgroup: '', wfam: '', wkind: '', wsort: 'loved', wpage: 1, wfill: null, paste: null, lib0: null, libEl: '', mcat: '', adapted: null};
 
+  /* the Hoola Orbit mark (static/console/mark.js), drawn in the accent colour */
+  const MARK = '<svg class="hp-mark" viewBox="20 20 60 60" aria-hidden="true"><g fill="currentColor"><path d="M31.50 27.82A28.88 28.88 0 0 1 72.18 68.50L67.95 64.28A23.41 23.41 0 0 0 35.72 32.05Z"/><path d="M68.50 72.18A28.88 28.88 0 0 1 27.82 31.50L32.05 35.72A23.41 23.41 0 0 0 64.28 67.95Z"/><path d="M38.26 34.58A19.38 19.38 0 0 1 65.42 61.74L62.03 58.35A15.12 15.12 0 0 0 41.65 37.97Z"/><path d="M61.74 65.42A19.38 19.38 0 0 1 34.58 38.26L37.97 41.65A15.12 15.12 0 0 0 58.35 62.03Z"/><path d="M22 22L51.77 48.23L78 78L48.23 51.77Z"/><circle cx="50" cy="50" r="9.58"/></g></svg>';
+  const CHEV = I('<path d="M6 9l6 6 6-6"/>'), GRID = I('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>'),
+    ARROW = I('<path d="M5 12h14M13 6l6 6-6 6"/>'), HEART = I('<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>'),
+    SEARCH = I('<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>'), PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 4.5v15l13-7.5z"/></svg>',
+    SOUND = I('<path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/>');
+  const TOPS = ['library', 'recipes', 'saved', 'results', 'learn'];
   function shell(active, body) {
-    const nav = (key, hash, label, icon) => `<a class="hp-nav" href="${hash}" ${active === key ? 'aria-current="page"' : ''}>${ICON[icon || key]}<span>${esc(label)}</span></a>`;
-    $('#hp').innerHTML = `<div class="hp"><nav class="hp-side" aria-label="Hoola Prompting">
-        <div class="hp-brand"><img src="/static/hoola-icon-192.png" alt=""><span>Hoola Prompting</span></div>
-        ${nav('home', '#/', 'Home')}
-        <div class="hp-sep">Make a prompt for</div>
-        ${st.secs.map(s => nav(s.key, '#/s/' + s.key, s.label, s.key)).join('')}
-        <div class="hp-sep">Library</div>
-        ${nav('recipes', '#/recipes', 'Recipes')}${nav('saved', '#/saved', 'My prompts')}${nav('learn', '#/learn', 'Learn')}${nav('results', '#/results', 'Results')}
-        <div class="hp-grow"></div>
-        <a class="hp-nav" href="/console/">${ICON.back}<span>Back to the console</span></a>
-      </nav><main class="hp-main" id="hpMain"><div class="hp-wrap">${body}</div></main></div>`;
+    const on = TOPS.includes(active) ? active : 'home';
+    const nav = (key, hash, label) => `<a class="hp-nav" href="${hash}" ${on === key ? 'aria-current="page"' : ''}>${esc(label)}</a>`;
+    $('#hp').innerHTML = `<div class="hp"><header class="hp-bar">
+        <a class="hp-brand" href="#/" aria-label="Hoola Prompting home">${MARK}<span>Prompting</span></a>
+        <nav class="hp-navs" aria-label="Hoola Prompting">${nav('home', '#/', 'Make a prompt')}${nav('library', '#/library', 'Library')}${nav('recipes', '#/recipes', "Hoola's starters")}${nav('saved', '#/saved', 'My prompts')}${nav('results', '#/results', 'Results')}${nav('learn', '#/learn', 'Learn')}</nav>
+        <span class="hp-sp"></span><a class="hp-back" href="/console/">${ICON.back}<span>Back to Hoola chat</span></a>
+      </header><main class="hp-main" id="hpMain"><div class="hp-wrap">${body}</div></main></div>`;
   }
   function seg() {
     return `<span class="hp-seg" role="group" aria-label="What are you making?">${[['', 'Auto'], ...st.secs.map(s => [s.key, s.label])]
@@ -80,24 +85,47 @@
   const cards = items => items.map(r => `<button type="button" class="hp-card" data-recipe="${esc(r.id)}"><b>${esc(r.title)}</b><span>${esc(r.makes || '')}${r.community ? esc(' · by ' + (r.by || 'a Hoola user')) : ''}</span>
       <i><span class="hp-tag">${esc(r.world ? r.kind_label : (st.secs.find(s => s.key === r.section) || {label: r.section}).label)}</span> ${r.safety ? '<span class="hp-tag hp-warn">Copy only</span> ' : r.use === 'fill' ? '<span class="hp-tag hp-long">Long</span> ' : ''}${r.kept ? `<span class="hp-kept">kept ${r.kept.kept} of ${r.kept.of} times</span> ` : ''}${r.blanks && r.blanks.length ? esc(r.blanks.length + ' blank' + (r.blanks.length > 1 ? 's' : '') + ' to fill') : 'ready to use'}</i></button>`).join('');
 
-  /* ---------- home / a section ---------- */
-  async function home(section) {
-    st.section = section || '';
-    const sec = st.secs.find(s => s.key === section);
-    const [rec, saved] = await Promise.all([api('GET', '/api/prompting/recipes?section=' + encodeURIComponent(section || '')).catch(() => ({items: []})),
-      api('GET', '/api/prompting/saved' + (section ? '?section=' + encodeURIComponent(section) : '')).catch(() => ({items: []}))]);
-    shell(section || 'home', `<section class="hp-hero"><h1>${sec ? esc('A prompt for ' + sec.makes) : 'What do you want to make?'}</h1>
-        <p>Write it roughly, in Hinglish or English. Hoola shows what it understood, fills in what it knows about your business, asks only what is missing, and writes the prompt the right way for the tool that will make it.</p>
-        <form class="hp-ask" id="hpAsk"><label class="hp-lab" for="hpText" style="position:absolute;left:-9999px">Your rough idea</label>
-          <textarea id="hpText" maxlength="2000" placeholder="${esc(PH[sec ? sec.key : ''] || PH.image)}">${esc(st.text)}</textarea>
-          <div class="hp-askrow">${sec ? '' : seg()}<span class="hp-sp"></span><button class="hp-b pri lg" type="submit">Improve my prompt</button></div></form></section>
-      <div class="hp-h2"><h2>Start from a recipe</h2><span>Hoola's starters - fill the blanks</span><span class="hp-sp"></span><a class="hp-b sm" href="#/recipes">All recipes</a></div>
-      <div class="hp-grid">${cards(section ? (rec.items || []).slice(0, 6) : st.secs.flatMap(x => (rec.items || []).filter(r => r.section === x.key).slice(0, 2))) || '<p class="hp-empty">No recipes here yet.</p>'}</div>
-      ${(saved.items || []).length ? `<div class="hp-h2"><h2>Continue</h2><span>your saved prompts</span></div><div class="hp-rows">${rows(saved.items.slice(0, 4))}</div>` : ''}
-      <div class="hp-h2"><h2>What Hoola knows about your business</h2><span>used to fill blanks, always shown to you</span></div>
-      ${st.known.length ? `<div class="hp-known">${st.known.map(k => `<div><b>${esc(k.label)}</b><span>${esc(k.value)}</span></div>`).join('')}</div>`
-        : '<p class="hp-empty">Nothing yet. Add your business name and colours in Create &gt; Brand kit, and Hoola will fill them in for you.</p>'}`);
+  /* ---------- home: Make a prompt (one box, every category) + the Ready prompt library below ---------- */
+  const fmt = n => Number(n || 0).toLocaleString('en');
+  async function lib0() {          // the families (53 categories in 8) and kinds, read once
+    if (!st.lib0) st.lib0 = await api('GET', '/api/prompting/world?per=1').catch(() => ({families: [], kinds: [], all: 0}));
+    return st.lib0;
+  }
+  const catOf = key => { for (const f of (st.lib0 || {}).families || []) { const c = f.cats.find(x => x.key === key); if (c) return {...c, family: f.key, flabel: f.label}; } return null; };
+  function picker() {
+    const fams = (st.lib0 || {}).families || [];
+    return `<div class="hp-pop" id="hpPop" role="dialog" aria-label="Choose a category" hidden>
+        <button type="button" class="hp-popany" data-mcat="">Any category <span>Hoola works it out from your words</span></button>
+        ${fams.map(f => `<div class="hp-popf"><div class="hp-popn">${esc(f.label)}</div><div class="hp-chips">${f.cats.map(c => `<button type="button" class="hp-chip" data-mcat="${esc(c.key)}">${esc(c.label)} <span>${fmt(c.n)}</span></button>`).join('')}</div></div>`).join('')}</div>`;
+  }
+  function everyCat() {
+    const fams = (st.lib0 || {}).families || [], n = fams.reduce((a, f) => a + f.cats.length, 0);
+    return fams.length ? `<div class="hp-cats"><div class="hp-catsh"><h2>Every category</h2><span>${n} categories · tap one to start from it</span></div>
+        ${fams.map(f => `<div class="hp-fam"><div class="hp-famn">${esc(f.label)}</div><div class="hp-chips">${f.cats.map(c => `<a class="hp-chip" href="#/m/${esc(c.key)}">${esc(c.label)} <span>${fmt(c.n)}</span></a>`).join('')}</div></div>`).join('')}</div>` : '';
+  }
+  async function home(section, catKey) {
+    await lib0();
+    const cat = catKey ? catOf(catKey) : null;
+    st.section = cat ? cat.section : (section || ''); st.mcat = cat ? cat.key : '';
+    const sec = st.secs.find(s => s.key === st.section);
+    const label = cat ? cat.label : 'Any category';
+    shell('home', `<section class="hp-hero" id="hpMake">
+        ${cat ? `<nav class="hl-crumb" aria-label="Where you are"><a href="#/">Make a prompt</a>${I('<path d="M9 6l6 6-6 6"/>')}<span>${esc(cat.label)}</span></nav>` : ''}
+        <h1>${cat ? esc('A prompt for ' + cat.label) : section && sec ? esc('A prompt for ' + sec.makes) : 'What should we make a prompt for?'}</h1>
+        <p>Say it in your own words, in any language. Hoola asks only what is missing and writes the prompt for the tool that will make it.</p>
+        <form class="hp-ask" id="hpAsk"><label class="hp-lab" for="hpText" style="position:absolute;left:-9999px">Your idea</label>
+          <textarea id="hpText" maxlength="2000" placeholder="${esc(PH[st.section] || PH.video)}">${esc(st.text)}</textarea>
+          <div class="hp-askrow"><button type="button" class="hp-pick" id="hpPick" aria-haspopup="dialog" aria-expanded="false" aria-controls="hpPop">${GRID}<span>${esc(label)}</span>${CHEV}</button>
+            ${cat ? `<a class="hp-b sm ghost" href="#/" aria-label="Clear the category">Clear</a>` : ''}
+            <span class="hp-sp"></span><button class="hp-b pri lg" type="submit">Make my prompt ${ARROW}</button></div>
+          ${picker()}</form>
+        ${cat ? `<div class="hp-strip"><div class="hp-catsh"><h2>Or start from a ready ${esc(cat.label)} prompt</h2><button type="button" class="hp-link" data-wlib="${esc(cat.key)}" data-wfam="${esc(cat.family)}">All ${fmt(cat.n)} ${ARROW}</button></div><div class="hl-row" id="hpCatRow"><p class="hp-empty">Loading…</p></div></div>` : everyCat()}
+      </section>
+      ${cat ? '' : '<section class="hl" id="hpLib" aria-label="Ready prompt library"></section>'}`);
     $('#hpText').focus();
+    if (cat) { const r = await api('GET', `/api/prompting/world?group=${encodeURIComponent(cat.key)}&sort=media&per=10`).catch(() => ({items: []}));
+      const row = $('#hpCatRow'); if (row) row.innerHTML = (r.items || []).map(libCard).join('') || '<p class="hp-empty">No ready prompts here yet.</p>'; }
+    else await library($('#hpLib'));
   }
   const rows = items => items.map(p => `<div class="hp-rowi"><div><b>${esc(p.title)}</b><span>${esc(p.prompt)}</span></div>
       <span class="hp-tag">${esc((st.secs.find(s => s.key === p.section) || {label: p.section}).label)}</span>
@@ -311,10 +339,10 @@
     const btn = document.querySelector('#hpAsk [type=submit], #hpAgain'); if (btn) { btn.disabled = true; btn.textContent = 'Reading…'; }
     try {
       const pack = await api('POST', '/api/prompting/understand', {text, section: section || ''});
-      if (pack.choose_section) { toast('Choose what you are making: ' + st.secs.map(s => s.label).join(', ') + '.'); if (btn) { btn.disabled = false; btn.textContent = 'Improve my prompt'; } return; }
+      if (pack.choose_section) { toast('Pick a category so Hoola knows what you are making.'); openPick(true); if (btn) { btn.disabled = false; btn.innerHTML = 'Make my prompt ' + ARROW; } return; }
       st.pack = pack; if (!keep) st.savedId = '';   // re-reading a SAVED prompt's words keeps it the same saved prompt (P7: a new version)
       go('#/w');
-    } catch (e) { toast(e.message, true); if (btn) { btn.disabled = false; btn.textContent = btn.id === 'hpAgain' ? 'Read my words again' : 'Improve my prompt'; } }
+    } catch (e) { toast(e.message, true); if (btn) { btn.disabled = false; if (btn.id === 'hpAgain') btn.textContent = 'Read my words again'; else btn.innerHTML = 'Make my prompt ' + ARROW; } }
   }
   /* NATIJA KHATA: tell the ledger a prompt was taken out (shape only). Never blocks her. */
   function hand(how) {
@@ -336,11 +364,11 @@
   }
 
   /* ---------- recipes ---------- */
-  const shelfSeg = () => `<span class="hp-seg" role="group" aria-label="Shelf">${[['hoola', "Hoola's starters"], ['world', 'World prompts']].map(([k, l]) => `<button type="button" data-shelf="${k}" aria-pressed="${st.shelf === k}">${l}</button>`).join('')}</span>`;
+  const shelfSeg = () => `<span class="hp-seg" role="group" aria-label="Shelf">${[['hoola', "Hoola's starters"], ['world', 'World prompts library']].map(([k, l]) => `<button type="button" data-shelf="${k}" aria-pressed="${st.shelf === k}">${l}</button>`).join('')}</span>`;
   async function recipes() {
-    if (st.shelf === 'world') return worldShelf();
+    if (st.shelf === 'world') { st.shelf = 'hoola'; go('#/library'); return; }
     const r = await api('GET', `/api/prompting/recipes?section=${encodeURIComponent(st.rsec)}&q=${encodeURIComponent(st.q)}`).catch(e => { toast(e.message, true); return {items: []}; });
-    shell('recipes', `<div class="hp-top"><h1>Recipes</h1><span class="hp-sp"></span>${shelfSeg()}</div>
+    shell('recipes', `<div class="hp-top"><h1>Hoola's starters</h1><span class="hp-sp"></span>${shelfSeg()}</div>
       <form class="hp-find" id="hpFind"><input type="search" id="hpQ" value="${esc(st.q)}" placeholder="Search: poster, reel, salon, Diwali, bakery…" aria-label="Search recipes">
         <span class="hp-seg" role="group" aria-label="Kind">${[['', 'All'], ...st.secs.map(s => [s.key, s.label])].map(([k, l]) => `<button type="button" data-rsec="${esc(k)}" aria-pressed="${st.rsec === k}">${esc(l)}</button>`).join('')}</span>
         <button class="hp-b" type="submit">Search</button></form>
@@ -349,32 +377,116 @@
       <div id="hpComm"></div>`);
     communityBox().catch(() => null);
   }
-  /* ---------- World prompts: the prompts.chat library (CC0), after Hoola's own checks ---------- */
-  async function worldShelf() {
-    const r = await api('GET', `/api/prompting/world?q=${encodeURIComponent(st.wq)}&group=${encodeURIComponent(st.wgroup)}&kind=${encodeURIComponent(st.wkind || '')}&page=${st.wpage}`).catch(e => { toast(e.message, true); return {items: [], groups: [], kinds: []}; });
-    const src = r.source || {};
-    shell('recipes', `<div class="hp-top"><h1>Recipes</h1><span class="hp-sp"></span>${shelfSeg()}</div>
-      ${r.on === false ? '<p class="hp-empty">World prompts are switched off.</p>' : `
-      <form class="hp-find" id="hpWFind"><input type="search" id="hpWQ" value="${esc(st.wq)}" placeholder="Search: interviewer, travel guide, poster, story…" aria-label="Search world prompts">
-        <select id="hpWCat" aria-label="Category"><option value="">All categories</option>${(r.groups || []).map(g => `<option value="${esc(g.key)}"${st.wgroup === g.key ? ' selected' : ''}>${esc(g.label)} (${esc(g.n)})</option>`).join('')}</select>
-        <button class="hp-b" type="submit">Search</button></form>
-      <span class="hp-seg hp-wseg" role="group" aria-label="Kind">${[{key: '', label: 'All'}, ...(r.kinds || [])].map(g => `<button type="button" data-wkind="${esc(g.key)}" aria-pressed="${(st.wkind || '') === g.key}">${esc(g.label)}${g.n ? ' ' + esc(g.n) : ''}</button>`).join('')}</span>
-      <p class="hp-lead">${esc(r.total)} prompt${r.total === 1 ? '' : 's'}${st.wq || st.wgroup || st.wkind ? ' match' : ''}. Written by people around the world, in their own words. Fill the blanks you know - anything you leave empty stays open, never a made-up value.</p>
-      <div class="hp-grid">${cards(r.items || []) || '<p class="hp-empty">Nothing matches. Try one word, like "interview" or "story".</p>'}</div>
-      ${(r.pages || 1) > 1 ? `<div class="hp-acts">${st.wpage > 1 ? '<button type="button" class="hp-b sm" data-wpage="-1">Previous</button>' : ''}<span class="hp-tag">Page ${esc(r.page)} of ${esc(r.pages)}</span>${st.wpage < r.pages ? '<button type="button" class="hp-b sm" data-wpage="1">Next</button>' : ''}</div>` : ''}
-      <p style="margin-top:16px;color:var(--dim);font-size:13px">All ${esc(src.kept || 0)} prompts from <a href="${esc(src.url || '')}" target="_blank" rel="noopener">${esc(src.name || 'prompts.chat')}</a>, ${esc(src.licence || 'public domain')}, in their own categories and languages. Short ones open in your workbench; long ones are filled here and copied. Prompts Hoola's checks flagged are shown and can be copied, but Hoola does not run them.</p>`}`);
+  /* ---------- the Ready prompt library: every prompts.chat prompt (CC0), by its own categories ---------- */
+  const ini = n => (String(n || '?').trim().charAt(0) || '?').toUpperCase();
+  function libCard(c) {
+    const m = c.media, tag = esc(c.kind_label || 'Text');
+    const top = m && m.type !== 'audio'
+      ? `<span class="hl-media${m.type === 'video' ? ' vid' : ''}"><img loading="lazy" decoding="async" src="${esc(m.thumb)}" alt=""><span class="hl-kind">${tag}</span>${m.type === 'video' ? `<span class="hl-play">${PLAY}Video</span>` : ''}</span>`
+      : m ? `<span class="hl-media snd">${SOUND}<span class="hl-kind">${tag}</span></span>`
+      : `<span class="hl-quote"><span class="hl-kind">${tag}</span><span class="hl-q">${esc(c.excerpt || '')}</span></span>`;
+    return `<button type="button" class="hp-card hl-card" data-recipe="${esc(c.id)}">${top}<span class="hl-body"><span class="hl-cat">${esc(c.group_label)}</span>
+        <b>${esc(c.title)}</b>${c.desc ? `<span class="hl-desc">${esc(c.desc)}</span>` : ''}
+        <span class="hl-meta"><span class="hl-av" aria-hidden="true">${esc(ini(c.name || c.by))}</span><span class="hl-by">${esc(c.name || c.by || 'prompts.chat')}</span>
+          ${c.safety ? '<span class="hp-tag hp-warn">Copy only</span>' : c.use === 'fill' ? '<span class="hp-tag hp-long">Long</span>' : ''}
+          ${c.votes ? `<span class="hl-votes" aria-label="${esc(c.votes)} likes">${HEART}${esc(c.votes)}</span>` : ''}</span></span></button>`;
+  }
+  const libQuery = page => `/api/prompting/world?q=${encodeURIComponent(st.wq)}&group=${encodeURIComponent(st.wgroup)}&family=${encodeURIComponent(st.wfam || '')}&kind=${encodeURIComponent(st.wkind || '')}&sort=${encodeURIComponent(st.wsort || 'loved')}&page=${page}&per=24`;
+  async function library(el) {
+    if (!el) return;
+    st.libEl = '#' + el.id;
+    const r = await api('GET', libQuery(1)).catch(e => { toast(e.message, true); return {items: [], families: [], kinds: []}; });
+    st.wpage = 1; st.wlast = r;
+    if (r.on === false) { el.innerHTML = '<p class="hp-empty">The prompt library is switched off.</p>'; return; }
+    const fams = r.families || [], cat = st.wgroup ? catOf(st.wgroup) : null, fam = fams.find(f => f.key === st.wfam);
+    const ncat = fams.reduce((a, f) => a + f.cats.length, 0);
+    const title = st.wq ? `Results for “${st.wq}”` : cat ? cat.label : fam ? fam.label : {new: 'Newest prompts', media: 'With pictures and videos first'}[st.wsort] || 'Most loved prompts';
+    el.innerHTML = `<div class="hl-head"><div class="hl-hl"><h2>Ready prompt library</h2>
+          <p>${fmt(r.all)} prompts written by people around the world, in ${ncat} categories and many languages. Free to use, from <a href="${esc((r.source || {}).url || 'https://prompts.chat')}" target="_blank" rel="noopener">prompts.chat</a> (CC0).</p></div>
+        <form class="hl-find" id="hpWFind" role="search"><label class="hl-search">${SEARCH}<span class="hp-lab" style="position:absolute;left:-9999px">Search prompts</span>
+            <input type="search" id="hpWQ" value="${esc(st.wq)}" placeholder="Search ${fmt(r.all)} prompts" aria-label="Search prompts"></label>
+          <select id="hpWSort" aria-label="Order">${[['loved', 'Most loved'], ['media', 'Pictures and videos first'], ['new', 'Newest']].map(([k, l]) => `<option value="${k}"${(st.wsort || 'loved') === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
+          <button class="hp-b" type="submit">Search</button></form></div>
+      <div class="hl-kinds" role="group" aria-label="Kind">${[{key: '', label: 'All', n: r.all}, ...(r.kinds || [])].map(k => `<button type="button" data-wkind="${esc(k.key)}" aria-pressed="${(st.wkind || '') === k.key}">${esc(k.label)} <span>${fmt(k.n)}</span></button>`).join('')}</div>
+      <div class="hl-cols"><aside class="hl-rail" aria-label="Categories">
+          <button type="button" data-wfam="" data-wgroup="" aria-pressed="${!st.wfam && !st.wgroup}">All prompts <span>${fmt(r.all)}</span></button>
+          ${fams.map(f => `<button type="button" class="hl-fam" data-wfam="${esc(f.key)}" data-wgroup="" aria-pressed="${st.wfam === f.key && !st.wgroup}" aria-expanded="${st.wfam === f.key}">${esc(f.label)} <span>${fmt(f.total)}</span></button>
+            ${st.wfam === f.key ? `<div class="hl-sub">${f.cats.map(c => `<button type="button" data-wfam="${esc(f.key)}" data-wgroup="${esc(c.key)}" aria-pressed="${st.wgroup === c.key}">${esc(c.label)} <span>${fmt(c.n)}</span></button>`).join('')}</div>` : ''}`).join('')}
+        </aside>
+        <div class="hl-main"><div class="hl-sum"><h3>${esc(title)}</h3><span id="hlCount">Showing ${fmt(Math.min(24, r.total))} of ${fmt(r.total)}</span></div>
+          <div class="hl-grid" id="hlGrid">${(r.items || []).map(libCard).join('') || '<p class="hp-empty">Nothing matches. Try one word, like “interview” or “poster”.</p>'}</div>
+          ${(r.pages || 1) > 1 ? '<div class="hl-more"><button type="button" class="hp-b" id="hpWMore">Show more prompts</button></div>' : ''}
+          <p class="hl-foot">Pictures and videos are the ones each author made with their prompt. Prompts that Hoola's checks flag are marked “Copy only”: you can read and copy them, but Hoola does not run them.</p></div></div>`;
+  }
+  async function libMore(b) {
+    b.disabled = true; b.textContent = 'Loading…';
+    try { const r = await api('GET', libQuery(st.wpage + 1)); st.wpage = r.page;
+      $('#hlGrid').insertAdjacentHTML('beforeend', (r.items || []).map(libCard).join(''));
+      $('#hlCount').textContent = `Showing ${fmt(Math.min(st.wpage * 24, r.total))} of ${fmt(r.total)}`;
+      if (st.wpage >= (r.pages || 1)) b.parentNode.remove(); else { b.disabled = false; b.textContent = 'Show more prompts'; }
+    } catch (e) { toast(e.message, true); b.disabled = false; b.textContent = 'Show more prompts'; }
+  }
+  async function libPage() { await lib0(); shell('library', '<section class="hl hl-page" id="hpLib" aria-label="Ready prompt library"></section>'); await library($('#hpLib')); }
+  async function worldShelf() { const el = st.libEl && $(st.libEl); if (el) await library(el); else await libPage(); }
+  function bigMedia(m, title) {
+    if (!m) return '';
+    const body = m.type === 'video' ? `<video src="${esc(m.full)}" poster="${esc(m.thumb)}" controls muted autoplay loop playsinline preload="metadata" aria-label="${esc(title)}"></video>`
+      : m.type === 'audio' ? `<div class="hd-snd">${SOUND}<audio src="${esc(m.full)}" controls preload="none"></audio></div>`
+      : `<img src="${esc(m.full)}" alt="${esc(title)}">`;
+    return `<figure class="hd-media${m.type === 'video' ? ' vid' : ''}">${body}<figcaption>The author's own result with this prompt, as shared on prompts.chat.</figcaption></figure>`;
   }
   async function openWorld(id) {
+    await lib0();
     const r = await api('GET', '/api/prompting/world/' + encodeURIComponent(id));
-    st.recipe = r; st.wfill = null;
-    const btn = r.use === 'workbench' ? 'Use this prompt' : 'Fill it in';
-    shell('recipes', `<div class="hp-top"><a class="hp-b sm ghost" href="#/recipes">${ICON.back} Recipes</a><h1>${esc(r.title)}</h1><span class="hp-sp"></span><span class="hp-tag">${esc(r.kind_label)}</span><span class="hp-tag">${esc(r.group_label)}</span></div>
-      ${r.notes.length ? `<p class="hp-wnotes${r.safety ? ' hp-warn' : ''}">${r.safety ? "Hoola's checks flagged this prompt, so Hoola does not run it. You can still read and copy it. " : ''}Notes: ${esc(r.notes.join(' · '))}.</p>` : ''}
-      <pre class="hp-pre" tabindex="0" id="hpWText">${esc(r.text)}</pre>
-      <form class="hp-form" id="hpFill">${r.blanks.length ? `<p style="color:var(--mut)">Fill what you know. The example is the writer's; it is not used unless you type it.</p>
-        ${r.blanks.map(b => `<div><label for="bl_${esc(b.key)}">${esc(b.label)}</label><input id="bl_${esc(b.key)}" name="${esc(b.key)}" maxlength="120" placeholder="${esc(b.eg ? 'for example: ' + b.eg : '')}" autocomplete="off"></div>`).join('')}` : ''}
-        <div class="hp-acts">${r.use === 'workbench' || r.blanks.length ? `<button class="hp-b pri" type="submit">${btn}</button>` : ''}${r.use !== 'workbench' ? '<button type="button" class="hp-b" id="hpWCopy">Copy</button>' : ''}${r.use === 'fill' ? '<button type="button" class="hp-b ghost" id="hpWChat">Put in the Hoola chat</button>' : ''}</div></form>
-      <p style="margin-top:10px;color:var(--dim);font-size:13px">A prompt from prompts.chat${r.by ? esc(' by ' + r.by) : ''}, public domain${r.tags && r.tags.length ? esc(' · ' + r.tags.join(', ')) : ''}.${r.use === 'workbench' ? ' It opens in your workbench, where Hoola scores it and writes it for the tool.' : ''}</p>`);
+    st.recipe = r; st.wfill = null; st.adapted = null;
+    const fam = ((st.lib0 || {}).families || []).find(f => f.key === r.family);
+    const btn = r.use === 'workbench' ? (r.blanks.length ? 'Fill it in and open' : 'Use this prompt') : 'Fill it in';
+    const ol = r.outline || {parts: []};
+    const date = r.created ? new Date(r.created + 'T00:00:00Z').toLocaleDateString('en', {day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC'}) : '';
+    const say = {image: 'Change it, e.g. make it a winter scene in Oslo', video: 'Change it, e.g. Romans in Rome instead, and 15 seconds'}[r.kind] || 'Change it, e.g. for a small bakery, and shorter';
+    shell('library', `<nav class="hl-crumb" aria-label="Where you are"><a href="#/library">Ready prompt library</a>${I('<path d="M9 6l6 6-6 6"/>')}
+        ${fam ? `<button type="button" class="hp-link" data-wfam="${esc(fam.key)}" data-wgroup="" data-wgo="1">${esc(fam.label)}</button>${I('<path d="M9 6l6 6-6 6"/>')}` : ''}
+        <button type="button" class="hp-link" data-wfam="${esc(r.family)}" data-wgroup="${esc(r.group)}" data-wgo="1">${esc(r.group_label)}</button></nav>
+      <div class="hd${r.media ? '' : ' nomedia'}">${bigMedia(r.media, r.title)}
+          <section class="hd-prompt" aria-label="The prompt"><div class="hd-ph"><h2>The prompt</h2><span>${fmt(r.chars)} characters${ol.parts.length ? ' · ' + ol.parts.length + ' parts' : ''}</span></div>
+            ${ol.parts.length ? `${ol.lead ? `<p class="hd-lead">${esc(ol.lead)}</p>` : ''}${ol.parts.map(p => `<div class="hd-sec"><h4>${esc(p.head)}</h4><p>${esc(p.first)}</p></div>`).join('')}
+              <details class="hd-all"><summary>Show the whole prompt</summary><pre class="hp-pre" tabindex="0" id="hpWText">${esc(r.text)}</pre></details>`
+              : `<pre class="hp-pre" tabindex="0" id="hpWText">${esc(r.text)}</pre>`}
+          </section>
+        <aside class="hd-side" aria-label="About this prompt"><div class="hd-kind">${esc(r.kind_label)} · ${esc(r.group_label)}</div>
+          <h1>${esc(r.title)}</h1>
+          <div class="hd-by"><span class="hl-av lg" aria-hidden="true">${esc(ini(r.name || r.by))}</span><div><b>${esc(r.name || r.by || 'prompts.chat')}</b><span>on prompts.chat${date ? ' · ' + esc(date) : ''}</span></div>
+            ${r.votes ? `<span class="hl-votes" aria-label="${esc(r.votes)} likes">${HEART}${esc(r.votes)}</span>` : ''}</div>
+          ${r.desc ? `<p class="hd-desc">${esc(r.desc)}</p>` : ''}
+          ${(r.tags || []).length ? `<div class="hd-tags">${r.tags.map(t => `<span>${esc(t)}</span>`).join('')}</div>` : ''}
+          ${r.notes.length ? `<p class="hp-wnotes${r.safety ? ' hp-warn' : ''}">${r.safety ? "Hoola's checks flagged this prompt, so Hoola does not run it. You can still read and copy it. " : ''}Notes: ${esc(r.notes.join(' · '))}.</p>` : ''}
+          ${r.needs ? `<p class="hp-wnotes">This prompt starts from your own ${esc(r.needs)}: add it in the tool you use it in.</p>` : ''}
+          <div class="hd-box"><form class="hp-form" id="hpFill">${r.blanks.length ? `<p class="hd-fillh">Fill what you know. The example is the author's and is not used unless you type it.</p>
+              ${r.blanks.map(b => `<div><label for="bl_${esc(b.key)}">${esc(b.label)}</label><input id="bl_${esc(b.key)}" name="${esc(b.key)}" maxlength="120" placeholder="${esc(b.eg ? 'for example: ' + b.eg : '')}" autocomplete="off"></div>`).join('')}` : ''}
+              <div class="hd-acts">${r.use === 'workbench' || r.blanks.length ? `<button class="hp-b pri lg" type="submit">${btn} ${ARROW}</button>` : ''}
+                <button type="button" class="hp-b" id="hpWCopy">Copy</button>${r.use !== 'copy' ? '<button type="button" class="hp-b" id="hpWChat">Put in the Hoola chat</button>' : ''}</div></form>
+            ${r.use !== 'copy' ? `<form class="hd-mine" id="hpAdapt"><label for="hpAdaptQ">Make it yours</label><p>Say what to change. Hoola rewrites it and keeps the rest.</p>
+              <div class="hd-minerow"><input id="hpAdaptQ" maxlength="300" placeholder="${esc(say)}" autocomplete="off"><button class="hp-b acc" type="submit" aria-label="Rewrite it">${ARROW}</button></div></form><div id="hpAdapted" aria-live="polite"></div>` : ''}</div>
+          <p class="hd-src">A prompt from <a href="https://prompts.chat" target="_blank" rel="noopener">prompts.chat</a>${r.by ? esc(' by ' + (r.name || r.by)) : ''}, public domain (CC0).${r.use === 'workbench' ? ' It opens in your workbench, where Hoola scores it and writes it for the tool.' : r.use === 'fill' ? ' It is longer than a brief: fill it here, then copy it or put it in your Hoola chat.' : ''}</p>
+        </aside></div>
+      <section class="hd-more" aria-label="More like this"><div class="hp-catsh"><h2>More ${esc(r.group_label)} prompts</h2><button type="button" class="hp-link" data-wfam="${esc(r.family)}" data-wgroup="${esc(r.group)}" data-wgo="1">See all ${ARROW}</button></div><div class="hl-row" id="hpMore"></div></section>`);
+    const more = await api('GET', `/api/prompting/world?group=${encodeURIComponent(r.group)}&sort=media&per=11`).catch(() => ({items: []}));
+    const box = $('#hpMore'); if (box) box.innerHTML = (more.items || []).filter(x => x.id !== r.id).slice(0, 10).map(libCard).join('') || '<p class="hp-empty">No other prompts in this category.</p>';
+  }
+  async function adapt(change) {
+    const v = {}; document.querySelectorAll('#hpFill input').forEach(i => { v[i.name] = i.value.trim(); });
+    const box = $('#hpAdapted'), b = $('#hpAdapt [type=submit]'); b.disabled = true; box.innerHTML = '<p class="hd-wait">Hoola is rewriting it…</p>';
+    try { const r = await api('POST', '/api/prompting/world/' + encodeURIComponent(st.recipe.id) + '/adapt', {change, values: v});
+      st.adapted = r;
+      box.innerHTML = `<div class="hd-new"><div class="hd-ph"><h3>Your version</h3><span>${fmt(r.chars)} characters</span></div><pre class="hp-pre" tabindex="0">${esc(r.text)}</pre>
+        <div class="hd-acts">${r.fits_brief ? `<button type="button" class="hp-b pri" data-awb="1">Open in the workbench ${ARROW}</button>` : ''}<button type="button" class="hp-b" data-acopy="1">Copy</button><button type="button" class="hp-b" data-achat="1">Put in the Hoola chat</button></div></div>`;
+    } catch (e) { box.innerHTML = `<p class="hp-bad">${esc(e.message)}</p>`; }
+    b.disabled = false;
+  }
+  function openPick(open) {
+    const pop = $('#hpPop'), b = $('#hpPick'); if (!pop || !b) return;
+    const show = open === undefined ? pop.hidden : open; pop.hidden = !show; b.setAttribute('aria-expanded', String(show));
+    if (show) { const first = pop.querySelector('button'); if (first) first.focus(); }
   }
   async function worldFilled() {
     const v = {}; document.querySelectorAll('#hpFill input').forEach(i => { v[i.name] = i.value.trim(); });
@@ -511,10 +623,13 @@
   function go(hash) { if (location.hash === hash) route(); else location.hash = hash; }
   async function route() {
     const h = location.hash || '#/';
+    st.libEl = '';
     try {
       if (h === '#/w') { if (st.pack) bench(); else go('#/'); }
       else if (h === '#/ready') { if (st.ready) ready(); else go('#/recipes'); }
       else if (h === '#/recipes') await recipes();
+      else if (h === '#/library') await libPage();
+      else if (h.startsWith('#/m/')) await home('', decodeURIComponent(h.slice(4)));
       else if (h === '#/saved') await saved();
       else if (h === '#/c') { if (st.pack) await cmpStart(); else go('#/'); }
       else if (h === '#/cx') { if (st.cmp && st.cmp.b) await cmpShow(); else go('#/'); }
@@ -533,7 +648,8 @@
   document.addEventListener('submit', e => {
     if (e.target.id === 'hpAsk') { e.preventDefault(); understand($('#hpText').value, st.section); }
     if (e.target.id === 'hpOfferF') { e.preventDefault(); api('POST', '/api/prompting/community', {saved_id: st.savedId, title: (st.mine && st.mine.title) || '', by: e.target.by.value.trim()}).then(() => { toast('Offered. Hoola reads it before it goes on the shelf.'); return offerRow(); }).catch(er => toast(er.message, true)); return; }
-    if (e.target.id === 'hpWFind') { e.preventDefault(); st.wq = $('#hpWQ').value.trim(); st.wgroup = $('#hpWCat') ? $('#hpWCat').value : st.wgroup; st.wpage = 1; worldShelf(); return; }
+    if (e.target.id === 'hpWFind') { e.preventDefault(); st.wq = $('#hpWQ').value.trim(); st.wpage = 1; worldShelf(); return; }
+    if (e.target.id === 'hpAdapt') { e.preventDefault(); const q = $('#hpAdaptQ').value.trim(); if (q.length < 3) { toast('Say what to change, in a few words.', true); return; } adapt(q); return; }
     if (e.target.id === 'hpPaste') { e.preventDefault(); const v = {}; e.target.querySelectorAll('input').forEach(i => { v[i.name] = i.value.trim(); });
       api('POST', '/api/prompting/paste/fill', {text: st.paste.text, values: v}).then(f => { const p = st.paste; st.paste = null; return understand(f.text, p.section, false, true); }).catch(er => toast(er.message, true)); return; }
     if (e.target.id === 'hpFind') { e.preventDefault(); st.q = $('#hpQ').value.trim(); recipes(); }
@@ -548,15 +664,30 @@
       if (st.recipe && st.recipe.world && st.recipe.use !== 'workbench') { worldFilled().then(() => toast(st.recipe.blanks.length ? 'Filled in. Copy it when you are ready.' : 'Ready.')).catch(er => toast(er.message, true)); return; }
       const v = {}; e.target.querySelectorAll('input').forEach(i => { v[i.name] = i.value.trim(); }); useRecipe(st.recipe.id, v); }
   });
+  document.addEventListener('error', e => {       // a picture that could not be fetched: a plain tile, never a broken image
+    const t = e.target; if (!t || t.tagName !== 'IMG') return; const m = t.closest('.hl-media'); if (m) { m.classList.add('broken'); t.remove(); }
+  }, true);
+  document.addEventListener('click', e => { const pop = $('#hpPop'); if (pop && !pop.hidden && !e.target.closest('#hpPop') && !e.target.closest('#hpPick')) openPick(false); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#hpPop') && !$('#hpPop').hidden) { openPick(false); $('#hpPick').focus(); } });
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && e.target.id === 'hpText') { e.preventDefault(); $('#hpAsk').requestSubmit(); } });
   document.addEventListener('click', async e => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.sec !== undefined) { st.section = b.dataset.sec; document.querySelectorAll('[data-sec]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); return; }
     if (b.dataset.shelf) { st.shelf = b.dataset.shelf; recipes(); return; }
+    if (b.id === 'hpPick') { openPick(); return; }
+    if (b.dataset.mcat !== undefined) { openPick(false); const t = $('#hpText') ? $('#hpText').value : ''; st.text = t; go(b.dataset.mcat ? '#/m/' + b.dataset.mcat : '#/'); return; }
+    if (b.id === 'hpWMore') { libMore(b); return; }
+    if (b.dataset.wlib) { st.wgroup = b.dataset.wlib; st.wfam = b.dataset.wfam || ''; st.wq = ''; st.wkind = ''; go('#/library'); return; }
+    if (b.dataset.acopy) { copy(st.adapted.text); return; }
+    if (b.dataset.achat) { run({to: 'chat', text: st.adapted.text}); return; }
+    if (b.dataset.awb) { understand(st.adapted.text, st.recipe.section === 'chat' ? (st.recipe.make_in || '') : st.recipe.section, false, true); return; }
     if (b.id === 'hpWCopy') { worldFilled().then(t => copy(t)).catch(er => toast(er.message, true)); return; }
     if (b.id === 'hpWChat') { worldFilled().then(t => run({to: 'chat', text: t})).catch(er => toast(er.message, true)); return; }
     if (b.dataset.wkind !== undefined) { st.wkind = b.dataset.wkind; st.wpage = 1; st.wq = $('#hpWQ') ? $('#hpWQ').value.trim() : st.wq; worldShelf(); return; }
-    if (b.dataset.wgroup !== undefined) { st.wgroup = b.dataset.wgroup; st.wpage = 1; st.wq = $('#hpWQ') ? $('#hpWQ').value.trim() : st.wq; worldShelf(); return; }
+    if (b.dataset.wfam !== undefined) { const same = st.wfam === b.dataset.wfam && !b.dataset.wgroup && !st.wgroup && b.dataset.wfam;
+      st.wfam = same ? '' : b.dataset.wfam; st.wgroup = b.dataset.wgroup || ''; st.wpage = 1;
+      if (b.dataset.wgo) { st.wq = ''; st.wkind = ''; go('#/library'); return; }
+      st.wq = $('#hpWQ') ? $('#hpWQ').value.trim() : st.wq; worldShelf(); return; }
     if (b.dataset.wpage) { st.wpage = Math.max(1, st.wpage + Number(b.dataset.wpage)); worldShelf(); return; }
     if (b.id === 'hpPasteSkip') { const p = st.paste; st.paste = null; understand(p.text, p.section, false, true); return; }
     if (b.dataset.rsec !== undefined) { st.rsec = b.dataset.rsec; st.q = $('#hpQ') ? $('#hpQ').value.trim() : st.q; recipes(); return; }
@@ -611,7 +742,7 @@
       try { await api('DELETE', '/api/prompting/saved/' + encodeURIComponent(b.dataset.del)); toast('Deleted.'); route(); } catch (er) { toast(er.message, true); } }
   });
   document.addEventListener('change', async e => {
-    if (e.target.id === 'hpWCat') { st.wgroup = e.target.value; st.wpage = 1; st.wq = $('#hpWQ') ? $('#hpWQ').value.trim() : st.wq; worldShelf(); return; }
+    if (e.target.id === 'hpWSort') { st.wsort = e.target.value; st.wpage = 1; st.wq = $('#hpWQ') ? $('#hpWQ').value.trim() : st.wq; worldShelf(); return; }
     if (e.target.id !== 'hpLedger' && e.target.id !== 'hpShare') return;
     try { await api('PUT', '/api/prompting/ledger/prefs', e.target.id === 'hpLedger' ? {ledger: e.target.checked} : {share: e.target.checked}); toast('Saved.'); }
     catch (er) { e.target.checked = !e.target.checked; toast(er.message, true); }

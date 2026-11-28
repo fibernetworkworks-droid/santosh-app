@@ -120,7 +120,10 @@ def config_for(token: str, key: str, model: str, mcp_token: str = "", mcp_url: s
                   # OpenClaw hides most tool schemas behind its Tool Search; Hoola's own tools (hoola_step / hoola_ask /
                   # hoola_deliver / hoola_done, sent with each run) and her Hoola accounts (MCP hoola__*) stay directly
                   # visible to the model, so every step and every yes really goes through Hoola (seen on a real Gateway)
-                  "toolSearch": {"mode": "tools", "exclude": [{"source": "client"}, {"source": "mcp", "name": "hoola__*"}]}},
+                  # and so does the browser: browser jobs are most of her tasks, and on a real Gateway Tool Search had
+                  # hidden it from the model (docs/tools/tool-search.md: "exclude" keeps a tool model-visible)
+                  "toolSearch": {"mode": "tools", "exclude": [{"source": "client"}, {"source": "mcp", "name": "hoola__*"},
+                                                              {"source": "openclaw", "name": "browser"}]}},
     }
     if mcp_token and mcp_url:
         # her Hoola accounts (Gmail, Drive, Calendar, Sheets, Docs, her memory) as an MCP server - read-only tools,
@@ -153,6 +156,55 @@ def run_args(tenant: str, port: int, token: str) -> list[str]:
         "-v", f"{st}:/home/node/.openclaw",
         s.dod_image,
     ]
+
+
+def recover_args(tenant: str, *extra: str) -> list[str]:
+    """A one-off container on her state folder that runs OpenClaw's own `gateway recover-lock` (no network)."""
+    s = get_settings()
+    return ["run", "--rm", "--network", "none", "--user", f"{s.dod_uid}:{s.dod_uid}", "--entrypoint", "openclaw",
+            "-e", "HOME=/home/node", "-e", "OPENCLAW_STATE_DIR=/home/node/.openclaw",
+            "-e", "OPENCLAW_CONFIG_PATH=/home/node/.openclaw/openclaw.json",
+            "-v", f"{state_dir(tenant).resolve()}:/home/node/.openclaw", s.dod_image,
+            "gateway", "recover-lock", "--json", *extra]
+
+
+async def recover_lock(tenant: str) -> bool:
+    """Clear a lock left by a Gateway that was killed hard (a server reboot, the memory cap, a crash). Without this a
+    new start of her coworker waits on the dead owner and never comes up (seen on the real image: "cannot verify
+    Gateway ownership"). Uses OpenClaw's own two-step recovery (inspect, then confirm exactly that record), and only
+    when her container is not running - Hoola is the only owner of her state folder. Returns True when it cleared one."""
+    code, out = await DOCKER("inspect", "-f", "{{.State.Running}}", container_name(tenant), timeout=30)
+    if code == 0 and out.strip() == "true":
+        return False
+    if not (state_dir(tenant) / "openclaw.json").exists():
+        return False
+    # Chrome's own "profile in use" lock names the container that made it; a new container (after an image upgrade or
+    # a lost container) then cannot start the browser ("Chromium profile lock names another hostname", seen on the
+    # real image). Her container is stopped, so no Chrome is using the profile: the links can go.
+    import os
+    for prof in (state_dir(tenant) / "browser").glob("*/user-data"):
+        for name in ("SingletonLock", "SingletonSocket", "SingletonCookie"):
+            f = prof / name
+            if os.path.lexists(f):
+                try:
+                    f.unlink()
+                except OSError as e:
+                    log.warning("dod browser lock %s not removed: %s", f, e)
+    code, out = await DOCKER(*recover_args(tenant), timeout=120)
+    try:
+        info = json.loads(out[out.index("{"):out.rindex("}") + 1])
+    except ValueError:
+        log.warning("dod lock check for %s gave no answer: %s", tenant, out[-200:])
+        return False
+    if not info.get("present") or not info.get("confirmation"):
+        return False
+    code, out = await DOCKER(*recover_args(tenant, "--confirm", str(info["confirmation"])), timeout=120)
+    try:
+        done = code == 0 and bool(json.loads(out[out.index("{"):out.rindex("}") + 1]).get("recovered"))
+    except ValueError:
+        done = False
+    log.info("dod lock for %s %s", tenant, "cleared" if done else f"not cleared: {out[-200:]}")
+    return done
 
 
 def _own(path: Path) -> None:
@@ -326,6 +378,14 @@ async def ensure(tenant: str) -> tuple[str, str]:
                            encoding="utf-8")
             cfg.chmod(0o600)
             _own(st)   # OpenClaw runs as `node` (uid 1000) and refuses a state folder others can write to
+            if g.image and g.image != s.dod_image:
+                # the owner moved to a newer pinned image: a new container on the same state folder (her memory and
+                # logins stay); `docker start` would keep running the old image for ever
+                rc, run_now = await DOCKER("inspect", "-f", "{{.State.Running}}", container_name(tenant), timeout=30)
+                if not (rc == 0 and run_now.strip() == "true"):
+                    await DOCKER("rm", container_name(tenant), timeout=60)
+                    _save(tenant, image=s.dod_image)
+            await recover_lock(tenant)   # a coworker killed hard leaves a lock that blocks every new start
             code, out = await DOCKER("start", container_name(tenant), timeout=60)
             if code != 0:
                 await DOCKER("network", "create", "--driver", "bridge", network_name(tenant), timeout=30)

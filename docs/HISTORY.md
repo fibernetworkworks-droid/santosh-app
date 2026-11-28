@@ -14204,3 +14204,157 @@ Studio page: static/console/webstudio.js (readThread retries with backoff, gener
 Tests changed to the safe behaviour: test_v0808_wapas (tool restore refuses), test_v0623_koi_pata (tool moves_ok refuses), test_v122_hosting (tool takedown refuses).
 Left red, all red on unchanged HEAD too: test_v0623 test_version (stale pin), test_chatkit_webstudio x2, test_v0667_premium_studio::test_design_markers, test_v0777_chat_jaisa x2.
 NOT VERIFIED on her server.
+## v0.999.316 DEVSECOPS ENGINEER DESK (built as 0.999.313; their MEMORY GUARD EVERYWHERE, ALL WORLD PROMPTS and STUDIO FIXES took 0.999.313-315, all kept; owner: "DevSecOps Engineer same as finance desks")
+
+The DevSecOps Engineer gets its own section `/console/devsecops` and DevSecOps chat (Conversation kind `devsecops`, `dsochat.py`)
+on a NEW all-code engine `server/app/dsodesk/` (no model):
+- `workflows.py` - GitHub Actions files (`## path` chunks): third-party actions not pinned to a commit sha (actions/ and github/ trusted
+  by default, her own trusted owners added), script injection (PR title / body / branch / comment text inside run:), no or write-all
+  permissions, secrets for the whole workflow, self-hosted runners on pull requests, pull_request_target / workflow_run checking out
+  the PR head (runs PR code with secrets), curl | bash, no timeout, persist-credentials. Real line numbers.
+- `sbom.py` - CycloneDX and SPDX: licence family (strong / weak copyleft, permissive, unknown), her deny / allow lists with `*`; an OR
+  licence is denied only if every alternative is denied; no licence / version / purl; packages at several versions; ecosystems.
+- `deps.py` - package.json + lock (install scripts), requirements.txt, go.mod, Cargo.toml: not pinned, from git or a URL, extra
+  indexes, local replaces, names one edit off popular npm / PyPI packages (a swap counts as one).
+- `repo.py` - `gh api repos/O/R` and its branch protection JSON: reviews, stale reviews, code owners, status checks, force pushes,
+  deletion, admins, signed commits, secret scanning, Dependabot.
+- `metrics.py` - a findings CSV (id, severity, opened, closed, team): open, past due, median / p90 fix days, in-SLA share per severity
+  against her days, weekly backlog, age buckets, teams, the past-due list.
+- `ci.py` - `.github/workflows/pipeline-guard.yml` running the same line rules on her workflow files, failing at her level.
+
+Keys refused everywhere. NEW tool `devsecops_desk` (`agent/devsecops_tools.py`), registry 720. Hire key `devsecops_eng` (live, Software
+group). Console `dsodesk.html/.js/.css`. Tests `server/tests/test_dso_desk.py` (5, incl. a browser walk at 1440 and 390). Bugs caught
+while building: workflow line numbers one too high, a dual licence (MIT OR GPL) marked denied, a swapped-letter lookalike missed.
+
+NOT VERIFIED: on her server, with her own pipelines, SBOMs and repositories, or the guard workflow running on GitHub.
+
+
+## v0.999.317 CODE FLOW CHECK
+(owner: 'NOW CHECK ALL HOOLA CODE'). Probe: 14 asks through guess_kind / plan.assess / superpowers.pick / eccskills.for_words + the fixed prompt size. Files: server/app/devsahayak/service.py (_TESTS_PHRASE, _SYMPTOM, _BUILD_ASK, guess_kind), server/app/devsahayak/eccskills.py (WORDS). Tests: test_v0999_317_code_flow.py (16). NOT VERIFIED: no live coding round (needs the model key on her server: vps-ops code_card_hard).
+
+## v0.999.318 SRE DESK DEEPER (owner: "Site Reliability Engineer same as finance desks" -> "Rebuild it deeper")
+
+The Site Reliability Engineer desk already existed (v0.999.285, `/console/sre`). Asked for it again, the owner chose to make it
+deeper. Four new jobs and a CI tab, all in code, on the same desk, chat and tool:
+- `sredesk/oncall.py` - a page history (time, who, alert, ack_at): pages per person and a week, night pages in her time zone (a
+  night belongs to the evening it started), nights broken in a row, 12-hour shifts over her limit (the Google SRE book's two a
+  shift by default), time to acknowledge (median, p90), share against an even split.
+- `changes.py` - a deploy history (deployed_at, service, result, committed_at, restored_at, commits): deploy frequency, lead time,
+  change failure rate, time to restore against the DORA 2021 bands (said as such - later reports moved them), per service, by
+  weekday and out of hours, the biggest quarter of changes against the rest. A column called "failed" reads yes as failed.
+- `runbook.py` - Markdown runbooks (`## path.md` for several): what it means / impact / check / fix / undo / who parts, destructive
+  commands (rm -rf, DROP, kubectl delete with no namespace, terraform destroy, force push, disk wipes) with no warning beside them,
+  secrets shown masked, placeholders, review age; with her rules: alerts with no runbook_url and links that match no runbook.
+- `toil.py` - a weekly summary or a dated log: hours a week per task and person, share of the working week against her cap, the
+  tasks to automate first by payback (her own estimates).
+- `ci.py` - `.github/workflows/alert-rules-check.yml`: fails a pull request on an alert with no severity, a raw counter without
+  rate(), or two alerts with the same name and severity (Prometheus allows the same name at different severities); at "anything
+  to fix" also no `for`, summary or runbook; optional promtool from the official Prometheus release.
+
+New settings (added to the existing table by the column self-heal): night hours, pages a shift, runbook review days, working week,
+toil cap, rules path, CI level, promtool version, runner. Bugs caught while building: a short column name ("at") matching inside
+"automate_hours" (new lookup ignores short names inside longer ones), "time" matching "times_week", a deploy id read from
+"deployed_at". Tests `server/tests/test_sr_desk_deeper.py` (6, incl. the CI script run on a sample file and a browser walk at 1440
+and 390); the original `test_sr_desk.py` still passes.
+
+NOT VERIFIED: on her server, with her own page / deploy history, runbooks and toil list, or the workflow running on GitHub.
+## v0.999.319 HOOLA DOD END TO END (built as 0.999.318; their SRE DESK DEEPER took 0.999.318, both kept; owner: "IS ALL HOOLA DOD -- IS WIRED WITH OPEN CLAW IN BACKEND PROPERLY AND END TO END CHECK")
+
+Static: every call the page makes (`dod.js`: status, tasks list, looks, profile, create, note, one task, stop, answer, screen, files, plus the
+look pictures) has its route in `dod/api.py` - 11 of 11.
+
+Real run (`/tmp` scripts, not committed): the official `ghcr.io/openclaw/openclaw:2026.11.10-browser` in Docker, Hoola's real server, Hoola's
+OWN `gateway.ensure` creating the network and container (only `config_for` gained a scripted model provider, and `OPENROUTER` pointed at a
+fake key API). Driven only through the page's routes: profile, task A (Hoola MCP tool from inside the container, step, the browser, a file
+written and handed over, the pay question, phone push, live screen, wrong hash refused, her note, her yes, done, credits charged, MCP refused
+from outside her subnet), sleep_idle -> asleep, task B wakes it, `docker kill` -> task C comes back, Stop. 34 of 34.
+
+Found and fixed (each seen only on the real image):
+1. A hard kill (VPS reboot, memory cap, crash) leaves OpenClaw's state lock + its SQLite owner lease; the next start waits on the dead
+   owner and never comes up ("cannot verify Gateway ownership"). `gateway.recover_lock`: when her container is not running, run
+   `openclaw gateway recover-lock --json` in a one-off container (`--network none`, her uid, her folder) and confirm exactly the record it
+   names. Deleting files would not be enough (the lease is in the database).
+2. Chrome's SingletonLock names the container that made it; a new container cannot start the browser ("Chromium profile lock names another
+   hostname"). Its three lock links are removed while her container is stopped; the profile stays. A newer pinned `dod_image` now gets a new
+   container on the same folder (`docker start` kept the old image for ever).
+3. OpenClaw's Tool Search hid the `browser` tool; `tools.toolSearch.exclude` gains `{source: openclaw, name: browser}` (docs/tools/tool-search.md).
+Also: a step "Starting its computer" while the Gateway starts. Each start here took ~5 minutes, mostly the doctor trying to npm-install the
+Perplexity web-search plugin OpenClaw wants once it sees an OpenRouter key; this sandbox blocks npm (self-signed proxy). On a server with
+npm it should install once into her folder - not measured.
+
+NOT VERIFIED: her VPS with a real model and real OpenRouter keys; the start time there; a real website in its browser (here every https
+page fails on the sandbox proxy's certificate - the browser itself started and the screen picture came back).
+## v0.999.320 THE PROMPTING SECTION REDESIGNED
+
+Owner: "NOW CHECK THE PROMPTING SECTION IN HOOLA LOOKS STALE AND VERY OLD BAD --- FIRST CHECK THE EXSTING HOOLA BRAND
+DESIGN AND ITS LOGO. 1) MAKE A PROMPT SECTION ... JUST MAKE A PROMPT -- IN THIS SHOW ALL CATOGORY 2) BELOW IT SHOW READY
+PROMPT LAIBRARY ... ALL WORLD PROMPTS WITH PERFECT CATOGORIWISE ... EVERY PROMPT IS HAVING THE A DETAILS AND SOME HAVE A
+VIDEO AND IMAGES ... SHOW SAME HERE ... SHOW ME THE DESIGN FIRST" -> design canvas claude.ai/artifact/UVKthxXrkrqudfU12Wqs9B
+(5 boards: home, a category picked, one prompt, phone home, phone prompt) -> "GO BUILD THE DESIGN".
+
+Built as v0.999.315 / 0.999.318; main took 0.999.315-0.999.319 (STUDIO FIXES, DevSecOps desk, Hoola Code flows, SRE
+DESK DEEPER, HOOLA DOD END TO END) while it was built - re-versioned to 0.999.320 on the merges, all works kept.
+
+**The look.** /console/prompting in Hoola's own design (the console app design): a top bar with the Orbit mark (the same
+paths as static/console/mark.js, in the accent) + "Prompting" in Literata + pill tabs (Make a prompt, Library, Hoola's
+starters, My prompts, Results, Learn) + Back to Hoola chat; white page, warm grey #FAFAF9 for quiet surfaces, ink pill
+for the main action, Literata for titles / prompts / descriptions, Schibsted Grotesk for the interface, Hoola violet
+#5B45E0 only for the mark and small accents. Light + dark tokens (dark = the console's #141413 set), phone width
+(tabs scroll, the rail becomes a row, 2 cards a row, on one prompt's page the actions come before the long prompt),
+reduced motion respected. The old 13-section sidebar is gone; `#/s/<section>` routes still work.
+
+**Make a prompt.** One large box ("What should we make a prompt for?", any language), a category picker (all 53 of the
+site's categories in 8 families: Pictures video & sound, Code & building, Agents & automation, Writing, Business &
+work, Learning & research, Life & wellbeing, Everything else) and "Make my prompt". Under the box "Every category"
+lists all 53 with their counts by family - no random options. A category opens `#/m/<category>`: the same box with the
+category set (its Hoola section from `world.CAT_SECTION`, e.g. Video Generation -> video, Web Development -> web,
+Coding -> code, Agent Skill -> aiapp, the rest -> the everyday section) and "Or start from a ready <category> prompt"
+with that category's prompts, pictures first. Make my prompt goes to the same workbench as before. If Hoola cannot
+tell what she is making, the category list opens. The example lines are global now (no kirana / Akola / Diwali).
+
+**Ready prompt library** (under the box on the home, and its own page `#/library`): all 3,275 prompts.chat prompts.
+Search, order (Most loved / Pictures and videos first / Newest), kind tabs (Text, Pictures, Video, Agent skills,
+Code style, Audio, JSON / YAML), a rail of the 8 families that open into their categories, 24 cards at a time with
+"Show more prompts". Each card: the author's picture or video frame (a play badge on videos) or, for a text prompt,
+its opening lines in Literata with Markdown marks taken out; the category, title, the author's description, the
+author's name, likes, and "Copy only" / "Long" where it applies.
+
+**One prompt** (`#/r/world:<id>`): the author's own picture (full size), video (plays muted, with controls) or sound,
+captioned as theirs; the kind and category, title, author + date + likes, the full description, tags, notes; a long
+prompt shown as its parts (headings in capitals or Markdown, `world.outline`) with "Show the whole prompt"; the blanks
+to fill; the main action (Use this prompt / Fill it in), Copy, Put in the Hoola chat; "Make it yours"; the source line;
+"More <category> prompts".
+
+**Make it yours** (`POST /api/prompting/world/{id}/adapt {change, values}`, `world.adapt`): she says what to change;
+ONE model call (`net.ai.llm`, `world.ADAPT[0]`) rewrites the prompt keeping the rest; refused for a prompt Hoola's
+checks flagged; the change itself is screened; the answer is refused when it adds unsafe words or an ignore-your-rules
+line the prompt did not have, is far longer than the prompt, or keeps under a fifth of its words. Her version can be
+copied, put in the chat, or (when it fits a brief) opened in the workbench. The shelf is never changed.
+
+**Pictures and videos** (`prompting/worldmedia.py`, public `GET /api/prompting/world-media/{id}?size=thumb|full`):
+883 prompts have the author's file. Her browser never loads the author's host: the server fetches the file once
+(https, the 6 hosts prompts.chat uses, no redirects, 15 MB picture / 40 MB video / 10 MB sound), checks the bytes
+really are a picture / video / sound, and keeps a copy under data/prompting/world_media: pictures as WebP (640 px
+card, 1600 px full), videos as the file plus a poster frame (ffmpeg; without ffmpeg the card shows a plain video
+tile), sounds as the file. Every later view is that copy (cached a week in the browser). Only ids on the shelf with a
+recorded file are served - never an address from the request - and nothing for a prompt Hoola's checks flagged. A
+failed fetch is remembered for an hour. Public because <img> / <video> cannot send her token; the files are CC0.
+(Owner's decision asked at the design: keep copies on her server or load from prompts.chat each time - built with the
+recommended copies, made the first time each is viewed, so nothing large is added to the repo.)
+
+**Shelf data** (`prompting/world.py`, rebuilt from the live export of 28 Nov 2026): each prompt now carries the author's
+display name, description (up to 900 characters), creation date, its picture / video address (validated by
+`world.media_url`), and whether it starts from her own picture; prompts with no site category are the site's "Other"
+(were Hoola's guessed groups) -> exactly the site's 53 categories. `world.search` gains `sort` (loved / media / new),
+`family`, `per` and returns `families` + `all`; `world.get` adds the full description and the outline; cards carry
+`excerpt` for text prompts.
+
+**Tests:** NEW test_v0830_prompting_library.py (11: details + 53 categories in 8 families, media addresses only from
+known hosts, the outline, the picture copy made once + public + sizes, a non-picture refused and remembered, flagged
+prompts have no picture, the video copy + poster, Make it yours and its checks, the routes, page wiring incl. no
+India-only examples, a browser walk at 1360 and 390 px: 53 categories, the picker, a category page into the
+workbench, the library rail / order / show more, one prompt with its video, Make it yours, no sideways scroll); the
+nav-count pins in test_v0804 / v0821 / v0822 / v0825 moved to the top bar (6); test_v0829's world walk uses the rail.
+
+NOT VERIFIED: on her server (the media copies are made there on first view; the VPS needs ffmpeg for video posters -
+it has it for the video tools); the model's "Make it yours" rewrites were only tested with a fake model.

@@ -260,6 +260,14 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                "roboflow", "cvat", "label studio", "image classifier", "image classification", "confusion matrix", "segmentation", "opencv",
                "camera calibration", "camera_info", "intrinsics", "field of view", "focal length", "pixels per", "lens for", "motion blur",
                "depth of field", "stereo camera", "disparity", "tensorrt", "onnx", "openvino", "jetson", "inference fps", "frames per second", "nms"),
+    # v0.999.313 the DevSecOps Engineer: her pipeline and supply-chain words
+    "devsecops": ("devsecops", "dev sec ops", "supply chain", "software supply chain", "github actions", "workflow file", ".github/workflows",
+                  "pin actions", "pinned to a sha", "unpinned action", "pull_request_target", "script injection", "pwn request", "workflow permissions",
+                  "self-hosted runner", "sbom", "cyclonedx", "spdx", "software bill of materials", "license compliance", "licence compliance",
+                  "copyleft", "agpl", "gpl licence", "gpl license", "typosquat", "dependency confusion", "extra-index-url", "lockfile", "lock file",
+                  "unpinned dependency", "pinned dependencies", "install script", "branch protection", "required reviews", "code owners", "codeowners",
+                  "push protection", "secret scanning", "dependabot", "slsa", "provenance", "mttr", "time to fix", "time to remediate", "vulnerability sla",
+                  "fix times", "remediation sla"),
     # v0.999.312 the Security Engineer: her application security words
     "seceng": ("security engineer", "security engineering", "appsec", "application security", "sarif", "codeql", "semgrep", "trivy", "grype",
                "snyk", "dependabot", "owasp zap", "zap report", "burp", "scanner report", "scan report", "vulnerability report", "cve-",

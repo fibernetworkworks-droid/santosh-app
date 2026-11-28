@@ -150,7 +150,7 @@ def test_learn_in_a_real_browser(arena_server, monkeypatch):  # noqa: F811
     pg.on("pageerror", lambda e: errs.append(str(e)))
     pg.goto(base + "/console/prompting")
     pg.wait_for_selector("#hpText")
-    assert pg.locator(".hp-nav").count() == 19
+    assert pg.locator(".hp-nav").count() == 6        # v0.999.315: the top bar (Make a prompt, Library, starters, My prompts, Results, Learn)
     pg.fill("#hpText", "a premium diwali poster, no people")
     pg.click("#hpAsk button[type=submit]")
     pg.wait_for_selector("#hpLearn .hp-lesson")

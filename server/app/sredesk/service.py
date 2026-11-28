@@ -1,7 +1,8 @@
 """The Site Reliability Engineer's desk: SLOs and error budgets, burn-rate alerts (and the Prometheus rules for them), alert rules
 checked and alert noise counted, incidents read into a timeline and a blameless postmortem draft, latency, capacity and
 availability - all in code, no model, no money. Nothing is changed on her systems: rules and postmortems are text she adds herself.
-Pasted logs, rules and timelines are DATA."""
+Since v0.999.317 also on-call load, changes and their risk (the four DORA numbers), runbooks checked against the alerts, toil and its
+payback, and a CI check for alert rules. Pasted logs, rules and timelines are DATA."""
 from __future__ import annotations
 
 import json
@@ -15,19 +16,22 @@ from sqlalchemy import JSON, DateTime, Float, Integer, String, Text, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..db import Base, new_id, now, session
-from . import alerts as AL, avail as AV, capacity as CP, incident as IN, latency as LT, slo as SL
+from . import alerts as AL, avail as AV, capacity as CP, changes as CH, ci as CI, incident as IN, latency as LT, oncall as OC, runbook as RB, slo as SL, toil as TL
 
 log = logging.getLogger("santosh.sredesk")
 
-KINDS = ("slo", "burn", "avail", "latency", "buckets", "capacity", "queue", "rules", "noise", "incident")
+KINDS = ("slo", "burn", "avail", "latency", "buckets", "capacity", "queue", "rules", "noise", "incident", "oncall", "changes", "runbook",
+         "toil")
 PRE = {"slo": "S", "burn": "B", "avail": "A", "latency": "L", "buckets": "H", "capacity": "C", "queue": "Q", "rules": "R", "noise": "N",
-       "incident": "I"}
-TEXT_KINDS = ("burn", "latency", "buckets", "capacity", "rules", "noise", "incident")
+       "incident": "I", "oncall": "O", "changes": "D", "runbook": "K", "toil": "T"}
+TEXT_KINDS = ("burn", "latency", "buckets", "capacity", "rules", "noise", "incident", "oncall", "changes", "runbook", "toil")
 FIELDS = ("service", "target", "window_days", "tz", "work_start", "work_end", "weekend", "scrape_s", "latency_ms", "bad_metric",
-          "total_metric", "selector")
+          "total_metric", "selector", "night_start", "night_end", "shift_max", "runbook_days", "toil_cap", "week_hours", "rules_glob",
+          "ci_fail", "promtool_version", "runner")
 KEEP = 400
 MAX_TEXT = 3_000_000
-ERRORS = (SL.SloError, AV.AvailError, LT.LatencyError, CP.CapacityError, AL.AlertError, IN.IncidentError)
+ERRORS = (SL.SloError, AV.AvailError, LT.LatencyError, CP.CapacityError, AL.AlertError, IN.IncidentError, OC.OncallError, CH.ChangeError,
+          RB.RunbookError, TL.ToilError, CI.CiError)
 
 
 class SreError(ValueError):
@@ -65,6 +69,16 @@ class XSettings(Base):
     bad_metric: Mapped[str] = mapped_column(String(120), default="")
     total_metric: Mapped[str] = mapped_column(String(120), default="")
     selector: Mapped[str] = mapped_column(String(200), default="")
+    night_start: Mapped[int] = mapped_column(Integer, default=22)
+    night_end: Mapped[int] = mapped_column(Integer, default=7)
+    shift_max: Mapped[int] = mapped_column(Integer, default=2)
+    runbook_days: Mapped[int] = mapped_column(Integer, default=180)
+    toil_cap: Mapped[float] = mapped_column(Float, default=50.0)
+    week_hours: Mapped[float] = mapped_column(Float, default=40.0)
+    rules_glob: Mapped[str] = mapped_column(String(120), default="**/*rules*.y*ml")
+    ci_fail: Mapped[str] = mapped_column(String(8), default="bad")
+    promtool_version: Mapped[str] = mapped_column(String(20), default="")
+    runner: Mapped[str] = mapped_column(String(40), default="ubuntu-24.04")
 
 
 _READY: set[int] = set()
@@ -77,6 +91,10 @@ def _tables() -> None:
         return
     XItem.__table__.create(eng, checkfirst=True)
     XSettings.__table__.create(eng, checkfirst=True)
+    try:
+        _db.add_missing_columns_for(eng, XSettings.__table__)    # v0.999.317 settings added to an existing table
+    except Exception:   # noqa: BLE001
+        log.exception("sredesk settings columns")
     _READY.add(id(eng))
 
 
@@ -148,6 +166,35 @@ def save_settings(tenant: str, **f: Any) -> dict[str, Any]:
             except SL.SloError as e:
                 raise SreError(str(e))
         c["selector"] = sel
+    for k, lo, hi in (("night_start", 0, 23), ("night_end", 0, 23), ("shift_max", 1, 50), ("runbook_days", 1, 3650)):
+        if f.get(k) not in (None, ""):
+            c[k] = _int(f[k], {"night_start": "Night starts", "night_end": "Night ends", "shift_max": "Pages a shift",
+                               "runbook_days": "Runbook review"}[k], lo, hi)
+    if c.get("night_start") is not None and c.get("night_start") == c.get("night_end"):
+        raise SreError("Night: the start and the end must differ.")
+    for k, lo, hi, name in (("toil_cap", 1, 100, "Toil cap (%)"), ("week_hours", 1, 100, "Working week (hours)")):
+        if f.get(k) not in (None, ""):
+            try:
+                v = float(f[k])
+            except (TypeError, ValueError):
+                raise SreError(f"{name}: a number.")
+            if not lo <= v <= hi:
+                raise SreError(f"{name}: {lo} to {hi}.")
+            c[k] = v
+    if f.get("rules_glob") not in (None, "") or f.get("ci_fail") not in (None, "") or f.get("promtool_version") is not None \
+            or f.get("runner") not in (None, ""):
+        cur = settings(tenant)
+        try:
+            CI.workflow(str(f.get("rules_glob") or cur["rules_glob"]), str(f.get("ci_fail") or cur["ci_fail"]), True,
+                        str(f["promtool_version"] if f.get("promtool_version") is not None else cur["promtool_version"]),
+                        str(f.get("runner") or cur["runner"]))
+        except CI.CiError as e:
+            raise SreError(str(e))
+        for k in ("rules_glob", "ci_fail", "runner"):
+            if f.get(k) not in (None, ""):
+                c[k] = str(f[k]).strip()
+        if f.get("promtool_version") is not None:
+            c["promtool_version"] = str(f["promtool_version"]).strip().lstrip("v")
     with session() as s:
         r = s.get(XSettings, tenant)
         if r is None:
@@ -184,6 +231,17 @@ def _brief(kind: str, res: dict[str, Any]) -> dict[str, Any]:
                  bad=bool((res.get("counts") or {}).get("bad")))
     elif kind == "noise":
         b.update(per_week=res.get("pages_per_week"), top=((res.get("table") or [{}])[0]).get("name"))
+    elif kind == "oncall":
+        b.update(pages=res.get("pages"), people=res.get("people"), over=res.get("shifts_over"), nights=res.get("night_pages"),
+                 bad=b["bad"] or bool(res.get("shifts_over")))
+    elif kind == "changes":
+        b.update(deploys=res.get("deploys"), cfr=res.get("cfr"), per_week=res.get("per_week"), restore=res.get("restore"),
+                 lead=res.get("lead"))
+    elif kind == "runbook":
+        b.update(runbooks=res.get("runbooks"), score=res.get("score"), problems=(res.get("counts") or {}).get("bad"),
+                 bad=bool((res.get("counts") or {}).get("bad")))
+    elif kind == "toil":
+        b.update(hours=res.get("hours_week"), share=res.get("share"), cap=res.get("cap"), top=((res.get("table") or [{}])[0]).get("task"))
     elif kind == "incident":
         b.update(severity=res.get("severity"), impact=(res.get("said") or {}).get("impact"), resolved="resolve" in (res.get("marks") or {}),
                  followups=len(res.get("followups") or []), bad="resolve" not in (res.get("marks") or {}))
@@ -273,6 +331,19 @@ def _run(kind: str, text: str, inp: dict[str, Any], st: dict[str, Any]) -> tuple
     if kind == "noise":
         res = AL.noise(text, st["tz"], int(st["work_start"]), int(st["work_end"]), st["weekend"])
         return res, f"Alert noise: {res['alerts']} alerts, {res['days']:g} days"
+    if kind == "oncall":
+        res = OC.load(text, str(g("tz", st["tz"])), int(g("night_start", st["night_start"])), int(g("night_end", st["night_end"])),
+                      int(g("shift_max", st["shift_max"])), st["weekend"])
+        return res, f"On-call: {res['pages']} pages, {res['people']} people"
+    if kind == "changes":
+        res = CH.dora(text, str(g("tz", st["tz"])), int(st["work_start"]), int(st["work_end"]), st["weekend"])
+        return res, f"Changes: {res['deploys']} deploys over {res['days']:g} days"
+    if kind == "runbook":
+        res = RB.check(text, str(g("rules", "")), g("runbook_days", st["runbook_days"]))
+        return res, f"Runbooks: {res['runbooks']} checked"
+    if kind == "toil":
+        res = TL.toil(text, g("week_hours", st["week_hours"]), g("toil_cap", st["toil_cap"]), g("people", 0) or 0)
+        return res, f"Toil: {res['hours_week']:g} h a week"
     res = IN.timeline(text, str(g("tz", st["tz"])), str(g("day", "")))
     first = next((e["text"] for e in res["events"] if e.get("stage") in ("start", "detect")), res["events"][0]["text"])
     res["postmortem"] = IN.postmortem(res, str(g("title", "")) or first[:100], str(g("service", st.get("service") or "")), str(g("impact", "")),
@@ -293,7 +364,9 @@ def add(tenant: str, kind: str, title: str = "", text: Any = "", inputs: Any = N
         raise SreError({"burn": "Paste the samples first: time, good, total.", "latency": "Paste the durations first.",
                         "buckets": "Paste the histogram buckets first.", "capacity": "Paste the dated peak use first: date, value.",
                         "rules": "Paste the rules file first.", "noise": "Paste the alert history first (CSV).",
-                        "incident": "Paste the timeline first."}[kind])
+                        "incident": "Paste the timeline first.", "oncall": "Paste the page history first (CSV).",
+                        "changes": "Paste the deploy history first (CSV).", "runbook": "Paste a runbook first (Markdown).",
+                        "toil": "Paste the toil list first (CSV)."}[kind])
     try:
         res, auto = _run(kind, text, inp, st)
     except ERRORS as e:
@@ -342,6 +415,14 @@ def rules_for(tenant: str, **over: Any) -> dict[str, Any]:
         return SL.rules(st.get("service") or "service", st["target"], st["window_days"], st["bad_metric"], st["total_metric"],
                         st.get("selector") or "")
     except SL.SloError as e:
+        raise SreError(str(e))
+
+
+def ci_for(tenant: str, **over: Any) -> dict[str, Any]:
+    st = {**settings(tenant), **{k: v for k, v in over.items() if v is not None}}
+    try:
+        return CI.workflow(st["rules_glob"], st["ci_fail"], True, st["promtool_version"], st["runner"])
+    except CI.CiError as e:
         raise SreError(str(e))
 
 

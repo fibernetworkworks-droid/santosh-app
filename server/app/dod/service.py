@@ -412,6 +412,9 @@ async def _run(task_id: str, resume: list[dict] | None) -> None:
     else:
         items = [{"type": "message", "role": "user", "content": t.ask}]
         _add_step(task_id, "Reading your task", "")
+    if GW._row(t.tenant_id).state != "awake":
+        # on a real Gateway a start took about 5 minutes here (it checks and repairs itself first); say so
+        _add_step(task_id, "Starting its computer", "Its own computer was off. Starting it can take a few minutes.")
     buf: list[str] = []
     last_write = [0.0]
 
