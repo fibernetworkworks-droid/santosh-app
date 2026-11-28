@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     site_refs: bool = True                # v0.999.75 D6: the writer starts from Hoola's own references (built sites the critic scored, the kit, the sites she likes) and every reviewed site teaches the next
     studio_react_sites: bool = False      # v0.999.65 D4: "Build the real website" writes a React site from the kit (owner decision 1: behind a switch until D10)
     site_upgrade: bool = True             # v0.999.119 D9: "Upgrade this site" - her HTML website moved to the new engine, on her tap
+    app_engine_done_gate: bool = True     # v0.999.322 App Engine changes need a recorded plan; "done" only after a checked build (donegate.py)
+    app_engine_read_first: bool = True    # v0.999.322 an edit of an existing App Engine file must be made on the copy last read (fingerprint)
+    app_engine_syntax_check: bool = True  # v0.999.322 a JS / TS file that does not parse is refused at write, with line and column
     app_engine_publish_checks: bool = True  # v0.832 SABOOT (L11): going live runs the quick scan + rule tests + browser check and is refused on a FAIL
     app_engine_box_care: bool = True     # ONE ENGINE: the builder box checked before every build + every 10 min, a missing / old image rebuilt by itself
     site_quick_checks: bool = True        # v0.789 CHHOTA BADLAAV: a one-section change is checked on its own page only

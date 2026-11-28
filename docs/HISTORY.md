@@ -14408,3 +14408,63 @@ the spec's "## Colors".
 NOT VERIFIED: on her server; no model has built a site from a catalog design yet (the writer / critic notes are only
 tested as text); Google's official `@google/design.md` linter was not run here (installing it was blocked) - Hoola's
 checker follows its rules as read from its source.
+
+
+## v0.999.322 FOUR FROM BOLT.DIY - the done check, file fingerprints, the syntax check on save, her locked files
+
+Owner: "https://github.com/stackblitz-labs/bolt.diy.git -- read this repo first" -> the read (four ideas worth taking) -> "GO BUILD ALL 4".
+
+**The read.** bolt.diy (MIT, commit 72db5ce of 21 Nov 2026, maintenance only: "no new features are planned") is the
+open-source Bolt: an AI writes a React / Vite project and the preview runs beside the chat in StackBlitz WebContainers
+(commercial licence for business use - NOT used; Hoola builds in its own locked box on the server). Its agent loop
+(`app/lib/common/agentLoop.ts`, `app/lib/.server/llm/agent-loop.ts`) records a plan with numbered criteria, keeps
+evidence from every tool result and refuses `agent_complete` unless, after the last edit, the app ran, a check passed
+and the preview was ready; each step names the next required action. Its project tools hand out a sha256 revision on
+read and refuse a stale edit (`projectMcp.ts`), parse every JS / TS write with Prettier (`projectFileValidation.ts`),
+and it has per-chat locked files (`persistence/lockedFiles.ts`). Ideas only; no code copied (Hoola is Python).
+
+**What was built (App Engine = Web Studio React apps):**
+
+1. THE DONE CHECK - `server/app/appengine/donegate.py`. `app_engine` action=plan {goal, steps 1-6, criteria
+   [{id, description}] 1-8, preview} must come before the first change in a chat (switch `app_engine_done_gate`).
+   Every change (write / edit_lines / rename / delete / add_dependency / tokens / design / render_mode / cloud_change),
+   build (ok, TypeScript ok, version), rule test and browser check is written down per app and chat in
+   `<app>/_work.json`. action=done {outcome, summary, criteria ids} is refused unless after the LAST change: a good build,
+   TypeScript clean, rule tests passed (when add_list / rules changed), the browser check passed (when the plan wants the
+   preview or the app saves data; a check that cannot run on the server is said in the evidence, not blocking), no open
+   preview errors reported on that version, and every planned id named exactly once. outcome blocked records the reason.
+   Every tool answer during an open task ends with "NEXT: <the one next thing>"; action=work shows the state. `_prove`
+   now runs the browser check after a build when the open plan wants the preview. A task lasts 24 h; a finished one needs
+   a new plan for the next change. plan / done run in Plan and Chat mode (they change nothing in the app).
+2. FINGERPRINTS - service `revision_of` / `file_revision` / `_expect`: action=view returns `revision` (sha256, 16 hex);
+   edit_lines and a rewrite of an existing file must match the copy last read in this chat (or a passed revision),
+   checked under the app's lock; a changed file (her click-edit, a GitHub pull, another turn) is refused 409 and nothing
+   is written. Hoola's own writes update the remembered fingerprint; rename moves it; a new file needs no read
+   (switch `app_engine_read_first`).
+3. THE SYNTAX CHECK ON SAVE - `server/app/appengine/syntax.py`: tree-sitter's TypeScript grammar (.ts) and TSX grammar
+   (.tsx / .jsx / .js / .mjs) via the NEW dependency `tree-sitter-typescript` (MIT; deploy's pip install -r adds it).
+   `service._check` refuses a file that does not parse with line, column, the line and a hint (a missing } / ) / ], an
+   unclosed JSX tag, a .map() outside its {}, a file sent as ONE line). It never runs or rewrites code; no parser = the
+   check is skipped (switch `app_engine_syntax_check`). Checked: 0 false alarms on the template's 140 files and the 19
+   proof-app files; `satisfies`, enums, template types parse.
+4. HER LOCKED FILES - `server/app/appengine/herlocks.py`: PUT /api/appengine/{ref}/locks {path, locked} (a path ending in
+   / or naming a folder = the folder). app_engine write / edit_lines / delete / rename (from or to) on a locked path is
+   refused naming her lock and telling Hoola to ask her; her own taps (click-edit, GitHub pull, branch accept) stay open.
+   `<app>/_locks.json`; a new branch copies the app's locks; files list + view carry `her_lock`.
+
+Studio (`static/console/appengine.js` + `.css`): Preview shows "Hoola is working on this" (the plan's goal, ticks for
+changed / built after the last change / TypeScript / rules / browser / preview errors, what she should see) or "Finished
+and checked" / "Hoola could not finish" with the evidence (GET /api/appengine/{ref}/work). Code tab: Lock this file,
+Lock <folder>/, Unlock, "Locked by you" in the file list; Hoola's own setup files say so and cannot be locked.
+
+Tests: `server/tests/test_v0999_322_bolt_ideas.py` (10) - no change without a plan, done refused before a build / with
+TypeScript problems / with a missing or unknown id, accepted after a clean checked build, a change after the check needs
+a new build, a failed build / failed browser check / preview errors block done, a browser check that cannot run is said,
+blocked, plan in Plan mode, fingerprints (view first, changed file refused, a fresh view lets it through, a passed
+revision must match, new files free), the syntax refusal with line and the one-line hint, every template / proof file
+parses, her file + folder locks across all four actions, the routes and the Studio wiring, and a Chromium walk (the task card working -> finished, Lock this file -> Locked by you, at 1440 and 390 px). The box build and the browser check inside it are stand-ins.
+conftest pins APP_ENGINE_DONE_GATE / APP_ENGINE_READ_FIRST off for the older App Engine suites.
+
+NOT VERIFIED: on her server, with a real model doing a plan -> change -> build -> done round, or with the real Docker
+box and Chromium here (the build and the browser check were stand-ins in these tests). The browser check after every
+build of an open task can add up to ~2.5 minutes a build on her server.

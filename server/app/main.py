@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.321"   # v0.999.321 DESIGN.md CATALOG (built as 0.999.316; their 0.999.316-320 took those numbers, all kept; owner: getdesign.md + VoltAgent/awesome-design-md "READ THIS FOR WEB DESIGN" -> design canvas claude.ai/artifact/JARhTaL424pToX95u8e5J7 -> "GO BUILD"): Hoola's one DESIGN.md reader `site/designmd.py` (Google Stitch's format: tolerant YAML - a bare colon in the description repaired and said, yaml blocks inside sections, older files with no tokens read from their own words; canvas / display-xl names; Google's lint rules in plain words: section order, duplicates, missing primary / typography, broken token refs, unreadable pairs, unknown keys); the Web Studio home gets a DESIGN CATALOG under the chat box: 83 looks from awesome-design-md (MIT, `designmd_lib/looks.json.gz` built by `tools/designmd_build.py`, 1win left out as gambling), each under a Hoola name, drawn from its own colours / corners / type, chips by kind + search; a page per design (#/design/<id>): a full sample page in the look (public, no script, no outside requests, light AND dark - the missing mode made from the same colours, every text pair readable), Computer / Phone, the DESIGN.md text, the prompt (code-made, never the brand's name), colours, type (their private font -> a bundled pair), corners, the rules (brand name scrubbed), what Hoola adds, checker notes, similar designs; Use this design = a design card in the box + the prompt; her own DESIGN.md (Add a DESIGN.md) checked first; POST /api/sites + /api/site-architect take design_look / design_md -> look 1's reference (source designmd) with its written rules for the writer (inspire.brief_note) AND the critic (quality.critique rules), Plan mode keeps it until the build (architect her_design), an existing site through inspire.read source designmd; App Engine DESIGN.md export now in the spec's section order + motion / components tokens, import through the same reader (all 83 import); routes GET /api/site-design/looks, /looks/{id}, /looks/{id}/page, /looks/{id}/md, POST /api/site-design/md/check; tests test_v0999_316_designmd.py (11) + _web.py (2, a Chromium walk light / dark / phone). NOT VERIFIED on her server; Google's own linter was not run here.
+APP_VERSION = "0.999.322"   # v0.999.322 FOUR FROM BOLT.DIY (owner: "https://github.com/stackblitz-labs/bolt.diy.git -- read this repo first" -> the four ideas -> "GO BUILD ALL 4"): four ideas from bolt.diy (MIT, read at 72db5ce; ideas only, no code copied, WebContainers not used) for Web Studio React apps on the App Engine: (1) THE DONE CHECK `appengine/donegate.py` - app_engine action=plan {goal, steps 1-6, criteria [{id, description}] 1-8, preview} before the first change in a chat (changes without it refused, switch app_engine_done_gate), every change / build / rule test / browser check written down per app + chat (`_work.json`), action=done refused unless after the LAST change a build passed with TypeScript clean, rule tests passed when a rule changed, the browser check passed when the plan wants the preview or the app saves data (could not run here = said, not blocking), no open preview errors on that version, every planned id named once; outcome blocked said plainly; every answer ends NEXT: the one next thing; action=work; the preview build runs the browser check when the plan wants it; (2) FINGERPRINTS - action=view returns revision (sha256 16 hex), edit_lines / a rewrite of an existing file must match the copy last read in this chat (or the passed revision) under the app's lock, a changed file is refused 409 (switch app_engine_read_first), Hoola's own edits keep it current; (3) THE SYNTAX CHECK ON SAVE `appengine/syntax.py` - tree-sitter TypeScript / TSX (tree-sitter-typescript, MIT, new dependency) parses every JS / TS file in service._check, a broken file refused with line, column, the line and a hint (missing } / ), a JSX tag, a .map() outside its {}, a file sent as one line), parser absent = skipped (switch app_engine_syntax_check), 0 false alarms on the 140 template files + 19 proof files; (4) HER LOCKED FILES `appengine/herlocks.py` - she locks a file or folder in the Code tab (PUT /api/appengine/{ref}/locks), app_engine write / edit_lines / rename (from or to) / delete refused naming her lock, her own taps stay open, a branch starts with the app's locks; Studio: a 'Hoola is working on this / Finished and checked' card in Preview (GET /api/appengine/{ref}/work), Lock this file / Lock folder / Locked by you in Code; conftest pins the done check + read-first off for older suites; tests test_v0999_322_bolt_ideas.py (10, incl. a Chromium walk at computer + phone width). NOT VERIFIED on her server or with a real model; the build box was a stand-in here.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -10667,6 +10667,33 @@ async def appengine_import_zip(request: Request, name: str = "", tenant: str = D
 async def appengine_import_github(body: dict, tenant: str = Depends(current_tenant)):
     from .appengine import gitsync as GS
     return await asyncio.to_thread(_ghs, GS.import_github, tenant, str(body.get("name") or "")[:80], str(body.get("repo") or ""), bool(body.get("confirm")))
+
+
+@app.get("/api/appengine/{ref}/work", dependencies=[Depends(require_key)])
+async def appengine_work(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.999.322 the done check: Hoola's last task on this app - its plan, what is proved, what is missing (nothing is run)."""
+    from .appengine import donegate as DG, herlocks as HL
+    from .appengine import service as AE
+
+    def go():
+        r = AE._load(tenant, ref)
+        return {"task": DG.latest(r), "locks": HL.listing(r)}
+    return await asyncio.to_thread(_ae, go)
+
+
+@app.put("/api/appengine/{ref}/locks", dependencies=[Depends(require_key)])
+async def appengine_locks(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.999.322 her lock on a file or folder (path ending in / = a folder): Hoola cannot change it until she unlocks it."""
+    from .appengine import herlocks as HL
+    from .appengine import service as AE
+
+    def go():
+        r = AE._load(tenant, ref)
+        try:
+            return HL.set_lock(r, str(body.get("path") or ""), bool(body.get("locked", True)))
+        except HL.LockError as e:
+            raise AE.AppEngineError(str(e), 400)
+    return await asyncio.to_thread(_ae, go)
 
 
 @app.get("/api/appengine/{ref}/checks", dependencies=[Depends(require_key)])

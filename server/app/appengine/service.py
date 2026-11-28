@@ -36,6 +36,7 @@ from . import rules as RL
 from . import runner as RN
 from . import tokens as TK
 from . import genome as GN
+from . import herlocks as HL
 from .models import AppProject, ensure_table
 
 import logging
@@ -346,7 +347,7 @@ def files_list(r: AppProject) -> list[dict[str, Any]]:
     out = []
     for p in _files(r):
         rel = _rel(r, p)
-        out.append({"path": rel, "size": p.stat().st_size, "locked": rel in RL.LOCKED})
+        out.append({"path": rel, "size": p.stat().st_size, "locked": rel in RL.LOCKED, "her_lock": HL.locked_by(r, rel)})
     return out
 
 
@@ -360,6 +361,28 @@ def _path_in(r: AppProject, rel: str) -> Path:
     return p
 
 
+def revision_of(text: str | bytes) -> str:
+    """v0.999.322 a file's fingerprint: a read hands it out, an edit quotes it, a changed file refuses the edit."""
+    import hashlib
+    return hashlib.sha256(text if isinstance(text, bytes) else text.encode("utf-8")).hexdigest()[:16]
+
+
+def file_revision(r: AppProject, rel: str) -> str:
+    p = _path_in(r, rel)
+    return revision_of(p.read_bytes()) if p.is_file() else ""
+
+
+def _expect(r: AppProject, rel: str, expect: str | None) -> None:
+    """Under the app's lock: the file must still be the one that was read (expect=None = not checked)."""
+    if expect is None:
+        return
+    cur = file_revision(r, rel)
+    if cur and expect != cur:
+        raise AppEngineError(f"{rel} changed since you read it (by her, a GitHub pull or another turn). Nothing was "
+                             "written. View it again (action=view) and make your change on what is there now.", 409,
+                             {"stale": rel, "revision": cur})
+
+
 def read_file(tenant: str, ref: str, path: str, from_line: int = 0, to_line: int = 0) -> dict[str, Any]:
     r = _load(tenant, ref)
     try:
@@ -370,12 +393,14 @@ def read_file(tenant: str, ref: str, path: str, from_line: int = 0, to_line: int
     if not p.is_file():
         near = [f["path"] for f in files_list(r) if rel.rsplit("/", 1)[-1].split(".")[0].lower() in f["path"].lower()][:6]
         raise AppEngineError(f"{rel} does not exist." + (f" Did you mean: {', '.join(near)}" if near else ""), 404)
-    text = p.read_text("utf-8", "replace")
+    raw = p.read_bytes()
+    text = raw.decode("utf-8", "replace")
     lines = text.splitlines()
     a = max(1, int(from_line or 1))
     b = min(len(lines), int(to_line or 0) or len(lines), a + MAX_VIEW_LINES - 1)
     body = "\n".join(f"{i:>4}| {lines[i - 1]}" for i in range(a, b + 1)) if lines else ""
     return {"path": rel, "lines": len(lines), "from": a, "to": b, "locked": rel in RL.LOCKED, "code": body,
+            "revision": revision_of(raw), "her_lock": HL.locked_by(r, rel),
             "more": b < len(lines), "say": f"{rel}: lines {a}-{b} of {len(lines)}" + (" (more: ask for from_line)" if b < len(lines) else "")}
 
 
@@ -405,6 +430,13 @@ def search(tenant: str, ref: str, query: str, limit: int = 40) -> dict[str, Any]
 def _check(r: AppProject, rel: str, code: str) -> None:
     if len(code.encode("utf-8")) > RL.MAX_FILE:
         raise AppEngineError(f"{rel} would be over {RL.MAX_FILE // 1000} KB; split it into smaller components.")
+    from ..config import get_settings
+    if getattr(get_settings(), "app_engine_syntax_check", True):     # v0.999.322 the file must parse before it is saved
+        from . import syntax as SX
+        sp = SX.check(rel, code)
+        if sp:
+            raise AppEngineError(f"Not written - {rel} does not parse: " + SX.say(sp)
+                                 + ". Nothing was saved; fix that line and send the file again.", 422, sp)
     probs = RL.check_file(rel, code, _deps(r))
     if probs:
         raise AppEngineError(f"Not written - {rel} has a problem: " + RL.say(probs), 422, probs)
@@ -434,12 +466,12 @@ def _write(r: AppProject, rel: str, code: str) -> dict[str, Any]:
     schedule_build(r.tenant_id, r.id)
     import difflib
     diff = "".join(difflib.unified_diff((old or "").splitlines(True), code.splitlines(True), f"a/{rel}", f"b/{rel}", n=2))
-    return {"file": rel, "new": old is None, "changed": old != code, "diff": diff[:12000],
+    return {"file": rel, "new": old is None, "changed": old != code, "diff": diff[:12000], "revision": revision_of(code),
             "say": (f"{'Made' if old is None else 'Changed'} {rel}. The preview rebuilds in a few seconds "
                     "(action=build waits for it and tells you if it failed).")}
 
 
-def write(tenant: str, ref: str, path: str, code: str) -> dict[str, Any]:
+def write(tenant: str, ref: str, path: str, code: str, expect: str | None = None) -> dict[str, Any]:
     r = _load(tenant, ref)
     try:
         rel = RL.writable(path)
@@ -451,6 +483,7 @@ def write(tenant: str, ref: str, path: str, code: str) -> dict[str, Any]:
     if not code.endswith("\n"):
         code += "\n"
     with _lock(r.id):
+        _expect(r, rel, expect)
         code, fixed = _autofix(r, rel, code)
         _check(r, rel, code)
         res = _write(r, rel, code)
@@ -506,7 +539,7 @@ def _apply_one(text: str, lines: list[str], ed: dict[str, Any], i: int) -> tuple
     return s0, s0 + len(find), repl
 
 
-def edit_lines(tenant: str, ref: str, path: str, edits: list[dict[str, Any]]) -> dict[str, Any]:
+def edit_lines(tenant: str, ref: str, path: str, edits: list[dict[str, Any]], expect: str | None = None) -> dict[str, Any]:
     """Exact search -> replace edits in ONE file, each located in the ORIGINAL file (so line numbers from one view
     stay right for every edit); overlapping edits are refused; all or nothing."""
     r = _load(tenant, ref)
@@ -523,6 +556,7 @@ def edit_lines(tenant: str, ref: str, path: str, edits: list[dict[str, Any]]) ->
         p = _path_in(r, rel)
         if not p.exists():
             raise AppEngineError(f"{rel} does not exist; use action=write to make it.", 404)
+        _expect(r, rel, expect)
         text = p.read_text("utf-8")
         lines = text.splitlines(True)
         spans = sorted((_apply_one(text, lines, e, i) for i, e in enumerate(edits)), key=lambda x: x[0])

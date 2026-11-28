@@ -158,11 +158,12 @@
       const dev = `<div class="seg ae-dev" role="group" aria-label="Device"><button type="button" data-ae="dev" data-ae-dev="pc" aria-pressed="${ST.device === 'pc'}">Computer</button><button type="button" data-ae="dev" data-ae-dev="phone" aria-pressed="${ST.device === 'phone'}">Phone</button></div>`;
       const sel = `<button class="b sm${ST.select ? ' on' : ''}" type="button" data-ae="select" aria-pressed="${ST.select}" title="Point at a part of the app (S)">${ico('edit', 15)}Select</button>`;
       const ebar = `<div id="aeEbar">${ebarHtml()}</div>`;
-      el.innerHTML = `<div class="ae-bar">${dev}${a.preview ? sel : ''}<span class="sp"></span>${a.preview ? `<a class="b ghost sm" href="${esc(a.preview)}" target="_blank" rel="noopener">${ico('ext', 15)}Open in a new tab</a>` : ''}</div>${ebar}${prob}
+      el.innerHTML = `<div class="ae-bar">${dev}${a.preview ? sel : ''}<span class="sp"></span>${a.preview ? `<a class="b ghost sm" href="${esc(a.preview)}" target="_blank" rel="noopener">${ico('ext', 15)}Open in a new tab</a>` : ''}</div>${ebar}<div id="aeWork">${workHtml(ST.work)}</div>${prob}
         ${a.preview ? `<div class="ae-stage"><div class="ae-frame ${ST.device}"><iframe title="App preview" id="aeFrame" sandbox="allow-scripts allow-forms allow-popups" referrerpolicy="no-referrer" src="${esc(a.preview)}?v=${esc(a.version)}"></iframe></div><div class="ae-sel" id="aeSel" ${ST.pick ? '' : 'hidden'}></div></div>`
           : `<div class="panel mut ae-empty">${S(a.status) === 'building' || a.dirty ? 'The first version is being built…' : 'No version yet.'}</div>`}`;
       ST.shown = a.version;
       if (ST.pick) drawPick();
+      drawWork();
       return;
     }
     if (ST.tab === 'code') {
@@ -173,8 +174,14 @@
       let code = '';
       if (ST.file) { try { code = S((await api('GET', `/api/appengine/${enc(a.id)}/file?path=${enc(ST.file)}&from_line=${Math.max(1, ST.line - 150)}`)).code); } catch (e) { code = e.message; } }
       if (!fresh()) return;
-      el.innerHTML = `<div class="ae-code"><nav class="ae-files" aria-label="Files">${files.map(f => `<button type="button" data-ae="file" data-ae-file="${esc(f.path)}" aria-current="${f.path === ST.file}">${esc(f.path)}${f.locked ? ' <span class="mut sm">locked</span>' : ''}</button>`).join('')}</nav>
-        <div class="ae-src"><div class="ae-bar"><code>${esc(ST.file)}</code><span class="sp"></span><span class="mut sm">Read only here - ask Hoola for changes</span></div><pre tabindex="0">${code.split('\n').map(l => { const n = Number((/^\s*(\d+)\|/.exec(l) || [])[1]) || 0; return `<span class="ln${n && n === ST.line ? ' hot' : ''}" data-ln="${n}">${esc(l)}</span>`; }).join('\n')}</pre></div></div>`;
+      const cur = files.find(f => S(f.path) === ST.file) || {}, dir = S(ST.file).includes('/') ? S(ST.file).replace(/\/[^/]*$/, '/') : '';
+      const herDir = S(cur.her_lock).endsWith('/') ? S(cur.her_lock) : '';
+      const lockBtns = cur.locked ? '<span class="mut sm">Hoola\'s own setup file - never changed</span>'
+        : `${herDir ? `<button class="b ghost sm" type="button" data-ae="lock" data-ae-path="${esc(herDir)}" data-ae-on="0" title="Unlock the whole folder">${ico('lock', 15)}Unlock ${esc(herDir)}</button>`
+            : `<button class="b ghost sm${cur.her_lock ? ' on' : ''}" type="button" data-ae="lock" data-ae-path="${esc(ST.file)}" data-ae-on="${cur.her_lock ? 0 : 1}" aria-pressed="${!!cur.her_lock}" title="Hoola cannot change a locked file">${ico('lock', 15)}${cur.her_lock ? 'Unlock this file' : 'Lock this file'}</button>
+               ${dir ? `<button class="b ghost sm" type="button" data-ae="lock" data-ae-path="${esc(dir)}" data-ae-on="1" title="Lock every file in this folder">Lock ${esc(dir)}</button>` : ''}`}`;
+      el.innerHTML = `<div class="ae-code"><nav class="ae-files" aria-label="Files">${files.map(f => `<button type="button" data-ae="file" data-ae-file="${esc(f.path)}" aria-current="${f.path === ST.file}">${esc(f.path)}${f.locked ? ' <span class="mut sm">Hoola\'s</span>' : ''}${f.her_lock ? ' <span class="pill ae-lockpill">Locked by you</span>' : ''}</button>`).join('')}</nav>
+        <div class="ae-src"><div class="ae-bar"><code>${esc(ST.file)}</code><span class="sp"></span>${lockBtns}<span class="mut sm">Read only here - ask Hoola for changes</span></div><pre tabindex="0">${code.split('\n').map(l => { const n = Number((/^\s*(\d+)\|/.exec(l) || [])[1]) || 0; return `<span class="ln${n && n === ST.line ? ' hot' : ''}" data-ln="${n}">${esc(l)}</span>`; }).join('\n')}</pre></div></div>`;
       el.querySelector('.ln.hot')?.scrollIntoView({block: 'center'});
       return;
     }
@@ -391,6 +398,33 @@
         <a class="b pri" href="#/app/${enc(S(r.id))}">Open the app</a>`;
     } catch (e) { toast(e.message, true); if (out) out.innerHTML = ''; }
     btn.disabled = false;
+  }
+
+  /* ----- v0.999.322 the done check: Hoola's plan for the change and what is proved after its last change ----- */
+  function workHtml(w) {
+    const {esc} = k(), t = w && w.task;
+    if (!t || !t.status || t.status === 'none') return '';
+    const plan = t.plan || {}, crit = L(plan.criteria);
+    if (t.status === 'complete' || t.status === 'blocked') {
+      const e = t.end || {};
+      return `<details class="ae-task ${t.status === 'complete' ? 'ok' : 'bad'}"><summary><b>${t.status === 'complete' ? 'Finished and checked' : 'Hoola could not finish'}</b>
+        <span class="mut sm ell">${esc(S(plan.goal))}</span></summary>
+        <p class="sm">${esc(S(e.summary))}</p>${L(e.evidence).length ? `<ul class="sm">${L(e.evidence).map(x => `<li>${esc(S(x))}</li>`).join('')}</ul>` : ''}</details>`;
+    }
+    const mark = (ok, label, need = true) => need ? `<li class="${ok ? 'ok' : ''}"><span aria-hidden="true">${ok ? '✓' : '○'}</span> ${esc(label)}</li>` : '';
+    const br = t.browser === 'ok', brLabel = t.browser === 'not_run' ? 'Browser check could not run here' : 'Seen working in a browser (phone + computer)';
+    return `<details class="ae-task" open><summary><b>Hoola is working on this</b> <span class="mut sm ell">${esc(S(plan.goal))}</span></summary>
+      <ul class="ae-taskchk sm">${mark(!!t.edited, 'Changed the code')}${mark(!!t.built, 'Built after the last change')}${mark(!!t.types_ok, 'TypeScript clean')}
+        ${mark(!!t.rules_ok, 'Data rules tested', !!t.rules_needed)}${mark(br || t.browser === 'not_run', brLabel, !!t.browser_needed)}${mark(!!t.built && !t.preview_errors, 'No errors in the preview')}</ul>
+      ${crit.length ? `<p class="mut sm">What you should see when it is done:</p><ul class="sm">${crit.map(c => `<li>${esc(S(c.description))}</li>`).join('')}</ul>` : ''}
+      <p class="mut sm">It is only called finished once every check above has passed after its last change.</p></details>`;
+  }
+  async function drawWork() {
+    try {
+      const w = await k().api('GET', `/api/appengine/${enc(ST.id)}/work`);
+      ST.work = w;
+      const el = document.getElementById('aeWork'); if (el) el.innerHTML = workHtml(w);
+    } catch { /* the card is a convenience; the app works without it */ }
   }
 
   /* ----- v0.832 L11 SABOOT: what Hoola proved before it says done ----- */
@@ -627,6 +661,12 @@
     if (what === 'tab') { ST.tab = b.dataset.aeTab; history.replaceState(null, '', `#/app/${enc(ST.id)}/${ST.tab}`); drawTabs(); await drawView(); return; }
     if (what === 'dev') { ST.device = b.dataset.aeDev; await drawView(); return; }
     if (what === 'file') { ST.file = b.dataset.aeFile; ST.line = 0; await drawView(); return; }
+    if (what === 'lock') {
+      b.disabled = true;
+      try { const r = await api('PUT', `/api/appengine/${enc(ST.id)}/locks`, {path: b.dataset.aePath, locked: b.dataset.aeOn === '1'}); toast(S(r.say)); }
+      catch (e) { toast(e.message, true); }
+      await drawView(); return;
+    }
     if (what === 'select') { ST.select = !ST.select; toFrame({t: 'mode', mode: ST.select ? 'select' : 'off'}); b.setAttribute('aria-pressed', String(ST.select)); b.classList.toggle('on', ST.select); return; }
     if (what === 'pk-chip') { const f = b.dataset.aeF, v = S(b.dataset.aeV); ST.pend[f] = v; livePreview(); drawPick(); return; }
     if (what === 'pk-close' || what === 'pk-cancel') { toFrame({t: 'clear'}); ST.pick = null; ST.pend = {}; ST.ptext = null; drawPick(); return; }
