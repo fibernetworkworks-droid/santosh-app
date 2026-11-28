@@ -1296,6 +1296,10 @@ from .dataeng_tools import DATAENG_HANDLERS, DATAENG_LABELS, DATAENG_TOOLS  # no
 TOOLS.extend(DATAENG_TOOLS)
 TOOL_LABELS.update(DATAENG_LABELS)
 HANDLERS.update(DATAENG_HANDLERS)
+from .platform_tools import PLATFORM_HANDLERS, PLATFORM_LABELS, PLATFORM_TOOLS  # noqa: E402
+TOOLS.extend(PLATFORM_TOOLS)
+TOOL_LABELS.update(PLATFORM_LABELS)
+HANDLERS.update(PLATFORM_HANDLERS)
 # v0.357 Engineering Desk: the hired CAD Engineer (cad_part)
 from .eng_tools import ENG_HANDLERS, ENG_LABELS, ENG_TOOLS  # noqa: E402
 

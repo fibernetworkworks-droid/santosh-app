@@ -500,6 +500,7 @@ function go(v, arg) {
   if (v === 'cvdesk') { location.assign('/console/vision'); return; }   // VISION DESK: its own section
   if (v === 'mldesk') { location.assign('/console/ml'); return; }   // ML DESK: its own section
   if (v === 'dedesk') { location.assign('/console/data'); return; }   // DATA ENGINEER DESK: its own section
+  if (v === 'pfdesk') { location.assign('/console/platform'); return; }   // PLATFORM ENGINEER DESK: its own section
   if (v === 'ncdesk') { location.assign('/console/noc'); return; }   // NOC DESK: its own section
   if (v === 'dwdesk') { location.assign('/console/docs'); return; }   // TECHNICAL WRITER DESK: its own section
   if (v === 'ardesk') { location.assign('/console/appreview'); return; }   // APP REVIEWER DESK: its own section
