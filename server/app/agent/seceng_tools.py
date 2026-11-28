@@ -1,4 +1,4 @@
-"""v0.999.311 security_desk: the Security Engineer's tool - scanner reports triaged together, web security headers and cookies, TLS
+"""v0.999.312 security_desk: the Security Engineer's tool - scanner reports triaged together, web security headers and cookies, TLS
 certificates, JWTs decoded without trusting them, risky code in a diff, and the CI security gate. Nothing is fetched, scanned or run
 against her systems; it never takes keys or live tokens."""
 from __future__ import annotations

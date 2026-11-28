@@ -260,7 +260,7 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                "roboflow", "cvat", "label studio", "image classifier", "image classification", "confusion matrix", "segmentation", "opencv",
                "camera calibration", "camera_info", "intrinsics", "field of view", "focal length", "pixels per", "lens for", "motion blur",
                "depth of field", "stereo camera", "disparity", "tensorrt", "onnx", "openvino", "jetson", "inference fps", "frames per second", "nms"),
-    # v0.999.311 the Security Engineer: her application security words
+    # v0.999.312 the Security Engineer: her application security words
     "seceng": ("security engineer", "security engineering", "appsec", "application security", "sarif", "codeql", "semgrep", "trivy", "grype",
                "snyk", "dependabot", "owasp zap", "zap report", "burp", "scanner report", "scan report", "vulnerability report", "cve-",
                "security headers", "content-security-policy", "content security policy", "csp header", "hsts", "strict-transport-security",
