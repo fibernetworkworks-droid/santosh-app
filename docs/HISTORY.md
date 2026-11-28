@@ -13940,3 +13940,33 @@ check, Settings. NEW tool `data_eng_desk` (registry 716). Tests `server/tests/te
 390). The tests caught two real faults, both fixed: a dbt source and a model with the same last name collided (orders depending on
 itself), and Avro's 32-bit float was read as a 64-bit SQL float.
 NOT VERIFIED: on her server, with her own pipelines, tables and warehouse, or the workflow on GitHub.
+
+
+## v0.999.304 PLATFORM ENGINEER DESK (owner: "Platform Engineer same as finance desks")
+
+The Platform Engineer gets its own desk at /console/platform beside its own chat (Conversation kind `platform`, `server/app/pfchat.py`,
+family `platform`, Hub key `platform_eng`), built like the finance desks. Engine `server/app/pfdesk/` - all code, no model, nothing
+runs on her clusters or her cloud:
+- `tfplan.py` Terraform / OpenTofu plans: `terraform show -json` (full detail) or the plan text (addresses, replacements, the
+  Plan: line). Data stores (databases, buckets, disks, keys, queues ... - settings attached to them such as a bucket policy are
+  not) destroyed or replaced, with the attribute forcing replacement; ingress open to 0.0.0.0/0 except 80 / 443; public
+  databases / buckets; Action * on Resource *; encryption, key rotation, deletion protection, final snapshot; required tags;
+  her destroy limit; many destroys + creates = a rename (moved blocks).
+- `rightsize.py` container CSV (requests, limits, p95 use, replicas): near memory limit (OOM), near CPU limit (throttled),
+  memory above request, CPU above request, no requests / limits, over-provisioned, recommended request = use + headroom, savings
+  in cores, GiB and money at her monthly prices.
+- `capacity.py` lines node / daemonset / pod: system reserve (her figures or GKE's published tier rule, pinned in the test),
+  pods placed largest first on the node with the most room (the default scheduler's least-allocated scoring), pods that fit
+  nowhere, pool fullness, losing one node of each pool or a whole zone, stranded CPU / memory, DaemonSet share.
+- `catalog.py` Backstage entities: a scorecard per Component / API / Resource / System against her checks (owner, owner known,
+  lifecycle, system, description, docs, on-call, repo, runbook, tags), broken references, dependency loops, production on
+  deprecated, unknown owners.
+- `upgrade.py` manifests / kubectl lists / helm template: API removals from the Kubernetes deprecated API migration guide up to
+  1.32 (1.16, 1.22, 1.25, 1.26, 1.27, 1.29, 1.32), already gone / breaks at the target / later, what to move to and what else changes.
+- `ci.py` GitHub Actions plan guard: init + plan + show -json in her folder (Terraform or OpenTofu), fails on a data store
+  destroyed or replaced (same rule as the desk, plus her types) or destroys over her limit; never applies; her OIDC login step.
+Pages: Today, Terraform, Rightsizing, Capacity (pools, node bars, losing capacity), Catalog (scorecard), Upgrades, CI check,
+Settings. NEW tool `platform_desk` (registry 717). Tests `server/tests/test_pf_desk.py` (5 incl. a browser walk at 1440 and 390).
+Found while building: the first placement filled one zone first (best fit) and made it look 92% full - changed to the default
+scheduler's spreading; the CI guard had a looser data-store rule than the desk - both share one rule now.
+NOT VERIFIED: on her server, with her own plans, clusters and catalog, or the workflow on GitHub.
