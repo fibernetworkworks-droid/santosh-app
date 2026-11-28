@@ -298,6 +298,7 @@ class Settings(BaseSettings):
     dev_agent_parallel: int = 4             # read / run agents asked in one reply that run at the same time
     # v0.814 THE AGENCY (owner: "GO 1 2 3"): 35 more agents in devsahayak/ecc/agency_*.py + the reality check before done
     dev_truth: bool = True                  # G9: a round's "done" judged from facts (exit codes, push, PR, CI) + its end notice told once
+    dev_superpowers: bool = True            # v0.999 Superpowers skills in Hoola Code + its two iron laws (superpowers.py)
     dev_ponytail: str = "full"              # v0.999 Ponytail level by default: lite | full | ultra | off (ponytail.py)
     dev_karpathy: bool = True               # v0.999 Karpathy's four coding rules + the drive-by check (karpathy.py)
     dev_reality_check: bool = True          # an independent reality-checker agent looks once before a round may finish

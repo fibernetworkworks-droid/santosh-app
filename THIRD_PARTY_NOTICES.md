@@ -276,3 +276,10 @@ Copyright (c) 2026 DietrichGebert. Read at commit ebd8654 (v5.3.3, 28 Nov 2026).
 Hoola Code (`server/app/devsahayak/ponytail.py`) carries Ponytail's rules for the smallest complete change, its levels
 (lite / full / ultra / off), and its review, audit and `shortcut:` debt reports, rewritten in Hoola's own words and
 credited where they appear. Ponytail is distributed under the MIT License.
+
+## Superpowers (obra/superpowers) - MIT
+Copyright (c) 2025 Jesse Vincent. Read at commit 22f0b46 (v7.0.2, 28 Nov 2026). **No upstream file is included.**
+Hoola Code (`server/app/devsahayak/superpowers.py` + `superpowers/*.md`) carries 13 of its skills rewritten in Hoola's
+own words for Hoola Code's tools, its rule for using skills, and two of its rules (verification before completion, the
+three-fix rule of systematic debugging) checked in code. The older condensed copy for Hoola's chat skill desk
+(`server/app/coder/skillpack/sp-*.md`, v0.499) is unchanged. Superpowers is distributed under the MIT License.

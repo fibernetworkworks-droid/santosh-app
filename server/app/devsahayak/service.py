@@ -4374,6 +4374,10 @@ def repo_commands(tenant: str, ref: str) -> dict[str, Any]:
         out["style"] = str(ses.meta.get("style") or conf.get("style") or "default")
         from . import ponytail as PT
         out["ponytail"] = PT.level(ses, conf)
+        from . import superpowers as SPW                  # v0.999 Hoola Code's own skills, beside the repo's
+        if SPW.on():
+            out["skills"] += [{"name": "superpowers:" + k, "description": v["description"], "origin": "superpowers"}
+                              for k, v in SPW.skills().items()]
         out["files"] = claude_paths(ses)
     except Exception:  # noqa: BLE001
         log.debug("repo setup read failed", exc_info=True)
