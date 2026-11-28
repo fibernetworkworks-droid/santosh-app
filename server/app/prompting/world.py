@@ -1,18 +1,18 @@
-"""World prompts: the prompts.chat library (CC0 1.0, public domain) as a read-only shelf in Hoola Prompting.
+"""World prompts: the whole prompts.chat library (CC0 1.0, public domain) as a read-only shelf in Hoola Prompting.
 
-Built once from prompts.chat's prompts.csv by `python -m app.prompting.world build <prompts.csv>` into
-world/world.json.gz (committed). The build keeps only what fits Hoola, each drop counted by its reason:
-  - not code-only (their for_devs column), not a JSON / YAML block (their STRUCTURED type): text and picture prompts
-  - 80 to 1,800 characters (a brief's text holds 2,000; room is left for her values)
-  - English, not gibberish, at most 8 blanks
-  - Hoola's share screen passes (no "ignore your rules", no jailbreak, no password / OTP / card ask, no link, no
-    send-or-pay-without-asking) and none of the unsafe words below
-  - not a near copy of a prompt already kept (dupe.SAME)
-Every blank shape is read by the paste reader and becomes a named blank. Opening one makes a brief in her workbench:
-a blank she fills is put in, a blank she leaves empty stays as [Name] - the author's default is shown as an example,
-never used. The prompt text itself is the author's, kept word for word; the brief's source says so. Outcomes go into
-the ledger under recipe `world:<id>`. These are not shown on Hoola's public /prompts pages (they are someone else's
-words; Hoola's own pages carry Hoola's own recipes)."""
+Built from prompts.chat's own full export (https://prompts.chat/prompts.json?full_content=true) or its prompts.csv by
+`python -m app.prompting.world build <prompts.json|prompts.csv> [commit]` into world/world.json.gz (committed).
+EVERY prompt is kept (owner, 28 Nov 2026: "INCLUDE ALL 100 %"). Nothing is dropped; what Hoola's checks found is shown
+on the prompt as a note instead: too long for a brief, a JSON / YAML block, code only, too short, not English,
+unsafe words, fails Hoola's share screen, gibberish, many blanks, near copy of another prompt.
+How a prompt is used depends on its notes:
+  - a prompt that fits a brief (2,000 characters) and has no safety note opens in her workbench like a recipe
+  - a longer one is filled in place (her blanks in, empty ones left [Name]) and copied or put in her Hoola chat
+  - one with a safety note (unsafe words / fails the share screen) is shown and can be copied, but Hoola does not
+    run it through its own workbench or chat
+Every blank shape is read by the paste reader and becomes a named blank; the author's default is shown as an example,
+never used. The prompt text is the author's, kept word for word. Outcomes go into the ledger under recipe
+`world:<id>`. These are not shown on Hoola's public /prompts pages (they are someone else's words)."""
 from __future__ import annotations
 
 import csv
@@ -35,11 +35,12 @@ SOURCE = {"name": "prompts.chat", "url": "https://github.com/f/prompts.chat", "l
 MIN_CHARS, MAX_CHARS, MAX_BLANKS = 80, 1800, 8
 PAGE = 24
 
-_UNSAFE = re.compile(
-    r"\b(nsfw|porn\w*|nude|nudity|naked|erotic\w*|sexual\w*|sexy|fetish\w*|onlyfans|explicit|gore|uncensored|"
-    r"unfiltered|no (?:restrictions|limits|filters|rules)|without (?:any )?(?:restrictions|filters|limits)|"
-    r"developer mode|jailbr\w*|dan mode|do anything now|malware|ransomware|phishing|keylogger|exploit\w*|"
-    r"hack(?:ing|er)?|drugs?|weapons?|bomb|suicid\w*|self[- ]harm|racis\w*|hate speech)\b", re.I)
+_UNSAFE = re.compile(                         # a safety note only for real jailbreak / sexual / malware prompts
+    r"\b(nsfw|porn\w*|nude|naked|erotic\w*|fetish\w*|onlyfans|uncensored|unfiltered|no (?:restrictions|filters)|"
+    r"without (?:any )?(?:restrictions|filters)|developer mode|jailbr\w*|dan mode|do anything now|ransomware|"
+    r"keylogger)\b", re.I)
+_IGNORE_RULES = re.compile(r"\b(ignore|disregard|forget)\b.{0,40}\b(previous|above|earlier|prior|all)\b.{0,30}"
+                           r"\b(instructions?|rules?|guidelines?)\b", re.I)
 
 GROUPS: list[tuple[str, str, tuple[str, ...]]] = [
     ("pictures", "Pictures", ()),
@@ -111,7 +112,7 @@ def _kind(title: str, text: str, kind: str) -> str:
 
 
 def _gibberish(text: str) -> bool:
-    if re.search(r"(.)\1{5,}", text):
+    if re.search(r"([a-zA-Z])\1{5,}", text):
         return True
     low = text.lower()
     if any(p in low for p in ("qwerty", "asdfgh", "zxcvbn")):
@@ -135,60 +136,115 @@ def _mark(text: str) -> str:
     return "".join(parts) + text[last:]
 
 
-def judge(row: dict[str, str]) -> tuple[dict[str, Any] | None, str]:
-    """One CSV row -> (kept entry, "") or (None, why dropped)."""
-    from . import store as S
-    title = (row.get("act") or "").strip()[:80]
-    text = (row.get("prompt") or "").replace("\r\n", "\n").strip()
-    kind = (row.get("type") or "TEXT").strip().upper()
-    if str(row.get("for_devs") or "").strip().upper() == "TRUE":
-        return None, "code only"
-    if kind not in ("TEXT", "IMAGE"):
-        return None, "JSON or YAML block"
-    if not title or len(text) < MIN_CHARS:
-        return None, "too short"
-    if len(text) > MAX_CHARS:
-        return None, "too long for a brief"
-    if not _english(title + " " + text):
-        return None, "not English"
-    if _gibberish(text):
-        return None, "gibberish"
+NOTES = {
+    "long": "Too long for a brief",
+    "structured": "Written as a JSON or YAML block",
+    "code": "Code only, for developers",
+    "short": "Very short",
+    "lang": "In another language",
+    "unsafe": "Has unsafe words",
+    "screen": "Asks the AI to ignore its rules",
+    "gibberish": "Looks like gibberish",
+    "blanks": "Many blanks",
+    "copy": "Near copy of another prompt",
+}
+SAFETY = ("unsafe", "screen")                 # Hoola shows and copies these, but does not run them itself
+BRIEF_MAX = 2000                              # a brief's text (brief.MAX_TEXT)
+KINDS = [("text", "Text"), ("image", "Pictures"), ("video", "Video"), ("skill", "Agent skills"),
+         ("taste", "Code style"), ("audio", "Audio"), ("structured", "JSON / YAML")]
+KIND_LABEL = dict(KINDS)
+
+
+def _slug(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", str(name or "").lower()).strip("-")[:40] or "other"
+
+
+def _row(raw: dict[str, Any]) -> dict[str, Any]:
+    """A prompts.json prompt or a prompts.csv row -> one shape."""
+    if "content" in raw or "category" in raw:
+        cat = raw.get("category") or {}
+        return {"title": str(raw.get("title") or "").strip()[:80], "text": str(raw.get("content") or ""),
+                "type": str(raw.get("type") or "TEXT").upper(), "cat": str(cat.get("name") or "").strip(),
+                "code": False, "by": str((raw.get("author") or {}).get("username") or "")[:40],
+                "tags": [str(t.get("name")) for t in (raw.get("tags") or []) if t.get("name")][:8],
+                "votes": int(raw.get("voteCount") or 0)}
+    return {"title": str(raw.get("act") or "").strip()[:80], "text": str(raw.get("prompt") or ""),
+            "type": str(raw.get("type") or "TEXT").upper(), "cat": "",
+            "code": str(raw.get("for_devs") or "").strip().upper() == "TRUE",
+            "by": str(raw.get("contributor") or "").strip()[:40], "tags": [], "votes": 0}
+
+
+def judge(raw: dict[str, Any]) -> dict[str, Any]:
+    """One prompt -> its shelf entry. Never dropped; what the checks found is in `notes`."""
+    r = _row(raw)
+    title = r["title"] or "Untitled prompt"
+    text = r["text"].replace("\r\n", "\n").strip()
+    typ = r["type"]
+    notes = []
+    if len(text) > BRIEF_MAX:
+        notes.append("long")
+    if typ == "STRUCTURED" or re.match(r"\s*[\[{]", text) and re.search(r'"\s*:', text[:400]) \
+            or re.match(r"\s*(---\s*\n)?[a-z_]+:\s", text) and typ != "SKILL":
+        notes.append("structured")
+    if r["code"] or typ == "TASTE":
+        notes.append("code")
+    if len(text) < MIN_CHARS:
+        notes.append("short")
+    if not _english(title + " " + text[:4000]):
+        notes.append("lang")
+    if _gibberish(text[:4000]):
+        notes.append("gibberish")
     if _UNSAFE.search(title + " " + text):
-        return None, "unsafe words"
-    if S.screen({"intent": text, "slots": {}}):
-        return None, "fails Hoola's share screen"
-    blanks = P.blanks(text)
+        notes.append("unsafe")
+    if _IGNORE_RULES.search(text):
+        notes.append("screen")
+    blanks = P.blanks(text, limit=40)
     if len(blanks) > MAX_BLANKS:
-        return None, "too many blanks"
-    sec = _kind(title, text, kind)
-    return {"id": _id(title, text), "title": title, "section": sec, "group": _group(title, text, sec),
-            "text": _mark(text), "blanks": blanks, "by": (row.get("contributor") or "").strip()[:40]}, ""
+        notes.append("blanks")
+    kind = {"IMAGE": "image", "VIDEO": "video", "SKILL": "skill", "TASTE": "taste", "AUDIO": "audio",
+            "STRUCTURED": "structured"}.get(typ, "text")
+    sec = "image" if kind == "image" else "video" if kind == "video" else (
+        _kind(title, text, typ) if kind == "text" and not r["cat"] else "chat")
+    if kind == "text" and sec in ("image", "video"):
+        kind = sec
+    cat = r["cat"] or GROUP_LABEL[_group(title, text, sec)]
+    return {"id": _id(title, text), "title": title, "section": sec, "kind": kind, "group": _slug(cat), "cat": cat,
+            "text": _mark(text), "blanks": blanks, "by": r["by"], "tags": r["tags"], "votes": r["votes"],
+            "notes": notes}
 
 
-def build(csv_path: str | Path, out: str | Path = DATA, commit: str = "") -> dict[str, Any]:
+def _read(path: str | Path) -> list[dict[str, Any]]:
+    path = Path(path)
+    if path.suffix.lower() == ".json":
+        d = json.loads(path.read_text(encoding="utf-8"))
+        return list(d.get("prompts") or d) if isinstance(d, dict) else list(d)
     csv.field_size_limit(10 ** 8)
-    with open(csv_path, encoding="utf-8", newline="") as f:
-        rows = list(csv.DictReader(f))
+    with open(path, encoding="utf-8", newline="") as f:
+        return list(csv.DictReader(f))
+
+
+def build(src: str | Path, out: str | Path = DATA, commit: str = "") -> dict[str, Any]:
+    rows = _read(src)
     kept: list[dict[str, Any]] = []
-    dropped: dict[str, int] = {}
-    seen_ids: set[str] = set()
-    norms: list[str] = []
-    for row in rows:
-        e, why = judge(row)
-        if e is not None:
-            norm = DU.normalise(e["text"])
-            if e["id"] in seen_ids or any(DU.similarity(norm, other) >= DU.SAME for other in norms
-                                          if abs(len(other) - len(norm)) < max(len(norm), 1) * 0.3):
-                e, why = None, "near copy of another prompt"
-            else:
-                norms.append(norm)
-                seen_ids.add(e["id"])
-        if e is None:
-            dropped[why] = dropped.get(why, 0) + 1
-        else:
-            kept.append(e)
+    seen: dict[str, int] = {}
+    norms: list[tuple[str, int]] = []
+    found: dict[str, int] = {}
+    for raw in rows:
+        e = judge(raw)
+        if e["id"] in seen:                     # same title + same words: still kept, under its own id
+            seen[e["id"]] += 1
+            e["id"] = f"{e['id']}-{seen[e['id']]}"
+        seen.setdefault(e["id"], 1)
+        norm = DU.normalise(e["text"][:3000])
+        if any(DU.similarity(norm, other) >= DU.SAME for other, _ in norms[-4000:]
+               if abs(len(other) - len(norm)) < max(len(norm), 1) * 0.3):
+            e["notes"].append("copy")
+        norms.append((norm, len(kept)))
+        for n in e["notes"]:
+            found[n] = found.get(n, 0) + 1
+        kept.append(e)
     meta = {**SOURCE, "commit": commit, "built": datetime.now(timezone.utc).strftime("%Y-%m-%d"), "read": len(rows),
-            "kept": len(kept), "dropped": dict(sorted(dropped.items(), key=lambda x: -x[1]))}
+            "kept": len(kept), "notes": {NOTES[k]: v for k, v in sorted(found.items(), key=lambda x: -x[1])}}
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
     with gzip.open(out, "wt", encoding="utf-8", compresslevel=9) as f:
@@ -218,30 +274,42 @@ def meta() -> dict[str, Any]:
     return dict(_load()["meta"])
 
 
+def _use_how(e: dict[str, Any]) -> str:
+    """workbench = opens as a brief; fill = filled in place, then copied or put in her chat; copy = copy only."""
+    if any(n in SAFETY for n in e.get("notes") or ()):
+        return "copy"
+    return "fill" if len(e["text"]) > BRIEF_MAX else "workbench"
+
+
 def _public(e: dict[str, Any], full: bool = False) -> dict[str, Any]:
     out = {"id": PREFIX + e["id"], "section": e["section"], "title": e["title"], "group": e["group"],
-           "group_label": GROUP_LABEL.get(e["group"], ""), "makes": GROUP_LABEL.get(e["group"], ""),
-           "blanks": e["blanks"], "starter": False, "world": True, "by": e.get("by") or ""}
+           "group_label": e.get("cat") or GROUP_LABEL.get(e["group"], ""), "makes": e.get("cat") or "",
+           "kind": e.get("kind", "text"), "kind_label": KIND_LABEL.get(e.get("kind", "text"), "Text"),
+           "blanks": e["blanks"], "starter": False, "world": True, "by": e.get("by") or "",
+           "notes": [NOTES[n] for n in e.get("notes") or () if n in NOTES], "use": _use_how(e),
+           "safety": any(n in SAFETY for n in e.get("notes") or ()), "chars": len(e["text"])}
     if full:
         out["text"] = e["text"]
+        out["tags"] = e.get("tags") or []
     return out
 
 
-def search(q: str = "", group: str = "", page: int = 1) -> dict[str, Any]:
+def search(q: str = "", group: str = "", page: int = 1, kind: str = "") -> dict[str, Any]:
     if not on():
-        return {"on": False, "items": [], "total": 0, "groups": [], "source": SOURCE}
+        return {"on": False, "items": [], "total": 0, "groups": [], "kinds": [], "source": SOURCE}
     d = _load()
     words = [w for w in (q or "").lower().split() if w][:8]
     hits = []
     for e in d["items"]:
         if group and e["group"] != group:
             continue
+        if kind and e.get("kind", "text") != kind:
+            continue
         if words and not all(w in e["_hay"] for w in words):
             continue
-        score = sum(3 if w in e["title"].lower() else 1 for w in words)
+        score = sum(3 if w in e["title"].lower() else 1 for w in words) * 1000 + min(e.get("votes") or 0, 999)
         hits.append((score, e))
-    if words:
-        hits.sort(key=lambda x: -x[0])
+    hits.sort(key=lambda x: -x[0])
     try:                                         # NATIJA KHATA: kept counts, as on Hoola's own recipes
         from . import ledger as L
         rates = {k: v for k, v in L.recipe_rates().items() if k.startswith(PREFIX)}
@@ -254,12 +322,16 @@ def search(q: str = "", group: str = "", page: int = 1) -> dict[str, Any]:
         if x["id"] in rates:
             x["kept"] = rates[x["id"]]
         items.append(x)
-    counts: dict[str, int] = {}
+    cats: dict[str, list] = {}
+    kinds: dict[str, int] = {}
     for e in d["items"]:
-        counts[e["group"]] = counts.get(e["group"], 0) + 1
+        c = cats.setdefault(e["group"], [e.get("cat") or GROUP_LABEL.get(e["group"], e["group"]), 0])
+        c[1] += 1
+        kinds[e.get("kind", "text")] = kinds.get(e.get("kind", "text"), 0) + 1
     return {"on": True, "items": items, "total": len(hits), "page": page, "pages": max(1, -(-len(hits) // PAGE)),
-            "groups": [{"key": k, "label": lab, "n": counts.get(k, 0)} for k, lab, _ in GROUPS if counts.get(k)],
-            "source": {**SOURCE, "kept": d["meta"].get("kept", 0)}}
+            "groups": [{"key": k, "label": v[0], "n": v[1]} for k, v in sorted(cats.items(), key=lambda x: -x[1][1])],
+            "kinds": [{"key": k, "label": lab, "n": kinds[k]} for k, lab in KINDS if kinds.get(k)],
+            "source": {**SOURCE, "kept": d["meta"].get("kept", 0), "read": d["meta"].get("read", 0)}}
 
 
 def get(wid: str) -> dict[str, Any] | None:
@@ -274,12 +346,32 @@ def texts() -> list[dict[str, str]]:
     return [{"id": PREFIX + e["id"], "title": e["title"], "text": e["text"]} for e in _load()["items"]]
 
 
-def use(wid: str, values: dict[str, str] | None = None) -> dict[str, Any]:
-    """A world prompt with her values -> {"brief": ...}. Empty blanks stay [Name]; defaults are never used."""
-    from . import brief as B
-    e = _load()["by_id"].get(wid.removeprefix(PREFIX)) if on() else None
+def _entry(wid: str) -> dict[str, Any]:
+    e = _load()["by_id"].get(str(wid or "").removeprefix(PREFIX)) if on() else None
     if e is None:
         raise ValueError("No such prompt.")
+    return e
+
+
+def fill(wid: str, values: dict[str, str] | None = None) -> dict[str, Any]:
+    """Any world prompt with her values, word for word otherwise: {text, filled, open, use, safety}.
+    Empty blanks stay [Name]; the author's defaults are never used."""
+    e = _entry(wid)
+    got = P.fill(e["text"], values or {})
+    return {**got, "use": _use_how(e), "safety": any(n in SAFETY for n in e.get("notes") or ())}
+
+
+def use(wid: str, values: dict[str, str] | None = None) -> dict[str, Any]:
+    """A world prompt with her values -> {"brief": ...}. Empty blanks stay [Name]; defaults are never used.
+    Only prompts that fit a brief and carry no safety note open in the workbench; the rest use fill()."""
+    from . import brief as B
+    e = _entry(wid)
+    how = _use_how(e)
+    if how == "copy":
+        raise ValueError("Hoola's checks flagged this prompt, so Hoola does not run it. You can copy it.")
+    if how == "fill":
+        raise ValueError("This prompt is longer than a brief holds. Fill it in place and copy it or put it in "
+                         "your Hoola chat.")
     got = P.fill(e["text"], values or {})
     slots: dict[str, Any] = {}
     if e["section"] == "chat":
@@ -288,8 +380,8 @@ def use(wid: str, values: dict[str, str] | None = None) -> dict[str, Any]:
     return {"brief": B.validate(raw)}
 
 
-if __name__ == "__main__":          # python -m app.prompting.world build <prompts.csv> [commit]
+if __name__ == "__main__":          # python -m app.prompting.world build <prompts.json|prompts.csv> [commit]
     if len(sys.argv) >= 3 and sys.argv[1] == "build":
         print(json.dumps(build(sys.argv[2], commit=sys.argv[3] if len(sys.argv) > 3 else ""), indent=1))
     else:
-        print("usage: python -m app.prompting.world build <prompts.csv> [commit]")
+        print("usage: python -m app.prompting.world build <prompts.json|prompts.csv> [commit]")
