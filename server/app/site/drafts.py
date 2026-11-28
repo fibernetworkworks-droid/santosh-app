@@ -255,6 +255,13 @@ def discard(tenant: str, ref: str, draft_id: str) -> dict[str, Any]:
         raise DraftError("That draft is gone.", 404)
     if S.busy(d.id):
         raise DraftError("The draft is working on something; stop it first.", 409)
+    drop(tenant, d)
+    return {"ok": True, "say": f"Draft '{d.draft_name}' discarded. Your website was not touched."}
+
+
+def drop(tenant: str, d: Site) -> None:
+    """One draft gone for good: its folder, its own data twin, its versions and its row (discard, and v0.999.315 when
+    its website - or the draft itself - is deleted)."""
     shutil.rmtree(B.site_dir(tenant, d.id), ignore_errors=True)
     tw = _data_twin(d)
     if tw:
@@ -267,4 +274,7 @@ def discard(tenant: str, ref: str, draft_id: str) -> dict[str, Any]:
             for v in s.scalars(select(SiteVersion).where(SiteVersion.site_id == d.id)).all():
                 s.delete(v)
             s.delete(x)
-    return {"ok": True, "say": f"Draft '{d.draft_name}' discarded. Your website was not touched."}
+
+
+def drafts_of(parent_id: str) -> list[Site]:
+    return _drafts_of(parent_id)

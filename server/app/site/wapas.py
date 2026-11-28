@@ -53,10 +53,10 @@ def has(tenant: str, site_id: str, ver: int) -> bool:
     return (snap_dir(tenant, site_id, ver) / "meta.json").exists()
 
 
-def _site(tenant: str, ref: str) -> Site:
+def _site(tenant: str, ref: str, newest: bool = True) -> Site:
     from . import service as S
     with session() as s:
-        r = S._find(s, tenant, ref)
+        r = S._find(s, tenant, ref, newest)
         s.expunge(r)
     return r
 
@@ -73,7 +73,7 @@ def _sections_of(tenant: str, site_id: str, ver: int) -> dict[str, dict[str, Any
 
 def restore(tenant: str, ref: str, ver: int, note: str = "") -> dict[str, Any]:
     from . import service as S
-    r = _site(tenant, ref)
+    r = _site(tenant, ref, False)
     ver = int(ver)
     with session() as s:
         ok = s.scalars(select(SiteVersion).where(SiteVersion.site_id == r.id, SiteVersion.version == ver)).first()

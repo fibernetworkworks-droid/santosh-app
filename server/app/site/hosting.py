@@ -615,7 +615,7 @@ def _drop_host(row: "_Gone | SiteHost", files: bool = True) -> None:
 def take_down(tenant: str, ref: str) -> dict[str, Any]:
     from . import service as S
     with session() as s:
-        r = S._find(s, tenant, ref)
+        r = S._find(s, tenant, ref, False)
         rows = s.scalars(select(SiteHost).where(SiteHost.site_id == r.id, SiteHost.status != "removed")).all()
         names = [x.hostname for x in rows]
         drop = [_Gone(x.hostname, x.cf_id or "") for x in rows]     # plain copies: the status change must commit
@@ -688,11 +688,19 @@ def connect_domain(tenant: str, ref: str, domain: str, conv: str = "", primary: 
     else:
         raise HostError("To connect your domain, Hoola Hosting must be on at the server (SITES_DIRECT_IP, or Cloudflare "
                         "for SaaS), or the domain's DNS must be in your own Cloudflare account with its token connected in Hoola.")
+    # v0.999.315 the DNS plan first: if it cannot be made, nothing of her old domain has been touched yet
+    desired = D.website_records(d, mode, target, verify, apex_flatten=apex_ok)
+    try:
+        pl = D.make_plan(tenant, r.id, d, desired, "website")
+    except D.DnsError as e:
+        raise HostError(str(e))
     keep = {x.hostname for x in rows}
     gone: list[_Gone] = []
     with session() as s:
         for old in s.scalars(select(SiteHost).where(SiteHost.site_id == r.id, SiteHost.kind == "custom",
                                                     SiteHost.status != "removed")).all():
+            if old.hostname not in keep and old.status == "active" and apex_of(old.hostname) != d:
+                continue        # v0.999.315 her working domain keeps serving until the new one is live (_retire_others)
             old.status = "removed"
             if not (old.hostname in keep and old.cf_id and any(x.cf_id == old.cf_id for x in rows)):
                 gone.append(_Gone(old.hostname, old.cf_id or ""))
@@ -701,11 +709,6 @@ def connect_domain(tenant: str, ref: str, domain: str, conv: str = "", primary: 
     for x in gone:          # v0.223 the old domain's Cloudflare hostname goes too (it stayed, costing quota)
         _drop_host(x, files=False)
     host_map(force=True)
-    desired = D.website_records(d, mode, target, verify, apex_flatten=apex_ok)
-    try:
-        pl = D.make_plan(tenant, r.id, d, desired, "website")
-    except D.DnsError as e:
-        raise HostError(str(e))
     card = {"kind": "dns", "site": S.view(r, False), "domain": d, "plan": pl, "mode": mode,
             "say": (f"{pl['todo']} DNS changes for {d}: Hoola applies them only with your approval." if D.can_apply(pl["provider"])
                     else f"{d}: add these {pl['todo']} records on your domain company's site (the steps are on the card).")}
@@ -808,9 +811,27 @@ def _check_pending(h: SiteHost) -> None:
         row = s.get(SiteHost, h.id)
         row.status, row.ssl_status, row.problem, row.last_check = st, ssl_st, prob, now()
     if st == "active":
+        _retire_others(h)
         host_map(force=True)
         _publish(h.tenant_id, "site_live", {"ok": True, "url": f"https://{h.hostname}/", "hosts": [h.hostname],
                                             "say": f"{h.hostname} now opens the website (with https)."})
+
+
+def _retire_others(h: SiteHost) -> None:
+    """v0.999.315 her new domain is live now: the custom addresses of ANOTHER domain this site still served (kept on
+    while the new one was being verified, so the site never went dark) leave - their Cloudflare hostname too."""
+    if (h.kind or "") != "custom":
+        return
+    apex = apex_of(h.hostname)
+    gone: list[_Gone] = []
+    with session() as s:
+        for x in s.scalars(select(SiteHost).where(SiteHost.site_id == h.site_id, SiteHost.kind == "custom",
+                                                  SiteHost.status != "removed")).all():
+            if apex_of(x.hostname) != apex:
+                x.status = "removed"
+                gone.append(_Gone(x.hostname, x.cf_id or ""))
+    for x in gone:
+        _drop_host(x, files=False)
 
 
 def direct_records_seen(h: SiteHost) -> tuple[bool, str]:
@@ -864,6 +885,7 @@ def _check_direct(h: SiteHost) -> None:
         row = s.get(SiteHost, h.id)
         row.status, row.ssl_status, row.problem, row.last_check = st, stage, prob[:300], now()
     if st == "active":
+        _retire_others(h)
         host_map(force=True)
         _publish(h.tenant_id, "site_live", {"ok": True, "url": f"https://{h.hostname}/", "hosts": [h.hostname],
                                             "say": f"{h.hostname} now opens the website (with https)."})
