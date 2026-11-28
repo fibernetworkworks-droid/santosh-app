@@ -14169,3 +14169,27 @@ the Cloud desk shell. Tests `server/tests/test_sec_desk.py` (5, incl. a browser 
 and fails on exactly what the desk reports).
 
 NOT VERIFIED: on her server, with her own scanners' output, sites, certificates and code, or the workflow running on GitHub.
+
+## v0.999.313 DEVSECOPS ENGINEER DESK (owner: "DevSecOps Engineer same as finance desks")
+
+The DevSecOps Engineer gets its own section `/console/devsecops` and DevSecOps chat (Conversation kind `devsecops`, `dsochat.py`)
+on a NEW all-code engine `server/app/dsodesk/` (no model):
+- `workflows.py` - GitHub Actions files (`## path` chunks): third-party actions not pinned to a commit sha (actions/ and github/ trusted
+  by default, her own trusted owners added), script injection (PR title / body / branch / comment text inside run:), no or write-all
+  permissions, secrets for the whole workflow, self-hosted runners on pull requests, pull_request_target / workflow_run checking out
+  the PR head (runs PR code with secrets), curl | bash, no timeout, persist-credentials. Real line numbers.
+- `sbom.py` - CycloneDX and SPDX: licence family (strong / weak copyleft, permissive, unknown), her deny / allow lists with `*`; an OR
+  licence is denied only if every alternative is denied; no licence / version / purl; packages at several versions; ecosystems.
+- `deps.py` - package.json + lock (install scripts), requirements.txt, go.mod, Cargo.toml: not pinned, from git or a URL, extra
+  indexes, local replaces, names one edit off popular npm / PyPI packages (a swap counts as one).
+- `repo.py` - `gh api repos/O/R` and its branch protection JSON: reviews, stale reviews, code owners, status checks, force pushes,
+  deletion, admins, signed commits, secret scanning, Dependabot.
+- `metrics.py` - a findings CSV (id, severity, opened, closed, team): open, past due, median / p90 fix days, in-SLA share per severity
+  against her days, weekly backlog, age buckets, teams, the past-due list.
+- `ci.py` - `.github/workflows/pipeline-guard.yml` running the same line rules on her workflow files, failing at her level.
+
+Keys refused everywhere. NEW tool `devsecops_desk` (`agent/devsecops_tools.py`), registry 720. Hire key `devsecops_eng` (live, Software
+group). Console `dsodesk.html/.js/.css`. Tests `server/tests/test_dso_desk.py` (5, incl. a browser walk at 1440 and 390). Bugs caught
+while building: workflow line numbers one too high, a dual licence (MIT OR GPL) marked denied, a swapped-letter lookalike missed.
+
+NOT VERIFIED: on her server, with her own pipelines, SBOMs and repositories, or the guard workflow running on GitHub.
