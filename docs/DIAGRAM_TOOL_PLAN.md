@@ -1,117 +1,156 @@
-# HOOLA DIAGRAM — plan (owner, 28 Nov 2026)
+# HOOLA DIAGRAM — plan v2 (owner, 28 Nov 2026)
 
 Owner: "clone the repo — develop it as it is as tools — when user ask in between and during work — hoola chat and
-hoola code will use this tool for showing perfect diagram in workspace to user — first make a plan".
+hoola code will use this tool for showing perfect diagram in workspace to user — first make a plan", then four repos
+read one by one, then "rewrite the plan". Nothing is built yet; this file is the plan. v1 (diagram-design only) is
+replaced by this one.
 
-Source: github.com/cathrynlavery/diagram-design, commit 795eec4 (26 Nov 2026), MIT, (c) 2025 Cathryn Lavery.
-Nothing is built yet. This file is the plan.
+## 1. The four repos and what each one gives
 
-## 1. What we take, as it is
+| Repo (commit read) | Licence | What it is | Role in Hoola |
+|---|---|---|---|
+| tt-a1i/archify (b42e7d7, v3.3.2) | Apache-2.0 / MIT | The AI writes a small JSON description; archify's OWN CODE places every box, routes every line, then checks it in four gates (schema, build, strict check, real-browser check) before it is delivered. Interactive HTML: click a part, trace a path, upstream / downstream. Also one-page answers ("explainer"), story video, Code Analysis of a repo, PR walkthroughs | **Engine A — the main engine** |
+| cathrynlavery/diagram-design (795eec4) | MIT | A skill: 52 diagram types with a strict designer look (one accent, 4 px grid, 9-box budget, connector rules); the AI writes the SVG from templates; two Python checkers + a rendered picture check it | **Engine B — every other type** |
+| DayuanJiang/next-ai-draw-io (75f0df3) | Apache-2.0 | The AI draws on a REAL draw.io editor canvas: she drags, renames, restyles by hand; selects shapes and asks "change only these"; AI changes are outlined, one Ctrl+Z undoes them; versions with thumbnails; AWS / Azure / GCP / K8s icons; draw.io editor self-hosted (v32.0.2, sha-pinned) | **Engine C — when she wants to edit it herself** |
+| eraserlabs/eraser-diagrams (75db422) | MIT | JSON diagram + a look defined once (components, palette, fonts) + real browser measuring + an obstacle-aware line router; output = PNG + HTML + the measured JSON | **Two ideas, not a fourth engine** (§5) |
 
-The repo's `skills/diagram-design/` folder (6.4 MB) goes into Hoola UNCHANGED at
-`server/app/diagram/vendor/diagram-design/`, pinned to 795eec4, with its LICENSE and a THIRD_PARTY_NOTICES line:
+Why three engines and not four: every engine is code we must keep working on her server, update and test. Three cover
+every need; Eraser's two best ideas fit inside them.
 
-| Part | Size | What Hoola uses it for |
+## 2. Which engine draws what (code decides, never a guess)
+
+`diagram` picks the engine from the type and her words; the model may name one, code checks it fits.
+
+| Her need | Engine | Why |
 |---|---|---|
-| `SKILL.md` | 33 KB | the rules the model follows (type picker, delete first, 9 boxes / 12 arrows, one accent, 4 px grid, connector rules, taste checklist) |
-| `references/` (71 files) | 980 KB | one file per diagram type + style guide, primitives, layout budget, output spec, import / export guides — read ONLY the one the model needs |
-| `assets/` templates + 238 examples | 5.0 MB | the start file the model copies (light / dark / full / terminal / motion) and worked examples per type |
-| `scripts/` (9 files) | 400 KB | `self_check.py`, `verify_geometry.py` (the code checks), `export_png/svg/pdf.py`, the 4 import readers |
+| Architecture, workflow / process, sequence, data flow, status / lifecycle, database tables (ERD), class, tree, timeline, time waterfall — and every diagram about CODE | **A archify** | code places boxes and lines = the same request gives the same clean layout; click to explore |
+| Charts (bar, line, scatter, heatmap, treemap, sankey, waterfall money bridge, radar, polar), org chart, funnel / pyramid, quadrant, venn, user journey, service blueprint, fishbone, Wardley, kanban, story map, Gantt, swimlane, steps, loop, layers, exploded / axonometric, and the rest of the 52 | **B diagram-design** | archify has no such type; diagram-design's look and checks |
+| "editable", "draw.io", "I will change it myself", or Edit on any A / B diagram | **C draw.io** | real hand editing |
+| A question best answered as a page (a comparison, a diagnosis, a "how does X work") | **A explainer** | conclusion first, panels, charts, numbered sources |
+| "What is wrong with this repo's structure", cycles, coupling, hotspots | **A Code Analysis** (Hoola Code) | reads the repo, never runs its code |
+| "Show what this PR changed" | **A PR walkthrough** (Hoola Code) | marks the change on the diagram |
 
-Rule: **we never edit a vendored file.** Every Hoola change (her brand, Hindi fonts, where files live, paths) is done
-in Hoola's own wrapper around it, so a newer upstream version can be dropped in by one script
-(`tools/diagram_sync.py <commit>`) and the tests say whether it still works.
+Before any engine: "would a table or a paragraph do?" — if yes, answer in words and draw nothing (diagram-design's
+rule, kept for all three).
 
-Left out: the repo's own website, screenshots, plugin manifests, CI scripts (17 MB of `docs/`, 3.9 MB of `scripts/`).
+## 3. Taking the repos "as it is"
 
-## 2. The flow — the repo's six steps, run by Hoola
+Each upstream folder is copied UNCHANGED into `server/app/diagram/vendor/<name>/`, pinned to the commit above, with
+its LICENSE / NOTICE and a THIRD_PARTY_NOTICES line. **We never edit a vendored file**; every Hoola change lives in
+Hoola's wrapper. `tools/diagram_sync.py <engine> <commit>` drops in a newer version on her word; the tests say whether
+it still works.
 
-1. **She asks in plain words** — in a Hoola chat, on a call (through santosh_kaam), mid-way through a long job, or in
-   a Hoola Code session ("show me how login works as a diagram").
-2. **The model picks the type** from the repo's 52-type table, and first asks itself whether a table or a paragraph
-   would do; if so it answers in words and draws nothing.
-3. **It says the plan in one line** (type, size, what it will leave out) — then draws (see decision 2 in §7).
-4. **It draws by the repo's rules**, starting from the repo's template, with the one type reference it chose loaded.
-5. **Code checks it before she sees it:** `self_check.py` + `verify_geometry.py` run on the file. A failure goes back to
-   the model with the exact errors to fix (at most 3 rounds). Then a PNG is rendered in the server's Chromium and the
-   model LOOKS at it (one picture), fixes what looks wrong, and only then is it shown. If it still fails after the
-   rounds, she gets it with the open problems named — never a quiet "done".
-6. **She sees it in the workspace:** one self-contained HTML file with the drawing inside, plus PNG / SVG / PDF on tap.
+| Vendored | Size | Left out |
+|---|---|---|
+| `archify/archify/` (renderers, schemas, references, examples, explainer, story, Code Analysis module, bin) | ~25 MB | website, docs, journal, benchmarks, experiments, sponsor material |
+| `diagram-design/skills/diagram-design/` (SKILL.md, references, templates + examples, 9 scripts) | 6.4 MB | website, screenshots, plugin manifests, CI |
+| next-ai-draw-io: the MCP-server source parts we port (XML checks, edit gate, selection, pages, diff, drawing guides, shape libraries) | ~1 MB | the Next.js web app, Electron, 25 model providers |
+| draw.io editor (jgraph/drawio `draw.war` v32.0.2, Apache-2.0) | downloaded at setup, sha-256 checked, not in git | — |
 
-## 3. One engine, one tool
+Runtimes: archify and the draw.io parts are Node (>= 18) with no runtime packages (archify) or one small set
+(draw.io parts); Hoola's server already runs Node (HyperFrames) and Chromium + Playwright (HOOLA PRINT). diagram-design's
+scripts are plain Python. New vps-ops job `diagram_setup` fetches the draw.io editor and checks all three engines.
 
-NEW `server/app/diagram/` (Hoola's code):
+## 4. One tool, used everywhere
 
-- `vendor.py` — paths into the vendored folder; `types()` reads the 52-type table out of SKILL.md (so a new upstream
-  type appears without code); `guide(type)` returns that type's reference + the style guide's role table.
-- `checks.py` — runs the two checkers as `python -I <script> <file>` in a subprocess, no network, 30 s timeout, and
-  returns their lines as a list of problems.
-- `render.py` — the repo's `export_png.py` / `export_svg.py` / `export_pdf.py` on the server's Playwright + Chromium
-  (the same browser HOOLA PRINT uses), one render at a time, 60 s timeout.
-- `brand.py` — her colours / font / logo from her existing Brand kit fill the repo's role tokens (`paper`, `ink`,
-  `muted`, `accent`, `link`) and replace the repo's "first time: customise?" question; a website brand read (the repo's
-  onboarding) only when she gives a link. Saved per user, never in the vendored folder.
-- `service.py` — plan → draw → check → look → save, the version history, edits.
-
-ONE agent tool **`diagram`** (the same one for Hoola chat and Hoola Code):
+ONE agent tool **`diagram`**, the same for Hoola chat and Hoola Code:
 
 | action | what it does |
 |---|---|
-| `types` | the 52 types, one line each (the model's picker) |
-| `guide` | the chosen type's reference, so the model reads only what it needs |
-| `draw` | title, type, the full HTML → checks → render → look → saved; returns pass / the problems |
-| `update` | old_str → new_str edits on the current version (like `artifact`), re-checked |
-| `export` | png / svg / pdf of a version |
-| `import` | a Mermaid / draw.io / Excalidraw / PlantUML file she gave → the repo's reader → redrawn, with the list of what was merged or dropped |
+| `types` | every type of the three engines, one line each, with the engine that draws it |
+| `guide` | the chosen type's reference / schema / example (the model reads only what it needs) |
+| `draw` | type + title + the description (A: JSON, B: HTML from the template, C: draw.io cells) → that engine's checks → rendered picture the model looks at → saved and shown |
+| `update` | change the current version (A: JSON edits; B: old_str → new_str; C: id-based cell edits, only after re-reading the canvas) |
+| `edit` | open an A or B diagram in the draw.io editor (C) so she can change it by hand |
+| `selection` | (C) the shapes she has selected, so "change only these" works |
+| `export` | PNG / SVG / PDF (all), .drawio (C), video (A story) |
+| `import` | her Mermaid / draw.io / Excalidraw / PlantUML file → redrawn, with the list of what was merged or dropped |
+| `explain` | (A) a one-page answer |
+| `analyze` / `pr` | (A, Hoola Code) Code Analysis of the repo; a PR walkthrough |
 
-Reachable everywhere: chat core tools, long jobs (goal rounds), team crews, a voice call via santosh_kaam (never
-declared to Gemini Live), and Hoola Code's coder tools. Opens on diagram words (diagram, flowchart, architecture /
-sequence / ER / org chart, timeline, Gantt, funnel, sankey, fishbone, user journey, "draw how X works"...), Hinglish too.
+Reachable: chat core tools, long jobs (goal rounds), team crews, a voice call via santosh_kaam (never declared to
+Gemini Live; the diagram lands in the chat), and Hoola Code's coder tools. Opens on diagram words in English and
+Hinglish (diagram, flowchart, architecture, sequence, ER, org chart, timeline, Gantt, funnel, journey, "draw how X
+works", "naksha" only with a diagram word near it — "naksha" alone is maps / the app spec).
 
-## 4. Where she sees it
+**The flow, for every engine (her six steps):**
+1. She asks — any time, also in the middle of a job or a coding round.
+2. Code picks the engine for the type (§2); the model picks the type, or answers in words.
+3. One-line plan in her chat ("Architecture diagram, 7 parts, leaving out the cache detail"), then it draws at once —
+   she can redirect with her next message (owner decision 2 below).
+4. The model writes only the DESCRIPTION; the engine does the drawing rules.
+5. The engine's own checks run (A: four gates; B: self_check + verify_geometry; C: XML checks + repair). A failure goes
+   back to the model with the exact errors, at most 3 rounds. Then one rendered picture is looked at by the model and
+   fixed if wrong. Still failing = shown with the open problems named, never a quiet "done".
+6. She sees it in the workspace (§6).
 
-| Surface | How it shows | Built on |
+## 5. Eraser's two ideas, built into Hoola
+
+1. **Her look, set once.** One `diagram_look` per user, from her existing Brand kit (colours, font, logo): paper / ink
+   / muted / accent / link roles. Every engine reads it — A as its theme, B as its style-guide tokens (in the wrapper,
+   not the vendored file), C as draw.io's default style. No brand kit = the engine's own default look (decision 1).
+2. **Description in, measured result back.** Every saved diagram keeps the description AND the measured result
+   (real box sizes, real line routes). An edit changes the description and redraws — never patches pixels; a diagram
+   opened in draw.io (C) and saved by her comes back as her new version, and the AI reads it before its next change.
+   If C's AI-drawn arrows turn out messy in D6, Eraser's line router (MIT) is ported for C — measured first, not assumed.
+
+## 6. Where she sees it
+
+| Surface | How | Built on |
 |---|---|---|
-| Console chat | opens in the workspace panel beside the chat as it is checked; versions, Share, Download | saved as an artifact page (type html) — panel, versions, share and the signed sandboxed link already exist |
-| Phone chat | the artifact card → full-screen viewer (pinch to zoom) | existing `hoola_artifact.dart` / ArtifactScreen |
-| Hoola Code web | a "Made in this session" card, opens full screen; versions | NEW kind `diagram` in `devsahayak/made.py` |
-| Hoola Code phone | the same card + viewer in the session | `lib/ui/code/code_made.dart` gets the `diagram` kind |
-| PDF / WhatsApp / slides | the PNG or PDF export | `render.py` |
+| Console chat | opens in the workspace panel beside the chat; versions, Share, Download; A: click to explore; C: the live editor in the panel | an artifact page (versions, share, signed sandboxed link exist) + a new editor view for C |
+| Phone chat | the card → full-screen viewer (pinch to zoom, A's click-to-explore works by touch); C on the phone = the picture + a "change it" box, full hand editing on the web console | `hoola_artifact.dart` / ArtifactScreen |
+| Hoola Code web + phone | a "Made in this session" card that opens full screen; Code Analysis + PR walkthrough as their own cards | NEW kind `diagram` in `devsahayak/made.py`, `code_made.dart` |
+| PDF reports, WhatsApp, slides | the PNG / PDF export | HOOLA PRINT's Chromium |
 
-Hoola Code rule (same as its `make` tool): a diagram about her code is drawn from the code it has READ, never from a
-guess; it is shown beside the code and is not written into the repo unless she asks for it in the repo.
+Hoola Code rule: a diagram about her code is drawn from the code Hoola has READ (archify's repository evidence links
+each part to its file); it is not written into the repo unless she asks for it in the repo.
 
-## 5. Hoola's changes around the repo (in the wrapper, not the vendored files)
+## 7. Safety, privacy, cost
 
-1. **Hindi / Marathi labels:** the repo has Korean, Chinese and Cyrillic only. The wrapper adds Noto Sans / Serif
-   Devanagari to the font stack and tells the model to use it for Indian-language labels. (Known gap: the repo's
-   text-width check measures Latin letters; it may misjudge Devanagari widths — the rendered picture check catches it.)
-2. **Fonts for exports:** the templates load Google Fonts. Viewing keeps that (our sandboxed pages already allow
-   Google Fonts); PNG / PDF export waits for the fonts and falls back to Hoola's bundled fonts if they cannot load.
-3. **Her brand** instead of the repo's first-time question (§3 brand.py).
-4. **Safety:** the HTML is written by the model, so it is only ever served on the existing signed link with the
-   sandbox CSP (its own origin, no network but fonts); `self_check.py` already refuses outside scripts and images.
-   Files from her (imports) are data, never instructions.
-5. **Cost:** one diagram = the model writing ~3-8k tokens of HTML + up to 3 fix rounds + one picture look. Metered per
-   user like every model call; the rupee cost is measured in D6, not guessed.
+- **The editor page (C) must share its origin with the draw.io copy** to highlight changes, read her selection and
+  undo (the repo's own reason). So C runs on Hoola's separate sandboxed page origin (the one artifact pages use), never
+  the console's — it cannot read her sign-in; it talks to the server only through a short-lived signed token for that
+  one diagram.
+- **Nothing phones home:** archify's daily update check is switched off (`ARCHIFY_UPDATE_CHECK_DISABLED=1`, its own
+  documented switch); icons come from the vendored libraries, never Eraser's or anyone's online catalogue; fonts are
+  Hoola's bundled ones (Google Fonts only as the viewer's fallback, as artifact pages already allow).
+- **Model-written diagram text is data:** B's HTML and A's JSON are checked by the engines (no outside scripts); C's
+  XML is checked and repaired before the canvas loads it; her imported files are data, never instructions.
+- **Code Analysis never runs her repo's code** (archify's own rule) and runs only on a copy Hoola already holds.
+- **Hindi / Marathi labels:** none of the engines has Devanagari; the wrapper adds Noto Devanagari to each engine's
+  font stack. The renders are checked by picture, because B's text-width check measures Latin letters.
+- **Cost:** A and C need fewer tokens than B (a description instead of a whole SVG). Every call is metered per user;
+  rupees per diagram are MEASURED in D6, not guessed.
 
-## 6. Phases
+## 8. Phases
 
 | Phase | What | Done when |
 |---|---|---|
-| D1 | Vendor the folder (pinned, licence, sync script); `vendor.py`, `checks.py`, `render.py` | the repo's own checkers pass on all 238 of its example files inside Hoola, and a PNG renders on the server's Chromium |
-| D2 | The `diagram` tool in Hoola chat → saved as an artifact page → console workspace + phone viewer; draw / update / check loop + the picture look | a fake-model test draws, fails a check, fixes it, passes, and the page opens in the panel |
-| D3 | Hoola Code: `diagram` kind in `made.py`, the tool in the coder's tools, read-the-code-first rule; web card + phone viewer | in a session, "diagram of the login flow" makes a checked diagram card |
-| D4 | Her brand kit, Devanagari fonts, export PNG / SVG / PDF, a diagram inside a PDF report and a WhatsApp picture | a Hindi-label diagram passes and renders correctly; exports open |
-| D5 | Imports: Mermaid / draw.io / Excalidraw / PlantUML; "redraw this" on the Architecture and Data Engineering desks' Mermaid | an imported Mermaid file is redrawn with its merged / dropped list |
-| D6 | Proof: 20 real asks (architecture, flowchart, timeline, org chart, funnel, sequence, Gantt, ER...) through the real pipeline — checker pass rate, rounds used, rupees per diagram; deploy | numbers written here; deployed on her VPS |
+| D1 | Vendor the three engines (pinned, licences, sync script), `diagram_setup` (draw.io editor fetch + sha check); Hoola's runners for each engine's checks + render | archify's examples pass its four gates inside Hoola; diagram-design's checkers pass on its 238 examples; the draw.io editor loads; one PNG from each engine |
+| D2 | The `diagram` tool in Hoola chat with engines A + B: the type router, draw / update / check loop, the picture look, saved as an artifact page → console workspace + phone viewer | fake-model tests: an architecture ask goes to A, a funnel to B; a failing check is fixed; the page opens in the panel |
+| D3 | Engine C: the editor view in the workspace (her hand edits saved as versions, selection → "change only these", AI changes outlined, undo), `edit` from any A / B diagram, .drawio export | a browser walk: draw, she moves a box, the AI's next change keeps her move, Ctrl+Z undoes the AI |
+| D4 | Hoola Code: `diagram` in the coder's tools + `diagram` made-kind cards (web + phone); A's Code Analysis and PR walkthrough as session cards; read-the-code-first rule | in a session "diagram of the login flow" gives a checked card linked to the files; Code Analysis runs on a fixture repo |
+| D5 | Her look set once (§5.1), Devanagari fonts, export PNG / SVG / PDF (+ A's story video), diagrams inside PDF reports and WhatsApp, A's one-page answers in chat, imports (Mermaid / draw.io / Excalidraw / PlantUML) incl. "redraw" on the Architecture and Data Engineering desks' Mermaid | a Hindi-label diagram renders right in all three engines; an imported Mermaid file is redrawn with its merged / dropped list |
+| D6 | Proof: 30 real asks (10 per engine) through the real pipeline: first-try pass rate, rounds used, seconds and rupees per diagram, which engine the router chose and whether right; decide on Eraser's router for C; deploy | numbers written here; deployed on her VPS |
 
-Each phase = its own version (server + tests + phone where it changes), as usual. PC code is not touched.
+Each phase = its own version (server + tests + phone where it changes). PC code is not touched.
 
-## 7. Decisions for the owner
+## 9. Risks
 
-1. **Default look when she has no brand kit:** the repo's own (black + tangerine, editorial) as it is — or Hoola's
-   violet? (Plan assumes: the repo's own, since the ask was "as it is".)
-2. **Step 3, the one-line plan:** say it and draw straight away (she can say "make it a timeline instead"), or wait for
-   her yes first? (Plan assumes: say it and draw — the repo itself draws when the person is not there to answer.)
-3. **Updates from the author:** stay pinned at 795eec4 and update only on her word (plan assumes this).
+- **Running the vendored programs.** In the session that read the repos, the sandbox refused to run archify's
+  downloaded program; the build runs every engine's own checks in tests and on the server, so this needs to be allowed
+  for the vendored folders (an `allow` rule for `node server/app/diagram/vendor/...` and `python3 -I .../scripts/...`).
+- **Two Node engines + a 30 MB editor** add to deploy size and to what can break on update — pinned commits and the
+  sync script's tests are the guard.
+- **Engine C on a phone** is cramped by nature; the phone gets the picture + "change it" box (§6).
+- **The router's choice** can be wrong for a mixed ask; D6 measures it and the model can name an engine (code checks
+  it fits).
+
+## 10. Decisions for the owner
+
+1. **Default look when she has no brand kit:** each engine's own default (archify's theme, diagram-design's black +
+   tangerine, draw.io's default) — or one Hoola look for all three? (Plan assumes: one Hoola look for all three, so
+   her diagrams match each other.)
+2. **Step 3, the one-line plan:** say it and draw at once, or wait for her yes? (Plan assumes: say it and draw.)
+3. **Updates from the authors:** stay pinned and update only on her word? (Plan assumes: yes.)
