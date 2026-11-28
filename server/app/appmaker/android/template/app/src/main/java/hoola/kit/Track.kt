@@ -275,7 +275,7 @@ else if(pins.length>1){map.fitBounds(b,{padding:48,maxZoom:16,duration:fitted?60
 fun LiveMap(pins: List<MapPin>, modifier: Modifier = Modifier.fillMaxWidth().height(280.dp)) {
     val json = JSONArray(pins.map { JSONObject().put("lat", it.lat).put("lng", it.lng).put("label", it.label).put("kind", it.kind) }).toString()
     var ready by remember { mutableStateOf(false) }
-    // v0.999.329 UX rule "Map Text Alternative": TalkBack reads what is on the map (the pins' names)
+    // v0.999.330 UX rule "Map Text Alternative": TalkBack reads what is on the map (the pins' names)
     val said = pins.joinToString(", ") { it.label }.ifEmpty { "Map" }
     AndroidView(modifier = modifier.semantics { contentDescription = said }, factory = { cx ->
         WebView(cx).apply {

@@ -14634,7 +14634,11 @@ Built as the seven parts of the workflow in one release (v0.999.328; main had mo
 - NOT VERIFIED: on her server, with real delivery papers or weighbridge tickets, or on her phone; country rows not read from their primary texts stay "check this".
 
 
-## v0.999.329 UI/UX PRO MAX UPDATED + THE UX RULES WHERE THINGS ARE BUILT
+## v0.999.329 HOOLA DIAGRAM D2
+(owner: 'GO D2'). Files: server/app/diagram/service.py (NEW), server/app/agent/diagram_tools.py (NEW), agent/tools.py (registered), agent/admit.py (EXTRA_KEYS diagram), agent/pakka.py (SKIP diagram), agent/santosh.py (_look_block + the image-carrying tool_result in _turn_tools, RESULT_LIMIT diagram 70000, Path import), artifacts.py (save_built, write refuses kind diagram), diagram/runners.py (absolute out dir). Found while building: (1) archify's built page is ~945 KB (its viewer runtime + fonts inline), over the 600 KB cap of a model-written page - engine-built pages get their own 3 MB cap; (2) archify was handed relative paths while it ran inside its work folder - ENOENT on a doubled path, now absolute; (3) archify and diagram-design both have a 'waterfall' (time spans vs a money bridge) - the money bridge is 'budget-bridge' in the catalogue; (4) tool results were text only everywhere - the picture is an image block only on the main chat loop; team crews see the path text.
+
+
+## v0.999.330 UI/UX PRO MAX UPDATED + THE UX RULES WHERE THINGS ARE BUILT
 
 Owner: read github.com/nextlevelbuilder/ui-ux-pro-max-skill again (upstream 11ca2b3, 27 Nov 2026, MIT), then
 "GO BUILD 1 2 3 4" on the four points of the read.
@@ -14677,6 +14681,6 @@ Owner: read github.com/nextlevelbuilder/ui-ux-pro-max-skill again (upstream 11ca
    frame is titled with the address. Attribution stays visible (MapLibre's compact control opens on load) and popups
    stay text.
 
-Tests: `server/tests/test_v0999_329_uiux_rules.py` 11; `test_v0486_hoola_uiux_skill.py` stack count 22 -> 23 and
+Tests: `server/tests/test_v0999_330_uiux_rules.py` 11; `test_v0486_hoola_uiux_skill.py` stack count 22 -> 23 and
 `test_v0753_skill_triggers.py` still finds 6ae86f6 in PROVENANCE (history kept). NOT VERIFIED on her server, with a
 real model writing a section, or the Kotlin map change compiled (CI compiles the kit with a built app).

@@ -1447,7 +1447,7 @@ def write_section(r: Site, slug: str, s: dict[str, Any], others: list[str], extr
 
 
 def _ux_rules(s: dict[str, Any]) -> str:
-    """v0.999.329 the UX rules (Hoola's design database) for what this section holds - a form, a map, a dialog.
+    """v0.999.330 the UX rules (Hoola's design database) for what this section holds - a form, a map, a dialog.
     Empty for most sections; never stops a build."""
     try:
         from ..coder import uxrules as UX

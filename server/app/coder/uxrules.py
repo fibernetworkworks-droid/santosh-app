@@ -1,4 +1,4 @@
-"""v0.999.329 UX RULES WHERE WEBSITES AND APPS ARE BUILT - the design database's UX rules, read by code.
+"""v0.999.330 UX RULES WHERE WEBSITES AND APPS ARE BUILT - the design database's UX rules, read by code.
 
 The UI/UX Pro Max database (coder/uiux/data/ux-guidelines.csv, upstream 11ca2b3, MIT) holds 141 UX rules. Until now only
 the chat's `uiux_design` tool could read them; nothing that BUILDS a website or an app did. This module gives the

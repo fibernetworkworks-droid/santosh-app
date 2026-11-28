@@ -1,4 +1,4 @@
-"""v0.999.329 UI/UX PRO MAX, BROUGHT UP TO DATE AND USED WHERE THINGS ARE BUILT (owner: "GO BUILD 1 2 3 4"):
+"""v0.999.330 UI/UX PRO MAX, BROUGHT UP TO DATE AND USED WHERE THINGS ARE BUILT (owner: "GO BUILD 1 2 3 4"):
 
 1. the vendored engine + data = upstream 11ca2b3 (141 UX rules incl. form errors + maps, 23 stacks, exact hex lookup);
 2. the UX rules reach the builders: the React writer's custom sections, the HTML section writer, Hoola's per-turn App

@@ -208,7 +208,7 @@
       b.addEventListener('click', function () {
         var f = d.createElement('iframe'), yt = fig.getAttribute('data-hs-yt');
         f.src = yt ? 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(yt) + '?autoplay=1&rel=0' : fig.getAttribute('data-hs-map');
-        // v0.999.329 UX rule "Map Text Alternative": the address and the Google Maps link stay beside the loaded map
+        // v0.999.330 UX rule "Map Text Alternative": the address and the Google Maps link stay beside the loaded map
         var face = fig.querySelector('.hs-map-face'), where = face && face.querySelector('p'), cap = null;
         if (!yt && face) {
           cap = d.createElement('figcaption'); cap.className = 'hs-map-cap';

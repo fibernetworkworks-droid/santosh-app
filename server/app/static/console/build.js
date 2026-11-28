@@ -821,7 +821,7 @@ window.HoolaBuild = function (C) {
       if (typeof lat !== 'number' || typeof lng !== 'number') return;
       let m = marks.get(id);
       if (!m) {
-        /* v0.999.329 UX rule "Map Keyboard and Non-Drag Navigation": each rider is a focusable button; Enter / Space
+        /* v0.999.330 UX rule "Map Keyboard and Non-Drag Navigation": each rider is a focusable button; Enter / Space
            opens the name (the popup is text, never HTML) */
         const d = document.createElement('div'); d.className = 'strider'; d.title = name;
         d.tabIndex = 0; d.setAttribute('role', 'button'); d.setAttribute('aria-label', name || 'Rider');
@@ -832,7 +832,7 @@ window.HoolaBuild = function (C) {
       else m.setLngLat([lng, lat]);
       list();
     };
-    /* v0.999.329 UX rule "Map Text Alternative": the riders on the map, as words beside it */
+    /* v0.999.330 UX rule "Map Text Alternative": the riders on the map, as words beside it */
     const say = el.parentNode && el.parentNode.querySelector('.stmaplist');
     const list = () => { if (say) say.textContent = marks.size ? 'On the map: ' + [...marks.values()].map(m => m._hoolaName || 'Rider').join(', ') + '.' : ''; };
     riders.forEach(r => put(S(r.member), S(r.name), r.lat, r.lng));

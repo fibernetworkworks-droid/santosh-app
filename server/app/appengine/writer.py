@@ -1833,7 +1833,7 @@ def custom_prompt(sec: dict[str, Any], ctx: Ctx, comp: str) -> str:
 
 
 def ux_rules(sec: dict[str, Any]) -> str:
-    """v0.999.329 the UX rules (Hoola's design database) for what this section holds - a form, a map, a dialog - in
+    """v0.999.330 the UX rules (Hoola's design database) for what this section holds - a form, a map, a dialog - in
     its id, label, design note and words. Empty when it holds none of them; never blocks a write."""
     try:
         from ..coder import uxrules as UX
@@ -2034,7 +2034,7 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
         comp = custom_component(s)
         rel = f"src/components/sections/{comp}.tsx"
         prompt = custom_prompt(s, ctx, comp)
-        prompt += ux_rules(s)                     # v0.999.329 the design database's UX rules for what it holds
+        prompt += ux_rules(s)                     # v0.999.330 the design database's UX rules for what it holds
         if likes:
             prompt += "\n\n" + likes
         if examples:

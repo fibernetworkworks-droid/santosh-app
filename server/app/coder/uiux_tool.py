@@ -8,7 +8,7 @@ zero network, zero brain calls): a BM25 search over 80 styles, 194 product palet
 stack CSVs, plus the --design-system aggregator (pattern + style + palette + typography +
 effects + anti-patterns for a product brief). PROVENANCE.md carries the exact source.
 
-v0.999.329: the engine + data updated to upstream 11ca2b3 (27 Nov 2026), and the tool now
+v0.999.330: the engine + data updated to upstream 11ca2b3 (27 Nov 2026), and the tool now
 passes what the engine could already do: the three dials (variance / motion / density),
 design tokens (css / dtcg) and a preview page of the design system (right to left too),
 which is written into her vault and handed to her chat as a file card she opens.

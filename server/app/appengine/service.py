@@ -470,7 +470,7 @@ def _write(r: AppProject, rel: str, code: str) -> dict[str, Any]:
     res = {"file": rel, "new": old is None, "changed": old != code, "diff": diff[:12000], "revision": revision_of(code),
            "say": (f"{'Made' if old is None else 'Changed'} {rel}. The preview rebuilds in a few seconds "
                    "(action=build waits for it and tells you if it failed).")}
-    ux = ux_check(rel, code)                         # v0.999.329 UX rules a computer can see: told, never refused
+    ux = ux_check(rel, code)                         # v0.999.330 UX rules a computer can see: told, never refused
     if ux:
         res["ux"] = ux
         res["say"] += " UX check (fix these): " + "; ".join(ux[:4]) + "."
@@ -478,7 +478,7 @@ def _write(r: AppProject, rel: str, code: str) -> dict[str, Any]:
 
 
 def ux_check(rel: str, code: str) -> list[str]:
-    """v0.999.329 the design database's UX rules a computer can check in a page or section file (paste blocked, the
+    """v0.999.330 the design database's UX rules a computer can check in a page or section file (paste blocked, the
     submit button disabled until valid, fields with no label, an email / phone box of the wrong type, a map with its
     attribution or keyboard off). The kit's own ui parts are not checked: they are building blocks, not pages."""
     if not rel.endswith((".tsx", ".jsx", ".html")) or rel.startswith(("src/components/ui/", "src/components/effects/")) \
@@ -493,7 +493,7 @@ def ux_check(rel: str, code: str) -> list[str]:
 
 
 def ux_block(r: AppProject) -> str:
-    """v0.999.329 the UX rules for what THIS app holds (its pages and sections, not the kit), for Hoola's per-turn
+    """v0.999.330 the UX rules for what THIS app holds (its pages and sections, not the kit), for Hoola's per-turn
     summary: form rules when it has a form, map rules when it has a map."""
     try:
         from ..coder import uxrules as UX

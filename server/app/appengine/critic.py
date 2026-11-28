@@ -357,7 +357,7 @@ def measure(shots: dict[str, Any], rows: list[dict[str, Any]]) -> list[dict[str,
 
 
 def ux_measure(code: dict[str, str], rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """v0.999.329 the design database's UX rules a computer can check, read in each custom section's code (paste
+    """v0.999.330 the design database's UX rules a computer can check, read in each custom section's code (paste
     blocked, the send button disabled until valid, fields with no label, an email / phone box of the wrong type, a map
     with its attribution or keyboard off). A problem is a fact: the section is sent back to its writer to rewrite."""
     try:
@@ -379,7 +379,7 @@ def ux_measure(code: dict[str, str], rows: list[dict[str, Any]]) -> list[dict[st
 
 
 def ux_text(rows: list[dict[str, Any]], code: dict[str, str] | None = None) -> str:
-    """v0.999.329 the UX rules for what these pages hold (a form, a map), for the critic to judge where it can see.
+    """v0.999.330 the UX rules for what these pages hold (a form, a map), for the critic to judge where it can see.
     Read from the sections and from the custom sections' own code."""
     try:
         from ..coder import uxrules as UX
