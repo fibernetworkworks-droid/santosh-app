@@ -1510,7 +1510,10 @@ class Settings(BaseSettings):
     dod_max_awake: int = 4                  # coworkers awake at once on this server (the rest wait their turn)
     dod_idle_min: int = 20                  # a coworker with no work sleeps after this; its memory stays on disk
     dod_port_base: int = 28100              # 127.0.0.1 ports of the Gateways
-    dod_start_wait_s: float = 120.0
+    dod_start_wait_s: float = 600.0         # a real Gateway's first start runs its own repair + plugin fetch (~3-5 min)
+    dod_hoola_url: str = "http://172.18.0.1:8077"   # how her container reaches Hoola's MCP door (the server's docker address)
+    dod_uid: int = 1000                     # the OpenClaw image's `node` user: her state folder belongs to it
+    dod_mcp_any_ip: bool = False            # True only in tests: the MCP door then skips the container-network check
     dod_read_timeout_s: float = 900.0       # longest quiet gap inside one agent run
     dod_max_rounds: int = 600               # tool rounds in one task before it stops and says so
     dod_file_max_mb: int = 50

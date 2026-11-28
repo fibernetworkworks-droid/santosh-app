@@ -3090,6 +3090,8 @@ from .route.api import make_router as _route_router  # noqa: E402
 app.include_router(_route_router(require_key, current_tenant))   # /api/route/* (v0.999.87 HOOLA ROUTE: the automation page)
 from .dod.api import make_router as _dod_router  # noqa: E402
 app.include_router(_dod_router(require_key, current_tenant))   # /api/dod/* (v0.999.306 HOOLA DOD: the coworker)
+from .dod.mcp import make_router as _dod_mcp_router  # noqa: E402
+app.include_router(_dod_mcp_router())   # /mcp/dod (v0.999.307 her Hoola accounts inside her coworker, read-only)
 from .credits.api import make_router as _credits_router  # noqa: E402
 app.include_router(_credits_router(require_key, current_tenant))   # /api/credits/*, /pay/credits/* (v0.999.26 HOOLA CREDITS)
 from .bahi.api import make_router as _bahi_router  # noqa: E402

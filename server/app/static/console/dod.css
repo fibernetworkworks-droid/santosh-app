@@ -165,6 +165,9 @@ button{font:inherit;color:inherit}
 .dd-steer{display:flex;gap:8px;align-items:flex-end;padding:12px;border-radius:16px}
 .dd-steer textarea{flex:1;border:0;outline:0;resize:none;background:transparent;font:inherit;font-size:15px;color:var(--ink);min-height:24px;max-height:160px}
 .dd-reply{padding:18px 22px;font-family:'Literata',Georgia,serif;font-size:16px;line-height:1.55;white-space:pre-wrap}
+.dd-screen{position:relative;overflow:hidden;min-height:60px}
+.dd-screen img{display:block;width:100%;height:auto}
+.dd-screen .dd-tag{position:absolute;top:10px;left:10px}
 .dd-safe{padding:16px 18px;display:flex;gap:12px;align-items:flex-start;font-size:13.5px;color:var(--mut)}
 .dd-safe .i{color:var(--acct);margin-top:2px}
 .dd-list .row{display:grid;grid-template-columns:110px minmax(0,1fr) auto;gap:14px;align-items:center;padding:14px 18px;text-decoration:none}

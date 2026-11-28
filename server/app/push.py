@@ -114,6 +114,10 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
             return (f"{name}: task in progress",
                     f"{title} — {p['milestone']} steps done" + (f". Now: {stage}" if stage else ""))
         return None
+    if kind == "dod_ask":   # v0.999.307 HOOLA DOD: her coworker stopped and needs her yes / answer
+        q = str(p.get("question") or "")[:300]
+        return (f"{p.get('name') or 'Your coworker'} needs your OK" if p.get("kind") in ("pay", "send", "delete", "book")
+                else f"{p.get('name') or 'Your coworker'} has a question", q or "Open Hoola DOD")
     if kind == "wallet_pay":   # v0.999.60 HOOLA WALLET: a payment waiting for her fingerprint
         if p.get("status") != "waiting":
             return None
@@ -684,7 +688,7 @@ def _send(tenant: str, ev: dict[str, Any]) -> int:
     return sent
 
 
-PUSH_KINDS = {"message", "wallet_pay", "goal", "bazar_approval", "artifact", "pc_file", "photo_made", "blender3d", "notebook_output", "pg_write", "email_draft", "email_new", "email_snooze", "bazar_open", "device_action",
+PUSH_KINDS = {"message", "wallet_pay", "dod_ask", "goal", "bazar_approval", "artifact", "pc_file", "photo_made", "blender3d", "notebook_output", "pg_write", "email_draft", "email_new", "email_snooze", "bazar_open", "device_action",
               "home_device", "bt_request", "voice_ring", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval", "google_reconnect", "darzi_quote", "darzi_day", "chai_plan", "office_spend", "office_day", "office_note", "lekhak_sign", "mshop_bill", "mshop_day", "gst_day", "gst_return", "payroll_run", "payroll_day", "fin_alert", "voice_alert", "audit_update", "ask_form", "ins_day", "ins_advice", "tele_day", "kalam_publish", "hoola_deal", "seo_week", "seo_alert", "seo_draft", "social_lead", "social_alert", "social_day", "social_week", "hoola_pick", "hoola_khata", "thok_order", "thok_alert", "thok_day", "sheet_milaan", "doc_edit", "niryat_pi", "niryat_day", "ads_change", "ads_report", "hoola_rfq", "hoola_promo", "hoola_mandate", "hoola_dosti", "fr_statement", "fr_day", "a2a_task", "a2a_out", "handoff_reminder", "digilocker", "theka_bill", "theka_letter", "theka_day", "brand_approval", "brand_idea", "site_board", "site_lead", "site_order", "site_launch", "site_live", "site_dns", "site_down", "site_domain", "site_care", "site_ops", "site_github", "app_board", "app_android", "app_ios",
               # v0.133 Seva suite
               "seva_exception", "seva_sla", "seva_remind", "seva_handover", "seva_ticket", "seva_day", "helpdesk_change", "helpdesk_alert", "helpdesk_escalate", "helpdesk_day", "shikayat_comp", "shikayat_case", "shikayat_alert", "shikayat_day", "aftersales_charge", "aftersales_reminders", "aftersales_visit", "aftersales_day", "feedback_reply", "feedback_alert", "feedback_report", "wapsi_return", "wapsi_refund", "wapsi_day", "samudaay_alert", "samudaay_action", "samudaay_question", "samudaay_join", "samudaay_template", "samudaay_week", "callcentre_script", "callcentre_message", "callcentre_call", "callcentre_campaign_card", "callcentre_campaign_needs", "callcentre_knowledge", "callcentre_campaign",

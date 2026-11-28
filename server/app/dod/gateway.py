@@ -96,12 +96,13 @@ async def _docker(*args: str, timeout: float = 120) -> tuple[int, str]:
 DOCKER: Callable[..., Awaitable[tuple[int, str]]] = _docker
 
 
-def config_for(token: str, key: str, model: str) -> dict[str, Any]:
+def config_for(token: str, key: str, model: str, mcp_token: str = "", mcp_url: str = "") -> dict[str, Any]:
     """Her Gateway's openclaw.json: token auth, only the responses endpoint, no URL fetches of files / images, no
     update checks, no telemetry, her own model key. Keys and paths from OpenClaw's own docs (gateway/config-gateway,
     gateway/openresponses-http-api, gateway/telemetry, providers/openrouter)."""
-    return {
+    cfg: dict[str, Any] = {
         "gateway": {
+            "mode": "local",   # a real Gateway refuses to start without it ("missing gateway.mode")
             "auth": {"mode": "token", "token": token},
             "bind": "lan",   # inside her container only; the host port is 127.0.0.1-bound by Hoola
             "http": {"endpoints": {"responses": {"enabled": True,
@@ -112,8 +113,19 @@ def config_for(token: str, key: str, model: str) -> dict[str, Any]:
         "env": {"vars": {"OPENROUTER_API_KEY": key}},
         "agents": {"defaults": {"model": {"primary": model}}},
         # her container is the wall: commands run inside it, with no way to other users or Hoola's server
-        "tools": {"exec": {"mode": "full"}},
+        "tools": {"exec": {"mode": "full"},
+                  # OpenClaw hides most tool schemas behind its Tool Search; Hoola's own tools (hoola_step / hoola_ask /
+                  # hoola_deliver / hoola_done, sent with each run) and her Hoola accounts (MCP hoola__*) stay directly
+                  # visible to the model, so every step and every yes really goes through Hoola (seen on a real Gateway)
+                  "toolSearch": {"mode": "tools", "exclude": [{"source": "client"}, {"source": "mcp", "name": "hoola__*"}]}},
     }
+    if mcp_token and mcp_url:
+        # her Hoola accounts (Gmail, Drive, Calendar, Sheets, Docs, her memory) as an MCP server - read-only tools,
+        # her token only, and Hoola answers it only from her own container's network (dod/mcp.py)
+        cfg["mcp"] = {"servers": {"hoola": {"url": mcp_url, "transport": "streamable-http", "enabled": True,
+                                            "headers": {"Authorization": f"Bearer {mcp_token}"},
+                                            "connectionTimeoutMs": 8000, "requestTimeoutMs": 60000}}}
+    return cfg
 
 
 def run_args(tenant: str, port: int, token: str) -> list[str]:
@@ -138,6 +150,32 @@ def run_args(tenant: str, port: int, token: str) -> list[str]:
         "-v", f"{st}:/home/node/.openclaw",
         s.dod_image,
     ]
+
+
+def _own(path: Path) -> None:
+    """Her state folder belongs to the container's user (dod_uid, the image's `node`), private: 700 folders, 600 files.
+    Links are left alone (OpenClaw keeps some pointing inside its own image)."""
+    import os
+    uid = get_settings().dod_uid
+    root_user = hasattr(os, "geteuid") and os.geteuid() == 0
+
+    def fix(p: str, mode: int | None) -> None:
+        if os.path.islink(p):
+            return
+        try:
+            if mode is not None:
+                os.chmod(p, mode)
+            if root_user:
+                os.chown(p, uid, uid)
+        except OSError as e:
+            log.warning("dod state ownership not set on %s: %s", p, e)
+
+    fix(str(path), 0o700)
+    for root, dirs, files in os.walk(path):
+        for d in dirs:
+            fix(os.path.join(root, d), 0o700)
+        for f in files:
+            fix(os.path.join(root, f), None)
 
 
 # ------------------------------------------------------------------------------------------------ readiness
@@ -266,6 +304,9 @@ async def ensure(tenant: str) -> tuple[str, str]:
                            f"dod_max_awake={s.dod_max_awake} gateways are awake.")
         _save(tenant, state="starting", error="")
         try:
+            if not g.mcp_enc:
+                mt = secrets.token_urlsafe(32)
+                _save(tenant, mcp_enc=vault().seal(mt), mcp_hash=hashlib.sha256(mt.encode()).hexdigest())
             if not g.token_enc:
                 token = secrets.token_urlsafe(32)
                 key, khash = await mint_key(tenant)
@@ -277,11 +318,18 @@ async def ensure(tenant: str) -> tuple[str, str]:
             st = state_dir(tenant)
             (st / "workspace").mkdir(parents=True, exist_ok=True)
             cfg = st / "openclaw.json"
-            cfg.write_text(json.dumps(config_for(token, key, s.dod_model), indent=2), encoding="utf-8")
+            mcp_url = (s.dod_hoola_url.rstrip("/") + "/mcp/dod") if s.dod_hoola_url else ""
+            cfg.write_text(json.dumps(config_for(token, key, s.dod_model, vault().open(g.mcp_enc), mcp_url), indent=2),
+                           encoding="utf-8")
             cfg.chmod(0o600)
+            _own(st)   # OpenClaw runs as `node` (uid 1000) and refuses a state folder others can write to
             code, out = await DOCKER("start", container_name(tenant), timeout=60)
             if code != 0:
                 await DOCKER("network", "create", "--driver", "bridge", network_name(tenant), timeout=30)
+                c2, sub = await DOCKER("network", "inspect", "-f", "{{(index .IPAM.Config 0).Subnet}}",
+                                       network_name(tenant), timeout=30)
+                if c2 == 0 and "/" in sub:
+                    _save(tenant, subnet=sub.strip())
                 code, out = await DOCKER(*run_args(tenant, g.port, token), timeout=600)
                 if code != 0:
                     raise NotReady("Your coworker could not start. Hoola will try again with your next task.",
@@ -362,3 +410,50 @@ async def respond(tenant: str, body: dict[str, Any], session_key: str,
     if final is None:
         raise RuntimeError("Her Gateway closed the stream without a result.")
     return final
+
+
+# ------------------------------------------------------------------------------------------------ her coworker's screen
+async def screenshot(tenant: str, session_key: str) -> bytes | None:
+    """A picture of the page her coworker's browser has open (OpenClaw's tools-invoke endpoint, browser screenshot).
+    Only while her Gateway is awake - it never wakes or starts a browser just to look. None when there is no page."""
+    g = _row(tenant)
+    if g.state != "awake" or not g.port or not g.token_enc:
+        return None
+    from ..bazar.security import vault
+    import base64
+    token = vault().open(g.token_enc)
+    try:
+        async with httpx.AsyncClient(transport=TRANSPORT, timeout=20) as c:
+            r = await c.post(f"http://127.0.0.1:{g.port}/tools/invoke", headers={"Authorization": f"Bearer {token}"},
+                             json={"tool": "browser", "action": "screenshot", "args": {"type": "jpeg"},
+                                   "sessionKey": session_key})
+        if r.status_code != 200:
+            return None
+        res = (r.json() or {}).get("result") or {}
+        for part in (res.get("content") or []) if isinstance(res, dict) else []:
+            if isinstance(part, dict) and part.get("type") == "image" and part.get("data"):
+                return base64.b64decode(part["data"])
+    except Exception:  # noqa: BLE001 - no picture is a fine answer
+        return None
+    return None
+
+
+# ------------------------------------------------------------------------------------------------ credits
+async def charge_usage(tenant: str) -> float:
+    """What her coworker's model key used since the last look goes into her Hoola Credits (1 credit = $0.001 of AI
+    cost, the same meter as every other model call). Returns the US dollars charged now."""
+    sp = await spent(tenant)
+    if sp is None:
+        return 0.0
+    g = _row(tenant)
+    delta = round(float(sp["usage"]) - float(g.usage_seen or 0.0), 8)
+    if delta <= 0:
+        return 0.0
+    _save(tenant, usage_seen=float(sp["usage"]))
+    try:
+        from ..credits import wallet
+        wallet.note(tenant, delta, "dod")
+        wallet.flush()
+    except Exception as e:  # noqa: BLE001
+        log.warning("dod credits for %s not written: %s", tenant, e)
+    return delta

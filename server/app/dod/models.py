@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, Text
+from sqlalchemy import DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..db import Base, new_id, now
@@ -56,6 +56,10 @@ class DodGateway(Base):
     state: Mapped[str] = mapped_column(String(16), default="none")      # none | starting | awake | asleep | failed
     error: Mapped[str] = mapped_column(Text, default="")
     image: Mapped[str] = mapped_column(String(160), default="")
+    mcp_enc: Mapped[str] = mapped_column(Text, default="")              # her coworker's key to Hoola's MCP door (sealed)
+    mcp_hash: Mapped[str] = mapped_column(String(80), default="", index=True)
+    subnet: Mapped[str] = mapped_column(String(40), default="")         # her container network: the MCP door answers only it
+    usage_seen: Mapped[float] = mapped_column(Float, default=0.0)       # her key's usage already charged as credits
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
