@@ -14533,3 +14533,8 @@ APP_ENGINE_AUTO_REVIEW / APP_ENGINE_BLUEPRINT off for the older suites.
 
 NOT VERIFIED: on her server, with a real model planning -> blueprint -> building -> being reviewed, or with the real
 Docker box and a real second model (both were stand-ins here). The review adds one model call per built version at done.
+
+
+## v0.999.325 HOOLA DOD, EVERY PART WIRED
+
+v0.999.325 HOOLA DOD, EVERY PART WIRED (owner: "IS ALL DOD WORK DONE EVEN WIRING ALL SECTION PROPERLY WITH OPEN CLAW"): after v0.999.319's end-to-end run on the real OpenClaw image, every part around the page was checked too and two were not wired: (1) the voice she picks for her coworker was saved but never used after setup - now the coworker reads its question and its finished answer aloud in that voice on her tap (dod.js speak(), Read aloud on the question card and the reply; the setup preview uses the same); (2) tapping 'X needs your OK' on her phone opened the chat home - the dod_ask notification now carries open_page /console/dod#/t/<task> (push.build, only the task id rides the link), SantoshPush.kt passes it as page:<path> (a call record's open_conv still wins), MainActivity hands it on and lib/main.dart opens that task inside the app signed in (hoolaOpenConsole, only /console/ paths); 2 tests + the test_v0648 pin moved to the new line. NOT VERIFIED on her phone (Kotlin + Dart compile on CI first) or her server.
