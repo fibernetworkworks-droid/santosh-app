@@ -93,3 +93,23 @@ def test_every_page_in_the_homes_design():
     assert ".needgrid{" in css and "homeNeed(n)}</div>`).join('')}</div>`" in js, "Needs you = the home's cards"
     for part in ("needLine(", "A route does nothing until it is on.", "Open one to see it step by step."):
         assert part in js, part
+
+
+def test_the_editor_and_the_route_tabs_in_the_homes_design(br):
+    """v0.999.301 (owner: "NOW SAME DESIGN FOR EDITOR AND ROUTE TABS"): the route's Runs / Versions / Settings open as pages
+    in the home's frame - the route's name as the title, a line of where it stands, one band of four numbers; the top bar's
+    name is in the serif and its tabs are pills."""
+    js, css = (BASE / "route.js").read_text(), (BASE / "route.css").read_text()
+    assert "function tabHead(" in js and "tabHead(r, c)" in js and "class=\"rh-tag ${st.allowed ? 'ok' : 'warn'}\"" in js
+    assert ".edname b{font-family:'Literata'" in css and ".segtabs a{height:30px" in css and ".edpage{max-width:1160px" in css
+    base, b, key, t = br
+    wf = D.get_workflow(t, name="order_to_sheet")
+    p, errs = _open(b, key, 1440, 900)
+    for tab in ("runs", "versions", "settings"):
+        p.goto(base + f"#/r/{wf['id']}/{tab}")
+        p.wait_for_selector(".tabhead h1")
+        assert p.inner_text(".tabhead h1") == "order to sheet"
+        assert p.locator(".tabstats .stat").count() == 4
+        assert "Runs in 30 days" in p.inner_text(".tabstats") and "Next run" in p.inner_text(".tabstats")
+    assert not errs, errs
+    p.context.close()
