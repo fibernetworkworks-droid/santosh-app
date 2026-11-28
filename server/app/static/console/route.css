@@ -615,3 +615,100 @@ table.rt td.c-act .btn + .btn{margin-left:6px}
 .rhead > .btn{margin-top:2px}
 .rhead > .crow{margin-top:2px}
 .pform > p{margin:0}
+
+/* ---------------------------------------------------------------- v0.999.297 ROUTE HOME REDESIGN
+   (owner: design canvas claude.ai/artifact/5Dnd2VzFM6euExAUs8jf4d -> "GO BUILD THE DESIGN"): one quiet page in the house
+   look - a greeting with where things stand, the ask box, one band of this week's numbers, routes beside what needs her and
+   what runs next, templates. Colour only where it means something (green working, amber waiting, red stopped). */
+.side .sl{margin:18px 10px 6px}
+.sfoot{border-top:0;padding:0;margin-top:auto;margin-bottom:6px}
+.sfoot .sf-row{display:flex;justify-content:space-between;align-items:baseline;font-size:13px}
+.sfoot .sf-row b{font-weight:600;font-variant-numeric:tabular-nums}
+.sfoot:not(:empty){background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.sf-bars{display:flex;align-items:flex-end;gap:3px;height:26px}
+.sf-bars i{flex:1;border-radius:2px;background:var(--line2);min-height:3px}
+.sf-bars i.k{background:var(--ink);opacity:.8}
+.sf-tz{font-size:12px;color:var(--dim)}
+.rh{width:100%;max-width:1160px;margin:0 auto;display:flex;flex-direction:column;gap:36px}
+.main:has(> .rh){padding-top:24px}
+.rh-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.rh-find .srch{width:260px;height:36px}
+.rh-hero{gap:18px;padding:4px 0 0}
+.rh-hero h1{font-size:42px;font-weight:330;letter-spacing:-.015em;line-height:1.15;max-width:900px}
+.rh-line{margin:-6px 0 4px;font-size:16px;color:var(--mut);text-align:center;max-width:720px;line-height:1.5}
+.rh-hero .comp{border-color:var(--line2);border-radius:22px;padding:16px 16px 12px}
+.rh-hero .comp textarea{font-size:16.5px}
+.rh-crow{flex-wrap:wrap;row-gap:8px}
+.rh-crow .sb{height:36px;border-radius:18px;padding:0 14px}
+.rh-crow .go{width:36px;height:36px}
+.rh-try{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;max-width:820px}
+.rh-ex{height:32px;padding:0 13px;border-radius:16px;border:1px solid var(--line);background:transparent;color:var(--mut);font-size:13px;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rh-ex:hover{background:var(--soft);color:var(--ink);border-color:var(--line2)}
+.rh-band{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));overflow:hidden}
+.rh-cell{padding:20px 24px;display:flex;flex-direction:column;gap:6px;min-width:0;text-decoration:none;color:inherit}
+.rh-cell + .rh-cell{border-left:1px solid var(--line)}
+a.rh-cell:hover{background:var(--side)}
+.rh-cell .lbl{font-size:13px;color:var(--mut)}
+.rh-cell .big{font-family:'Literata',Georgia,serif;font-size:36px;font-weight:400;line-height:1.05;letter-spacing:-.01em;font-variant-numeric:lining-nums tabular-nums}
+.rh-cell.hot .big{color:var(--warn)}
+.rh-cell .sub{font-size:12.5px;color:var(--dim)}
+.rh-up{color:var(--okt);font-weight:550}
+.rh-bigrow{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.rh-spark{flex:none}
+.rh-spark polyline{fill:none;stroke:var(--okt);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.rh-spark circle{fill:var(--okt)}
+.rh-cols{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:28px;align-items:start}
+.rh-aside{display:flex;flex-direction:column;gap:28px;min-width:0}
+.rh .hd{align-items:center}
+.rh .lnk{font-size:13.5px;color:var(--mut);text-decoration:none;font-weight:500}
+.rh .lnk:hover{color:var(--ink)}
+.rh-need{padding:16px 18px;display:flex;flex-direction:column;gap:6px}
+.rh-need + .rh-need{border-top:1px solid var(--line)}
+.rh-need b{font-weight:550;line-height:1.4;overflow-wrap:anywhere}
+.rh-tag{align-self:flex-start;height:22px;padding:0 8px;border-radius:6px;font-size:12px;font-weight:600;display:inline-flex;align-items:center}
+.rh-tag.warn{background:var(--warns);color:var(--warn)}
+.rh-tag.bad{background:var(--bads);color:var(--badt)}
+.rh-acts{display:flex;gap:8px;flex-wrap:wrap;padding-top:4px}
+.rh-quiet{padding:18px;color:var(--mut);font-size:13.5px;display:flex;gap:8px;align-items:flex-start;line-height:1.5}
+.rh-quiet .i{color:var(--okt);margin-top:1px}
+.rh-coming{padding:8px 0}
+.rh-tl{display:grid;grid-template-columns:64px 12px minmax(0,1fr);gap:10px;align-items:start;padding:9px 18px}
+.rh-tl .tm{font-size:12.5px;color:var(--mut);font-variant-numeric:tabular-nums;padding-top:1px}
+.rh-tl .pt{width:9px;height:9px;border-radius:50%;border:2px solid var(--line2);margin-top:5px}
+.rh-tl .pt.now{border-color:var(--acc);background:var(--acc)}
+.rh-tl b{display:block;font-weight:550;overflow-wrap:anywhere}
+.rh-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.rh-step{display:flex;gap:14px;align-items:flex-start;padding:20px}
+.rh-step + .rh-step{border-left:1px solid var(--line)}
+.rh-step .n{width:28px;height:28px;border-radius:50%;background:var(--soft);border:1px solid var(--line2);display:grid;place-items:center;font-size:13px;font-weight:600;flex:none}
+.rh-step b{display:block;font-weight:600;margin-bottom:4px}
+.rh .tgal{grid-template-columns:repeat(4,minmax(0,1fr))}
+.rh .tc:hover{border-color:var(--line2);box-shadow:var(--sh)}
+/* the routes list everywhere: stacked app tiles, a status dot */
+.stack{display:inline-flex;flex:none}
+.stack .ap + .ap{margin-left:-7px;box-shadow:0 0 0 2px var(--bg)}
+.lr{display:inline-flex;align-items:center;gap:6px}
+.lr .ld{width:7px;height:7px;border-radius:50%;background:var(--dim);display:inline-block}
+.lr.ok .ld{background:var(--okt)}.lr.bad .ld{background:var(--bad)}.lr.warn .ld{background:var(--warnl)}.lr.v .ld{background:var(--acc)}
+@media (max-width:1180px){.rh-cols{grid-template-columns:minmax(0,1fr)}.rh .tgal{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){
+  .side .sfoot,.side .sl{display:none}
+  .rh{gap:28px}
+  .rh-hero h1{font-size:30px}
+  .rh-line{font-size:15px}
+  .rh-find,.rh-find .srch{width:100%}
+  .rh-try{justify-content:flex-start}
+  .comp .rh-crow{flex-wrap:wrap}
+  .rh-crow .sb{flex:none;overflow:visible;white-space:nowrap;padding:0 12px}
+  .rh-crow .go{margin-left:auto}
+  .rh-band{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rh-cell{padding:16px}
+  .rh-cell .big{font-size:30px}
+  .rh-cell:nth-child(3){border-left:0}
+  .rh-cell:nth-child(n+3){border-top:1px solid var(--line)}
+  .rh-steps{grid-template-columns:minmax(0,1fr)}
+  .rh-step + .rh-step{border-left:0;border-top:1px solid var(--line)}
+  .rh .tgal{grid-template-columns:minmax(0,1fr)}
+  .rh-spark{display:none}
+}
+.rh table.rt td.c-name{width:40%}

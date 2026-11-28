@@ -209,6 +209,14 @@ def score(task: dict, changed: dict[str, str], out: dict[str, Any] | None = None
     row: dict[str, Any] = {"id": task["id"], "kind": task["kind"], "changed": sorted(changed), "why": []}
     real = {p: t for p, t in changed.items() if start.get(p) != t}
     row["scope"] = all(re.match(task["allow"], p) for p in real)
+    try:                                               # v0.999 Karpathy rule 3, measured (not part of "right" yet)
+        from ..devsahayak import karpathy as KR
+        drive = KR.drive_by_files({p: start[p] for p in real if p in start}, real)
+    except Exception:  # noqa: BLE001
+        drive = []
+    row["drive_by"] = len(drive)
+    if drive:
+        row["why"].append("tidied code it was not asked to: " + "; ".join(f"{x['path']}:{x['line']}" for x in drive[:4]))
     if not row["scope"]:
         row["why"].append("changed " + ", ".join(p for p in real if not re.match(task["allow"], p)))
     bad = []
@@ -403,7 +411,7 @@ def card(only: list[str] | None = None, limit: int = 0, parallel: int = PARALLEL
             "jobs": len(rows), "skipped": len(skipped),
             "bash_avg": round(sum(r.get("bash", 0) for r in rows) / max(1, len(rows)), 1) if engine else None,
             "right": sum(1 for r in rows if r.get("right")), "works": sum(1 for r in rows if r.get("works")),
-            "scope": sum(1 for r in rows if r.get("scope")), "rules": sum(1 for r in rows if r.get("rules")),
+            "scope": sum(1 for r in rows if r.get("scope")), "drive_by": sum(int(r.get("drive_by") or 0) for r in rows), "rules": sum(1 for r in rows if r.get("rules")),
             "tests": sum(1 for r in need_test if r.get("test")), "tests_of": len(need_test),
             "proves": sum(1 for r in fixes if r.get("proves")), "proves_of": len(fixes),
             "steps_avg": round(sum(r.get("steps", 0) for r in rows) / max(1, len(rows)), 1),

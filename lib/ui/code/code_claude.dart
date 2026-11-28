@@ -151,6 +151,17 @@ Future<void> showCodeStylePicker(BuildContext context, Santosh app, String id, {
   codeToast(context, 'Output style: ${cs(got['style']).isEmpty ? pick : cs(got['style'])}');
 }
 
+/// v0.999 /ponytail [lite|full|ultra|off]: Ponytail's level for this session (no word = switch on, or say which).
+Future<void> codeSetPonytail(BuildContext context, Santosh app, String id, String level) async {
+  final (got, why) = await _ask(app, 'PUT', '${_tBase(id)}/ponytail', body: {'level': level.trim().toLowerCase()});
+  if (!context.mounted) return;
+  if (got == null) {
+    codeToast(context, why);
+    return;
+  }
+  codeToast(context, cs(got['said']).isEmpty ? 'Ponytail: ${cs(got['ponytail'])}' : cs(got['said']));
+}
+
 // ---------------------------------------------------------------------------------------------- plugins
 /// Her plugins (from GitHub): turn on / off, remove, add from a link. [id] = the session whose setup to refresh.
 Future<void> showCodePlugins(BuildContext context, Santosh app, {String? id}) async {

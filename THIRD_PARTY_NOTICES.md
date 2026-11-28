@@ -263,3 +263,23 @@ JetBrains Mono: JetBrains).
 `desktop-linux/pagekit.py` (Hoola PC page engine 2, v0.999.93) follows ideas from these projects: element refs taken
 from a page snapshot, a hit-target check before a click, and the before / after snapshot diff. The code is Hoola's own;
 no source file was copied. Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0
+
+## andrej-karpathy-skills (forrestchang / multica-ai) - MIT
+Read at commit 2c60614 (28 Nov 2026). The repo is text only (a CLAUDE.md, a skill, a Cursor rule and examples) with
+four coding rules written from Andrej Karpathy's notes on how coding models go wrong. The repo ships no LICENSE file;
+its skill, plugin manifest and README state MIT. **No upstream file is included.** Hoola Code (`server/app/devsahayak/
+karpathy.py`) carries the four rules rewritten in Hoola's own words, credited where they appear, and adds its own
+in-code check for rule 3 (changes that only touch layout or delete an existing comment).
+
+## Ponytail (DietrichGebert/ponytail) - MIT
+Copyright (c) 2026 DietrichGebert. Read at commit ebd8654 (v5.3.3, 28 Nov 2026). **No upstream file is included.**
+Hoola Code (`server/app/devsahayak/ponytail.py`) carries Ponytail's rules for the smallest complete change, its levels
+(lite / full / ultra / off), and its review, audit and `shortcut:` debt reports, rewritten in Hoola's own words and
+credited where they appear. Ponytail is distributed under the MIT License.
+
+## Superpowers (obra/superpowers) - MIT
+Copyright (c) 2025 Jesse Vincent. Read at commit 22f0b46 (v7.0.2, 28 Nov 2026). **No upstream file is included.**
+Hoola Code (`server/app/devsahayak/superpowers.py` + `superpowers/*.md`) carries 13 of its skills rewritten in Hoola's
+own words for Hoola Code's tools, its rule for using skills, and two of its rules (verification before completion, the
+three-fix rule of systematic debugging) checked in code. The older condensed copy for Hoola's chat skill desk
+(`server/app/coder/skillpack/sp-*.md`, v0.499) is unchanged. Superpowers is distributed under the MIT License.

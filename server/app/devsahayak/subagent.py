@@ -250,6 +250,22 @@ def _run_one(tools: Any, spec: dict, task: str, files: list[str] | None, emit, s
     specs = tool_specs(level)
     allowed = {t["name"] for t in specs}
     system = SUB_SYSTEM + "\n\n" + spec["prompt"]
+    if level == "edit":                                    # v0.999 Karpathy's rules for an agent that changes code
+        try:
+            from . import karpathy as KR
+            if KR.on():
+                system += "\n\n" + KR.SUB_RULES
+        except Exception:  # noqa: BLE001
+            pass
+        try:                                               # v0.999 Ponytail's ladder for an agent that changes code
+            from . import ponytail as PT
+            if PT.level(tools.s, getattr(tools, "conf", {}) or {}) != "off":
+                system += "\n" + PT.SUB_RULES
+        except Exception:  # noqa: BLE001
+            pass
+    notes = B.model_notes(own or "")                       # v0.999 the same per-model notes as the coder's
+    if notes:
+        system += "\n\n" + notes
     flist = [str(f)[:200] for f in (files or [])][:30]
     first = (f"<task>\n{task[:12000]}\n</task>\n"
              + (f"Start from: {', '.join(flist)}\n" if flist else "")

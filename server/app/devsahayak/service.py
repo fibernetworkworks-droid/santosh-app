@@ -753,6 +753,26 @@ def ws_rewind(tenant: str, ref: str, n: int, what: str = "both") -> dict[str, An
     return out
 
 
+def ws_redo(tenant: str, ref: str) -> dict[str, Any]:
+    """v0.999 undo the last 'go back to a checkpoint' (OpenCode's staged revert), until her next message."""
+    from . import engine as EN
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        if t.id in _RUNNING:
+            raise DevError("Hoola is working in this session right now - stop it first.")
+        tid = t.id
+    try:
+        r = EN.redo(tid)
+    except ValueError as e:
+        raise DevError(str(e))
+    _Step(tid).event({"k": "redo", "n": r.get("n"), "what": r.get("what")})
+    with session() as s:
+        row = s.get(DevTask, tid)
+        _log(row, f"undid going back to checkpoint {r.get('n')}")
+        out = task_view(row, full=True)
+    return out
+
+
 def ws_worktrees(tenant: str, ref: str, wid: str = "", action: str = "list") -> dict[str, Any]:
     """v0.999 the agents' own copies of one session (Claude Code's worktrees): list | show | apply | discard. Bringing one
     in or throwing it away waits while Hoola works in the session (it would change the copy under it)."""
@@ -1690,7 +1710,7 @@ def _prepare(tenant: str, t: DevTask, out: dict[str, Any], read: list[dict[str, 
         warnings += R.code_checks(added, path)
         changes.append({"path": path, "why": str(f.get("why") or "")[:200], "old_sha": old_sha, "new": new, "added": add,
                         "removed": rem, "diff": R.unified(path, old, new)[:20000]})
-    for k in ("pr_title", "pr_summary", "test_plan", "risk", "explain", "rules_followed"):
+    for k in ("pr_title", "pr_summary", "test_plan", "risk", "explain", "rules_followed", "assumptions"):
         if R.secrets_in(str(out.get(k) or "")):
             problems.append(f"{k} has text that looks like a secret")
     if len(changes) > cfg.max_files:
@@ -1703,6 +1723,21 @@ def _prepare(tenant: str, t: DevTask, out: dict[str, Any], read: list[dict[str, 
     return {"changes": changes, "problems": problems, "warnings": warnings}
 
 
+def _kr_review() -> str:
+    """v0.999 Karpathy's rules in Hoola's own review of its change (karpathy.py)."""
+    try:
+        from . import karpathy as KR
+        txt = KR.SELF_REVIEW_EXTRA if KR.on() else ""
+    except Exception:  # noqa: BLE001
+        txt = ""
+    try:                                                  # v0.999 Ponytail: a finding needs a concrete case
+        from . import ponytail as PT
+        txt += PT.REVIEW_EXTRA if PT.default_level() != "off" else ""
+    except Exception:  # noqa: BLE001
+        pass
+    return txt
+
+
 def _pr_body(t: DevTask, out: dict[str, Any], warnings: list[dict[str, Any]], issue: int) -> str:
     lines = [f"**{KINDS.get(t.kind, t.kind)} · {t.number}** (by Hoola Code, for review)", "",
              str(out.get("pr_summary") or "").strip() or "-"]
@@ -1711,6 +1746,8 @@ def _pr_body(t: DevTask, out: dict[str, Any], warnings: list[dict[str, Any]], is
     if issue:
         lines += ["", f"Refs #{issue}"]
     lines += ["", "### Test plan", str(out.get("test_plan") or "- CI").strip(), "", "### Risk", str(out.get("risk") or "-").strip()]
+    if str(out.get("assumptions") or "").strip():         # v0.999 Karpathy rule 1: what Hoola assumed, for the reviewer
+        lines += ["", "### Assumptions", str(out["assumptions"]).strip()]
     pl = _j(t.plan or "", {}) or {}                 # v0.451 ECC PHASE 4: the approved plan, so a reviewer sees the target
     if pl.get("done_when") or pl.get("steps"):
         lines += ["", f"### Plan ({t.tier or 'standard'})", (str(pl.get("goal") or "")).strip() or "-"]
@@ -3709,7 +3746,7 @@ def _ready_or_self_review(tenant: str, t: DevTask, g: Gh, say: str) -> dict[str,
                    f"The task it must do: {t.text[:1500]}\n{str(t.pr_body or '')[:2000]}{acc}\n</pr>")
         _pass(t.id, "review", "start", "Hoola reads its own pull request")
         out = explore_review(g, t.repo, t.head_sha, pr_text, diff_parts, added_lines, cfg.rules,
-                             json.dumps(findings[:20], ensure_ascii=False) if findings else "", extra=SP.SELF_REVIEW)
+                             json.dumps(findings[:20], ensure_ascii=False) if findings else "", extra=SP.SELF_REVIEW + _kr_review())
     except Exception as e:  # noqa: BLE001 - the own review is extra: a PR is never stuck because it could not run
         log.info("devsahayak self review %s: %s", t.id, e)
         _pass(t.id, "review", "end", "could not run", ok=False)
@@ -4321,6 +4358,9 @@ def repo_commands(tenant: str, ref: str) -> dict[str, Any]:
     try:
         out["commands"] = [{"name": k, "description": v["description"], "hint": v["hint"], "origin": v.get("origin", "repo")}
                            for k, v in sorted(RC.commands(repo, pls).items())]
+        out["commands"] += [{"name": p["name"], "description": p.get("description") or "An MCP server's prompt",   # v0.999 MCP prompts
+                             "hint": " ".join(f"<{a}>" for a in p.get("args") or []), "origin": "mcp"}
+                            for p in ses.meta.get("mcp_prompts") or []]
         out["agents"] = [{"name": k, "description": v["description"], "tools": v["tools"], "origin": v.get("origin", "repo"), "model": v.get("model", "")}
                          for k, v in sorted(RC.agents(repo, pls).items())]
         conf = RC.settings(repo, pls)
@@ -4332,6 +4372,12 @@ def repo_commands(tenant: str, ref: str) -> dict[str, Any]:
                        "program": " ".join(v.get("argv") or [])[:200]} for k, v in sorted(RC.mcp_servers(repo, pls).items())]
         out["styles"] = [{"name": k, "description": v["description"], "origin": v["origin"]} for k, v in RC.styles(repo, pls).items()]
         out["style"] = str(ses.meta.get("style") or conf.get("style") or "default")
+        from . import ponytail as PT
+        out["ponytail"] = PT.level(ses, conf)
+        from . import superpowers as SPW                  # v0.999 Hoola Code's own skills, beside the repo's
+        if SPW.on():
+            out["skills"] += [{"name": "superpowers:" + k, "description": v["description"], "origin": "superpowers"}
+                              for k, v in SPW.skills().items()]
         out["files"] = claude_paths(ses)
     except Exception:  # noqa: BLE001
         log.debug("repo setup read failed", exc_info=True)
@@ -4414,6 +4460,23 @@ def set_style(tenant: str, ref: str, style: str) -> dict[str, Any]:
     ses.meta["style"] = style
     ses.save_meta()
     return {"ok": True, "style": style}
+
+
+def set_ponytail(tenant: str, ref: str, level: str) -> dict[str, Any]:
+    """v0.999 /ponytail [lite|full|ultra|off] for this session (ponytail.py)."""
+    from . import engine as EN
+    from . import plugins as PL
+    from . import ponytail as PT
+    from . import repoconf as RC
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    if not EN.exists(tid):
+        raise DevError("This session has no working copy yet.")
+    ses = EN.Session(tid)
+    try:
+        return PT.set_level(ses, RC.settings(ses.repo, PL.roots(tenant)), level)
+    except ValueError as e:
+        raise DevError(str(e)) from None
 
 
 def export(tenant: str, ref: str) -> dict[str, Any]:

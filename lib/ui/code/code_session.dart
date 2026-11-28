@@ -452,6 +452,13 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
             : (conf.isEmpty ? "Brought $id's changes into the working copy." : 'Brought in $id - settle the conflicts in ${conf.join(', ')}.'))));
   }
 
+  /// v0.999 undo the last going-back (OpenCode's staged revert), possible until her next message.
+  Future<void> _redo() async {
+    final r = await _run('POST', '$_base/redo');
+    if (!mounted || r == null) return;
+    codeToast(context, 'Back as it was before you went back.');
+  }
+
   bool _canRevise(Map<String, dynamic> t) => codeCanRevise.contains(cs(t['status'])) || t['can_continue'] == true;
 
   /// note | answer | plan | revise | off
@@ -491,7 +498,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
           return;
         }
         text = rest.isEmpty ? _reviewAsk : '$_reviewAsk Focus on: $rest';   // sent as her message, below
-      } else if (name != 'security-review' && codeBuiltinNames.contains(name)) {
+      } else if (!codeSentToHoola.contains(name) && codeBuiltinNames.contains(name)) {
         _msg.clear();
         await _slash(name, rest, t);
         return;
@@ -551,6 +558,8 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         await codeExportConversation(context, widget.app, widget.id);
       case 'style' || 'output-style':
         await showCodeStylePicker(context, widget.app, widget.id, name: rest);
+      case 'ponytail':
+        await codeSetPonytail(context, widget.app, widget.id, rest);
       case 'plugins' || 'plugin':
         await showCodePlugins(context, widget.app, id: widget.id);
       case 'model':
@@ -914,6 +923,8 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
               row(ctx, Icons.ios_share_rounded, 'Export the conversation', 'export'),
               row(ctx, Icons.call_split_rounded, 'Fork this session', 'fork'),
               if (!codeRunning(t) && cps.length > 1) row(ctx, Icons.undo_rounded, 'Go back to an earlier checkpoint', 'rewind'),
+              if (!codeRunning(t) && cm(t['ws'])['redo'] != null)
+                row(ctx, Icons.redo_rounded, 'Undo going back to checkpoint ${ci(cm(cm(t['ws'])['redo'])['n'])}', 'redo'),
               if (cs(t['status']) == 'plan_wait') row(ctx, Icons.close_rounded, 'Cancel this job', 'cancel'),
               row(ctx, Icons.add_rounded, 'New session', 'new'),
               row(ctx, Icons.archive_outlined, t['archived'] == true ? 'Bring back from the archive' : 'Archive', 'archive'),
@@ -954,6 +965,8 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         _fork(cps);
       case 'rewind':
         _rewind(cps);
+      case 'redo':
+        _redo();
       case 'cancel':
         _run('POST', '$_base/cancel');
       case 'new':
@@ -1267,7 +1280,12 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
                 CodeChoiceRow(label: 'Checkpoint ${ci(cp['n'])}', sub: cs(cp['label']), on: false, onTap: () => Navigator.pop(ctx, ci(cp['n']))),
             ]));
     if (n == null || n <= 0 || !mounted) return;
-    // v0.999 Claude Code's /rewind: what goes back - both, the conversation only, or the code only
+    await _rewindTo(n);
+  }
+
+  /// v0.999 Claude Code's /rewind: what goes back - both, the conversation only, or the code only (also the files card's
+  /// Undo, which goes back to the checkpoint before the newest round).
+  Future<void> _rewindTo(int n) async {
     final what = await codeSheet<String>(context, widget.app,
         title: 'Go back to checkpoint $n',
         body: (ctx) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -1441,8 +1459,10 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
 
     // v0.945 what a "go back to a checkpoint" undid stays readable but greyed out
     final undone = <(int, int)>[
-      for (final s in steps)
-        if (cs(s['k']) == 'rewind' && ci(s['from']) >= 0 && s.containsKey('from')) (ci(s['from']), _stepN(s, -1)),
+      for (var i = 0; i < steps.length; i++)
+        if (cs(steps[i]['k']) == 'rewind' && ci(steps[i]['from']) >= 0 && steps[i].containsKey('from') &&
+            !steps.skip(i + 1).any((x) => cs(x['k']) == 'redo')) // v0.999 a redo undid that going-back: nothing greyed
+          (ci(steps[i]['from']), _stepN(steps[i], -1)),
     ];
     var dimFrom = out.length;
     var dimOn = false;
@@ -1561,6 +1581,9 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
             ? _land(ex, 'explain', done: true, actions: true)     // v0.937 it lands, it does not appear at once
             : _reply(ex, 'explain', actions: true));
       }
+      if (st != 'plan_wait' && cs(t['kind']) != 'explain' && (cl(t['file_diffs']).isNotEmpty || cl(t['files']).isNotEmpty)) {
+        out.add(_filesCard(c, t));
+      }
       if (st == 'plan_wait' && cm(t['plan']).isNotEmpty) out.add(_plan(c, t));
       if (cs(t['question']).isNotEmpty) out.addAll(_question(c, t));
       if ((st == 'failed' || st == 'refused') && cs(t['error']).isNotEmpty) {
@@ -1586,6 +1609,64 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
   }
 
   bool get _explainAtOpenSeen => _openExplain == cs(_t?['explain']) && _openExplain.isNotEmpty;
+
+  /// v0.999 Claude Code's "Created 7 files" card under the answer: the files it changed with their lines, See all and Undo.
+  Widget _filesCard(HoolaColors c, Map<String, dynamic> t) {
+    final fs = cl(t['file_diffs']).isNotEmpty ? cl(t['file_diffs']) : cl(t['files']);
+    final made = fs.where((f) => f['new'] == true).length;
+    final verb = made == fs.length ? 'Created' : (made == 0 ? 'Edited' : 'Changed');
+    var add = 0, rem = 0;
+    for (final f in fs) {
+      add += ci(f['added']);
+      rem += ci(f['removed']);
+    }
+    final cps = cl(cm(t['ws'])['checkpoints']);
+    final back = cps.length > 1 ? ci(cps[cps.length - 2]['n']) : 0;
+    final canUndo = back > 0 && !codeRunning(t) && cs(t['status']) != 'merged';
+    Widget fileRow(Map<String, dynamic> f) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          child: Row(children: [
+            Text('<>', style: codeMono(c, size: 12, color: c.ink3)),
+            const SizedBox(width: 10),
+            Expanded(child: Text(cs(f['path']).split('/').last, maxLines: 1, overflow: TextOverflow.ellipsis, style: codeMono(c, size: 13, color: c.ink))),
+            CodeStat(ci(f['added']), ci(f['removed'])),
+          ]),
+        );
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Container(
+        decoration: BoxDecoration(border: Border.all(color: c.line), borderRadius: BorderRadius.circular(12)),
+        clipBehavior: Clip.antiAlias,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 6, 4, 6),
+            child: Row(children: [
+              Expanded(child: Text('$verb ${cPlural(fs.length, 'file')}', style: codeSans(c, size: 14, weight: FontWeight.w600))),
+              if (canUndo)
+                TextButton(
+                  onPressed: () => _rewindTo(back),
+                  child: Text('Undo', style: codeSans(c, size: 14, color: c.ink2)),
+                ),
+            ]),
+          ),
+          Divider(height: 1, color: c.line),
+          for (final f in fs.take(3)) fileRow(f),
+          Divider(height: 1, color: c.line),
+          InkWell(
+            onTap: _changes,
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 44),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Row(children: [
+                Expanded(child: Text('See all', style: codeSans(c, size: 14, weight: FontWeight.w500))),
+                CodeStat(add, rem),
+              ]),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
   String _openExplain = '';
 
   Widget _roundLine(HoolaColors c, String text) => Padding(
@@ -1889,26 +1970,38 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
   /// What a part of the work did, in her words.
   String _summary(List<Map<String, dynamic>> g) {
     int n(Set<String> ks) => g.where((s) => ks.contains(cs(s['k']))).length;
-    final edits = g.where((s) => const {'edit', 'new'}.contains(cs(s['k']))).map((s) => cs(s['path']).split('/').last).toSet().toList();
-    final parts = <String>[
-      if (n({'search', 'grep', 'usages'}) > 0) 'searched the code',
-      if (n({'read'}) > 0) 'read ${cPlural(n({'read'}), 'file')}',
-      if (n({'list'}) > 0) 'looked in ${cPlural(n({'list'}), 'folder')}',
-      if (n({'bash'}) > 0) 'ran ${cPlural(n({'bash'}), 'command')}',
-      if (n({'check'}) > 0) 'ran your tests',
-      if (edits.length == 1) 'edited ${edits.first}' else if (edits.length > 1) 'edited ${cPlural(edits.length, 'file')}',
-      if (n({'agent'}) > 0) 'asked ${cPlural(n({'agent'}), 'helper')}',
-      if (n({'bgstart'}) > 0) 'started ${cPlural(n({'bgstart'}), 'background command')}',
-      if (n({'bgout', 'bgkill'}) > 0) 'checked the background',
-      if (n({'websearch'}) > 0) 'searched the web',
-      if (n({'web'}) > 0) 'read ${cPlural(n({'web'}), 'web page')}',
-      if (n({'mcp', 'skill'}) > 0) 'used your tools',
-      if (n({'perm'}) > 0) 'asked your OK',
-      if (n({'asked'}) > 0) 'asked you ${n({'asked'}) == 1 ? 'a question' : '${n({'asked'})} questions'}',
-      if (n({'cmd'}) > 0) 'ran your command',
-      if (n({'mention'}) > 0) 'read the files you pointed at',
-      if (n({'hook'}) > 0) "ran this repo's ${n({'hook'}) == 1 ? 'hook' : 'hooks'}",
-    ];
+    final edits = g.where((s) => cs(s['k']) == 'edit').map((s) => cs(s['path']).split('/').last).toSet().toList();
+    final made = g.where((s) => cs(s['k']) == 'new').map((s) => cs(s['path']).split('/').last).toSet().toList();
+    // v0.999 like Claude Code ("Ran 5 commands, read 2 files"): in the order each kind first came
+    int first(Set<String> ks) {
+      final i = g.indexWhere((s) => ks.contains(cs(s['k'])) || (ks.contains('compact') && cs(s['k']) == 'ws' && cs(s['text']).toLowerCase().contains('compact')));
+      return i < 0 ? 1 << 30 : i;
+    }
+
+    final kinds = <(Set<String>, String)>[
+      if (n({'search', 'grep', 'usages'}) > 0) ({'search', 'grep', 'usages'}, 'searched the code'),
+      if (n({'read'}) > 0) ({'read'}, 'read ${cPlural(n({'read'}), 'file')}'),
+      if (n({'list'}) > 0) ({'list'}, 'looked in ${cPlural(n({'list'}), 'folder')}'),
+      if (n({'bash'}) > 0) ({'bash'}, 'ran ${cPlural(n({'bash'}), 'command')}'),
+      if (n({'check'}) > 0) ({'check'}, 'ran your tests'),
+      if (made.length == 1) ({'new'}, 'created ${made.first}') else if (made.length > 1) ({'new'}, 'created ${cPlural(made.length, 'file')}'),
+      if (edits.length == 1) ({'edit'}, 'edited ${edits.first}') else if (edits.length > 1) ({'edit'}, 'edited ${cPlural(edits.length, 'file')}'),
+      if (first({'compact'}) < (1 << 30)) ({'compact'}, 'compacted the session'),
+      if (n({'agent'}) > 0) ({'agent'}, 'asked ${cPlural(n({'agent'}), 'helper')}'),
+      if (n({'bgstart'}) > 0) ({'bgstart'}, 'started ${cPlural(n({'bgstart'}), 'background command')}'),
+      if (n({'bgout', 'bgkill'}) > 0) ({'bgout', 'bgkill'}, 'checked the background'),
+      if (n({'websearch'}) > 0) ({'websearch'}, 'searched the web'),
+      if (n({'web'}) > 0) ({'web'}, 'read ${cPlural(n({'web'}), 'web page')}'),
+      if (n({'skill'}) > 0) ({'skill'}, n({'skill'}) == 1 && cs(g.firstWhere((s) => cs(s['k']) == 'skill')['name']).isNotEmpty
+          ? 'used the ${cs(g.firstWhere((s) => cs(s['k']) == 'skill')['name'])} skill' : 'used ${cPlural(n({'skill'}), 'skill')}'),
+      if (n({'mcp'}) > 0) ({'mcp'}, 'used your tools'),
+      if (n({'perm'}) > 0) ({'perm'}, 'asked your OK'),
+      if (n({'asked'}) > 0) ({'asked'}, 'asked you ${n({'asked'}) == 1 ? 'a question' : '${n({'asked'})} questions'}'),
+      if (n({'cmd'}) > 0) ({'cmd'}, 'ran your command'),
+      if (n({'mention'}) > 0) ({'mention'}, 'read the files you pointed at'),
+      if (n({'hook'}) > 0) ({'hook'}, "ran this repo's ${n({'hook'}) == 1 ? 'hook' : 'hooks'}"),
+    ]..sort((x, y) => first(x.$1).compareTo(first(y.$1)));
+    final parts = [for (final k in kinds) k.$2];
     if (parts.isEmpty) return _passTitle(g);
     final line = parts.take(3).join(', ');
     return line[0].toUpperCase() + line.substring(1);
@@ -1988,6 +2081,12 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
             ),
           ]);
         }
+      case 'skill':
+        return _line(c, Icons.auto_awesome_outlined, [
+          const TextSpan(text: 'Using the '),
+          _code(c, cs(s['name'])),
+          TextSpan(text: s['auto'] == true ? ' skill for this kind of work' : ' skill'),
+        ]);
       case 'cmd':
         return _line(c, Icons.terminal_rounded, [
           TextSpan(text: s['repo'] == true ? 'Ran your command ' : 'Started '),
@@ -2186,6 +2285,21 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         return _line(c, Icons.hourglass_empty_rounded, [TextSpan(text: cs(s['text']).isEmpty ? 'Waiting for a free coding slot' : cs(s['text']))]);
       case 'ckpt':
         return _line(c, Icons.bookmark_border_rounded, [TextSpan(text: 'Checkpoint ${ci(s['num'] ?? s['n'])} saved')]);
+      case 'format': // v0.999 the repo's own formatter tidied what the reply changed
+        return _line(c, Icons.auto_fix_high_rounded, [
+          TextSpan(
+              text: "The repo's formatter tidied ${(s['files'] is List ? (s['files'] as List).join(', ') : '').isEmpty ? 'the edited files' : (s['files'] as List).join(', ')}",
+              style: TextStyle(color: c.ink3)),
+        ]);
+      case 'redo':
+        return _line(c, Icons.redo_rounded, [
+          TextSpan(text: 'Undid going back to checkpoint ${ci(s['n'])}.'),
+          TextSpan(
+              text: cs(s['what']) == 'code'
+                  ? ' The files have every later change again.'
+                  : (cs(s['what']) == 'conversation' ? ' The conversation is whole again.' : ' The files and the conversation are as they were before.'),
+              style: TextStyle(color: c.ink3)),
+        ]);
       case 'rewind':
         return _line(c, Icons.undo_rounded, [
           TextSpan(

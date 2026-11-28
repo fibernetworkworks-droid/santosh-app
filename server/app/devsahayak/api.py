@@ -548,6 +548,10 @@ def make_router(require_key, current_tenant) -> APIRouter:
         b = _b(body)
         return await run(S.ws_rewind, tenant, tid, int(b.get("n") or 0), str(b.get("what") or "both"))
 
+    @r.post("/tasks/{tid}/redo")
+    async def ws_redo(tid: str, tenant: str = Depends(current_tenant)):
+        return await run(S.ws_redo, tenant, tid)
+
     @r.get("/tasks/{tid}/worktrees")
     async def ws_worktrees(tid: str, tenant: str = Depends(current_tenant)):
         return await run(S.ws_worktrees, tenant, tid)
@@ -662,6 +666,10 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def claude_write(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         b = _b(body)
         return await run(S.claude_write, tenant, tid, str(b.get("path") or ""), str(b.get("text") or ""))
+
+    @r.put("/tasks/{tid}/ponytail")
+    async def set_ponytail(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return await run(S.set_ponytail, tenant, tid, str(_b(body).get("level") or ""))
 
     @r.put("/tasks/{tid}/style")
     async def set_style(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):

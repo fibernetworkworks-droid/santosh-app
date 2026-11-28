@@ -422,6 +422,8 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
         return (Icons.edit_outlined, 'Edited', path, _hasChange(s));
       case 'asked':
         return (Icons.help_outline_rounded, 'Asked you', _s(s['question']), true);
+      case 'skill':
+        return (Icons.auto_awesome_outlined, 'Using', 'the ${_s(s['name'])} skill', false);
       case 'cmd':
         {
           final name = '/${_s(s['name']).replaceFirst(RegExp(r'^/'), '')}';

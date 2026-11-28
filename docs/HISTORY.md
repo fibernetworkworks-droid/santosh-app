@@ -13528,3 +13528,296 @@ Fixed (route.css end block "v0.999.282 EVERY PAGE ALIGNED" + route.js):
 Tests: server/tests/test_v0999_282_route_aligned.py - the rules, and a walk of 22 page views at 1440 and 390 px in light and in
 dark that fails on sideways scroll, anything past the edge, cut text, mismatched controls, tiny controls or a page error.
 NOT VERIFIED on her server.
+
+
+## v0.999.283 DISTRIBUTED DESK (built as 0.999.281; their HOOLA CODE MCP TOOLS took 0.999.281 and EVERY PAGE ALIGNED 0.999.282, all kept; owner: "Distributed Systems Engineer same as finance desks")
+
+The Distributed Systems Engineer (hire key `distsys_eng`) gets its own section `/console/distributed` and its own chat
+(Conversation kind `distsys`, `server/app/distchat.py`, routes under `/api/dsdesk`), the same shape as the finance desks.
+
+NEW all-code engine `server/app/distdesk/` (no model call):
+- `retry.py`: a retry policy (tries, base, cap, multiplier, jitter none / full / equal / decorrelated, deadline) worked out -
+  the worst-case waits, whether the deadline cuts it, the expected tries and extra load at a failure rate, and the retry
+  herd simulated with a fixed seed for N clients (peak in a 10 ms bucket: ~1,000 with no jitter vs ~67 with full jitter).
+  `chain(hops)`: retries multiplying down a call chain, and inner timeouts longer than outer ones ("gives up" first).
+- `quorum.py`: N / R / W overlap, consensus majority and how many failures it survives (even sizes warned), losing one or
+  two zones by her placement (two zones warned).
+- `linear.py`: a linearizability checker for register / compare-and-set histories - Wing-Gong search with a memo set,
+  info (unknown) operations, per key, from JSON, Jepsen EDN or plain lines; a failure is explained by the deepest
+  arrangement found; checked against brute force on 500 random histories.
+- `sim.py`: a fault-injection simulator - one leader, quorum without and with read repair, last-writer-wins with clock skew,
+  async replication with failover; partitions, crashes; writes a history and checks it; counts lost acknowledged writes.
+  Presets show read repair fixing the same quorum run, LWW breaking under skew, failover losing acknowledged writes.
+- `tla.py`: TLA+ starter specs (idempotent consumer, two-phase commit, fencing tokens), each with a bug / fix switch in its
+  config; TLC output read back (pass / invariant / property / deadlock / error, states, the trace with what changed);
+  a GitHub Actions workflow that downloads the pinned tla2tools release and runs TLC in HER repository (she adds it herself).
+- `service.py`: items (tables `distdesk_items`, `distdesk_settings`) and settings (system, failure rate, clients, specs
+  folder, branch, TLA+ version).
+
+NEW tool `dist_desk` (`agent/dist_tools.py`; registry 706 -> 707). Pages: Today, Retries, Quorums, Histories (simulator +
+timeline), Specs, Settings (`static/console/dsdesk.*`). Tests `tests/test_ds_desk.py` (5, incl. a browser walk) +
+`tests/dist_samples.py`.
+
+NOT VERIFIED: on her server; the TLA+ specs have not been run through TLC here (running the downloaded jar was not
+allowed in this session) - the workflow is the way they get checked.
+
+
+## v0.999.284 FIVE FROM OPENCODE
+(owner, after reading anomalyco/opencode: 'GO 1 TO 5'): five things from OpenCode in Hoola Code. (1) EDITS THAT SURVIVE SMALL DIFFERENCES (`engine._apply`): exact first, then the same text with typographic quotes / dashes / odd spaces read as plain ones, then whole lines that differ only in trailing spaces (the result says which); a miss says WHY - 'new_string is already in the file' (the change looks applied) or the closest lines of the file by whitespace-blind line votes, numbered as read shows them - so the model retries without reading the file again. (2) A COMMAND STILL RUNNING AT ITS TIME LIMIT IS NOT KILLED (`box.run_in` move_to_bg): it keeps running as a background command of the session (bash_output / kill_shell, labelled and time-limited like run_in_background ones; not when it uses the network proxy or 3 are already running); the coder is told not to run it again. (3) TOOL INPUTS FIXED AGAINST THE TOOL'S OWN FIELDS (`engine.repair_input`, OpenCode's tool-input repair): a list / object sent as JSON text, '20' for a number, 'true' for a yes / no, a 'null' placeholder for an optional field - and a TEXT field is never touched. That fixed a live bug found while building it: the old blind reading turned the content of a .json file (package.json, tsconfig.json...) into a Python dict and wrote "{'name': 'shop'}" into the file. (4) THE REPO'S OWN FORMATTER AFTER EDITS (`devsahayak/fmt.py`): only a formatter the repo declares (prettier / biome from its node_modules, ruff format or black configured, gofmt for Go, rustfmt for Cargo, clang-format with .clang-format), once per reply for the files it changed, in the locked box; a formatter that would rewrite most of a not-yet-formatted file is put back; the coder sees a short diff. (5) REDO AFTER GOING BACK (`Session.redo`, POST /api/devsahayak/tasks/{id}/redo): a rewind keeps what it throws away (the files as one commit, the conversation, the later checkpoints) until her next message; web Redo in the session card, phone menu 'Undo going back', and the phone stops greying the undone steps. 14 tests (real ruff / gofmt). NOT VERIFIED in the real box or with a real model.
+
+
+## v0.999.285 SRE DESK (built as 0.999.284; their FIVE FROM OPENCODE took 0.999.284, both kept; owner: "Site Reliability Engineer same as finance desks")
+
+The Site Reliability Engineer (hire key `sre`, new in the software group) gets its own section `/console/sre` and its own chat
+(Conversation kind `sre`, `server/app/srechat.py`, routes under `/api/srdesk`), the same shape as the finance desks.
+
+NEW all-code engine `server/app/sredesk/` (no model call):
+- `slo.py`: error budget for a target over a window (allowed minutes, used, burn rate, when it runs out, the nines table); burn
+  rates over her `time, good, total` samples (counters turned into steps) with the Google SRE workbook's multiwindow alerts -
+  page at 14.4x over 1 h + 5 min and 6x over 6 h + 30 min, ticket at 1x over 3 days + 6 h, scaled to her window - and when each
+  would have fired; Prometheus recording + alerting rules from her metric names (validated names and selector; text she adds).
+- `alerts.py`: a rules file checked for what makes alerts noisy or useless (no for, no severity, no summary / runbook, counters
+  compared without rate(), rate windows under 4 scrapes, paging on CPU / memory / disk, == 0 without absent()); not promtool.
+  Alert history CSV counted in her IANA time zone and working hours: pages a week, flapping, short self-clearing alerts, never
+  acknowledged, nights, by hour.
+- `incident.py`: timestamped lines (any zone, past midnight) marked impact start / detected / acknowledged / mitigated / resolved;
+  the times between; follow-ups; lines blaming a person flagged; a blameless postmortem draft in Markdown - the parts only she
+  knows are marked blanks, never filled in.
+- `latency.py`: percentiles, share under her threshold, Apdex from durations / CSV / logs; histogram buckets -> quantiles the way
+  histogram_quantile() interpolates, with the bucket each true value lies in, exact or estimated threshold share.
+- `capacity.py`: least-squares trend of peak use -> the dates it crosses her headroom line and the limit, with r2; M/M/c (Erlang C)
+  utilisation, wait and response, the curve as load rises, and the one-server-down check (N+1).
+- `avail.py`: availability of a tree of parts (all = series, any / need k = redundancy), downtime a month, what each part costs and
+  what a second copy saves; copies counted as independent - said every time.
+- `service.py`: items (`sredesk_items`), settings (`sredesk_settings`: service, SLO, window, time zone, working hours, days off,
+  scrape interval, latency threshold, metric names, selector).
+
+NEW tool `sre_desk` (`agent/sre_tools.py`; registry 707 -> 708). Pages: Today, SLOs, Alerts, Incidents, Capacity (latency /
+histogram / growth / queue / availability), Settings (`static/console/srdesk.*`). Tests `tests/test_sr_desk.py` (5, incl. a
+browser walk). PyYAML added to requirements (it was already used lazily by the architecture desk).
+
+NOT VERIFIED: on her server or with her own monitoring data; the queue and availability results are models, not her system.
+
+
+## v0.999.286 SIX TO EIGHT FROM OPENCODE
+(owner: 'GO 6 TO 8', items 6-8 of the OpenCode read): (6) MORE FROM MCP SERVERS (`devsahayak/mcptools.py`, `McpHttpRemote.overview / read_resource / get_prompt`, `McpExecutor.extra`, the box driver's read / prompt actions): each server's OWN instructions (the 'instructions' of its initialize answer, which every client used to throw away) ride in the coder's instructions inside <mcp_instructions server=...> with a line that they never override her words or the rules (8,000 characters in all); its resources are behind list_mcp_resources / read_mcp_resource (answers wrapped as data); its prompts are her slash commands /mcp__<server>__<prompt> args (positional, one argument takes all the words, a missing required one is asked for), offered in the / menu on web and phone. Her own servers are asked once and kept 30 minutes (a round waits at most 4 seconds; a slow one is read in the background); the repo's are kept with their tool list after her OK. (7) THE PROMPT CACHE KEPT (`engine.steady_system`, `warm_cache`): a follow-up round whose system prompt changed (a new file type moves the agent list, her MCP servers, notes) keeps the session's prompt byte for byte while the cached request is still warm (same tools, under 5 minutes) and sends the changed parts as one <system_update> note on her message - refreshed in full when the cache is gone anyway, the tools changed, or the notes pass 20,000 characters; the last step of a round asks for a proper ending (done with what is left) instead of stopping cold; while a round waits for her answer the last request is re-sent every ~4.5 minutes with a 1-token answer (Claude only, 6 times = 30 minutes at most) so her answer does not re-read everything at full price. NOT copied on purpose: OpenCode's tool_choice none on the last step - on Claude a tool_choice change drops the cached conversation. (8) COMPACTION PREPARED AHEAD (`engine.start_precompact / take_precompact`): at 80% of the summarise point the summary is written in the background through the round's OWN cached request and swapped in at once when the point is reached (waits up to 90 s for one still being written, never uses one that a later compaction made stale); the summary now has a fixed template (Objective, Her requirements and rules, Decisions, Work state, Next move, Relevant files, Important context) and UPDATES an earlier summary instead of starting over. 7 tests (a real program MCP server through the box driver). NOT VERIFIED with a real model, a live MCP server or real cache numbers.
+
+
+## v0.999.287 VIRTUALIZATION DESK (built as 0.999.286; their SIX TO EIGHT FROM OPENCODE took 0.999.286, both kept)
+
+Owner: "Virtualization / Hypervisor Engineer same as finance desks". The Hub's `hypervisor_eng` goes live with its own section
+`/console/virtualization` (`static/console/hvdesk.{html,js,css}`, prefix `hvk-`, page id `#hvPage`) and its own chat (Conversation kind
+`virt`, `server/app/virtchat.py`, routes `/api/hvdesk/*`), kept out of every chat list (convs / callconv kinds), the desk block
+`<virt_desk>` and the tool family `virt` admitted in that chat. NEW tool `virt_desk` (`agent/virt_tools.py`, registry 709).
+
+Engine `server/app/virtdesk/` (all code, no model, nothing changed on her hosts):
+- `container.py`: Kubernetes YAML (Pod / Deployment / StatefulSet / DaemonSet / ReplicaSet / Job / CronJob, List), Compose, docker /
+  podman / nerdctl run lines, OCI config.json and Dockerfiles. Each container gets the Pod Security level it meets (privileged / baseline /
+  restricted, the rules of the Kubernetes Pod Security Standards; Docker read in Docker's terms - its default seccomp counts, its 14 default
+  caps), each finding with the line to change, the capabilities it really has, and the hardened block (securityContext / Compose keys /
+  docker run flags / OCI JSON). Runtime sockets and sensitive host paths are serious. Dockerfiles: no USER, unpinned FROM, ADD from a URL,
+  curl | sh, secrets in ENV / ARG, chmod 777, sudo, port 22, no HEALTHCHECK.
+- `seccomp.py` + `syscalls.json` (names + numbers from the Linux UAPI headers, x86_64 373 / aarch64 338): a profile checked (allow- vs
+  deny-list, how many open, risky calls with what each gives, capability-only rules shown as conditional, unknown names); an allow-list made
+  from strace / strace -c / audit SECCOMP lines (syscall=N) / names, plus the calls a container needs to start; clone filtered on the
+  namespace flags (mask 0x7E020000), clone3 ENOSYS (as Docker does).
+- `domain.py`: libvirt XML (DOCTYPE / ENTITY refused): TCG vs KVM, machine type, firmware / Secure Boot / TPM (Windows 11 needs all
+  three), CPU mode + topology mismatch, pinning / NUMA, huge pages, emulated IDE / SATA / e1000 / rtl8139, cache unsafe, io native without
+  O_DIRECT, discard, iothreads, multiqueue, VNC / SPICE open to the network, sVirt off, passthrough (no live migration), Hyper-V
+  enlightenments, RNG / guest agent / watchdog; the XML to change for each.
+- `plan.py`: hosts + VMs -> capacity at her vCPU-per-core / RAM overcommit / reserve, her placement checked or one worked out (biggest
+  first onto the host with the most RAM left), failover for every 1- or 2-host loss (stranded VMs + GiB short), NUMA spans.
+- `cpu.py`: flags per host (lscpu / cpuinfo / one line per host) -> VT-x / AMD-V, EPT / NPT, the x86-64 psABI level of each and of all,
+  flags that differ, mixed vendors, lscpu vulnerabilities; the libvirt <cpu> block (virsh hypervisor-cpu-baseline for the model name).
+- `ci.py`: a GitHub Actions workflow (permissions read, checkout without credentials) that builds or pulls her image and runs it as a
+  non-root user, read-only, cap-drop ALL, no-new-privileges, her seccomp profile, memory / CPU / process limits, then checks it keeps
+  running and answers its health check; a second job runs the profile in SCMP_ACT_LOG mode and lists the syscall numbers the kernel log
+  shows. Inputs strictly checked (image, repo paths, health URL on 127.0.0.1 or a plain command).
+- `service.py`: tables `virtdesk_items` / `virtdesk_settings` (arch, target, uid, overcommit, failures, CI fields), kinds container C,
+  seccomp S, trace T, domain V, plan P, cpu U.
+
+Pages: Today, Containers (the level ladder, per-container cards with capabilities, findings and the hardened lines), Seccomp (make from a
+trace / check a profile), VMs, Capacity (hosts and VMs / CPU flags), CI check, Settings. Tests `server/tests/test_hv_desk.py` (5 incl. a
+browser walk at 1440 and 390). NOT VERIFIED: on her server, with her own clusters / hosts / VMs, the workflow on GitHub, or a profile
+under a real runtime.
+
+
+## v0.999.288 NINE TO ELEVEN FROM OPENCODE
+(owner: 'GO 9 TO 11', the last three of the OpenCode read): (9) READS START WHILE THE MODEL STILL WRITES (`engine.EarlyReads`, `brain.TOOL_SINK`): Claude's stream is read event by event and each tool call is handed over the moment its block is whole; the leading run of read / glob / grep / ls / web reads that no rule asks about and no PreToolUse hook must see first starts at once (the same rule as the parallel reads - the first other call ends the run, so a read never races an earlier edit), and the step takes those results instead of running them again; Qwen's stream is unchanged. (10) A FEW WORDS PER MODEL FAMILY (`brain.model_notes`, in the coder's and every agent's prompt): Qwen is told what Hoola Code's own workarounds show it getting wrong (lists / objects as JSON text, a big write breaking its JSON, the line-number column in old_string, the repeated paragraph), other open models a short general note, Claude one line on sparse comments (OpenCode's own); nothing guessed. NOT copied: OpenCode's patch format for GPT models (Hoola Code does not run them by default). (11) A RESTART NEVER REPEATS A STEP (`engine.begin_step / mark_started / end_step / heal_cut_step`): the model's reply with its tool calls is written down BEFORE anything runs and each call is marked as it starts; Hoola used to save only after a step's tools had all finished, so a restart mid-step lost the reply and the resumed round could run the same command or send the same message twice. After a restart (or a stop) the cut step's calls are answered: not started = safe to do, a read that did not finish = run it again, anything else = 'MAY OR MAY NOT have done its work - check first, do not simply run it again'; Hoola never runs it again by itself, and her follow-up joins that turn. 6 tests. NOT VERIFIED with a real model or a real restart on her server.
+
+
+## v0.999.289 KARPATHY RULES
+(owner: 'feed this properly to hoola code thus to perform well. first check it perfectly', on github.com/multica-ai/andrej-karpathy-skills = forrestchang's, MIT, commit 2c60614, read whole: README, CLAUDE.md, the skill, the Cursor rule, EXAMPLES.md; text only, nothing to run): four coding rules from Andrej Karpathy's notes on how coding models go wrong, checked line by line against Hoola Code first. ALREADY THERE: read before changing, smallest change in the repo's style, a failing test first for a bug, one question for a vague ask, scratch files deleted, the formatter's whole-file rewrites put back. ADDED (`devsahayak/karpathy.py`, switch `dev_karpathy` on): (1) THINK FIRST - two readings are named and asked instead of one picked quietly, a simpler way is said before the bigger one is built, and the done tool gets `assumptions`: shown under her answer as 'I assumed: ...' and as an Assumptions section in the pull request; (2) SIMPLE FIRST - no features, options, abstractions or impossible-case handling nobody asked for, 'would a senior engineer call this overcomplicated?'; (3) SURGICAL CHANGES - nothing next to the task tidied, dead code mentioned not deleted, only the leftovers of its own change removed, and CHECKED IN CODE: a hunk that only changes layout (indent, spaces, quote style) or deletes an existing comment is named on show_diff and sends the round back once before done (not when her request asks for formatting / tidying / a refactor, not for files the repo's own formatter changed, never for new files); (4) GOAL FIRST - every to-do step carries its check ('... -> check: test_x passes'). The rules ride the coder's fixed prompt right after its own (cached), editing agents get a short form, Hoola's own review and the reality checker treat unasked-for extras as a finding, the older step loop gets them too; the coding card counts tidying per job (`drive_by`, not part of its pass mark yet). Credit in THIRD_PARTY_NOTICES.md (no upstream file copied). 12 tests incl. a full round with a fake model. NOT VERIFIED with a real model: whether the rules make its changes smaller is for the next coding card run to show.
+
+
+## v0.999.290 LOW LATENCY DESK
+(owner: "Backend Systems Engineer (Low Latency) same as finance desks"; built as 0.999.288 - their NINE TO ELEVEN FROM OPENCODE took
+0.999.288 and their KARPATHY RULES 0.999.289 while it was being built, all kept.) The Backend Systems Engineer (Low Latency) becomes live in the Hub (key lowlatency_eng)
+with its own section `/console/latency` (`static/console/lldesk.{html,js,css}`, page `#llPage`, prefix `llk-`) and its own chat
+(Conversation kind `lowlat`, `server/app/lowlatchat.py`, routes `/api/lldesk/*`, block `<lowlat_desk>`), on a NEW all-code engine
+`server/app/lldesk/` - no model, no money, nothing runs on her machines:
+
+- `latency.py` - raw samples (any unit), HdrHistogram percentile output, wrk / wrk2 distributions, or `p99: 1.2 ms` lines -> p50 / p90 /
+  p99 / p99.9 / p99.99 / max (nearest rank, as HdrHistogram reports), each marked when fewer than 10 samples stand beyond it; heavy tail,
+  single long stall, two groups of samples (modes), mean-vs-spread; wrk's closed loop named as coordinated omission, and the correction
+  done from her fixed send interval (HdrHistogram's recordValueWithExpectedInterval); 2-6 runs under `## name` headings compared, with a
+  seeded bootstrap interval of the p99 / p50 change (slower / faster / within the noise; no interval without 200+ raw samples a side).
+- `budget.py` - `stage` / `fanout` (waits for all N) / `hedge` / `target` lines; each stage a log-normal fitted to her p50 + p99, the path
+  sampled 20,000 times with a fixed seed (max of N via the inverse normal for big fan-outs); end-to-end percentiles, share of the median,
+  how much the tail drops if each stage always took its median (the biggest win), fan-out slow chance 1-0.99^N, what-ifs (halve the
+  fan-out, hedge a heavy-tailed call after its p95 at ~5% more load), the sum of p99s shown as the bound it is.
+- `hotpath.py` - C / C++, Rust, Go, Java detected; 45 rules (allocation, locks, logging, sleeps, std::endl, shared_ptr by value,
+  node containers, push_back without reserve, a syscall per message, defer in a loop, json reflection, boxing, regex compiles ...), loop
+  bodies found from the braces, strings and comments skipped; patterns, said as not measurements.
+- `layout.py` - C / C++ structs and Rust structs laid out on System V LP64 or Windows LLP64: offsets, padding, the cache lines each field
+  sits on, fields crossing a line, atomics sharing a line (false sharing, alignas(64) / 128 / CachePadded), the order with the least
+  padding, packed / alignas / bit-fields / std::atomic / std::array / Option, Rust without repr(C) said; libstdc++ sizes said as such.
+- `profile.py` - perf report --stdio (children or not), folded stacks, perf stat: self time by kind (allocation and GC, locks, page
+  faults, the scheduler, the network stack, copying, logging, serialisation, the kernel), top functions, IPC, cache / branch misses,
+  context switches, CPU migrations, page faults per second.
+- `tuning.py` - /proc/cmdline, sysctl, lscpu, governor, THP, ethtool -c / -g, irqbalance, tuned-adm, the clock source -> each setting
+  that adds latency with the line to change and its trade-off; what was not pasted listed as not seen.
+- `ci.py` - `.github/workflows/latency.yml`: base and head checked out, built, run interleaved N times on one runner (pinned to a CPU),
+  an embedded Python compare that fails the job when the head's percentile is over her tolerance and writes a job summary; commands with
+  `${{` or newlines refused; the results file emptied with `: >` (no removal command).
+- `service.py` - tables lldesk_items / lldesk_settings, kinds latency L / budget B / code H / layout S / profile P / tuning T.
+
+NEW tool `latency_desk` (`agent/lowlat_tools.py`, family lowlat, registry 709 -> 710; the 17 count pins moved). Wiring: tools.py,
+admit.py EXTRA_KEYS["lowlat"], santosh.py block + admission, main.py page + mount, db.py, the convs.py / callconv.py kind lists,
+v2.js `lldesk`, employees.js, hire.py (live, does / needs / never). Tests `server/tests/test_ll_desk.py` (4: engine, engine 2 incl.
+running the CI compare step on a 30%-slower head (fails) and the same code (passes), hire / chat / wiring / store / guards, a browser
+walk at 1440 and 390 with screenshots). NOT VERIFIED: on her server, with her own services and load tests, or the workflow on GitHub.
+
+
+## v0.999.291 PONYTAIL
+(owner: 'now ponytell to hoola code', on github.com/DietrichGebert/ponytail, MIT, v5.3.3 commit ebd8654, read whole: the skill, AGENTS.md, the review / audit / debt / gain / help skills, the hooks and the benchmark): Ponytail is one prompt - the lazy senior developer, the whole problem with the least new code - plus three reports; its own benchmark (Claude Code, 39 tasks x 5 runs) reports -53% lines and -26% cost against no skill with more risky logic tested (98% vs 68%) - their numbers, not measured here. Built (`devsahayak/ponytail.py`, rewritten in Hoola's words, no file copied): THE SMALLEST COMPLETE CHANGE in the coder's fixed prompt after the Karpathy rules - scope first (every caller, test, fixture, config, export the change must reach and what it could break), then the first rung that fully works (does it need to exist / already in this repo / the standard library or platform / an installed dependency - never a new dependency for a few lines / one clear line / only then the minimum), a bug fix greps every caller and fixes the root cause once, moved code keeps its checks, new risky logic leaves one small test, a deliberate shortcut is marked `shortcut: <the limit>, <when to upgrade>`, NEVER cut input validation, data-loss handling, security or accessibility, done `risk` says what was skipped. LEVELS lite / full (default) / ultra / off per session: /ponytail <level> on web and phone (PUT /tasks/{id}/ponytail, no model call; no word = switch on or say the level), a repo's .claude/settings.json may set "ponytail", the server default is `dev_ponytail`. REPORTS that change nothing: /ponytail-review (this session's change, read with its callers and tests) and /ponytail-audit (the whole repo, mapped first, at most 20 findings) - Must / Should / Nice, each finding with what this is / problem / fix / if we skip it, a verdict and what was not checked; /ponytail-debt lists every `shortcut:` comment found by git grep (her own marker word too) with no-trigger ones tagged. Editing agents get the ladder in short; Hoola's own review is told a finding needs a concrete case and a named shortcut is a decision. NOT brought in: the Claude Code band / board (Hoola Code shows its own cost, context and test status) and the per-agent installers. 8 tests incl. two real rounds with a fake model. NOT VERIFIED with a real model: whether changes get smaller is for the next coding card run to show.
+
+## v0.999.292 MAINFRAME DESK (built as 0.999.291; their PONYTAIL took 0.999.291, both kept; owner: "Mainframe Modernization Architect same as finance desks")
+
+The Mainframe Modernization Architect gets its own section `/console/mainframe` and Mainframe chat (Conversation kind
+`mainframe`, `server/app/mainframechat.py`, routes `/api/mfdesk/*`), built like the finance desks, on a NEW all-code engine
+`server/app/mfdesk/` (no model call):
+
+- `cobol.py` - COBOL programs (fixed or free format, several in one paste): paragraphs in order with lines, PERFORM / GO TO,
+  paragraphs never reached, static and dynamic CALLs (the values the data name is given), COPY members, EXEC SQL tables, EXEC CICS,
+  SELECT / ASSIGN files and their FILE STATUS, decisions, packed fields, risks (ALTER, GO TO, COMPUTE without ROUNDED, two-digit years,
+  files without FILE STATUS).
+- `layout.py` - copybooks laid out the IBM Enterprise COBOL way (DISPLAY / COMP / COMP-3 / COMP-1/2, zoned signs, OCCURS, REDEFINES,
+  88 levels, groups), types for Java / SQL / Python, a CREATE TABLE (OCCURS as child tables), a Java record, a generated Python decoder,
+  and a sample record decoded from EBCDIC (cp037 / cp1140 / cp500 / cp273 / cp1047) or ASCII with bad packed bytes named.
+- `jcl.py` - jobs and steps, the real program under IKJEFT01 / IKJEFT1B (RUN PROGRAM / PLAN), utilities, datasets read / written /
+  deleted, data passed between steps, GDGs, sort cards, procedures, rerun risks (NEW,CATLG with no delete).
+- `inventory.py` - programs, copybooks and JCL under `## name` headings mapped into callers, waves (a program moves after what it calls),
+  call cycles, pieces referenced but not pasted, tables that move together, and a suggested approach per program with its reason.
+- `proof.py` - old vs new output (fixed-width through a copybook, CSV with a header, or lines) matched by key or order; differences
+  named as rounding, sign, truncation, spaces, zeros, low-values, case, decimals, or missing / added records; EBCDIC vs ASCII order.
+- `ci.py` - a GitHub Actions workflow that builds the new code, runs it on the saved input and fails a pull request whose output
+  differs from the saved old output (field by field through the copybook, with keys, ignored fields and a tolerance).
+- `service.py` - tables `mfdesk_items` / `mfdesk_settings` (P- / C- / J- / I- / D- numbers), settings (encoding, target language, keys,
+  run / build commands, golden path, CI copybook).
+
+NEW tool `mainframe_desk` (`agent/mainframe_tools.py`, family `mainframe`, registry 711). Pages: Today, Programs, Data layouts,
+Batch, Map and plan, Proof, CI check, Settings (`static/console/mfdesk.{html,js,css}`). Hire key `mainframe_arch` (live). Nothing
+is run on her mainframe or servers; what she pastes is data, never instructions. Tests `server/tests/test_mf_desk.py` (4, incl. a
+Chromium walk at 1440 and 390). NOT VERIFIED: on her server, with her own sources, or the workflow on GitHub.
+
+
+## v0.999.293 SUPERPOWERS FOR HOOLA CODE
+(owner: 'https://github.com/obra/superpowers.git --- read this first then make hoola code more powerfull with this'; obra/superpowers v7.0.2, commit 22f0b46, MIT, read whole: 15 skills with their prompts and references): FOUND FIRST - Hoola already carried an older condensed copy (v0.499, coder/skillpack/sp-*.md) but only for the CHAT's skill desk: Hoola Code never listed them, never picked one, and nothing enforced their rules. Built (`devsahayak/superpowers.py` + `devsahayak/superpowers/*.md`, rewritten in Hoola's words, no file copied): (1) HOOLA CODE'S OWN SKILL LIBRARY - 13 skills rewritten for its tools (agent / isolation=worktree / agent_worktree / todo_write / ask_user / done; merging stays her tap): systematic-debugging, test-driven-development, verification-before-completion, brainstorming, writing-plans, executing-plans, subagent-driven-development, requesting- and receiving-code-review, dispatching-parallel-agents, using-worktrees, finishing-a-branch, writing-skills; left out using-superpowers (it is the rule) and diagnosing-superpowers (it debugs the plugin itself); (2) THE RULE (using-superpowers) in the fixed prompt with every skill's name and when-to-use: read the skill that fits before acting, say 'Using <skill> to <purpose>', process skills first, her words and the repo's rules win; (3) PICKED IN CODE - her round's kind and words choose the process skills (a bug: systematic-debugging + test-driven-development + verification; a change: test-driven-development + verification; reviewers' comments: receiving-code-review) and their full text rides with her message once per session, shown as 'Using the X skill' on web and phone; her new commands /brainstorm, /write-plan, /execute-plan load brainstorming / writing-plans / subagent-driven-development; (4) TWO IRON LAWS CHECKED IN CODE: done that says it works / passes / is fixed after code was edited and no test or build command passed since that edit is sent back once to run the proof fresh (docs-only edits and an honest 'could not run' pass), and the third failing test run in a row, each after a fix attempt outside the tests, tells it to stop fixing, go back to the root cause and ask her; (5) the plan pass checks its plan the writing-plans way; the skill tool reads superpowers:<name> and hides her chat desk's older sp- copies; the repo setup lists them. Switch `dev_superpowers`. 9 tests incl. two real rounds with a fake model. NOT VERIFIED with a real model.
+
+
+## v0.999.294 EMBEDDED DESK (owner: "Embedded Systems Engineer same as finance desks")
+
+The Embedded Systems Engineer gets its own section `/console/embedded` and Embedded chat (Conversation kind `embedded`,
+`server/app/embeddedchat.py`, routes `/api/emdesk/*`), built like the finance desks, on a NEW all-code engine `server/app/emdesk/`
+(no model call):
+
+- `memory.py` - a GNU ld map file (Memory Configuration, output / input sections, fill, load addresses), `size -A`, Berkeley `size`
+  or `nm -S` output read into flash and RAM per region and how full, sections (with .data's copy in flash), object files (library
+  members marked), symbols, what the C library pulled in (printf family, float to text, soft double / float maths, malloc, C++
+  exceptions / streams / guards, libm), big RAM buffers, padding, heap / stack reserves, and the growth against an older build.
+- `firmware.py` - C / C++ / Arduino: functions in interrupt context (handler names, markers, AVR ISR(), HAL callbacks, registration
+  calls, and three levels of calls from them) and what they must not do; globals shared with interrupts without volatile,
+  read-modify-writes outside a critical section, 64-bit values torn on small cores; busy waits without a timeout, recursion, big
+  stack arrays (with #define sizes), raw register addresses (non-volatile = serious), heap after start-up, sprintf / gets, printf %f,
+  double constants for floats, a main loop that never sleeps, no watchdog.
+- `timing.py` - response-time analysis for fixed-priority preemptive scheduling: interrupts above tasks, her priorities (bigger or
+  smaller number more urgent) or deadline-monotonic, blocking, release jitter, context-switch time, equal priorities time-sliced,
+  utilisation vs Liu & Layland, slack, how much every execution time can grow, the deadline-monotonic order compared, and a
+  simulated timeline with misses from the critical instant. Checked against the textbook set (responses 3, 6, 20).
+- `power.py` - states as currents with how long and how often they run, the always-on currents filling the rest; average current,
+  mAh a day, battery life with the usable share and self-discharge, the share per state, peak current vs the cell, a target life, and
+  what halving each state's rate or time would buy.
+- `clocks.py` - UART (fractional BRR, integer UBRR with U2X, plain divider) with real baud and error, timer PSC / ARR pairs (exact
+  first, best resolution), PWM resolution, SysTick reload, SPI power-of-two dividers, ADC step size.
+- `ci.py` - a GitHub Actions workflow: toolchain from Ubuntu packages (Arm, RISC-V, AVR) or ESP-IDF, host tests, build base and head,
+  `size -A` on both, fail over the flash / RAM budget or the allowed growth, the per-section change in the run summary.
+- `service.py` - tables `emdesk_items` / `emdesk_settings` (M- / F- / T- / P- / K- numbers), settings for the chip, timing, battery
+  and CI.
+
+NEW tool `embedded_desk` (`agent/embedded_tools.py`, family `embedded`, registry 712). Pages: Today, Memory, Code, Timing, Battery,
+Clocks, CI check, Settings (`static/console/emdesk.{html,js,css}`). Hire key `embedded_eng` (live). Nothing is run or flashed on
+her boards or machines; what she pastes is data, never instructions. Tests `server/tests/test_em_desk.py` (4, incl. a Chromium walk
+at 1440 and 390). NOT VERIFIED: on her server, with her own boards and builds, or the workflow on GitHub.
+
+
+## v0.999.295 ROBOTICS DESK (owner: "Robotics Software Engineer same as finance desks")
+
+The Robotics Software Engineer (`robotics_eng`, Software Architecture group) goes live with its own section `/console/robotics`
+(`static/console/rbdesk.html/.js/.css`, prefix `rbk-`, page `#rbPage`) and its own Robotics chat (Conversation kind `robotics`,
+`server/app/robochat.py`, routes `/api/rbdesk/*`), built like the finance desks. NEW all-code engine `server/app/rbdesk/`:
+
+- `arm.py` - one joint per line (name, revolute / prismatic, d= a= alpha= theta= min= max=, a last `tool` / `flange` line), standard
+  DH or modified (Craig); forward kinematics (checked: Franka Panda zero pose 0.088, 0, 0.926 m), geometric Jacobian, rank,
+  manipulability, singularity warnings, joint-limit checks, inverse kinematics by damped least squares from 12 seeds within the
+  limits (position, or position + roll pitch yaw), static payload torques tau = Jv^T F; side / top views drawn on the page.
+- `urdf.py` - XML parse with DOCTYPE / ENTITY refused and xacro told to expand first; one tree / one root, missing parent / child
+  links, a link with two parents, loops, joint types, limits (missing, lower >= upper, degrees instead of radians, effort / velocity
+  <= 0), axes (zero, not unit, missing), mass and inertia (positive, triangle inequality, positive definite, unit sanity), moving links
+  without inertial, links without collision, plain-path meshes, mimic targets; the tree drawn.
+- `rosgraph.py` - `ros2 node info` blocks, `ros2 topic info -v` endpoints (reliability, durability, liveliness, deadline, lease),
+  tf frames from view_frames (.gv labels or the frame YAML); subscribed-but-unpublished topics (with remapping / namespace look-alikes),
+  type mismatches, duplicate node names, services / actions with no server, QoS pairs that never connect, tf split / loop / stale /
+  slow / leading slash / REP 105 order; a node-topic diagram on the page.
+- `control.py` - a step response CSV (time, value, setpoint or command): rise, overshoot, settling, offset, swings; for an open-loop
+  step a first-order-plus-dead-time fit (Smith 28 / 63 %; checked: recovers K 2, tau 10 s, theta 2 s), SIMC tight / smooth PI and
+  Ziegler-Nichols PID, each simulated in closed loop on the fit (and her own p / i / d), gains in ideal and parallel (ros2_control) form.
+- `motion.py` - trapezoid and S-curve (jerk) profiles per axis, short-move peak speed by bisection, synchronised finish (others
+  slowed), drive torque / force checks from inertia or mass (vertical adds gravity); checked: area under the profile = the distance.
+- `ci.py` - GitHub Actions workflow: ros-tooling/setup-ros + action-ros-ci for her packages, optional xacro + check_urdf; runner by
+  ROS 2 version (Humble 22.04, Jazzy / Kilted / Rolling 24.04). Text she adds herself; action versions to be checked on their pages.
+- `service.py` - tables `rbdesk_items` / `rbdesk_settings`, numbers A- U- G- C- V-, NaN cleaned before storing.
+
+NEW tool `robotics_desk` (`agent/robotics_tools.py`, family robotics, registry 712 -> 713), admit keys `robotics`, wiring in
+tools.py, admit.py, santosh.py (block + admission), main.py, db.py, convs.py / callconv.py, v2.js, employees.js, hire.py.
+Tests `server/tests/test_rb_desk.py` (5, incl. a browser walk at 1440 and 390 px). NOT VERIFIED: on her server, her own robots and
+logs, or the workflow on GitHub; robot safety standards (ISO 10218, ISO/TS 15066) are not checked and the page says so.
+
+
+## v0.999.296 FEED LIKE CLAUDE CODE
+(owner, with four screenshots of Claude Code: 'GO DEEP HOW CLAUDE CODE PERFECT REPLY FOR REQUESTED PROMPT WITH PERFECT FEED IN CLAUDE CODE --- IS THIS SAME IN HOOLA'): a Hoola Code session built like her screenshots was rendered in a real browser and compared line by line. SAME already: short narration lines between folded steps, markdown answer with bold labels / nested bullets / inline code, Copy + Read aloud under it, the phone's fold labels and sans font. DIFFERENT, now fixed: (1) the web fold read 'Worked for 3s' - and its time was measured from the step before it, so a session's first fold or one after a long gap read 'Worked for 25920m'; it now names what was done like Claude Code ('Ran 5 commands, read memory.py, checked the page in a browser', 'Ran 2 commands, compacted the session', 'Created memory.py, edited main.py' with its +/- lines), in the order each kind first came, a single command or file named (`workLabel`); (2) the screenshots it took show small at the end of that line, +N past three (`shotThumbs`, fetched with her sign-in); (3) under the answer a 'Created / Edited / Changed N files' card - three files with their lines, See all with the total (opens the changes), Undo (back to the checkpoint before the newest round, her pick of code / conversation / both) - web `filesCard` and phone `_filesCard` (+ `_rewindTo`); (4) Hoola Code's words in the plain sans Claude Code uses on the web too (the main chat keeps its serif); (5) 'The run' says the time Hoola worked (its rounds, else steps with gaps over 10 minutes left out), not the days a session stayed open; (6) the phone's fold label lists kinds in the order they came and names created files and compaction; (7) the model's closing answer is told Claude Code's shape (result + what was not verified, bold-labelled points, Tests:, how to try it, no file list - the card shows it) and its narration lines plain with bold only for a real finding. 5 tests incl. a browser walk; one older test now expects the named fold. NOT VERIFIED with a real model or on her phone. ALSO FIXED from v0.999.293: the Superpowers proof check did not read 'nothing run' / 'no tests run' as an honest not-run and sent such work back; and the older scripted Hoola Code suites now pin `dev_superpowers` off in conftest (like the reality checker and memory) - two of them had been failing since v0.999.293.
+
+## v0.999.297 ROUTE HOME REDESIGN
+
+Owner: "now lets work on design --- make it premium, advance, human native design, professional, high value --- show me home
+page design here first" -> design canvas claude.ai/artifact/5Dnd2VzFM6euExAUs8jf4d (computer + phone, light + dark, first day)
+-> "GO BUILD THE DESIGN".
+
+The home (route.js viewHome, route.css end block "v0.999.295 ROUTE HOME REDESIGN"):
+- a date line and a Find box (her words go to All routes, sessionStorage hoola.route.find);
+- "Good morning / afternoon / evening. What should run by itself?" by her browser's clock, and one plain line: how many routes are
+  working for her and how many things need her answer (words up to nine), or the first-day line;
+- the ask box: Template, Blank canvas, Bring in from n8n or Make, the send button; three examples under it fill the box on a tap;
+- one band of four numbers: routes on (of all), runs this week with a trend line of the 7 days and the change from last week,
+  went well (30 days) with how many did not finish, needs you with how many approvals and stopped runs (opens Needs you);
+- your routes (6, then See all) in the routes table, which now shows up to three app tiles stacked, the number of steps and a
+  coloured dot for the last run (on All routes too);
+- beside them Needs you (three at most, each with a tag and its own buttons: Approve / Stop the run, See why / Open the route,
+  Switch back on) and Coming up (routes that listen now, then the next scheduled runs with their time in her time zone);
+- templates four across; a first day (no routes) shows the three steps instead of the numbers.
+The sidebar: Hoola Route / Your automations, groups Build and Data and accounts, and a card at the foot with today's runs and
+bars for each of the last 12 hours, her time zone.
+Server: /api/route/summary adds runs_prev_7d, week_days (7), hours12 (12) and failed_30d.
+Checked: Chromium at 1440 / 1024 / 390 in light and dark with the measuring walk - no sideways scroll, nothing past the edge,
+no cut text, controls in a row share a height. test_v0999_297_route_home.py (summary numbers, source rules, a browser walk at
+computer and phone width incl. the examples, Find and the first day). NOT VERIFIED on her server.

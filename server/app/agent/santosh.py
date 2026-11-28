@@ -1824,6 +1824,48 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_dbc.block, tenant_id)
     except Exception:
         log.exception("database desk block failed")
+    try:   # DISTRIBUTED DESK: a turn in the Distributed chat (or a call started from it) knows the desk
+        from .. import distchat as _dsc
+        if _dsc.is_distsys(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_dsc.block, tenant_id)
+    except Exception:
+        log.exception("distributed desk block failed")
+    try:   # SRE DESK: a turn in the SRE chat (or a call started from it) knows the desk
+        from .. import srechat as _src
+        if _src.is_sre(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_src.block, tenant_id)
+    except Exception:
+        log.exception("sre desk block failed")
+    try:   # VIRTUALIZATION DESK: a turn in the Virtualization chat (or a call started from it) knows the desk
+        from .. import virtchat as _vtc
+        if _vtc.is_virt(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_vtc.block, tenant_id)
+    except Exception:
+        log.exception("virt desk block failed")
+    try:   # LOW LATENCY DESK: a turn in the Low Latency chat (or a call started from it) knows the desk
+        from .. import lowlatchat as _llc
+        if _llc.is_lowlat(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_llc.block, tenant_id)
+    except Exception:
+        log.exception("low latency desk block failed")
+    try:   # MAINFRAME DESK: a turn in the Mainframe chat (or a call started from it) knows the desk
+        from .. import mainframechat as _mfc
+        if _mfc.is_mainframe(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_mfc.block, tenant_id)
+    except Exception:
+        log.exception("mainframe desk block failed")
+    try:   # EMBEDDED DESK: a turn in the Embedded chat (or a call started from it) knows the desk
+        from .. import embeddedchat as _emc
+        if _emc.is_embedded(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_emc.block, tenant_id)
+    except Exception:
+        log.exception("embedded desk block failed")
+    try:   # ROBOTICS DESK: a turn in the Robotics chat (or a call started from it) knows the desk
+        from .. import robochat as _rbc
+        if _rbc.is_robotics(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_rbc.block, tenant_id)
+    except Exception:
+        log.exception("robotics desk block failed")
     _mark("hint")
     return state
 
@@ -2835,6 +2877,62 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "database desk chat"
     except Exception:
         log.exception("database desk chat admission failed")
+    try:   # DISTRIBUTED DESK: the distributed tool in view in the Distributed chat
+        from .. import distchat as _dsc
+        if adm is not None and _dsc.is_distsys(conversation_id):
+            adm.admit_families(_dsc.FAMILIES)
+            for f in _dsc.FAMILIES:
+                adm.why[f] = "distributed desk chat"
+    except Exception:
+        log.exception("distributed desk chat admission failed")
+    try:   # SRE DESK: the SRE tool in view in the SRE chat
+        from .. import srechat as _src
+        if adm is not None and _src.is_sre(conversation_id):
+            adm.admit_families(_src.FAMILIES)
+            for f in _src.FAMILIES:
+                adm.why[f] = "sre desk chat"
+    except Exception:
+        log.exception("sre desk chat admission failed")
+    try:   # VIRTUALIZATION DESK: the virtualization tool in view in the Virtualization chat
+        from .. import virtchat as _vtc
+        if adm is not None and _vtc.is_virt(conversation_id):
+            adm.admit_families(_vtc.FAMILIES)
+            for f in _vtc.FAMILIES:
+                adm.why[f] = "virtualization desk chat"
+    except Exception:
+        log.exception("virt desk chat admission failed")
+    try:   # LOW LATENCY DESK: the latency tool in view in the Low Latency chat
+        from .. import lowlatchat as _llc
+        if adm is not None and _llc.is_lowlat(conversation_id):
+            adm.admit_families(_llc.FAMILIES)
+            for f in _llc.FAMILIES:
+                adm.why[f] = "low latency desk chat"
+    except Exception:
+        log.exception("low latency desk chat admission failed")
+    try:   # MAINFRAME DESK: the mainframe tool in view in the Mainframe chat
+        from .. import mainframechat as _mfc
+        if adm is not None and _mfc.is_mainframe(conversation_id):
+            adm.admit_families(_mfc.FAMILIES)
+            for f in _mfc.FAMILIES:
+                adm.why[f] = "mainframe desk chat"
+    except Exception:
+        log.exception("mainframe desk chat admission failed")
+    try:   # EMBEDDED DESK: the embedded tool in view in the Embedded chat
+        from .. import embeddedchat as _emc
+        if adm is not None and _emc.is_embedded(conversation_id):
+            adm.admit_families(_emc.FAMILIES)
+            for f in _emc.FAMILIES:
+                adm.why[f] = "embedded desk chat"
+    except Exception:
+        log.exception("embedded desk chat admission failed")
+    try:   # ROBOTICS DESK: the robotics tool in view in the Robotics chat
+        from .. import robochat as _rbc
+        if adm is not None and _rbc.is_robotics(conversation_id):
+            adm.admit_families(_rbc.FAMILIES)
+            for f in _rbc.FAMILIES:
+                adm.why[f] = "robotics desk chat"
+    except Exception:
+        log.exception("robotics desk chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,

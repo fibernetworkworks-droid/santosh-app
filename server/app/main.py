@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.282"   # v0.999.282 EVERY PAGE ALIGNED (owner: "NOW GO DEEP ON EVERY PAGE OF ROUTE AND ALINE AND MAKE EVERY SECTION PERFCTLY FIXED"): every Route page walked in a real browser with a realistic account at 1440 / 1024 / 390 px, light + dark (144 page views), measured in code and looked at: 74 views had findings, now none. Fixed: forms in cards padded twice, table-card headings on the card edge (Insights, Versions), the home send button dropping under its chips on a phone, 'New route' breaking onto two lines in the phone bar (now one line that fades where it scrolls), native drop-downs and file pickers (house look), controls of mixed heights in toolbars (Runs, Workflows, Data store), three number-card styles (one serif style), browser-blue links in tables, row buttons touching (end of row, with a gap), phone list cards with values on different lines, the Data store page (plain search, fields labelled once, no code-font title), the Grid's last column cut off (columns fit the page), the route's Runs / Versions / Settings pinned left (centred), the phone editor's back button alone on a line, the sending bar on three lines (one), what starts a route as a long list (two across), Fit that did not fit (the Fit button fits the whole route), a tapped step's settings out of view on a phone (scrolled into view), 'stopped by step' errors starting lower-case, a stray dot in a workflow's meta line, the Settings line on sending; test_v0999_282_route_aligned.py walks every page in light and dark and fails on any of it. NOT VERIFIED on her server. Previous head: v0.999.281 MCP TOOLS ONE BY ONE (owner: 'GO NEXT - MCP TOOLS LISTED ONE BY ONE'): Claude Code's way of showing MCP servers in Hoola Code (`devsahayak/mcptools.py`). Before, the coder had ONE `mcp` tool (list, then call with pack_id + tool + args) and never saw a tool's real fields; now every tool of her connected MCP servers and of the repo's `.mcp.json` / plugin servers she already allowed is a tool of its own, named mcp__<server>__<tool> (64 characters at most, never two with one name), with the server's own input schema and description (a tool that changes something says it becomes a confirm card on her phone). A repo server's tool list is read once, after her OK, and kept for a day; listing it loads its tools into the running round at once. Past 60 tools or 40,000 characters of definitions they are held back like Claude Code's tool search: the coder sees their names and `mcp_tool_search` (keywords, or select:<name>,<name>) loads the ones it needs. Every call still runs through the same doors (her connector layer and its phone cards; the repo's box or allowed address); the repo's permission rules (mcp__server__tool, mcp__server, mcp__server__*), hook matchers (mcp__notion__.*), the 'ask each step' questions and the Auto-mode safety reviewer all see the real name. The old `mcp` tool stays for listing and for servers not yet allowed. Web + phone rows name the server and tool; a 'Loaded MCP tools' row for the search. NOT VERIFIED against a live MCP server or a real model. Previous head: v0.999.280 DATABASE DESK (built as 0.999.278; their ROUTE SENDING and CODE INTELLIGENCE took 0.999.278-0.999.279, all kept; owner: "Database Engine Developer same as finance desks"): the Database Engine Developer goes live with its own section /console/database + Database chat (kind dbengine, `dbchat.py`) on a NEW engine `app/dbdesk/` (all code, no model): query plans read from PostgreSQL EXPLAIN (text / JSON, ANALYZE + BUFFERS), MySQL EXPLAIN ANALYZE / TREE / table and SQLite EXPLAIN QUERY PLAN - planned vs real rows, time in each step, findings (full scans that throw rows away + the index to try, estimates far off at their source, sorts / hashes spilled to disk, repeated scans in nested loops, lossy bitmaps, heap fetches); one query checked (what stops an index, the index it asks for); a schema reviewed (no primary key, unindexed foreign keys, redundant indexes, timestamps / money types); index ideas PROVED in a throwaway in-memory SQLite lab on generated rows (plan, time, used, same rows; SELECT only, locked down); pgbench / sysbench / YCSB / HammerDB output read and compared with a baseline; NEW tool db_desk (registry 706); 4 tests incl. a browser walk. NOT VERIFIED: on her server or with her own database; the lab is SQLite, not her engine. Previous head: v0.999.279 CODE INTELLIGENCE (LSP) (owner: 'GO NEXT - CODE INTELLIGENCE (LSP)'): Claude Code's LSP tool in Hoola Code (`devsahayak/lsp.py`). One `lsp` tool asks a language server - goToDefinition, goToImplementation, findReferences, hover (type + docs), documentSymbol, workspaceSymbol, prepareCallHierarchy, incomingCalls, outgoingCalls, diagnostics (line / character from 1, as Claude Code's) - and after the coder edits files a server covers, the server checks them in the background and its errors and warnings arrive at the coder's next step (problems only; nothing is said when all is fine). A server reads and can run the repo's own config, so it runs ONLY in the session's locked box with no network: a small driver there starts it, does the LSP handshake (clientInfo Hoola Code, workspace/configuration answered from the server's settings), opens the files, sends one request, prints the answer and shuts the server down. For references, callers, implementations and workspace symbols it opens the files that name the symbol (git grep) - the server answers from open files (found on the real pyright: 1 reference before, 3 after). Places in node_modules / virtualenvs / build folders are left out of references; a definition outside the repo is kept and labelled. Servers: the box's own (box image rev 4 adds pyright + typescript + typescript-language-server; gopls / rust-analyzer / clangd / jdtls when the repo's setup installed them; a failed npm download never breaks the image), the repo's `.lsp.json` and her plugins' `.lsp.json` / `lspServers` (Claude Code's format: command, args, extensionToLanguage, env, initializationOptions, settings, startupTimeout, requestTimeout); a server the repo or a plugin names is a program, so she is asked before it starts the first time ('always' remembers it for the session). Agents get the tool too; permission rules name it LSP; web + phone show one row per call and the diagnostics. The box image on her server is rebuilt by itself on the first session after deploy (a few minutes, once). VERIFIED against the real pyright on this machine (every operation, under 2 s each); NOT VERIFIED in the real box or with a real model.
+APP_VERSION = "0.999.297"   # v0.999.297 ROUTE HOME REDESIGN (owner: design canvas claude.ai/artifact/5Dnd2VzFM6euExAUs8jf4d -> "GO BUILD THE DESIGN"): the Hoola Route home rebuilt to the approved design: a greeting in her time of day with one plain line of where things stand (routes working, things that need her answer), the ask box with Template / Blank canvas / Bring in from n8n or Make and three examples to try, one band of this week's numbers (routes on, runs this week with a trend line and the change from last week, went well with the runs that did not finish, needs you with what kind), her routes (stacked app tiles, steps, a status dot) beside Needs you (each item with its own buttons) and Coming up (what is listening now and the next scheduled runs in her time zone), templates; a first day shows the three steps (say it, look at the drawing, switch it on) instead of empty numbers; a Find box carries its words to All routes; the sidebar grouped (Build, Data and accounts) with today's runs hour by hour at its foot. Server: /api/route/summary adds runs_prev_7d, week_days, hours12, failed_30d. Walked in Chromium at 1440 / 1024 / 390, light + dark, no findings; test_v0999_297_route_home.py. NOT VERIFIED on her server. Previous head: v0.999.296 FEED LIKE CLAUDE CODE (owner, with four screenshots of Claude Code: 'GO DEEP HOW CLAUDE CODE PERFECT REPLY FOR REQUESTED PROMPT WITH PERFECT FEED IN CLAUDE CODE --- IS THIS SAME IN HOOLA'): a Hoola Code session built like her screenshots was rendered in a real browser and compared line by line. SAME already: short narration lines between folded steps, markdown answer with bold labels / nested bullets / inline code, Copy + Read aloud under it, the phone's fold labels and sans font. DIFFERENT, now fixed: (1) the web fold read 'Worked for 3s' - and its time was measured from the step before it, so a session's first fold or one after a long gap read 'Worked for 25920m'; it now names what was done like Claude Code ('Ran 5 commands, read memory.py, checked the page in a browser', 'Ran 2 commands, compacted the session', 'Created memory.py, edited main.py' with its +/- lines), in the order each kind first came, a single command or file named (`workLabel`); (2) the screenshots it took show small at the end of that line, +N past three (`shotThumbs`, fetched with her sign-in); (3) under the answer a 'Created / Edited / Changed N files' card - three files with their lines, See all with the total (opens the changes), Undo (back to the checkpoint before the newest round, her pick of code / conversation / both) - web `filesCard` and phone `_filesCard` (+ `_rewindTo`); (4) Hoola Code's words in the plain sans Claude Code uses on the web too (the main chat keeps its serif); (5) 'The run' says the time Hoola worked (its rounds, else steps with gaps over 10 minutes left out), not the days a session stayed open; (6) the phone's fold label lists kinds in the order they came and names created files and compaction; (7) the model's closing answer is told Claude Code's shape (result + what was not verified, bold-labelled points, Tests:, how to try it, no file list - the card shows it) and its narration lines plain with bold only for a real finding. 5 tests incl. a browser walk; one older test now expects the named fold. NOT VERIFIED with a real model or on her phone. ALSO FIXED from v0.999.293: the Superpowers proof check did not read 'nothing run' / 'no tests run' as an honest not-run and sent such work back; and the older scripted Hoola Code suites now pin `dev_superpowers` off in conftest (like the reality checker and memory) - two of them had been failing since v0.999.293. Previous head: v0.999.295 ROBOTICS DESK (owner: "Robotics Software Engineer same as finance desks"): the Robotics Software Engineer goes live with its own section /console/robotics + Robotics chat (kind robotics, `robochat.py`) on a NEW engine `app/rbdesk/` (all code, no model): arms from a standard or modified (Craig) Denavit-Hartenberg table - forward kinematics (Franka Panda zero pose 0.088, 0, 0.926 m), inverse kinematics by damped least squares within the joint limits, the Jacobian with rank / manipulability / how near a singularity, payload torques per joint; URDF models checked like the loaders read them (one tree, missing links, limits in degrees, zero axes, mass and inertia positive and triangle inequality, meshes, collision shapes; xacro and DOCTYPE refused); ROS 2 graphs from `ros2 node info` / `ros2 topic info -v` and tf trees from view_frames (topics nobody publishes, remapping / namespace mismatches, type mismatches, QoS that never connects, services with no server, a split / looping / stale tf tree); PID tuning from a recorded step (rise, overshoot, settling, a first-order-plus-dead-time fit, SIMC tight / smooth and Ziegler-Nichols gains each simulated, her own gains too); trapezoid / S-curve moves with synchronised finish and drive torque / force checks; a GitHub Actions workflow for her ROS 2 packages (setup-ros + action-ros-ci + check_urdf); NEW tool robotics_desk (registry 713); 5 tests incl. a browser walk. NOT VERIFIED: on her server, her own robots, or the workflow on GitHub. Previous head: v0.999.294 EMBEDDED DESK (owner: "Embedded Systems Engineer same as finance desks"): the Embedded Systems Engineer goes live with its own section /console/embedded + Embedded chat (kind embedded, `embeddedchat.py`) on a NEW engine `app/emdesk/` (all code, no model): GNU ld map files, `size -A` / `size` / `nm -S` output read into flash and RAM by region (how full), section, object file and symbol, what the C library pulled in (printf with floats, soft-float maths, malloc, C++ exceptions) and what grew since an older build; firmware C / C++ / Arduino checked for what interrupt context must not do (malloc, printf, delays, locks, FreeRTOS calls without FromISR, floating point; handlers found by name, marker, HAL callback, registration and calls from them), variables shared with interrupts without volatile, read-modify-writes outside a critical section, wide values torn on 32-bit cores, busy waits with no timeout, recursion, big stack arrays, raw register addresses, no sleep, no watchdog; RTOS task sets by response-time analysis (blocking, jitter, context switch, interrupts above tasks, the deadline-monotonic order, room to grow, a timeline from the critical instant); battery life from the device states with self-discharge, a target and what each change buys; UART / timer / PWM / SysTick / SPI / ADC settings worked out exactly; a GitHub Actions workflow that builds base and head and fails a pull request over its flash / RAM budget or allowed growth; NEW tool embedded_desk (registry 712); 4 tests incl. a browser walk. NOT VERIFIED: on her server, her own boards and builds, or the workflow on GitHub.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -2196,6 +2196,69 @@ def qa_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/sre")
+@app.get("/console/sre/")
+def sre_desk_page():
+    """SRE DESK: the Site Reliability Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "srdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/mainframe")
+@app.get("/console/mainframe/")
+def mainframe_desk_page():
+    """MAINFRAME DESK: the Mainframe Modernization Architect's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "mfdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/robotics")
+@app.get("/console/robotics/")
+def robotics_desk_page():
+    """ROBOTICS DESK: the Robotics Software Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "rbdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/embedded")
+@app.get("/console/embedded/")
+def embedded_desk_page():
+    """EMBEDDED DESK: the Embedded Systems Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "emdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/latency")
+@app.get("/console/latency/")
+def lowlat_desk_page():
+    """LOW LATENCY DESK: the Backend Systems Engineer (Low Latency)'s own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "lldesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/virtualization")
+@app.get("/console/virtualization/")
+def virt_desk_page():
+    """VIRTUALIZATION DESK: the Virtualization / Hypervisor Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "hvdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/distributed")
+@app.get("/console/distributed/")
+def distributed_desk_page():
+    """DISTRIBUTED DESK: the Distributed Systems Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "dsdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/database")
 @app.get("/console/database/")
 def database_desk_page():
@@ -2946,6 +3009,20 @@ from . import gfxchat as _gxchat_mod                            # noqa: E402  GR
 _gxchat_mod.mount(app, current_tenant, require_key)             # /api/gxdesk/*
 from . import dbchat as _dbchat_mod                             # noqa: E402  DATABASE DESK
 _dbchat_mod.mount(app, current_tenant, require_key)             # /api/dbdesk/*
+from . import distchat as _dschat_mod                           # noqa: E402  DISTRIBUTED DESK
+_dschat_mod.mount(app, current_tenant, require_key)             # /api/dsdesk/*
+from . import srechat as _srchat_mod                            # noqa: E402  SRE DESK
+_srchat_mod.mount(app, current_tenant, require_key)             # /api/srdesk/*
+from . import virtchat as _vtchat_mod                           # noqa: E402  VIRTUALIZATION DESK
+_vtchat_mod.mount(app, current_tenant, require_key)             # /api/hvdesk/*
+from . import lowlatchat as _llchat_mod                          # noqa: E402  LOW LATENCY DESK
+_llchat_mod.mount(app, current_tenant, require_key)              # /api/lldesk/*
+from . import mainframechat as _mfchat_mod                       # noqa: E402  MAINFRAME DESK
+_mfchat_mod.mount(app, current_tenant, require_key)              # /api/mfdesk/*
+from . import embeddedchat as _emchat_mod                       # noqa: E402  EMBEDDED DESK
+_emchat_mod.mount(app, current_tenant, require_key)              # /api/emdesk/*
+from . import robochat as _rbchat_mod                           # noqa: E402  ROBOTICS DESK
+_rbchat_mod.mount(app, current_tenant, require_key)              # /api/rbdesk/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

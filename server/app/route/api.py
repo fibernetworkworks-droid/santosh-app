@@ -237,6 +237,20 @@ def make_router(require_key, current_tenant) -> APIRouter:
             ended = con.execute("SELECT SUM(status = 'done'), SUM(status IN ('failed','incomplete')) FROM runs WHERE created_at >= ?",
                                 (m30,)).fetchone()
             ok30, bad30 = int(ended[0] or 0), int(ended[1] or 0)
+            # v0.999.297 ROUTE HOME REDESIGN: the week before (for "18% more than last week"), runs per day of this
+            # week (the trend line) and runs per hour of the last 12 hours (the sidebar's little bars)
+            runs_prev_7d = int(con.execute("SELECT COUNT(*) FROM runs WHERE created_at >= ? AND created_at < ?",
+                                           (week - 7 * 86400, week)).fetchone()[0])
+            now = time.time()
+            week_days, hours12 = [0] * 7, [0] * 12
+            for (ts,) in con.execute("SELECT created_at FROM runs WHERE created_at >= ?", (week,)).fetchall():
+                ts = float(ts)
+                d = int((now - ts) // 86400)
+                if 0 <= d < 7:
+                    week_days[6 - d] += 1
+                h = int((now - ts) // 3600)
+                if 0 <= h < 12:
+                    hours12[11 - h] += 1
             waiting = [dict(x) for x in con.execute(
                 "SELECT id, wf_name, workflow_id, cursor, updated_at, context FROM runs WHERE status = 'waiting_approval' "
                 "ORDER BY updated_at DESC LIMIT 20").fetchall()]
@@ -265,8 +279,9 @@ def make_router(require_key, current_tenant) -> APIRouter:
                 needs.append({"kind": "stopped", "route": wf["name"], "route_id": wf["id"],
                               "text": f"Switched off after {wf['consecutive_errors']} failed runs in a row"})
         return {"routes_total": len(wfs), "routes_on": sum(1 for w in wfs if w.get("enabled")),
-                "runs_today": runs_today, "runs_7d": runs_7d, "failed_7d": failed_7d,
-                "success_30d": (round(100 * ok30 / (ok30 + bad30)) if ok30 + bad30 else None),
+                "runs_today": runs_today, "runs_7d": runs_7d, "failed_7d": failed_7d, "runs_prev_7d": runs_prev_7d,
+                "week_days": week_days, "hours12": hours12,
+                "success_30d": (round(100 * ok30 / (ok30 + bad30)) if ok30 + bad30 else None), "failed_30d": bad30,
                 "folders": sorted({(w.get("settings") or {}).get("folder") for w in wfs} - {None, ""}),
                 "needs_you": needs[:30], "needs_count": len(needs)}
 

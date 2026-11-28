@@ -94,14 +94,14 @@ class McpHttpRemote:
             from mcp.client.streamable_http import streamablehttp_client
             async with streamablehttp_client(self.url, headers=headers) as (read, write, _):
                 async with ClientSession(read, write) as session:
-                    await session.initialize()
+                    self.init = await session.initialize()
                     return await fn(session)
         async with create_mcp_http_client(headers=headers) as http:
             http.event_hooks["response"].append(self._note)
             async with streamable_http_client(self.url, http_client=http) as streams:
                 read, write = streams[0], streams[1]
                 async with ClientSession(read, write) as session:
-                    await session.initialize()
+                    self.init = await session.initialize()   # v0.999 kept: the server's own instructions ride in it
                     return await fn(session)
 
     @staticmethod
@@ -122,6 +122,56 @@ class McpHttpRemote:
                             "input_schema": self._attr(t, "input_schema", "inputSchema") or {"type": "object"},
                             "read_only": ro if isinstance(ro, bool) else None})   # v0.91 the server's hint (only a hint)
             return out
+        return asyncio.run(self._with_session(go))
+
+    def overview(self) -> dict[str, Any]:
+        """v0.999 what the server says about itself besides its tools (Claude Code / OpenCode read the same): its
+        instructions, its resources and its prompts - one session; a part the server does not offer is just empty."""
+        async def go(s):
+            init = getattr(self, "init", None)
+            caps = self._attr(init, "capabilities") if init is not None else None
+            out: dict[str, Any] = {"instructions": str(self._attr(init, "instructions") or "") if init is not None else "",
+                                   "resources": [], "prompts": []}
+            if caps is None or self._attr(caps, "resources") is not None:
+                try:
+                    res = await s.list_resources()
+                    out["resources"] = [{"uri": str(r.uri), "name": str(self._attr(r, "name") or ""),
+                                         "description": str(self._attr(r, "description") or "")[:300],
+                                         "mime": str(self._attr(r, "mime_type", "mimeType") or "")} for r in res.resources[:200]]
+                except Exception:  # noqa: BLE001 - the server does not do resources
+                    pass
+            if caps is None or self._attr(caps, "prompts") is not None:
+                try:
+                    res = await s.list_prompts()
+                    out["prompts"] = [{"name": p.name, "description": str(self._attr(p, "description") or "")[:300],
+                                       "arguments": [{"name": a.name, "required": bool(self._attr(a, "required")),
+                                                      "description": str(self._attr(a, "description") or "")[:200]}
+                                                     for a in (self._attr(p, "arguments") or [])]} for p in res.prompts[:100]]
+                except Exception:  # noqa: BLE001
+                    pass
+            return out
+        return asyncio.run(self._with_session(go))
+
+    def read_resource(self, uri: str) -> str:
+        async def go(s):
+            from pydantic import AnyUrl
+            res = await s.read_resource(AnyUrl(uri))
+            parts = []
+            for c in res.contents:
+                t = self._attr(c, "text")
+                parts.append(t if isinstance(t, str) else f"[binary content, {self._attr(c, 'mime_type', 'mimeType') or 'unknown type'}]")
+            return "\n".join(parts)
+        return asyncio.run(self._with_session(go))
+
+    def get_prompt(self, name: str, args: dict[str, str]) -> str:
+        async def go(s):
+            res = await s.get_prompt(name, {k: str(v) for k, v in (args or {}).items()})
+            out = []
+            for m in res.messages:
+                c = self._attr(m, "content")
+                t = self._attr(c, "text")
+                out.append(t if isinstance(t, str) else "[non-text part]")
+            return "\n\n".join(out)
         return asyncio.run(self._with_session(go))
 
     def call_tool(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
@@ -249,6 +299,14 @@ class McpExecutor:
                             "and tap 'Link' once more.")
         except RemoteError as e:
             raise ToolError(f"Could not reach {pack.name}: {e}")
+
+    def extra(self, pack: Pack, ctx: Ctx, what: str, *args: Any) -> Any:
+        """v0.999 a server's instructions / resources / prompts (overview, read_resource, get_prompt), through the same
+        sign-in and refresh as its tools. A connection kind that cannot do it answers None."""
+        def op(r: Any) -> Any:
+            fn = getattr(r, what, None)
+            return fn(*args) if callable(fn) else None
+        return self._run(pack, ctx, op)
 
     def _remote(self, pack: Pack, ctx: Ctx, force: bool = False) -> RemoteTools:
         if pack.config.get("custom"):

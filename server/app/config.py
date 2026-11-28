@@ -236,6 +236,14 @@ class Settings(BaseSettings):
     dev_mcp_tools: bool = True              # v0.999 every MCP tool as a tool of its own (mcp__server__tool, Claude Code's way)
     dev_mcp_direct_max: int = 60            # ... more tools than this are held back behind mcp_tool_search
     dev_mcp_direct_chars: int = 40000       # ... or more definition text than this
+    dev_bash_to_bg: bool = True             # v0.999 a command still running at its time limit keeps running in the background (OpenCode)
+    dev_auto_format: bool = True            # v0.999 the repo's own formatter runs on the files an edit changed (only when the repo declares it)
+    dev_mcp_instructions_chars: int = 8000  # v0.999 MCP servers' own instructions in the coder's prompt, at most this much
+    dev_steady_system: bool = True          # v0.999 a follow-up keeps the session's system prompt; changes ride as a note (OpenCode)
+    dev_cache_warm: bool = True             # v0.999 the prompt cache kept warm while a round waits for her answer (Claude only, 6 times max)
+    dev_compact_ahead: bool = True          # v0.999 the summary is written in the background at 80% and swapped in at once
+    dev_compact_ahead_at: float = 0.8
+    dev_early_reads: bool = True            # v0.999 read-only calls start while the model is still writing its reply (OpenCode; Claude streams)
     dev_parallel_reads: bool = True         # v0.999 read-only calls of one reply run side by side (Claude Code's concurrency-safe tools)
     dev_parallel_width: int = 8
     dev_idle_compact: bool = True           # v0.999 a long session idle just under the 5-min prompt cache is summarised through its own cached request
@@ -290,6 +298,9 @@ class Settings(BaseSettings):
     dev_agent_parallel: int = 4             # read / run agents asked in one reply that run at the same time
     # v0.814 THE AGENCY (owner: "GO 1 2 3"): 35 more agents in devsahayak/ecc/agency_*.py + the reality check before done
     dev_truth: bool = True                  # G9: a round's "done" judged from facts (exit codes, push, PR, CI) + its end notice told once
+    dev_superpowers: bool = True            # v0.999 Superpowers skills in Hoola Code + its two iron laws (superpowers.py)
+    dev_ponytail: str = "full"              # v0.999 Ponytail level by default: lite | full | ultra | off (ponytail.py)
+    dev_karpathy: bool = True               # v0.999 Karpathy's four coding rules + the drive-by check (karpathy.py)
     dev_reality_check: bool = True          # an independent reality-checker agent looks once before a round may finish
     dev_reality_min_lines: int = 30         # ... only for a change of at least this many added lines
     game_agency_experts: bool = True        # the Game Developer's crew roles carry The Agency's expert notes (gamedesk/agency.py)

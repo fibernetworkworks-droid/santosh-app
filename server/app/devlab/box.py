@@ -235,7 +235,7 @@ def _limits(network: bool, writable: bool = False, net_name: str = "") -> list[s
 
 def run_in(image: str, files_dir: str, command: str, timeout: int = CHECK_TIMEOUT, network: bool = False,
            commit_to: str = "", env: dict[str, str] | None = None, net: dict[str, Any] | None = None, on_line=None,
-           share_with: str = "") -> dict[str, Any]:
+           share_with: str = "", move_to_bg: dict[str, Any] | None = None) -> dict[str, Any]:
     """Run ONE shell command on a copy of her files inside `image`.
 
     network=False (a check) means there is no route out at all. commit_to != "" keeps the container and commits it as
@@ -245,6 +245,12 @@ def run_in(image: str, files_dir: str, command: str, timeout: int = CHECK_TIMEOU
         return {"rc": 127, "out": "docker is not installed", "secs": 0.0, "timed_out": False}
     name = f"hoola-lab-{os.getpid()}-{int(time.time() * 1000) % 1_000_000}"
     keep = bool(commit_to)
+    # v0.999 (OpenCode's shell) move_to_bg = {name, task, limit_s}: a command still running at its time limit is NOT
+    # killed - it keeps running as a background command of the session (labelled like start_bg's, so the same sweep
+    # stops it, with the same hard limit inside the box); the caller reads its output later with bg_output.
+    mv = move_to_bg if (move_to_bg and not keep and not net) else None
+    if mv:
+        name = str(mv["name"])
     # Writability is DERIVED from commit_to and cannot be asked for: the only reason to let a container keep what it
     # writes is that we are about to commit it. No caller can unseal a check by passing a flag.
     net = net if (net and not network and not keep) else None      # a pass through the proxy is for a command, never for setup
@@ -252,7 +258,9 @@ def run_in(image: str, files_dir: str, command: str, timeout: int = CHECK_TIMEOU
     # network (loopback only - that box has no route out), so `curl localhost:3000` reaches it, as in Claude Code
     nn = str((net or {}).get("network") or "") or (f"container:{share_with}" if share_with and not network and not keep else "")
     args = [d, "run", "--name", name] + [a for a in _limits(network, writable=keep, net_name=nn)
-                                         if not (keep and a == "--rm")]
+                                         if not ((keep or mv) and a == "--rm")]
+    if mv:
+        args += ["--label", f"{BG_LABEL}=1", "--label", f"hoola.task={mv.get('task', '')}"]
     shell = f'mkdir -p "$HOME" 2>/dev/null || true; {command}'
     for k, v in (env or {}).items():          # her plain per-repo variables (never a secret: refused where they are saved)
         args += ["--env", f"{k}={v}"]
@@ -265,9 +273,21 @@ def run_in(image: str, files_dir: str, command: str, timeout: int = CHECK_TIMEOU
     # script) must never be able to plant git config / hooks that the SERVER's own git would then run outside the box.
     if os.path.isdir(os.path.join(files_dir, ".git")):
         args += ["-v", f"{os.path.abspath(os.path.join(files_dir, '.git'))}:{WORK}/.git:ro"]
+    if mv:
+        shell = (f'mkdir -p "$HOME" 2>/dev/null || true; exec timeout -s TERM {max(10, int(mv.get("limit_s") or 1800))} '
+                 f'bash -lc {_q(command)}')
     args += [image, "bash", "-lc", shell]
-    rc, txt, secs = _run_stream(args, timeout + 30, on_line) if (on_line and not keep) else _run(args, timeout + 30)
-    timed_out = rc == 124 or f"[timed out after {timeout + 30}s]" in txt
+    wait = timeout if mv else timeout + 30                # moved: stop waiting at the command's own limit
+    rc, txt, secs = _run_stream(args, wait, on_line) if (on_line and not keep) else _run(args, wait)
+    timed_out = rc == 124 or f"[timed out after {wait}s]" in txt
+    if mv:
+        if timed_out and bg_state(name).get("running"):
+            return {"rc": None, "out": txt.replace(f"\n[timed out after {wait}s]", ""), "secs": secs, "timed_out": True,
+                    "moved": name}
+        _run([d, "rm", "-f", name], 60)                   # it ended (or never started): nothing to keep
+        if timed_out:
+            return {"rc": 124, "out": txt, "secs": secs, "timed_out": True}
+        return {"rc": rc, "out": txt, "secs": secs, "timed_out": False}
     if timed_out:
         _run([d, "kill", name], 30)
     if keep:
