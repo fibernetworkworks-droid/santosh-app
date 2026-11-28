@@ -217,7 +217,7 @@ def test_hire_chat_wiring_store_and_guards(src):
     s_ = (root / "server/app/agent/santosh.py").read_text()
     assert "_src.is_sre(conversation_id)" in s_ and "adm.admit_families(_src.FAMILIES)" in s_
     for f_ in ("callconv.py", "convs.py"):
-        assert '"sre")' in (root / "server/app" / f_).read_text()
+        assert '"sre"' in (root / "server/app" / f_).read_text()
     from app.main import APP_VERSION, app
     r = TestClient(app).get("/console/sre")
     assert r.status_code == 200 and "Content-Security-Policy" in r.headers and "srdesk.js" in r.text

@@ -13601,3 +13601,42 @@ NOT VERIFIED: on her server or with her own monitoring data; the queue and avail
 
 ## v0.999.286 SIX TO EIGHT FROM OPENCODE
 (owner: 'GO 6 TO 8', items 6-8 of the OpenCode read): (6) MORE FROM MCP SERVERS (`devsahayak/mcptools.py`, `McpHttpRemote.overview / read_resource / get_prompt`, `McpExecutor.extra`, the box driver's read / prompt actions): each server's OWN instructions (the 'instructions' of its initialize answer, which every client used to throw away) ride in the coder's instructions inside <mcp_instructions server=...> with a line that they never override her words or the rules (8,000 characters in all); its resources are behind list_mcp_resources / read_mcp_resource (answers wrapped as data); its prompts are her slash commands /mcp__<server>__<prompt> args (positional, one argument takes all the words, a missing required one is asked for), offered in the / menu on web and phone. Her own servers are asked once and kept 30 minutes (a round waits at most 4 seconds; a slow one is read in the background); the repo's are kept with their tool list after her OK. (7) THE PROMPT CACHE KEPT (`engine.steady_system`, `warm_cache`): a follow-up round whose system prompt changed (a new file type moves the agent list, her MCP servers, notes) keeps the session's prompt byte for byte while the cached request is still warm (same tools, under 5 minutes) and sends the changed parts as one <system_update> note on her message - refreshed in full when the cache is gone anyway, the tools changed, or the notes pass 20,000 characters; the last step of a round asks for a proper ending (done with what is left) instead of stopping cold; while a round waits for her answer the last request is re-sent every ~4.5 minutes with a 1-token answer (Claude only, 6 times = 30 minutes at most) so her answer does not re-read everything at full price. NOT copied on purpose: OpenCode's tool_choice none on the last step - on Claude a tool_choice change drops the cached conversation. (8) COMPACTION PREPARED AHEAD (`engine.start_precompact / take_precompact`): at 80% of the summarise point the summary is written in the background through the round's OWN cached request and swapped in at once when the point is reached (waits up to 90 s for one still being written, never uses one that a later compaction made stale); the summary now has a fixed template (Objective, Her requirements and rules, Decisions, Work state, Next move, Relevant files, Important context) and UPDATES an earlier summary instead of starting over. 7 tests (a real program MCP server through the box driver). NOT VERIFIED with a real model, a live MCP server or real cache numbers.
+
+
+## v0.999.287 VIRTUALIZATION DESK (built as 0.999.286; their SIX TO EIGHT FROM OPENCODE took 0.999.286, both kept)
+
+Owner: "Virtualization / Hypervisor Engineer same as finance desks". The Hub's `hypervisor_eng` goes live with its own section
+`/console/virtualization` (`static/console/hvdesk.{html,js,css}`, prefix `hvk-`, page id `#hvPage`) and its own chat (Conversation kind
+`virt`, `server/app/virtchat.py`, routes `/api/hvdesk/*`), kept out of every chat list (convs / callconv kinds), the desk block
+`<virt_desk>` and the tool family `virt` admitted in that chat. NEW tool `virt_desk` (`agent/virt_tools.py`, registry 709).
+
+Engine `server/app/virtdesk/` (all code, no model, nothing changed on her hosts):
+- `container.py`: Kubernetes YAML (Pod / Deployment / StatefulSet / DaemonSet / ReplicaSet / Job / CronJob, List), Compose, docker /
+  podman / nerdctl run lines, OCI config.json and Dockerfiles. Each container gets the Pod Security level it meets (privileged / baseline /
+  restricted, the rules of the Kubernetes Pod Security Standards; Docker read in Docker's terms - its default seccomp counts, its 14 default
+  caps), each finding with the line to change, the capabilities it really has, and the hardened block (securityContext / Compose keys /
+  docker run flags / OCI JSON). Runtime sockets and sensitive host paths are serious. Dockerfiles: no USER, unpinned FROM, ADD from a URL,
+  curl | sh, secrets in ENV / ARG, chmod 777, sudo, port 22, no HEALTHCHECK.
+- `seccomp.py` + `syscalls.json` (names + numbers from the Linux UAPI headers, x86_64 373 / aarch64 338): a profile checked (allow- vs
+  deny-list, how many open, risky calls with what each gives, capability-only rules shown as conditional, unknown names); an allow-list made
+  from strace / strace -c / audit SECCOMP lines (syscall=N) / names, plus the calls a container needs to start; clone filtered on the
+  namespace flags (mask 0x7E020000), clone3 ENOSYS (as Docker does).
+- `domain.py`: libvirt XML (DOCTYPE / ENTITY refused): TCG vs KVM, machine type, firmware / Secure Boot / TPM (Windows 11 needs all
+  three), CPU mode + topology mismatch, pinning / NUMA, huge pages, emulated IDE / SATA / e1000 / rtl8139, cache unsafe, io native without
+  O_DIRECT, discard, iothreads, multiqueue, VNC / SPICE open to the network, sVirt off, passthrough (no live migration), Hyper-V
+  enlightenments, RNG / guest agent / watchdog; the XML to change for each.
+- `plan.py`: hosts + VMs -> capacity at her vCPU-per-core / RAM overcommit / reserve, her placement checked or one worked out (biggest
+  first onto the host with the most RAM left), failover for every 1- or 2-host loss (stranded VMs + GiB short), NUMA spans.
+- `cpu.py`: flags per host (lscpu / cpuinfo / one line per host) -> VT-x / AMD-V, EPT / NPT, the x86-64 psABI level of each and of all,
+  flags that differ, mixed vendors, lscpu vulnerabilities; the libvirt <cpu> block (virsh hypervisor-cpu-baseline for the model name).
+- `ci.py`: a GitHub Actions workflow (permissions read, checkout without credentials) that builds or pulls her image and runs it as a
+  non-root user, read-only, cap-drop ALL, no-new-privileges, her seccomp profile, memory / CPU / process limits, then checks it keeps
+  running and answers its health check; a second job runs the profile in SCMP_ACT_LOG mode and lists the syscall numbers the kernel log
+  shows. Inputs strictly checked (image, repo paths, health URL on 127.0.0.1 or a plain command).
+- `service.py`: tables `virtdesk_items` / `virtdesk_settings` (arch, target, uid, overcommit, failures, CI fields), kinds container C,
+  seccomp S, trace T, domain V, plan P, cpu U.
+
+Pages: Today, Containers (the level ladder, per-container cards with capabilities, findings and the hardened lines), Seccomp (make from a
+trace / check a profile), VMs, Capacity (hosts and VMs / CPU flags), CI check, Settings. Tests `server/tests/test_hv_desk.py` (5 incl. a
+browser walk at 1440 and 390). NOT VERIFIED: on her server, with her own clusters / hosts / VMs, the workflow on GitHub, or a profile
+under a real runtime.
