@@ -14232,7 +14232,59 @@ NOT VERIFIED: on her server, with her own pipelines, SBOMs and repositories, or 
 ## v0.999.317 CODE FLOW CHECK
 (owner: 'NOW CHECK ALL HOOLA CODE'). Probe: 14 asks through guess_kind / plan.assess / superpowers.pick / eccskills.for_words + the fixed prompt size. Files: server/app/devsahayak/service.py (_TESTS_PHRASE, _SYMPTOM, _BUILD_ASK, guess_kind), server/app/devsahayak/eccskills.py (WORDS). Tests: test_v0999_317_code_flow.py (16). NOT VERIFIED: no live coding round (needs the model key on her server: vps-ops code_card_hard).
 
-## v0.999.318 THE PROMPTING SECTION REDESIGNED
+## v0.999.318 SRE DESK DEEPER (owner: "Site Reliability Engineer same as finance desks" -> "Rebuild it deeper")
+
+The Site Reliability Engineer desk already existed (v0.999.285, `/console/sre`). Asked for it again, the owner chose to make it
+deeper. Four new jobs and a CI tab, all in code, on the same desk, chat and tool:
+- `sredesk/oncall.py` - a page history (time, who, alert, ack_at): pages per person and a week, night pages in her time zone (a
+  night belongs to the evening it started), nights broken in a row, 12-hour shifts over her limit (the Google SRE book's two a
+  shift by default), time to acknowledge (median, p90), share against an even split.
+- `changes.py` - a deploy history (deployed_at, service, result, committed_at, restored_at, commits): deploy frequency, lead time,
+  change failure rate, time to restore against the DORA 2021 bands (said as such - later reports moved them), per service, by
+  weekday and out of hours, the biggest quarter of changes against the rest. A column called "failed" reads yes as failed.
+- `runbook.py` - Markdown runbooks (`## path.md` for several): what it means / impact / check / fix / undo / who parts, destructive
+  commands (rm -rf, DROP, kubectl delete with no namespace, terraform destroy, force push, disk wipes) with no warning beside them,
+  secrets shown masked, placeholders, review age; with her rules: alerts with no runbook_url and links that match no runbook.
+- `toil.py` - a weekly summary or a dated log: hours a week per task and person, share of the working week against her cap, the
+  tasks to automate first by payback (her own estimates).
+- `ci.py` - `.github/workflows/alert-rules-check.yml`: fails a pull request on an alert with no severity, a raw counter without
+  rate(), or two alerts with the same name and severity (Prometheus allows the same name at different severities); at "anything
+  to fix" also no `for`, summary or runbook; optional promtool from the official Prometheus release.
+
+New settings (added to the existing table by the column self-heal): night hours, pages a shift, runbook review days, working week,
+toil cap, rules path, CI level, promtool version, runner. Bugs caught while building: a short column name ("at") matching inside
+"automate_hours" (new lookup ignores short names inside longer ones), "time" matching "times_week", a deploy id read from
+"deployed_at". Tests `server/tests/test_sr_desk_deeper.py` (6, incl. the CI script run on a sample file and a browser walk at 1440
+and 390); the original `test_sr_desk.py` still passes.
+
+NOT VERIFIED: on her server, with her own page / deploy history, runbooks and toil list, or the workflow running on GitHub.
+## v0.999.319 HOOLA DOD END TO END (built as 0.999.318; their SRE DESK DEEPER took 0.999.318, both kept; owner: "IS ALL HOOLA DOD -- IS WIRED WITH OPEN CLAW IN BACKEND PROPERLY AND END TO END CHECK")
+
+Static: every call the page makes (`dod.js`: status, tasks list, looks, profile, create, note, one task, stop, answer, screen, files, plus the
+look pictures) has its route in `dod/api.py` - 11 of 11.
+
+Real run (`/tmp` scripts, not committed): the official `ghcr.io/openclaw/openclaw:2026.11.10-browser` in Docker, Hoola's real server, Hoola's
+OWN `gateway.ensure` creating the network and container (only `config_for` gained a scripted model provider, and `OPENROUTER` pointed at a
+fake key API). Driven only through the page's routes: profile, task A (Hoola MCP tool from inside the container, step, the browser, a file
+written and handed over, the pay question, phone push, live screen, wrong hash refused, her note, her yes, done, credits charged, MCP refused
+from outside her subnet), sleep_idle -> asleep, task B wakes it, `docker kill` -> task C comes back, Stop. 34 of 34.
+
+Found and fixed (each seen only on the real image):
+1. A hard kill (VPS reboot, memory cap, crash) leaves OpenClaw's state lock + its SQLite owner lease; the next start waits on the dead
+   owner and never comes up ("cannot verify Gateway ownership"). `gateway.recover_lock`: when her container is not running, run
+   `openclaw gateway recover-lock --json` in a one-off container (`--network none`, her uid, her folder) and confirm exactly the record it
+   names. Deleting files would not be enough (the lease is in the database).
+2. Chrome's SingletonLock names the container that made it; a new container cannot start the browser ("Chromium profile lock names another
+   hostname"). Its three lock links are removed while her container is stopped; the profile stays. A newer pinned `dod_image` now gets a new
+   container on the same folder (`docker start` kept the old image for ever).
+3. OpenClaw's Tool Search hid the `browser` tool; `tools.toolSearch.exclude` gains `{source: openclaw, name: browser}` (docs/tools/tool-search.md).
+Also: a step "Starting its computer" while the Gateway starts. Each start here took ~5 minutes, mostly the doctor trying to npm-install the
+Perplexity web-search plugin OpenClaw wants once it sees an OpenRouter key; this sandbox blocks npm (self-signed proxy). On a server with
+npm it should install once into her folder - not measured.
+
+NOT VERIFIED: her VPS with a real model and real OpenRouter keys; the start time there; a real website in its browser (here every https
+page fails on the sandbox proxy's certificate - the browser itself started and the screen picture came back).
+## v0.999.320 THE PROMPTING SECTION REDESIGNED
 
 Owner: "NOW CHECK THE PROMPTING SECTION IN HOOLA LOOKS STALE AND VERY OLD BAD --- FIRST CHECK THE EXSTING HOOLA BRAND
 DESIGN AND ITS LOGO. 1) MAKE A PROMPT SECTION ... JUST MAKE A PROMPT -- IN THIS SHOW ALL CATOGORY 2) BELOW IT SHOW READY
@@ -14240,8 +14292,8 @@ PROMPT LAIBRARY ... ALL WORLD PROMPTS WITH PERFECT CATOGORIWISE ... EVERY PROMPT
 VIDEO AND IMAGES ... SHOW SAME HERE ... SHOW ME THE DESIGN FIRST" -> design canvas claude.ai/artifact/UVKthxXrkrqudfU12Wqs9B
 (5 boards: home, a category picked, one prompt, phone home, phone prompt) -> "GO BUILD THE DESIGN".
 
-Built as v0.999.315; main took 0.999.315-0.999.317 (STUDIO FIXES, DevSecOps desk, Hoola Code flows) while it was
-built - re-versioned to 0.999.318 on the merge, all works kept.
+Built as v0.999.315 / 0.999.318; main took 0.999.315-0.999.319 (STUDIO FIXES, DevSecOps desk, Hoola Code flows, SRE
+DESK DEEPER, HOOLA DOD END TO END) while it was built - re-versioned to 0.999.320 on the merges, all works kept.
 
 **The look.** /console/prompting in Hoola's own design (the console app design): a top bar with the Orbit mark (the same
 paths as static/console/mark.js, in the accent) + "Prompting" in Literata + pill tabs (Make a prompt, Library, Hoola's
