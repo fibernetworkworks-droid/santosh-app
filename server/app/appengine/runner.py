@@ -112,7 +112,15 @@ def parse_vite(txt: str, root: str = "/tmp/w/") -> list[dict[str, Any]]:
     return out
 
 
-def _box_argv(src: str, out: str, source: bool = True) -> list[str]:
+# v0.999.326 tests in the box: Vitest + React Testing Library + jsdom, the app's src/**/*.test.ts(x), no network, the same
+# walls as a build. React's act() only exists in its development build, so a test run says NODE_ENV=test.
+TEST_SCRIPT = ("mkdir -p /tmp/w && cp -R /src/. /tmp/w/ && ln -s /opt/tpl/node_modules /tmp/w/node_modules && cd /tmp/w && "
+               "node node_modules/vitest/vitest.mjs run --config vitest.config.ts --reporter=json --outputFile=/out/tests.json "
+               "> /out/test.txt 2>&1; echo $? > /out/test.rc")
+TEST_TIMEOUT = 180
+
+
+def _box_argv(src: str, out: str, source: bool = True, script: str = "", node_env: str = "production") -> list[str]:
     from ..devlab import box
     return [box.docker(), "run", "--rm", "--network", "none", "--read-only", "--tmpfs", "/tmp:rw,exec,size=768m",
             "--user", "1000:1000", "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
@@ -120,9 +128,9 @@ def _box_argv(src: str, out: str, source: bool = True) -> list[str]:
             "--env", "NODE_OPTIONS=--max-old-space-size=1024", "--env", "CI=1",
             # v0.999.64: the image sets NODE_ENV=development (so npm installs the build tools); a build must say
             # production, or React's development build (twice the size, with dev warnings) ships to visitors
-            "--env", "NODE_ENV=production", "--env", f"HOOLA_SOURCE={'1' if source else '0'}", "--env", "NO_COLOR=1", "--env", "FORCE_COLOR=0",
+            "--env", f"NODE_ENV={node_env}", "--env", f"HOOLA_SOURCE={'1' if source else '0'}", "--env", "NO_COLOR=1", "--env", "FORCE_COLOR=0",
             "-v", f"{os.path.abspath(src)}:/src:ro", "-v", f"{os.path.abspath(out)}:/out:rw",
-            IMG.IMAGE, "sh", "-c", SCRIPT]
+            IMG.IMAGE, "sh", "-c", script or SCRIPT]
 
 
 def _local(src: str, out: str, source: bool = True) -> tuple[int, str, float]:
@@ -222,3 +230,88 @@ def build(src: Path, wait: float = 20.0, source: bool = True) -> dict[str, Any]:
                 "why": "" if ok else ("the build took too long" if timed_out else "the build failed - read build_problems")}
     finally:
         g.release()
+
+
+# ------------------------------------------------------------------ v0.999.326 tests in the box
+def _vt_name(t: dict[str, Any]) -> str:
+    return " > ".join([*(t.get("ancestorTitles") or []), str(t.get("title") or "")]).strip(" >")
+
+
+def parse_tests(raw: str, src_root: str = "/tmp/w/") -> dict[str, Any]:
+    """Vitest's JSON report -> passed / failed / each test with its file and the first lines of a failure."""
+    try:
+        data = json.loads(raw or "{}")
+    except ValueError:
+        return {"parsed": False, "tests": []}
+    tests = []
+    for f in data.get("testResults") or []:
+        file = str(f.get("name") or "").replace(src_root, "")
+        file = file[file.find("src/"):] if "src/" in file else file
+        for t in f.get("assertionResults") or []:
+            msg = _ANSI.sub("", "\n".join(t.get("failureMessages") or []))
+            tests.append({"file": file, "name": _vt_name(t), "status": t.get("status") or "",
+                          "ms": round(float(t.get("duration") or 0)), "message": msg[:1200]})
+        if f.get("status") == "failed" and not (f.get("assertionResults") or []):
+            tests.append({"file": file, "name": "(the file did not run)", "status": "failed",
+                          "message": _ANSI.sub("", str(f.get("message") or ""))[:1200]})
+    return {"parsed": True, "tests": tests, "passed": sum(t["status"] == "passed" for t in tests),
+            "failed": sum(t["status"] == "failed" for t in tests), "skipped": sum(t["status"] in ("skipped", "pending", "todo") for t in tests)}
+
+
+def _local_tests(src: str, out: str) -> int:
+    nm = os.environ.get("HOOLA_APPENGINE_NODE_MODULES", "")
+    with tempfile.TemporaryDirectory(prefix="hoola-ae-t-") as w:
+        shutil.copytree(src, w, dirs_exist_ok=True)
+        os.symlink(nm, os.path.join(w, "node_modules"))
+        env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": w, "CI": "1", "LANG": "C.UTF-8", "NO_COLOR": "1",
+               "FORCE_COLOR": "0", "NODE_ENV": "test"}
+        try:
+            r = subprocess.run(["node", "node_modules/vitest/vitest.mjs", "run", "--config", "vitest.config.ts", "--reporter=json",
+                                f"--outputFile={os.path.join(out, 'tests.json')}"], cwd=w, capture_output=True, text=True,
+                               timeout=TEST_TIMEOUT, env=env)
+            Path(out, "test.txt").write_text(((r.stdout or "") + (r.stderr or "")).replace(w + "/", ""))
+            rc = r.returncode
+        except subprocess.TimeoutExpired:
+            Path(out, "test.txt").write_text("the tests took too long")
+            rc = 124
+        if Path(out, "tests.json").exists():
+            Path(out, "tests.json").write_text(Path(out, "tests.json").read_text().replace(w + "/", "/tmp/w/"))
+        Path(out, "test.rc").write_text(str(rc))
+        return rc
+
+
+def test(src: Path, wait: float = 20.0) -> dict[str, Any]:
+    """Run the app's tests (src/**/*.test.ts(x)) in the box. Never raises for failing tests; RuntimeError when the box
+    is not there."""
+    av = available()
+    if not av["ok"] and mode() == "box":
+        from . import boxcare
+        if boxcare.on():
+            av = boxcare.ensure("the tests")
+    if not av["ok"]:
+        raise RuntimeError(av["why"])
+    g = gate()
+    if not g.acquire(timeout=wait):
+        return {"ran": False, "queued": True, "why": f"{_GATE_N} app builds are already running on this server; run the tests again in a moment."}
+    out = Path(tempfile.mkdtemp(prefix="hoola-ae-test-"))
+    try:
+        os.chmod(out, 0o777)
+        t0 = time.time()
+        if mode() == "local":
+            _local_tests(str(src), str(out))
+        else:
+            from ..devlab import box
+            box._run(_box_argv(str(src), str(out), False, TEST_SCRIPT, "test"), TEST_TIMEOUT + 30)
+        read = lambda n: (out / n).read_text("utf-8", "replace") if (out / n).exists() else ""   # noqa: E731
+        res = parse_tests(read("tests.json"))
+        rc = read("test.rc").strip()
+        log = _ANSI.sub("", read("test.txt")).replace("/tmp/w/", "")
+        ok = rc == "0" and res.get("parsed") and res.get("failed", 0) == 0 and res.get("passed", 0) > 0
+        return {"ran": bool(res.get("parsed")), "ok": bool(ok), "seconds": round(time.time() - t0, 2), "runner": mode(),
+                "passed": res.get("passed", 0), "failed": res.get("failed", 0), "skipped": res.get("skipped", 0),
+                "tests": res.get("tests", [])[:80], "log": log[-3000:],
+                "why": "" if res.get("parsed") else ("the tests took too long" if rc == "124" else "the tests did not run: " + log[-400:])}
+    finally:
+        g.release()
+        shutil.rmtree(out, ignore_errors=True)
+

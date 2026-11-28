@@ -1,0 +1,20 @@
+/* v0.999.326 the Flow chart (React Flow) in the app's own design tokens - only loaded where it is used. */
+.hoola-flow .react-flow {
+  --xy-background-color: var(--color-surface);
+  --xy-background-pattern-color: var(--color-line);
+  --xy-node-color: var(--color-ink);
+  --xy-node-background-color: var(--color-surface);
+  --xy-node-border: 1px solid var(--color-line);
+  --xy-node-border-radius: var(--radius-control);
+  --xy-node-boxshadow-selected: 0 0 0 2px var(--color-primary);
+  --xy-edge-stroke: var(--color-muted);
+  --xy-edge-stroke-selected: var(--color-primary);
+  --xy-handle-background-color: var(--color-primary);
+  --xy-handle-border-color: var(--color-surface);
+  --xy-controls-button-background-color: var(--color-surface);
+  --xy-controls-button-color: var(--color-ink);
+  --xy-controls-button-border-color: var(--color-line);
+  --xy-minimap-background-color: var(--color-bg);
+  --xy-attribution-background-color: transparent;
+  font-family: var(--font-body);
+}

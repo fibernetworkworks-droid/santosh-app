@@ -59,7 +59,7 @@ _GATE_CONV: dict[str, tuple[str, float]] = {}
 GATE_POLL = 1.5
 GATE_MAX = 1800.0
 # the template files Hoola owns: refreshed into every app before each build (an older app gets today's tooling)
-TOOLING = ("vite.config.ts", "tsconfig.json", "hoola.plugin.mjs", "src/main.tsx", "src/index.css", "src/lib/utils.ts",
+TOOLING = ("vite.config.ts", "vitest.config.ts", "vitest.setup.ts", "tsconfig.json", "hoola.plugin.mjs", "src/main.tsx", "src/index.css", "src/lib/utils.ts",
            "src/lib/hoola.ts",
            # v0.999.64 D3: pre-rendering + islands
            "hoola.prerender.mjs", "src/entry-server.tsx", "src/islands-entry.tsx", "src/islands-wake.tsx", "src/lib/island.tsx",
@@ -886,6 +886,55 @@ def build(tenant: str, ref: str) -> dict[str, Any]:
     return {**view(r, False), "built": bool(res.get("ok")), "say": say}
 
 
+# ------------------------------------------------------------------ v0.999.326 tests in the box
+def test_files(r: AppProject) -> list[str]:
+    return sorted(_rel(r, p) for p in _files(r) if RL.is_test(_rel(r, p)))
+
+
+def run_tests(tenant: str, ref: str) -> dict[str, Any]:
+    """Run the app's tests (src/**/*.test.ts / .tsx) in the box: Vitest + React Testing Library, no network."""
+    r = _load(tenant, ref)
+    files = test_files(r)
+    if not files:
+        return {"ran": False, "ok": False, "count": 0, "files": [],
+                "say": "This app has no tests yet. Write one next to the screen it checks (e.g. src/pages/Home.test.tsx) "
+                       "with Vitest + React Testing Library, then action=test."}
+    with _lock(r.id):
+        _refresh_template(r)
+        snap = Path(pdir(r.tenant_id, r.id) / "_tsnap")
+        shutil.rmtree(snap, ignore_errors=True)
+        shutil.copytree(src_dir(r), snap, ignore=shutil.ignore_patterns("node_modules", "dist"))
+        _prep_snap(r, snap)
+    try:
+        res = RN.test(snap)
+    except RuntimeError as e:
+        raise AppEngineError("The tests could not run: " + str(e), 503)
+    finally:
+        shutil.rmtree(snap, ignore_errors=True)
+    res = {**res, "files": files, "count": len(files)}
+    try:
+        (pdir(r.tenant_id, r.id) / "_tests.json").write_text(json.dumps({**res, "at": now().isoformat(), "log": ""}))
+    except OSError:
+        pass
+    if not res.get("ran"):
+        res["say"] = "The tests did not run: " + str(res.get("why") or "see the log")
+    elif res.get("ok"):
+        res["say"] = f"{res['passed']} test(s) passed in {len(files)} file(s) ({res.get('seconds')} s)."
+    else:
+        bad = [t for t in res.get("tests") or [] if t["status"] == "failed"][:5]
+        res["say"] = (f"{res.get('failed', 0)} of {res.get('passed', 0) + res.get('failed', 0)} test(s) FAILED: "
+                      + "; ".join(f"{t['file']} > {t['name']}: {t['message'].splitlines()[0][:200] if t['message'] else ''}" for t in bad)
+                      + ". Fix the code (or the test, if the test is wrong), then action=test again.")
+    return res
+
+
+def last_tests(r: AppProject) -> dict[str, Any]:
+    try:
+        return json.loads((pdir(r.tenant_id, r.id) / "_tests.json").read_text())
+    except (OSError, ValueError):
+        return {}
+
+
 def prerender_line(p: dict) -> str:
     """v0.999.64 D3: what the pre-render did, in one plain sentence (nothing when the build had no pre-render step)"""
     if not p:
@@ -900,10 +949,22 @@ def prerender_line(p: dict) -> str:
     return out
 
 
+# v0.999.326 kit parts added after an app was made: copied into it when missing (never over her own file), so an older
+# app gets them too (src/main.tsx, which is Hoola's, uses error-guard)
+NEW_KIT = ("src/components/ui/error-guard.tsx", "src/components/ui/data-table.tsx", "src/components/ui/qr-code.tsx",
+           "src/components/ui/schedule.tsx", "src/components/ui/schedule.css", "src/components/ui/flow.tsx",
+           "src/components/ui/flow.css", "src/components/ui/pdf.tsx", "src/components/ui/markdown.tsx")
+
+
 def _refresh_template(r: AppProject) -> None:
     """Hoola's own tooling files (locked) are copied fresh from the template, tokens.css and theme.json are written
     again from the app's look: an app made by an older version builds with today's plugin + settings."""
     d = src_dir(r)
+    for rel in NEW_KIT:
+        f = TEMPLATE / rel
+        if f.exists() and not (d / rel).exists():
+            (d / rel).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(f, d / rel)
     for rel in TOOLING:
         f = TEMPLATE / rel
         if f.exists():

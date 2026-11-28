@@ -13,7 +13,7 @@ from typing import Any
 from .tools import Ctx, ToolError
 
 READS = {"list", "status", "view", "search", "logs", "files", "check", "cloud", "cloud_rows", "scan", "tests", "branches", "design", "work",
-         "read_logs"}
+         "read_logs", "test"}
 # v0.999.322 the done check: plan / done change nothing in the app, so they run in every mode
 GATE = {"plan", "done", "blueprint"}
 # v0.999.322 the changes the done check, her locks and the fingerprints watch
@@ -100,7 +100,15 @@ APPENGINE_TOOLS = [
         "A NEW app (never built) needs action=blueprint {what, users, screens, data, out_of_scope, questions} before its "
         "first change: when her ask leaves real choices open, ask her up to 5 short questions in your reply FIRST and put her "
         "answers in it. Bringing back an older version is HER tap (Versions tab). action=done also has the change reviewed "
-        "by a second model; fix what it finds (high / medium) and build again."),
+        "by a second model; fix what it finds (high / medium) and build again. REACT PARTS (v0.999.326, in src/components/ui): "
+        "DataTable (data-table: sort, search, pages - for any list of rows), Guard (error-guard: wrap a part that may break; "
+        "the whole app already has one), QrCode + upiLink (qr-code: UPI pay QR, tickets), Schedule (schedule: month / week / "
+        "day views for bookings, rotas, classes), Flow (flow: flowcharts, org charts, processes), PdfButton (pdf: invoices, "
+        "receipts, certificates made in the browser), Prose (markdown: formatted text, raw HTML never drawn); zustand for "
+        "state shared by far-apart parts (only when props / context get tangled). TESTS (v0.999.326): for each behaviour you "
+        "add, write a small test next to it (src/pages/X.test.tsx; import { describe, it, expect } from \"vitest\", { render, "
+        "screen } from \"@testing-library/react\", userEvent from \"@testing-library/user-event\") and run action=test; once "
+        "an app has tests, action=done also needs them passing after your last change."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": sorted(READS | CHANGES | GATE)},
          "goal": {"type": "string", "description": "plan: what she asked for, in one or two sentences"},
@@ -256,6 +264,8 @@ def _after(r, conv: str, action: str, path: str, kw: dict[str, Any], res: Any) -
             DG.note(r, conv, "rules", ok=bool(res["rule_tests"].get("ok")))
     if action == "tests":
         DG.note(r, conv, "rules", ok=bool(res.get("ok")))
+    if action == "test" and res.get("ran"):
+        DG.note(r, conv, "test", ok=bool(res.get("ok")), passed=int(res.get("passed") or 0), failed=int(res.get("failed") or 0))
     if action == "build":
         rr = AE._load(r.tenant_id, r.id)
         try:
@@ -294,6 +304,8 @@ def _run(ctx: Ctx, action: str, app: str, kw: dict[str, Any]) -> dict[str, Any]:
         return AE.search(t, a, kw.get("query") or "")
     if action == "logs":
         return AE.logs(t, a)
+    if action == "test":
+        return AE.run_tests(t, a)
     if action == "read_logs":
         from ..appengine import plogs as PL
         v = kw.get("version")

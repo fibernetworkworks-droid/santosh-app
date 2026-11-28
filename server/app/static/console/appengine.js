@@ -424,7 +424,7 @@
     const br = t.browser === 'ok', brLabel = t.browser === 'not_run' ? 'Browser check could not run here' : 'Seen working in a browser (phone + computer)';
     return `<details class="ae-task" open><summary><b>Hoola is working on this</b> <span class="mut sm ell">${esc(S(plan.goal))}</span></summary>
       <ul class="ae-taskchk sm">${mark(!!t.edited, 'Changed the code')}${mark(!!t.built, 'Built after the last change')}${mark(!!t.types_ok, 'TypeScript clean')}
-        ${mark(!!t.rules_ok, 'Data rules tested', !!t.rules_needed)}${mark(br || t.browser === 'not_run', brLabel, !!t.browser_needed)}${mark(!!t.built && !t.preview_errors, 'No errors in the preview')}</ul>
+        ${mark(!!t.rules_ok, 'Data rules tested', !!t.rules_needed)}${mark(br || t.browser === 'not_run', brLabel, !!t.browser_needed)}${mark(t.tests === 'ok', `Tests passed${t.tests_passed ? ' (' + t.tests_passed + ')' : ''}`, !!t.tests_needed)}${mark(!!t.built && !t.preview_errors, 'No errors in the preview')}</ul>
       ${crit.length ? `<p class="mut sm">What you should see when it is done:</p><ul class="sm">${crit.map(c => `<li>${esc(S(c.description))}</li>`).join('')}</ul>` : ''}
       <p class="mut sm">It is only called finished once every check above has passed after its last change.</p></details>`;
   }

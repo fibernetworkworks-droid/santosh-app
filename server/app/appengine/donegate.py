@@ -164,6 +164,14 @@ def note(r, conv: str, kind: str, **data: Any) -> None:
 
 # ------------------------------------------------------------------ where the task stands
 
+def _has_tests(r) -> bool:
+    try:
+        from . import service as S
+        return bool(S.test_files(r))
+    except Exception:                                    # noqa: BLE001
+        return False
+
+
 def _saves_data(r) -> bool:
     try:
         from . import cloud as CL
@@ -200,12 +208,17 @@ def progress_of(r, t: dict[str, Any] | None) -> dict[str, Any]:
     browsers = [e for e in ev if e["kind"] == "browser" and good and e["seq"] > good["seq"]]
     browser = browsers[-1] if browsers else None
     errs = _open_errors(r, int((good or {}).get("version") or 10 ** 9)) if good else []
+    tests_needed = _has_tests(r)                                  # v0.999.326 an app with tests: they pass after the last change
+    tests_after = [e for e in ev if e["kind"] == "test" and e["seq"] > last_edit]
+    test = tests_after[-1] if tests_after else None
     st = {"status": "working", "plan": plan, "n": t.get("n"), "edited": bool(edits), "files": sorted({e.get("file") for e in edits if e.get("file")})[:30],
           "built": bool(good), "build_failed": bool(build and not build.get("ok")), "types_ok": bool(good and good.get("types_ok")),
           "version": (good or {}).get("version"), "rules_needed": rule_change >= 0, "rules_ok": bool(rules and rules.get("ok")),
           "browser_needed": need_browser, "browser": (None if not browser else ("ok" if browser.get("ok") else
                                                      ("not_run" if not browser.get("ran") else "failed"))),
-          "browser_why": (browser or {}).get("why") or "", "preview_errors": len(errs)}
+          "browser_why": (browser or {}).get("why") or "", "preview_errors": len(errs),
+          "tests_needed": tests_needed, "tests": (None if not test else ("ok" if test.get("ok") else "failed")),
+          "tests_passed": int((test or {}).get("passed") or 0)}
     st["next"] = _next(st, build, errs)
     st["ready"] = st["next"].startswith("Finish with action=done")
     return st
@@ -228,6 +241,9 @@ def _next(st: dict[str, Any], build: dict | None, errs: list) -> str:
         return "The browser check found problems: fix them, then action=build again."
     if st["browser_needed"] and st["browser"] is None:
         return "Build again (action=build) so the browser check runs on the new version."
+    if st.get("tests_needed") and st.get("tests") != "ok":
+        return ("The app's tests FAILED after your last change: fix them, then action=test." if st.get("tests") == "failed"
+                else "This app has tests: run them now (action=test) and make them pass.")
     if errs:
         return (f"The preview reported {len(errs)} error(s) on this version (action=logs lists them with file and line): "
                 "fix them, then action=build.")
@@ -318,6 +334,8 @@ def complete(r, conv: str, outcome: str, summary: str, criteria: list[Any]) -> d
             evidence.append("browser check passed at phone and desktop size" if st["browser"] == "ok"
                             else "browser check could not run on this server" + (f" ({st['browser_why']})" if st["browser_why"] else ""))
         evidence.append("no preview errors on this version")
+        if st.get("tests_needed"):
+            evidence.append(f"{st.get('tests_passed', 0)} test(s) passed after the last change")
         if rv.get("ran") is False:
             evidence.append("the code review could not run (" + str(rv.get("why") or "unknown") + ")")
         elif rv.get("ran"):
