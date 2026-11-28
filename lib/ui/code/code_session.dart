@@ -2003,6 +2003,12 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
             ),
           ]);
         }
+      case 'skill':
+        return _line(c, Icons.auto_awesome_outlined, [
+          const TextSpan(text: 'Using the '),
+          _code(c, cs(s['name'])),
+          TextSpan(text: s['auto'] == true ? ' skill for this kind of work' : ' skill'),
+        ]);
       case 'cmd':
         return _line(c, Icons.terminal_rounded, [
           TextSpan(text: s['repo'] == true ? 'Ran your command ' : 'Started '),

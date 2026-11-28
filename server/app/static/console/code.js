@@ -775,6 +775,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       case 'fallback': return `<div class="hcd-step dim">${svg('spark')}<span>${esc(s.text || 'A backup model answered')}</span>${at}</div>`;
       case 'title': return '';
       case 'claudefile': return `<div class="hcd-step dim">${svg('pencil')}<span>You ${s.what === 'deleted' ? 'deleted' : 'changed'} <code>${esc(s.path || '')}</code></span>${at}</div>`;
+      case 'skill': return `<div class="hcd-step dim">${svg('spark')}<span>Using the <span class="hcd-cmd">${esc(s.name || '')}</span> skill${s.auto ? ' for this kind of work' : ''}</span>${at}</div>`;
       case 'cmd': return `<div class="hcd-step dim">${svg('spark')}<span>${s.repo ? 'Ran your command' : 'Started'} <span class="hcd-cmd">/${esc(s.name || '')}</span>${s.repo ? ' from this repo' : ''}</span>${at}</div>`;
       case 'mention': return `<div class="hcd-step">${svg('read')}<span>Read the files you pointed at · ${(s.files || []).map(p).join(', ')}</span>${at}</div>`;
       case 'hook': {   /* v0.999 what the repo's hook decided, Claude Code's JSON answers included */
@@ -976,7 +977,9 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   const HOOLA_CMDS = Object.entries(BUILTIN).filter(([, w]) => !w.terminal && !w.alias).map(([n, w]) => [n, w.d])
     .concat([['security-review', 'Review the changes for security problems'],      // sent to Hoola as they are (the server knows them)
       ['ponytail-review', 'Review this change like the senior dev who gets paged'], ['ponytail-audit', 'The same check for the whole repo, most important first'],
-      ['ponytail-debt', 'List the shortcut: comments left for later']])
+      ['ponytail-debt', 'List the shortcut: comments left for later'],
+      ['brainstorm', 'Shape an idea with Hoola before any code: one question at a time'], ['write-plan', 'A step-by-step plan, each step with its check'],
+      ['execute-plan', 'Carry out the approved plan task by task, each task reviewed']])
     .sort((a, b) => a[0] < b[0] ? -1 : 1);
   function pickClose() { PICK = null; const b = $('#hcdPick'); if (b) b.remove(); }
   function pickFor(ta) {

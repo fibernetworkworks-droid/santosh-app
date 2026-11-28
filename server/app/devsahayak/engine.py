@@ -1582,14 +1582,30 @@ class Tools:
 
     def t_skill(self, action: str, name: str = "") -> str:
         from ..coder import skills_store as SK
-        if not self.tenant and not getattr(self, "repo_skills", None):
+        from . import superpowers as SPW
+        if not self.tenant and not getattr(self, "repo_skills", None) and not SPW.on():
             return "Her skills are not reachable from this session."
         mine = getattr(self, "repo_skills", None) or {}
         if action == "list":
             rows = [r for r in SK.listing(self.tenant) if r.get("enabled", True)] if self.tenant else []
+            if SPW.on():                                   # her chat desk's older copies of the built-in skills stay out
+                drop = SPW.hidden_copies([str(r.get("name") or "") for r in rows])
+                rows = [r for r in rows if str(r.get("name") or "") not in drop]
             out = [f"- {k} (this repo{'' if v['origin'] == 'repo' else ', ' + v['origin']}): {v['description'][:200]}" for k, v in mine.items()]
             out += [f"- {r['name']}: {str(r.get('description') or '')[:200]}" for r in rows[:80]]
+            if SPW.on():
+                out += [f"- superpowers:{k} (Hoola Code's own): {v['description'][:200]}" for k, v in SPW.skills().items()]
             return "\n".join(out) or "There are no skills: none in this repo (.claude/skills) and none saved by her."
+        builtin = SPW.get(name) if SPW.on() and str(name or "").lower() not in mine else None
+        if builtin is not None and not str(name or "").lower().startswith("superpowers:") and self.tenant:
+            try:                                           # a skill she saved under the same name is hers: hers wins
+                if any(str(r.get("name") or "").lower() == str(name or "").lower() for r in SK.listing(self.tenant)):
+                    builtin = None
+            except Exception:  # noqa: BLE001
+                pass
+        if builtin is not None:
+            self.trail.append(f"read the skill {name}")
+            return f"<skill name=\"superpowers:{str(name).split(':')[-1]}\">\n{builtin['body']}\n</skill>"
         if str(name or "").lower() in mine:                # the repo's own .claude/skills/<name>/SKILL.md
             sk = mine[str(name).lower()]
             self.trail.append(f"read the skill {name}")
@@ -1778,6 +1794,7 @@ class Tools:
                     "small first version and then add to it with edit, instead of one very large write.")
         try:
             out = fn(**repair_input(self._schema_of(name), {k: v for k, v in inp.items() if not k.startswith("_")}))
+            out = self._sp_track(name, inp, out)          # v0.999 Superpowers' iron laws, counted in code
             if name in ("read", "edit", "multi_edit", "write", "notebook_edit") and inp.get("path") and isinstance(out, str):
                 with SPILL_LOCK:                          # parallel reads touch the same session notes
                     out += self._folder_rules(str(inp.get("path")))
@@ -1796,6 +1813,30 @@ class Tools:
         except Exception as e:                            # v0.932 one odd call never ends her whole session
             log.warning("hoola code tool %s failed: %s", name, e, exc_info=True)
             return f"{name} could not run with these arguments ({e.__class__.__name__}: {str(e)[:200]}). Check them and try again."
+
+
+def _sp_track(self: Any, name: str, inp: dict[str, Any], out: Any) -> Any:
+    """v0.999 superpowers.py: code edits, test / build runs and failed fixes for this round; the 3-fix note."""
+    try:
+        from . import superpowers as SP
+        if not SP.on() or not isinstance(out, str):
+            return out
+        tr = getattr(self, "sp", None)
+        if tr is None:
+            tr = self.sp = SP.Tracker()
+        if name in ("edit", "multi_edit", "write", "notebook_edit"):
+            if not re.match(r"(Refused|Wrong arguments|Unknown tool|Your call|No |Nothing)", out) and "could not run" not in out[:200]:
+                tr.edit(str(inp.get("path") or ""))
+        elif name == "bash":
+            lb = getattr(self, "last_bash", None) or {}
+            if not lb.get("bg"):
+                out += tr.bash(str(lb.get("cmd") or inp.get("command") or ""), lb.get("rc"))
+    except Exception:  # noqa: BLE001 - counting never breaks a tool
+        pass
+    return out
+
+
+Tools._sp_track = _sp_track
 
 
 LOCK_OF = {"package-lock.json": "package.json", "npm-shrinkwrap.json": "package.json", "yarn.lock": "package.json",
@@ -3757,6 +3798,12 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
     her_words = her_text(follow_up or str(getattr(t, "text", "") or ""))
     tools.her_words = (her_words + " " + str(getattr(t, "text", "") or ""))[:8000]   # v0.999 Karpathy: a layout ask is the task
     her_extra = her_blocks(tools, ses, her_words, emit)
+    try:                                                  # v0.999 Superpowers: the process skills for this kind of work
+        from . import superpowers as SPW
+        sp_auto = SPW.auto_block(t, her_words, follow_up, ses, emit)
+        her_extra = "\n\n".join(x for x in (her_extra, sp_auto) if x)
+    except Exception as e:  # noqa: BLE001
+        log.info("skills left out: %s", e)
     msgs = ses.messages()
     healed = heal_cut_step(ses, msgs)                     # v0.999 a step cut by a restart: told what ran, never re-run
     if healed:
@@ -3819,6 +3866,12 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
         from . import ponytail as PT
         pt = PT.block(PT.level(ses, tools.conf))
         kr_rules += ("\n\n" + pt) if pt else ""
+    except Exception:  # noqa: BLE001
+        pass
+    try:                                                  # v0.999 Superpowers: the skill list + the rule to use them
+        from . import superpowers as SPW
+        sp_txt = SPW.system_block()
+        kr_rules += ("\n\n" + sp_txt) if sp_txt else ""
     except Exception:  # noqa: BLE001
         pass
     system = (SYSTEM + kr_rules + ("\n\n" + extra_ecc if extra_ecc else "") + ("\n\n" + system_extra if system_extra else "")
@@ -4055,6 +4108,17 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                         reality["scratch"] = True
                         emit({"k": "gate", "n": len(left), "items": [f"{p} looks like a scratch file" for p in left[:8]]})
                         results.append({"type": "tool_result", "tool_use_id": b["id"], "content": scratch_text(left)})
+                        continue
+                if not reality.get("proof") and getattr(tools, "sp", None) is not None:
+                    reality["proof"] = True               # v0.999 Superpowers: evidence before claims, once a round
+                    try:
+                        from . import superpowers as SPW
+                        unproven = SPW.on() and tools.sp.unproven_claim(inp)
+                    except Exception:  # noqa: BLE001
+                        unproven = False
+                    if unproven:
+                        emit({"k": "gate", "n": 1, "items": ["it says it works, but nothing passed since the last edit: run the proof"]})
+                        results.append({"type": "tool_result", "tool_use_id": b["id"], "content": SPW.proof_text(tools.sp)})
                         continue
                 if not reality.get("surgical") and getattr(t, "kind", "") != "explain":
                     reality["surgical"] = True            # v0.999 Karpathy rule 3, checked in code: once a round
