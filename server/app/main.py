@@ -2214,6 +2214,15 @@ def mainframe_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/dod")
+@app.get("/console/dod/")
+def dod_page():
+    """v0.999.304 HOOLA DOD: her coworker - meet it once (a face, a name, a voice), then give it real work."""
+    return FileResponse(STATIC / "console" / "dod.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/data")
 @app.get("/console/data/")
 def data_desk_page():
@@ -3068,6 +3077,8 @@ from .employee.deskroom import make_router as _deskroom_router  # noqa: E402
 app.include_router(_deskroom_router(require_key, current_tenant))   # /api/deskroom/* (v0.799 DESK ROOM: the department desks)
 from .route.api import make_router as _route_router  # noqa: E402
 app.include_router(_route_router(require_key, current_tenant))   # /api/route/* (v0.999.87 HOOLA ROUTE: the automation page)
+from .dod.api import make_router as _dod_router  # noqa: E402
+app.include_router(_dod_router(require_key, current_tenant))   # /api/dod/* (v0.999.304 HOOLA DOD: the coworker)
 from .credits.api import make_router as _credits_router  # noqa: E402
 app.include_router(_credits_router(require_key, current_tenant))   # /api/credits/*, /pay/credits/* (v0.999.26 HOOLA CREDITS)
 from .bahi.api import make_router as _bahi_router  # noqa: E402

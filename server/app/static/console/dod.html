@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Hoola DOD</title>
+<script src="/static/console/theme.js?v=0.999.304"></script>
+<link rel="icon" href="/static/favicon-32.png" sizes="32x32">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400..700&family=Literata:ital,opsz,wght@0,7..72,300..700;1,7..72,300..700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/static/console/dod.css?v=0.999.304">
+</head>
+<body>
+<div class="dd-shell">
+  <nav class="dd-side" aria-label="Hoola DOD">
+    <div class="dd-brand"><span class="dd-tile" id="brandMark" aria-hidden="true"></span><div><b>Hoola DOD</b><span>Your coworker</span></div></div>
+    <a class="dd-who" href="#/setup" id="who" hidden></a>
+    <a class="dd-btn ink dd-give" href="#/" id="giveTask"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Give a task<kbd>Ctrl K</kbd></a>
+    <a class="dd-nav" href="#/" data-nav="home"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg>Today</a>
+    <a class="dd-nav" href="#/tasks" data-nav="tasks"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m4 6 1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>All tasks<span class="dd-cnt" id="allCount" hidden></span></a>
+    <a class="dd-nav" href="#/needs" data-nav="needs"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.2M12 17v.2"/></svg>Needs you<span class="dd-tag warn" id="needCount" hidden></span></a>
+    <a class="dd-nav" href="#/files" data-nav="files"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg>Files</a>
+    <div class="dd-sl" id="canUse">Your coworker can use</div>
+    <a class="dd-nav" href="/console/?v=connectors"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3v5M15 3v5"/><path d="M6 8h12v3a6 6 0 0 1-12 0z"/><path d="M12 17v4"/></svg>Your accounts</a>
+    <a class="dd-nav" href="#/rules" data-nav="rules"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3"/></svg>When it asks you</a>
+    <div class="dd-foot">
+      <div class="dd-meter" id="meter" hidden></div>
+      <a class="dd-nav" href="/console/"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 6-6 6 6 6"/></svg>Back to Hoola</a>
+    </div>
+  </nav>
+  <main class="dd-main" id="main"><div class="dd-empty">Opening Hoola DOD…</div></main>
+</div>
+<div id="toast" class="dd-toast" role="status" aria-live="polite" hidden></div>
+<script src="/static/console/mark.js?v=0.999.304"></script>
+<script src="/static/console/dod.js?v=0.999.304"></script>
+</body>
+</html>

@@ -21,7 +21,7 @@ MENU = (CON / "menu.js").read_text(encoding="utf-8")
 
 
 def test_the_shell_is_claudes_shape():
-    assert "return [['hire', 'AI Employees'], ['kaam', 'Tools'], ['computer', 'Computer'], ...more, ['more', 'More']];" in JS   # v0.976; v0.999.217 Customize moved to the profile menu
+    assert "return [['hire', 'AI Employees'], ['kaam', 'Tools'], ['computer', 'Computer'], ['dod', 'Hoola DOD'], ...more, ['more', 'More']];" in JS   # v0.976; v0.999.217 Customize moved to the profile menu; v0.999.304 Hoola DOD row
     assert "{label: 'Customize', icon: 'brush', run: () => go('main')}" in JS   # v0.999.217 in the profile menu
     assert "How can ${AV} help you today?" in JS
     assert "function plusMenu(" in JS and "label: 'Deep research'" in JS and "label: 'Use Hoola PC'" in JS
