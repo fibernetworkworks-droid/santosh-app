@@ -1498,6 +1498,23 @@ class Settings(BaseSettings):
     gyaan_sync: bool = False                # tests: index + embed inline
     gyaan_ground: bool = True               # v0.135 cheap model checks each cited sentence against its sources
     gyaan_ground_timeout_s: float = 8.0
+    # v0.999.306 HOOLA DOD - the coworker, on each user's own OpenClaw Gateway (dod/gateway.py). The engine stays off
+    # until the owner switches it on; each user then gets her own container and her own model key with a limit.
+    dod_engine: bool = False                # DOD_ENGINE=true once Docker + the provisioning key are on the VPS
+    dod_image: str = "ghcr.io/openclaw/openclaw:2026.11.10-browser"   # pinned official image (with its browser)
+    openrouter_provisioning_key: str = ""   # OpenRouter provisioning key: mints each user's own limited model key
+    dod_model: str = "openrouter/anthropic/claude-sonnet-5.5"   # her coworker's model (through her own key)
+    dod_key_limit_usd: float = 10.0         # spending limit on each user's own model key
+    dod_memory: str = "2g"                  # memory per awake coworker (OpenClaw's Gateway needs ~1-2 GB)
+    dod_cpus: float = 1.5
+    dod_max_awake: int = 4                  # coworkers awake at once on this server (the rest wait their turn)
+    dod_idle_min: int = 20                  # a coworker with no work sleeps after this; its memory stays on disk
+    dod_port_base: int = 28100              # 127.0.0.1 ports of the Gateways
+    dod_start_wait_s: float = 120.0
+    dod_read_timeout_s: float = 900.0       # longest quiet gap inside one agent run
+    dod_max_rounds: int = 600               # tool rounds in one task before it stops and says so
+    dod_file_max_mb: int = 50
+    dod_data_dir: str = ""                  # default data/dod
 
 
 @lru_cache

@@ -13972,3 +13972,51 @@ Settings. NEW tool `platform_desk` (registry 717). Tests `server/tests/test_pf_d
 Found while building: the first placement filled one zone first (best fit) and made it look 92% full - changed to the default
 scheduler's spreading; the CI guard had a looser data-store rule than the desk - both share one rule now.
 NOT VERIFIED: on her server, with her own plans, clusters and catalog, or the workflow on GitHub.
+
+
+## v0.999.306 HOOLA DOD - her coworker on her own OpenClaw Gateway (built as 0.999.304; their ECC 6 TO 10 and PLATFORM ENGINEER DESK took 0.999.304-0.999.305, all kept)
+
+Owner, 28 Nov 2026: "OPENCLAW WORK WITH SEPERATE SECTON NAME HOOLA DOD ( A COWORKER ) --- WHEN USER WILL USE COWORKER IT WILL CHOOSE THE
+AVTHAR OF IT AND GIVE THE NAME TO IT" -> the design canvas claude.ai/artifact/8ZipRGBeD7F9ZZUvo4uYUY (Main / Task / Setup / Phone) ->
+"GO BUILD HOOLA DOD". Concept: `docs/research/openclaw/02_PLUG_IN_CONCEPT.md` (read its "As built" part).
+
+What she sees: /console/dod (`static/console/dod.html|css|js`), a sidebar row "Hoola DOD" and a Tools card in the console
+(`v2.js`: APP_TOOLS, appNav, go('dod'), `?v=dod` for the phone), and a phone Tools tile (`lib/ui/shell/hoola_tools.dart`, new
+`ToolGlyph.coworker`) that opens the page signed in. First visit = Meet your coworker: one of the app's 200 looks (the phone's
+`assets/avatars` pictures, copied to `static/dod/looks` because the deploy copies server/app only; served by `/api/dod/look/<id>.webp`,
+public - nothing private in them), a name checked by the avatar's own `check_name`, a voice style with Hear it (browser speech).
+Its own table `dod_profiles` - the main Hoola avatar is not touched. Then Today (greeting, ask box with Websites / Code / Long job,
+Working now cards with the running step and any question, Done today, the week's numbers, four kinds of real work), All tasks,
+Needs you, Files, When it asks you, and one task page (her question card, steps with times and its reasons, what it is writing,
+tell it something while it works, Stop with a second tap, files, the result). The page never redraws a box she is typing in.
+
+Engine (`server/app/dod/`): one OpenClaw Gateway per user (OpenClaw's own trust rule). `gateway.py`: the pinned official image
+`ghcr.io/openclaw/openclaw:2026.11.10-browser` unchanged; per user a container `hoola-dod-<sha>` on its own Docker network, port bound
+to 127.0.0.1 only, memory / CPU / process caps, no-new-privileges, state folder `data/dod/<sha>/state` with an `openclaw.json` Hoola
+writes (token auth, only the /v1/responses endpoint, no URL fetching of files / images, update checks and telemetry off, her model)
+chmod 600; her own OpenRouter key minted through OpenRouter's provisioning API with a spending limit (`dod_key_limit_usd`), so the
+coworker never holds the server's key and nobody spends another user's credit; Gateway token + key sealed (`bazar.security.vault`).
+Woken on her task (wait for /readyz), asleep after `dod_idle_min` quiet minutes (worker slot `dod_jobs`), at most `dod_max_awake`
+awake at once (the rest are told plainly). `service.py`: a task = runs on her Gateway's documented OpenResponses endpoint
+(`POST /v1/responses`, stream, `x-openclaw-session-key: hoola-dod-<task>`, continuation by `previous_response_id`) with Hoola's own
+client tools: hoola_step (a step row; its answer carries her new notes), hoola_ask (pay / send / delete / book / choice / info - the
+task waits for HER tap, bound to the question's hash; pay shows the amount; the coworker is told never to type card numbers, PINs,
+OTPs or passwords), hoola_deliver (a file from its workspace, copied out and served to her), hoola_done (the result). Stop closes the
+stream (OpenClaw cancels the run). A server restart continues cut tasks. `/api/dod/*` (`api.py`): status, looks, profile, tasks,
+note, answer, stop, files - every task scoped to her account.
+
+Switches: DOD_ENGINE (default off), OPENROUTER_PROVISIONING_KEY, DOD_IMAGE, DOD_MODEL, DOD_KEY_LIMIT_USD, DOD_MEMORY, DOD_CPUS,
+DOD_MAX_AWAKE, DOD_IDLE_MIN, DOD_PORT_BASE, DOD_DATA_DIR. Not used from OpenClaw: its chat-app channels (its WhatsApp is WhatsApp Web),
+its Control UI, its update checks and telemetry.
+
+Tests `server/tests/test_v0999_306_dod.py` (6): the profile + 200 looks (bad names, unknown looks, path tricks refused; the main
+avatar untouched), the engine staying off and saying so (no docker call), one whole task on a fake Gateway + fake OpenRouter
+(steps, a pay question, a wrong hash / wrong answer refused, her yes, a file handed over, the result, what OpenClaw was sent, the
+docker run arguments and the config), her note reaching the next step + another user's task refused, the page source, and a real
+browser walk at 1440 and 390 (meet the coworker, give the task, approve, the result and the file). Fixed while building: `hidden`
+was overridden by the page's own display rules (empty boxes in the sidebar).
+
+NOT VERIFIED: against a real OpenClaw Gateway or a real OpenRouter provisioning key on her server (the fake follows OpenClaw's
+docs/gateway/openresponses-http-api.md; the config keys are from its docs and were not loaded by a real Gateway). Not built: a live
+view of the coworker's screen (the HTTP stream carries no tool events; that needs the Gateway WebSocket with device pairing), phone
+push when it needs her, connecting her Hoola accounts as an MCP server inside her OpenClaw, credits deducted from the key's usage.

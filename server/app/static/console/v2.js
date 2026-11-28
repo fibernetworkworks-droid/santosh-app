@@ -71,6 +71,7 @@ const APP_TOOLS = [['creative', 'Create', 'Pictures, videos, songs and voice-ove
   ['design', 'Design', 'Screens, posters and layouts'], ['prompting', 'Prompting', 'Turn a rough line into a clear brief'],
   ['code', 'Hoola Code', 'Changes to your code, as pull requests'], ['gamedev', 'Game Dev', 'Games built and tested for you'],
   ['route', 'Route', 'Jobs that run by themselves, on a schedule or a trigger'],   // v0.999.87 HOOLA ROUTE
+  ['dod', 'Hoola DOD', 'Your coworker does real work for you'],   // v0.999.306 HOOLA DOD
   ['connectors', 'Connectors', 'Your apps, MCP servers and public APIs']];
 const HOUR_WORD = h => h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
 function soFar(iso) {   // "6 min so far" from a server time
@@ -382,7 +383,8 @@ function navBadge(k) {
   const live = JOBS.length ? `<span class="lv txt" title="${JOBS.length} running now"><i></i>${JOBS.length}</span>` : '';
   return live + (QUEUE.length ? `<span class="ct txt" title="Waiting for your approval">${QUEUE.length}</span>` : '');
 }
-const IC_APP = {more: '<circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18.5" cy="12" r="1.3"/>',   // v0.976 More
+const IC_APP = {more: '<circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18.5" cy="12" r="1.3"/>',
+  dod: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/><path d="m17.5 3.5.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6z"/>',   // v0.999.306 HOOLA DOD   // v0.976 More
   aaj: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
   bana: '<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/>',
   main: '<path d="M4 9.5h16v9A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5Z"/><path d="M8.5 9.5V7a3.5 3.5 0 0 1 7 0v2.5"/>'};
@@ -391,7 +393,7 @@ function appNav() {   // v0.973 Claude's rows with Hoola's places: New chat + Se
   // any other page the old sidebar carried (Arena for the owner, Skills, AI Apps...) keeps its row before More
   // v0.976 her ask: AI Apps + Arena hidden for now; Work + Docs and files live under More
   const more = NAV.filter(([k]) => !own.includes(k) && !APP_HIDE.includes(k));
-  return [['hire', 'AI Employees'], ['kaam', 'Tools'], ['computer', 'Computer'], ...more, ['more', 'More']];   // v0.999.217 her ask: Customize lives in the profile menu now, not the sidebar
+  return [['hire', 'AI Employees'], ['kaam', 'Tools'], ['computer', 'Computer'], ['dod', 'Hoola DOD'], ...more, ['more', 'More']];   // v0.999.217 her ask: Customize lives in the profile menu now, not the sidebar
 }
 const APP_HIDE = ['aiapps', 'arena'];
 const APP_MORE = [['aaj', 'Work', 'briefcase'], ['bana', 'Docs and files', 'doc']];   // v0.976 the More menu
@@ -431,6 +433,7 @@ function go(v, arg) {
   if (v === 'flow') { location.assign('/console/flow' + (arg ? '#/t/' + encodeURIComponent(arg) : '')); return; }   // v0.777 Hoola Flow = its own page, like Wispr Flow
   if (v === 'code') { location.assign('/console/code' + (arg ? '#/s/' + encodeURIComponent(arg) : '')); return; }   // v0.768 Hoola Code = its own page with its own sidebar
   if (v === 'design') { location.assign('/console/design' + (arg ? '#/f/' + encodeURIComponent(arg) : '')); return; }   // v0.777 Hoola Design = its own app
+  if (v === 'dod') { location.assign('/console/dod' + (arg ? '#/t/' + encodeURIComponent(arg) : '')); return; }   // v0.999.306 HOOLA DOD = its own page
   if (v === 'computer') { location.assign('/console/computer' + (arg ? '#/' + encodeURIComponent(arg) : '')); return; }
   if (v === 'webdev') { location.assign('/console/web' + (arg ? '#/site/' + encodeURIComponent(arg) : '')); return; }   // v0.649 Web Studio = its own app
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
@@ -796,7 +799,7 @@ async function enter() {
   // employee's desk link here); only a view the console really has, else the chat stays
   try {
     const P = new URLSearchParams(location.search), want = (P.get('v') || '').replace(/[^a-z_]/g, '');
-    const OWN = ['creative', 'gamedev', 'appdev', 'prompting', 'flow', 'route', 'connectors', 'code', 'design', 'computer', 'webdev'];
+    const OWN = ['creative', 'gamedev', 'appdev', 'prompting', 'flow', 'route', 'connectors', 'code', 'design', 'computer', 'webdev', 'dod'];
     if (P.get('full') === '1') window.HOOLA_FULL_DESK = true;   // v0.999.38 the full ad editor of the old Social desk
     if (P.get('gconn')) window.HOOLA_GCONN = {ok: P.get('gconn') === 'ok', got: P.get('got') || '', miss: P.get('miss') || '', why: (P.get('why') || '').slice(0, 200)};   // v0.999.181 back from Google
     if (want && (OWN.includes(want) || $('#v-' + want))) { history.replaceState(null, '', '/console/'); go(want, (P.get('a') || '').slice(0, 60) || undefined); }
@@ -2504,9 +2507,9 @@ function usePrompt(id) {
 document.addEventListener('click', e => { const b = e.target.closest('[data-say]'); if (b) usePrompt(b.dataset.say); });
 function drawKaam(q = '') {
   const qq = q.trim().toLowerCase(), total = KAAM.reduce((n, g) => n + g[4].length, 0);
-  const studios = APPD ? APP_TOOLS.filter(([k]) => k === 'connectors' || k === 'route' || NAV.some(([n]) => n === k)) : [];
+  const studios = APPD ? APP_TOOLS.filter(([k]) => k === 'connectors' || k === 'route' || k === 'dod' || NAV.some(([n]) => n === k)) : [];
   $('#kaam').innerHTML = (studios.length ? `<div class="apphead"><h2>Tools</h2><p>Everything ${esc(AV)} can make with you, in one place.</p></div>
-    <div class="apptools">${studios.map(([k, n, l]) => `<button type="button" class="apptool" data-v="${k}"><span class="disc">${svg(IC[k] || IC.creative)}</span><b>${esc(n)}</b><span class="tl">${esc(l)}</span></button>`).join('')}</div>` : '')
+    <div class="apptools">${studios.map(([k, n, l]) => `<button type="button" class="apptool" data-v="${k}"><span class="disc">${svg(IC[k] || IC_APP[k] || IC.creative)}</span><b>${esc(n)}</b><span class="tl">${esc(l)}</span></button>`).join('')}</div>` : '')
     + `<div class="vh"><h2>What ${esc(AV)} can do</h2><span class="faint" style="font-weight:500">${total} jobs · a tap sends it to the real ${esc(AV)}</span></div>
     <label class="ksearch gl"><span aria-hidden="true">⌕</span><input id="kq" placeholder="Search: GST, reel, OTP, TV…" value="${esc(q)}" aria-label="Search"></label>
     <div class="kchips">${KAAM.map(g => `<a class="chip" href="#k-${g[0]}" style="text-decoration:none"><span>${g[1]}</span>${esc(g[2])}</a>`).join('')}</div>
