@@ -2196,6 +2196,15 @@ def qa_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/store")
+@app.get("/console/store/")
+def store_desk_page():
+    """MATERIAL STORE DESK: the Material Store Manager's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "storedesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(self), geolocation=()"})
+
+
 @app.get("/console/sre")
 @app.get("/console/sre/")
 def sre_desk_page():
@@ -3085,6 +3094,8 @@ from . import distchat as _dschat_mod                           # noqa: E402  DI
 _dschat_mod.mount(app, current_tenant, require_key)             # /api/dsdesk/*
 from . import srechat as _srchat_mod                            # noqa: E402  SRE DESK
 _srchat_mod.mount(app, current_tenant, require_key)             # /api/srdesk/*
+from . import storechat as _stchat_mod                          # noqa: E402  MATERIAL STORE DESK
+_stchat_mod.mount(app, current_tenant, require_key)             # /api/stdesk/*
 from . import virtchat as _vtchat_mod                           # noqa: E402  VIRTUALIZATION DESK
 _vtchat_mod.mount(app, current_tenant, require_key)             # /api/hvdesk/*
 from . import lowlatchat as _llchat_mod                          # noqa: E402  LOW LATENCY DESK

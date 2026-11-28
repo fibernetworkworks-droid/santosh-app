@@ -1836,6 +1836,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_src.block, tenant_id)
     except Exception:
         log.exception("sre desk block failed")
+    try:   # MATERIAL STORE DESK: a turn in the Store chat (or a call started from it) knows the store
+        from .. import storechat as _stc
+        if _stc.is_store(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_stc.block, tenant_id)
+    except Exception:
+        log.exception("store desk block failed")
     try:   # VIRTUALIZATION DESK: a turn in the Virtualization chat (or a call started from it) knows the desk
         from .. import virtchat as _vtc
         if _vtc.is_virt(conversation_id):
@@ -2935,6 +2941,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "sre desk chat"
     except Exception:
         log.exception("sre desk chat admission failed")
+    try:   # MATERIAL STORE DESK: the store tool in view in the Store chat
+        from .. import storechat as _stc
+        if adm is not None and _stc.is_store(conversation_id):
+            adm.admit_families(_stc.FAMILIES)
+            for f in _stc.FAMILIES:
+                adm.why[f] = "store desk chat"
+    except Exception:
+        log.exception("store desk chat admission failed")
     try:   # VIRTUALIZATION DESK: the virtualization tool in view in the Virtualization chat
         from .. import virtchat as _vtc
         if adm is not None and _vtc.is_virt(conversation_id):

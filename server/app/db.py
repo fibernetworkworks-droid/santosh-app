@@ -1026,6 +1026,7 @@ def init_db(url: str | None = None):
     from .dbdesk import service as _dbdesk  # noqa: F401  (v0.999.280 the Database Engine Developer)
     from .distdesk import service as _distdesk  # noqa: F401  (v0.999.283 the Distributed Systems Engineer)
     from .sredesk import service as _sredesk  # noqa: F401  (v0.999.285 the Site Reliability Engineer)
+    from .storedesk import models as _storedesk  # noqa: F401  (MATERIAL STORE DESK)
     from .virtdesk import service as _virtdesk  # noqa: F401  (v0.999.286 the Virtualization / Hypervisor Engineer)
     from .lldesk import service as _lldesk  # noqa: F401  (v0.999.288 the Backend Systems Engineer (Low Latency))
     from .mfdesk import service as _mfdesk  # noqa: F401  (v0.999.291 the Mainframe Modernization Architect)
