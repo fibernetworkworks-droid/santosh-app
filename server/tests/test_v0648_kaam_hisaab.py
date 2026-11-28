@@ -113,7 +113,7 @@ def test_a_call_records_notification_opens_that_call(env):
 def test_phone_opens_the_call_from_the_notification():
     kt = (ROOT / "tool/android/kotlin/Notify.kt").read_text()
     assert 'ACTION_OPEN_CONV = "com.newtika.santosh.OPEN_CONV"' in kt and "openConv(ctx, conv)" in kt
-    assert 'd["open_conv"] ?: ""' in (ROOT / "tool/android/kotlin/SantoshPush.kt").read_text()
+    assert 'd["open_conv"]?.takeIf { it.isNotEmpty() }' in (ROOT / "tool/android/kotlin/SantoshPush.kt").read_text()   # a call record still wins (v0.999.320 adds DOD pages after it)
     ma = (ROOT / "tool/android/kotlin/MainActivity.kt").read_text()
     assert "action == Notify.ACTION_OPEN_CONV" in ma and '"conv:$conv"' in ma
     dart = (ROOT / "lib/main.dart").read_text()

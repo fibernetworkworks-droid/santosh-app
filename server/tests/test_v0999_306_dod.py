@@ -556,3 +556,27 @@ def test_a_newer_pinned_image_gets_a_new_container_on_the_same_state(dod, monkey
     run = [c for c in calls if c[0] == "run" and "-d" in c][0]
     from app.config import get_settings
     assert run[-1] == get_settings().dod_image and GW._row(t).image == get_settings().dod_image
+
+
+def test_her_dod_notification_opens_that_task_page_on_the_phone():
+    """v0.999.320: tapping 'X needs your OK' opens the task on the Hoola DOD page, not the chat."""
+    from app import push
+    ev = {"kind": "dod_ask", "id": 7, "at": "", "payload": {"name": "Ananya", "kind": "pay", "question": "Pay Rs 549?",
+                                                            "task": "dt_abc-1"}}
+    data = push.build("tok", ev, "Hoola")["message"]["data"]
+    assert data["open_page"] == "/console/dod#/t/dt_abc-1" and "Ananya needs your OK" in data["title"]
+    bad = push.build("tok", {**ev, "payload": {**ev["payload"], "task": "x/../../y?z"}}, "Hoola")["message"]["data"]
+    assert bad["open_page"] == "/console/dod#/t/xyz"         # nothing but the id rides the link
+    root = Path(__file__).resolve().parents[2]
+    kt = (root / "tool/android/kotlin/SantoshPush.kt").read_text(encoding="utf-8")
+    assert 'd["open_page"]' in kt and 'startsWith("/console/")' in kt
+    assert 'conv.startsWith("page:")' in (root / "tool/android/kotlin/MainActivity.kt").read_text(encoding="utf-8")
+    dart = (root / "lib/main.dart").read_text(encoding="utf-8")
+    assert "t.startsWith('page:/console/')" in dart and "hoolaOpenConsole(ctx, widget.app, t.substring(5)" in dart
+
+
+def test_the_voice_she_picked_reads_the_question_and_the_answer():
+    js = (Path(__file__).resolve().parents[1] / "app/static/console/dod.js").read_text(encoding="utf-8")
+    assert "function speak(text, voice)" in js and "ST.profile.voice" in js
+    assert 'data-say="q"' in js and 'data-say="r"' in js and "speak(SAY[b.dataset.say])" in js
+    assert "speak(`Hi, I'm ${nameOf()}. Ready when you are.`, voice)" in js

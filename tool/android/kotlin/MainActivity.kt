@@ -526,7 +526,7 @@ class MainActivity : FlutterActivity() {
             val conv = intent!!.getStringExtra("conv") ?: ""
             intent.action = null
             if (conv.isNotEmpty()) {
-                val msg = "conv:$conv"
+                val msg = if (conv.startsWith("page:")) conv else "conv:$conv"   // v0.999.320 a Hoola page (DOD task)
                 val sink = linkSink
                 if (sink != null) main.post { sink.success(msg) } else pendingLink = msg
             }
