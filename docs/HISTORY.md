@@ -14231,3 +14231,30 @@ NOT VERIFIED: on her server, with her own pipelines, SBOMs and repositories, or 
 
 ## v0.999.317 CODE FLOW CHECK
 (owner: 'NOW CHECK ALL HOOLA CODE'). Probe: 14 asks through guess_kind / plan.assess / superpowers.pick / eccskills.for_words + the fixed prompt size. Files: server/app/devsahayak/service.py (_TESTS_PHRASE, _SYMPTOM, _BUILD_ASK, guess_kind), server/app/devsahayak/eccskills.py (WORDS). Tests: test_v0999_317_code_flow.py (16). NOT VERIFIED: no live coding round (needs the model key on her server: vps-ops code_card_hard).
+
+## v0.999.318 HOOLA DOD END TO END (owner: "IS ALL HOOLA DOD -- IS WIRED WITH OPEN CLAW IN BACKEND PROPERLY AND END TO END CHECK")
+
+Static: every call the page makes (`dod.js`: status, tasks list, looks, profile, create, note, one task, stop, answer, screen, files, plus the
+look pictures) has its route in `dod/api.py` - 11 of 11.
+
+Real run (`/tmp` scripts, not committed): the official `ghcr.io/openclaw/openclaw:2026.11.10-browser` in Docker, Hoola's real server, Hoola's
+OWN `gateway.ensure` creating the network and container (only `config_for` gained a scripted model provider, and `OPENROUTER` pointed at a
+fake key API). Driven only through the page's routes: profile, task A (Hoola MCP tool from inside the container, step, the browser, a file
+written and handed over, the pay question, phone push, live screen, wrong hash refused, her note, her yes, done, credits charged, MCP refused
+from outside her subnet), sleep_idle -> asleep, task B wakes it, `docker kill` -> task C comes back, Stop. 34 of 34.
+
+Found and fixed (each seen only on the real image):
+1. A hard kill (VPS reboot, memory cap, crash) leaves OpenClaw's state lock + its SQLite owner lease; the next start waits on the dead
+   owner and never comes up ("cannot verify Gateway ownership"). `gateway.recover_lock`: when her container is not running, run
+   `openclaw gateway recover-lock --json` in a one-off container (`--network none`, her uid, her folder) and confirm exactly the record it
+   names. Deleting files would not be enough (the lease is in the database).
+2. Chrome's SingletonLock names the container that made it; a new container cannot start the browser ("Chromium profile lock names another
+   hostname"). Its three lock links are removed while her container is stopped; the profile stays. A newer pinned `dod_image` now gets a new
+   container on the same folder (`docker start` kept the old image for ever).
+3. OpenClaw's Tool Search hid the `browser` tool; `tools.toolSearch.exclude` gains `{source: openclaw, name: browser}` (docs/tools/tool-search.md).
+Also: a step "Starting its computer" while the Gateway starts. Each start here took ~5 minutes, mostly the doctor trying to npm-install the
+Perplexity web-search plugin OpenClaw wants once it sees an OpenRouter key; this sandbox blocks npm (self-signed proxy). On a server with
+npm it should install once into her folder - not measured.
+
+NOT VERIFIED: her VPS with a real model and real OpenRouter keys; the start time there; a real website in its browser (here every https
+page fails on the sandbox proxy's certificate - the browser itself started and the screen picture came back).
