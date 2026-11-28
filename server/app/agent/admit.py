@@ -260,6 +260,13 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                "roboflow", "cvat", "label studio", "image classifier", "image classification", "confusion matrix", "segmentation", "opencv",
                "camera calibration", "camera_info", "intrinsics", "field of view", "focal length", "pixels per", "lens for", "motion blur",
                "depth of field", "stereo camera", "disparity", "tensorrt", "onnx", "openvino", "jetson", "inference fps", "frames per second", "nms"),
+    # v0.999.304 the Platform Engineer: her platform words
+    "platform": ("platform engineer", "platform engineering", "terraform", "opentofu", "terraform plan", "tf plan", "tfplan", "infrastructure as code",
+                 "iac", "prevent_destroy", "forces replacement", "must be replaced", "rightsizing", "right-size", "rightsize", "requests and limits",
+                 "resource requests", "cpu request", "memory request", "memory limit", "oomkilled", "oom killed", "cpu throttling", "throttled",
+                 "node pool", "nodepool", "cluster capacity", "bin packing", "daemonset", "cluster autoscaler", "karpenter", "backstage",
+                 "catalog-info", "service catalog", "golden path", "scorecard", "developer portal", "kubernetes upgrade", "k8s upgrade",
+                 "deprecated api", "removed api", "apiversion", "eks upgrade", "gke upgrade", "aks upgrade", "helm template", "pluto"),
     # v0.999.303 the Data Engineer: her data pipeline words
     "dataeng": ("data engineer", "data engineering", "data pipeline", "etl", "elt", "airflow", "dag", "dbt", "dagster", "prefect", "spark job",
                 "critical path", "schema change", "breaking change", "data contract", "schema drift", "reconcile", "reconciliation",

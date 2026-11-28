@@ -1872,6 +1872,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_cvc.block, tenant_id)
     except Exception:
         log.exception("vision desk block failed")
+    try:   # PLATFORM ENGINEER DESK: a turn in the Platform chat (or a call started from it) knows the desk
+        from .. import pfchat as _pfc
+        if _pfc.is_platform(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_pfc.block, tenant_id)
+    except Exception:
+        log.exception("platform desk block failed")
     try:   # DATA ENGINEER DESK: a turn in the Data chat (or a call started from it) knows the desk
         from .. import dechat as _dec
         if _dec.is_dataeng(conversation_id):
@@ -2959,6 +2965,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "vision desk chat"
     except Exception:
         log.exception("vision desk chat admission failed")
+    try:   # PLATFORM ENGINEER DESK: the platform tool in view in the Platform chat
+        from .. import pfchat as _pfc
+        if adm is not None and _pfc.is_platform(conversation_id):
+            adm.admit_families(_pfc.FAMILIES)
+            for f in _pfc.FAMILIES:
+                adm.why[f] = "platform desk chat"
+    except Exception:
+        log.exception("platform desk chat admission failed")
     try:   # DATA ENGINEER DESK: the data tool in view in the Data chat
         from .. import dechat as _dec
         if adm is not None and _dec.is_dataeng(conversation_id):
