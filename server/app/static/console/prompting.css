@@ -164,3 +164,4 @@ body.hp-page{background:#fff;font-family:"Schibsted Grotesk",system-ui,sans-seri
 /* P11 BAHAR: the copy panel for tools outside Hoola */
 .hp-out{margin-top:12px;display:grid;gap:10px}
 .hp-out .hp-pre{max-height:320px;overflow:auto}
+.hp-wseg{margin:4px 0 12px}

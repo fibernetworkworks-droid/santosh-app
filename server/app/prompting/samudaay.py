@@ -91,6 +91,30 @@ def problems(brief: dict[str, Any]) -> list[str]:
     return list(dict.fromkeys(out))
 
 
+def _pool(skip: str = "") -> list[dict[str, str]]:
+    """Everything a new community recipe could be a copy of: Hoola's starters, the World prompts shelf, community
+    recipes on the shelf or waiting for review."""
+    from . import recipes as R
+    out = [{"id": r["id"], "title": r["title"], "text": r["intent"]} for r in R.RECIPES]
+    try:
+        from . import world as W
+        out += W.texts()
+    except Exception:       # noqa: BLE001
+        pass
+    with session() as s:
+        q = select(CommunityRecipe).where(CommunityRecipe.status.in_(("approved", "submitted")))
+        for c in s.execute(q).scalars():
+            if c.id != skip:
+                out.append({"id": PREFIX + c.id, "title": c.title, "text": _text_of(json.loads(c.brief or "{}"))})
+    return out
+
+
+def similar(brief: dict[str, Any], skip: str = "") -> list[dict[str, Any]]:
+    """Recipes this one is close to (dupe.CLOSE and up), best first."""
+    from . import dupe as DU
+    return DU.closest(_text_of(brief), _pool(skip))
+
+
 def _as_recipe(brief: dict[str, Any]) -> dict[str, Any]:
     """Her saved brief -> a recipe brief: parts from her business memory dropped (they are who she is), every kept part
     marked as the recipe's."""
@@ -127,6 +151,11 @@ def submit(tenant: str, saved_id: str, title: str = "", makes: str = "", by: str
     bad = problems(rec)
     if bad:
         raise CommunityError("This prompt cannot be offered to everyone: " + "; ".join(bad) + ".")
+    from . import dupe as DU
+    near = similar(rec)
+    if near and near[0]["score"] >= DU.SAME:
+        raise CommunityError(f'This is almost the same as "{near[0]["title"]}", which is already a recipe. '
+                             "Change what makes yours different, then offer it again.")
     with session() as s:
         open_n = sum(1 for _ in s.execute(select(CommunityRecipe.id).where(
             CommunityRecipe.tenant_id == tenant, CommunityRecipe.status == "submitted")))
@@ -160,16 +189,19 @@ def withdraw(tenant: str, cid: str) -> dict[str, Any]:
 
 
 def review_list() -> list[dict[str, Any]]:
-    """The owner's queue: everything waiting, with what a reader would see."""
+    """The owner's queue: everything waiting, with what a reader would see and what it is close to. Recipes with a
+    near copy already on a shelf go to the end, so the new ones are read first."""
+    from . import dupe as DU
     ensure_table()
     with session() as s:
         q = select(CommunityRecipe).where(CommunityRecipe.status == "submitted").order_by(CommunityRecipe.created_at)
-        out = []
-        for c in s.execute(q).scalars():
-            v = _view(c, full=True)
-            v["problems"] = problems(v["brief"])
-            out.append(v)
-        return out
+        out = [_view(c, full=True) for c in s.execute(q).scalars()]
+    for v in out:
+        v["problems"] = problems(v["brief"])
+        v["similar"] = similar(v["brief"], skip=v["id"].removeprefix(PREFIX))
+        v["copy_of"] = v["similar"][0] if v["similar"] and v["similar"][0]["score"] >= DU.SAME else None
+    out.sort(key=lambda v: 1 if v["copy_of"] else 0)
+    return out
 
 
 def decide(cid: str, action: str, reason: str = "") -> dict[str, Any]:
