@@ -120,7 +120,10 @@ def config_for(token: str, key: str, model: str, mcp_token: str = "", mcp_url: s
                   # OpenClaw hides most tool schemas behind its Tool Search; Hoola's own tools (hoola_step / hoola_ask /
                   # hoola_deliver / hoola_done, sent with each run) and her Hoola accounts (MCP hoola__*) stay directly
                   # visible to the model, so every step and every yes really goes through Hoola (seen on a real Gateway)
-                  "toolSearch": {"mode": "tools", "exclude": [{"source": "client"}, {"source": "mcp", "name": "hoola__*"}]}},
+                  # and so does the browser: browser jobs are most of her tasks, and on a real Gateway Tool Search had
+                  # hidden it from the model (docs/tools/tool-search.md: "exclude" keeps a tool model-visible)
+                  "toolSearch": {"mode": "tools", "exclude": [{"source": "client"}, {"source": "mcp", "name": "hoola__*"},
+                                                              {"source": "openclaw", "name": "browser"}]}},
     }
     if mcp_token and mcp_url:
         # her Hoola accounts (Gmail, Drive, Calendar, Sheets, Docs, her memory) as an MCP server - read-only tools,

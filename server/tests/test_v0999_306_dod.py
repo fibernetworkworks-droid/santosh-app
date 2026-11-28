@@ -356,6 +356,7 @@ def test_the_config_a_real_gateway_accepts():
     assert c["browser"]["noSandbox"] is True, "Chrome cannot start its own sandbox inside Docker (seen on the -browser image)"
     ts = c["tools"]["toolSearch"]
     assert {"source": "client"} in ts["exclude"] and {"source": "mcp", "name": "hoola__*"} in ts["exclude"]
+    assert {"source": "openclaw", "name": "browser"} in ts["exclude"], "the browser stays visible to the model (a real Gateway hid it)"
     srv = c["mcp"]["servers"]["hoola"]
     assert srv["transport"] == "streamable-http" and srv["headers"]["Authorization"] == "Bearer mcp-tok"
     assert "mcp" not in config_for("tok", "k", "m"), "no MCP entry without Hoola's address"
