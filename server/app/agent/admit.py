@@ -260,6 +260,12 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                "roboflow", "cvat", "label studio", "image classifier", "image classification", "confusion matrix", "segmentation", "opencv",
                "camera calibration", "camera_info", "intrinsics", "field of view", "focal length", "pixels per", "lens for", "motion blur",
                "depth of field", "stereo camera", "disparity", "tensorrt", "onnx", "openvino", "jetson", "inference fps", "frames per second", "nms"),
+    # v0.999.299 the Machine Learning Engineer: her ML words
+    "ml": ("machine learning", "ml model", "ml engineer", "mlops", "training log", "training loss", "val_loss", "validation loss", "overfitting", "overfit",
+              "underfitting", "early stopping", "learning rate", "epochs", "fine-tune", "fine tune", "finetune", "lora", "qlora", "feature engineering",
+              "data leakage", "target leakage", "data drift", "concept drift", "population stability", "psi", "kolmogorov", "feature drift",
+              "rmse", "mae", "mape", "wape", "mase", "r squared", "forecast accuracy", "regression model", "xgboost", "lightgbm", "scikit",
+              "sklearn", "pytorch", "tensorflow", "keras", "hugging face", "vram", "gpu memory", "kv cache", "how many gpus", "gpu hours", "mlflow"),
     # v0.999.283 the Distributed Systems Engineer: her distributed-systems words
     "dist": ("distributed system", "linearizab", "linearisab", "jepsen", "quorum", "consensus", "raft", "paxos", "split brain", "split-brain",
              "exponential backoff", "retry policy", "retry storm", "thundering herd", "idempotency", "idempotent", "failover", "fencing token",

@@ -1288,6 +1288,10 @@ from .vision_tools import VISION_HANDLERS, VISION_LABELS, VISION_TOOLS  # noqa: 
 TOOLS.extend(VISION_TOOLS)
 TOOL_LABELS.update(VISION_LABELS)
 HANDLERS.update(VISION_HANDLERS)
+from .ml_tools import ML_HANDLERS, ML_LABELS, ML_TOOLS  # noqa: E402
+TOOLS.extend(ML_TOOLS)
+TOOL_LABELS.update(ML_LABELS)
+HANDLERS.update(ML_HANDLERS)
 # v0.357 Engineering Desk: the hired CAD Engineer (cad_part)
 from .eng_tools import ENG_HANDLERS, ENG_LABELS, ENG_TOOLS  # noqa: E402
 

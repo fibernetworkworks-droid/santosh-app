@@ -2214,6 +2214,15 @@ def mainframe_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/ml")
+@app.get("/console/ml/")
+def ml_desk_page():
+    """ML DESK: the Machine Learning Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "mldesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/vision")
 @app.get("/console/vision/")
 def vision_desk_page():
@@ -3034,6 +3043,8 @@ from . import robochat as _rbchat_mod                           # noqa: E402  RO
 _rbchat_mod.mount(app, current_tenant, require_key)              # /api/rbdesk/*
 from . import cvchat as _cvchat_mod                             # noqa: E402  VISION DESK
 _cvchat_mod.mount(app, current_tenant, require_key)              # /api/cvdesk/*
+from . import mlchat as _mlchat_mod                             # noqa: E402  ML DESK
+_mlchat_mod.mount(app, current_tenant, require_key)              # /api/mldesk/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

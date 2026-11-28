@@ -1031,6 +1031,7 @@ def init_db(url: str | None = None):
     from .emdesk import service as _emdesk  # noqa: F401  (v0.999.294 the Embedded Systems Engineer)
     from .rbdesk import service as _rbdesk  # noqa: F401  (v0.999.295 the Robotics Software Engineer)
     from .cvdesk import service as _cvdesk  # noqa: F401  (v0.999.298 the Computer Vision Engineer)
+    from .mldesk import service as _mldesk  # noqa: F401  (v0.999.299 the Machine Learning Engineer)
     from .engineering import service as _engineering  # noqa: F401  (v0.357 Engineering Desk)
     from .bahi import models as _bahi_models  # noqa: F401  (v0.807 BAHI - the GST & Accounts employee, A0)
     from .fin import models as _fin_models  # noqa: F401  (F0 of FINANCE_GLOBAL_PLAN - the finance data spine)
