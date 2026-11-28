@@ -467,9 +467,58 @@ def _write(r: AppProject, rel: str, code: str) -> dict[str, Any]:
     schedule_build(r.tenant_id, r.id)
     import difflib
     diff = "".join(difflib.unified_diff((old or "").splitlines(True), code.splitlines(True), f"a/{rel}", f"b/{rel}", n=2))
-    return {"file": rel, "new": old is None, "changed": old != code, "diff": diff[:12000], "revision": revision_of(code),
-            "say": (f"{'Made' if old is None else 'Changed'} {rel}. The preview rebuilds in a few seconds "
-                    "(action=build waits for it and tells you if it failed).")}
+    res = {"file": rel, "new": old is None, "changed": old != code, "diff": diff[:12000], "revision": revision_of(code),
+           "say": (f"{'Made' if old is None else 'Changed'} {rel}. The preview rebuilds in a few seconds "
+                   "(action=build waits for it and tells you if it failed).")}
+    ux = ux_check(rel, code)                         # v0.999.329 UX rules a computer can see: told, never refused
+    if ux:
+        res["ux"] = ux
+        res["say"] += " UX check (fix these): " + "; ".join(ux[:4]) + "."
+    return res
+
+
+def ux_check(rel: str, code: str) -> list[str]:
+    """v0.999.329 the design database's UX rules a computer can check in a page or section file (paste blocked, the
+    submit button disabled until valid, fields with no label, an email / phone box of the wrong type, a map with its
+    attribution or keyboard off). The kit's own ui parts are not checked: they are building blocks, not pages."""
+    if not rel.endswith((".tsx", ".jsx", ".html")) or rel.startswith(("src/components/ui/", "src/components/effects/")) \
+            or RL.is_test(rel):
+        return []
+    try:
+        from ..coder import uxrules as UX
+        return UX.code_problems(code)
+    except Exception:                                # noqa: BLE001 - a rule reader never blocks a write
+        log.debug("ux check failed", exc_info=True)
+        return []
+
+
+def ux_block(r: AppProject) -> str:
+    """v0.999.329 the UX rules for what THIS app holds (its pages and sections, not the kit), for Hoola's per-turn
+    summary: form rules when it has a form, map rules when it has a map."""
+    try:
+        from ..coder import uxrules as UX
+    except Exception:                                # noqa: BLE001
+        return ""
+    root = src_dir(r)
+    text = []
+    mine = []
+    for f in sorted((root / "src").rglob("*.tsx")) if (root / "src").is_dir() else []:
+        rel = f.relative_to(root).as_posix()
+        if rel.startswith(("src/components/ui/", "src/components/effects/")) or RL.is_test(rel):
+            continue
+        t = TEMPLATE / rel
+        try:
+            if t.is_file() and t.read_bytes() == f.read_bytes():
+                continue                             # a kit file as the template made it is not her app's content
+        except OSError:
+            pass
+        mine.append(f)
+    for f in mine[:120]:
+        try:
+            text.append(f.read_text("utf-8", "replace")[:20000])
+        except OSError:
+            pass
+    return UX.block(UX.topics_of("\n".join(text)), limit=1100)
 
 
 def write(tenant: str, ref: str, path: str, code: str, expect: str | None = None) -> dict[str, Any]:
@@ -1584,7 +1633,8 @@ def prompt_block(tenant: str) -> str:
             "src/components/ui; packages only from the vetted list; no outside address (data comes through "
             "src/lib/hoola.ts, which is not connected yet - keep data on the page and say so). After changes, call "
             "action=build and read the result before you say it is done. Going live is HER tap in the Studio.\n"
-            f"Packages: {', '.join(deps)}\nFiles: {', '.join(files)}\n{kit_line}{REACT_PARTS}\nAGENTS.md:\n{agents}\n</app_engine_project>")
+            f"Packages: {', '.join(deps)}\nFiles: {', '.join(files)}\n{kit_line}{REACT_PARTS}\n"
+            + (ux + "\n" if (ux := ux_block(r)) else "") + f"AGENTS.md:\n{agents}\n</app_engine_project>")
 
 
 # v0.999.326 what each React part added from the awesome-react read is FOR (every app has them, old apps too)

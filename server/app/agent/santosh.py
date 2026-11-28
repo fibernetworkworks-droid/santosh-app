@@ -9,7 +9,6 @@ import time
 import json
 import logging
 from collections import defaultdict
-from pathlib import Path
 from datetime import datetime, timedelta
 
 from sqlalchemy import select
@@ -437,7 +436,6 @@ TRIM_STATS: dict[str, int] = {"lists": 0, "cut": 0}
 
 # v0.473 R2: the research dossier IS the evidence (its source list ends it), so it is not cut at the usual 6,000 characters
 RESULT_LIMIT = {"research_run": 40000,
-                "diagram": 70000,       # HOOLA DIAGRAM: an engine guide (its rules + schema + example) is read whole
                 "web_fetch": 12000,     # Parity Phase 3: the one web reader returns up to 10,000 characters of page text
                 "email_check": 12000,   # v0.706 slimmed rows: 20-40 mails fit, the model no longer sees 6 of 50
                 # v0.997 her files ARE the evidence: a PDF's 15,000 characters were cut to 6,000 before the model saw
@@ -464,25 +462,6 @@ def tool_failure(out) -> str:
                 return str(out[k])[:300]
         return "the tool said it did not succeed"
     return ""
-
-
-def _look_block(out) -> dict | None:
-    """HOOLA DIAGRAM: a tool result may carry `_look` = the path of a picture the model should SEE (a drawn diagram).
-    It is taken out of the result (so it is never stringified) and returned as one image block; None otherwise.
-    Only files under data/ are read, at most 3 MB; a model path that cannot read pictures keeps just the text."""
-    if not isinstance(out, dict) or "_look" not in out:
-        return None
-    p = out.pop("_look", None)
-    try:
-        f = Path(str(p or "")).resolve()
-        if Path("data").resolve() not in f.parents or not f.is_file() or f.stat().st_size > 3_000_000:
-            return None
-        media = "image/jpeg" if f.suffix.lower() in (".jpg", ".jpeg") else "image/png"
-        import base64 as _b64
-        return {"type": "image", "source": {"type": "base64", "media_type": media,
-                                            "data": _b64.b64encode(f.read_bytes()).decode("ascii")}}
-    except Exception:  # noqa: BLE001
-        return None
 
 
 def _facts_of(content) -> str:
@@ -3566,7 +3545,6 @@ async def _turn_tools(t: "_Turn", blocks: list):
                 out = await _watched(_run_tool(b["name"], args_in, ctx, settings, mcp_route) if t.tool_runner is None
                                      else t.tool_runner(b, args_in, ctx, settings, mcp_route), conversation_id, ctx, state)
                 _PROGRESS[conversation_id] = time.time()   # v0.311 the turn is moving (read by _with_deadline)
-                _look = _look_block(out)    # HOOLA DIAGRAM: the drawn picture rides as an image, never as text
                 _fail = tool_failure(out)   # v0.665 {"ok": False} / status failed is a failure too, not only "error"
                 fine = not _fail
                 breaker.after(b["name"], fine)
@@ -3601,10 +3579,6 @@ async def _turn_tools(t: "_Turn", blocks: list):
                             live.feed_say(_s)
                 except Exception:
                     log.debug("say line failed", exc_info=True)
-                if _look:
-                    return {"type": "tool_result", "tool_use_id": b["id"],
-                            "content": [{"type": "text", "text": content if isinstance(content, str) else str(content)},
-                                        _look]}
                 return {"type": "tool_result", "tool_use_id": b["id"], "content": content}
             except asyncio.CancelledError:
                 # v0.668 the turn's time limit (or a stop) cancelled this step: say so on the step card before the

@@ -21,11 +21,14 @@ WORKFLOW:
    and a product query like "beauty spa wellness service" (+ project name). It
    returns pattern, style, colors, typography, effects and anti-patterns. USE
    that output as the design tokens - never invent a competing palette.
+   Dials when she gives a feel: variance / motion / density 1-10. tokens=css
+   hands back the CSS variables; preview=true puts a preview page in her chat
+   (direction=rtl for Arabic / Hebrew / Urdu).
 3. One focused concern: uiux_design with domain (style, color, typography,
    google-fonts, ux, chart, landing, icons, gsap, react, web, product,
    app-interface). Keep ONE intent and 2-5 meaningful words per query.
 4. Framework question: uiux_design with stack (react, nextjs, flutter,
-   jetpack-compose, swiftui, html-tailwind, shadcn, vue, svelte - 22 total).
+   jetpack-compose, swiftui, html-tailwind, shadcn, vue, svelte, pyside6-qss - 23 total).
 
 LAWS (the database advises, the owner decides):
 - 0 results: retry ONCE with narrower words; still nothing - SAY the advice is
@@ -38,6 +41,8 @@ LAWS (the database advises, the owner decides):
 - Mobile-first: no horizontal scroll, no fixed px widths, zoom stays on.
 - Motion conveys meaning, honours reduced-motion, exits faster than it enters.
 - Charts need legend + tooltip and never color alone.
+- Forms: keep her input after a failed submit, never block paste, errors say
+  how to fix it. Maps: attribution visible, a list beside the map.
 
 BEFORE delivering app UI: icons consistent, touch feedback on every tappable,
 dark-mode contrast checked, safe-area padding, keyboard tab order clean.

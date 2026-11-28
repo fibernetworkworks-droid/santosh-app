@@ -14634,5 +14634,49 @@ Built as the seven parts of the workflow in one release (v0.999.328; main had mo
 - NOT VERIFIED: on her server, with real delivery papers or weighbridge tickets, or on her phone; country rows not read from their primary texts stay "check this".
 
 
-## v0.999.329 HOOLA DIAGRAM D2
-(owner: 'GO D2'). Files: server/app/diagram/service.py (NEW), server/app/agent/diagram_tools.py (NEW), agent/tools.py (registered), agent/admit.py (EXTRA_KEYS diagram), agent/pakka.py (SKIP diagram), agent/santosh.py (_look_block + the image-carrying tool_result in _turn_tools, RESULT_LIMIT diagram 70000, Path import), artifacts.py (save_built, write refuses kind diagram), diagram/runners.py (absolute out dir). Found while building: (1) archify's built page is ~945 KB (its viewer runtime + fonts inline), over the 600 KB cap of a model-written page - engine-built pages get their own 3 MB cap; (2) archify was handed relative paths while it ran inside its work folder - ENOENT on a doubled path, now absolute; (3) archify and diagram-design both have a 'waterfall' (time spans vs a money bridge) - the money bridge is 'budget-bridge' in the catalogue; (4) tool results were text only everywhere - the picture is an image block only on the main chat loop; team crews see the path text.
+## v0.999.329 UI/UX PRO MAX UPDATED + THE UX RULES WHERE THINGS ARE BUILT
+
+Owner: read github.com/nextlevelbuilder/ui-ux-pro-max-skill again (upstream 11ca2b3, 27 Nov 2026, MIT), then
+"GO BUILD 1 2 3 4" on the four points of the read.
+
+1. **The engine brought up to date.** `server/app/coder/uiux/` scripts + data = upstream 11ca2b3, unchanged (33 commits
+   after 6ae86f6): 141 UX rules (new: form errors 131-141 - keep her input after a failed submit, never block paste,
+   errors that say how to fix, no pre-disabled submit, unsaved-changes warning, forgiving formats; web maps 121-130 -
+   attribution visible, a text alternative, keyboard, colour-safe symbols, safe popups, clustering, reduced motion),
+   2 palettes + 2 product types (GIS, satellite imagery), 3 always-on motion presets, the PySide6 / Qt stack (23
+   stacks), `preview.py`, `--tokens css|dtcg`, exact hex palette lookup, `--lang` / `--direction` previews and Arabic
+   query synonyms, the dark-mode word-start fix. PROVENANCE.md records it; `phosphor-icons-upstream.json`, the
+   upstream tests and `validate_data.py` stay out (not read at runtime). The other six skills in the repo (logo /
+   brand identity generators, slides, banners, shadcn styling) were not brought in: outside keys, or Hoola already has
+   them.
+2. **The rules reach the builders** (`server/app/coder/uxrules.py`, no model call, no subprocess):
+   `topics_of` reads what a section or file holds (forms, maps, data maps, dialogs; `.map(` in code is not a map),
+   `block` gives each topic an even share of a short rule list (forms in the order that matters most: labels, error
+   placement, actionable errors, keep input, clear errors, submit feedback, no pre-disabled submit, paste, input
+   types...), `code_problems` checks in code what a computer can see for sure.
+   - the React writer's custom sections (`writer.ux_rules`) and the HTML section writer (`site.service._ux_rules`)
+     get the rules for what the section holds;
+   - Hoola's per-turn App Engine summary (`service.ux_block`) carries the rules for what HER app holds (its pages and
+     sections; kit files as the template made them do not count);
+   - every App Engine page write runs `service.ux_check` and names what it finds ("UX check (fix these): ...") - told,
+     never refused; the kit's ui parts are building blocks and are not checked;
+   - the critic (`critic.ux_text`) gets the rules for what the pages hold, to judge only what the screenshots show,
+     and `critic.ux_measure` code-checks every custom section: a problem is a fact, the section goes back to its
+     writer as a rewrite with the rule named.
+   The kit's board block (`screen-board.tsx`) pre-disabled its add button until a title was typed; it now stays enabled
+   and says "Type a card title first." (role=alert, aria-invalid). Every kit page file passes the checks (tested).
+3. **uiux_design passes what the engine can do**: variance / motion / density 1-10 (a bad dial is left out, never
+   guessed), `tokens=css|dtcg`, `preview=true` (written inside her vault - `previews/<stamp>/` or beside MASTER.md when
+   persisted, never overwritten - then stored as a chat file and sent as the house pc_file card; a path outside her
+   vault is never shared), `lang` / `direction=rtl`, `stack=pyside6-qss`. Options that need a design system are refused
+   without one. The seed skill names them and the form / map rules.
+4. **Hoola's own map screens**: the console's riders map is a labelled region with the riders named beside it (kept in
+   step with the live positions) and keyboard-focusable markers (Enter / Space opens the name); the phone kit's map
+   (`Track.kt`) is a region with keyboard markers and its pins' names read by TalkBack (`semantics { contentDescription }`);
+   a website's map, once loaded on her tap, keeps the address and the Google Maps link beside it in a caption and its
+   frame is titled with the address. Attribution stays visible (MapLibre's compact control opens on load) and popups
+   stay text.
+
+Tests: `server/tests/test_v0999_329_uiux_rules.py` 11; `test_v0486_hoola_uiux_skill.py` stack count 22 -> 23 and
+`test_v0753_skill_triggers.py` still finds 6ae86f6 in PROVENANCE (history kept). NOT VERIFIED on her server, with a
+real model writing a section, or the Kotlin map change compiled (CI compiles the kit with a built app).

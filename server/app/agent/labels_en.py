@@ -677,5 +677,4 @@ LABELS_EN = {
     'youtube_video': 'Checking the video',
     'youtube_watch': 'Watching the video to understand it',
     'zoo': 'Working in the model zoo (BYOK)',
-    'diagram': 'Drawing the diagram',   # HOOLA DIAGRAM
 }

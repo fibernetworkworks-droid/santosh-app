@@ -119,7 +119,7 @@ def archify_finalize(kind: str, candidate: dict[str, Any] | str | Path, out_dir:
     if not node:
         return {"ok": False, "gates": {}, "html": "", "problems": ["node >= 18 is not installed on the server"],
                 "said": "archify needs Node 18 or newer on the server."}
-    out = Path(out_dir).resolve()           # archify runs inside this folder: every path it gets is absolute
+    out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     slug = re.sub(r"[^a-z0-9-]", "", slug.lower())[:48] or "diagram"
     cand = out / "candidate.json"

@@ -518,9 +518,6 @@ def write(tenant: str, conversation_id: str, action: str, *, artifact_id: str = 
         ver, cur_kind, cur = current_source(aid)
         if not ver:
             raise EditError("This page has no version yet to change.")
-        if cur_kind == "diagram":                   # HOOLA DIAGRAM: drawn by an engine from a description, checked
-            raise EditError("This is a diagram drawn by the diagram engine: change it with the diagram tool "
-                            "(action=update with its diagram_id, or draw it again) so the engine re-checks it.")
         kind = kind or cur_kind
         title = (title or "").strip()[:120] or a.title
         if action == "update":
@@ -557,40 +554,6 @@ def write(tenant: str, conversation_id: str, action: str, *, artifact_id: str = 
         s.expunge(row)
     _emit(row)
     return {**public(row), "kind": kind, "chars": len(src)}
-
-
-MAX_BUILT = 3_000_000
-
-
-def save_built(tenant: str, conversation_id: str, *, title: str, page: str, source: str, kind: str, summary: str,
-               artifact_id: str = "", note: str = "") -> dict[str, Any]:
-    """HOOLA DIAGRAM: keep a page an engine BUILT and CHECKED (not text the model wrote) as a new version - a new page,
-    or the next version of `artifact_id`. The source kept is the engine's description, so the next change starts from
-    it. Same rows, same card, same sandboxed serving as every page; the cap is larger (an archify viewer is ~1 MB)."""
-    if len(page) > MAX_BUILT:
-        raise EditError(f"The page is too large ({len(page):,} characters; the limit is {MAX_BUILT:,}).")
-    t0 = time.monotonic()
-    with session() as s:
-        row = s.get(Artifact, artifact_id) if artifact_id else None
-        if row is not None and (row.tenant_id != tenant or row.deleted):
-            row = None
-        if row is None:
-            row = Artifact(tenant_id=tenant, conversation_id=conversation_id or "", title=(title or "Diagram")[:120],
-                           status="building", stage="writing", started_at=now())
-            s.add(row)
-            s.flush()
-        elif conversation_id and row.conversation_id != conversation_id:
-            row.conversation_id = conversation_id
-        n = (row.version or 0) + 1
-        s.add(ArtifactVersion(artifact_id=row.id, version=n, html=page, kind=kind, source=source,
-                              note=(note or "built")[:300]))
-        row.version, row.title, row.status, row.error, row.updated_at = n, (title or row.title)[:120], "ready", "", now()
-        row.summary = (summary or row.summary or "Page")[:200]
-        row.stage, row.build_s = "done", max(0, int(round(time.monotonic() - t0)))
-        s.flush()
-        s.expunge(row)
-    _emit(row)
-    return {**public(row), "kind": kind}
 
 
 def undo(tenant: str, aid: str) -> dict[str, Any] | None:

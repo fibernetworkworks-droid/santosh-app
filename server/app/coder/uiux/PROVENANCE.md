@@ -7,15 +7,20 @@
 - v0.753: `data/` was never committed with the scripts (the tool answered "File not found" from v0.498 on);
   restored from upstream commit 6ae86f6 (2026-11-10), whose `src/ui-ux-pro-max/scripts/` is byte-identical to
   the vendored scripts here, so the data matches the engine.
+- v0.999.329: scripts + data updated to upstream commit 11ca2b3 (2026-11-27, 33 commits after 6ae86f6), unchanged:
+  141 UX rules (form errors 131-141, web maps 121-130), 194 palettes, 20 motion presets, 23 stacks (PySide6 / Qt),
+  `preview.py` (the self-contained preview page), design tokens (--tokens css|dtcg), exact hex palette lookup,
+  right-to-left previews (--lang / --direction) and Arabic query synonyms.
 - HOOLA release that vendored it: v0.486.0 (HOOLA UIUX PRO MAX).
 
 ## What came in
 
 - `scripts/` - the search engine verbatim: `search.py` (CLI), `core.py` (BM25 over the
   CSV databases), `design_system.py` (the --design-system aggregator + --persist
-  Master/Overrides writer), `reasoning_contract.py` (its dependency).
+  Master/Overrides writer), `reasoning_contract.py` (its dependency), `preview.py`
+  (the --preview page, v0.999.329).
 - `data/` - the databases verbatim: 12 domain CSVs + `ui-reasoning.csv` +
-  22 stack CSVs under `stacks/` + the small provenance/license JSONs.
+  23 stack CSVs under `stacks/` (22 before v0.999.329) + the small provenance/license JSONs.
 
 ## What was left out (dev-only upstream, never needed at runtime)
 
@@ -30,3 +35,5 @@
   400 chars, output cap 24k, per-tenant `--output-dir` under the vault, `--force`
   never passed. The engine files themselves are UNMODIFIED upstream code.
 - `server/app/coder/skillpack/uiux-pro-max.md` - the seed skill that teaches when/how.
+- `server/app/coder/uxrules.py` (v0.999.329) - reads `data/ux-guidelines.csv` directly for the builders (the React and
+  HTML website writers, the App Engine summary, the critic) and checks a few rules in code; never part of the engine.

@@ -1435,7 +1435,8 @@ def write_section(r: Site, slug: str, s: dict[str, Any], others: list[str], extr
     kind = live.get("kind") or ("look" if look >= 0 else "change" if getattr(r, "version", 0) else "build")
     label = f"{_page_title(r, slug)} → {T.label_of(s['type'])}"
     with ST.watch(r.id, key, label, slug, look, kind):
-        raw = AI.ask_json(system or AI.SECTION_SYSTEM, _section_prompt(r, slug, s, others, extra), 9000, "build")
+        raw = AI.ask_json(system or AI.SECTION_SYSTEM, _section_prompt(r, slug, s, others, extra) + _ux_rules(s),
+                          9000, "build")
         if not raw.get("html"):
             raise SiteError(f"{s['type']} section could not be made (the model returned nothing).")
         h, css, js, problems = B.sanitize_section(sec_id(slug, s["type"]), raw)
@@ -1443,6 +1444,16 @@ def write_section(r: Site, slug: str, s: dict[str, Any], others: list[str], extr
     h, _n = E.tag(h)                  # v0.295 every word / link / picture she may edit gets its number
     return {"html": h, "css": css, "js": js, "notes": _tidy(raw.get("notes"), 200), "cleaned": problems,
             "at": datetime.now(timezone.utc).isoformat()}
+
+
+def _ux_rules(s: dict[str, Any]) -> str:
+    """v0.999.329 the UX rules (Hoola's design database) for what this section holds - a form, a map, a dialog.
+    Empty for most sections; never stops a build."""
+    try:
+        from ..coder import uxrules as UX
+        return UX.prompt_for(json.dumps(s, ensure_ascii=False)[:3000], limit=1200)
+    except Exception:                                 # noqa: BLE001
+        return ""
 
 
 def _sec_path(r: Site, key: str) -> Path:

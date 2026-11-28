@@ -1832,6 +1832,18 @@ def custom_prompt(sec: dict[str, Any], ctx: Ctx, comp: str) -> str:
             f"\nCOMPONENT NAME: {comp}\nFILE: src/components/sections/{comp}.tsx")
 
 
+def ux_rules(sec: dict[str, Any]) -> str:
+    """v0.999.329 the UX rules (Hoola's design database) for what this section holds - a form, a map, a dialog - in
+    its id, label, design note and words. Empty when it holds none of them; never blocks a write."""
+    try:
+        from ..coder import uxrules as UX
+        text = " ".join([str(sec.get("type") or ""), str(sec.get("label") or ""), str(sec.get("design") or ""),
+                         json.dumps({k: sec.get(k) for k in ("heading", "line", "items", "cta")}, ensure_ascii=False)])
+        return UX.prompt_for(text, limit=1200)
+    except Exception:                                 # noqa: BLE001
+        return ""
+
+
 def _strip_fences(raw: str) -> str:
     m = re.search(r"```(?:tsx|typescript|ts|jsx)?\s*\n(.*?)```", raw or "", re.S)
     return (m.group(1) if m else (raw or "")).strip() + "\n"
@@ -2022,6 +2034,7 @@ def write_app(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, 
         comp = custom_component(s)
         rel = f"src/components/sections/{comp}.tsx"
         prompt = custom_prompt(s, ctx, comp)
+        prompt += ux_rules(s)                     # v0.999.329 the design database's UX rules for what it holds
         if likes:
             prompt += "\n\n" + likes
         if examples:

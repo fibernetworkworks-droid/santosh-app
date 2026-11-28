@@ -182,25 +182,47 @@ function Live({ b }: { b: B }) {
 
 function AddCard({ b, who }: { b: B; who: string }) {
   const [text, setText] = React.useState("");
+  const [hint, setHint] = React.useState("");
   const id = React.useId();
   return (
     <form
-      className="flex gap-2"
+      className="flex flex-wrap gap-2"
       onSubmit={(e) => {
         e.preventDefault();
         const t = text.trim();
-        if (!t) return;
+        if (!t) {
+          setHint("Type a card title first.");
+          return;
+        }
         b.add(t, who);
         setText("");
+        setHint("");
       }}
     >
       <label htmlFor={id} className="sr-only">
         New card title
       </label>
-      <Input id={id} value={text} onChange={(e) => setText(e.target.value)} placeholder="Add a card..." className="h-10 bg-surface" />
-      <Button type="submit" size="icon" variant="secondary" aria-label="Add card" disabled={!text.trim()}>
+      <Input
+        id={id}
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          if (hint && e.target.value.trim()) setHint("");
+        }}
+        placeholder="Add a card..."
+        className="h-10 min-w-0 flex-1 bg-surface"
+        aria-invalid={hint ? true : undefined}
+        aria-describedby={hint ? `${id}-hint` : undefined}
+      />
+      {/* the add button stays enabled: pressing it on an empty title says what to do (UX rule: no pre-disabled submit) */}
+      <Button type="submit" size="icon" variant="secondary" aria-label="Add card">
         <Plus className="size-4" />
       </Button>
+      {hint && (
+        <p id={`${id}-hint`} role="alert" className="w-full text-xs text-bad">
+          {hint}
+        </p>
+      )}
     </form>
   );
 }
