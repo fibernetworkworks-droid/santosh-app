@@ -113,7 +113,7 @@ def settings(repo: Path, plugins: list[Path] | tuple = ()) -> dict[str, Any]:
     """permissions {allow, ask, deny}, hooks {event: [{matcher, commands}]}, env {name: value}, mode, style - merged from
     .claude/ and .hoola/ settings(.local).json and the hooks of her enabled plugins (hooks/hooks.json)."""
     out: dict[str, Any] = {"allow": [], "ask": [], "deny": [], "hooks": {}, "env": {}, "mode": "", "accept_edits": False,
-                           "style": "", "hard_deny": []}
+                           "style": "", "hard_deny": [], "ponytail": ""}
     files = [Path(repo) / d / name for d in DIRS for name in ("settings.json", "settings.local.json")]
     files += [Path(pl) / "hooks" / "hooks.json" for pl in plugins]
     for f in files:
@@ -145,6 +145,8 @@ def settings(repo: Path, plugins: list[Path] | tuple = ()) -> dict[str, Any]:
                 out["env"][str(k)] = str(v)[:500]
         if isinstance(j.get("outputStyle"), str):
             out["style"] = j["outputStyle"].strip()[:60]
+        if isinstance(j.get("ponytail"), str):           # v0.999 the repo's Ponytail level (ponytail.py)
+            out["ponytail"] = j["ponytail"].strip().lower()[:10]
     return out
 
 

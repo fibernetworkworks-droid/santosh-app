@@ -1727,9 +1727,15 @@ def _kr_review() -> str:
     """v0.999 Karpathy's rules in Hoola's own review of its change (karpathy.py)."""
     try:
         from . import karpathy as KR
-        return KR.SELF_REVIEW_EXTRA if KR.on() else ""
+        txt = KR.SELF_REVIEW_EXTRA if KR.on() else ""
     except Exception:  # noqa: BLE001
-        return ""
+        txt = ""
+    try:                                                  # v0.999 Ponytail: a finding needs a concrete case
+        from . import ponytail as PT
+        txt += PT.REVIEW_EXTRA if PT.default_level() != "off" else ""
+    except Exception:  # noqa: BLE001
+        pass
+    return txt
 
 
 def _pr_body(t: DevTask, out: dict[str, Any], warnings: list[dict[str, Any]], issue: int) -> str:
@@ -4366,6 +4372,8 @@ def repo_commands(tenant: str, ref: str) -> dict[str, Any]:
                        "program": " ".join(v.get("argv") or [])[:200]} for k, v in sorted(RC.mcp_servers(repo, pls).items())]
         out["styles"] = [{"name": k, "description": v["description"], "origin": v["origin"]} for k, v in RC.styles(repo, pls).items()]
         out["style"] = str(ses.meta.get("style") or conf.get("style") or "default")
+        from . import ponytail as PT
+        out["ponytail"] = PT.level(ses, conf)
         out["files"] = claude_paths(ses)
     except Exception:  # noqa: BLE001
         log.debug("repo setup read failed", exc_info=True)
@@ -4448,6 +4456,23 @@ def set_style(tenant: str, ref: str, style: str) -> dict[str, Any]:
     ses.meta["style"] = style
     ses.save_meta()
     return {"ok": True, "style": style}
+
+
+def set_ponytail(tenant: str, ref: str, level: str) -> dict[str, Any]:
+    """v0.999 /ponytail [lite|full|ultra|off] for this session (ponytail.py)."""
+    from . import engine as EN
+    from . import plugins as PL
+    from . import ponytail as PT
+    from . import repoconf as RC
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    if not EN.exists(tid):
+        raise DevError("This session has no working copy yet.")
+    ses = EN.Session(tid)
+    try:
+        return PT.set_level(ses, RC.settings(ses.repo, PL.roots(tenant)), level)
+    except ValueError as e:
+        raise DevError(str(e)) from None
 
 
 def export(tenant: str, ref: str) -> dict[str, Any]:

@@ -57,6 +57,10 @@ const List<(String, String)> codeOwnCommands = [
   ('clear', 'Start a new session (this one stays in your list)'),
   ('review', 'Review the changes on this branch'),
   ('security-review', 'Review the changes for security problems'),
+  ('ponytail', 'The smallest change that fully works: lite, full, ultra or off'),
+  ('ponytail-review', 'Review this change like the senior dev who gets paged'),
+  ('ponytail-audit', 'The same check for the whole repo, most important first'),
+  ('ponytail-debt', 'List the shortcut: comments left for later'),
   ('init', 'Write AGENTS.md'),
   ('status', 'Repo, branch, pull request, context and cost'),
   ('context', 'How full the conversation is'),
@@ -93,6 +97,9 @@ const List<String> codeTerminalOnlyCommands = [
 
 /// Every name the phone handles itself (a repo command with one of these names is never shown or sent).
 final Set<String> codeBuiltinNames = {for (final x in codeOwnCommands) x.$1, ...codeTerminalOnlyCommands};
+
+/// Own commands that go to Hoola as her message (the server knows them), not done on the phone.
+const Set<String> codeSentToHoola = {'security-review', 'ponytail-review', 'ponytail-audit', 'ponytail-debt'};
 
 // ---------------------------------------------------------------------------------------------- @ files and / commands
 /// The list above the typing box while she types '@part' (files) or '/name' (commands). A tap puts the pick in the box.

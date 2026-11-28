@@ -667,6 +667,10 @@ def make_router(require_key, current_tenant) -> APIRouter:
         b = _b(body)
         return await run(S.claude_write, tenant, tid, str(b.get("path") or ""), str(b.get("text") or ""))
 
+    @r.put("/tasks/{tid}/ponytail")
+    async def set_ponytail(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        return await run(S.set_ponytail, tenant, tid, str(_b(body).get("level") or ""))
+
     @r.put("/tasks/{tid}/style")
     async def set_style(tid: str, body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         return await run(S.set_style, tenant, tid, str(_b(body).get("style") or ""))

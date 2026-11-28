@@ -257,6 +257,12 @@ def _run_one(tools: Any, spec: dict, task: str, files: list[str] | None, emit, s
                 system += "\n\n" + KR.SUB_RULES
         except Exception:  # noqa: BLE001
             pass
+        try:                                               # v0.999 Ponytail's ladder for an agent that changes code
+            from . import ponytail as PT
+            if PT.level(tools.s, getattr(tools, "conf", {}) or {}) != "off":
+                system += "\n" + PT.SUB_RULES
+        except Exception:  # noqa: BLE001
+            pass
     notes = B.model_notes(own or "")                       # v0.999 the same per-model notes as the coder's
     if notes:
         system += "\n\n" + notes
