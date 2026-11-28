@@ -2214,6 +2214,15 @@ def mainframe_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/embedded")
+@app.get("/console/embedded/")
+def embedded_desk_page():
+    """EMBEDDED DESK: the Embedded Systems Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "emdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/latency")
 @app.get("/console/latency/")
 def lowlat_desk_page():
@@ -3001,6 +3010,8 @@ from . import lowlatchat as _llchat_mod                          # noqa: E402  L
 _llchat_mod.mount(app, current_tenant, require_key)              # /api/lldesk/*
 from . import mainframechat as _mfchat_mod                       # noqa: E402  MAINFRAME DESK
 _mfchat_mod.mount(app, current_tenant, require_key)              # /api/mfdesk/*
+from . import embeddedchat as _emchat_mod                       # noqa: E402  EMBEDDED DESK
+_emchat_mod.mount(app, current_tenant, require_key)              # /api/emdesk/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through

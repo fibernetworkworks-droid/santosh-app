@@ -241,6 +241,12 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                   "comp-3", "picture clause", "pic x", "pic 9", "procedure division", "working-storage", "ikjeft01", "iefbr14", "dfsort",
                   "gdg", "legacy modernization", "modernise the mainframe", "modernize the mainframe", "mainframe migration", "rehost",
                   "migration wave", "golden file", "side by side proof"),
+    # v0.999.294 the Embedded Systems Engineer: her embedded words
+    "embedded": ("embedded system", "embedded c", "embedded firmware", "embedded engineer", "microcontroller", "mcu", "stm32", "esp32", "esp-idf", "nrf52", "rp2040", "avr", "atmega", "arduino", "cortex-m",
+                 "freertos", "zephyr", "rtos", "interrupt handler", "irqhandler", "isr", "linker map", "map file", ".map file", "arm-none-eabi",
+                 "flash usage", "ram usage", "bss", "firmware size", "stack overflow on", "wcet", "response time analysis", "schedulab",
+                 "rate monotonic", "deadline monotonic", "battery life", "sleep current", "deep sleep", "coin cell", "cr2032", "baud rate",
+                 "prescaler", "systick", "brr", "ubrr", "pwm frequency", "watchdog", "bare metal", "bare-metal", "hal_delay", "fromisr"),
     # v0.999.283 the Distributed Systems Engineer: her distributed-systems words
     "dist": ("distributed system", "linearizab", "linearisab", "jepsen", "quorum", "consensus", "raft", "paxos", "split brain", "split-brain",
              "exponential backoff", "retry policy", "retry storm", "thundering herd", "idempotency", "idempotent", "failover", "fencing token",
