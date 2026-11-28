@@ -563,7 +563,8 @@ TOOLS: list[dict[str, Any]] = [
                       "edit_mode": {"type": "string", "enum": ["replace", "insert", "delete"]}},
                       "required": ["path", "cell"]}},
     {"name": "todo_write", "description": "Your to-do list for this job (she sees it). Send the WHOLE list each time; mark one item "
-     "in_progress while you work on it and completed as soon as it is done.",
+     "in_progress while you work on it and completed as soon as it is done. Give each step the check that proves it, "
+     "like 'Fix the date parser -> check: test_parse_date passes'.",
      "input_schema": {"type": "object", "properties": {"todos": {"type": "array", "items": {"type": "object", "properties": {
          "content": {"type": "string"}, "status": {"type": "string", "enum": ["pending", "in_progress", "completed"]}},
          "required": ["content", "status"]}}}, "required": ["todos"]}},
@@ -576,6 +577,8 @@ TOOLS: list[dict[str, Any]] = [
          "choices": {"type": "array", "items": {"type": "string"}, "description": "only with a question: 2-4 short answers she can tap"},
          "cause": {"type": "string"}, "pr_title": {"type": "string"}, "pr_summary": {"type": "string"},
          "test_plan": {"type": "string", "description": "what you ran and what passed"}, "risk": {"type": "string"},
+         "assumptions": {"type": "string", "description": "what you assumed that she did not say (a format, a field, "
+                         "the scope), in one or two short lines - empty if nothing"},
          "rules_followed": {"type": "string"}}}},
 ]
 
@@ -712,6 +715,12 @@ def reality_check(tools: Any, ses: Any, t: Any, follow_up: str, finish: dict[str
                 + "\n\nCheck the REAL working copy: does the change do everything she asked, with nothing faked, stubbed, "
                   "hard-coded or left as TODO, and does it really work (run the tests / the command if one is known)? "
                   "Start your report with the VERDICT line.")
+        try:
+            from . import karpathy as KR
+            if KR.on():
+                task += KR.REALITY_EXTRA
+        except Exception:  # noqa: BLE001
+            pass
         pick = (getattr(B.PICK, "model", "") or "", getattr(B.PICK, "effort", "") or "")
         rep = SA.run_one(tools, "reality-checker", task, files, emit=emit, stopped=stopped, pick=pick,
                          part=B.carry())
@@ -1690,7 +1699,15 @@ class Tools:
     def t_show_diff(self) -> str:
         d = self.s.diff()
         self.trail.append("checked its own change")
-        return d or "No changes yet."
+        if not d:
+            return "No changes yet."
+        try:                                               # v0.999 Karpathy rule 3: name tidying she did not ask for
+            from . import karpathy as KR
+            if KR.on() and not KR.asked_for_layout(getattr(self, "her_words", "")):
+                d += KR.show_note(KR.drive_by(self.s.diff(limit=400000), set(getattr(self, "formatted", set()) or set())))
+        except Exception:  # noqa: BLE001 - the note never breaks show_diff
+            pass
+        return d
 
     def _folder_rules(self, path: str) -> str:
         """v0.999 Claude Code loads a folder's CLAUDE.md / AGENTS.md when work moves into it: the first time a file there
@@ -3710,6 +3727,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
         if tools.conf.get("accept_edits"):
             ses.meta.setdefault("allow", {})["edits"] = True
     her_words = her_text(follow_up or str(getattr(t, "text", "") or ""))
+    tools.her_words = (her_words + " " + str(getattr(t, "text", "") or ""))[:8000]   # v0.999 Karpathy: a layout ask is the task
     her_extra = her_blocks(tools, ses, her_words, emit)
     msgs = ses.messages()
     healed = heal_cut_step(ses, msgs)                     # v0.999 a step cut by a restart: told what ran, never re-run
@@ -3764,7 +3782,12 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                       + ", ".join(k for k, v in tools.repo_mcp.items() if v.get("ok")))
     if style_txt:
         extra_ecc += "\n\n" + style_txt
-    system = (SYSTEM + ("\n\n" + extra_ecc if extra_ecc else "") + ("\n\n" + system_extra if system_extra else "")
+    try:                                                  # v0.999 Karpathy's four rules (karpathy.py), fixed text
+        from . import karpathy as KR
+        kr_rules = ("\n\n" + KR.RULES) if KR.on() else ""
+    except Exception:  # noqa: BLE001
+        kr_rules = ""
+    system = (SYSTEM + kr_rules + ("\n\n" + extra_ecc if extra_ecc else "") + ("\n\n" + system_extra if system_extra else "")
               + ("\n\n" + netw if netw else ""))
     try:
         from . import vps as VP
@@ -3998,6 +4021,20 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                         reality["scratch"] = True
                         emit({"k": "gate", "n": len(left), "items": [f"{p} looks like a scratch file" for p in left[:8]]})
                         results.append({"type": "tool_result", "tool_use_id": b["id"], "content": scratch_text(left)})
+                        continue
+                if not reality.get("surgical") and getattr(t, "kind", "") != "explain":
+                    reality["surgical"] = True            # v0.999 Karpathy rule 3, checked in code: once a round
+                    try:
+                        from . import karpathy as KR
+                        hid = set(ses.meta.get("hidden") or []) | set(tools.hidden)
+                        drive = ([x for x in KR.drive_by(ses.diff(limit=400000), set(getattr(tools, "formatted", set()) or set()))
+                                  if x["path"] not in hid] if KR.on() and not KR.asked_for_layout(getattr(tools, "her_words", "")) else [])
+                    except Exception as e:  # noqa: BLE001
+                        log.info("surgical check skipped: %s", e)
+                        drive = []
+                    if drive:
+                        emit({"k": "gate", "n": len(drive), "items": [f"{x['path']}:{x['line']} {x['what']}" for x in drive[:8]]})
+                        results.append({"type": "tool_result", "tool_use_id": b["id"], "content": KR.gate_text(drive)})
                         continue
                 if not reality["done"] and getattr(t, "kind", "") != "explain":
                     note = reality_check(tools, ses, t, follow_up, inp, emit, stopped)
@@ -4256,6 +4293,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
             try:
                 from . import fmt as FM
                 ftxt, fchanged = FM.after_edits(tools, [p for p in edited_now if p])
+                tools.formatted = set(getattr(tools, "formatted", set()) or set()) | set(fchanged or [])
                 if ftxt:
                     results.append({"type": "text", "text": ftxt})
                     emit({"k": "format", "files": fchanged[:40], "text": ftxt[:2000]})
@@ -4376,7 +4414,15 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
     risk = str(finish.get("risk") or "")
     if skipped:
         risk = (risk + " " if risk else "") + "Not in the PR: " + "; ".join(skipped[:8]) + "."
-    out = {"explain": finish.get("explain", ""), "cause": finish.get("cause", ""), "files": files,
+    assumed = " ".join(str(finish.get("assumptions") or "").split())[:600]
+    explain_out = str(finish.get("explain", "") or "")
+    try:                                                  # v0.999 Karpathy rule 1: what it assumed is shown, not hidden
+        from . import karpathy as KR
+        if KR.on():
+            explain_out = KR.with_assumptions(explain_out, assumed)
+    except Exception:  # noqa: BLE001
+        pass
+    out = {"explain": explain_out, "cause": finish.get("cause", ""), "files": files, "assumptions": assumed,
            "pr_title": finish.get("pr_title", ""), "pr_summary": finish.get("pr_summary", ""),
            "test_plan": finish.get("test_plan", ""), "risk": risk, "rules_followed": finish.get("rules_followed", ""),
            "checks": []}

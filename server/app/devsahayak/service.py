@@ -1710,7 +1710,7 @@ def _prepare(tenant: str, t: DevTask, out: dict[str, Any], read: list[dict[str, 
         warnings += R.code_checks(added, path)
         changes.append({"path": path, "why": str(f.get("why") or "")[:200], "old_sha": old_sha, "new": new, "added": add,
                         "removed": rem, "diff": R.unified(path, old, new)[:20000]})
-    for k in ("pr_title", "pr_summary", "test_plan", "risk", "explain", "rules_followed"):
+    for k in ("pr_title", "pr_summary", "test_plan", "risk", "explain", "rules_followed", "assumptions"):
         if R.secrets_in(str(out.get(k) or "")):
             problems.append(f"{k} has text that looks like a secret")
     if len(changes) > cfg.max_files:
@@ -1723,6 +1723,15 @@ def _prepare(tenant: str, t: DevTask, out: dict[str, Any], read: list[dict[str, 
     return {"changes": changes, "problems": problems, "warnings": warnings}
 
 
+def _kr_review() -> str:
+    """v0.999 Karpathy's rules in Hoola's own review of its change (karpathy.py)."""
+    try:
+        from . import karpathy as KR
+        return KR.SELF_REVIEW_EXTRA if KR.on() else ""
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def _pr_body(t: DevTask, out: dict[str, Any], warnings: list[dict[str, Any]], issue: int) -> str:
     lines = [f"**{KINDS.get(t.kind, t.kind)} · {t.number}** (by Hoola Code, for review)", "",
              str(out.get("pr_summary") or "").strip() or "-"]
@@ -1731,6 +1740,8 @@ def _pr_body(t: DevTask, out: dict[str, Any], warnings: list[dict[str, Any]], is
     if issue:
         lines += ["", f"Refs #{issue}"]
     lines += ["", "### Test plan", str(out.get("test_plan") or "- CI").strip(), "", "### Risk", str(out.get("risk") or "-").strip()]
+    if str(out.get("assumptions") or "").strip():         # v0.999 Karpathy rule 1: what Hoola assumed, for the reviewer
+        lines += ["", "### Assumptions", str(out["assumptions"]).strip()]
     pl = _j(t.plan or "", {}) or {}                 # v0.451 ECC PHASE 4: the approved plan, so a reviewer sees the target
     if pl.get("done_when") or pl.get("steps"):
         lines += ["", f"### Plan ({t.tier or 'standard'})", (str(pl.get("goal") or "")).strip() or "-"]
@@ -3729,7 +3740,7 @@ def _ready_or_self_review(tenant: str, t: DevTask, g: Gh, say: str) -> dict[str,
                    f"The task it must do: {t.text[:1500]}\n{str(t.pr_body or '')[:2000]}{acc}\n</pr>")
         _pass(t.id, "review", "start", "Hoola reads its own pull request")
         out = explore_review(g, t.repo, t.head_sha, pr_text, diff_parts, added_lines, cfg.rules,
-                             json.dumps(findings[:20], ensure_ascii=False) if findings else "", extra=SP.SELF_REVIEW)
+                             json.dumps(findings[:20], ensure_ascii=False) if findings else "", extra=SP.SELF_REVIEW + _kr_review())
     except Exception as e:  # noqa: BLE001 - the own review is extra: a PR is never stuck because it could not run
         log.info("devsahayak self review %s: %s", t.id, e)
         _pass(t.id, "review", "end", "could not run", ok=False)
