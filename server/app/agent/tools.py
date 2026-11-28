@@ -1284,6 +1284,10 @@ from .robotics_tools import ROBOTICS_HANDLERS, ROBOTICS_LABELS, ROBOTICS_TOOLS  
 TOOLS.extend(ROBOTICS_TOOLS)
 TOOL_LABELS.update(ROBOTICS_LABELS)
 HANDLERS.update(ROBOTICS_HANDLERS)
+from .vision_tools import VISION_HANDLERS, VISION_LABELS, VISION_TOOLS  # noqa: E402
+TOOLS.extend(VISION_TOOLS)
+TOOL_LABELS.update(VISION_LABELS)
+HANDLERS.update(VISION_HANDLERS)
 # v0.357 Engineering Desk: the hired CAD Engineer (cad_part)
 from .eng_tools import ENG_HANDLERS, ENG_LABELS, ENG_TOOLS  # noqa: E402
 

@@ -13821,3 +13821,51 @@ Server: /api/route/summary adds runs_prev_7d, week_days (7), hours12 (12) and fa
 Checked: Chromium at 1440 / 1024 / 390 in light and dark with the measuring walk - no sideways scroll, nothing past the edge,
 no cut text, controls in a row share a height. test_v0999_297_route_home.py (summary numbers, source rules, a browser walk at
 computer and phone width incl. the examples, Find and the first day). NOT VERIFIED on her server.
+## v0.999.298 VISION DESK (built as 0.999.296; their 0.999.296-0.999.297 kept; owner: "Computer Vision Engineer same as finance desks")
+
+The Computer Vision Engineer (`cv_eng`, Software Architecture group) goes live with its own section `/console/vision`
+(`static/console/cvdesk.html/.js/.css`, prefix `cvk-`, page `#cvPage`) and its own Vision chat (Conversation kind `vision`,
+`server/app/cvchat.py`, routes `/api/cvdesk/*`), built like the finance desks. NEW all-code engine `server/app/cvdesk/`:
+
+- `detect.py` - ground truth and predictions as COCO JSON or one box per line (xyxy / xywh; a line with only an image name = an
+  annotated image with no objects). COCO's own matching (best IoU, score order, ignored crowd and out-of-range boxes, 100 detections
+  per image and class), monotone precision, 101-point interpolation, mAP over IoU 0.50:0.95, AP50, AP75, small / medium / large.
+  Checked against pycocotools 2.0.8 COCOeval on generated sets (crowd regions, empty images): equal to 1e-6 (the test pins the
+  numbers; pycocotools is NOT a dependency). Also precision / recall / F1 by threshold, classes confused, errors by kind.
+- `classify.py` - image, true, predicted, score per line: accuracy with a Wilson interval, per-class precision / recall / F1, macro
+  and weighted F1, Cohen's kappa, the confusion matrix, expected calibration error with a reliability table, and for two classes ROC
+  AUC (checked against the brute-force pair count), the precision-recall curve and the threshold for a target precision or recall.
+- `dataset.py` - YOLO files under `## path/name.txt` headers (classes.txt / *.names read as the class names) or COCO JSON: boxes
+  outside the image or with no size, duplicates, two classes on one object, unknown class ids, tiny boxes, extreme shapes, images
+  without labels, imbalance, classes missing from val / test, the same image in two splits, object sizes.
+- `camera.py` - sensor (pixel size, sensor mm, or a nominal format) + lens or field of view, then questions: distance, object at a
+  distance, the lens needed for N pixels, covering a width, motion blur, depth of field, stereo depth error; ROS camera_info /
+  OpenCV calibration YAML checked (fx vs fy, principal point, reprojection error, distortion at the corner).
+- `pipeline.py` - stage times (GPU stages share the GPU), latency vs fps pipelined and in turn against the camera / target, latency
+  samples (warm-up left out, percentiles, late frames, histogram), objects after the resize to the model input with tiling advice.
+- `ci.py` - GitHub Actions model check: her evaluation command writes a metrics JSON, compared with a committed baseline; scores may
+  drop at most N points, times may rise at most N %; the compare script is tested (passes a small drop, fails a big one).
+- `service.py` - tables `cvdesk_items` / `cvdesk_settings`, numbers D- C- L- K- P-.
+
+NEW tool `vision_desk` (`agent/vision_tools.py`, family vision, registry 713 -> 714), admit keys `vision`, wiring as for the other
+desks. The desk refuses face recognition of people without their consent and surveillance she has no right to run (chat rules,
+hire card). Tests `server/tests/test_cv_desk.py` (5, incl. a browser walk at 1440 and 390 px). NOT VERIFIED: on her server, her own
+models, labels and cameras, or the workflow on GitHub.
+
+## v0.999.299 EVERY ROUTE PAGE IN THE HOME DESIGN
+
+Owner: "NOW SAME DESIGN FOR ALL ROUTE PAGES" (after the v0.999.297 home).
+
+What every page now shares with the home (route.css end block "v0.999.299 THE HOME'S DESIGN ON EVERY PAGE" + route.js):
+- one centred column of at most 1160 px, the same top space;
+- the serif page title (38 px, weight 350) and under it one plain line of where things stand: All routes ("Eight routes, all
+  switched on · one folder. A route does nothing until it is on."), Needs you ("Two things wait for you: one approval and one run
+  that did not finish."), Runs ("The newest nine runs, one waiting for you, two that did not finish."); words up to nine;
+- numbers as one band of cells parted by hairlines, the home's serif figures (Insights, Grid, Bring in, a workflow's page);
+- status as a coloured dot and its word everywhere (runs lists, a run's steps, a run's head, workflows) instead of filled pills;
+- Needs you as the home's cards, two across (one on a phone): a tag, the question or what went wrong, the route, its own buttons;
+- cards with 16 px corners, quiet empty states, template and workflow cards that lift under the pointer;
+- the Insights chart: runs that went well in ink, the ones that did not in red (were bright green and pink).
+Checked: every page (24) at 1440 / 1024 / 390 in light and dark (144 views) measured in Chromium - no sideways scroll, nothing
+past the edge, no cut text, controls in a row share a height; looked at by eye. test_v0999_297_route_home.py
+(test_every_page_in_the_homes_design). NOT VERIFIED on her server.
