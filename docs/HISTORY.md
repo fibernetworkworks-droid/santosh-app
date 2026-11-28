@@ -13796,3 +13796,28 @@ logs, or the workflow on GitHub; robot safety standards (ISO 10218, ISO/TS 15066
 
 ## v0.999.296 FEED LIKE CLAUDE CODE
 (owner, with four screenshots of Claude Code: 'GO DEEP HOW CLAUDE CODE PERFECT REPLY FOR REQUESTED PROMPT WITH PERFECT FEED IN CLAUDE CODE --- IS THIS SAME IN HOOLA'): a Hoola Code session built like her screenshots was rendered in a real browser and compared line by line. SAME already: short narration lines between folded steps, markdown answer with bold labels / nested bullets / inline code, Copy + Read aloud under it, the phone's fold labels and sans font. DIFFERENT, now fixed: (1) the web fold read 'Worked for 3s' - and its time was measured from the step before it, so a session's first fold or one after a long gap read 'Worked for 25920m'; it now names what was done like Claude Code ('Ran 5 commands, read memory.py, checked the page in a browser', 'Ran 2 commands, compacted the session', 'Created memory.py, edited main.py' with its +/- lines), in the order each kind first came, a single command or file named (`workLabel`); (2) the screenshots it took show small at the end of that line, +N past three (`shotThumbs`, fetched with her sign-in); (3) under the answer a 'Created / Edited / Changed N files' card - three files with their lines, See all with the total (opens the changes), Undo (back to the checkpoint before the newest round, her pick of code / conversation / both) - web `filesCard` and phone `_filesCard` (+ `_rewindTo`); (4) Hoola Code's words in the plain sans Claude Code uses on the web too (the main chat keeps its serif); (5) 'The run' says the time Hoola worked (its rounds, else steps with gaps over 10 minutes left out), not the days a session stayed open; (6) the phone's fold label lists kinds in the order they came and names created files and compaction; (7) the model's closing answer is told Claude Code's shape (result + what was not verified, bold-labelled points, Tests:, how to try it, no file list - the card shows it) and its narration lines plain with bold only for a real finding. 5 tests incl. a browser walk; one older test now expects the named fold. NOT VERIFIED with a real model or on her phone. ALSO FIXED from v0.999.293: the Superpowers proof check did not read 'nothing run' / 'no tests run' as an honest not-run and sent such work back; and the older scripted Hoola Code suites now pin `dev_superpowers` off in conftest (like the reality checker and memory) - two of them had been failing since v0.999.293.
+
+## v0.999.297 ROUTE HOME REDESIGN
+
+Owner: "now lets work on design --- make it premium, advance, human native design, professional, high value --- show me home
+page design here first" -> design canvas claude.ai/artifact/5Dnd2VzFM6euExAUs8jf4d (computer + phone, light + dark, first day)
+-> "GO BUILD THE DESIGN".
+
+The home (route.js viewHome, route.css end block "v0.999.295 ROUTE HOME REDESIGN"):
+- a date line and a Find box (her words go to All routes, sessionStorage hoola.route.find);
+- "Good morning / afternoon / evening. What should run by itself?" by her browser's clock, and one plain line: how many routes are
+  working for her and how many things need her answer (words up to nine), or the first-day line;
+- the ask box: Template, Blank canvas, Bring in from n8n or Make, the send button; three examples under it fill the box on a tap;
+- one band of four numbers: routes on (of all), runs this week with a trend line of the 7 days and the change from last week,
+  went well (30 days) with how many did not finish, needs you with how many approvals and stopped runs (opens Needs you);
+- your routes (6, then See all) in the routes table, which now shows up to three app tiles stacked, the number of steps and a
+  coloured dot for the last run (on All routes too);
+- beside them Needs you (three at most, each with a tag and its own buttons: Approve / Stop the run, See why / Open the route,
+  Switch back on) and Coming up (routes that listen now, then the next scheduled runs with their time in her time zone);
+- templates four across; a first day (no routes) shows the three steps instead of the numbers.
+The sidebar: Hoola Route / Your automations, groups Build and Data and accounts, and a card at the foot with today's runs and
+bars for each of the last 12 hours, her time zone.
+Server: /api/route/summary adds runs_prev_7d, week_days (7), hours12 (12) and failed_30d.
+Checked: Chromium at 1440 / 1024 / 390 in light and dark with the measuring walk - no sideways scroll, nothing past the edge,
+no cut text, controls in a row share a height. test_v0999_297_route_home.py (summary numbers, source rules, a browser walk at
+computer and phone width incl. the examples, Find and the first day). NOT VERIFIED on her server.

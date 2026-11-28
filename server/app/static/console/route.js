@@ -132,12 +132,14 @@
       const fl = $('#folders');
       if (fl) fl.innerHTML = (SUM.folders || []).length ? `<div class="sl">Folders</div>${SUM.folders.map(f =>
         `<a class="nav sub" href="#/routes/${enc(f)}">${svg('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>')}${esc(f)}</a>`).join('')}` : '';
-      const ft = $('#sideFoot'); if (ft) ft.innerHTML = `Runs today <b>${fmtN(SUM.runs_today)}</b>${TZ ? `<br>Time zone <b>${esc(TZ)}</b>` : ''}`;
+      const ft = $('#sideFoot'); if (ft) { const h = SUM.hours12 || [], mx = Math.max(1, ...h);
+        ft.innerHTML = `<div class="sf-row"><span>Runs today</span><b>${fmtN(SUM.runs_today)}</b></div>${h.length ? `<div class="sf-bars" aria-label="Runs in each of the last 12 hours">${h.map((v, i) =>
+          `<i class="${i >= h.length - 3 ? 'k' : ''}" style="height:${v ? Math.max(18, Math.round(v / mx * 100)) : 12}%"></i>`).join('')}</div>` : ''}${TZ ? `<div class="sf-tz">Time zone ${esc(TZ)}</div>` : ''}`; }
     } catch {}
   }
 
   // ---------------------------------------------------------------- a new route, then into the editor
-  const ASK_KEY = 'hoola.route.ask';
+  const ASK_KEY = 'hoola.route.ask', FIND_KEY = 'hoola.route.find';
   async function newRoute(title, ask, folder) {
     const r = await api('POST', '/api/route/routes', {title: title || 'New route', folder: folder || ''});
     if (ask) { try { sessionStorage.setItem(ASK_KEY, JSON.stringify({id: r.id, text: ask})); } catch {} }
@@ -150,7 +152,9 @@
   const bars = d => `<span class="d7" aria-label="Last 7 days">${(d || []).map(x => {
     const n = x.ok + x.bad; const h = n ? Math.min(22, 6 + n * 3) : 3;
     return `<i class="${x.bad ? 'bad' : n ? 'ok' : ''}" style="height:${h}px" title="${n ? `${x.ok} went well, ${x.bad} did not` : 'No runs'}"></i>`; }).join('')}</span>`;
-  const firstTile = r => (r.apps && r.apps[0]) ? appTile(r.apps[0]) : `<span class="ap k-core">${svg(TKIC(r.trigger))}</span>`;
+  // v0.999.297 the apps a route uses, up to three tiles stacked (the first is the trigger's when it has no app)
+  const firstTile = r => { const a = (r.apps || []).slice(0, 3);
+    return `<span class="stack">${a.length ? a.map(x => appTile(x)).join('') : `<span class="ap k-core">${svg(TKIC(r.trigger))}</span>`}</span>`; };
   const LASTW = {done: ['ok', 'Done'], failed: ['bad', 'Failed'], incomplete: ['bad', 'Incomplete'], waiting_approval: ['warn', 'Waiting for you'],
     running: ['v', 'Running'], queued: ['v', 'Queued'], sleeping: ['v', 'Waiting'], stopped: ['', 'Stopped']};
   // tables become cards on a phone: every cell carries its own label (data-l), the CSS shows it there
@@ -159,9 +163,9 @@
     return `<div class="tw"><table class="rt"><thead><tr><th>Route</th><th>Runs when</th><th>Last run</th><th class="nw">Last 7 days</th><th class="c-tog">On</th></tr></thead><tbody>${
       routes.map(r => { const lr = r.last_run ? (LASTW[r.last_run.status] || ['', r.last_run.status]) : null;
         return `<tr>
-        <td class="c-name"><div class="rname">${firstTile(r)}<div><a class="rn" href="#/r/${enc(r.id)}">${esc(nice(r.name))}</a><div class="mut sm">${esc([r.folder, {manual: 'by hand', schedule: 'on a schedule', webhook: 'when data arrives', event: 'on an app event', form: 'from a form', chat: 'from a chat', error: 'when a route fails', route: 'from another route', tool: 'as a tool'}[r.trigger]].filter(Boolean).join(' · '))}</div>${(r.tags || []).length ? `<div class="rtags">${r.tags.map(t => `<span class="rtag">${esc(t)}</span>`).join('')}</div>` : ''}</div></div></td>
+        <td class="c-name"><div class="rname">${firstTile(r)}<div><a class="rn" href="#/r/${enc(r.id)}">${esc(nice(r.name))}</a><div class="mut sm">${esc([r.folder, {manual: 'by hand', schedule: 'on a schedule', webhook: 'when data arrives', event: 'on an app event', form: 'from a form', chat: 'from a chat', error: 'when a route fails', route: 'from another route', tool: 'as a tool'}[r.trigger], r.steps ? r.steps + (r.steps === 1 ? ' step' : ' steps') : ''].filter(Boolean).join(' · '))}</div>${(r.tags || []).length ? `<div class="rtags">${r.tags.map(t => `<span class="rtag">${esc(t)}</span>`).join('')}</div>` : ''}</div></div></td>
         <td data-l="Runs when">${esc(r.when)}</td>
-        <td data-l="Last run" class="nw">${lr ? `<span class="lr ${lr[0]}">${esc(lr[1])}</span> <span class="mut sm">${esc(when(r.last_run.at))}</span>` : `<span class="mut">${esc(r.status.text)}</span>`}</td>
+        <td data-l="Last run" class="nw">${lr ? `<span class="lr ${lr[0]}"><i class="ld"></i>${esc(lr[1])}</span> <span class="mut sm">${esc(when(r.last_run.at))}</span>` : `<span class="mut">${esc(r.status.text)}</span>`}</td>
         <td data-l="Last 7 days">${bars(r.days7)}</td>
         <td class="c-tog">${tog(r.id, r.enabled, r.name)}</td></tr>`; }).join('')}</tbody></table></div>`;
   }
@@ -177,31 +181,92 @@
 
   // ---------------------------------------------------------------- views
   function shell(editing) { document.body.classList.toggle('editing', !!editing); if (!editing) stopEditor(); }
+  // v0.999.297 ROUTE HOME REDESIGN (owner: design canvas claude.ai/artifact/5Dnd2VzFM6euExAUs8jf4d -> "GO BUILD THE DESIGN"):
+  // a greeting in her time of day with one plain line of where things stand, the ask box with its three ways in and three
+  // examples to try, one band of this week's numbers with the trend, her routes beside what needs her and what runs next,
+  // templates; a first day shows the three steps instead of empty numbers.
+  const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+  const say = (n, one, many) => `${n < 10 ? WORDS[n] : fmtN(n)} ${n === 1 ? one : (many || one + 's')}`;
+  const TRY = ['Every morning at 9, email me yesterday\'s unpaid invoices', 'When my form is filled, add a row to my sheet',
+    'Tell me on Telegram when stock runs low'];
+  const NEEDTAG = {approval: ['warn', 'Approval'], failed: ['bad', 'Failed'], incomplete: ['bad', 'Incomplete'], stopped: ['bad', 'Switched off']};
+  function homeNeed(n) {
+    const [c, tag] = NEEDTAG[n.kind] || ['bad', 'Needs a look'];
+    const title = n.kind === 'approval' ? (n.text || 'Waiting for your OK') : n.kind === 'stopped' ? (n.text || 'Switched off after errors') : human(n.text) || 'A run did not finish';
+    const acts = n.kind === 'approval' ? `<button class="btn s" data-act="approve" data-run="${esc(n.run_id)}">Approve</button><button class="btn s soft" data-act="stop" data-run="${esc(n.run_id)}">Stop the run</button>`
+      : n.kind === 'stopped' ? `<button class="btn s" data-switch="${esc(n.route_id)}" aria-checked="false" data-name="${esc(nice(n.route))}">Switch back on</button><a class="btn s soft" href="#/r/${enc(n.route_id)}">Open the route</a>`
+      : `<a class="btn s" href="#/run/${enc(n.run_id)}">See why</a><a class="btn s soft" href="#/r/${enc(n.route_id)}">Open the route</a>`;
+    return `<div class="rh-need"><span class="rh-tag ${c}">${tag}</span><b>${esc(title)}</b><span class="mut sm">${esc(nice(n.route))}</span><div class="rh-acts">${acts}</div></div>`;
+  }
+  function comingUp(routes) {
+    const live = routes.filter(r => r.enabled && ['webhook', 'event', 'form', 'chat', 'error', 'tool'].includes(r.trigger)).slice(0, 2)
+      .map(r => ({tm: 'Now', now: true, name: nice(r.name), sub: r.when ? 'Starts when ' + r.when.replace(/^./, c => c.toLowerCase()) : 'Starts the moment it is called'}));
+    const day = ts => { const d = new Date(Number(ts) * 1000), t = new Date(); const tm = d.toLocaleTimeString(undefined, {hour: '2-digit', minute: '2-digit'});
+      return d.toDateString() === t.toDateString() ? tm : d.toLocaleDateString(undefined, {weekday: 'short'}) + ' ' + tm; };
+    const liveIds = new Set(routes.filter(r => r.enabled && ['webhook', 'event', 'form', 'chat', 'error', 'tool'].includes(r.trigger)).slice(0, 2).map(r => r.id));
+    const timed = routes.filter(r => r.enabled && !liveIds.has(r.id) && r.next_due_at && Number(r.next_due_at) * 1000 > Date.now() - 60000)
+      .sort((x, y) => x.next_due_at - y.next_due_at).slice(0, 5 - live.length)
+      .map(r => ({tm: day(r.next_due_at), name: nice(r.name), sub: r.when || ''}));
+    const all = [...live, ...timed];
+    if (!all.length) return `<div class="rh-quiet">Nothing is planned yet. Routes on a schedule show here with their next time.</div>`;
+    return all.map(x => `<div class="rh-tl"><span class="tm">${esc(x.tm)}</span><span class="pt${x.now ? ' now' : ''}"></span><div><b>${esc(x.name)}</b><span class="mut sm">${esc(x.sub)}</span></div></div>`).join('');
+  }
+  function trend(d) {
+    d = d || []; const mx = Math.max(1, ...d), W = 96, H = 30;
+    const pts = d.map((v, i) => `${(2 + i * (W - 4) / Math.max(1, d.length - 1)).toFixed(1)},${(H - 4 - (v / mx) * (H - 8)).toFixed(1)}`);
+    if (!pts.length) return '';
+    const last = pts[pts.length - 1].split(',');
+    return `<svg class="rh-spark" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true"><polyline points="${pts.join(' ')}"/><circle cx="${last[0]}" cy="${last[1]}" r="2.8"/></svg>`;
+  }
   async function viewHome() {
     shell(false); setNav('home');
     const [sum, list, tp] = await Promise.all([api('GET', '/api/route/summary'), api('GET', '/api/route/routes'), api('GET', '/api/route/templates')]);
     SUM = sum;
-    MAIN.innerHTML = `
-      <section class="hero">
-        <h1>What should run by itself?</h1>
+    const hr = new Date().getHours(), hello = hr < 5 ? 'Good evening' : hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
+    const first = !sum.routes_total, needs = sum.needs_you || [], nApp = needs.filter(n => n.kind === 'approval').length, nBad = needs.length - nApp;
+    const line = first ? 'Say it the way you would tell a person. Hoola draws it first, and nothing runs until you switch it on.'
+      : `${sum.routes_on ? `${say(sum.routes_on, 'route')} ${sum.routes_on === 1 ? 'is' : 'are'} working for you.` : 'No route is switched on yet.'} ${
+        sum.needs_count ? `${say(sum.needs_count, 'thing')} ${sum.needs_count === 1 ? 'needs' : 'need'} your answer.` : 'Nothing needs you right now.'}`;
+    const prev = Number(sum.runs_prev_7d || 0), cur = Number(sum.runs_7d || 0);
+    const delta = prev ? (cur >= prev ? `<span class="rh-up">${Math.round((cur - prev) / prev * 100)}% more</span> than last week`
+      : `${Math.round((prev - cur) / prev * 100)}% fewer than last week`) : (cur ? 'None the week before' : 'No runs this week');
+    const needSub = sum.needs_count ? [nApp ? say(nApp, 'approval') : '', nBad ? say(nBad, 'stopped run') : ''].filter(Boolean).join(', ').toLowerCase().replace(/^./, c => c.toUpperCase()) : 'All clear';
+    const today = new Date().toLocaleDateString(undefined, {weekday: 'long', day: 'numeric', month: 'long'});
+    MAIN.innerHTML = `<div class="rh">
+      <div class="rh-top"><span class="mut sm">${esc(today)}</span><span class="sp"></span>
+        <form class="rh-find" id="findForm" role="search"><label class="srch">${svg(IC.search)}<input type="search" id="findQ" placeholder="Find a route" aria-label="Find a route"></label></form></div>
+      <section class="hero rh-hero">
+        <h1>${hello}. What should run by itself?</h1>
+        <p class="rh-line">${esc(line)}</p>
         <form class="comp" id="askForm">
           <textarea id="askText" rows="2" placeholder="When a new order comes in, add it to my sheet and message me if it is a big one…" aria-label="Describe a route"></textarea>
-          <div class="crow"><a class="sb" href="#/templates">${svg(IC.grid)}Start from a template</a><button class="sb" type="button" id="blank">${svg(IC.plus)}Blank canvas</button>
-            <span class="sp"></span><button class="go" type="submit" aria-label="Build the route" id="askGo" disabled>${svg(IC.up)}</button></div>
+          <div class="crow rh-crow"><a class="sb" href="#/templates">${svg(IC.grid)}Template</a><button class="sb" type="button" id="blank">${svg(IC.plus)}Blank canvas</button><a class="sb" href="#/import">${svg('<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/>')}Bring in from n8n or Make</a>
+            <span class="sp"></span><button class="go" type="submit" aria-label="Draw this route" id="askGo" disabled>${svg(IC.up)}</button></div>
         </form>
-        <p class="mut sm center">Hoola draws the route on the canvas first. Nothing runs until you switch it on.</p>
+        <div class="rh-try" aria-label="Examples to try"><span class="mut sm">Try</span>${TRY.map(t => `<button type="button" class="rh-ex" data-try="${esc(t)}">${esc(t)}</button>`).join('')}</div>
       </section>
-      <div class="kpis">
-        <div class="card kpi"><span>Routes on</span><b>${fmtN(sum.routes_on)}</b><small>of ${fmtN(sum.routes_total)} routes</small></div>
-        <div class="card kpi"><span>Runs this week</span><b>${fmtN(sum.runs_7d)}</b><small>${sum.failed_7d ? `<span class="badt">${fmtN(sum.failed_7d)} did not finish</span>` : 'none failed'}</small></div>
-        <div class="card kpi"><span>Went well</span><b>${sum.success_30d === null || sum.success_30d === undefined ? '–' : sum.success_30d + '%'}</b><small>of runs in 30 days</small></div>
-        <a class="card kpi${sum.needs_count ? ' hot' : ''}" href="#/needs"><span>Needs you</span><b>${fmtN(sum.needs_count)}</b><small>${sum.needs_count ? 'open the list' : 'all clear'}</small></a>
-      </div>
-      ${sum.needs_count ? `<section aria-label="Needs you"><div class="hd"><h2>Needs you</h2><span class="cnum">${fmtN(sum.needs_count)}</span></div>${needsList(sum.needs_you.slice(0, 4))}</section>` : ''}
-      <section aria-label="Your routes"><div class="hd"><h2>Your routes</h2><span class="sp"></span>${list.routes.length > 8 ? '<a class="btn soft s" href="#/routes">All routes</a>' : ''}</div>
-        <div class="card flat">${routeRows(list.routes.slice(0, 8))}</div></section>
-      <section aria-label="Templates"><div class="hd"><h2>Start from a template</h2><span class="sp"></span><a class="btn soft s" href="#/templates">See all</a></div>
-        <div class="tgal">${tp.templates.slice(0, 4).map(tplCard).join('')}</div></section>`;
+      ${first ? `<section class="card flat rh-steps" aria-label="How a route starts">
+          <div class="rh-step"><span class="n">1</span><div><b>Say what should happen</b><span class="mut sm">In your own words, or pick one of the templates below.</span></div></div>
+          <div class="rh-step"><span class="n">2</span><div><b>Look at the drawing</b><span class="mut sm">Each step is on the canvas. Test it on sample data; nothing is sent.</span></div></div>
+          <div class="rh-step"><span class="n">3</span><div><b>Switch it on</b><span class="mut sm">It runs by itself from then on. You can stop it at any time.</span></div></div>
+        </section>` : `<section class="card flat rh-band" aria-label="This week">
+          <div class="rh-cell"><span class="lbl">Routes on</span><b class="big">${fmtN(sum.routes_on)}</b><span class="sub">of ${say(sum.routes_total, 'route').toLowerCase()}</span></div>
+          <div class="rh-cell"><span class="lbl">Runs this week</span><div class="rh-bigrow"><b class="big">${fmtN(cur)}</b>${trend(sum.week_days)}</div><span class="sub">${delta}</span></div>
+          <div class="rh-cell"><span class="lbl">Went well</span><b class="big">${sum.success_30d === null || sum.success_30d === undefined ? '–' : sum.success_30d + '%'}</b><span class="sub">${sum.failed_30d ? `${say(sum.failed_30d, 'run').toLowerCase()} did not finish in 30 days` : 'of runs in 30 days'}</span></div>
+          <a class="rh-cell${sum.needs_count ? ' hot' : ''}" href="#/needs"><span class="lbl">Needs you</span><b class="big">${fmtN(sum.needs_count)}</b><span class="sub">${esc(needSub)}</span></a>
+        </section>
+        <div class="rh-cols">
+          <section aria-label="Your routes"><div class="hd"><h2>Your routes</h2><span class="sp"></span><a class="lnk" href="#/routes">${list.routes.length > 6 ? 'See all ' + fmtN(list.routes.length) : 'All routes'}</a></div>
+            <div class="card flat">${routeRows(list.routes.slice(0, 6))}</div></section>
+          <aside class="rh-aside">
+            <section aria-label="Needs you"><div class="hd"><h2>Needs you</h2><span class="sp"></span>${needs.length ? '<a class="lnk" href="#/needs">Open all</a>' : ''}</div>
+              <div class="card flat rh-needs">${needs.length ? needs.slice(0, 3).map(homeNeed).join('') : `<div class="rh-quiet">${svg(IC.check)}Nothing needs you. Approvals and stopped runs show here.</div>`}</div></section>
+            <section aria-label="Coming up"><div class="hd"><h2>Coming up</h2><span class="sp"></span>${TZ ? `<span class="mut sm">${esc(TZ)}</span>` : ''}</div>
+              <div class="card flat rh-coming">${comingUp(list.routes)}</div></section>
+          </aside>
+        </div>`}
+      <section aria-label="Templates"><div class="hd"><h2>Start from a template</h2><span class="sp"></span><a class="lnk" href="#/templates">See all templates</a></div>
+        <div class="tgal">${tp.templates.slice(0, 4).map(tplCard).join('')}</div></section></div>`;
     const ta = $('#askText'), go = $('#askGo');
     ta.addEventListener('input', () => { go.disabled = !ta.value.trim(); });
     ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#askForm').requestSubmit(); } });
@@ -210,6 +275,9 @@
       try { await newRoute(titleOf(ta.value), ta.value.trim()); } catch (err) { toast(err.message, true); go.disabled = false; }
     });
     $('#blank').addEventListener('click', () => newRoute('New route').catch(err => toast(err.message, true)));
+    MAIN.querySelectorAll('[data-try]').forEach(b => b.addEventListener('click', () => { ta.value = b.dataset.try; go.disabled = false; ta.focus(); }));
+    $('#findForm').addEventListener('submit', e => { e.preventDefault();
+      try { sessionStorage.setItem(FIND_KEY, $('#findQ').value.trim()); } catch {} location.hash = '#/routes'; });
     tplClicks(MAIN, tp.templates);
     needCount();
   }
@@ -237,6 +305,7 @@
       const rs = list.routes.filter(r => (!folder || r.folder === folder) && (!q || (nice(r.name) + ' ' + r.description + ' ' + (r.tags || []).join(' ')).toLowerCase().includes(q)));
       if (so === 'name') rs.sort((a, b) => a.name.localeCompare(b.name)); else if (so === 'runs') rs.sort((a, b) => b.runs_30d - a.runs_30d);
       $('#rtable').innerHTML = routeRows(rs, list.routes.length ? 'No route matches.' : ''); };
+    try { const q0 = sessionStorage.getItem(FIND_KEY); if (q0) { $('#rq').value = q0; sessionStorage.removeItem(FIND_KEY); } } catch {}
     draw();
     $('#rq').addEventListener('input', draw); $('#rsort').addEventListener('change', draw);
     const fc = $('#fchips');
