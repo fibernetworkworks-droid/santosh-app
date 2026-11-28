@@ -13889,3 +13889,27 @@ Owner: "NOW SAME DESIGN FOR EDITOR AND ROUTE TABS" (after v0.999.297 home and v0
   then its runs ("Its runs", newest first) / versions / settings.
 Checked: 48 views in Chromium (editor, a step, the start, Add a step, a web request, Runs, Versions, Settings x 1440 / 1024 /
 390 x light / dark), no findings. test_v0999_297_route_home.py. NOT VERIFIED on her server.
+
+
+## v0.999.302 ML DESK (owner: "Machine Learning Engineer same as finance desks")
+
+The Machine Learning Engineer gets its own desk at /console/ml beside its own chat (Conversation kind `mleng`, `server/app/mlchat.py`,
+family `ml`), built like the finance desks. Engine `server/app/mldesk/` - all code, no model, nothing runs on her machines:
+- `run.py` training logs (CSV, Keras "Epoch n/m" lines, PyTorch Lightning / Hugging Face dict lines, key=value): best epoch, gap
+  between training and validation, rise after the best (overfitting), divergence / nan, plateaus, a learning rate too high, where
+  early stopping would stop with her patience, metrics best elsewhere than the loss.
+- `table.py` shared CSV reader + column typing + PSI (reference quantile bins / categories) + two-sample KS with the asymptotic
+  p-value (equals scipy's kstwobign; D equals scipy.ks_2samp).
+- `data.py` profile: types, missing, ID-like columns, constants, duplicates, target balance, leaking columns (correlation with the
+  target), redundant feature pairs, train / test PSI by a split column.
+- `drift.py` reference vs current per column: PSI, KS, mean shift in sd, missing change, new categories; her watch / act limits.
+- `regress.py` MAE, RMSE, R2, MAPE / sMAPE / WAPE, bias, MASE against the seasonal naive forecast, calibration by tenths, groups,
+  p10 / p90 interval coverage (all pinned to numpy in the tests).
+- `sizing.py` weights at a precision, KV cache from layers / kv heads / head dim, fit on named GPUs (datasheet figures), largest
+  batch / context, decode tokens/s bandwidth bound, LoRA / QLoRA / full training memory, FLOPs (6ND / 4ND) and GPU-hours at her MFU.
+- `ci.py` GitHub Actions model check (same rules as the vision desk: scores drop in points, errors / times rise in %).
+Pages: Today, Training (loss / metrics / learning-rate charts), Data (columns table, target bars, train vs test shift), Drift
+(per-column table + paired bars), Errors (scatter, calibration, groups, error histogram), Sizing (memory bar against the GPUs),
+CI check, Settings. NEW tool `ml_desk` (registry 715), Hub key `ml_eng`. Tests `server/tests/test_ml_desk.py` (5 incl. a browser walk
+at 1440 and 390). The test caught one wiring bug: the chat's FAMILIES said `mleng` while the tool family is `ml` - fixed.
+NOT VERIFIED: on her server, with her own runs and data, or the workflow on GitHub.
