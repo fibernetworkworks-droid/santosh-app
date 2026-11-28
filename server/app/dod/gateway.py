@@ -178,6 +178,18 @@ async def recover_lock(tenant: str) -> bool:
         return False
     if not (state_dir(tenant) / "openclaw.json").exists():
         return False
+    # Chrome's own "profile in use" lock names the container that made it; a new container (after an image upgrade or
+    # a lost container) then cannot start the browser ("Chromium profile lock names another hostname", seen on the
+    # real image). Her container is stopped, so no Chrome is using the profile: the links can go.
+    import os
+    for prof in (state_dir(tenant) / "browser").glob("*/user-data"):
+        for name in ("SingletonLock", "SingletonSocket", "SingletonCookie"):
+            f = prof / name
+            if os.path.lexists(f):
+                try:
+                    f.unlink()
+                except OSError as e:
+                    log.warning("dod browser lock %s not removed: %s", f, e)
     code, out = await DOCKER(*recover_args(tenant), timeout=120)
     try:
         info = json.loads(out[out.index("{"):out.rindex("}") + 1])
@@ -366,6 +378,13 @@ async def ensure(tenant: str) -> tuple[str, str]:
                            encoding="utf-8")
             cfg.chmod(0o600)
             _own(st)   # OpenClaw runs as `node` (uid 1000) and refuses a state folder others can write to
+            if g.image and g.image != s.dod_image:
+                # the owner moved to a newer pinned image: a new container on the same state folder (her memory and
+                # logins stay); `docker start` would keep running the old image for ever
+                rc, run_now = await DOCKER("inspect", "-f", "{{.State.Running}}", container_name(tenant), timeout=30)
+                if not (rc == 0 and run_now.strip() == "true"):
+                    await DOCKER("rm", container_name(tenant), timeout=60)
+                    _save(tenant, image=s.dod_image)
             await recover_lock(tenant)   # a coworker killed hard leaves a lock that blocks every new start
             code, out = await DOCKER("start", container_name(tenant), timeout=60)
             if code != 0:

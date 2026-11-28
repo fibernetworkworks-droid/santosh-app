@@ -490,3 +490,68 @@ def test_a_lock_left_by_a_hard_kill_is_cleared_with_openclaws_own_command(dod):
     GW.DOCKER = clean
     assert asyncio.run(GW.recover_lock("t-lock")) is False
     assert not any("--confirm" in c for c in calls)
+
+
+def test_chromes_stale_profile_lock_goes_only_when_her_coworker_is_stopped(dod):
+    """Seen on the real image: a new container cannot start the browser while Chrome's lock names the old one."""
+    import asyncio
+    import os
+    GW, S, docker = dod
+    st = GW.state_dir("t-chrome")
+    prof = st / "browser" / "openclaw" / "user-data"
+    prof.mkdir(parents=True)
+    (st / "openclaw.json").write_text("{}")
+    (prof / "Preferences").write_text("{}")
+
+    def links():
+        for n, to in (("SingletonLock", "deadbeef-646"), ("SingletonSocket", "/tmp/gone/s"), ("SingletonCookie", "1")):
+            if not os.path.lexists(prof / n):
+                os.symlink(to, prof / n)
+
+    async def running(*args, timeout=0):
+        return (0, "true") if args[0] == "inspect" else (0, "{}")
+    links()
+    GW.DOCKER = running
+    asyncio.run(GW.recover_lock("t-chrome"))
+    assert os.path.lexists(prof / "SingletonLock"), "never touched while her coworker runs"
+
+    async def stopped(*args, timeout=0):
+        return (0, "false") if args[0] == "inspect" else (0, '{"present": false}')
+    GW.DOCKER = stopped
+    asyncio.run(GW.recover_lock("t-chrome"))
+    assert not any(os.path.lexists(prof / n) for n in ("SingletonLock", "SingletonSocket", "SingletonCookie"))
+    assert (prof / "Preferences").exists(), "only the lock links go; her browser profile stays"
+
+
+def test_a_newer_pinned_image_gets_a_new_container_on_the_same_state(dod, monkeypatch):
+    import asyncio
+    GW, S, docker = dod
+    monkeypatch.setenv("DOD_ENGINE", "true")
+    monkeypatch.setenv("OPENROUTER_PROVISIONING_KEY", "prov-key")
+    from app.config import get_settings
+    get_settings.cache_clear()
+    from app.dod.models import DodGateway
+    from app.bazar.security import vault
+    from app import db as _db
+    t = "t-img"
+    with _db.session() as ss:
+        ss.merge(DodGateway(tenant_id=t, container=GW.container_name(t), port=28555, token_enc=vault().seal("tok"),
+                            key_enc=vault().seal("k"), mcp_enc=vault().seal("m"), state="asleep",
+                            image="ghcr.io/openclaw/openclaw:2026.10.1-browser"))
+        ss.commit()
+    calls = []
+
+    async def fake(*args, timeout=0):
+        calls.append(list(args))
+        return (0, "false") if args[0] == "inspect" else (1, "no") if args[0] == "start" else (0, "ok")
+    GW.DOCKER = fake
+
+    async def ready(base, token, wait):
+        return True
+    monkeypatch.setattr(GW, "_ready_http", ready)
+    asyncio.run(GW.ensure(t))
+    kinds = [c[0] for c in calls]
+    assert ["rm", GW.container_name(t)] in calls and kinds.index("rm") < kinds.index("run")
+    run = [c for c in calls if c[0] == "run" and "-d" in c][0]
+    from app.config import get_settings
+    assert run[-1] == get_settings().dod_image and GW._row(t).image == get_settings().dod_image
