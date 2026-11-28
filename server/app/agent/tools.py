@@ -1268,6 +1268,10 @@ from .virt_tools import VIRT_HANDLERS, VIRT_LABELS, VIRT_TOOLS  # noqa: E402
 TOOLS.extend(VIRT_TOOLS)
 TOOL_LABELS.update(VIRT_LABELS)
 HANDLERS.update(VIRT_HANDLERS)
+from .lowlat_tools import LOWLAT_HANDLERS, LOWLAT_LABELS, LOWLAT_TOOLS  # noqa: E402
+TOOLS.extend(LOWLAT_TOOLS)
+TOOL_LABELS.update(LOWLAT_LABELS)
+HANDLERS.update(LOWLAT_HANDLERS)
 # v0.357 Engineering Desk: the hired CAD Engineer (cad_part)
 from .eng_tools import ENG_HANDLERS, ENG_LABELS, ENG_TOOLS  # noqa: E402
 

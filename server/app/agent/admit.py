@@ -230,6 +230,12 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
              "oci runtime", "runc", "crun", "gvisor", "kata containers", "firecracker", "cap_sys_admin", "capabilities drop",
              "cap-drop", "live migration", "host-passthrough", "vcpu", "overcommit", "numa node", "hugepages", "virtio", "proc/cpuinfo",
              "x86-64-v3", "x86-64-v4", "ovmf", "secure boot vm", "vm placement"),
+    # v0.999.288 the Backend Systems Engineer (Low Latency): her latency words
+    "lowlat": ("low latency", "low-latency", "tail latency", "p99 latency", "p99.9", "p999", "hdrhistogram", "hdr histogram", "wrk2",
+               "coordinated omission", "latency budget", "latency percentile", "latency spike", "jitter", "false sharing", "cache line",
+               "cache-line", "struct layout", "struct padding", "lock-free", "lock free", "wait-free", "spsc", "ring buffer", "busy poll",
+               "busy-poll", "isolcpus", "nohz_full", "kernel bypass", "dpdk", "io_uring", "perf report", "perf stat", "flame graph",
+               "flamegraph", "hot path", "hot loop", "microbenchmark", "micro-benchmark", "c-state", "cstate", "interrupt coalescing"),
     # v0.999.283 the Distributed Systems Engineer: her distributed-systems words
     "dist": ("distributed system", "linearizab", "linearisab", "jepsen", "quorum", "consensus", "raft", "paxos", "split brain", "split-brain",
              "exponential backoff", "retry policy", "retry storm", "thundering herd", "idempotency", "idempotent", "failover", "fencing token",

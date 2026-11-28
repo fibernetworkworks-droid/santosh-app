@@ -2205,6 +2205,15 @@ def sre_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/latency")
+@app.get("/console/latency/")
+def lowlat_desk_page():
+    """LOW LATENCY DESK: the Backend Systems Engineer (Low Latency)'s own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "lldesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/virtualization")
 @app.get("/console/virtualization/")
 def virt_desk_page():
@@ -2979,6 +2988,8 @@ from . import srechat as _srchat_mod                            # noqa: E402  SR
 _srchat_mod.mount(app, current_tenant, require_key)             # /api/srdesk/*
 from . import virtchat as _vtchat_mod                           # noqa: E402  VIRTUALIZATION DESK
 _vtchat_mod.mount(app, current_tenant, require_key)             # /api/hvdesk/*
+from . import lowlatchat as _llchat_mod                          # noqa: E402  LOW LATENCY DESK
+_llchat_mod.mount(app, current_tenant, require_key)              # /api/lldesk/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through
