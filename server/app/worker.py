@@ -917,7 +917,7 @@ _dod_last = 0.0
 
 
 async def dod_jobs() -> None:
-    """v0.999.304 HOOLA DOD: tasks cut by a restart continue, and coworkers with no work go to sleep (their memory
+    """v0.999.306 HOOLA DOD: tasks cut by a restart continue, and coworkers with no work go to sleep (their memory
     stays on disk). Nothing runs for anyone who never opened Hoola DOD."""
     global _dod_last
     import time

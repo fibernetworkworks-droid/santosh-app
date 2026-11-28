@@ -1498,7 +1498,7 @@ class Settings(BaseSettings):
     gyaan_sync: bool = False                # tests: index + embed inline
     gyaan_ground: bool = True               # v0.135 cheap model checks each cited sentence against its sources
     gyaan_ground_timeout_s: float = 8.0
-    # v0.999.304 HOOLA DOD - the coworker, on each user's own OpenClaw Gateway (dod/gateway.py). The engine stays off
+    # v0.999.306 HOOLA DOD - the coworker, on each user's own OpenClaw Gateway (dod/gateway.py). The engine stays off
     # until the owner switches it on; each user then gets her own container and her own model key with a limit.
     dod_engine: bool = False                # DOD_ENGINE=true once Docker + the provisioning key are on the VPS
     dod_image: str = "ghcr.io/openclaw/openclaw:2026.11.10-browser"   # pinned official image (with its browser)

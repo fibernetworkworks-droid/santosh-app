@@ -1,4 +1,4 @@
-"""v0.999.304 HOOLA DOD - her coworker on her own OpenClaw Gateway (owner: "BUILD HOOLA DOD" after the design canvas).
+"""v0.999.306 HOOLA DOD - her coworker on her own OpenClaw Gateway (owner: "BUILD HOOLA DOD" after the design canvas).
 
 A fake OpenClaw Gateway (the documented /v1/responses SSE stream + /readyz) and a fake OpenRouter provisioning API stand
 in for the real ones; docker is a recorder. One task goes end to end: steps, her note read at the next step, a payment

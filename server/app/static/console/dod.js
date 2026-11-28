@@ -1,4 +1,4 @@
-/* v0.999.304 HOOLA DOD - her coworker. Meet it once (a face from the 200 looks, a name, a voice), then give it
+/* v0.999.306 HOOLA DOD - her coworker. Meet it once (a face from the 200 looks, a name, a voice), then give it
    real work; every step, question and file shows here. The page only relays her taps to /api/dod/*: give a task,
    tell it something, answer it, stop it. Parts of the page that hold her typing are drawn once and never redrawn
    by the refresh. */

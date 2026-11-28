@@ -43,7 +43,7 @@ const List<HoolaTool> hoolaMoreTools = [
   (title: 'Hoola Cred', sub: 'Your passwords, locked with one master password', glyph: ToolGlyph.cred, path: '/console/?v=cred'),
   // v0.999.60 Hoola Wallet: Hoola gets the order ready, her fingerprint pays (the app's own screen)
   (title: 'Hoola Wallet', sub: 'Hoola pays for everyday things, after your fingerprint', glyph: ToolGlyph.wallet, path: '/console/?v=wallet'),
-  // v0.999.304 Hoola DOD: her coworker (its console page, signed in)
+  // v0.999.306 Hoola DOD: her coworker (its console page, signed in)
   (title: 'Hoola DOD', sub: 'Your coworker does real work for you', glyph: ToolGlyph.coworker, path: '/console/dod'),
 ];
 

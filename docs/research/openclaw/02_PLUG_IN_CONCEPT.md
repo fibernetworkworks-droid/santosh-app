@@ -66,3 +66,16 @@ AND GIVE THE NAME TO IT --- CHECK THE APP SIDE ALREADY AVATHAR IS BUILD."
 
 1. (Decided: Hoola DOD only; nothing existing touched.)
 2. Server capacity: about 1-2 GB RAM per user whose OpenClaw is awake; the server size limits how many work at once.
+
+## As built (v0.999.306)
+
+- Section /console/dod + sidebar row + Tools card + phone Tools tile; first visit = Meet your coworker (200 looks, name, voice),
+  saved in `dod_profiles` apart from the main avatar.
+- Hoola talks to her Gateway over the documented OpenResponses endpoint (`/v1/responses`, SSE, bearer token), not the WebSocket:
+  the WebSocket needs an Ed25519 device identity and pairing approval for non-loopback clients, the HTTP endpoint needs only her
+  Gateway token. Hoola's own client tools (hoola_step / hoola_ask / hoola_deliver / hoola_done) carry the steps, questions, files
+  and result, so her yes stays Hoola's without OpenClaw's approval screens.
+- Her model key is her own, minted by OpenRouter's provisioning API with a spending limit; the server's key never goes into her
+  container.
+- Still to do: a live screen view (WebSocket + device pairing), phone push, Hoola's tools inside her OpenClaw as an MCP server,
+  credits from the key's usage, and the first real run on her server.

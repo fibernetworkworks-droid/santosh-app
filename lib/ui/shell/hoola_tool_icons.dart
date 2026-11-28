@@ -61,7 +61,7 @@ const Map<ToolGlyph, (String, String, _Move, double)> _art = {
   // v0.999.60 Hoola Wallet: a wallet, its clasp blinking
   ToolGlyph.wallet: ('M4 7.5A2.5 2.5 0 0 1 6.5 5H18v3M6.5 8H17.5A2.5 2.5 0 0 1 20 10.5v6A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5V7.5',
       'M16 13.5h.01', _Move.blink, 2.6),
-  // v0.999.304 Hoola DOD: a person (the coworker), a spark twinkling beside them
+  // v0.999.306 Hoola DOD: a person (the coworker), a spark twinkling beside them
   ToolGlyph.coworker: ('M10 4a3.5 3.5 0 1 1 0 7a3.5 3.5 0 1 1 0-7zM3.5 20a6.5 6.5 0 0 1 13 0',
       'M18.5 3.5l.7 1.6 1.6.7-1.6.7-.7 1.6-.7-1.6-1.6-.7 1.6-.7z', _Move.twinkle, 2.6),
 };
