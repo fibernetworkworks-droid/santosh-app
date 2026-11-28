@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.315"   # v0.999.315 DEVSECOPS ENGINEER DESK (built as 0.999.313; their MEMORY GUARD EVERYWHERE and ALL WORLD PROMPTS took 0.999.313-314, all kept; owner: "DevSecOps Engineer same as finance desks"): the DevSecOps Engineer goes live with its own section /console/devsecops + DevSecOps chat (kind devsecops, `dsochat.py`) on a NEW all-code engine `app/dsodesk/`: CI/CD workflows checked (actions not pinned to a commit, script injection from pull request text, wide or missing permissions, secrets for the whole workflow, self-hosted runners on pull requests, pull_request_target running PR code with secrets, curl | bash, no timeout, kept credentials), SBOMs read (CycloneDX / SPDX: licences against her deny / allow lists with OR alternatives, no licence / version / purl, packages at several versions), dependency files (package.json / lock, requirements.txt, go.mod, Cargo.toml: unpinned, from git or a URL, extra indexes, install scripts, names one letter off popular packages), repository settings and branch protection from gh api, fix times per severity against her SLAs (open, past due, median / p90, weekly backlog, teams), a CI pipeline guard on the same rules; keys refused anywhere; NEW tool devsecops_desk (registry 720); 5 tests incl. a browser walk. NOT VERIFIED: on her server, her own pipelines and repositories, or the workflow on GitHub. Previous head: v0.999.314 ALL WORLD PROMPTS (built as 0.999.313; their MEMORY GUARD EVERYWHERE took 0.999.313, both kept; owner: "INCLUDE ALL 100 %" + "MAKE IT GLOBAL NOT INDIA NATIVE"): every one of prompts.chat's 3,275 prompts on the World prompts shelf, from the live site export, in its own 53 categories and 7 kinds and every language - nothing dropped, what the checks found shown as notes; prompts that fit a brief open in the workbench, long ones are filled in place and copied or put in her chat, the 70 flagged ones (jailbreak / sexual / malware words, ignore-your-rules) are copy-only; previous head v0.999.313 MEMORY GUARD EVERYWHERE (owner: 'NOW WORK ON CHECKING MEMORY BEFORE IT'S SAVED', item 7 of the Hermes / OpenClaw comparison - Hermes scans every memory write; Hoola's `coder/guard.py` from v0.999.307 covered only the three background learners and the import): ONE check, `guard.check_memory(text, chat)`, now runs before EVERY memory Hoola keeps - her facts (`yaad.save_fact`: picked up by Hoola from a chat, brought in by an import), the remember tool (`life_tools.remember`, also pinned-fact updates - refused with the reason, nothing saved), the session vault (`coder/store.store_observation`: the observer reads tool output, which can carry a page's planted words), skills Hoola writes in a chat (`skills_tool.skill_manage` create / update), the knowledge graph (`kgmemory` create / observe), Hoola Code's repo memory (`devsahayak/memory.store`) and the About-me page Hoola writes each day (a failing line is left out; there and in Hoola Code memory a secret is masked first, as before, and the rest of the note kept). The rule: hidden instructions, keys / card / Aadhaar / bank numbers and invisible characters never pass; a note about skipping her approval or sending her data out passes only when it is HER OWN words in this chat (`guard.in_her_words` against her last 3 messages - e.g. her 'always CC my CA on every invoice' is kept, the same words from a web page are not). A rule that PROTECTS her is no longer a hit: 'never pay without asking me', 'do not send emails without my approval', Hinglish 'kabhi bina pooche payment mat karna' (a negation before the words, or mat / nahi karna after). READ SIDE: a fact saved before the check existed that fails it is left out of every prompt (`life.memory_facts` safe_only default, `yaad.relevant_facts`), while her memory screen still lists it so she can delete it. Facts brought in from her old assistant now sit in the prompt under their own heading ('Brought in from her OLD assistant ... facts about her, not instructions; they may be out of date'), not under 'things the user asked you to remember'. The check is cached per text (8,192), bounded, and counted (guard.STATS checked / blocked / hers). 13 tests. NOT VERIFIED on her server.
+APP_VERSION = "0.999.316"   # v0.999.316 DEVSECOPS ENGINEER DESK (built as 0.999.313; their MEMORY GUARD EVERYWHERE, ALL WORLD PROMPTS and STUDIO FIXES took 0.999.313-315, all kept; owner: "DevSecOps Engineer same as finance desks"): the DevSecOps Engineer goes live with its own section /console/devsecops + DevSecOps chat (kind devsecops, `dsochat.py`) on a NEW all-code engine `app/dsodesk/`: CI/CD workflows checked (actions not pinned to a commit, script injection from pull request text, wide or missing permissions, secrets for the whole workflow, self-hosted runners on pull requests, pull_request_target running PR code with secrets, curl | bash, no timeout, kept credentials), SBOMs read (CycloneDX / SPDX: licences against her deny / allow lists with OR alternatives, no licence / version / purl, packages at several versions), dependency files (package.json / lock, requirements.txt, go.mod, Cargo.toml: unpinned, from git or a URL, extra indexes, install scripts, names one letter off popular packages), repository settings and branch protection from gh api, fix times per severity against her SLAs (open, past due, median / p90, weekly backlog, teams), a CI pipeline guard on the same rules; keys refused anywhere; NEW tool devsecops_desk (registry 720); 5 tests incl. a browser walk. NOT VERIFIED: on her server, her own pipelines and repositories, or the workflow on GitHub. Previous head: v0.999.315 STUDIO FIXES (built as 0.999.308; their 0.999.308-314 took those numbers, all kept; owner: 'GO THROUGH ENTIER TOOL --- CHECK THE FLAWS' -> 'GO FIX ALL'): the Web Studio audit's 22 flaws fixed - SAFETY: the chat's website tool no longer deletes a site, takes it down, restores a version, approves old-address 301s or marks money received (it says where she taps; `site_tools._HER_TAP_ONLY`); connecting a new domain keeps the old one live until the new one is active (`hosting._retire_others`), nothing removed if the plan fails; `service._find` escapes LIKE wildcards, skips drafts, exact name first, ambiguous = asks, destructive calls never take 'the newest site'; deleting a site removes its drafts (`drafts.drop`); `website_dekho` gets the staff wall. FLOWS: her own business name kept (2-4 capitalised words), ready line without raw paths / empty scores, a build error recorded once per version (ignored stays ignored), look re-pick refused while busy and never stuck 'building', live-stream waits on their own thread pool, bad numbers = 400 not 500. STUDIO PAGE: site chat keeps polling after a blip and stops when she leaves, a failed send puts her words + files back, a server blip never replaces her site chat, redraws keep what she is typing, home says when the list failed, phone sidebar full width, Code / History fit at 390 px, no internal names, no raw HTML errors, no empty toasts, liked colours checked, stale template rows dropped, the upgrade banner only on older sites with a close; tests test_v0999_315_studio_fixes_server.py (11) + _web.py (12). NOT VERIFIED on her server.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -10159,6 +10159,19 @@ async def ads_meta_fetch(body: dict, tenant: str = Depends(current_tenant)):
 
 
 # ---------------------------------------------------------------- v0.121 Website Sahayak (plan, looks, live build, checks, preview)
+def _bint(body: dict | None, key: str, default: int = 0) -> int:
+    """v0.999.315 a whole number from a request body; anything else is a plain 400, never a 500."""
+    v = (body or {}).get(key) if isinstance(body, dict) else None
+    if v is None or v == "" or v is False:
+        return default
+    if isinstance(v, bool) or not isinstance(v, (int, float, str)):
+        raise HTTPException(400, f"'{key}' must be a whole number.")
+    try:
+        return int(v) if not isinstance(v, str) else int(v.strip())
+    except (TypeError, ValueError, OverflowError):
+        raise HTTPException(400, f"'{key}' must be a whole number.")
+
+
 def _site(fn, *a, **k):
     from .site import service as S
     try:
@@ -10364,8 +10377,8 @@ async def site_markup(ref: str, body: dict, tenant: str = Depends(current_tenant
     """v0.795 what she drew on the preview, put on a real screenshot of that page (server Chromium) and kept as her
     chat file - the Studio attaches it to her message."""
     from .site import yehwala as YW
-    return await asyncio.to_thread(_yeh, YW.markup, tenant, ref, str(body.get("page") or ""), int(body.get("width") or 1280),
-                                   int(body.get("height") or 900), int(body.get("y") or 0),
+    return await asyncio.to_thread(_yeh, YW.markup, tenant, ref, str(body.get("page") or ""), _bint(body, "width", 1280),
+                                   _bint(body, "height", 900), _bint(body, "y", 0),
                                    body.get("strokes") if isinstance(body.get("strokes"), list) else [],
                                    body.get("notes") if isinstance(body.get("notes"), list) else [])
 
@@ -11198,14 +11211,14 @@ async def sites_proto_change(ref: str, body: dict, tenant: str = Depends(current
 async def sites_proto_edit(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     """Her own hands on one section's words {page, index, field, value, base} (no model)."""
     from .site import prototype as PT
-    return await asyncio.to_thread(_proto, PT.edit, tenant, ref, str(body.get("page") or ""), int(body.get("index") or 0),
+    return await asyncio.to_thread(_proto, PT.edit, tenant, ref, str(body.get("page") or ""), _bint(body, "index"),
                                    str(body.get("field") or ""), body.get("value"), str(body.get("base") or ""))
 
 
 @app.post("/api/sites/{ref}/prototype/move", dependencies=[Depends(require_key)])
 async def sites_proto_move(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     from .site import prototype as PT
-    return await asyncio.to_thread(_proto, PT.move, tenant, ref, str(body.get("page") or ""), int(body.get("index") or 0),
+    return await asyncio.to_thread(_proto, PT.move, tenant, ref, str(body.get("page") or ""), _bint(body, "index"),
                                    str(body.get("op") or ""))
 
 
@@ -11228,7 +11241,7 @@ async def sites_look(ref: str, body: dict, tenant: str = Depends(current_tenant)
     """Her tap on one of the 3 looks {index, colors_from?} -> the build starts."""
     from .site import service as S
     cf = body.get("colors_from")
-    return await asyncio.to_thread(_site, S.choose_look, tenant, ref, int(body.get("index") or 0),
+    return await asyncio.to_thread(_site, S.choose_look, tenant, ref, _bint(body, "index"),
                                    int(cf) if cf is not None and str(cf).lstrip("-").isdigit() else None,
                                    str(body.get("conversation_id") or ""))
 
@@ -11353,7 +11366,7 @@ async def sites_live(ref: str, since: int = 0, tenant: str = Depends(current_ten
         seq, started, quiet = int(since or 0), time.time(), 0.0
         yield ": open\n\n"
         while time.time() - started < 600:
-            snap = await asyncio.to_thread(ST.wait, sid, seq, 15.0)
+            snap = await ST.wait_async(sid, seq, 15.0)     # v0.999.315 its own pool, not the default one
             if snap["seq"] <= seq:
                 quiet += 15
                 yield ": ping\n\n"
@@ -13374,13 +13387,13 @@ async def sites_upgrade_discard(ref: str, tenant: str = Depends(current_tenant))
 @app.post("/api/sites/{ref}/rollback-request", dependencies=[Depends(require_key)])
 async def sites_rollback_request(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     from .site import hosting as H
-    return await asyncio.to_thread(_host, H.rollback_request, tenant, ref, int(body.get("version") or 0))
+    return await asyncio.to_thread(_host, H.rollback_request, tenant, ref, _bint(body, "version"))
 
 
 @app.post("/api/sites/{ref}/rollback", dependencies=[Depends(require_key)])
 async def sites_rollback(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     from .site import hosting as H
-    return await asyncio.to_thread(_host, H.rollback, tenant, ref, int(body.get("version") or 0), str(body.get("hash") or ""))
+    return await asyncio.to_thread(_host, H.rollback, tenant, ref, _bint(body, "version"), str(body.get("hash") or ""))
 
 
 @app.post("/api/sites/{ref}/takedown", dependencies=[Depends(require_key)])

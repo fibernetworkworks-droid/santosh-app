@@ -131,6 +131,8 @@ def record(tenant: str, ref: str, raw: bytes | str | list) -> dict[str, Any]:
         except ValueError:
             raise GaltiError("Not JSON.")
     items = raw if isinstance(raw, list) else (raw.get("items") if isinstance(raw, dict) else [])
+    if not isinstance(items, list):       # v0.999.315 {"items": {...}} or a word: nothing to record, never a 500
+        items = []
     if len(json.dumps(items, default=str)) > MAX_BODY:
         raise GaltiError("Too much at once.")
     r = _site(tenant, ref)
@@ -141,7 +143,8 @@ def record(tenant: str, ref: str, raw: bytes | str | list) -> dict[str, Any]:
         for it in (items or [])[:MAX_ITEMS]:
             if not isinstance(it, dict):
                 continue
-            kind = it.get("kind") if it.get("kind") in KINDS else "page"
+            k = it.get("kind")
+            kind = k if isinstance(k, str) and k in KINDS else "page"
             msg = OPS.clean_message(_PREVIEW.sub("/", str(it.get("m") or "")))
             file = _clean_file(it.get("f"))
             line = it.get("l")
@@ -170,10 +173,20 @@ def record(tenant: str, ref: str, raw: bytes | str | list) -> dict[str, Any]:
 
 
 def build_problem(tenant: str, ref: str) -> None:
-    """A build that stopped on a problem shows as a 'Build problem' card too (same ladder)."""
+    """A build that stopped on a problem shows as a 'Build problem' card too (same ladder). v0.999.315: the Studio asks
+    for the errors again and again - the same build error is recorded ONCE per version (the count does not climb on
+    every poll, a card she fixed does not reopen for the same version) and a card she ignored never reopens from here."""
     r = _site(tenant, ref)
-    if r.status == "failed" and (r.error or "").strip():
-        record(tenant, ref, [{"kind": "build", "m": r.error, "p": "/"}])
+    if r.status != "failed" or not (r.error or "").strip():
+        return
+    ensure_table()
+    msg = OPS.clean_message(_PREVIEW.sub("/", str(r.error)))
+    fp = fingerprint("build", msg, _clean_file(None), 0)
+    with session() as s:
+        row = s.scalars(select(SiteError_).where(SiteError_.site_id == r.id, SiteError_.fp == fp)).first()
+        if row is not None and (row.status == "ignored" or int(row.version or 0) >= int(r.version or 0)):
+            return
+    record(tenant, ref, [{"kind": "build", "m": r.error, "p": "/"}])
 
 
 def errors(tenant: str, ref: str, all_: bool = False) -> dict[str, Any]:

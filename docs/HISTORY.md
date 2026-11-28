@@ -14195,7 +14195,16 @@ kept, and nothing is India-specific.
   Hoola chat for long ones. `paste.blanks(limit=)` reads up to 40 blanks for world prompts.
 - Shelf file world/world.json.gz 4.5 MB. Tests test_v0829_world_paste_dupe.py rewritten for the include-all rule (14,
   incl. a browser walk). NOT VERIFIED on her server; the shelf is fixed to the 28 Nov export until rebuilt.
-## v0.999.315 DEVSECOPS ENGINEER DESK (built as 0.999.313; their MEMORY GUARD EVERYWHERE and ALL WORLD PROMPTS took 0.999.313-314, all kept; owner: "DevSecOps Engineer same as finance desks")
+
+
+## v0.999.315 STUDIO FIXES
+(owner: 'NOW COME BACK TO WEB DEVLOPMENT IN HOOLA --- GO THROUGH ENTIER TOOL --- CHECK THE FLAWS IT HAS' -> 22 flaws found by a real-browser walk of the Web Studio + two code reads -> 'GO FIX ALL').
+Server: agent/site_tools.py (_HER_TAP_ONLY: delete, takedown, restore_version, moves_ok, shop_order to=confirmed refuse and say where she taps; website_dekho staff wall), site/hosting.py (connect_domain plans first, old domains retired only when the new one turns active: _retire_others in _check_pending + _check_direct), site/service.py (_find: escaped LIKE, drafts by id only, exact name first, ambiguous = SiteError, newest=False refuses an empty ref; brand_name 2-4 capitalised words; _say ready line; choose_look busy + start-failure restore; delete drops drafts), site/drafts.py (drop shared by discard + delete), site/galti.py (build_problem once per version, ignored stays ignored, record tolerates odd shapes), site/stream.py (WAIT_POOL 32 + wait_async), site/wapas.py (no empty-ref restore), main.py (_bint -> 400; stream uses wait_async).
+Studio page: static/console/webstudio.js (readThread retries with backoff, generation counter stops polling on leaving, ask() puts words + files back on failure, ensureConv only replaces a 404/410 chat and captures the site first, paneTyping keeps typing across server redraws, list-failed home, plain labels, plainErr for non-JSON errors, toast fallbacks, HEX() on liked colours, loadTpl request token, upgrade banner gated + dismissable) + webstudio.css (phone sidebar full width, panel bar + History rows wrap at phone width).
+Tests changed to the safe behaviour: test_v0808_wapas (tool restore refuses), test_v0623_koi_pata (tool moves_ok refuses), test_v122_hosting (tool takedown refuses).
+Left red, all red on unchanged HEAD too: test_v0623 test_version (stale pin), test_chatkit_webstudio x2, test_v0667_premium_studio::test_design_markers, test_v0777_chat_jaisa x2.
+NOT VERIFIED on her server.
+## v0.999.316 DEVSECOPS ENGINEER DESK (built as 0.999.313; their MEMORY GUARD EVERYWHERE, ALL WORLD PROMPTS and STUDIO FIXES took 0.999.313-315, all kept; owner: "DevSecOps Engineer same as finance desks")
 
 The DevSecOps Engineer gets its own section `/console/devsecops` and DevSecOps chat (Conversation kind `devsecops`, `dsochat.py`)
 on a NEW all-code engine `server/app/dsodesk/` (no model):

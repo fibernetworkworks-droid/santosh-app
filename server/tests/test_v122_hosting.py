@@ -338,7 +338,10 @@ def test_rollback_uptime_takedown_and_email_dns(host_env):
     with pytest.raises(ToolError):
         asyncio.run(dispatch("website", {"action": "takedown", "site": g["id"]}, Ctx(T, ctx.conversation_id, actor="staff:x")))
     out = asyncio.run(dispatch("website", {"action": "takedown", "site": g["id"]}, ctx))
-    assert "band" in out["say"]
+    # v0.999.308 going offline is HER tap (Settings > Take the site down): the tool changes nothing
+    assert out["needs_her_tap"] and not out["done"] and "Take the site down" in out["say"]
+    out = H.take_down(T, g["id"])
+    assert "taken down" in out["say"]
     assert c.get("/", headers={"host": host}).status_code != 200 or 'content="Hoola"' not in c.get("/", headers={"host": host}).text
     lr = asyncio.run(dispatch("website", {"action": "launch", "site": g["id"]}, ctx))
     assert "go-live button" in lr["say"]
