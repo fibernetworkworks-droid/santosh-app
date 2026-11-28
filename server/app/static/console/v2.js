@@ -493,6 +493,7 @@ function go(v, arg) {
   if (v === 'dsdesk') { location.assign('/console/distributed'); return; }   // DISTRIBUTED DESK: its own section
   if (v === 'srdesk') { location.assign('/console/sre'); return; }   // SRE DESK: its own section
   if (v === 'storedesk') { location.assign('/console/store'); return; }   // MATERIAL STORE DESK: its own section
+  if (v === 'labourdesk') { location.assign('/console/labour'); return; }   // LABOUR & WAGES DESK: its own section
   if (v === 'hvdesk') { location.assign('/console/virtualization'); return; }   // VIRTUALIZATION DESK: its own section
   if (v === 'lldesk') { location.assign('/console/latency'); return; }   // LOW LATENCY DESK: its own section
   if (v === 'mfdesk') { location.assign('/console/mainframe'); return; }   // MAINFRAME DESK: its own section

@@ -963,7 +963,7 @@ def sub_open_advances(tenant: str, sub: str) -> float:
 def wage_calc(tenant: str, project: str = "", gang: str = "", workers=None, days=None, rate=None, basis: str = "day",
               ot_hours=None, advance_recover=None, note: str = "") -> dict:
     """v0.512 #71 the wage working paper, determined arithmetic with the trail: workers x days x rate
-    (+ OT 1.5x hourly), minus the advance she names. The PAYOUT is her tap - Hoola records, never pays."""
+    (+ OT 2x hourly: India OSH Code 2020), minus the advance she names. The PAYOUT is her tap - Hoola records, never pays."""
     w = int(workers or 0)
     dd = int(days or 0)
     r = _num(rate)
@@ -972,12 +972,12 @@ def wage_calc(tenant: str, project: str = "", gang: str = "", workers=None, days
     if (basis or "day") not in ("day", "hour", "piece"):
         raise ThekaError("basis: day | hour | piece")
     base = round(w * dd * r, 2)
-    ot = round((r / 8) * 1.5 * _num(ot_hours) * w, 2) if ot_hours else 0.0      # per worker-hour at 1.5x
+    ot = round((r / 8) * 2 * _num(ot_hours) * w, 2) if ot_hours else 0.0      # per worker-hour at 2x (OSH Code 2020; was 1.5x - wrong)
     gross = round(base + ot, 2)
     adv = round(_num(advance_recover), 2)
     net = round(gross - adv, 2)
     trail = {"workers": w, "days": dd, "rate": r, "basis": basis, "ot_hours": _num(ot_hours),
-             "ot_rule": "1.5 x (rate/8) per worker-hour", "advance_recover": adv}
+             "ot_rule": "2 x (rate/8) per worker-hour (OSH Code 2020)", "advance_recover": adv}
     say = (f"Wage calculation" + (f" - {gang}" if gang else "") + f": {w} x {dd} days x {_rs(r)}/{basis} = {_rs(base)}"
            + (f" + OT {_rs(ot)}" if ot else "") + f" = {_rs(gross)}"
            + (f" - advance recovery {_rs(adv)}" if adv else "") + f" -> TO PAY {_rs(net)}. Payment is on your tap."

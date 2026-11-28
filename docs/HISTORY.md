@@ -14702,3 +14702,55 @@ FOUND WHILE BUILDING: draw.io saves pages compressed (base64 + raw deflate + URI
 TESTS: test_v0999_331_diagram_d3.py 13 (XML normalise / checks, compressed + bomb, ops all-or-nothing, fingerprint, routing + guide, signed link + expiry, her edit -> read -> change -> poll -> stale save, editable copy, redraw gate, routes: sandbox CSP, token-only, bridge injection, path escape, .drawio file, signed-in open; console wiring; WALK 1: real draw.io in Chromium - she moves a box (saved, rev 2), selects another, Hoola reads (sees the selection) and changes its label, her editor shows it outlined with her move kept, one undo takes it back, the server follows; WALK 2: the console opens the diagram, 'Edit by hand' puts the sandboxed editor in the pane (>= 500 px) and it is ready). The two walks skip where the editor or Chrome is missing. Nearby suites: the 7 reds seen (console stylesheet count, console English, browser-frame count, heavy weights, tool labels, past-tense verbs, conversation list) fail the same on the untouched tree.
 
 NOT VERIFIED: not deployed on her VPS (deploy, then vps-ops diagram_setup needs node >= 18 for engine A; engine C needs only the editor fetch). No real model has drawn a draw.io diagram yet (fake-model tests only). The phone opens the picture page, not the editor (D5). Next: D4 (Hoola Code) on her word.
+
+## v0.999.332 LABOUR & WAGES DESK (owner: "NOW NEXT CONSTRUCTION EMPLOYEE SAME WAY -- Labour & Wages Desk: muster rolls, licence and renewal dates, wage working papers, BOCW cess and TDS" -> docs/research/construction/LABOUR_WAGES_WORKFLOW.md -> design canvas claude.ai/artifact/Hyq5sUMDbK5qDkNUmiiFxM -> "GO BUILD ALL 7 VERSIONS")
+
+The Construction & Real Estate Labour & Wages Desk gets its own section like the finance desks and the Material Store:
+`/console/labour` (labourdesk.html / .js / .css) with the Labour chat (Conversation kind `labour`, `server/app/labourchat.py`,
+routes `/api/lbdesk/*`) beside eight pages: Today, Muster, Workers & papers, Wages, Levies & tax, Subcontractors, Reports, Settings.
+It runs on a NEW engine `server/app/labourdesk/` for any construction company in any country.
+
+The seven versions of the workflow doc, built together:
+1. **People & papers** (`core.py`, `packs.py`): her company, sites (region, planned headcount), employers (her own gangs + subcontractors
+   with their tax status, the last 4 of the tax id, verified by whom and when), ONE worker row across sites (only the last 4 of an id /
+   bank / phone are kept), papers for company / employer / worker / site with the renewal radar (company 90 / 60 / 30 days, a person
+   30 / 14, lapsed first), the worker import from a sheet, pay rates and floor (minimum) rows with their source, the old v0.512 labour
+   rows (licences, rates, head counts) brought in once. Country packs as data with a source on every row: IN, GB, US, AE, SA, SG, AU, DE
+   + general - overtime, papers, levies, withholding, deductions (shown, never applied), the payment rail, retention and returns; a row
+   nobody checked says "check this" and is never applied.
+2. **Muster** (`muster.py`): per person (P / half / A, hours, overtime, pieces) or a gang head count, from typed / voice / photo /
+   device / phone; append-only, a correction is a counter-row with the reason and who; names it cannot match wait under "Who is this?"
+   (a person matches or leaves them out, never a guess); checks: the same person on two sites, one device checking in more than her
+   limit inside a minute, one phone on several sites, the register against the gate count, a required paper lapsed or missing (the site
+   engineer decides), hours over her limit, marks after the cut-off, changes after the site engineer approved the day.
+3. **Wage working papers** (`wages.py`): per person units x her rate (the row named), overtime by her country (India 2x beyond the
+   day's normal hours - OSH Code; US 1.5x over 40 hours a week - FLSA; UK / contract countries: her contract's multiplier, or the line
+   is blocked), her contract only higher; the floor check against her minimum-rate rows with their source ("no minimum rate on file"
+   otherwise); deductions from her rows (each with a source); advances recovered never above her cap; nobody paid twice across runs;
+   changes from the last period named; prepared -> checked -> approved by three different people (a second approver above her limit)
+   on the run's hash: a later mark, rate or advance sends it back to draft; payment files (CSV with the last 4, India bulk with account
+   numbers typed for that file and never kept or sent through the chat, UAE WPS layout marked check this); paid only from her tap with
+   the bank's reference (failures stay to pay; advances count as recovered only when paid); payslips.
+4. **Levies & tax withheld** (`levies.py`): her rules taken from the pack (a check-this row only with the source and her name, and a
+   rate when the pack gives none) or written by her, each with a review date - past it the rule refuses; levies on cost of work / gross
+   wages / per head / per permit with the due date and the receipt (last 4); tax withheld from a subcontractor's payment by its status
+   at that date (India s.393(1) 1% / 2% / 20% without a checked id, limits INR 30,000 single / 1,00,000 a year with the catch-up when
+   the year crosses; UK CIS 20 / 30 / 0 with materials out of the base and 30% until verified); the month's deposit recorded with
+   its challan; the filing calendar (levies, deposits, quarterly / monthly returns from the day she withholds).
+5. **Subcontractor evidence** (`subs.py`): per period and subcontractor the wage register, payment proof, contribution receipts and
+   headcount tied to the muster of their people, gaps named ("payment proof for 1 of 2 people (not on it: Prakash Jadhav)"), a draft
+   note, hold / release / pay directly decided by a named person; nothing is held by itself.
+6. **The desk page + Labour chat + tool** `labour_desk` (`agent/labourdesk_tools.py`, family `lbdesk`, registry 723): the tool drafts;
+   `service.TAP` (approve a day, check / approve / cancel a run, record it paid, record an advance, levy or deposit paid, take a rule,
+   record a filing, decide a hold) are a person's tap on the desk only. The chat refuses passwords / OTP / card numbers.
+7. **The phone**: the foreman's muster at 390 px (P / half / A toggles, overtime, Everyone present, voice and sheet photo into the chat)
+   works offline - the marks wait in the browser (`hoola.labour.queue`) and go when it is back online; the phone app's AI Employees opens
+   `/console/labour` for `const_labour`.
+
+Also: the old India engines' overtime fixed from 1.5x to 2x (`construction/labour.py` wage_audit and `theka/service.py` wage_calc - the OSH
+Code says twice the ordinary rate), their test pins moved. Tests `server/tests/test_labour_desk.py` (12 incl. a real-browser walk at 1440
+and 390, with the offline muster).
+
+NOT VERIFIED: on her server, with real muster sheets, device files or her bank's file layout, on her phone. Rows marked check this
+(state cess rates, SOKA-BAU, NSW, UAE / Saudi / Singapore overtime, India's return form under the new Act, retention years) wait for a
+person to read the source.

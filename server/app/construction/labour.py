@@ -86,13 +86,13 @@ def wage_audit(tenant: str, site: str, day: str = "", trade: str = "", workers=N
             raise CstError(f"'{trade or 'mazdoor'}' has no wage rate set - first give the rate and its SOURCE with wage_rate.")
         wr = rows[-1]
         base = round(wr.rate * w, 2)
-        ot = round((wr.rate / 8) * 1.5 * _num(ot_hours), 2) if ot_hours else 0.0     # OT at 1.5x hourly, stated openly
+        ot = round((wr.rate / 8) * 2 * _num(ot_hours), 2) if ot_hours else 0.0       # OT at 2x hourly: India OSH Code 2020 (was 1.5x - wrong)
         gross = round(base + ot, 2)
         adv = round(_num(advances), 2)
         ded = round(_num(deductions), 2)
         net = round(gross - adv - ded, 2)
         trail = {"rate_row_id": wr.id, "rate": wr.rate, "basis": wr.basis, "source": wr.source, "workers": w,
-                 "ot_hours": _num(ot_hours), "ot_rule": "1.5 x (rate/8) per hour", "advances": adv, "deductions": ded}
+                 "ot_hours": _num(ot_hours), "ot_rule": "2 x (rate/8) per hour (OSH Code 2020)", "advances": adv, "deductions": ded}
     say = (f"Wage audit {d.strftime('%d %b')} ({site}): {w} x {_rs(wr.rate)}/{wr.basis} = {_rs(base)}"
            + (f" + OT {_rs(ot)}" if ot else "") + f" = {_rs(gross)}"
            + (f" - advance {_rs(adv)}" if adv else "") + (f" - deductions {_rs(ded)}" if ded else "")

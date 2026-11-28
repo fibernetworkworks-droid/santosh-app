@@ -223,6 +223,11 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
               "weighbridge", "mill test certificate", "heat number", "issue slip", "free issue", "free-issue", "stock count", "cycle count",
               "material reconciliation", "wastage", "reorder level", "reorder point", "indent", "stock transfer", "material transfer",
               "bags of cement", "cement bags", "rebar stock", "steel stock", "store stock", "stock in the store", "laydown yard"),
+    # LABOUR & WAGES DESK: her site labour words
+    "lbdesk": ("muster", "muster roll", "attendance sheet", "labour register", "wage register", "wage run", "wage sheet", "weekly wages",
+               "labour contractor", "labour licence", "contract labour", "gang", "foreman", "overtime hours", "ot hours", "advance to worker",
+               "bocw", "building workers cess", "labour cess", "construction industry scheme", "cis deduction", "certified payroll",
+               "wh-347", "wps file", "qleave", "soka-bau", "labour levy", "site induction", "work permit expiry", "subcontractor wages"),
     # v0.999.285 the Site Reliability Engineer: her SRE words
     "sre": ("error budget", "burn rate", "burn-rate", "site reliability", "postmortem", "post-mortem", "post mortem", "alert fatigue",
             "noisy alert", "alertmanager", "alert rules", "prometheus rule", "recording rule", "on-call", "oncall", "pagerduty",

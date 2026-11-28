@@ -60,6 +60,7 @@ String employeeConsolePath(String key) {
   if (key == 'vitt_sahayak') return '/console/finops';   // FINANCE DESK ASSISTANT: its own section (chat + ageing, three-way match, tax withheld, alerts, credit memos)
   if (key == 'public_finance') return '/console/public';   // PUBLIC FINANCE DESK: its own section (chat + casework, payment runs, supervision)   // DIGITAL ASSETS DESK: its own section (chat + gains, wallets, custody)   // COMMUNITY FINANCE DESK: its own section (chat + cash book, savings group, loans)   // MARKETS DESK: its own section (chat + reconciliation, settlement, corporate actions)
   if (key == 'const_store') return '/console/store';   // MATERIAL STORE DESK: its own section (chat + the store)
+  if (key == 'const_labour') return '/console/labour';   // LABOUR & WAGES DESK: its own section (chat + muster, wages, levies)
   if (key == 'support') return '/console/support';   // v0.999.81 CUSTOMER SUPPORT: its own section (chat + tickets)
   if (key == 'telecaller') return '/console/telecaller';   // v0.999.67 AI TELECALLER: its own section (chat + call lists)
   final v = key.startsWith('const_') ? 'deptdesk' : views[key] ?? 'hire';

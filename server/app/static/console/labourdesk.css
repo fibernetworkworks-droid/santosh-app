@@ -1,0 +1,48 @@
+/* LABOUR & WAGES DESK (labourdesk.js). Frame, chat, cards and buttons from seodesk.css; kpis, files from moneydesk.css; the hero, chart,
+   tags, rows and segmented buttons from cashdesk.css; forms, steps, checks and bars from storedesk.css. Only the labour desk's own parts
+   are here: the headcount bars, the muster toggles, the renewal timeline, the evidence matrix and the phone muster. */
+#lbPage{display:flex;flex-direction:column;gap:20px;padding-top:4px}
+#lbPage .grid{display:grid}
+.lb-bars .own{fill:var(--acc);opacity:.85}.lb-bars .sub{fill:var(--warn);opacity:.55}.lb-bars .plan{stroke:var(--ink2);stroke-width:1.5;stroke-dasharray:5 4}
+.lb-bars .today{fill:var(--acc);opacity:1}
+.cs-legend i.lb-own{background:var(--acc)}.cs-legend i.lb-sub{background:var(--warn);opacity:.6}.cs-legend i.lb-plan{background:var(--ink2);height:2px}
+/* the muster toggles (desk and phone) */
+.lb-ln{display:flex;align-items:center;gap:12px;min-height:52px;border-bottom:1px solid var(--line);font-size:15px}
+.lb-ln:last-child{border-bottom:0}
+.lb-av{width:34px;height:34px;border-radius:50%;background:var(--accs);color:var(--acct);font-weight:600;font-size:13px;display:grid;place-items:center;flex:none}
+.lb-ln .nm{flex:1;min-width:0}.lb-ln .nm small{display:block;color:var(--mut);font-size:12px}
+.lb-tg{display:inline-flex;background:var(--soft);border-radius:10px;padding:3px;gap:2px;flex:none}
+.lb-tg button{height:36px;min-width:44px;border:0;background:transparent;border-radius:8px;font:inherit;font-size:13.5px;color:var(--ink2);cursor:pointer}
+.lb-tg button[aria-pressed="true"].p{background:var(--ok);color:#fff}
+.lb-tg button[aria-pressed="true"].a{background:var(--bad);color:#fff}
+.lb-tg button[aria-pressed="true"].h{background:var(--bg);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.lb-ot{width:64px;height:36px;box-sizing:border-box;font-size:13px;text-align:center}
+.lb-mk{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.lb-mk .big{font-size:26px;font-weight:600}
+.lb-mk .rb{width:48px;height:48px;border-radius:50%;border:1px solid var(--line2);background:var(--bg);display:grid;place-items:center;cursor:pointer;color:var(--ink)}
+.lb-mk .rb .i{width:20px;height:20px}
+.lb-warn{border-radius:14px;background:var(--warns);color:var(--warn);padding:12px 14px;font-size:14px;line-height:1.45}
+.lb-queue{font-size:13px;color:var(--warn)}
+.lb-flag{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.lb-flag:last-child{border-bottom:0}
+/* renewals timeline */
+.lb-tl{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.lb-tl .col{border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
+.lb-tl .col h3{margin:0 0 6px;font-size:12.5px;font-weight:600;color:var(--mut)}
+.lb-tl .col.bad h3{color:var(--badt)}
+.lb-tl .it{font-size:13px;padding:5px 0;border-top:1px solid var(--line);overflow:hidden;text-overflow:ellipsis}
+.lb-tl .it:first-of-type{border-top:0}
+/* evidence matrix */
+.lb-mx td.st{text-align:center}
+.lb-st{display:inline-grid;place-items:center;min-width:28px;height:24px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:600}
+.lb-st.ok{background:var(--oks);color:var(--okt)}.lb-st.part{background:var(--warns);color:var(--warn)}.lb-st.missing{background:var(--bads);color:var(--badt)}
+.lb-slip{border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:13.5px}
+.lb-slip h3{margin:0 0 8px;font-size:13.5px}
+.lb-slip div{display:flex;justify-content:space-between;gap:12px;padding:3px 0}
+.lb-slip div:last-child{font-weight:600;border-top:1px solid var(--line);margin-top:4px;padding-top:6px}
+@media (max-width:1100px){.lb-tl{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:600px){
+  .lb-tl{grid-template-columns:minmax(0,1fr)}
+  .lb-ln{gap:8px;flex-wrap:wrap;padding:8px 0}.lb-ln .nm{flex:1 1 calc(100% - 50px)}
+  .lb-ot{width:64px;margin-left:42px}.lb-tg{margin-left:auto}.lb-tg button{min-width:44px}
+}

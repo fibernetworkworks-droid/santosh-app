@@ -1857,6 +1857,12 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_src.block, tenant_id)
     except Exception:
         log.exception("sre desk block failed")
+    try:   # LABOUR & WAGES DESK: a turn in the Labour chat (or a call started from it) knows the desk
+        from .. import labourchat as _lbc
+        if _lbc.is_labour(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_lbc.block, tenant_id)
+    except Exception:
+        log.exception("labour desk block failed")
     try:   # MATERIAL STORE DESK: a turn in the Store chat (or a call started from it) knows the store
         from .. import storechat as _stc
         if _stc.is_store(conversation_id):
@@ -2962,6 +2968,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "sre desk chat"
     except Exception:
         log.exception("sre desk chat admission failed")
+    try:   # LABOUR & WAGES DESK: the labour tool in view in the Labour chat
+        from .. import labourchat as _lbc
+        if adm is not None and _lbc.is_labour(conversation_id):
+            adm.admit_families(_lbc.FAMILIES)
+            for f in _lbc.FAMILIES:
+                adm.why[f] = "labour desk chat"
+    except Exception:
+        log.exception("labour desk chat admission failed")
     try:   # MATERIAL STORE DESK: the store tool in view in the Store chat
         from .. import storechat as _stc
         if adm is not None and _stc.is_store(conversation_id):

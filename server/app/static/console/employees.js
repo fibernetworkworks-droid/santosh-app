@@ -20,7 +20,9 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     bima_desk: 'deptdesk', bima_assist: 'deptdesk', bima_risk: 'deptdesk', accounts: 'accountsdesk'};   // v0.807 BAHI   // v0.799 DESK ROOM (built as 0.796): these opened a view that did not exist; Kaan's desk is Hoola Flow
   for (const k of ['const_store', 'const_labour', 'const_customer', 'const_quality', 'const_meet', 'const_approvals', 'const_qs', 'const_rera', 'const_contracts', 'const_tender', 'const_drawqa',
                    'const_bim', 'const_predesign', 'const_survey', 'const_delay', 'const_green', 'const_land', 'const_plan', 'const_ehs', 'const_studio', 'const_learn']) DESKS[k] = 'deptdesk';
-  DESKS.const_store = 'storedesk';   // MATERIAL STORE DESK: its own section (chat + the store)   // v0.799 the 21 Construction seats   // v0.420 the Game Desk roles share it   // v0.686.0 the Lead Generation employee's desk
+  DESKS.const_store = 'storedesk';
+  DESKS.const_labour = 'labourdesk';   // LABOUR & WAGES DESK: its own section (chat + the labour desk)
+    // MATERIAL STORE DESK: its own section (chat + the store)   // v0.799 the 21 Construction seats   // v0.420 the Game Desk roles share it   // v0.686.0 the Lead Generation employee's desk
     // v0.410 + the Architecture Desk    // v0.370 employee key -> its desk view when the names differ
 
   // ------------------------------------------------------------ the hub
