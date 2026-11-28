@@ -13869,3 +13869,23 @@ What every page now shares with the home (route.css end block "v0.999.299 THE HO
 Checked: every page (24) at 1440 / 1024 / 390 in light and dark (144 views) measured in Chromium - no sideways scroll, nothing
 past the edge, no cut text, controls in a row share a height; looked at by eye. test_v0999_297_route_home.py
 (test_every_page_in_the_homes_design). NOT VERIFIED on her server.
+
+
+## v0.999.300 ECC 1 TO 5
+(owner: 'GO 1 TO 5' after the ECC check - github.com/affaan-m/ECC, MIT, commit 4adeee67: 72 agents, 22 rule sets, 99 commands, 328 skills, 28 hooks; Hoola Code had 63 agents + all 22 rule sets but none of its skills): (1) + (2) ECC'S SKILLS - 132 of its skill files shipped unchanged in `devsahayak/ecc_skills/` (licence in THIRD_PARTY_NOTICES.md): the language / framework / database / infrastructure guides (Django, Spring Boot, Laravel, Quarkus, Rails, Next.js, React, Vue, Nuxt, Go, Rust, Kotlin, Swift, Flutter, Godot, Postgres, Redis, Docker, Kubernetes, Terraform ...) and the general coding ones (API design, error handling, end-to-end tests, accessibility, migrations, security review, change impact, onboarding, i18n, hexagonal architecture ...); left out ~196 that set up Claude Code / ECC itself, need outside services, or are not coding. `eccskills.py`: the skills that fit THIS repo are found from its files and dependency lists (package.json, requirements, pyproject, go.mod, Cargo.toml, pom.xml, build.gradle, Gemfile, composer.json, Package.swift) and listed with what each is for in the coder's fixed prompt; general skills her words point at ride with her message; the skill tool reads `ecc:<name>` with a note mapping ECC's Claude Code words to Hoola Code's tools. (3) the new `gdscript-reviewer` agent (Godot), suggested for .gd / .tscn / project.godot changes (catalogue 99). (4) CONFIG PROTECTION (`configguard.py`): a change to the repo's lint / format / type-check / test settings (eslint, prettier, biome, ruff, mypy, pytest, jest, vitest, coverage, tsconfig, rubocop, golangci ... and the settings sections of pyproject.toml / setup.cfg / tox.ini / package.json / Cargo.toml) is refused unless her words ask about those settings - fix the code instead, or ask her; a new settings file is fine. (5) MCP HEALTH CHECK (`mcphealth.py`): a server whose calls fail twice in a row is held for 5 minutes (calls not sent, the coder told why), then one probe call; failing again doubles the wait (max 30 min), success clears it. Switches `dev_ecc_skills`, `dev_config_protect`, `dev_mcp_health` (on; conftest pins them off for the older suites). 9 tests. NOT VERIFIED with a real model. Also: the v0.999.296 narration rule kept its **bold** wording (test_v0937 pinned it), and test_v0999_251's skill list now accepts Hoola Code's own skills (Superpowers and ECC) after hers.
+
+## v0.999.301 EDITOR AND ROUTE TABS IN THE HOME DESIGN
+
+Owner: "NOW SAME DESIGN FOR EDITOR AND ROUTE TABS" (after v0.999.297 home and v0.999.299 every page).
+
+- The editor's top bar (route.css end block "v0.999.301 THE EDITOR AND THE ROUTE'S TABS"): 60 px, the route's name in the serif,
+  Editor / Runs / Versions / Settings as pill tabs, Saved / Not saved with a dot, Save and Test route as pills, On with its switch.
+- The sending bar as the home's Needs-you card: an amber "Needs you" tag (or green "Sending on"), the line, where it sends, its
+  button; one card with the house shadow.
+- Nodes with 16 px-family corners and the selected ring with the house shadow; the floating tools, zoom and mini-map as cards.
+- Runs / Versions / Settings (route.js tabHead + routeCard): pages in the home's frame - the route's name as the serif title, a
+  line of where it stands (switched on / off, when it runs, its steps, its folder, what it does), one band of four numbers from
+  its card (runs in 30 days, went well this week from its 7 days, last run with its dot and when, next run in her time zone),
+  then its runs ("Its runs", newest first) / versions / settings.
+Checked: 48 views in Chromium (editor, a step, the start, Add a step, a web request, Runs, Versions, Settings x 1440 / 1024 /
+390 x light / dark), no findings. test_v0999_297_route_home.py. NOT VERIFIED on her server.

@@ -834,7 +834,7 @@
       : st.changed ? 'Where it sends changed since you allowed it - it sends nothing until you allow it again'
       : 'It sends nothing until you allow it';
     b.className = 'sendbar' + (st.allowed ? ' ok' : ' wait');
-    b.innerHTML = `<div class="sbt"><b>${esc(say)}</b><ul>${list}</ul></div><span class="crow">${st.allowed
+    b.innerHTML = `<div class="sbt"><span class="rh-tag ${st.allowed ? 'ok' : 'warn'}">${st.allowed ? 'Sending on' : 'Needs you'}</span><b>${esc(say)}</b><ul>${list}</ul></div><span class="crow">${st.allowed
       ? '<button class="btn s soft" type="button" id="sendOff">Stop sending</button>'
       : `<button class="btn s" type="button" id="sendOk" data-hash="${esc(st.hash)}">${st.changed ? 'Allow again' : 'Allow sending'}</button>`}</span>`;
     b.hidden = false;
@@ -2310,12 +2310,31 @@
     ED.px = c.clientWidth / 2 - wx * ED.z; ED.py = c.clientHeight / 2 - wy * ED.z; view();
   }
 
+  // v0.999.301 the route tabs in the home's design: the route's name as the page title, one line of where it stands,
+  // one band of its numbers (runs in 30 days, went well this week, last run, next run)
+  async function routeCard(r) {
+    try { const L = await api('GET', '/api/route/routes'); return (L.routes || []).find(x => x.id === r.id) || null; } catch { return null; }
+  }
+  function tabHead(r, c) {
+    c = c || {};
+    const d = c.days7 || [], ok = d.reduce((a, x) => a + x.ok, 0), bad = d.reduce((a, x) => a + x.bad, 0);
+    const lr = c.last_run ? (LASTW[c.last_run.status] || ['', c.last_run.status]) : null;
+    const next = r.next_due_at ? at(r.next_due_at) : r.enabled ? (r.trigger === 'manual' ? 'When you run it' : 'When it is called') : 'Not while it is off';
+    const line = `${r.enabled ? 'Switched on' : 'Switched off - it does nothing until you switch it on'} · ${r.when || ''}${c.steps ? ` · ${c.steps} step${c.steps === 1 ? '' : 's'}` : ''}${r.folder ? ` · in ${r.folder}` : ''}`;
+    return `<div class="tabhead"><h1>${esc(nice(r.name))}</h1><p class="lead">${esc(line)}${r.description ? `<br>${esc(r.description)}` : ''}</p></div>
+      <div class="stats tabstats">
+        <div class="stat"><span class="k">Runs in 30 days</span><b>${fmtN(c.runs_30d || 0)}</b><span class="sm">${c.errors_in_a_row ? `${num(c.errors_in_a_row)} failed in a row` : 'All its runs, tests too'}</span></div>
+        <div class="stat"><span class="k">Went well this week</span><b>${ok + bad ? Math.round(100 * ok / (ok + bad)) + '%' : '–'}</b><span class="sm">${ok + bad ? `${num(ok)} done, ${num(bad)} did not finish` : 'No runs this week'}</span></div>
+        <div class="stat"><span class="k">Last run</span><b class="bt">${lr ? `<span class="lr ${lr[0]}"><i class="ld"></i>${esc(lr[1])}</span>` : 'Not run yet'}</b><span class="sm">${c.last_run ? esc(when(c.last_run.at)) : 'Test it in the editor'}</span></div>
+        <div class="stat"><span class="k">Next run</span><b class="bt">${esc(next)}</b><span class="sm">${esc(TZ || '')}</span></div>
+      </div>`;
+  }
   async function viewRouteTab(r, tab) {
     stopEditor();
     let body = '';
     if (tab === 'runs') {
-      const runs = await api('GET', `/api/route/runs?workflow_id=${enc(r.id)}&limit=40`);
-      body = `<section class="card flat">${runRows(runs.runs, true, 'No runs yet. Test the route in the editor, or switch it on.')}</section>`;
+      const [runs, c] = await Promise.all([api('GET', `/api/route/runs?workflow_id=${enc(r.id)}&limit=40`), routeCard(r)]);
+      body = `${tabHead(r, c)}<section><div class="hd"><h2>Its runs</h2><span class="sp"></span><span class="mut sm">Newest first</span></div><div class="card flat">${runRows(runs.runs, true, 'No runs yet. Test the route in the editor, or switch it on.')}</div></section>`;
       MAIN.innerHTML = `<div class="ed tabbed">${edTop(r, tab)}<div class="edpage">${body}</div></div>`;
       return;
     }
@@ -2329,7 +2348,7 @@
     const shared = new Set(st.shared_with || []);
     const sh = r.share || {};
     const sp = r.trigger_spec || {};
-    body = `<div class="setgrid">
+    body = `${tabHead(r, (all.routes || []).find(x => x.id === r.id))}<div class="setgrid">
       <section class="card"><div class="hd"><h2>How it runs</h2></div>
         <div class="kv"><span class="k">Runs when</span><span>${esc(r.when)}</span></div>
         ${sp.timezone || st.timezone ? `<div class="kv"><span class="k">Time zone</span><span>${esc(sp.timezone || st.timezone)}</span></div>` : ''}
@@ -2434,10 +2453,10 @@
     }
   }
   async function versionsTab(r) {
-    const v = await api('GET', `/api/route/routes/${enc(r.id)}/versions`);
+    const [v, c] = await Promise.all([api('GET', `/api/route/routes/${enc(r.id)}/versions`), routeCard(r)]);
     const rows = (v.versions || []).map(x => `<tr><td class="nw">${esc(at(x.at))}</td><td>${esc(x.change)}${x.note ? `<div class="mut sm">${esc(x.note)}</div>` : ''}</td>
       <td class="num">${fmtN(x.steps)}</td><td class="c-act">${x.current ? '<span class="chipst">Now</span>' : `<button class="btn soft s" type="button" data-restore="${esc(x.id)}">Bring back</button>`}</td></tr>`).join('');
-    MAIN.innerHTML = `<div class="ed tabbed">${edTop(r, 'versions')}<div class="edpage"><section class="card flat">
+    MAIN.innerHTML = `<div class="ed tabbed">${edTop(r, 'versions')}<div class="edpage">${tabHead(r, c)}<section class="card flat">
       <div class="hd"><h2>Versions</h2><span class="sp"></span><span class="mut sm">Every save is kept (the last 50). Bringing one back saves it as a new version.</span></div>
       ${rows ? `<div class="tw"><table class="rt"><thead><tr><th>Saved</th><th>What changed</th><th>Steps</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="empty">No versions yet - one is kept every time the route is saved.</div>'}
       </section></div></div>`;

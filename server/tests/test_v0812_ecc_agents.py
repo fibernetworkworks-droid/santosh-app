@@ -30,17 +30,17 @@ network-architect network-config-reviewer network-troubleshooter opensource-fork
 opensource-sanitizer performance-optimizer php-reviewer planner pr-test-analyzer python-reviewer pytorch-build-resolver
 rag-pipeline-reviewer react-build-resolver react-reviewer refactor-cleaner ruby-reviewer rust-build-resolver
 rust-reviewer security-reviewer seo-specialist silent-failure-hunter spec-miner swift-build-resolver swift-reviewer
-tdd-guide type-design-analyzer typescript-reviewer vue-reviewer""".split()
+tdd-guide type-design-analyzer typescript-reviewer vue-reviewer gdscript-reviewer""".split()   # v0.999 ECC added gdscript-reviewer
 
 
 # ---------------------------------------------------------------- the catalogue
 def test_every_ecc_agent_is_in_or_left_out_with_a_reason():
     from app.devsahayak import ecc
     cat = {k: a for k, a in ecc.catalog().items() if not a["ecc"].startswith("agency:")}   # v0.814 The Agency rides beside
-    assert len(ECC_ALL) == 71
+    assert len(ECC_ALL) == 72
     assert set(cat) | set(ecc.NOT_ADDED) == set(ECC_ALL)                 # nothing forgotten
     assert not set(cat) & set(ecc.NOT_ADDED)
-    assert len(cat) == 63 and all(len(why) > 30 for why in ecc.NOT_ADDED.values())
+    assert len(cat) == 64 and all(len(why) > 30 for why in ecc.NOT_ADDED.values())
 
 
 def test_each_agent_is_adapted_for_hoola():

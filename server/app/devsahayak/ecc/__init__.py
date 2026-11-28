@@ -42,7 +42,7 @@ EXT = {
     ".go": "go", ".rs": "rust", ".swift": "swift", ".c": "cpp", ".cc": "cpp", ".cpp": "cpp", ".cxx": "cpp", ".h": "cpp",
     ".hh": "cpp", ".hpp": "cpp", ".cs": "csharp", ".fs": "fsharp", ".fsx": "fsharp", ".fsi": "fsharp", ".php": "php",
     ".rb": "ruby", ".pl": "perl", ".pm": "perl", ".ets": "arkts", ".sql": "sql", ".html": "web", ".css": "web",
-    ".scss": "web",
+    ".scss": "web", ".gd": "gdscript",
 }
 # a marker file that names a framework, whatever the file count says
 MARKERS = [
@@ -61,7 +61,8 @@ REVIEWER = {"python": "python-reviewer", "js": "typescript-reviewer", "react": "
             "dart": "flutter-reviewer", "kotlin": "kotlin-reviewer", "java": "java-reviewer", "go": "go-reviewer",
             "rust": "rust-reviewer", "swift": "swift-reviewer", "cpp": "cpp-reviewer", "csharp": "csharp-reviewer",
             "fsharp": "fsharp-reviewer", "php": "php-reviewer", "ruby": "ruby-reviewer", "django": "django-reviewer",
-            "sql": "database-reviewer", "arkts": "harmonyos-app-resolver", "web": "a11y-architect"}
+            "sql": "database-reviewer", "arkts": "harmonyos-app-resolver", "web": "a11y-architect",
+            "gdscript": "gdscript-reviewer"}
 FIXER = {"python": "build-error-resolver", "js": "build-error-resolver", "react": "react-build-resolver",
          "vue": "build-error-resolver", "dart": "dart-build-resolver", "kotlin": "kotlin-build-resolver",
          "java": "java-build-resolver", "go": "go-build-resolver", "rust": "rust-build-resolver",
