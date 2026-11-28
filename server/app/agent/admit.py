@@ -260,6 +260,14 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                "roboflow", "cvat", "label studio", "image classifier", "image classification", "confusion matrix", "segmentation", "opencv",
                "camera calibration", "camera_info", "intrinsics", "field of view", "focal length", "pixels per", "lens for", "motion blur",
                "depth of field", "stereo camera", "disparity", "tensorrt", "onnx", "openvino", "jetson", "inference fps", "frames per second", "nms"),
+    # v0.999.306 the Cloud Engineer: her cloud words
+    "cloudeng": ("cloud engineer", "cloud engineering", "cloud bill", "cloud cost", "cloud spend", "aws bill", "azure bill", "gcp bill",
+                 "cost and usage report", "cur report", "focus export", "billing export", "cost explorer", "finops", "untagged",
+                 "cost anomaly", "cost spike", "idle instance", "idle vm", "unattached volume", "unattached disk", "orphaned disk",
+                 "elastic ip", "old snapshots", "savings plan", "reserved instance", "committed use", "commitment discount",
+                 "iam policy", "iam role", "trust policy", "assume role", "least privilege", "passrole", "role assignment",
+                 "get-iam-policy", "security group", "firewall rule", "nsg", "vpc", "vnet", "subnet", "cidr", "ip range",
+                 "overlapping cidr", "peering", "transit gateway", "open to the internet", "0.0.0.0/0"),
     # v0.999.304 the Platform Engineer: her platform words
     "platform": ("platform engineer", "platform engineering", "terraform", "opentofu", "terraform plan", "tf plan", "tfplan", "infrastructure as code",
                  "iac", "prevent_destroy", "forces replacement", "must be replaced", "rightsizing", "right-size", "rightsize", "requests and limits",

@@ -2214,6 +2214,15 @@ def mainframe_desk_page():
                         "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/cloud")
+@app.get("/console/cloud/")
+def cloud_desk_page():
+    """CLOUD ENGINEER DESK: the Cloud Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "cldesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
 @app.get("/console/platform")
 @app.get("/console/platform/")
 def platform_desk_page():
@@ -3067,6 +3076,8 @@ from . import dechat as _dechat_mod                             # noqa: E402  DA
 _dechat_mod.mount(app, current_tenant, require_key)              # /api/dedesk/*
 from . import pfchat as _pfchat_mod                             # noqa: E402  PLATFORM ENGINEER DESK
 _pfchat_mod.mount(app, current_tenant, require_key)              # /api/pfdesk/*
+from . import clchat as _clchat_mod                             # noqa: E402  CLOUD ENGINEER DESK
+_clchat_mod.mount(app, current_tenant, require_key)              # /api/cldesk/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through
