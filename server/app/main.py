@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.319"   # v0.999.319 HOOLA DOD END TO END (built as 0.999.318; their SRE DESK DEEPER took 0.999.318, both kept; owner: 'IS ALL HOOLA DOD -- IS WIRED WITH OPEN CLAW IN BACKEND PROPERLY AND END TO END CHECK'): every Hoola DOD button checked against its server route (11 of 11), then a whole run on the REAL official OpenClaw image (2026.11.10-browser) through Hoola's OWN code - Hoola made her network and container itself (port on 127.0.0.1 only, memory / pids caps, no-new-privileges, subnet recorded, her folder private and owned by the image user), the page's own routes drove three tasks (her Hoola accounts called from inside the container, steps, a file handed over and downloaded, the live screen picture, the pay question + phone push, a wrong-hash yes refused, her note and her yes reaching the model, credits charged, MCP refused from outside her network, sleep after idle, wake, a hard kill and back, Stop) - 34 of 34 checks pass; only the model and OpenRouter's key API were scripted. It found and FIXED three things the earlier run could not: (1) a coworker killed hard (server reboot, the memory cap, a crash) leaves OpenClaw's state lock behind and every later start waited on the dead owner for ever - before starting a stopped coworker Hoola now runs OpenClaw's own `gateway recover-lock` (inspect, then confirm that exact record) in a one-off container with no network, never while her coworker runs; (2) Chrome's own profile lock named the old container, so a new container could not start the browser (no browser, no live screen) - its three lock links go when her coworker is stopped, her browser profile stays; a newer pinned image now gets a new container on the same folder (docker start kept the old image for ever); (3) OpenClaw's Tool Search hid the browser tool from the model - it now stays directly visible beside Hoola's own tools. She also sees 'Starting its computer' while it starts (about 5 minutes per start here, mostly OpenClaw trying to fetch a web-search plugin this sandbox blocks). 3 new tests (13 in the DOD suite). NOT VERIFIED: on her VPS with a real model and keys; real start time there; a real website in its browser (this sandbox's network refuses outside https). Previous head: v0.999.318 SRE DESK DEEPER (owner: "Site Reliability Engineer same as finance desks" -> the desk already existed (v0.999.285) -> "Rebuild it deeper"): the Site Reliability Engineer desk gets four new jobs and a CI tab, all in code: on-call load from a page history (pages per person, night pages and broken nights in a row in her time zone, 12-hour shifts over her limit, time to acknowledge, share against an even split), changes and their risk (the four DORA numbers from a deploy history with the 2021 report bands, per service, by weekday, out of hours, big changes), runbooks checked for what a paged person needs (missing parts, destructive commands with no warning, secrets masked, placeholders, age, alerts with no runbook or a link to nothing), toil and its payback against her cap, and a GitHub Actions alert-rules check (optional promtool from the official Prometheus release); sre_desk gains oncall / changes / runbook / toil / ci; 6 new tests incl. a browser walk. NOT VERIFIED: on her server, with her own page / deploy history and runbooks, or the workflow on GitHub. Previous head: v0.999.317 CODE FLOW CHECK (owner: 'NOW CHECK ALL HOOLA CODE --- DOES IT NOW DO ANY COMPLEX CODING BY CHOOSING PROPER FLOW'): the check ran 14 real-looking asks (typo, 500 error, new field, payments, whole-system refactor, framework migration, random logout, slow page, tests, explain, SaaS billing, DB migration, API endpoint) through Hoola Code's own choosers - kind of work (`service.guess_kind`), plan size and her-yes wait (`plan.assess`, large = a read-only plan she approves first), the process skills (`superpowers.pick`) and ECC's request skills (`eccskills.for_words`) - and measured a round's fixed prompt (~55,000 characters / ~14,000 tokens with 29 tools on a Django + React repo). Three wrong choices FIXED: (1) 'refactor the order system ... and add tests' was a TESTS job, whose rule is 'no behaviour change' - tests now wins only when nothing else in her ask changes code ('add more unit tests' stays tests); (2) a bug told by its symptom ('users get logged out randomly', 'checkout is very slow', 'the orders page doesn't load', Hinglish 'nahi khul raha', 'atak jata hai') was NEW CODE, so systematic-debugging never loaded - it is now a fix unless she asks for something new ('add caching so it is not slow' stays a feature); (3) ECC's request skills missed everyday words: 'payments / Razorpay / UPI / refunds / billing / login / OTP / logged out' -> security-review, 'refactor / restructure / migrate' -> change-impact, 'migrate the database / new column' -> database-migrations, 'endpoint' -> api-design. Table held by a test (16). FOUND, NOT CHANGED (her decisions): Hoola Code's default coder is Qwen 3.8 27B (dev_brain qwen; the Normal tier, and the only tier for a user without paid credits) - the heaviest coding asks fare much better on the High (Sonnet 5.5) or Ultra (Fable 5.2) tiers; no live coding round could run here (no model key) - vps-ops code_card / code_card_hard run the real loop on her server.
+APP_VERSION = "0.999.324"   # v0.999.324 FIVE FROM DYAD (built as 0.999.323; their HOOLA DIAGRAM D1 took 0.999.323, both kept; owner: "https://github.com/dyad-sh/dyad.git ---- NOW READ THIS REPO" -> the five ideas -> "GO BUILD ALL 5"): five ideas from Dyad (read at 3abec41; Apache-2.0 core, src/pro FSL-1.1 forbids competing use - ideas only, no code copied) for Web Studio React apps on the App Engine: (1) BRING BACK A VERSION - service.restore_version / restore_checkpoint: her tap only (POST /api/appengine/{ref}/versions/{v}/restore and /checkpoints/{id}/restore with confirm; the tool refuses), the old version's source becomes the working copy and is built as a NEW version (build.json restored_from), unbuilt changes kept first as a checkpoint (<app>/checkpoints, newest 10), her data / members / the live app untouched; Versions tab Bring back + Checkpoints; (2) FORGIVING EDITS - edit_lines tries a missed search again line by line ignoring spaces at line ends, spaces around the lines, then curly quotes / long dashes / no-break spaces, and a phrase inside a line with curly quotes forgiven; one match wins, more than one is refused, the file's indentation is kept, the answer says which pass matched; (3) CONSOLE + NETWORK LOGS - preview.js wraps console.log/info/warn/error/debug (20 args, 8 KB an arg, 64 KB a line, objects 6 deep / 50 keys, 400 lines a load) and fetch / XHR (method, path, query NAMES only, status, time; never a body / header / query value), the Studio forwards them (POST /api/appengine/{ref}/preview-logs, 256 KB), `appengine/plogs.py` keeps the newest 1,000 lines / 1 MB masked; app_engine action=read_logs {kind, limit 50 / max 200, level, version}; (4) A SECOND LOOK - `appengine/review.py`: action=done (after the v0.999.322 checks pass) has the diff since the task started (vs the version at plan time, or the template; 96 KB a file / 192 KB in all, locked files / package-lock left out) reviewed by a model of ANOTHER company (critic.critic_who), JSON findings; high / medium send Hoola back (2 fix rounds over newly built versions), then it may finish with the open findings named in the evidence; a review that cannot run is said, never blocking; switch app_engine_auto_review; (5) THE BLUEPRINT - a NEW (never built) app's changes are refused until action=blueprint {what, users, screens, data, out_of_scope, questions <= 5} writes .hoola/plan/blueprint.md (up to 5 short questions to her first when her ask leaves choices open); the Studio shows it above the task card (GET /work blueprint); switch app_engine_blueprint; conftest pins the review + blueprint off for older suites; tests test_v0999_324_dyad_ideas.py (8, incl. a Chromium walk). NOT VERIFIED on her server or with a real model; the build box and the reviewer were stand-ins here.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -6622,6 +6622,8 @@ app.include_router(_hoolaauto_public())
 from .prompting.api import make_router as _prompting_router  # noqa: E402
 
 app.include_router(_prompting_router(require_key, current_tenant))
+from .prompting.worldmedia import make_router as _world_media_router  # noqa: E402
+app.include_router(_world_media_router())   # public: World prompts' pictures / videos, Hoola's own cached copies
 
 # v0.137 Tech suite: 9 Technology & software Sahayaks (each module owns its /api/<mod>/* routes; the few public ones
 # - ispnoc / devops collectors, docwriter / product published pages - verify their own signature / token in code)
@@ -10273,6 +10275,9 @@ async def sites_new(body: dict, tenant: str = Depends(current_tenant)):
     brief = str(body.get("brief") or "")
     from .site import designq as DQ
     DQ.PENDING.set(DQ.ref_from(body.get("design")))   # v0.784 SAWAAL CARD: her picks ride into S.new (copied into the thread)
+    dref = await asyncio.to_thread(_design_md_ref, body)   # v0.999.316 a catalog design or her own DESIGN.md = look 1
+    if dref:
+        DQ.PENDING.set(dref)
     if body.get("deep") and not body.get("field"):     # v0.711 the Studio's Build mode: EVERY ask gets the architect's plan
         from .config import get_settings
         from .site import architect as AR
@@ -10664,6 +10669,46 @@ async def appengine_import_github(body: dict, tenant: str = Depends(current_tena
     return await asyncio.to_thread(_ghs, GS.import_github, tenant, str(body.get("name") or "")[:80], str(body.get("repo") or ""), bool(body.get("confirm")))
 
 
+@app.post("/api/appengine/{ref}/versions/{v}/restore", dependencies=[Depends(require_key)])
+async def appengine_restore_version(ref: str, v: int, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.999.324 her tap: an earlier version's code comes back as a NEW version (unbuilt changes kept as a checkpoint)."""
+    from .appengine import service as AE
+    return await asyncio.to_thread(_ae, AE.restore_version, tenant, ref, v, bool(body.get("confirm")))
+
+
+@app.post("/api/appengine/{ref}/checkpoints/{cid}/restore", dependencies=[Depends(require_key)])
+async def appengine_restore_checkpoint(ref: str, cid: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .appengine import service as AE
+    return await asyncio.to_thread(_ae, AE.restore_checkpoint, tenant, ref, cid, bool(body.get("confirm")))
+
+
+@app.get("/api/appengine/{ref}/work", dependencies=[Depends(require_key)])
+async def appengine_work(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.999.322 the done check: Hoola's last task on this app - its plan, what is proved, what is missing (nothing is run)."""
+    from .appengine import donegate as DG, herlocks as HL
+    from .appengine import service as AE
+
+    def go():
+        r = AE._load(tenant, ref)
+        return {"task": DG.latest(r), "locks": HL.listing(r), "blueprint": DG.blueprint_text(r)}
+    return await asyncio.to_thread(_ae, go)
+
+
+@app.put("/api/appengine/{ref}/locks", dependencies=[Depends(require_key)])
+async def appengine_locks(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.999.322 her lock on a file or folder (path ending in / = a folder): Hoola cannot change it until she unlocks it."""
+    from .appengine import herlocks as HL
+    from .appengine import service as AE
+
+    def go():
+        r = AE._load(tenant, ref)
+        try:
+            return HL.set_lock(r, str(body.get("path") or ""), bool(body.get("locked", True)))
+        except HL.LockError as e:
+            raise AE.AppEngineError(str(e), 400)
+    return await asyncio.to_thread(_ae, go)
+
+
 @app.get("/api/appengine/{ref}/checks", dependencies=[Depends(require_key)])
 async def appengine_checks(ref: str, tenant: str = Depends(current_tenant)):
     """v0.832 SABOOT: the last rule tests / browser check / quick scan / deep scan of this app (nothing is run)."""
@@ -10746,6 +10791,21 @@ async def appengine_preview_errors(ref: str, request: Request, tenant: str = Dep
         raise HTTPException(400, "bad json")
     return await asyncio.to_thread(_aepick, PK.record, tenant, ref, b.get("items") or [], int(b.get("version") or 0),
                                    int(b.get("loaded") or 0))
+
+
+@app.post("/api/appengine/{ref}/preview-logs", dependencies=[Depends(require_key)])
+async def appengine_preview_logs(ref: str, request: Request, tenant: str = Depends(current_tenant)):
+    """v0.999.324 the preview's console lines and network calls (forwarded by the Studio), for Hoola's read_logs."""
+    from .appengine import plogs as PL
+    from .appengine import service as AE
+    raw = await request.body()
+    if len(raw) > 262144:
+        raise HTTPException(413, "too big")
+    try:
+        b = json.loads(raw or b"{}")
+    except ValueError:
+        raise HTTPException(400, "bad json")
+    return await asyncio.to_thread(_ae, lambda: PL.record(AE._load(tenant, ref), b.get("items") or [], int(b.get("version") or 0)))
 
 
 @app.get("/api/appengine/{ref}/errors", dependencies=[Depends(require_key)])
@@ -10942,6 +11002,69 @@ async def site_design_questions(brief: str = ""):
     type, the top of the home page); {skip: true, why} when her words already decide the design."""
     from .site import designq as DQ
     return await asyncio.to_thread(DQ.questions, brief[:2000])
+
+
+def _design_md_ref(body: dict):
+    """{design_look | design_md} -> the design_ref look 1 follows (None when neither was sent)."""
+    from .site import designmd as DM
+    b = body or {}
+    look, text = str(b.get("design_look") or "")[:80], b.get("design_md")
+    if not look and not (isinstance(text, str) and text.strip()):
+        return None
+    try:
+        return DM.ref_for(look_id=look, text="" if look else str(text))
+    except DM.DesignMdError as e:
+        raise HTTPException(e.code, str(e))
+
+
+def _dm(fn, *a):
+    from .site import designmd as DM
+    try:
+        return fn(*a)
+    except DM.DesignMdError as e:
+        raise HTTPException(e.code, str(e))
+
+
+@app.get("/api/site-design/looks", dependencies=[Depends(require_key)])
+async def site_design_looks(cat: str = "", q: str = ""):
+    """v0.999.316 the design catalog under the Studio's chat box: 83 looks read from real websites' DESIGN.md files."""
+    from .site import designmd as DM
+    return await asyncio.to_thread(DM.catalog, cat[:20], q[:80])
+
+
+@app.get("/api/site-design/looks/{lid}", dependencies=[Depends(require_key)])
+async def site_design_look(lid: str):
+    """One design: its prompt, colours in both modes, type, corners, rules, what Hoola adds, the checker's notes."""
+    from .site import designmd as DM
+    return await asyncio.to_thread(_dm, DM.look, lid[:80])
+
+
+@app.get("/api/site-design/looks/{lid}/page")
+async def site_design_look_page(lid: str, mode: str = ""):
+    """A full sample page in the look (public like the fonts: no script, no outside requests, framed only by the Studio)."""
+    from .site import designmd as DM
+    html = await asyncio.to_thread(_dm, DM.sample_page, lid[:80], mode[:8])
+    return Response(html, media_type="text/html; charset=utf-8", headers={
+        "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; font-src 'self'; img-src data:; "
+                                   "frame-ancestors 'self'; base-uri 'none'; form-action 'none'",
+        "Cache-Control": "public, max-age=3600", "X-Content-Type-Options": "nosniff"})
+
+
+@app.get("/api/site-design/looks/{lid}/md")
+async def site_design_look_md(lid: str):
+    """The look's DESIGN.md as a file (MIT, from awesome-design-md)."""
+    from .site import designmd as DM
+    text = await asyncio.to_thread(_dm, DM.md_text, lid[:80])
+    return Response(text, media_type="text/markdown; charset=utf-8", headers={
+        "Content-Disposition": f'attachment; filename="DESIGN-{re.sub(r"[^a-z0-9-]", "", lid.lower())[:40]}.md"',
+        "X-Content-Type-Options": "nosniff"})
+
+
+@app.post("/api/site-design/md/check", dependencies=[Depends(require_key)])
+async def site_design_md_check(body: dict):
+    """Her own DESIGN.md read and checked (Google's lint rules in plain words). Nothing is saved."""
+    from .site import designmd as DM
+    return await asyncio.to_thread(_dm, DM.check, str((body or {}).get("text") or ""))
 
 
 @app.get("/api/site-design/font/{fn}")
@@ -11813,6 +11936,9 @@ async def site_architect_list(tenant: str = Depends(current_tenant)):
 async def site_architect_new(body: dict, tenant: str = Depends(current_tenant)):
     """{words, conversation_id}: her ONE line -> the full spec card (pages, users, data, rules, features). Nothing built."""
     from .site import architect as AR
+    from .site import designq as DQ
+    dref = await asyncio.to_thread(_design_md_ref, body)   # v0.999.316 the DESIGN.md she attached rides with the plan
+    DQ.PENDING.set(dref)
     return await asyncio.to_thread(_site_logic, AR.draft, tenant, str(body.get("words") or ""),
                                    str(body.get("conversation_id") or ""))
 

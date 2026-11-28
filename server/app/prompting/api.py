@@ -25,6 +25,11 @@ class WorldFillBody(BaseModel):
     values: Optional[dict[str, str]] = None
 
 
+class WorldAdaptBody(BaseModel):
+    change: str = Field(..., max_length=300)
+    values: Optional[dict[str, str]] = None
+
+
 class PasteBody(BaseModel):
     text: str
     values: Optional[dict[str, str]] = None
@@ -178,10 +183,21 @@ def make_router(require_key, current_tenant) -> APIRouter:
 
     # ---- World prompts: the prompts.chat library (CC0), read-only; opening one makes a brief like a recipe
     @r.get("/world")
-    async def world_list(q: str = "", group: str = "", page: int = 1, kind: str = ""):
+    async def world_list(q: str = "", group: str = "", page: int = 1, kind: str = "", sort: str = "loved",
+                         family: str = "", per: int = 0):
         _on()
         from . import world as W
-        return await asyncio.to_thread(W.search, q, group, page, kind)
+        return await asyncio.to_thread(W.search, q, group, page, kind, sort, family, per)
+
+    @r.post("/world/{wid}/adapt")
+    async def world_adapt(wid: str, body: WorldAdaptBody):
+        """"Make it yours": one model call rewrites the prompt the way she says; checked before she sees it."""
+        _on()
+        from . import world as W
+        try:
+            return await asyncio.to_thread(W.adapt, wid, body.change, body.values)
+        except ValueError as e:
+            raise HTTPException(422, str(e)) from None
 
     @r.get("/world/{wid}")
     async def world_one(wid: str):

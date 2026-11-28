@@ -111,6 +111,8 @@ on:
           - fix_card_spec
           - cad_check
           - cad_setup
+          - diagram_setup
+          - diagram_check
           - lab_check
           - lab_try
           - lab_setup
@@ -944,6 +946,18 @@ jobs:
                 echo 'cd $CORE && .venv/bin/pip install -q --upgrade "cadquery>=2.4,<3" "scikit-fem>=10,<13" "pyamg>=5,<6" "mujoco>=3,<4" "matplotlib>=3.9" "reportlab>=4.0" 2>&1 | tail -12'
                 echo 'cd $CORE && .venv/bin/python -m app.engineering libs 2>&1 | tail -12'
                 echo 'cd $CORE && timeout 1500 .venv/bin/python -m app.engineering check 2>&1 | tail -45' ;;
+              diagram_setup)
+                # HOOLA DIAGRAM D1: fetch the draw.io editor (jgraph/drawio, the release next-ai-draw-io pins; refused unless
+                # its SHA-256 matches) into $CORE/data/diagram/drawio, then run the full engine check. archify and
+                # diagram-design ship in git; archify needs node >= 18 and a Chrome / Chromium. Nothing touches her data.
+                echo 'echo "node: $(node --version 2>&1)"'
+                echo 'cd $CORE && timeout 600 .venv/bin/python -m app.diagram setup 2>&1 | tail -5'
+                echo 'cd $CORE && timeout 1200 .venv/bin/python -m app.diagram check 2>&1 | tail -60' ;;
+              diagram_check)
+                # HOOLA DIAGRAM: what is installed (commits, node, browser, draw.io) + each engine's own checks on its own
+                # examples + one PNG from each engine. "DIAGRAM CHECK: PASS" = all three engines work on this server.
+                echo 'cd $CORE && .venv/bin/python -m app.diagram status 2>&1 | tail -30'
+                echo 'cd $CORE && timeout 1200 .venv/bin/python -m app.diagram check 2>&1 | tail -60' ;;
               lab_check)
                 # v0.456 PRAYOGSHALA: is the coding lab's Docker box real and SEALED on this VPS? Builds the base image
                 # if missing (or REBUILDS it when the image is older than the code, v0.537), then runs a passing

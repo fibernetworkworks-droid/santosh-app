@@ -4135,3 +4135,17 @@ Work: world.py rebuilt from the live prompts.json (3,275 kept, notes instead of 
 language); use rules workbench / fill / copy; POST /api/prompting/world/{wid}/fill; page category dropdown + kind chips;
 safety words narrowed (70 copy-only); tests rewritten (14 pass incl. browser). Version 0.999.313 (main was 0.999.312).
 Not verified on her server.
+
+---
+Task ID: prompting-redesign-v0999318 (built as 0.999.315; main took 0.999.315-317)
+Agent: Claude (session 019P5N4aeALTCREAqUMzjCNe)
+Task: Owner "PROMPTING SECTION LOOKS STALE ... MAKE A PROMPT ... ALL CATEGORY ... READY PROMPT LIBRARY ... DETAILS AND
+VIDEO AND IMAGES" -> design canvas UVKthxXrkrqudfU12Wqs9B -> "GO BUILD THE DESIGN".
+Work: prompting.js / .css / promptapp.html rebuilt to the design (top bar + Orbit mark, Make a prompt with 53 categories
+in 8 families, #/m/<cat>, #/library with rail / kinds / order / show more, one prompt's page with media and outline,
+Make it yours); world.py carries description / author name / date / media / needs, the site's Other category, search
+sort + family + per, families(), outline(), adapt(); NEW worldmedia.py (public cached copies, 6 hosts, bytes checked);
+shelf rebuilt from the 28 Nov export; tests: NEW test_v0830_prompting_library.py (11), nav pins -> 6, v0829 walk uses
+the rail, stale 0.999.311 pins moved. Pre-existing red (same on the commit before): test_v0804 Improve button in the
+console (#impBtn stays hidden). Not verified on her server.
+Re-versioned 0.999.318 -> 0.999.320 on the merge (main took 0.999.318 SRE DESK DEEPER and 0.999.319 HOOLA DOD END TO END), both kept; merged to main on "MERGE AND DEPLOY".

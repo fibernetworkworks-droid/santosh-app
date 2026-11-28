@@ -167,7 +167,7 @@ def test_coding_prompt_lands_in_hoola_code(arena_server, monkeypatch):  # noqa: 
     pg.on("pageerror", lambda e: errs.append(str(e)))
     pg.goto(base + "/console/prompting#/s/code")
     pg.wait_for_selector("#hpText")
-    assert pg.locator(".hp-nav").count() == 19
+    assert pg.locator(".hp-nav").count() == 6        # v0.999.315: the top bar (Make a prompt, Library, starters, My prompts, Results, Learn)
     pg.fill("#hpText", "fix the bug in server/app/shop.py: cart total shows Rs 0 after a coupon, run pytest")
     pg.click("#hpAsk button[type=submit]")
     pg.wait_for_selector("#hpRun")

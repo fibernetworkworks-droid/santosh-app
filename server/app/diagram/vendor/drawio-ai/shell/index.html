@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Next AI Draw.io</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/shell/shell.css">
+    <script>window.__MCP_CONFIG__ = {{CONFIG_JSON}};</script>
+    <script>
+        // Dark class before the first paint (no white flash). The same rule
+        // as shell/theme.ts: the choice stored under "mcp:dark-mode", else
+        // the server's DRAWIO_DARK, else the system
+        try {
+            const config = window.__MCP_CONFIG__ || {}
+            const stored = localStorage.getItem("mcp:dark-mode")
+            const dark =
+                stored === "true" ||
+                (stored === null &&
+                    (config.drawioDark === "dark" ||
+                        (config.drawioDark !== "light" &&
+                            matchMedia("(prefers-color-scheme: dark)").matches)))
+            if (dark) document.documentElement.classList.add("dark")
+        } catch {}
+    </script>
+    <script>
+        // A browser's page translator (Chrome, Edge, Yandex) replaces the
+        // page's text nodes with <font> elements. React still holds the old
+        // nodes: when it later removes one, or inserts before one, the
+        // browser throws and React takes the whole page down. With this, a
+        // call with a node that is no longer a child of the parent does
+        // nothing, so the page stays up; at worst a translated text stays
+        // as it was. The same script as the web app's, in
+        // app/[lang]/layout.tsx; draw.io's frame has its own window and
+        // keeps the browser's functions
+        (function(){var p=Node.prototype,r=p.removeChild,i=p.insertBefore;p.removeChild=function(c){return c.parentNode===this?r.apply(this,arguments):c};p.insertBefore=function(n,b){return !b||b.parentNode===this?i.apply(this,arguments):n}})()
+    </script>
+</head>
+<body class="antialiased">
+    <div id="root"></div>
+    <script type="module" src="/shell/shell.js"></script>
+</body>
+</html>

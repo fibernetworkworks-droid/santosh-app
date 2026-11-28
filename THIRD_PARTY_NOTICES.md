@@ -345,3 +345,17 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## HOOLA DIAGRAM engines (server/app/diagram/vendor/) - copied unchanged, pinned in server/app/diagram/VENDOR.json
+
+- **archify** (tt-a1i/archify, commit b42e7d7, v3.3.2) - Apache License 2.0 or MIT, at your option. Copyright (c) 2026
+  tt-a1i (Archify). Its LICENSE, LICENSE-MIT, NOTICE and THIRD_PARTY_NOTICES.md are kept in vendor/archify/.
+- **diagram-design** (cathrynlavery/diagram-design, commit 795eec4) - MIT. Copyright (c) 2025 Cathryn Lavery. LICENSE
+  kept in vendor/diagram-design/.
+- **next-ai-draw-io** (DayuanJiang/next-ai-draw-io, commit 75f0df3, packages/mcp-server parts) - Apache License 2.0.
+  LICENSE kept in vendor/drawio-ai/.
+- **draw.io** (jgraph/drawio v32.0.2) - Apache License 2.0, Copyright (c) JGraph Ltd. Not in git: fetched at setup by
+  `python -m app.diagram setup`, SHA-256 checked, an unmodified subset unpacked with its LICENSE (icon sets and stencils
+  carry their own terms, kept beside them).
+- **eraser-diagrams** (eraserlabs/eraser-diagrams, read at commit 75db422) - MIT, Copyright (c) 2026 Eraser Labs, Inc.
+  Ideas only (a look set once; description in, measured result back); no code copied.

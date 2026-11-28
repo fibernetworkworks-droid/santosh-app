@@ -14284,3 +14284,252 @@ npm it should install once into her folder - not measured.
 
 NOT VERIFIED: her VPS with a real model and real OpenRouter keys; the start time there; a real website in its browser (here every https
 page fails on the sandbox proxy's certificate - the browser itself started and the screen picture came back).
+## v0.999.320 THE PROMPTING SECTION REDESIGNED
+
+Owner: "NOW CHECK THE PROMPTING SECTION IN HOOLA LOOKS STALE AND VERY OLD BAD --- FIRST CHECK THE EXSTING HOOLA BRAND
+DESIGN AND ITS LOGO. 1) MAKE A PROMPT SECTION ... JUST MAKE A PROMPT -- IN THIS SHOW ALL CATOGORY 2) BELOW IT SHOW READY
+PROMPT LAIBRARY ... ALL WORLD PROMPTS WITH PERFECT CATOGORIWISE ... EVERY PROMPT IS HAVING THE A DETAILS AND SOME HAVE A
+VIDEO AND IMAGES ... SHOW SAME HERE ... SHOW ME THE DESIGN FIRST" -> design canvas claude.ai/artifact/UVKthxXrkrqudfU12Wqs9B
+(5 boards: home, a category picked, one prompt, phone home, phone prompt) -> "GO BUILD THE DESIGN".
+
+Built as v0.999.315 / 0.999.318; main took 0.999.315-0.999.319 (STUDIO FIXES, DevSecOps desk, Hoola Code flows, SRE
+DESK DEEPER, HOOLA DOD END TO END) while it was built - re-versioned to 0.999.320 on the merges, all works kept.
+
+**The look.** /console/prompting in Hoola's own design (the console app design): a top bar with the Orbit mark (the same
+paths as static/console/mark.js, in the accent) + "Prompting" in Literata + pill tabs (Make a prompt, Library, Hoola's
+starters, My prompts, Results, Learn) + Back to Hoola chat; white page, warm grey #FAFAF9 for quiet surfaces, ink pill
+for the main action, Literata for titles / prompts / descriptions, Schibsted Grotesk for the interface, Hoola violet
+#5B45E0 only for the mark and small accents. Light + dark tokens (dark = the console's #141413 set), phone width
+(tabs scroll, the rail becomes a row, 2 cards a row, on one prompt's page the actions come before the long prompt),
+reduced motion respected. The old 13-section sidebar is gone; `#/s/<section>` routes still work.
+
+**Make a prompt.** One large box ("What should we make a prompt for?", any language), a category picker (all 53 of the
+site's categories in 8 families: Pictures video & sound, Code & building, Agents & automation, Writing, Business &
+work, Learning & research, Life & wellbeing, Everything else) and "Make my prompt". Under the box "Every category"
+lists all 53 with their counts by family - no random options. A category opens `#/m/<category>`: the same box with the
+category set (its Hoola section from `world.CAT_SECTION`, e.g. Video Generation -> video, Web Development -> web,
+Coding -> code, Agent Skill -> aiapp, the rest -> the everyday section) and "Or start from a ready <category> prompt"
+with that category's prompts, pictures first. Make my prompt goes to the same workbench as before. If Hoola cannot
+tell what she is making, the category list opens. The example lines are global now (no kirana / Akola / Diwali).
+
+**Ready prompt library** (under the box on the home, and its own page `#/library`): all 3,275 prompts.chat prompts.
+Search, order (Most loved / Pictures and videos first / Newest), kind tabs (Text, Pictures, Video, Agent skills,
+Code style, Audio, JSON / YAML), a rail of the 8 families that open into their categories, 24 cards at a time with
+"Show more prompts". Each card: the author's picture or video frame (a play badge on videos) or, for a text prompt,
+its opening lines in Literata with Markdown marks taken out; the category, title, the author's description, the
+author's name, likes, and "Copy only" / "Long" where it applies.
+
+**One prompt** (`#/r/world:<id>`): the author's own picture (full size), video (plays muted, with controls) or sound,
+captioned as theirs; the kind and category, title, author + date + likes, the full description, tags, notes; a long
+prompt shown as its parts (headings in capitals or Markdown, `world.outline`) with "Show the whole prompt"; the blanks
+to fill; the main action (Use this prompt / Fill it in), Copy, Put in the Hoola chat; "Make it yours"; the source line;
+"More <category> prompts".
+
+**Make it yours** (`POST /api/prompting/world/{id}/adapt {change, values}`, `world.adapt`): she says what to change;
+ONE model call (`net.ai.llm`, `world.ADAPT[0]`) rewrites the prompt keeping the rest; refused for a prompt Hoola's
+checks flagged; the change itself is screened; the answer is refused when it adds unsafe words or an ignore-your-rules
+line the prompt did not have, is far longer than the prompt, or keeps under a fifth of its words. Her version can be
+copied, put in the chat, or (when it fits a brief) opened in the workbench. The shelf is never changed.
+
+**Pictures and videos** (`prompting/worldmedia.py`, public `GET /api/prompting/world-media/{id}?size=thumb|full`):
+883 prompts have the author's file. Her browser never loads the author's host: the server fetches the file once
+(https, the 6 hosts prompts.chat uses, no redirects, 15 MB picture / 40 MB video / 10 MB sound), checks the bytes
+really are a picture / video / sound, and keeps a copy under data/prompting/world_media: pictures as WebP (640 px
+card, 1600 px full), videos as the file plus a poster frame (ffmpeg; without ffmpeg the card shows a plain video
+tile), sounds as the file. Every later view is that copy (cached a week in the browser). Only ids on the shelf with a
+recorded file are served - never an address from the request - and nothing for a prompt Hoola's checks flagged. A
+failed fetch is remembered for an hour. Public because <img> / <video> cannot send her token; the files are CC0.
+(Owner's decision asked at the design: keep copies on her server or load from prompts.chat each time - built with the
+recommended copies, made the first time each is viewed, so nothing large is added to the repo.)
+
+**Shelf data** (`prompting/world.py`, rebuilt from the live export of 28 Nov 2026): each prompt now carries the author's
+display name, description (up to 900 characters), creation date, its picture / video address (validated by
+`world.media_url`), and whether it starts from her own picture; prompts with no site category are the site's "Other"
+(were Hoola's guessed groups) -> exactly the site's 53 categories. `world.search` gains `sort` (loved / media / new),
+`family`, `per` and returns `families` + `all`; `world.get` adds the full description and the outline; cards carry
+`excerpt` for text prompts.
+
+**Tests:** NEW test_v0830_prompting_library.py (11: details + 53 categories in 8 families, media addresses only from
+known hosts, the outline, the picture copy made once + public + sizes, a non-picture refused and remembered, flagged
+prompts have no picture, the video copy + poster, Make it yours and its checks, the routes, page wiring incl. no
+India-only examples, a browser walk at 1360 and 390 px: 53 categories, the picker, a category page into the
+workbench, the library rail / order / show more, one prompt with its video, Make it yours, no sideways scroll); the
+nav-count pins in test_v0804 / v0821 / v0822 / v0825 moved to the top bar (6); test_v0829's world walk uses the rail.
+
+NOT VERIFIED: on her server (the media copies are made there on first view; the VPS needs ffmpeg for video posters -
+it has it for the video tools); the model's "Make it yours" rewrites were only tested with a fake model.
+
+
+## v0.999.321 DESIGN.md CATALOG (built as 0.999.316)
+
+Owner: read https://getdesign.md/design-md and https://github.com/VoltAgent/awesome-design-md "for web design" -> asked
+for the catalog shown on getdesign.md under the Studio chat (prompt + full page per design) -> design canvas
+claude.ai/artifact/JARhTaL424pToX95u8e5J7 (4 boards: home with the catalog, one design, design in the box, phone) ->
+"GO BUILD".
+
+What DESIGN.md is: Google Stitch's plain-text design system (github.com/google-labs-code/design.md, Apache-2.0,
+version "alpha"): YAML tokens (colors, typography, rounded, spacing, motion, components) + written rules in up to ten
+sections in a fixed order (Overview, Colors, Typography, Layout, Elevation & Depth, Shapes, Motion & Micro-interaction,
+Voice & Content Strategy, Components, Do's and Don'ts). Its own philosophy: the prose matters more than the values.
+awesome-design-md (MIT, commit fcc7028) = 84 brand analyses; 74 with tokens, 10 older ones in prose only, 3 whose YAML
+does not parse (unquoted colon in the description). getdesign.md sells more (550) with no licence stated - not used.
+
+Before: Hoola's App Engine could export / import a DESIGN.md (v0.999.58) but its importer refused 13 of the 84 files,
+read 5 dark sites as light (it looked for `bg`, the files say `canvas`), never read `display-xl` fonts, lost 28 exact
+brand colours and threw away every written rule; the HTML website builder took no DESIGN.md at all.
+
+Built:
+- `server/app/site/designmd.py` - parse (tolerant), lint (Google's rule set in plain words), roles (scored prose reader
+  for the older files: a logo / footer / hover colour is never the page or the button), fonts + head kind (a stack's
+  `sans-serif` fallback never reads as serif), modes (own + the other mode made from the same colours; text 4.5:1,
+  buttons 4.5:1, main colour 3:1 against the page), to_ref (design_ref source 'designmd' with notes up to 1,800 chars:
+  description, type sizes, the Do's and Don'ts with the brand's name scrubbed), the catalog, look detail, the prompt
+  (made by code from the tokens), sample_page (full landing page, bundled fonts, no script, no outside request).
+- `server/app/site/designmd_lib/looks.json.gz` + LICENSE.txt, built by `server/tools/designmd_build.py <checkout>`
+  (Hoola names per look, categories from the README, 1win left out as a gambling site).
+- Writer: `inspire.brief_note` designmd branch ("THE DESIGN.md SHE CHOSE ... never the source site's name, logo, words
+  or pictures"); critic: `quality.critique(..., rules)` scores the page against the rules (`service._md_rules`).
+- Build + Plan: POST /api/sites and POST /api/site-architect take `design_look` / `design_md` (DQ.PENDING); a plan
+  keeps it in `architect.her_design` until approve; the plan card shows `her_design`; an existing site via
+  `inspire.read(source='designmd')` + use (rules / look kept on the site's design_ref).
+- App Engine: `genome.design_md` writes the spec's section order + motion / components tokens + the other mode as a
+  colour group (Hoola's genome still under `hoola:`); `genome.from_design_md` reads other tools' files through the same
+  reader - all 83 catalog files import with every colour pair checked.
+- Studio (`webstudio.js` / `.css`): catalog section under the chips (drawn cards from CSS variables, chips, search,
+  Show all, Bring your own DESIGN.md card), `#/design/<id>` page, the design card in the box (`#wsDChip`), Add a
+  DESIGN.md source panel (file or paste -> /md/check -> Use this design).
+- Routes: GET /api/site-design/looks, /looks/{id}, /looks/{id}/page (public, CSP default-src 'none', frame-ancestors
+  'self'), /looks/{id}/md (public download), POST /api/site-design/md/check.
+
+Tests: test_v0999_316_designmd.py (11), test_v0999_316_designmd_web.py (2: wiring + a Chromium walk light / dark /
+phone incl. the send carrying design_look and her own file checked and attached); test_v0999_58_genome.py now expects
+the spec's "## Colors".
+
+NOT VERIFIED: on her server; no model has built a site from a catalog design yet (the writer / critic notes are only
+tested as text); Google's official `@google/design.md` linter was not run here (installing it was blocked) - Hoola's
+checker follows its rules as read from its source.
+
+
+## v0.999.322 FOUR FROM BOLT.DIY - the done check, file fingerprints, the syntax check on save, her locked files
+
+Owner: "https://github.com/stackblitz-labs/bolt.diy.git -- read this repo first" -> the read (four ideas worth taking) -> "GO BUILD ALL 4".
+
+**The read.** bolt.diy (MIT, commit 72db5ce of 21 Nov 2026, maintenance only: "no new features are planned") is the
+open-source Bolt: an AI writes a React / Vite project and the preview runs beside the chat in StackBlitz WebContainers
+(commercial licence for business use - NOT used; Hoola builds in its own locked box on the server). Its agent loop
+(`app/lib/common/agentLoop.ts`, `app/lib/.server/llm/agent-loop.ts`) records a plan with numbered criteria, keeps
+evidence from every tool result and refuses `agent_complete` unless, after the last edit, the app ran, a check passed
+and the preview was ready; each step names the next required action. Its project tools hand out a sha256 revision on
+read and refuse a stale edit (`projectMcp.ts`), parse every JS / TS write with Prettier (`projectFileValidation.ts`),
+and it has per-chat locked files (`persistence/lockedFiles.ts`). Ideas only; no code copied (Hoola is Python).
+
+**What was built (App Engine = Web Studio React apps):**
+
+1. THE DONE CHECK - `server/app/appengine/donegate.py`. `app_engine` action=plan {goal, steps 1-6, criteria
+   [{id, description}] 1-8, preview} must come before the first change in a chat (switch `app_engine_done_gate`).
+   Every change (write / edit_lines / rename / delete / add_dependency / tokens / design / render_mode / cloud_change),
+   build (ok, TypeScript ok, version), rule test and browser check is written down per app and chat in
+   `<app>/_work.json`. action=done {outcome, summary, criteria ids} is refused unless after the LAST change: a good build,
+   TypeScript clean, rule tests passed (when add_list / rules changed), the browser check passed (when the plan wants the
+   preview or the app saves data; a check that cannot run on the server is said in the evidence, not blocking), no open
+   preview errors reported on that version, and every planned id named exactly once. outcome blocked records the reason.
+   Every tool answer during an open task ends with "NEXT: <the one next thing>"; action=work shows the state. `_prove`
+   now runs the browser check after a build when the open plan wants the preview. A task lasts 24 h; a finished one needs
+   a new plan for the next change. plan / done run in Plan and Chat mode (they change nothing in the app).
+2. FINGERPRINTS - service `revision_of` / `file_revision` / `_expect`: action=view returns `revision` (sha256, 16 hex);
+   edit_lines and a rewrite of an existing file must match the copy last read in this chat (or a passed revision),
+   checked under the app's lock; a changed file (her click-edit, a GitHub pull, another turn) is refused 409 and nothing
+   is written. Hoola's own writes update the remembered fingerprint; rename moves it; a new file needs no read
+   (switch `app_engine_read_first`).
+3. THE SYNTAX CHECK ON SAVE - `server/app/appengine/syntax.py`: tree-sitter's TypeScript grammar (.ts) and TSX grammar
+   (.tsx / .jsx / .js / .mjs) via the NEW dependency `tree-sitter-typescript` (MIT; deploy's pip install -r adds it).
+   `service._check` refuses a file that does not parse with line, column, the line and a hint (a missing } / ) / ], an
+   unclosed JSX tag, a .map() outside its {}, a file sent as ONE line). It never runs or rewrites code; no parser = the
+   check is skipped (switch `app_engine_syntax_check`). Checked: 0 false alarms on the template's 140 files and the 19
+   proof-app files; `satisfies`, enums, template types parse.
+4. HER LOCKED FILES - `server/app/appengine/herlocks.py`: PUT /api/appengine/{ref}/locks {path, locked} (a path ending in
+   / or naming a folder = the folder). app_engine write / edit_lines / delete / rename (from or to) on a locked path is
+   refused naming her lock and telling Hoola to ask her; her own taps (click-edit, GitHub pull, branch accept) stay open.
+   `<app>/_locks.json`; a new branch copies the app's locks; files list + view carry `her_lock`.
+
+Studio (`static/console/appengine.js` + `.css`): Preview shows "Hoola is working on this" (the plan's goal, ticks for
+changed / built after the last change / TypeScript / rules / browser / preview errors, what she should see) or "Finished
+and checked" / "Hoola could not finish" with the evidence (GET /api/appengine/{ref}/work). Code tab: Lock this file,
+Lock <folder>/, Unlock, "Locked by you" in the file list; Hoola's own setup files say so and cannot be locked.
+
+Tests: `server/tests/test_v0999_322_bolt_ideas.py` (10) - no change without a plan, done refused before a build / with
+TypeScript problems / with a missing or unknown id, accepted after a clean checked build, a change after the check needs
+a new build, a failed build / failed browser check / preview errors block done, a browser check that cannot run is said,
+blocked, plan in Plan mode, fingerprints (view first, changed file refused, a fresh view lets it through, a passed
+revision must match, new files free), the syntax refusal with line and the one-line hint, every template / proof file
+parses, her file + folder locks across all four actions, the routes and the Studio wiring, and a Chromium walk (the task card working -> finished, Lock this file -> Locked by you, at 1440 and 390 px). The box build and the browser check inside it are stand-ins.
+conftest pins APP_ENGINE_DONE_GATE / APP_ENGINE_READ_FIRST off for the older App Engine suites.
+
+NOT VERIFIED: on her server, with a real model doing a plan -> change -> build -> done round, or with the real Docker
+box and Chromium here (the build and the browser check were stand-ins in these tests). The browser check after every
+build of an open task can add up to ~2.5 minutes a build on her server.
+
+
+## v0.999.323 HOOLA DIAGRAM D1
+(owner: 'start D1.'). Files: server/app/diagram/{__init__,__main__,vendor,runners,drawio,_dd_export}.py, VENDOR.json, vendor/{archify,archify-pr,diagram-design,drawio-ai}/ (copied unchanged), server/tools/diagram_sync.py, config.py diagram_* settings, vps-ops diagram_setup / diagram_check, THIRD_PARTY_NOTICES. Found while building: (1) archify finalize's quality must follow the candidate's meta.quality_profile (its SKILL.md says so); (2) 4 of archify's own examples fail its own showcase rule and its standard browser check (tall 720x900 canvases) - upstream data, listed in __main__.KNOWN_UPSTREAM; (3) draw.io's embed host page must use its plain parameters (ui=min / stealth=1 / extra export options made the PNG export never answer); (4) diagram-design's export_png.py launches Playwright with no browser path, so it is run through _dd_export.py which supplies the server's browser without editing the vendored file. The archify update check went to archify.si when run bare - Hoola always sets its documented off switch.
+
+
+## v0.999.324 FIVE FROM DYAD - bring back a version, forgiving edits, console + network logs, a second look, the blueprint
+
+Owner: "https://github.com/dyad-sh/dyad.git ---- NOW READ THIS REPO" -> the read (five ideas) -> "GO BUILD ALL 5".
+
+**The read.** Dyad (github.com/dyad-sh/dyad, commit 3abec41 of 24 Nov 2026) is a free desktop (Electron) AI app builder:
+the AI writes a React 19 / Vite / Tailwind / shadcn app and it runs on her own computer behind a local proxy that injects
+error, console, network, screenshot and selection helpers. Licence: Apache-2.0 EXCEPT `src/pro/`, which is FSL-1.1-ALv2
+and forbids a "Competing Use" - its whole agent loop, the tolerant search/replace matcher, the tool suite and the
+auto-review live there, so nothing was copied; Hoola writes its own. Already in Hoola: Plan mode + approved plans,
+click-to-source + the style panel, preview errors back to the model, GitHub sync, Hoola Cloud data + sign-in, its own
+hosting, the studio card, a shell-command safety reviewer (Hoola Code), the same template. Not taken: the desktop app and
+local runs, the provider list, Supabase / Neon / Vercel / Cloudflare / Coolify, the Turbo Edits dialect, the Socket
+package firewall (Hoola only installs from a vetted list), the state-machine framework.
+
+**Built (App Engine = Web Studio React apps):**
+
+1. BRING BACK A VERSION - `service.restore_version` / `restore_checkpoint` / `checkpoints`: only her tap (POST
+   /api/appengine/{ref}/versions/{v}/restore and /checkpoints/{id}/restore, confirm required; app_engine refuses
+   restore / rollback / revert and tells Hoola it is her tap). The version's `src` becomes the working copy and is built
+   as a NEW version (its build.json says restored_from); history is never rewritten. Changes that were never built are kept
+   first as a checkpoint (`<app>/checkpoints/c<stamp>/src` + meta, newest 10), which she can bring back the same way. Her
+   Hoola Cloud data, members and the live app are not touched. Versions tab: Bring back on every version but the newest
+   (a confirm box says what happens), "Version N brought back" pills, a Checkpoints list.
+2. FORGIVING EDITS - `service._loose_find` (only when the search is not in the file exactly): line by line ignoring
+   (a) spaces at line ends, (b) spaces around each line, (c) curly quotes, long dashes, no-break spaces; then (d) a phrase
+   inside a line with (c) forgiven character by character. The first pass with exactly ONE match wins; more than one =
+   refused naming the lines; the replacement keeps the file's indentation relative to the first matched line; the answer
+   says which pass matched (`loose`), so Hoola copies exactly next time.
+3. CONSOLE + NETWORK LOGS - `appengine/preview.js` (Studio preview only, never a live app) wraps console log / info /
+   warn / error / debug (20 arguments, 8 KB an argument, 64 KB a line, objects 6 deep / 50 keys, 400 lines a page load)
+   and fetch + XMLHttpRequest (method, path, query NAMES only, status, time; never a body, a header or a query value). The
+   Studio batches them (1 s, 100 a post) to POST /api/appengine/{ref}/preview-logs (256 KB cap); `appengine/plogs.py`
+   keeps the newest 1,000 lines / about 1 MB per app in `_logs.json`, masked (card / ID / bank numbers) before keeping.
+   app_engine action=read_logs {kind console|network|all, limit (50, max 200), level (error / warn also bring failed
+   network calls), version (default the current; 0 = all)}.
+4. A SECOND LOOK - `appengine/review.py`: when action=done has passed the v0.999.322 checks, the unified diff since the
+   task started (against the version at plan time, or the template for a new app; 96 KB a file, 192 KB in all; Hoola's
+   locked files, package-lock and .hoola left out) goes to a model of ANOTHER company than the writer (the website critic's
+   rule, `critic.critic_who` / `_ask_vision`), told the diff is data. JSON findings (file, line, high / medium / low,
+   problem, fix). High / medium refuse done with the findings; the same version reuses its review (no second call); a
+   newly built version is reviewed again; after 2 versions still flagged, the third may finish with the open findings in
+   its evidence ("tell her"). A review that cannot run (no second model, a failed call) is said in the evidence, never
+   blocking. Switch `app_engine_auto_review`.
+5. THE BLUEPRINT - `donegate.write_blueprint` / `needs_blueprint`: on an app that was never built, every change is refused
+   until action=blueprint {what, users [{who, can}], screens [{name, purpose}] (1-20), data [{list, fields}], out_of_scope,
+   questions [{q, a}] (at most 5)} writes `.hoola/plan/blueprint.md`; the tool tells Hoola to ask her up to 5 short
+   questions in its reply first when her ask leaves real choices open. A built app never needs one. The Studio shows the
+   blueprint above the task card (GET /api/appengine/{ref}/work carries it). Switch `app_engine_blueprint`.
+
+Tests: `server/tests/test_v0999_324_dyad_ideas.py` (8) - the blueprint gate, its checks and its file; the review
+refusing on high (not low) findings, the diff it reads, reuse on the same version, acceptance after a clean re-review,
+two rounds then named, a review that cannot run; forgiving edits (indentation kept, curly quotes, a phrase, two matches
+refused with nothing written); logs posted, masked, filtered by kind / level / limit, the 413 cap, the preview wrappers;
+bring back as a new version with a checkpoint, the checkpoint brought back, her confirmation required, the tool refusing,
+bad ids; a Chromium walk (the blueprint card, Versions, Bring back with the confirm box). conftest pins
+APP_ENGINE_AUTO_REVIEW / APP_ENGINE_BLUEPRINT off for the older suites.
+
+NOT VERIFIED: on her server, with a real model planning -> blueprint -> building -> being reviewed, or with the real
+Docker box and a real second model (both were stand-ins here). The review adds one model call per built version at done.
