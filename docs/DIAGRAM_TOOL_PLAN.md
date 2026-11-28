@@ -166,6 +166,12 @@ Hoola Diagram is built for users anywhere in the world, not one country:
 
 Each phase = its own version (server + tests + phone where it changes). PC code is not touched.
 
+Built so far: **D1** (v0.999.323), **D2** (v0.999.329), **D3** (v0.999.331). D3 as built:
+the editor runs from Hoola's own server in a sandbox with no access to her sign-in; the link is signed for one diagram and
+expires in 12 h; Hoola must `read` before `change` (a change on an older copy is refused); her editor gets Hoola's change id by
+id as ONE undo step, outlined for 4 s; her own shapes, even unsaved, are never overwritten. The phone does not have the editor
+yet (it still opens the picture page) - that rides D5 with the other phone work.
+
 ## 9. Risks
 
 - **Running the vendored programs.** In the session that read the repos, the sandbox refused to run archify's
