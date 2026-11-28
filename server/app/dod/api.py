@@ -53,7 +53,8 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.post("/tasks", dependencies=auth)
     async def new_task(body: dict = Body(...), tenant: str = Depends(current_tenant)) -> dict[str, Any]:
         try:
-            return {"task": S.create(tenant, str(body.get("ask") or ""), str(body.get("kind") or "task"))}
+            checks = body.get("checks") if isinstance(body.get("checks"), list) else None
+            return {"task": S.create(tenant, str(body.get("ask") or ""), str(body.get("kind") or "task"), checks)}
         except ValueError as e:
             raise HTTPException(400, str(e)) from e
 
@@ -93,7 +94,8 @@ def make_router(require_key, current_tenant) -> APIRouter:
         if t.status not in S.OPEN:
             raise HTTPException(404, "The task has finished.")
         hit = _SHOTS.get(task_id)
-        if hit and _t.time() - hit[0] < 3:
+        fresh = 1 if t.status == "needs_you" and '"kind": "browser"' in (t.question or "") else 3   # live while she drives
+        if hit and _t.time() - hit[0] < fresh:
             img = hit[1]
         else:
             img = await GW.screenshot(tenant, f"hoola-dod-{task_id}")
@@ -102,6 +104,53 @@ def make_router(require_key, current_tenant) -> APIRouter:
         if not img:
             raise HTTPException(404, "No page open right now.")
         return Response(img, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+    # ---------------------------------------------------------------- v0.999.334 "done" means checked
+    async def _aguard(coro):
+        try:
+            return await coro
+        except KeyError as e:
+            raise HTTPException(404, "No such task.") from e
+        except ValueError as e:
+            raise HTTPException(409, str(e)) from e
+
+    @r.post("/tasks/{task_id}/checks", dependencies=auth)
+    async def task_add_check(task_id: str, body: dict = Body(...), tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        """HER check (a file, text in a file, a web address, text on its page, a command): it counts at once."""
+        return {"task": await _aguard(S.add_check(tenant, task_id, body if isinstance(body, dict) else {}))}
+
+    @r.post("/tasks/{task_id}/checks/{check_id}/approve", dependencies=auth)
+    async def task_check_yes(task_id: str, check_id: str, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"task": await _aguard(S.decide_check(tenant, task_id, check_id, True))}
+
+    @r.post("/tasks/{task_id}/checks/{check_id}/decline", dependencies=auth)
+    async def task_check_no(task_id: str, check_id: str, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"task": await _aguard(S.decide_check(tenant, task_id, check_id, False))}
+
+    @r.post("/tasks/{task_id}/recheck", dependencies=auth)
+    async def task_recheck(task_id: str, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"task": await _aguard(S.recheck(tenant, task_id))}
+
+    @r.post("/tasks/{task_id}/accept", dependencies=auth)
+    def task_accept(task_id: str, tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"task": _guard(S.accept, tenant, task_id)}
+
+    @r.post("/tasks/{task_id}/sendback", dependencies=auth)
+    async def task_sendback(task_id: str, body: dict = Body(...), tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        return {"task": _guard(S.send_back, tenant, task_id, str((body or {}).get("note") or ""))}
+
+    @r.post("/tasks/{task_id}/control", dependencies=auth)
+    async def task_control(task_id: str, body: dict = Body(...), tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        """v0.999.332 HER hands on the coworker's browser while it waits for her there: clicks on the live picture,
+        keys and typing go to that task's page. Nothing she types is kept."""
+        try:
+            out = await S.control(tenant, task_id, body.get("inputs") if isinstance(body, dict) else None)
+        except LookupError as e:
+            raise HTTPException(404, str(e)) from None
+        except ValueError as e:
+            raise HTTPException(409, str(e)) from None
+        _SHOTS.pop(task_id, None)   # the next look shows what her input did
+        return out
 
     @r.get("/tasks/{task_id}/files/{name}", dependencies=auth)
     def task_file(task_id: str, name: str, tenant: str = Depends(current_tenant)):

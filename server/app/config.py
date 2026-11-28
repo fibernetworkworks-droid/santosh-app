@@ -272,6 +272,7 @@ class Settings(BaseSettings):
     auto_cap_inr: float = 1500.0            # a new project's cost cap until the plan proposes one (she changes it at G3)
     auto_client_days: int = 30              # how long a client intake link works
     dev_make: bool = True                    # v0.939 Hoola Code makes PRDs / pages / prototypes / artboards / sheets as cards (DEV_MAKE)
+    dev_diagram: bool = True        # D4: the diagram tool in Hoola Code (diagrams of her code, Code Analysis, PR walkthrough)
     dev_vps: bool = False                    # v0.941 HOOLA CODE ON YOUR SERVER: pair a VPS (her server calls out), run approved commands as the hoola user. OFF until her first pair (DEV_VPS)
     dev_code_map: bool = True                # v0.943 Hoola Code's code map: names per file in the first message + the code_map tool (DEV_CODE_MAP)
     dev_look: bool = True                    # v0.943 the look tool: open a changed page in the server's browser, phone + computer (DEV_LOOK)
@@ -1524,6 +1525,13 @@ class Settings(BaseSettings):
     dod_max_rounds: int = 600               # tool rounds in one task before it stops and says so
     dod_file_max_mb: int = 50
     dod_data_dir: str = ""                  # default data/dod
+    dod_review: bool = True                 # v0.999.334 a second look at a finished task by a model of another company
+    dod_review_model: str = ""              # "" = the first of GLM-5.3 / Qwen 27B / DeepSeek not of the coworker's company
+    dod_check_command_s: float = 120.0      # longest a check command may run in its locked box
+    dod_check_rounds: int = 2               # a failed check sends the work back this many times, then it waits for her
+    dod_step_retries: int = 2               # v0.999.335 a failed round is tried again this many times before the task fails
+    dod_retry_s: float = 5.0                # wait before a retry (grows: 5 s, 10 s)
+    dod_nudges: int = 2                     # a coworker that stops halfway is told to go on this many times, then "Keep going?"
     # HOOLA DIAGRAM (docs/DIAGRAM_TOOL_PLAN.md): three vendored engines in app/diagram/vendor (archify, diagram-design,
     # draw.io via next-ai-draw-io); the draw.io editor is fetched by `python -m app.diagram setup` (vps-ops diagram_setup)
     diagram_enabled: bool = True

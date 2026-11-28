@@ -265,7 +265,7 @@ def _picture(png: Path, out: Path) -> str:
         return str(png) if png.is_file() else ""
 
 
-def _try(tenant: str, m: dict[str, Any], desc: Any) -> dict[str, Any]:
+def _try(tenant: str, m: dict[str, Any], desc: Any, repo_root: str = "") -> dict[str, Any]:
     """Run the engine once on this description. {ok, html, problems, png, desc_text}."""
     n = int(m.get("tries", 0)) + 1
     m["tries"] = n
@@ -282,11 +282,12 @@ def _try(tenant: str, m: dict[str, Any], desc: Any) -> dict[str, Any]:
             return {"ok": False, "html": "", "problems": ["the description is too large"], "png": "", "desc_text": ""}
         q = (cand.get("meta") or {}).get("quality_profile") if isinstance(cand.get("meta"), dict) else None
         slug = re.sub(r"[^a-z0-9-]+", "-", (m.get("title") or m["type"]).lower()).strip("-")[:40] or m["type"]
-        r = R.archify_finalize(m["type"], cand, work, slug=slug, quality="standard" if q == "standard" else "showcase")
+        r = R.archify_finalize(m["type"], cand, work, slug=slug, quality="standard" if q == "standard" else "showcase",
+                               repo_root=repo_root)
         probs = list(r.get("problems") or [])
         hint = [h for h in (r.get("review") or [])][:4]
         res = {"ok": bool(r.get("ok")), "html": r.get("html") or "", "problems": probs, "hints": hint,
-               "gates": r.get("gates") or {}, "png": "", "desc_text": text}
+               "gates": r.get("gates") or {}, "png": "", "desc_text": text, "refs": r.get("refs") or {}}
         if res["ok"]:
             p = R.page_png(res["html"], work / "picture.png")
             res["png"] = p.get("png") or ""
@@ -338,18 +339,40 @@ def _try_drawio(m: dict[str, Any], work: Path, desc: Any) -> dict[str, Any]:
     return {"ok": True, "html": str(page), "problems": [], "png": png.get("file") or "", "desc_text": xml}
 
 
-def publish_drawio(tenant: str, conv: str, m: dict[str, Any], xml: str, page: str, note: str = "") -> dict[str, Any]:
+CODE_PLACE = "code:"           # D4: a diagram made in a Hoola Code session lives in that session, not in her chat
+
+
+def code_task(m: dict[str, Any]) -> str:
+    p = str(m.get("place") or "")
+    return p[len(CODE_PLACE):] if p.startswith(CODE_PLACE) else ""
+
+
+def _keep(tenant: str, conv: str, m: dict[str, Any], page: str, source: str, summary: str, note: str) -> dict[str, Any]:
+    """Every page an engine built goes to ONE place: her chat's pages (an artifact) or, for a Hoola Code diagram, a card
+    in that coding session (devsahayak/made.py, kind diagram) - with the files it was drawn from."""
+    tid = code_task(m)
+    if tid:
+        from ..devsahayak import made as MD
+        row = MD.keep_built(tid, "diagram", m.get("title") or "Diagram", page, {"line": summary}, mid=m.get("made_id") or "",
+                            note=note, extra={"tenant": tenant, "diagram_id": m["id"], "engine": m["engine"],
+                                              "type": m["type"], "editable": m["engine"] == "drawio",
+                                              "files": list(m.get("files") or [])[:40]})
+        m["made_id"] = row["id"]
+        m["version"] = row.get("version")
+        return {"id": row["id"], "version": row.get("version"), "made": True}
     from .. import artifacts
-    row = artifacts.save_built(tenant, conv, title=m.get("title") or "Diagram", page=page, source=xml, kind="diagram",
-                               summary="Diagram · editable (draw.io)", artifact_id=m.get("artifact_id") or "",
-                               note=note or "diagram: drawio")
+    row = artifacts.save_built(tenant, conv, title=m.get("title") or "Diagram", page=page, source=source, kind="diagram",
+                               summary=summary, artifact_id=m.get("artifact_id") or "", note=note)
     m["artifact_id"] = row["id"]
     m["version"] = row.get("version")
     return row
 
 
+def publish_drawio(tenant: str, conv: str, m: dict[str, Any], xml: str, page: str, note: str = "") -> dict[str, Any]:
+    return _keep(tenant, conv, m, page, xml, "Diagram · editable (draw.io)", note or "diagram: drawio")
+
+
 def _publish(tenant: str, conv: str, m: dict[str, Any], res: dict[str, Any], open_problems: list[str]) -> dict[str, Any]:
-    from .. import artifacts
     page = Path(res["html"]).read_text("utf-8")
     if len(page) > MAX_PAGE:
         raise ValueError("the drawn page is too large to keep")
@@ -357,19 +380,18 @@ def _publish(tenant: str, conv: str, m: dict[str, Any], res: dict[str, Any], ope
         if m["engine"] == "diagram-design" else "editable (draw.io)" if m["engine"] == "drawio" \
         else m["type"].replace("-", " ").title()
     summary = f"Diagram · {label}" + (" · has open problems" if open_problems else "")
-    row = artifacts.save_built(tenant, conv, title=m.get("title") or label, page=page, source=res["desc_text"],
-                               kind="diagram", summary=summary, artifact_id=m.get("artifact_id") or "",
-                               note=("diagram: " + m["engine"] + (" (open problems)" if open_problems else "")))
-    m["artifact_id"] = row["id"]
-    m["version"] = row.get("version")
-    return row
+    m["title"] = m.get("title") or label
+    return _keep(tenant, conv, m, page, res["desc_text"], summary,
+                 "diagram: " + m["engine"] + (" (open problems)" if open_problems else ""))
 
 
 def _answer(m: dict[str, Any], res: dict[str, Any], row: dict[str, Any] | None, open_problems: list[str],
             note: str = "") -> dict[str, Any]:
     out: dict[str, Any] = {"ok": True, "diagram_id": m["id"], "engine": m["engine"], "type": m["type"],
                            "title": m.get("title", "")}
-    if row:
+    if row and row.get("made"):
+        out.update({"made_id": row["id"], "version": row.get("version"), "shown": True})
+    elif row:
         out.update({"artifact_id": row["id"], "version": row.get("version"), "shown": True})
     if res.get("gates"):
         out["checks"] = res["gates"]
@@ -383,6 +405,8 @@ def _answer(m: dict[str, Any], res: dict[str, Any], row: dict[str, Any] | None, 
                        "is right, tell her in one or two sentences what it shows - she opens the card herself.")
     if res.get("hints"):
         out["layout_hints"] = res["hints"]
+    if res.get("refs"):
+        out["source_check"] = res["refs"]          # archify's own count of the file + line ranges it verified
     if note:
         out["note"] = note
     if res.get("png"):
@@ -413,7 +437,8 @@ def _after_ai_drawio(m: dict[str, Any], xml: str, ids: list[str], ops: list | No
 
 
 def draw(tenant: str, conv: str, kind: str, title: str, content: Any, engine: str = "",
-         diagram_id: str = "", from_id: str = "") -> dict[str, Any]:
+         diagram_id: str = "", from_id: str = "", place: str = "", files: list[str] | None = None,
+         repo_root: str = "") -> dict[str, Any]:
     if not on():
         return {"ok": False, "error": "Diagrams are switched off on this server (diagram_enabled)."}
     with _LOCK:
@@ -435,14 +460,21 @@ def draw(tenant: str, conv: str, kind: str, title: str, content: Any, engine: st
                 return {"ok": False, "error": note}
             m = {"id": _new_id(), "engine": eng, "type": t, "title": str(title or "").strip()[:120], "fails": 0,
                  "tries": 0, "created": time.strftime("%Y-%m-%d %H:%M:%S"), "conversation_id": conv}
+            if place:
+                m["place"] = place
             src = _meta(tenant, from_id) if from_id else None
             if src is not None:
                 m["from"] = from_id
                 m["title"] = m["title"] or src.get("title", "")
+                if src.get("place") and not place:
+                    m["place"] = src["place"]            # an editable copy stays where the original is
+                m.setdefault("files", list(src.get("files") or []))
         if title:
             m["title"] = str(title).strip()[:120]
+        if files is not None:
+            m["files"] = [str(f)[:240] for f in files][:40]
         _save_meta(tenant, m)
-    res = _try(tenant, m, content)
+    res = _try(tenant, m, content, repo_root)
     m["desc_kind"] = {"archify": "json", "drawio": "drawio"}.get(m["engine"], "html")
     if res["ok"]:
         m["fails"] = 0
@@ -500,7 +532,7 @@ def current(tenant: str, did: str) -> tuple[dict[str, Any] | None, str]:
 
 
 def update(tenant: str, conv: str, diagram_id: str, edits: list[dict] | None = None, content: Any = None,
-           title: str = "") -> dict[str, Any]:
+           title: str = "", repo_root: str = "", prepare: Any = None, root_of: Any = None) -> dict[str, Any]:
     m, desc = current(tenant, diagram_id)
     if m is None:
         return {"ok": False, "error": f"No diagram {diagram_id} here (it is made by diagram action=draw)."}
@@ -517,17 +549,23 @@ def update(tenant: str, conv: str, diagram_id: str, edits: list[dict] | None = N
     else:
         return {"ok": False, "error": "update needs edits [{old_str, new_str}] (exact text from the description) or "
                                       "content (the whole new description)."}
-    return draw(tenant, conv, "", title, new, diagram_id=diagram_id)
+    if prepare is not None:                 # D4: Hoola Code pins this working copy's snapshot into the description
+        new = prepare(new)
+        repo_root = root_of() if root_of else repo_root
+    return draw(tenant, conv, "", title, new, diagram_id=diagram_id, repo_root=repo_root)
 
 
 def listing(tenant: str, limit: int = 20) -> list[dict[str, Any]]:
+    """Her chat's diagrams (a Hoola Code session's diagrams stay in that session's list)."""
     out = []
     d = _tdir(tenant)
     if not d.is_dir():
         return out
-    for sub in sorted(d.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True)[:limit]:
+    for sub in sorted(d.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True)[:limit * 3]:
+        if len(out) >= limit:
+            break
         m = _meta(tenant, sub.name)
-        if m:
+        if m and not code_task(m):
             out.append({k: m.get(k) for k in ("id", "title", "engine", "type", "artifact_id", "version")})
     return out
 

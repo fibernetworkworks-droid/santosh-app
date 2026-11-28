@@ -109,7 +109,7 @@ def _last_json(text: str) -> dict[str, Any] | None:
 
 # ------------------------------------------------------------------ engine A: archify
 def archify_finalize(kind: str, candidate: dict[str, Any] | str | Path, out_dir: str | Path,
-                     slug: str = "diagram", quality: str = "showcase") -> dict[str, Any]:
+                     slug: str = "diagram", quality: str = "showcase", repo_root: str = "") -> dict[str, Any]:
     """Run archify's finalize. {ok, gates, html, receipt, problems, said}. Never raises for a failing diagram."""
     kinds = {t["type"] for t in V.archify_types()} | {"explainer"}
     if kind not in kinds:
@@ -130,6 +130,8 @@ def archify_finalize(kind: str, candidate: dict[str, Any] | str | Path, out_dir:
     html = out / f"{slug}.html"
     cmd = [node, str(V.ARCHIFY / "bin" / "archify.mjs"), "finalize", kind, str(cand), str(html),
            "--quality", quality, "--json"]
+    if repo_root:                               # D4: every cited file + line range is checked at the pinned commit
+        cmd += ["--repo-root", str(Path(repo_root).resolve())]
     try:
         r = subprocess.run(cmd, cwd=str(out), env=_env(), capture_output=True, text=True, timeout=ARCHIFY_TIMEOUT)
     except subprocess.TimeoutExpired:
@@ -150,7 +152,9 @@ def archify_finalize(kind: str, candidate: dict[str, Any] | str | Path, out_dir:
             problems = [t[:400] for t in tail] or [f"archify exited with {r.returncode}"]
     review = receipt.get("visualReviewRecommendation") or {}
     codes = [str(d.get("code")) for d in (receipt.get("diagnostics") or []) if isinstance(d, dict) and d.get("code")]
+    refs = receipt.get("repositoryReferences") or (receipt.get("summary") or {}).get("repositoryReferences") or {}
     return {"ok": ok, "gates": gates, "codes": codes, "html": str(html) if html.is_file() else "", "receipt": receipt,
+            "refs": refs if isinstance(refs, dict) else {},
             "problems": problems, "review": review.get("hints") or [],
             "said": ("archify: all gates passed" if ok else
                      "archify: " + ", ".join(f"{k} {v}" for k, v in gates.items() if v != "pass") or "archify failed")}

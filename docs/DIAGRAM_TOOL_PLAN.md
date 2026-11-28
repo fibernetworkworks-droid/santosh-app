@@ -166,11 +166,22 @@ Hoola Diagram is built for users anywhere in the world, not one country:
 
 Each phase = its own version (server + tests + phone where it changes). PC code is not touched.
 
-Built so far: **D1** (v0.999.323), **D2** (v0.999.329), **D3** (v0.999.331). D3 as built:
+Built so far: **D1** (v0.999.323), **D2** (v0.999.329), **D3** (v0.999.331), **D4** (v0.999.333). D3 as built:
 the editor runs from Hoola's own server in a sandbox with no access to her sign-in; the link is signed for one diagram and
 expires in 12 h; Hoola must `read` before `change` (a change on an older copy is refused); her editor gets Hoola's change id by
 id as ONE undo step, outlined for 4 s; her own shapes, even unsaved, are never overwritten. The phone does not have the editor
 yet (it still opens the picture page) - that rides D5 with the other phone work.
+
+**D4** (v0.999.333) as built: Hoola Code has its own `diagram` tool (devsahayak/diagrams.py) on the same engines. A
+diagram of her code names the files it is drawn from; each must be a file of the working copy READ in this session or the
+draw is refused before any engine runs. archify's `sources` on each part are checked by archify itself (`--repo-root`)
+against a snapshot commit of the working copy (made with a private index - her branch, HEAD and index never move) in a
+throwaway evidence repo, so a cited line that is not in the file is sent back. Results are cards in "Made in this
+session" (made.py kinds diagram / analysis / review), never in her chat and never written into the repo. Code Analysis =
+archify's own static analyser on the working copy (ts / py / java; go / rust only where their toolchain is installed);
+the PR walkthrough = the same analyser between where the session started and the working copy now. The server's own
+folder paths are masked out of the report pages. Web: rail card + full-screen viewer with Edit by hand for an editable
+diagram; phone: the cards, a Diagrams filter, "Drawn from" files.
 
 ## 9. Risks
 

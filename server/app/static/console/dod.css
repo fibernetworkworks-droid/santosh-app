@@ -211,6 +211,52 @@ button{font:inherit;color:inherit}
 
 .dd-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--pill);color:var(--onpill);padding:11px 18px;border-radius:12px;font-size:13.5px;box-shadow:var(--shadow);z-index:50;max-width:90vw}
 
+/* v0.999.334 "done" means checked */
+.dd-checks{padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.dd-checks:empty{display:none}
+.dd-verdict{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:12px;background:var(--soft)}
+.dd-verdict b{font-size:15px}
+.dd-verdict span{font-size:13px;color:var(--mut)}
+.dd-verdict.ok{background:var(--okbg)}.dd-verdict.ok b{color:var(--ok)}
+.dd-verdict.bad{background:var(--badbg)}.dd-verdict.bad b{color:var(--bad)}
+.dd-verdict.warn{background:var(--warnbg)}.dd-verdict.warn b{color:var(--warn)}
+.dd-ck-h{font-size:12px;font-weight:600;color:var(--lab);text-transform:uppercase;letter-spacing:.06em;margin-top:6px;display:flex;align-items:center;gap:10px}
+.dd-ck-h small{text-transform:none;letter-spacing:0;font-weight:500}
+.dd-ck{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start;padding:8px 0;border-top:1px solid var(--line)}
+.dd-ck .dd-tag{white-space:nowrap}
+.dd-ck .t b{display:block;font-size:13.5px;font-weight:550;overflow-wrap:anywhere}
+.dd-ck .t small{display:block;color:var(--mut);font-size:12.5px;overflow-wrap:anywhere}
+.dd-ck-out{margin:6px 0 0;padding:8px 10px;border-radius:8px;background:var(--soft);font:12px/1.45 ui-monospace,Menlo,monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:160px;overflow:auto}
+.dd-ck-act{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.dd-cant{margin:0;padding-left:18px;color:var(--mut);font-size:13px;display:flex;flex-direction:column;gap:4px}
+.dd-cant b{color:var(--ink);font-weight:550}
+.dd-ck-review{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.dd-ck-back{display:flex;gap:8px;flex:1;min-width:240px}
+.dd-ck-back input,.dd-ck-add input,.dd-ck-add select{height:36px;border-radius:10px;border:1px solid var(--line2);background:var(--card);color:var(--ink);font:inherit;font-size:13.5px;padding:0 10px;min-width:0}
+.dd-ck-back input{flex:1}
+.dd-ck-add summary{cursor:pointer;font-size:13.5px;font-weight:550;color:var(--acct)}
+.dd-ck-add form{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.dd-ck-add form input{flex:1 1 180px}
+/* v0.999.332 her hands on its browser: the Take control window */
+.dd-ctl{position:fixed;inset:0;z-index:60;background:rgba(10,10,9,.55);display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.dd-ctl-in{width:min(1100px,100%);max-height:100%;overflow:auto;background:var(--card);border-radius:20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px;padding:16px}
+.dd-ctl-in>*{flex-shrink:0}
+.dd-ctl-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.dd-ctl-head b{display:block;font-size:15px}
+.dd-ctl-head small{display:block;color:var(--mut);font-size:13px;margin-top:2px}
+.dd-ctl-stage{position:relative;border-radius:12px;overflow:hidden;background:#111;border:1px solid var(--line2);min-height:180px;display:flex;align-items:center;justify-content:center;outline:none}
+.dd-ctl-stage:focus-visible{box-shadow:0 0 0 3px var(--acc)}
+.dd-ctl-stage img{display:block;width:auto;max-width:100%;height:auto;max-height:calc(100vh - 300px);cursor:crosshair;user-select:none;-webkit-user-drag:none}
+.dd-ctl-wait{color:#bbb;font-size:13px;padding:24px;text-align:center}
+.dd-ctl-tap{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;border:2px solid var(--acc);background:rgba(255,255,255,.35);pointer-events:none;animation:dd-tap .7s ease-out forwards}
+@keyframes dd-tap{from{transform:scale(.5);opacity:1}to{transform:scale(1.6);opacity:0}}
+.dd-ctl-keys{display:flex;gap:8px;flex-wrap:wrap}
+.dd-ctl-type{display:flex;gap:8px;align-items:center}
+.dd-ctl-type input[type=text],.dd-ctl-type input[type=password]{flex:1;min-width:0;height:38px;border-radius:12px;border:1px solid var(--line2);background:var(--card);color:var(--ink);font:inherit;padding:0 12px}
+.dd-ctl-hide{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--mut);white-space:nowrap}
+.dd-ctl-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.dd-ctl-foot small{display:flex;align-items:center;gap:8px;color:var(--mut);font-size:12.5px;flex:1;min-width:220px}
+@media (prefers-reduced-motion:reduce){.dd-ctl-tap{animation:none;opacity:.6}}
 @media (max-width:1180px){.dd-cols,.dd-tcols{grid-template-columns:minmax(0,1fr)}.dd-try{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:980px){.dd-scols{grid-template-columns:minmax(0,1fr)}.dd-faces{grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media (max-width:860px){

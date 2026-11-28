@@ -22,6 +22,9 @@ IconData codeMadeIcon(String kind) => switch (kind) {
       'prototype' => Icons.touch_app_outlined,
       'artboard' => Icons.dashboard_outlined,
       'sheet' => Icons.grid_on_outlined,
+      'diagram' => Icons.account_tree_outlined,
+      'analysis' => Icons.insights_outlined,
+      'review' => Icons.merge_type_outlined,
       _ => Icons.insert_drive_file_outlined,
     };
 
@@ -87,6 +90,11 @@ class CodeMadeThumb extends StatelessWidget {
               ),
           ]),
         );
+      case 'diagram':
+      case 'analysis':
+      case 'review':
+        bg = c.accentSoft;
+        body = Center(child: Icon(codeMadeIcon(kind), size: 26 * s, color: c.accent));
       case 'page':
         body = Padding(
           padding: EdgeInsets.all(8 * s),
@@ -256,7 +264,7 @@ Future<void> codeMadeShare(BuildContext context, Santosh app, String taskId, Map
 Future<void> showCodeMadeList(BuildContext context, Santosh app, String taskId, List<Map<String, dynamic>> rows,
     {required void Function(Map<String, dynamic> row) onOpen}) {
   var pick = 'All';
-  const groups = {'Docs': {'doc'}, 'Designs': {'page', 'prototype', 'artboard'}, 'Sheets': {'sheet'}};
+  const groups = {'Docs': {'doc'}, 'Designs': {'page', 'prototype', 'artboard'}, 'Sheets': {'sheet'}, 'Diagrams': {'diagram', 'analysis', 'review'}};
   return codeSheet<void>(context, app,
       title: 'Made in this session',
       body: (ctx) => StatefulBuilder(builder: (ctx, set) {
@@ -266,7 +274,7 @@ Future<void> showCodeMadeList(BuildContext context, Santosh app, String taskId, 
               Text('${cPlural(rows.length, 'thing')} · newest first', style: codeSans(c, size: 13, color: c.ink3)),
               const SizedBox(height: 6),
               Wrap(spacing: 6, children: [
-                for (final g in const ['All', 'Docs', 'Designs', 'Sheets']) CodeChip(g, on: g == pick, onTap: () => set(() => pick = g)),
+                for (final g in const ['All', 'Docs', 'Designs', 'Sheets', 'Diagrams']) CodeChip(g, on: g == pick, onTap: () => set(() => pick = g)),
               ]),
               for (final r in shown)
                 InkWell(
@@ -347,7 +355,7 @@ class _CodeMadeViewerState extends State<CodeMadeViewer> {
       if (!mounted) return;
       final url = cs(d['url']);
       final kind = cs(d['kind']);
-      if (url.isNotEmpty && const {'page', 'prototype', 'artboard'}.contains(kind)) {
+      if (url.isNotEmpty && const {'page', 'prototype', 'artboard', 'diagram', 'analysis', 'review'}.contains(kind)) {
         final full = codeMadeFullUrl(widget.app, url);
         final sameFile = _webUrl.split('?').first == full.split('?').first;
         if (_web == null) {
@@ -502,7 +510,23 @@ class _CodeMadeViewerState extends State<CodeMadeViewer> {
     if (_web == null) {
       return Center(child: Padding(padding: const EdgeInsets.all(24), child: Text('Nothing to show yet.', style: codeSans(c, color: c.ink2))));
     }
-    return Container(color: c.sunk, child: WebViewWidget(controller: _web!));
+    final x = cm(d['extra']);
+    final files = [for (final f in cl(x['files'])) cs(f)];
+    final web = Container(color: c.sunk, child: WebViewWidget(controller: _web!));
+    if (files.isEmpty && x['editable'] != true) return web;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (files.isNotEmpty)
+            Text('Drawn from ${files.take(4).join(', ')}${files.length > 4 ? ' and ${files.length - 4} more' : ''}',
+                maxLines: 2, overflow: TextOverflow.ellipsis, style: codeSans(c, size: 13, color: c.ink2)),
+          if (x['editable'] == true)
+            Text('You can change it by hand on the web console (Edit by hand).', style: codeSans(c, size: 13, color: c.ink3)),
+        ]),
+      ),
+      Expanded(child: web),
+    ]);
   }
 
   Widget _sheet(HoolaColors c, Map<String, dynamic> d) {
@@ -594,7 +618,7 @@ class _CodeMadeViewerState extends State<CodeMadeViewer> {
   }
 
   Widget _askBar(HoolaColors c, String kind) {
-    final what = switch (kind) { 'doc' => 'this document', 'sheet' => 'this sheet', 'prototype' => 'this prototype', 'artboard' => 'these screens', _ => 'this page' };
+    final what = switch (kind) { 'doc' => 'this document', 'sheet' => 'this sheet', 'prototype' => 'this prototype', 'artboard' => 'these screens', 'diagram' => 'this diagram', 'analysis' => 'this analysis', 'review' => 'this walkthrough', _ => 'this page' };
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       decoration: BoxDecoration(color: c.surface, border: Border(top: BorderSide(color: c.sunk))),

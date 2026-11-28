@@ -14703,7 +14703,119 @@ TESTS: test_v0999_331_diagram_d3.py 13 (XML normalise / checks, compressed + bom
 
 NOT VERIFIED: not deployed on her VPS (deploy, then vps-ops diagram_setup needs node >= 18 for engine A; engine C needs only the editor fetch). No real model has drawn a draw.io diagram yet (fake-model tests only). The phone opens the picture page, not the editor (D5). Next: D4 (Hoola Code) on her word.
 
-## v0.999.332 LABOUR & WAGES DESK (owner: "NOW NEXT CONSTRUCTION EMPLOYEE SAME WAY -- Labour & Wages Desk: muster rolls, licence and renewal dates, wage working papers, BOCW cess and TDS" -> docs/research/construction/LABOUR_WAGES_WORKFLOW.md -> design canvas claude.ai/artifact/Hyq5sUMDbK5qDkNUmiiFxM -> "GO BUILD ALL 7 VERSIONS")
+
+## v0.999.332 HOOLA DOD, HER HANDS ON ITS BROWSER
+
+Owner, after reading github.com/alexsergivan/kwant (AGPL-3.0, ideas only, zero code copied): "Hand over the bot's browser to
+sign in or solve a CAPTCHA. The page is held for you, you take control, then press Done ... work on it".
+
+- **The question.** `hoola_ask` gains `kind=browser`: a page needs HER (her sign-in, a CAPTCHA or "are you human" check, a
+  one-time code). The coworker's rules say so (rule 7: ask, leave the page open, never try to get past it itself). The task
+  waits in `needs_you` like any question; her phone gets "X needs you in its browser".
+- **Take control.** On /console/dod the question card has Take control / Done / I can't. Take control opens a window with
+  the coworker's page live: a picture every second (each one preloaded so nothing moves under her pointer), her click lands
+  on the same spot, typing on the picture goes to the page (paste too), Enter / Tab / Backspace / Esc / Page up / Page down
+  buttons, a text box with Hide for passwords (phones), then **Done, carry on** or **I can't**.
+- **How it reaches the page.** POST /api/dod/tasks/{id}/control -> `service.control` (only while the task waits for her with a
+  browser question, only her own task, at most 60 inputs, allowed keys only) -> `gateway.operate`: OpenClaw's own browser
+  tool through /tools/invoke, act kinds `clickCoords` and `press` (the kinds its Control UI uses for operator input,
+  docs/tools/browser-control.md), batched 80 to a call (one by one if a batch is refused), on that task's tab (the
+  `targetId` its last screenshot reported), clicks scaled to the picture's size (headless Chrome draws 1 pixel per CSS
+  pixel). Characters are pressed one by one (space = Space).
+- **Never kept.** What she types is not stored, not in the task, not logged (the log keeps a count), not shown to the model;
+  the model hears only "the owner has done what the page needed ... look at the page again". A step "You took over its
+  browser" is written once.
+- **Sign-ins shared.** Every task has its own tab (OpenClaw keeps a tab per session key) and all of them use her coworker's
+  one Chrome profile, so a sign-in made for one task is there for the others.
+- Files: `dod/gateway.py` (`_note_view`, `view_of`, `operator_actions`, `operate`, `KEYS`), `dod/service.py` (`ASK_KINDS`,
+  `control`, the browser answer), `dod/api.py` (control route, 1 s screen while she drives), `push.py`, `static/console/dod.js`
+  + `dod.css` (the window). Tests `test_v0999_332_dod_takeover.py` 5 incl. a browser walk at 1440 and 390.
+- NOT VERIFIED: clickCoords / press / batch through /tools/invoke are read from OpenClaw's source and docs, not run on the
+  real image; the 1-pixel-per-CSS-pixel scale is assumed; not run on her server (DOD is still switched off there).
+
+
+## v0.999.333 HOOLA DIAGRAM D4
+Owner: 'GO D4' on docs/DIAGRAM_TOOL_PLAN.md (D4 = Hoola Code: diagram in the coder's tools, diagram cards on web + phone, archify's Code Analysis and PR walkthrough as session cards, read-the-code-first).
+
+WHAT SHE GETS: in a Hoola Code session she can say 'draw the login flow', 'is the architecture healthy / where are the cycles' or 'walk me through this change'. Hoola reads the code, draws, and a card appears under 'Made in this session' (web: right rail; phone: the made cards) that opens full screen: the diagram with the files it was drawn from, archify's Code Analysis workbench (map, findings, source excerpts) or the PR walkthrough (what this session's change adds, removes and couples). Every result keeps versions. An editable (draw.io) diagram opens in her editor with 'Edit by hand' on the web.
+
+READ THE CODE FIRST, IN CODE: draw needs `files` (unless not_about_code=true); every file and every archify `sources` path must be a regular file of THIS working copy that Hoola has read in this session (the engine's own read set) - else the draw is refused before any engine runs, naming the unread files. Then Hoola pins the description to the code: a snapshot commit of the working tree is made with a private GIT_INDEX_FILE (commit-tree, her branch / HEAD / index never move), a throwaway evidence repo points at the working copy's objects (git alternates) with an origin of the repo's name, meta.repository = {url, link_mode local-only, revision snapshot} is written by Hoola (never the model), and archify runs finalize with --repo-root - it checks every cited path and line range at that commit (a line not in the file comes back as a problem). The source check count is returned to the model.
+
+WHERE IT LIVES: diagram/service.py gains place + files on a diagram and one keeper `_keep`: a diagram whose place is code:<task> becomes a session card (devsahayak/made.py keep_built, BUILT kinds diagram / analysis / review with their own labels; `make` still writes only doc / page / prototype / artboard / sheet), everything else stays a chat artifact. Her hand edits of an editable code diagram (D3 live save) become the card's next version. The chat's diagram list skips session diagrams; another session cannot read or change them.
+
+CODE ANALYSIS + PR WALKTHROUGH: archify's own `code-analysis prepare` (static: reads files and git objects; repository code, hooks and package scripts are never run), git config forced safe through GIT_CONFIG_* (fsmonitor off, hooks to /dev/null), 5 min cap, the main language picked from file counts (ts / py / java; go and rust only where go / cargo are installed, else said), optional scope folder (checked inside the copy). analyze = the working copy; pr = --base the session's starting commit --head a snapshot of now. A re-run is a new version of the same card. The receipt's resume command and every server folder path are removed from what the model and the page see.
+
+UI: web code.js - `madeCard` in the rail (title, kind, version, line, 'Drawn from' files), `openMade` = a wide dialog with the page in a sandboxed iframe (no allow-same-origin), a version picker, Open in a new tab, and Edit by hand for an editable diagram (the iframe switches to her signed editor link); feed lines 'Drew the diagram', 'Ran Code Analysis', 'Wrote the PR walkthrough'; CSS in hoolacode.css. Phone code_made.dart: icons + thumbs for the three kinds, a Diagrams filter, the WebView for them, 'Drawn from' files and a note that hand editing is on the web console.
+
+FILES: server/app/devsahayak/diagrams.py (new), made.py (BUILT, keep_built, _public_extra, detail editor link, restore), engine.py (tool, HOWTO, dispatch, picture), diagram/service.py (place, files, _keep, repo_root, update prepare), diagram/runners.py (--repo-root, refs), config.py (dev_diagram), static/console/code.js + hoolacode.css, lib/ui/code/code_made.dart.
+
+FOUND WHILE BUILDING: archify requires meta.output and, for repository evidence, meta.repository + an origin remote on the repo root - Hoola's working copy has none and is never given one (the throwaway evidence repo carries it); a relative working-copy path breaks archify, which runs from its own folder; the analysis page printed the server's folders in its 'recheck' command (now masked); the old make test pins make's five kinds, so built kinds got their own table instead of joining KINDS.
+
+TESTS: test_v0999_333_diagram_d4.py 12 - built kinds as versioned cards without the tenant on them; refused until the files are read (no files, unread files, unread archify sources, paths outside the copy); a login-flow diagram becomes a checked card linked to its files with archify's source check, no chat page, nothing written to the repo, update = version 2, another session cannot read it; a cited line not in the file is sent back; Code Analysis on a fixture repo finds the planted auth <-> db cycle, re-run = version 2, scope outside refused, scratch cleaned, no server paths on the page; the PR walkthrough lists exactly the changed files and HEAD / index / status stay as they were; the snapshot commit is not on her branch; language picking + missing toolchains said; an editable diagram stays in the session and her edit becomes its version 2; the loop offers the tool; web + phone wiring; a real-browser walk of the web rail card -> full-screen viewer -> Edit by hand. Nearby suites (D1-D3, make, Hoola Code shell / review / engine / composer, devsahayak, routines): green except two old version pins and the D1 setting check under a test env var.
+
+NOT VERIFIED: not deployed on her VPS (deploy, then vps-ops diagram_setup for node). A full scripted Hoola Code round with the diagram tool was not run here (no Docker); the tool itself was driven on a real working copy. No real model has drawn a code diagram yet. Next: D5 on her word.
+
+
+## v0.999.334 HOOLA DOD, DONE MEANS CHECKED
+
+Owner, after the kwant read (AGPL-3.0, ideas only, zero code copied): '"Done" means checked. A task is Verified only when
+kwant itself runs a check ... DOD today trusts the coworker when it calls hoola_done. ---- work on it'.
+
+- **Hoola checks, not the coworker.** After `hoola_done` (or a final answer with no tool call) the task goes to
+  `checking`: `dod/checks.py` runs every approved check itself.
+  - `file_exists` / `file_contains`: Hoola's own copy taken at hand-over (the coworker cannot change it afterwards), else
+    the workspace; text from .txt / .csv / PDF / Word / Excel / PowerPoint.
+  - `web`: a public address answers (status, optional words); the house guard on every redirect hop.
+  - `page`: words on the page its browser has open for this task (`gateway.page_text`, OpenClaw's browser `text`, a read).
+  - `command`: a fresh box from her coworker's own image, the workspace mounted READ-ONLY, `--network none`,
+    `--read-only`, 512 MB, 1 CPU, 256 processes, no-new-privileges, 120 s (`dod_check_command_s`); a box past its time is
+    removed (`docker rm -f`). Exit 0 = passed.
+- **Who adds checks.** She does (with the task: `checks` on POST /api/dod/tasks, or later on the task page) and hers count
+  at once. The coworker may suggest one with the new client tool `hoola_check`; it waits for her Approve / Decline, so it
+  can never verify its own work. A check outside the workspace is refused.
+- **A second look.** A reviewer on another company's model (`dod_review_model`, else GLM-5.3 / Qwen 27B / DeepSeek, never the
+  coworker's company) reads her request, the coworker's claim, its steps, its files and the check results, and answers part
+  by part: Passed / Not met / No check. It can stop a Pass (Not met), never make one. No OpenRouter key = said in Couldn't check.
+- **Verdict.** failed (an approved check failed) > needs_you (a check waits for her, or a part is not met) > passed (at
+  least one check Hoola ran passed) > not_checked. Plus a Couldn't check list, each with its reason.
+- **What happens.** failed: the work goes back to the coworker with what failed (up to `dod_check_rounds` 2), then
+  **To review**. needs_you: To review. passed: Done ("Checked"). not_checked: Done, said plainly ("Done, not checked").
+  To review = Looks good (done, her OK written down, the verdict kept), Send back with her words (continues from its done
+  call, checks run again), Check again, Add a check. Status `checking` is open (Stop works), `review` shows under Needs you.
+- Files: `dod/checks.py` (new), `dod/service.py` (`hoola_check`, rule 8, `_checked_finish`, `recheck`, `add_check`,
+  `decide_check`, `accept`, `send_back`, view + summary), `dod/api.py` (6 routes), `dod/models.py` (checks / verdict /
+  review columns, self-healed), `dod/gateway.py` (`page_text`), `config.py` (4 settings), `static/console/dod.js` + `dod.css`
+  (Checks section, To review). Tests `test_v0999_334_dod_checked.py` 7 incl. a browser walk at 1440 and 390.
+- NOT VERIFIED: the page check (OpenClaw browser `text`) and the command box were not run on the real OpenClaw image;
+  no real reviewer model has answered; not run on her server (DOD is still switched off there).
+
+
+## v0.999.335 HOOLA DOD, NEVER STUCK QUIETLY
+
+Owner, after the kwant read (AGPL-3.0, ideas only): 'Stuck bots say so instead of stopping quietly. After a failed step
+the bot retries, then tries another way. If nothing works, its last line starts with Blocked: and says what would unblock
+it. A bot that stops halfway gets 2 more turns, then you get one "Keep going?" card. -- work on it'.
+
+- **Retries.** `_respond_retrying`: a round OpenClaw answers `failed`, or a lost connection, is sent again
+  (`dod_step_retries` 2, waits `dod_retry_s` 5 s then 10 s), each said as a step ("Something went wrong, trying again" /
+  "Lost contact for a moment, trying again"). Only then the task fails, with OpenClaw's reason
+  ("could not get past: ..."). A failed round is not saved as the conversation's last response.
+- **Its rules.** Rule 9 in the coworker's instructions: a failed step is tried again once, then another way; something
+  she said no to is never tried again, not even another way; when nothing works the last line starts `Blocked:` with what
+  would unblock it; never end a turn on "I will ...".
+- **Blocked.** `ending()` reads how a reply with no tool call ends: a last line starting `Blocked:` (a final answer or a
+  `hoola_done` summary) becomes Hoola's own question (`kind blocked`, `_ask_hoola`): the task waits in needs_you,
+  "Ananya is blocked: ..." with a box for her answer, push "Ananya is blocked". Her words go back as the done call's
+  output, or as a message when there is no call to answer. A `hoola_done` that says Blocked is not treated as done.
+- **Stopped halfway.** A reply with no `hoola_done` and no `Done:` / `Blocked:` line = it stopped before the work was
+  finished: it is told to carry on (up to `dod_nudges` 2, each a step), then one **Keep going?** card (`kind keep_going`,
+  its last words shown): Keep going (told to finish or end with Blocked:) or Stop here (status stopped, its last words kept
+  as the reply, nothing more runs). Push "Ananya stopped halfway".
+- Files: `dod/service.py`, `config.py` (3 settings), `push.py`, `static/console/dod.js`. Tests `test_v0999_335_dod_unstuck.py` 9.
+- NOT VERIFIED: with a real model on the real OpenClaw image (how often a real model ends without hoola_done), or on her
+  server (DOD is still switched off there).
+
+## v0.999.336 LABOUR & WAGES DESK (built as 0.999.332; their 0.999.332-0.999.335 took those numbers, all kept; owner: "NOW NEXT CONSTRUCTION EMPLOYEE SAME WAY -- Labour & Wages Desk: muster rolls, licence and renewal dates, wage working papers, BOCW cess and TDS" -> docs/research/construction/LABOUR_WAGES_WORKFLOW.md -> design canvas claude.ai/artifact/Hyq5sUMDbK5qDkNUmiiFxM -> "GO BUILD ALL 7 VERSIONS")
 
 The Construction & Real Estate Labour & Wages Desk gets its own section like the finance desks and the Material Store:
 `/console/labour` (labourdesk.html / .js / .css) with the Labour chat (Conversation kind `labour`, `server/app/labourchat.py`,

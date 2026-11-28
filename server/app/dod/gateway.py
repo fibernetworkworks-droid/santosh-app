@@ -495,10 +495,144 @@ async def screenshot(tenant: str, session_key: str) -> bytes | None:
         res = (r.json() or {}).get("result") or {}
         for part in (res.get("content") or []) if isinstance(res, dict) else []:
             if isinstance(part, dict) and part.get("type") == "image" and part.get("data"):
-                return base64.b64decode(part["data"])
+                img = base64.b64decode(part["data"])
+                _note_view(session_key, res, img)
+                return img
     except Exception:  # noqa: BLE001 - no picture is a fine answer
         return None
     return None
+
+
+async def page_text(tenant: str, session_key: str) -> str | None:
+    """v0.999.334 the text of the page its browser has open for this task (OpenClaw's browser tool, action text - a
+    read). For a check 'its page shows ...'. None when its computer is off or no page is open. Never wakes it."""
+    g = _row(tenant)
+    if g.state != "awake" or not g.port or not g.token_enc:
+        return None
+    from ..bazar.security import vault
+    token = vault().open(g.token_enc)
+    args: dict[str, Any] = {"maxChars": 40000}
+    target = view_of(session_key).get("target")
+    if target:
+        args["targetId"] = target
+    try:
+        async with httpx.AsyncClient(transport=TRANSPORT, timeout=30) as c:
+            r = await c.post(f"http://127.0.0.1:{g.port}/tools/invoke", headers={"Authorization": f"Bearer {token}"},
+                             json={"tool": "browser", "action": "text", "args": args, "sessionKey": session_key})
+        if r.status_code != 200:
+            return None
+        res = (r.json() or {}).get("result") or {}
+        parts = [p.get("text", "") for p in (res.get("content") or []) if isinstance(p, dict) and p.get("type") == "text"]
+        text = "\n".join(parts).strip()
+        return text or None
+    except Exception:  # noqa: BLE001 - no page is a fine answer
+        return None
+
+
+# ------------------------------------------------------------------------------------------------ her hands on its browser
+# v0.999.332 when a page needs HER (her sign-in, a CAPTCHA, a one-time code) the coworker asks (hoola_ask kind=browser)
+# and waits; she takes over its browser from the Hoola DOD page: what she clicks on the live picture and what she types
+# goes to that page through OpenClaw's own browser tool (/tools/invoke, act kinds clickCoords / press - the same kinds its
+# Control UI uses for operator input, docs/tools/browser-control.md). Every task has its own tab (OpenClaw keeps a tab per
+# session key) and all of them share her coworker's one Chrome profile, so a sign-in made for one task is there for the
+# others. What she types is sent and forgotten: never stored, never logged, never shown to the model.
+_VIEWS: dict[str, dict[str, Any]] = {}   # session key -> {target, w, h} of the last picture of its tab
+KEYS = {"Enter", "Tab", "Backspace", "Escape", "Delete", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+        "PageUp", "PageDown", "Home", "End", "Shift+Tab"}
+_CHUNK = 80   # actions per call
+
+
+def _note_view(session_key: str, res: dict[str, Any], img: bytes) -> None:
+    """Remember which tab the picture was of and its size in pixels (her clicks are placed on that tab, at that scale;
+    a headless Chrome draws at 1 pixel per CSS pixel, so the picture's size is the page's)."""
+    view = dict(_VIEWS.get(session_key) or {})
+    det = res.get("details") if isinstance(res.get("details"), dict) else {}
+    target = res.get("targetId") or det.get("targetId") or det.get("suggestedTargetId")
+    if target:
+        view["target"] = str(target)[:200]
+    try:
+        import io
+        from PIL import Image
+        with Image.open(io.BytesIO(img)) as im:
+            view["w"], view["h"] = im.size
+    except Exception:  # noqa: BLE001 - keep the last known size
+        pass
+    _VIEWS[session_key] = view
+
+
+def view_of(session_key: str) -> dict[str, Any]:
+    return dict(_VIEWS.get(session_key) or {})
+
+
+def operator_actions(inputs: list[dict[str, Any]], w: int, h: int) -> list[dict[str, Any]]:
+    """Her inputs -> OpenClaw act requests. click = {x, y} as a share (0..1) of the picture she saw; key = one of KEYS;
+    text = characters pressed one by one (a space is the Space key); scroll = up / down by a page."""
+    out: list[dict[str, Any]] = []
+    for i in inputs:
+        k = i.get("kind")
+        if k == "click":
+            x = min(max(float(i.get("x", -1)), 0.0), 1.0)
+            y = min(max(float(i.get("y", -1)), 0.0), 1.0)
+            out.append({"kind": "clickCoords", "x": round(x * max(w - 1, 1), 1), "y": round(y * max(h - 1, 1), 1)})
+        elif k == "key" and i.get("key") in KEYS:
+            out.append({"kind": "press", "key": i["key"]})
+        elif k == "scroll":
+            out.append({"kind": "press", "key": "PageUp" if i.get("dir") == "up" else "PageDown"})
+        elif k == "text":
+            for ch in str(i.get("text") or "")[:500]:
+                if ch == "\n":
+                    out.append({"kind": "press", "key": "Enter"})
+                elif ch == " ":
+                    out.append({"kind": "press", "key": "Space"})
+                elif ch.isprintable():
+                    out.append({"kind": "press", "key": ch})
+    return out
+
+
+async def operate(tenant: str, session_key: str, inputs: list[dict[str, Any]]) -> int:
+    """Send her inputs to the coworker's tab of this task. Returns how many actions ran. Never wakes a sleeping
+    coworker; raises RuntimeError with a plain reason (never the typed text)."""
+    g = _row(tenant)
+    if g.state != "awake" or not g.port or not g.token_enc:
+        raise RuntimeError("Your coworker's computer is not on right now.")
+    view = view_of(session_key)
+    if "w" not in view:
+        await screenshot(tenant, session_key)   # learn the tab and its size before the first click
+        view = view_of(session_key)
+    acts = operator_actions(inputs, int(view.get("w") or 1280), int(view.get("h") or 800))
+    if not acts:
+        return 0
+    from ..bazar.security import vault
+    token = vault().open(g.token_enc)
+    url = f"http://127.0.0.1:{g.port}/tools/invoke"
+    head = {"Authorization": f"Bearer {token}"}
+    target = view.get("target")
+    sent = 0
+
+    async def call(c: httpx.AsyncClient, request: dict[str, Any]) -> bool:
+        if target:
+            request = {**request, "targetId": target}
+        r = await c.post(url, headers=head, json={"tool": "browser", "action": "act", "args": {"request": request},
+                                                  "sessionKey": session_key})
+        body = {}
+        try:
+            body = r.json() or {}
+        except ValueError:
+            pass
+        return r.status_code == 200 and body.get("ok", True) is not False
+
+    async with httpx.AsyncClient(transport=TRANSPORT, timeout=30) as c:
+        for n in range(0, len(acts), _CHUNK):
+            part = acts[n:n + _CHUNK]
+            if len(part) > 1 and await call(c, {"kind": "batch", "actions": part, "stopOnError": True}):
+                sent += len(part)
+                continue
+            for a in part:   # one by one when the batch was refused (an older browser host)
+                if not await call(c, a):
+                    raise RuntimeError("The page did not take that. Look at it again and try once more.")
+                sent += 1
+    log.info("dod operator input: %s actions on %s", sent, session_key)   # a count only, never what she typed
+    return sent
 
 
 # ------------------------------------------------------------------------------------------------ credits
