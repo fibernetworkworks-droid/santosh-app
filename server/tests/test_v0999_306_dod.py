@@ -177,7 +177,7 @@ def test_a_whole_task_with_her_yes(dod, monkeypatch, tmp_path):
         paid = [b for b in claw.bodies if b["input"][0].get("call_id") == "c3"][0]["input"][0]["output"]
         assert "APPROVED" in paid and "never type card numbers" in paid
         # her own container: the official image, 127.0.0.1 only, memory capped, her own network, no Control UI flags
-        run = [a for a in docker if a[0] == "run"][0]
+        run = [a for a in docker if a[0] == "run" and "-d" in a][0]
         assert run[-1] == get_settings().dod_image and "127.0.0.1:" in run[run.index("-p") + 1]
         assert run[run.index("--memory") + 1] == "2g" and run[run.index("--network") + 1] == GW.network_name(t_id)
         assert "OPENCLAW_NO_AUTO_UPDATE=1" in run and "DO_NOT_TRACK=1" in run
@@ -190,7 +190,7 @@ def test_a_whole_task_with_her_yes(dod, monkeypatch, tmp_path):
         # a second task reuses her awake Gateway and her key
         tid2 = c.post("/api/dod/tasks", json={"ask": "Order Penne Arrabbiata again"}).json()["task"]["id"]
         _wait(c, tid2, "needs_you")
-        assert claw.keys == 1 and len([a for a in docker if a[0] == "run"]) == 1
+        assert claw.keys == 1 and len([a for a in docker if a[0] == "run" and "-d" in a]) == 1
         c.post(f"/api/dod/tasks/{tid2}/stop")
         assert c.get(f"/api/dod/tasks/{tid2}").json()["task"]["status"] == "stopped"
 
@@ -445,3 +445,47 @@ def test_screen_usage_and_push(dod, monkeypatch):
     title, body = push.render("dod_ask", {"name": "Ananya", "kind": "pay", "question": "Pay INR 549 for the order?"})
     assert title == "Ananya needs your OK" and "549" in body and "dod_ask" in push.PUSH_KINDS
     assert push.render("dod_ask", {"name": "Ananya", "kind": "choice", "question": "Which size?"})[0] == "Ananya has a question"
+
+
+def test_a_lock_left_by_a_hard_kill_is_cleared_with_openclaws_own_command(dod):
+    """Seen on the real image: after a hard kill (reboot, memory cap, crash) a new start waits on the dead owner and
+    never comes up. Hoola runs OpenClaw's own `gateway recover-lock` (inspect, then confirm that exact record) - and
+    never while her coworker is running."""
+    import asyncio
+    import json as _j
+    GW, S, docker = dod
+    st = GW.state_dir("t-lock")
+    st.mkdir(parents=True)
+    (st / "openclaw.json").write_text("{}")
+    calls = []
+
+    def make(running):
+        async def fake(*args, timeout=0):
+            calls.append(list(args))
+            if args[0] == "inspect":
+                return 0, "true\n" if running else "false\n"
+            if "--confirm" in args:
+                assert args[args.index("--confirm") + 1] == "fp123"
+                return 0, _j.dumps({"recovered": True, "removed": 3})
+            return 0, "Doctor: ...\n" + _j.dumps({"present": True, "holders": ["holder 7"], "confirmation": "fp123"})
+        return fake
+
+    GW.DOCKER = make(running=False)
+    assert asyncio.run(GW.recover_lock("t-lock")) is True
+    run_calls = [c for c in calls if c[0] == "run"]
+    assert len(run_calls) == 2 and run_calls[0][-3:] == ["gateway", "recover-lock", "--json"]
+    assert "--network" in run_calls[0] and run_calls[0][run_calls[0].index("--network") + 1] == "none"
+    assert any(str(st.resolve()) in a for a in run_calls[0])
+    calls.clear()
+    GW.DOCKER = make(running=True)
+    assert asyncio.run(GW.recover_lock("t-lock")) is False
+    assert [c[0] for c in calls] == ["inspect"]
+    # no lock -> nothing confirmed
+    calls.clear()
+
+    async def clean(*args, timeout=0):
+        calls.append(list(args))
+        return (0, "false") if args[0] == "inspect" else (0, _j.dumps({"present": False, "holders": [], "confirmation": "x"}))
+    GW.DOCKER = clean
+    assert asyncio.run(GW.recover_lock("t-lock")) is False
+    assert not any("--confirm" in c for c in calls)

@@ -155,6 +155,43 @@ def run_args(tenant: str, port: int, token: str) -> list[str]:
     ]
 
 
+def recover_args(tenant: str, *extra: str) -> list[str]:
+    """A one-off container on her state folder that runs OpenClaw's own `gateway recover-lock` (no network)."""
+    s = get_settings()
+    return ["run", "--rm", "--network", "none", "--user", f"{s.dod_uid}:{s.dod_uid}", "--entrypoint", "openclaw",
+            "-e", "HOME=/home/node", "-e", "OPENCLAW_STATE_DIR=/home/node/.openclaw",
+            "-e", "OPENCLAW_CONFIG_PATH=/home/node/.openclaw/openclaw.json",
+            "-v", f"{state_dir(tenant).resolve()}:/home/node/.openclaw", s.dod_image,
+            "gateway", "recover-lock", "--json", *extra]
+
+
+async def recover_lock(tenant: str) -> bool:
+    """Clear a lock left by a Gateway that was killed hard (a server reboot, the memory cap, a crash). Without this a
+    new start of her coworker waits on the dead owner and never comes up (seen on the real image: "cannot verify
+    Gateway ownership"). Uses OpenClaw's own two-step recovery (inspect, then confirm exactly that record), and only
+    when her container is not running - Hoola is the only owner of her state folder. Returns True when it cleared one."""
+    code, out = await DOCKER("inspect", "-f", "{{.State.Running}}", container_name(tenant), timeout=30)
+    if code == 0 and out.strip() == "true":
+        return False
+    if not (state_dir(tenant) / "openclaw.json").exists():
+        return False
+    code, out = await DOCKER(*recover_args(tenant), timeout=120)
+    try:
+        info = json.loads(out[out.index("{"):out.rindex("}") + 1])
+    except ValueError:
+        log.warning("dod lock check for %s gave no answer: %s", tenant, out[-200:])
+        return False
+    if not info.get("present") or not info.get("confirmation"):
+        return False
+    code, out = await DOCKER(*recover_args(tenant, "--confirm", str(info["confirmation"])), timeout=120)
+    try:
+        done = code == 0 and bool(json.loads(out[out.index("{"):out.rindex("}") + 1]).get("recovered"))
+    except ValueError:
+        done = False
+    log.info("dod lock for %s %s", tenant, "cleared" if done else f"not cleared: {out[-200:]}")
+    return done
+
+
 def _own(path: Path) -> None:
     """Her state folder belongs to the container's user (dod_uid, the image's `node`), private: 700 folders, 600 files.
     Links are left alone (OpenClaw keeps some pointing inside its own image)."""
@@ -326,6 +363,7 @@ async def ensure(tenant: str) -> tuple[str, str]:
                            encoding="utf-8")
             cfg.chmod(0o600)
             _own(st)   # OpenClaw runs as `node` (uid 1000) and refuses a state folder others can write to
+            await recover_lock(tenant)   # a coworker killed hard leaves a lock that blocks every new start
             code, out = await DOCKER("start", container_name(tenant), timeout=60)
             if code != 0:
                 await DOCKER("network", "create", "--driver", "bridge", network_name(tenant), timeout=30)
