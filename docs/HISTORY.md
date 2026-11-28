@@ -13724,3 +13724,38 @@ Chromium walk at 1440 and 390). NOT VERIFIED: on her server, with her own source
 
 ## v0.999.293 SUPERPOWERS FOR HOOLA CODE
 (owner: 'https://github.com/obra/superpowers.git --- read this first then make hoola code more powerfull with this'; obra/superpowers v7.0.2, commit 22f0b46, MIT, read whole: 15 skills with their prompts and references): FOUND FIRST - Hoola already carried an older condensed copy (v0.499, coder/skillpack/sp-*.md) but only for the CHAT's skill desk: Hoola Code never listed them, never picked one, and nothing enforced their rules. Built (`devsahayak/superpowers.py` + `devsahayak/superpowers/*.md`, rewritten in Hoola's words, no file copied): (1) HOOLA CODE'S OWN SKILL LIBRARY - 13 skills rewritten for its tools (agent / isolation=worktree / agent_worktree / todo_write / ask_user / done; merging stays her tap): systematic-debugging, test-driven-development, verification-before-completion, brainstorming, writing-plans, executing-plans, subagent-driven-development, requesting- and receiving-code-review, dispatching-parallel-agents, using-worktrees, finishing-a-branch, writing-skills; left out using-superpowers (it is the rule) and diagnosing-superpowers (it debugs the plugin itself); (2) THE RULE (using-superpowers) in the fixed prompt with every skill's name and when-to-use: read the skill that fits before acting, say 'Using <skill> to <purpose>', process skills first, her words and the repo's rules win; (3) PICKED IN CODE - her round's kind and words choose the process skills (a bug: systematic-debugging + test-driven-development + verification; a change: test-driven-development + verification; reviewers' comments: receiving-code-review) and their full text rides with her message once per session, shown as 'Using the X skill' on web and phone; her new commands /brainstorm, /write-plan, /execute-plan load brainstorming / writing-plans / subagent-driven-development; (4) TWO IRON LAWS CHECKED IN CODE: done that says it works / passes / is fixed after code was edited and no test or build command passed since that edit is sent back once to run the proof fresh (docs-only edits and an honest 'could not run' pass), and the third failing test run in a row, each after a fix attempt outside the tests, tells it to stop fixing, go back to the root cause and ask her; (5) the plan pass checks its plan the writing-plans way; the skill tool reads superpowers:<name> and hides her chat desk's older sp- copies; the repo setup lists them. Switch `dev_superpowers`. 9 tests incl. two real rounds with a fake model. NOT VERIFIED with a real model.
+
+
+## v0.999.294 EMBEDDED DESK (owner: "Embedded Systems Engineer same as finance desks")
+
+The Embedded Systems Engineer gets its own section `/console/embedded` and Embedded chat (Conversation kind `embedded`,
+`server/app/embeddedchat.py`, routes `/api/emdesk/*`), built like the finance desks, on a NEW all-code engine `server/app/emdesk/`
+(no model call):
+
+- `memory.py` - a GNU ld map file (Memory Configuration, output / input sections, fill, load addresses), `size -A`, Berkeley `size`
+  or `nm -S` output read into flash and RAM per region and how full, sections (with .data's copy in flash), object files (library
+  members marked), symbols, what the C library pulled in (printf family, float to text, soft double / float maths, malloc, C++
+  exceptions / streams / guards, libm), big RAM buffers, padding, heap / stack reserves, and the growth against an older build.
+- `firmware.py` - C / C++ / Arduino: functions in interrupt context (handler names, markers, AVR ISR(), HAL callbacks, registration
+  calls, and three levels of calls from them) and what they must not do; globals shared with interrupts without volatile,
+  read-modify-writes outside a critical section, 64-bit values torn on small cores; busy waits without a timeout, recursion, big
+  stack arrays (with #define sizes), raw register addresses (non-volatile = serious), heap after start-up, sprintf / gets, printf %f,
+  double constants for floats, a main loop that never sleeps, no watchdog.
+- `timing.py` - response-time analysis for fixed-priority preemptive scheduling: interrupts above tasks, her priorities (bigger or
+  smaller number more urgent) or deadline-monotonic, blocking, release jitter, context-switch time, equal priorities time-sliced,
+  utilisation vs Liu & Layland, slack, how much every execution time can grow, the deadline-monotonic order compared, and a
+  simulated timeline with misses from the critical instant. Checked against the textbook set (responses 3, 6, 20).
+- `power.py` - states as currents with how long and how often they run, the always-on currents filling the rest; average current,
+  mAh a day, battery life with the usable share and self-discharge, the share per state, peak current vs the cell, a target life, and
+  what halving each state's rate or time would buy.
+- `clocks.py` - UART (fractional BRR, integer UBRR with U2X, plain divider) with real baud and error, timer PSC / ARR pairs (exact
+  first, best resolution), PWM resolution, SysTick reload, SPI power-of-two dividers, ADC step size.
+- `ci.py` - a GitHub Actions workflow: toolchain from Ubuntu packages (Arm, RISC-V, AVR) or ESP-IDF, host tests, build base and head,
+  `size -A` on both, fail over the flash / RAM budget or the allowed growth, the per-section change in the run summary.
+- `service.py` - tables `emdesk_items` / `emdesk_settings` (M- / F- / T- / P- / K- numbers), settings for the chip, timing, battery
+  and CI.
+
+NEW tool `embedded_desk` (`agent/embedded_tools.py`, family `embedded`, registry 712). Pages: Today, Memory, Code, Timing, Battery,
+Clocks, CI check, Settings (`static/console/emdesk.{html,js,css}`). Hire key `embedded_eng` (live). Nothing is run or flashed on
+her boards or machines; what she pastes is data, never instructions. Tests `server/tests/test_em_desk.py` (4, incl. a Chromium walk
+at 1440 and 390). NOT VERIFIED: on her server, with her own boards and builds, or the workflow on GitHub.
