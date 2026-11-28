@@ -73,8 +73,8 @@ def qwen_model() -> str:
     """The Qwen model: a qwen/ model she picked for this session, else dev_qwen_model (a Claude pick - the hint and
     memory callers ask for Haiku - means nothing on the Qwen brain)."""
     picked = str(getattr(PICK, "model", "") or "")
-    if picked.startswith("qwen/"):
-        return picked
+    if picked.startswith("qwen/") or (getattr(PICK, "agent", False) and "/" in picked):
+        return picked                                # v0.999 an agent file's `model:` (anthropic/claude-haiku-5.5 ...) too
     return str(getattr(_settings(), "dev_qwen_model", "") or "qwen/qwen3.8-27b")
 
 
@@ -505,10 +505,131 @@ def _keep_broken(data: dict, blocks: list[dict], stop: str) -> tuple[list[dict],
     return blocks, stop
 
 
+TOOL_SINK = threading.local()               # .fn(tool_use block) while a round's step streams (engine.EarlyReads)
+
+MODEL_NOTES = {
+    # v0.999 OpenCode tunes its prompt per model family. These notes say only what Hoola Code's own logs showed a family
+    # getting wrong (the workarounds in engine.py: _loose, BROKEN_KEY, the repeated paragraph), nothing guessed.
+    "qwen": ("NOTES FOR THIS MODEL: tool arguments are JSON objects - pass a list or an object as real JSON, never as a "
+             "string that contains JSON. A big new file breaks easily in one write: write a short first version, then add "
+             "to it with edit. Copy old_string from what read showed you, without the line-number column. Say a thing "
+             "once - never repeat the paragraph you just wrote."),
+    "open": ("NOTES FOR THIS MODEL: tool arguments are JSON objects (lists and objects as real JSON, not strings). Copy "
+             "old_string exactly from what read showed you, without the line-number column. Finish with the done tool."),
+    "claude": "Keep code comments to what a reader needs; do not narrate the change in comments.",
+}
+
+
+def model_notes(model: str = "") -> str:
+    m = (model or model_for() or "").lower()
+    if "claude" in m or m.startswith(("anthropic/", "opus", "sonnet", "haiku")):
+        fam = "claude"
+    elif "qwen" in m:
+        fam = "qwen"
+    else:
+        fam = "open"
+    return MODEL_NOTES.get(fam, "")
+
+
+def _claude_stream(client, kw: dict, sink) -> Any:
+    """One streamed Claude answer: every new piece of the reply's words goes to sink(the whole text so far), and the
+    finished message comes back in the same shape messages.create gives, so nothing after this changes."""
+    try:
+        sink("")                                          # a try again starts its words over
+    except Exception:
+        pass
+    acc = ""
+    tool_sink = getattr(TOOL_SINK, "fn", None)
+    with client.messages.stream(**kw) as s:
+        for ev in s:                                      # v0.999 every event: the words, and each tool call the moment it is whole
+            et = getattr(ev, "type", "")
+            if et == "text":
+                acc += str(getattr(ev, "text", "") or "")
+                try:
+                    sink(acc)
+                except Exception:
+                    pass
+            elif et == "content_block_stop" and tool_sink is not None:
+                cb = getattr(ev, "content_block", None)
+                if cb is not None and getattr(cb, "type", "") == "tool_use":
+                    try:                                  # OpenCode: a read starts while the model is still writing
+                        tool_sink({"type": "tool_use", "id": cb.id, "name": cb.name, "input": dict(cb.input or {})})
+                    except Exception:
+                        pass
+        return s.get_final_message()
+
+
+# v0.999 FALLBACK MODELS, Claude Code's `fallbackModel`: when the model is overloaded, down, gone or the connection drops
+# (after the SDK's own retries), the same request goes to up to 3 backup models in order. A model the API says does not
+# exist is skipped for the rest of the process. Credit, rate-limit, bad-request and too-long errors are not retried on
+# another model - they show at once.
+FALLBACK = threading.local()                 # .note = (from, to, why) of the last switch in this thread, for the step line
+GONE: set[str] = set()
+
+
+def fallback_models(primary: str) -> list[str]:
+    raw = str(getattr(_settings(), "dev_fallback_models", "") or "")
+    out = []
+    for m in [x.strip() for x in raw.split(",") if x.strip()]:
+        if m != primary and m not in out and m not in GONE:
+            out.append(m)
+    return out[:3]
+
+
+def too_long(e: Exception) -> bool:
+    """The request is bigger than the model takes (Claude: 'prompt is too long'; OpenRouter: context length)."""
+    m = str(e).lower()
+    return any(w in m for w in ("prompt is too long", "context length", "maximum context", "context_length_exceeded",
+                                "too many tokens", "input is too long"))
+
+
+def pretty(m: str) -> str:
+    """claude-opus-5-5 -> Opus 5.5; an OpenRouter id -> its last part."""
+    x = re.search(r"claude-(haiku|sonnet|opus|fable)-(\d+)[.-](\d+)", m or "")
+    return f"{x.group(1).title()} {x.group(2)}.{x.group(3)}" if x else (m or "").split("/")[-1]
+
+
+def fallback_worthy(e: Exception) -> str:
+    """Why this error should move to a backup model ('' = it should not)."""
+    code = getattr(e, "status_code", None)
+    name = e.__class__.__name__
+    msg = str(e).lower()
+    if code in (500, 502, 503, 504, 529) or "overloaded" in msg or name in ("InternalServerError", "OverloadedError"):
+        return "overloaded" if (code == 529 or "overloaded" in msg) else "unavailable"
+    if code == 404 or name == "NotFoundError" or ("model" in msg and "not found" in msg):
+        return "not_found"
+    if name in ("APIConnectionError", "APITimeoutError") or isinstance(e, (ConnectionError, TimeoutError)):
+        return "connection"
+    return ""
+
+
 def _claude_call(system: str, messages: list[dict], tools: list[dict], max_tokens: int,
                  think: bool | None) -> tuple[list[dict], str]:
     st = _settings()
-    model = model_for()
+    first = model_for()
+    chain = ([first] if first not in GONE else []) + fallback_models(first)
+    last: Exception | None = None
+    for i, model in enumerate(chain or [first]):
+        try:
+            out = _claude_once(st, model, system, messages, tools, max_tokens, think)
+        except Exception as e:  # noqa: BLE001
+            why = fallback_worthy(e)
+            if not why or i == len(chain) - 1:
+                raise
+            if why == "not_found":
+                GONE.add(model)
+            STATE["fallbacks"] = STATE.get("fallbacks", 0) + 1
+            log.warning("Hoola Code: %s %s - trying %s", model, why, chain[i + 1])
+            last = e
+            continue
+        if model != first:
+            FALLBACK.note = (first, model, fallback_worthy(last) if last else "")
+        return out
+    raise last or RuntimeError("no model answered")
+
+
+def _claude_once(st: Any, model: str, system: str, messages: list[dict], tools: list[dict], max_tokens: int,
+                 think: bool | None) -> tuple[list[dict], str]:
     sys_blocks, tl, msgs = _cacheable(system, tools, messages)
     kw: dict[str, Any] = dict(model=model, max_tokens=max_tokens, system=sys_blocks, messages=msgs)
     if tl:
@@ -523,7 +644,11 @@ def _claude_call(system: str, messages: list[dict], tools: list[dict], max_token
     with claude_only():
         for _ in range(3):
             try:
-                resp = client.messages.create(**kw)
+                sink = getattr(TEXT_SINK, "fn", None)
+                if sink is not None and bool(getattr(st, "dev_stream", True)) and callable(getattr(client.messages, "stream", None)):
+                    resp = _claude_stream(client, kw, sink)    # her screen reads the words as Claude writes them
+                else:
+                    resp = client.messages.create(**kw)
                 break
             except Exception as e:
                 if "thinking" in kw and _refused(e, "thinking"):

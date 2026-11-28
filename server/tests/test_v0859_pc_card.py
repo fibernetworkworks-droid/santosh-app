@@ -143,6 +143,7 @@ class FakeOperator:
     def stop(self, tenant, sid):
         self.stopped.append(sid)
         self.OPS[sid].status = "cancelled"
+        self.OPS[sid].done_event.set()      # v0.999.87 the card now waits for a stopped task to wind down
         return True
 
     def give_answer(self, tenant, text, conv=""):
@@ -231,3 +232,30 @@ def test_routes_mounted_and_owner_only(env, monkeypatch, tmp_path):
     assert c.post("/api/quality/pccard/stop", headers=h).json() == {"stopped": False}
     with pytest.raises(HTTPException):
         pccard_api._owner("someone-else")
+
+
+def test_card_cost_and_daily_allowance_stop(monkeypatch, tmp_path):
+    """v0.999.65 the card reports its own cost (today's PC estimate before vs after) and stops cleanly at the daily
+    allowance instead of failing every remaining task; the tasks it did not reach are listed by id."""
+    from app.pc import rescue
+    monkeypatch.setenv("QUALITY_DIR", str(tmp_path))
+    fake = FakeOperator({"HOOLA CARD 7391": {"status": "done", "title": "Untitled - Notepad", "summary": "Typed HOOLA CARD 7391"}})
+    monkeypatch.setattr(PC, "_op_mod", lambda: fake)
+    monkeypatch.setattr(PC, "_resolve", _dev("Hoola Test PC"))
+    monkeypatch.setattr(PC, "_online", lambda t, d: True)
+    monkeypatch.setattr(PC, "POLL_S", 0.01)
+    spent = {"v": 10.0}
+    real_run = PC.run_task
+
+    async def run_task(*a, **k):
+        spent["v"] += 4.2                                            # every task costs about Rs 4.2 here
+        return await real_run(*a, **k)
+    monkeypatch.setattr(PC, "run_task", run_task)
+    monkeypatch.setattr(rescue, "spent_today", lambda t: spent["v"])
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), "pc_daily_inr", 15)
+    card = asyncio.run(PC.run_card("t", "test", ids=["notepad_line", "calc_sum", "excel_sum"], save_card=False))
+    assert [r["id"] for r in card["rows"]] == ["notepad_line", "calc_sum"]        # 10 -> 14.2 -> 18.4 >= 15: stop
+    assert "allowance" in card["note"] and card["not_run"] == ["excel_sum"]
+    assert card["summary"]["rupees"].startswith("~Rs 8.4")
+    assert any("not run yet: excel_sum" in ln for ln in PC.lines(card))

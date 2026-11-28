@@ -349,7 +349,7 @@ def test_the_box_runs_the_same_python_as_the_server():
     t = box.DOCKERFILE_TEXT
     assert "FROM python:3.13-slim-bookworm" in t
     assert "python3-dev" not in t and "python3-venv" not in t    # apt's 3.11 must not shadow or mislead
-    assert box.BASE_REV == "3"                                   # ... and her built image is named stale until rebuilt
+    assert box.BASE_REV == "4"                                   # ... and her built image is named stale until rebuilt (v0.999 rev 4: language servers)
     src = Path(service.__file__).read_text("utf-8")
     assert "box Python" in src and "sys.version_info" in src  # the self-test compares and says PROBLEM
     assert "render.py:517" in t                                  # the reason is written where the image is

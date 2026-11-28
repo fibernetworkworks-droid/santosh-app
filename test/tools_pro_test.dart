@@ -65,8 +65,8 @@ void main() {
       await t.pump(HoolaTools.enter + const Duration(milliseconds: 100));
       final c = mode == 'light' ? HoolaColors.light : HoolaColors.darkSet;
       final badges = t.widgetList<ToolBadge>(find.byType(ToolBadge)).toList();
-      expect(badges.length, 10, reason: '8 studios + Game Dev, Connectors (Hoola Code: the side panel, v0.931)');
-      expect(badges.map((b) => b.glyph).toSet().length, 10, reason: 'no two the same');
+      expect(badges.length, 12, reason: '8 studios + Game Dev, Hoola Cred, Hoola Wallet (v0.999.60), Connectors (Hoola Code: the side panel, v0.931)');
+      expect(badges.map((b) => b.glyph).toSet().length, 12, reason: 'no two the same');
       final circles = t.widgetList<Container>(find.descendant(of: find.byType(ToolBadge), matching: find.byType(Container)));
       for (final k in circles) {
         expect((k.decoration as BoxDecoration).color, c.pill, reason: 'black circle (near-white in dark)');

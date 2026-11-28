@@ -376,7 +376,7 @@ VOICE_VIA_KAAM = {
     "thok", "niryat", "franchise", "theka", "ads", "brand", "seva", "helpdesk", "shikayat", "service_desk", "feedback",
     "wapsi", "samudaay", "call_centre", "dev", "qa", "it_admin", "noc", "cyber", "devops", "docs_writer", "app_review",
     "product", "customs", "travel", "warehouse", "fleet", "courier", "drivers", "logistics", "propagent", "rentdesk",
-    "sitesup", "interior", "archassist", "society", "vakil", "legalres", "compliance", "contracts", "cosec", "notary", "pidesk", "dpo", "front_office", "front_office_dekho", "event_plan", "event_plan_dekho", "shaadi", "shaadi_dekho", "tour_guide", "tour_guide_dekho", "homestay", "homestay_dekho", "banquet", "banquet_dekho", "edit_desk", "edit_desk_dekho", "motion_desk", "motion_desk_dekho", "paisa_sahayak", "vitt_sahayak", "risk_desk", "dukaan_desk", "retail_growth", "retail_trust", "bima_desk", "bima_assist", "bima_risk", "film_desk", "film_desk_dekho", "patrakar", "patrakar_dekho", "photo_assist", "photo_assist_dekho", "graphic", "graphic_dekho", "artist_manager", "artist_manager_dekho", "kitab", "kitab_dekho", "podcast", "podcast_dekho", "influencer", "influencer_dekho", "kalam", "website", "app_banao", "app_dekho", "video_studio",
+    "sitesup", "interior", "archassist", "society", "vakil", "legalres", "compliance", "contracts", "cosec", "notary", "pidesk", "dpo", "front_office", "front_office_dekho", "event_plan", "event_plan_dekho", "shaadi", "shaadi_dekho", "tour_guide", "tour_guide_dekho", "homestay", "homestay_dekho", "banquet", "banquet_dekho", "edit_desk", "edit_desk_dekho", "motion_desk", "motion_desk_dekho", "paisa_sahayak", "household_money", "books_accounts", "tax_worldwide", "payroll_worldwide", "cash_treasury", "credit_lending", "firm_practice", "payments_desk", "institution_desk", "investments_desk", "markets_desk", "community_finance", "digital_assets", "public_finance", "vitt_sahayak", "risk_desk", "dukaan_desk", "retail_growth", "retail_trust", "bima_desk", "bima_assist", "bima_risk", "film_desk", "film_desk_dekho", "patrakar", "patrakar_dekho", "photo_assist", "photo_assist_dekho", "graphic", "graphic_dekho", "artist_manager", "artist_manager_dekho", "kitab", "kitab_dekho", "podcast", "podcast_dekho", "influencer", "influencer_dekho", "kalam", "website", "app_banao", "app_dekho", "video_studio",
     "const_store", "const_store_dekho", "const_labour", "const_labour_dekho", "const_customer", "const_customer_dekho", "const_quality", "const_quality_dekho", "const_meet", "const_meet_dekho",   # v0.512 construction Wave 1 (heavy desks ride santosh_kaam, never declared to the live call)
     "const_approvals", "const_approvals_dekho", "const_qs", "const_qs_dekho", "const_rera", "const_rera_dekho", "const_contracts", "const_contracts_dekho", "const_tender", "const_tender_dekho", "const_drawqa", "const_drawqa_dekho",   # v0.531 construction Wave 2 (same law - the file-builders ride kaam)
     "const_bim", "const_bim_dekho", "const_predesign", "const_predesign_dekho", "const_survey", "const_survey_dekho", "const_delay", "const_delay_dekho", "const_green", "const_green_dekho",   # v0.550 construction Wave 3 (heavy desks ride kaam - IFC/IDS/working papers are not call talk)
@@ -2670,6 +2670,15 @@ class Call:
         if cb:
             context += "\n\n" + cb
         context += "\n\n" + self._mcp_block
+        try:   # v0.999.194 her connected Composio apps: the call knows them and hands their work to the brain
+            from .bazar import composio as _cmp
+            apps = await asyncio.to_thread(_cmp.her_apps, self.ctx.tenant_id)
+            if apps:
+                context += ("\n\nHer connected apps (her own accounts): " + ", ".join(n for _, n in apps[:20]) +
+                            ". Any ask that names one of these or needs its work: call santosh_kaam with her words "
+                            "(it has the tools for them). Never answer it from your own knowledge.")
+        except Exception:
+            log.exception("connected apps line for the call failed")
         return context, mcp_defs
 
     async def _prebuild(self) -> None:

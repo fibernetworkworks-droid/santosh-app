@@ -21,12 +21,12 @@ NEW = ["sheet_clear", "sheet_copy_tab", "sheet_duplicate_tab", "sheet_delete_tab
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.39"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert APP_VERSION == "0.999.215"    # conscious-bump guard: moves with every release (bump with pubspec)
 
 
 def test_registry_has_24_tools():
     names = [t["name"] for t in st.SHEETS_TOOLS]
-    assert len(names) == 24 and len(set(names)) == 24
+    assert len(names) == 36 and len(set(names)) == 36     # v0.999.184 +7, v0.999.185 +5 (cells, table, versions, script, bigquery)
     for n in NEW:
         assert n in names and n in st.SHEETS_HANDLERS and n in st.SHEETS_LABELS
     assert set(st.SHEETS_HANDLERS) == set(names) and set(st.SHEETS_LABELS) == set(names)
@@ -80,8 +80,9 @@ def test_schemas_carry_the_new_surface():
     assert spec["sheet_conditional_format"]["input_schema"]["properties"]["rule"]["properties"]["type"]["enum"] == \
         ["color_scale", "data_bar", "cell_is", "expression"]
     # sheet_data_validation rule.type enum
-    assert spec["sheet_data_validation"]["input_schema"]["properties"]["rule"]["properties"]["type"]["enum"] == \
-        ["list", "number", "whole", "date", "text_length", "custom_formula"]
+    # v0.999.184 grew (checkbox, list_from_range, email, url); the v0.210 kinds must all stay
+    assert {"list", "number", "whole", "date", "text_length", "custom_formula"} <= \
+        set(spec["sheet_data_validation"]["input_schema"]["properties"]["rule"]["properties"]["type"]["enum"])
     # sheet_merge merge_type enum
     assert spec["sheet_merge"]["input_schema"]["properties"]["merge_type"]["enum"] == \
         ["MERGE_ALL", "MERGE_COLUMNS", "MERGE_ROWS"]

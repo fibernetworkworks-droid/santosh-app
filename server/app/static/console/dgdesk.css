@@ -1,0 +1,68 @@
+/* DIGITAL ASSETS DESK - the Digital Assets employee's own section. Everything shared comes from the earlier desks (seodesk, moneydesk,
+   cashdesk, creditdesk, firmdesk, instdesk, invdesk, mktdesk, cmdesk); the page-scoped rules of mktdesk / cmdesk are repeated here for
+   #dgPage. Only the digital desk's own parts are new: the coin colours, the gains-by-year bars, the address verdict, custody owed vs held. */
+#dgPage{display:flex;flex-direction:column;gap:20px;padding-top:4px}
+#dgPage table.tb .num{font-variant-numeric:normal}
+#dgPage .r{text-align:right}
+#dgPage table.tb,#dgPage .md-kpi .v,#dgPage .cs-hero .v{font-variant-numeric:normal}
+#dgPage td.r,#dgPage th.r{text-align:right;font-variant-numeric:normal}
+#dgPage table.tb td{vertical-align:middle}
+#dgPage form[data-form=prices]+.ins-drop,#dgPage .md-acts+.ins-drop{margin-top:14px}
+#dgPage .cr-grid{align-items:end}
+#dgPage .cr-grid>.in:not(textarea),#dgPage .cr-grid .ins-lab .in:not(textarea),#dgPage .cr-grid>.btn{height:42px;min-height:0;box-sizing:border-box}
+#dgPage .iv-add{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+#dgPage .iv-add>*{flex:1 1 130px;min-width:0}
+#dgPage .iv-add>.btn{flex:0 0 auto;padding:0 18px}
+#dgPage .iv-add>.btn.wide{flex:1 1 100%}
+#dgPage .iv-add>.ins-lab{flex:1 1 130px}
+#dgPage .cr-grid .wide{grid-column:1/-1}
+#dgPage .iv-grid .in{height:42px;min-height:0;box-sizing:border-box;width:100%}
+#dgPage .md-kpi .v.warn{color:var(--warn)}
+#dgPage .mk-list td,#dgPage .mk-list th{padding-top:7px;padding-bottom:7px}
+#dgPage .mk-add .in{height:40px;min-height:0;box-sizing:border-box;width:100%}
+#dgPage .cs-pos{color:var(--okt,var(--ok))}
+#dgPage .cm-grid5 .in{height:42px;min-height:0;box-sizing:border-box;width:100%}
+#dgPage table.cm-meet td{padding-top:5px;padding-bottom:5px}
+#dgPage table.cm-meet .in{height:36px;min-height:0;width:100%;min-width:64px;box-sizing:border-box}
+@media (max-width:600px){#dgPage .iv-kpis.mk-k2{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+
+/* holdings ring colours */
+.dg-c0{--c:#6d5ae6}.dg-c1{--c:#e0a33a}.dg-c2{--c:#2f9e8f}.dg-c3{--c:#d1602e}.dg-c4{--c:#4f86d6}.dg-c5{--c:#b5527a}.dg-c6{--c:#7a9a3a}.dg-c7{--c:#8b8579}
+.iv-dleg i[class^=dg-c]{background:var(--c)}
+
+/* bars of this desk */
+.dg-up{--c:var(--ok)}.dg-dn{--c:var(--bad)}
+.iv-w .dg-up,.iv-w .dg-dn{background:var(--c)}
+
+/* gains by tax year */
+.dg-years .gn{fill:var(--ok);opacity:.8}.dg-years .ls{fill:var(--bad);opacity:.75}
+.dg-years .tx{font-size:12px;fill:var(--mut)}.dg-years .tx.nt{fill:var(--ink2);font-weight:600}
+.cs-legend i.dg-gn{background:var(--ok)}.cs-legend i.dg-ls{background:var(--bad)}
+.dg-peg .ln{stroke:#2f9e8f}.dg-peg .ar{fill:#2f9e8f}.dg-peg .end{fill:#2f9e8f}
+
+/* address check */
+.dg-check{display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr);gap:10px;align-items:end}
+#dgPage .dg-check .in{height:42px;min-height:0;box-sizing:border-box;width:100%}
+.dg-verdict{border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;font-size:14px;border:1px solid var(--line)}
+.dg-verdict b{font-size:16px}.dg-verdict span{color:var(--mut);overflow-wrap:anywhere}
+.dg-verdict.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,transparent)}
+.dg-verdict.warn{border-color:var(--warn);background:var(--warns)}
+.dg-verdict.bad{border-color:var(--bad);background:var(--bads)}.dg-verdict.bad b{color:var(--badt)}
+.dg-tk{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:12px;margin-top:12px;align-items:start}
+.dg-yn{grid-template-columns:repeat(3,minmax(0,1fr))}
+
+/* custody owed against held */
+.dg-cust{display:flex;flex-direction:column;gap:14px;margin-top:6px}
+.dg-cust>div{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.dg-cust>div.short{border-color:var(--bad)}
+.dg-cust .h{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.dg-cust .h .mut{flex:1;font-size:13px}
+.dg-cust .r2{display:grid;grid-template-columns:130px minmax(0,1fr) auto;gap:10px;align-items:center;font-size:13px;color:var(--mut)}
+.dg-cust i{display:block;height:10px;border-radius:999px;background:var(--soft)}
+.dg-cust i b{display:block;height:100%;border-radius:999px}.dg-cust b.ow{background:var(--ink2);opacity:.55}.dg-cust b.hd{background:var(--acc)}
+.dg-cust .short b.hd{background:var(--bad)}
+.dg-cust em{font-style:normal;font-variant-numeric:tabular-nums;color:var(--ink)}
+.dg-pair{border-top:1px solid var(--line);padding:8px 0;display:flex;flex-direction:column;gap:3px}.dg-pair:first-of-type{border-top:0}
+.dg-cover{display:flex;flex-direction:column;gap:6px}
+
+@media (max-width:700px){.dg-check,.dg-tk{grid-template-columns:minmax(0,1fr)}.dg-yn{grid-template-columns:repeat(2,minmax(0,1fr))}.dg-cust .r2{grid-template-columns:96px minmax(0,1fr) auto}}
+.sd-id>div{min-width:0}.sd-name,.sd-site{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

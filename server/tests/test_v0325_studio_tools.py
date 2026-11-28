@@ -18,13 +18,13 @@ def test_one_way_between_tools():
 
 
 def test_video_more_settings_and_status():
-    assert '<details class="adv vmore"' in JS and '<span class="vsum">' in JS and "VID.more = e.target.open" in JS
-    for k in ("data-vres", "data-vaudio", "data-vtake"):        # still there (v0.262 pins), just folded
+    # v0.999.49 every setting sits in the Video settings panel behind one button under the box
+    for k in ("seg('res', resOpts(m), VID.res)", "data-vaudio", "seg('takes', [1, 2, 3, 4], VID.takes)", "data-vopt=\"lang\"", "data-vset"):
         assert k in JS
     assert "function projState(p)" in JS and "['Needs attention', 'na']" in JS and "['Draft', 'dr']" in JS
     assert "stc === 'ok' ? `<span class=\"dur num\">" in JS          # no "0 s" on a clip never made
     assert "function vnote(ps)" in JS and "Nothing was charged for them." in JS and "VIEW !== 'video'" in JS
-    assert ".stchip.na{" in BLK and ".vnote{" in BLK and ".prow2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}" in BLK
+    assert ".stchip.na{" in BLK and ".vnote{" in BLK
 
 
 def test_picture_captions_and_styles():
@@ -36,7 +36,9 @@ def test_picture_captions_and_styles():
 def test_dubbing_languages_and_voices():
     assert "const DUB_TOP = ['Hindi', 'Tamil', 'Telugu', 'Bengali', 'Marathi', 'English'];" in JS
     assert "All languages</summary>" in JS and "' of 4 picked'" in JS
-    assert "k === 'mine' ? art(a, 'vo' + k) : initTile(n)" in JS
+    # v0.999.96 the Voice tool is Hoola Vocal's Speech page (docs/HOOLA_VOCAL_REDESIGN.md part 4): the old voice list with its
+    # painted 'Your Hoola's voice' tile is gone, the Vocal page draws the voices
+    assert "HoolaVocal.mountSpeech(host" in JS and "k === 'mine' ? art(a, 'vo' + k) : initTile(n)" not in JS
 
 
 def test_editor_drop_zone():

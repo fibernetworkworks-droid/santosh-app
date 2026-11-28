@@ -39,6 +39,7 @@ import '../voice_engine_screen.dart';
 import '../voice_id_screen.dart';
 import '../voice_learned_screen.dart';
 import 'hoola_credits.dart';
+import 'hoola_google.dart';
 import 'hoola_tabs.dart';
 import 'hoola_team_list.dart';
 import 'hoola_tier.dart';
@@ -147,6 +148,7 @@ class _HoolaSettingsState extends State<HoolaSettings> with WidgetsBindingObserv
   bool _wakeOn = false;
   String _wakeStatus = '';
   Timer? _wakePoll;
+  Map<String, dynamic>? _google;   // v0.999.181 Settings > Google: its one-line state
 
   Santosh get app => widget.app;
 
@@ -155,6 +157,7 @@ class _HoolaSettingsState extends State<HoolaSettings> with WidgetsBindingObserv
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     unawaited(_refreshPhone());
+    unawaited(_refreshGoogle());
     _wakePoll = Timer.periodic(const Duration(seconds: 5), (_) => _refreshWake());
   }
 
@@ -168,6 +171,13 @@ class _HoolaSettingsState extends State<HoolaSettings> with WidgetsBindingObserv
   @override
   void didChangeAppLifecycleState(AppLifecycleState s) {
     if (s == AppLifecycleState.resumed) unawaited(_refreshPhone());   // back from a phone settings screen
+  }
+
+  Future<void> _refreshGoogle() async {
+    try {
+      final g = await app.api!.googleHub();
+      if (mounted) setState(() => _google = g);
+    } catch (_) {}
   }
 
   Future<void> _refreshPhone() async {
@@ -424,6 +434,20 @@ class _HoolaSettingsState extends State<HoolaSettings> with WidgetsBindingObserv
               ),
             ),
 
+            const HoolaSection('Connections'),   // v0.999.181 GOOGLE CONNECTIONS
+            HoolaGroup(children: [
+              HoolaRow(
+                title: 'Google',
+                sub: hoolaGoogleLine(_google),
+                icon: Icons.account_circle_outlined,
+                tint: (_google?['accounts'] as List? ?? const []).any((a) => a is Map && a['state'] == 'expired') ? c.warn : c.accent,
+                trailing: _chev(c),
+                onTap: () async {
+                  await hoolaOpenGoogle(context, app);
+                  unawaited(_refreshGoogle());
+                },
+              ),
+            ]),
             const HoolaSection('You and Hoola'),
             HoolaGroup(children: [
               HoolaRow(
@@ -738,7 +762,7 @@ class _HoolaSettingsState extends State<HoolaSettings> with WidgetsBindingObserv
               for (final cn in conns)
                 HoolaRow(
                   title: '${_s(cn['provider']) == 'google' ? 'Google' : _s(cn['provider'])} · ${_s(cn['account'])}',
-                  sub: 'Gmail, Calendar, Drive, Docs, Sheets · press and hold to remove',
+                  sub: 'Your Google sign-in · apps live in Settings > Google · press and hold to remove',
                   icon: Icons.check_circle_outline_rounded,
                   tint: c.ok,
                   onLongPress: () => _removeAccount(cn),

@@ -48,7 +48,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     async def put_settings(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         b = _b(body)
         keys = ("isp_name", "model", "upstream", "optics", "teams", "sla", "bsnl_sla_hours", "bsnl_penalty_note", "window_min",
-                "morning_time", "rules")
+                "morning_time", "rules", "country")
         await run(S._no_secret_keys, {k: v for k, v in b.items() if k != "teams"})
         return await run(S.save_settings, tenant, **{k: b[k] for k in keys if k in b})
 

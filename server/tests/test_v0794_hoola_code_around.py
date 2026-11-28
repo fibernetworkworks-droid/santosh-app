@@ -399,7 +399,7 @@ def test_phase5_in_a_browser(arena_server):  # noqa: F811
     pg.goto(base + "/console/code#/s/dt5")
     pg.wait_for_selector("#hcdRail .hcd-rc")
     # --- thinking view: hidden in Normal, shown in Thinking
-    assert pg.locator(".hcd-think").count() == 0                              # chat kit: each piece of work folds by itself; the Thinking view shows the steps unfolded
+    assert not any(x.is_visible() for x in pg.locator(".hcd-think").all())   # v0.999 only "Thought for Ns" shows, folded;                           # chat kit: each piece of work folds by itself; the Thinking view shows the steps unfolded
     pg.locator('[data-menu="title"]').click()
     pg.get_by_role("menuitemradio", name="Thinking").first.click()
     pg.wait_for_selector(".hcd-think")
@@ -431,6 +431,12 @@ def test_phase5_in_a_browser(arena_server):  # noqa: F811
     pg.get_by_role("menuitem", name="Share a read-only link").click()
     dlg = pg.locator("#hcdDlg")
     assert "No sign-in needed" in dlg.inner_text() and not any(c[0] == "share" for c in calls)   # nothing is shared before her yes
+    dlg.get_by_role("button", name="Make the link").click()              # v0.999.245 "Private" (ticked first) makes no link
+    assert _until(pg, lambda: "It stays private" in pg.locator("#toast").inner_text())
+    assert not any(c[0] == "share" for c in calls)
+    pg.locator('[data-menu="title"]').click()
+    pg.get_by_role("menuitem", name="Share a read-only link").click()
+    dlg.locator("input[name=hcdVis][value=link]").check()
     dlg.get_by_role("button", name="Make the link").click()
     pg.wait_for_selector("#hcdShareUrl")
     assert pg.locator("#hcdShareUrl").inner_text().endswith("/console/code/shared/" + "t" * 43)

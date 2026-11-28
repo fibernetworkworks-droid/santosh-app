@@ -262,7 +262,7 @@ void main() {
         ('Video', CreateVideo(store: store), ['Hoola Auto · best quality', 'Dolly in', '8 s', 'Free preview', 'Create · see the price', 'Waiting for your approval', 'Yes · ₹144']),
         ('Director', CreateDirector(store: store), ['Your films', 'Diwali at Sharma Sweets', '9:16 · Hindi']),
         ('Film', CreateFilm(store: store, project: 'Diwali at Sharma Sweets'), ['Step 4 of 8 · Pictures', 'Paint the opening pictures', 'See the price · about ₹12', 'Skip pictures', 'Sharma ji', 'Storyboard']),
-        ('Music', CreateMusic(store: store), ['Song', 'Instrumental', 'Jingle', 'Score', 'Bollywood romantic', 'Lyrics', 'Write with Hoola', 'Make the song · about ₹7', 'A sad ghazal', 'Roshni ka tyohaar']),
+        ('Music', CreateMusic(store: store), ['What shall we make?', 'Try one', 'A birthday song for Lucía, in Spanish', 'Song · Auto · 2 versions', '2 versions · 160 credits · made when you send']),
         ('Voice', CreateVoice(store: store), ['What should be said', 'Marathi', 'Your Santosh’s voice', 'Kore', 'Puck', 'Friendly', '1.0×', 'Make the voice-over · a few paise']),
         ('Dub', CreateDub(store: store), ['Your video, in more languages', 'Add your video', 'Tamil', 'All languages', 'Keep background sound', 'Dub into 1 language']),
         ('Editor', CreateEditor(store: store), ['Your clips', 'What should Hoola do?', 'Cut the silences', 'Instagram Reel', 'Captions', 'Make the edit']),

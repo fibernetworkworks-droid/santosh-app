@@ -457,7 +457,25 @@ class Api {
 
   Future<Map<String, dynamic>> me() async => Map<String, dynamic>.from(await _send('GET', '/api/me'));
   Future<void> disconnect(String provider) async => _send('DELETE', '/api/connections/$provider');
-  Uri googleSignInUrl() => _u('/auth/google/start');
+  // SIGN UP: like Claude and ChatGPT - Google asks only for name + email (phone=1), and the app gets a one-time
+  // code back, never the session itself in a link. Gmail / Drive / Calendar are connected later, from their screens.
+  Uri googleSignInUrl() => _u('/auth/google/start', {'phone': '1'});
+
+  /// Log in or sign up with email: a 6-digit code is emailed (the same answer whether the account exists or not).
+  Future<Map<String, dynamic>> emailStart(String email) async =>
+      Map<String, dynamic>.from(await _send('POST', '/auth/email/start', body: {'email': email}) as Map);
+
+  /// The code is right -> session_token, new, needs_name.
+  Future<Map<String, dynamic>> emailVerify(String email, String code) async =>
+      Map<String, dynamic>.from(await _send('POST', '/auth/email/verify', body: {'email': email, 'code': code}) as Map);
+
+  /// After signing up: "What should Hoola call you?"
+  Future<void> emailName(String name) async => _send('POST', '/auth/email/name', body: {'name': name});
+
+  /// A one-time code from the Google page -> the session token (never sent inside a link).
+  /// The one-time code from the Google page -> {session_token, new, name} (GOOGLE SIGN UP: a new person is welcomed).
+  Future<Map<String, dynamic>> exchangeCode(String code) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/console/exchange', body: {'code': code}) as Map);
   /// v0.897 [reuse] = her newest untouched empty chat instead of one more (the console's New chat does the same);
   /// [incognito] = a chat that stays out of her memory.
   Future<String> newConversation({bool reuse = false, bool incognito = false}) async => (await _send('POST', '/api/conversations',
@@ -655,6 +673,14 @@ class Api {
   Future<Map<String, dynamic>> driveState() => _gState('drive');
   // v0.70 why Google Drive / Gmail / Calendar do (not) work, with the fix
   Future<Map<String, dynamic>> googleStatus() async => Map<String, dynamic>.from(await _send('GET', '/api/google/status') as Map);
+  // v0.999.181 GOOGLE CONNECTIONS: one place for every Google app (Settings > Google)
+  Future<Map<String, dynamic>> googleHub() async => Map<String, dynamic>.from(await _send('GET', '/api/google') as Map);
+  Future<String> googleConnectUrl(List<String> apps, {String hint = ''}) async =>
+      ((await _send('POST', '/api/google/connect', body: {'apps': apps, 'surface': 'phone', 'hint': hint})) as Map)['url'] as String;
+  Future<void> googleDisconnect(String email, {String app = ''}) async =>
+      _send('POST', '/api/google/disconnect', body: {'email': email, 'app': app});
+  Future<void> googleFirst(String app, String email) async =>
+      _send('POST', '/api/google/first', body: {'app': app, 'email': email});
   Future<String> driveLinkUrl() => _gLink('drive');
   Future<Map<String, dynamic>> driveRemove(String key) => _gRemove('drive', key);
   Future<Map<String, dynamic>> formsState() => _gState('forms');
@@ -1067,6 +1093,69 @@ class Api {
   Future<String> seoGscLink() async => (await _send('GET', '/api/seo/gsc/link'))['url'] as String;
   /// v0.999.34 SEO DESK: the SEO Specialist's own chat (a call from the desk runs on it).
   Future<Map<String, dynamic>> seoChat() async => Map<String, dynamic>.from(await _send('GET', '/api/seo/chat') as Map);
+  // v0.999.38 SOCIAL DESK: the Social Media Manager's own chat (a call from its desk runs on it)
+  Future<Map<String, dynamic>> socialChat() async => Map<String, dynamic>.from(await _send('GET', '/api/social/chat') as Map);
+  // v0.999.43 ACCOUNTS DESK: the GST & Accounts employee's own chat (a call from the phone runs on it)
+  Future<Map<String, dynamic>> accountsChat() async => Map<String, dynamic>.from(await _send('GET', '/api/accounts/chat') as Map);
+  // v0.999.52 LEAD DESK: the Lead Generation employee's own chat (a call from the phone runs on it) + its Today list
+  Future<Map<String, dynamic>> leadsChat() async => Map<String, dynamic>.from(await _send('GET', '/api/leads/chat') as Map);
+  Future<Map<String, dynamic>> leadsToday() async => Map<String, dynamic>.from(await _send('GET', '/api/leads/desk') as Map);
+  // v0.999.46 CA PRACTICE: her clients' folders, the document inbox, a bill scanned from the phone
+  Future<Map<String, dynamic>> practiceHome() async => Map<String, dynamic>.from(await _send('GET', '/api/practice') as Map);
+  Future<Map<String, dynamic>> practiceClients({String q = ''}) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/practice/clients', query: q.isEmpty ? null : {'q': q}) as Map);
+  Future<Map<String, dynamic>> practiceFolder(String id) async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/practice/clients/${Uri.encodeComponent(id)}/folder') as Map);
+  Future<Map<String, dynamic>> practiceInbox() async => Map<String, dynamic>.from(await _send('GET', '/api/practice/inbox') as Map);
+  Future<Map<String, dynamic>> practiceUpload(List<int> bytes, String name, {String? clientId}) async {
+    final req = http.MultipartRequest('POST', _u('/api/practice/upload'))
+      ..fields['channel'] = 'phone'
+      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: name));
+    if (clientId != null && clientId.isNotEmpty) req.fields['client_id'] = clientId;
+    if (apiKey.isNotEmpty) req.headers['Authorization'] = 'Bearer $apiKey';
+    final res = await http.Response.fromStream(await req.send().timeout(const Duration(seconds: 120)));
+    final text = utf8.decode(res.bodyBytes);
+    if (res.statusCode >= 400) {
+      var msg = 'Server error ${res.statusCode}';
+      try {
+        msg = (jsonDecode(text) as Map)['detail']?.toString() ?? msg;
+      } catch (_) {}
+      throw ApiException(res.statusCode, msg);
+    }
+    return Map<String, dynamic>.from(jsonDecode(text) as Map);
+  }
+  Future<Map<String, dynamic>> practiceFile(String fileId, String clientId, {String? month, bool rememberSender = true}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/practice/files/${Uri.encodeComponent(fileId)}/file', body: {
+        'client_id': clientId, if (month != null && month.isNotEmpty) 'month': month, 'remember_sender': rememberSender,
+      }) as Map);
+  Future<void> practiceDrop(String fileId) async => _send('POST', '/api/practice/files/${Uri.encodeComponent(fileId)}/drop');
+  /// The file's bytes and its name (from Content-Disposition).
+  Future<({List<int> bytes, String name})> practiceDownload(String fileId) async {
+    final req = http.Request('GET', _u('/api/practice/files/${Uri.encodeComponent(fileId)}'));
+    if (apiKey.isNotEmpty) req.headers['Authorization'] = 'Bearer $apiKey';
+    final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 90)));
+    if (res.statusCode >= 400) {
+      var msg = 'Server error ${res.statusCode}';
+      try {
+        msg = (jsonDecode(utf8.decode(res.bodyBytes)) as Map)['detail']?.toString() ?? msg;
+      } catch (_) {}
+      throw ApiException(res.statusCode, msg);
+    }
+    var name = 'file';
+    final cd = res.headers['content-disposition'] ?? '';
+    final star = RegExp(r"filename\*=(?:UTF-8'')?([^;]+)", caseSensitive: false).firstMatch(cd);
+    final plain = RegExp(r'filename="?([^";]+)"?', caseSensitive: false).firstMatch(cd);
+    if (star != null) {
+      try {
+        name = Uri.decodeComponent(star.group(1)!.trim().replaceAll('"', ''));
+      } catch (_) {
+        name = star.group(1)!.trim();
+      }
+    } else if (plain != null) {
+      name = plain.group(1)!.trim();
+    }
+    return (bytes: res.bodyBytes, name: name);
+  }
   // v0.370 the Game Developer's desk (Godot 4 games, played by Hoola before she sees them)
   Future<Map<String, dynamic>> gameHome() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/game', timeout: const Duration(seconds: 40)) as Map);
@@ -1999,6 +2088,204 @@ class Api {
     final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 60)));
     return res.statusCode == 200 ? res.bodyBytes : null;
   }
+  // ---- v0.999.90 Hoola Vocal, global (docs/HOOLA_VOCAL_GLOBAL.md): the phone's Vocal chat, voices and sounds ----
+  Future<Map<String, dynamic>> _vocal(String method, String path, {Object? body, Map<String, String>? query, Duration? timeout}) async {
+    final r = await _send(method, '/api/vocal$path', body: body, query: query, timeout: timeout ?? const Duration(seconds: 60));
+    return r is Map ? Map<String, dynamic>.from(r) : <String, dynamic>{};
+  }
+
+  List<Map<String, dynamic>> _vocalList(Object? r, String key) {
+    final v = r is Map ? r[key] : r;
+    return v is List ? [for (final e in v) if (e is Map) Map<String, dynamic>.from(e)] : const [];
+  }
+
+  /// The Vocal chat she was in last (a Conversation of kind 'vocal'): {id, title}.
+  Future<Map<String, dynamic>> vocalChat() => _vocal('GET', '/chat');
+  Future<Map<String, dynamic>> vocalChatNew() => _vocal('POST', '/chat/new');
+  Future<List<Map<String, dynamic>>> vocalChats() async => _vocalList(await _send('GET', '/api/vocal/chats'), 'chats');
+  /// The sounds made in one Vocal chat, newest first; each row carries its `job` (one ask = one job with its takes).
+  Future<List<Map<String, dynamic>>> vocalChatItems(String conv) async =>
+      _vocalList(await _send('GET', '/api/vocal/chat/${Uri.encodeComponent(conv)}/items'), 'items');
+  Future<Map<String, dynamic>> vocalOverview() => _vocal('GET', '/overview');
+  /// Her saved Vocal defaults: {lang, voice, format, takes, engine, style}.
+  Future<Map<String, dynamic>> vocalSettingsSave(Map<String, dynamic> body) => _vocal('PUT', '/settings', body: body);
+  /// {credits, usd, engine, engine_name, line}: an estimate, shown before she taps.
+  Future<Map<String, dynamic>> vocalQuote(Map<String, dynamic> body) => _vocal('POST', '/quote', body: body, timeout: const Duration(seconds: 20));
+  Future<Map<String, dynamic>> vocalTts(Map<String, dynamic> body) => _vocal('POST', '/tts', body: body, timeout: const Duration(seconds: 240));
+  String vocalPreviewUrl(String id, String lang) => _u('/api/vocal/voice/preview', {'id': id, 'lang': lang}).toString();
+  Future<List<int>?> vocalPreviewBytes(String id, String lang) => _vocalBytes(_u('/api/vocal/voice/preview', {'id': id, 'lang': lang}));
+  String vocalAudioUrl(String id, {String format = ''}) =>
+      _u('/api/vocal/audio', {'id': id, if (format.isNotEmpty) 'format': format}).toString();
+  Future<List<int>?> vocalAudio(String id, {String format = ''}) =>
+      _vocalBytes(_u('/api/vocal/audio', {'id': id, if (format.isNotEmpty) 'format': format}));
+  /// v0.999.158: her own recording kept beside a voice change (30 days), for Before / After.
+  Future<List<int>?> vocalChangeSource(String id) => _vocalBytes(_u('/api/vocal/change/source', {'id': id}));
+  Future<List<int>?> vocalCleanupSource(String id) => _vocalBytes(_u('/api/vocal/cleanup/source', {'id': id}));
+  Future<List<int>?> _vocalBytes(Uri u) async {
+    final req = http.Request('GET', u)..headers.addAll(_headers);
+    final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 120)));
+    if (res.statusCode >= 400) {
+      var msg = 'Server error ${res.statusCode}';
+      try {
+        msg = (jsonDecode(utf8.decode(res.bodyBytes)) as Map)['detail']?.toString() ?? msg;
+      } catch (_) {}
+      throw ApiException(res.statusCode, msg);
+    }
+    return res.bodyBytes.isEmpty ? null : res.bodyBytes;
+  }
+  /// The consent statement she reads aloud for her own voice: {line, english, lang, locale}.
+  Future<Map<String, dynamic>> vocalConsentLine(String lang) => _vocal('GET', '/consent-line', query: {'lang': lang});
+  /// Both recordings first go up through [chatFile]; `consent` must be a real true.
+  Future<Map<String, dynamic>> vocalClone({required String name, required String fileId, required String consentFileId, required String lang}) =>
+      _vocal('POST', '/voice/clone', body: {'name': name, 'file_id': fileId, 'consent_file_id': consentFileId, 'lang': lang, 'consent': true},
+          timeout: const Duration(seconds: 180));
+  /// {previews: [{pid, title, audio_id}]} - three candidates to hear.
+  Future<Map<String, dynamic>> vocalDesign(String description, {String gender = ''}) =>
+      _vocal('POST', '/voice/design', body: {'description': description, 'gender': gender}, timeout: const Duration(seconds: 180));
+  Future<Map<String, dynamic>> vocalDesignSave(String pid, String name) => _vocal('POST', '/voice/design/save', body: {'pid': pid, 'name': name});
+  Future<Map<String, dynamic>> vocalRemix(String base, String change, String name) =>
+      _vocal('POST', '/voice/remix', body: {'base': base, 'change': change, 'name': name}, timeout: const Duration(seconds: 180));
+  Future<void> vocalDeleteVoice(String id) => _vocal('DELETE', '/voice', query: {'id': id});
+  // v0.999.157 one of her voices: a new name, and her consent recording played back (kept as proof while the voice exists)
+  Future<Map<String, dynamic>> vocalRenameVoice(String id, String name) => _vocal('PATCH', '/voice', body: {'id': id, 'name': name});
+  Future<List<int>?> vocalConsentBytes(String id) => _vocalBytes(_u('/api/vocal/voice/consent', {'id': id}));
+  Future<void> vocalHistoryDelete(String id) => _vocal('DELETE', '/history', query: {'id': id});
+  Future<List<Map<String, dynamic>>> vocalDubs() async => _vocalList(await _send('GET', '/api/vocal/dubs'), 'dubs');
+  // ---- v0.999.96 Hoola Vocal redesign (docs/HOOLA_VOCAL_REDESIGN.md sections 2-3): every page's own route ----
+  /// The shared voice library: {voices:[{id,owner,name,line,langs,gender,age,accent,use,uses,preview}], more, ready, why}.
+  Future<Map<String, dynamic>> vocalLibrary(Map<String, String> query) => _vocal('GET', '/library', query: query);
+  Future<Map<String, dynamic>> vocalLibraryAdd(String id, String owner, String name) =>
+      _vocal('POST', '/library/add', body: {'id': id, 'owner': owner, 'name': name});
+  /// A shared voice's sample: `preview` is already the server's own proxy path (/api/vocal/library/preview?url=...);
+  /// a bare outside address is sent through that proxy.
+  Future<List<int>?> vocalLibraryPreview(String preview) => _vocalBytes(preview.startsWith('/')
+      ? _u(preview)
+      : _u('/api/vocal/library/preview', {'url': preview}));
+  /// {lines:[{speaker,text}], cast:{speaker: voice id}, lang, style, mode: natural|lines, chat}.
+  Future<Map<String, dynamic>> vocalDialogue(Map<String, dynamic> body) =>
+      _vocal('POST', '/dialogue', body: body, timeout: const Duration(seconds: 300));
+  /// v0.999.142: one line of a Line-by-line talk made again ({n, text, speaker}) -> the new take; the others are kept.
+  Future<Map<String, dynamic>> vocalDialogueLine(String id, Map<String, dynamic> body) =>
+      _vocal('POST', '/dialogue/${Uri.encodeComponent(id)}/line', body: body, timeout: const Duration(seconds: 180));
+  /// Each voice of a Line-by-line talk on its own track (a zip of WAVs, all the same length).
+  Future<List<int>?> vocalDialogueVoices(String id) => _vocalBytes(_u('/api/vocal/dialogue/${Uri.encodeComponent(id)}/voices'));
+  /// Subtitles of a talk from its line times (SRT or VTT).
+  Future<List<int>?> vocalDialogueSubtitles(String id, {String fmt = 'srt'}) =>
+      _vocalBytes(_u('/api/vocal/dialogue/${Uri.encodeComponent(id)}/subtitles', {'fmt': fmt}));
+  Future<Map<String, dynamic>> vocalDubStart(Map<String, dynamic> body) => _vocal('POST', '/dub', body: body);
+  Future<Map<String, dynamic>> vocalDub(String did) => _vocal('GET', '/dub/${Uri.encodeComponent(did)}');
+  /// {lines:[{n,start,end,speaker,src,dst,too_long}], editable, why}.
+  Future<Map<String, dynamic>> vocalDubLines(String did, String lang) =>
+      _vocal('GET', '/dub/${Uri.encodeComponent(did)}/lines', query: {'lang': lang});
+  Future<Map<String, dynamic>> vocalDubLineSave(String did, int n, String lang, String text) =>
+      _vocal('PUT', '/dub/${Uri.encodeComponent(did)}/lines/$n', body: {'lang': lang, 'text': text});
+  Future<Map<String, dynamic>> vocalDubLineRedo(String did, int n, String lang) =>
+      _vocal('POST', '/dub/${Uri.encodeComponent(did)}/lines/$n/redo', body: {'lang': lang}, timeout: const Duration(seconds: 240));
+  Future<Map<String, dynamic>> vocalDubAddLangs(String did, List<String> langs) =>
+      _vocal('POST', '/dub/${Uri.encodeComponent(did)}/langs', body: {'langs': langs});
+  /// A finished dub language's subtitles: format srt | vtt.
+  Future<List<int>?> vocalDubSubtitles(String did, String lang, String format) =>
+      _vocalBytes(_u('/api/vocal/dub/${Uri.encodeComponent(did)}/subtitles', {'lang': lang, 'format': format}));
+  // v0.999.148 the dub in steps: her OK, the changed lines made again, a shorter line, names, the downloads
+  /// v0.999.151: star or unstar a voice; returns {favs: [...]}, newest first.
+  Future<Map<String, dynamic>> vocalVoiceFav(String id, bool on) => _vocal('PUT', '/voices/fav', body: {'id': id, 'on': on});
+  Future<Map<String, dynamic>> vocalDubOk(String did, String lang) => _vocal('POST', '/dub/${Uri.encodeComponent(did)}/ok', body: {'lang': lang});
+  Future<Map<String, dynamic>> vocalDubRemake(String did, String lang) =>
+      _vocal('POST', '/dub/${Uri.encodeComponent(did)}/remake', body: {'lang': lang});
+  Future<Map<String, dynamic>> vocalDubShorten(String did, int n, String lang) =>
+      _vocal('POST', '/dub/${Uri.encodeComponent(did)}/lines/$n/shorten', body: {'lang': lang}, timeout: const Duration(seconds: 90));
+  Future<Map<String, dynamic>> vocalDubNames(String did, Map<String, String> names) =>
+      _vocal('PUT', '/dub/${Uri.encodeComponent(did)}/speakers', body: {'names': names});
+  /// what: video | subbed | sound | voices | subs
+  Future<List<int>?> vocalDubExport(String did, String what, List<String> langs) =>
+      _vocalBytes(_u('/api/vocal/dub/${Uri.encodeComponent(did)}/export', {'what': what, 'langs': langs.join(',')}));
+  Future<Map<String, dynamic>> vocalSfx(Map<String, dynamic> body) => _vocal('POST', '/sfx', body: body, timeout: const Duration(seconds: 180));
+  /// v0.999.162: her description made clearer (nothing spent), a game sound to listen to (nothing kept), keep a sound.
+  Future<Map<String, dynamic>> vocalSfxImprove(String prompt) => _vocal('POST', '/sfx/improve', body: {'prompt': prompt}, timeout: const Duration(seconds: 60));
+  Future<List<int>?> vocalSfxPlay(String preset, int seed) => _vocalBytes(_u('/api/vocal/sfx/play', {'preset': preset, 'seed': '$seed'}));
+  Future<Map<String, dynamic>> vocalHistoryStar(String id, bool on) => _vocal('POST', '/history/star', body: {'id': id, 'on': on});
+  /// v0.999.163: keep, stop keeping or remove several sounds in one tap ({done, missing}).
+  Future<Map<String, dynamic>> vocalHistoryBulk(List<String> ids, String action) =>
+      _vocal('POST', '/history/bulk', body: {'ids': ids, 'action': action});
+  /// Change one dictionary word in place.
+  Future<Map<String, dynamic>> vocalRuleUpdate(String id, String word, String say, {String ipa = '', String lang = ''}) =>
+      _vocal('PUT', '/rule', body: {'id': id, 'word': word, 'say': say, 'ipa': ipa, 'lang': lang});
+  /// An import read before anything is added: {rows: [{line, word, say, state new|replace|bad, why}], new, replace, bad, room}.
+  Future<Map<String, dynamic>> vocalRulesCheck(String text) => _vocal('POST', '/rules/check', body: {'text': text});
+  /// A short free sample of a word or a sentence, read the way her dictionary says (WAV bytes).
+  Future<List<int>?> vocalHear(String text, {String voice = '', String lang = ''}) async {
+    final req = http.Request('POST', _u('/api/vocal/hear'))
+      ..headers.addAll({..._headers, 'Content-Type': 'application/json'})
+      ..body = jsonEncode({'text': text, 'voice': voice, 'lang': lang});
+    final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 90)));
+    if (res.statusCode >= 400) {
+      var msg = 'Server error ${res.statusCode}';
+      try {
+        msg = (jsonDecode(utf8.decode(res.bodyBytes)) as Map)['detail']?.toString() ?? msg;
+      } catch (_) {}
+      throw ApiException(res.statusCode, msg);
+    }
+    return res.bodyBytes.isEmpty ? null : res.bodyBytes;
+  }
+  Future<Map<String, dynamic>> vocalCleanup(Map<String, dynamic> body) =>
+      _vocal('POST', '/cleanup', body: body, timeout: const Duration(seconds: 600));
+  Future<Map<String, dynamic>> vocalCleanupListen(Map<String, dynamic> body) =>
+      _vocal('POST', '/cleanup/listen', body: body, timeout: const Duration(seconds: 180));
+  Future<Map<String, dynamic>> vocalChange(Map<String, dynamic> body) =>
+      _vocal('POST', '/change', body: body, timeout: const Duration(seconds: 300));
+  Future<Map<String, dynamic>> vocalRule(String word, String say, {String ipa = '', String lang = ''}) =>
+      _vocal('POST', '/rule', body: {'word': word, 'say': say, 'ipa': ipa, 'lang': lang});
+  Future<void> vocalRuleDelete(String id) => _vocal('DELETE', '/rule', query: {'id': id});
+  /// CSV lines `word,say[,ipa][,lang]`.
+  Future<Map<String, dynamic>> vocalRulesImport(String text) => _vocal('POST', '/rules/import', body: {'text': text});
+  Future<Map<String, dynamic>> vocalProject(Map<String, dynamic> body) => _vocal('POST', '/project', body: body);
+  Future<Map<String, dynamic>> vocalProjectImport(Map<String, dynamic> body) =>
+      _vocal('POST', '/project/import', body: body, timeout: const Duration(seconds: 180));
+  Future<Map<String, dynamic>> vocalProjectCast(String id, int n) =>
+      _vocal('POST', '/project/cast', body: {'id': id, 'n': n}, timeout: const Duration(seconds: 180));
+  Future<Map<String, dynamic>> vocalChapter(String id, int n) =>
+      _vocal('POST', '/project/chapter', body: {'id': id, 'n': n}, timeout: const Duration(seconds: 600));
+  /// The audiobook (v0.999.143): m4b / mp3zip / srt / wav; [even] = the loudness evened out, [intro] = the short spoken
+  /// line that AI voices read it.
+  Future<Map<String, dynamic>> vocalProjectExport(String id, String format, {bool even = false, bool intro = false}) =>
+      _vocal('POST', '/project/export', body: {'id': id, 'format': format, 'even': even, 'intro': intro}, timeout: const Duration(seconds: 600));
+  /// The people of a whole reading: {people:[{name, lines, chapters, quote, voice, small}], found, total, small, suggestions}.
+  Future<Map<String, dynamic>> vocalPeople(String id) => _vocal('GET', '/project/people', query: {'id': id});
+  /// Her voices for the people ({id, voices:{name: voice}}) and/or the narrator reading the small parts ({id, small}).
+  Future<Map<String, dynamic>> vocalPeopleSet(Map<String, dynamic> body) => _vocal('PUT', '/project/people', body: body);
+  Future<void> vocalProjectDelete(String id) => _vocal('DELETE', '/project', query: {'id': id});
+  // ---- v0.999.101 the last phone Vocal parts: podcast script, Dub it, hear it while it is made, apps ----
+  /// Writes a dialogue script from a document: body {text? | url? | file_id?, minutes, hosts:[{name, voice}], lang}
+  /// -> {title, lines:[{speaker, text}], lang}. It only writes; the sound is made by [vocalDialogue] on her tap.
+  Future<Map<String, dynamic>> vocalPodcast(Map<String, dynamic> body) =>
+      _vocal('POST', '/podcast', body: body, timeout: const Duration(seconds: 180));
+  /// A finished speech / dialogue take spoken again in up to 4 languages: {items, failed:[{lang,name,why}], credits}.
+  Future<Map<String, dynamic>> vocalTakeDub(String id, List<String> langs, {String chat = ''}) =>
+      _vocal('POST', '/take/${Uri.encodeComponent(id)}/dub', body: {'langs': langs, if (chat.isNotEmpty) 'chat': chat},
+          timeout: const Duration(seconds: 300));
+  /// A Premium voice heard while it is made: {url:"/api/vocal/stream/<token>", format, credits, voice_name}.
+  Future<Map<String, dynamic>> vocalTtsStream(Map<String, dynamic> body) =>
+      _vocal('POST', '/tts/stream', body: body, timeout: const Duration(seconds: 40));
+  /// The full address of a one-time stream link (it needs no key: one use, 2 minutes).
+  String vocalStreamUrl(String path) => absolute(path);
+  /// Her keys and webhooks for her own apps: {keys, hooks, events, max_keys, max_hooks, rate_hour, doors, signature}.
+  Future<Map<String, dynamic>> vocalApps() => _vocal('GET', '/apps');
+  /// A new app key: the full `key` comes back ONCE, with a `note`.
+  Future<Map<String, dynamic>> vocalAppKeyNew(String name) => _vocal('POST', '/apps/keys', body: {'name': name});
+  Future<void> vocalAppKeyDelete(String id) => _vocal('DELETE', '/apps/keys/${Uri.encodeComponent(id)}');
+  /// A new webhook: its signing `secret` comes back ONCE, with a `note`.
+  Future<Map<String, dynamic>> vocalAppHookNew(String url, {List<String>? events}) =>
+      _vocal('POST', '/apps/hooks', body: {'url': url, if (events != null && events.isNotEmpty) 'events': events});
+  Future<void> vocalAppHookDelete(String id) => _vocal('DELETE', '/apps/hooks/${Uri.encodeComponent(id)}');
+  /// Sends one test event to a webhook: the hook back with its `last_status`.
+  Future<Map<String, dynamic>> vocalAppHookTest(String id) =>
+      _vocal('POST', '/apps/hooks/${Uri.encodeComponent(id)}/test', timeout: const Duration(seconds: 30));
+  /// Hoola Prompting's Improve for the words she wrote: {prompt} or {text}.
+  Future<Map<String, dynamic>> vocalImprove(String text) async {
+    final r = await _send('POST', '/api/prompting/understand', body: {'text': text, 'section': 'voice'}, timeout: const Duration(seconds: 40));
+    return r is Map ? Map<String, dynamic>.from(r) : <String, dynamic>{};
+  }
+
   /// The user's artifacts. Older servers have none: returns an empty list.
   Future<List<Map<String, dynamic>>> artifacts() async {
     try {
@@ -2072,6 +2359,29 @@ class Api {
     return {'challenge_id': c['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
   }
 
+  // ---- v0.999.60 Hoola Wallet: Hoola asks, her fingerprint approves ----
+  /// Approving: the phone was unlocked by her first; when a phone is linked for fingerprint approvals the server answers
+  /// 428 and her fingerprint signs THIS payment. Saying no needs neither.
+  Future<Map<String, dynamic>> walletDecide(String id, bool approve) async {
+    Future<dynamic> send(Map<String, dynamic>? proof) async {
+      final req = http.Request('POST', _u('/api/wallet/payments/${Uri.encodeComponent(id)}/decide'))
+        ..headers.addAll({..._headers, if (approve) 'X-Hoola-Unlocked': '1'})
+        ..body = jsonEncode({'approve': approve, if (proof != null) 'proof': proof});
+      final res = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 25)));
+      final text = utf8.decode(res.bodyBytes);
+      if (res.statusCode >= 400) {
+        var msg = 'Server error ${res.statusCode}';
+        try {
+          msg = (jsonDecode(text) as Map)['detail']?.toString() ?? msg;
+        } catch (_) {}
+        throw ApiException(res.statusCode, msg);
+      }
+      return jsonDecode(text);
+    }
+
+    return Map<String, dynamic>.from(await _withFingerprint('wallet', id, approve, send) as Map);
+  }
+
   // ---- v0.97 form card ----
   // v0.108 Document desk / Sheet Milaan: her tap on the card (Haan = new copy into the PC's Santosh Inbox)
   Future<Map<String, dynamic>> deskDecide(String id, bool yes, {Map<String, dynamic>? options}) async =>
@@ -2114,6 +2424,9 @@ class Api {
   /// v0.901 the Connect page in one call: her apps, featured, the ten groups with their top apps.
   Future<Map<String, dynamic>> composioHome() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/composio/home', timeout: const Duration(seconds: 60)) as Map);
+  /// The Connect page's numbers: this month's actions by outcome, the week by app, her Pause switch.
+  Future<Map<String, dynamic>> connectorsSummary() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/connectors/summary') as Map);
   Future<Map<String, dynamic>> composioConnect(String toolkit) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/composio/apps/$toolkit/connect', timeout: const Duration(seconds: 40)) as Map);
   /// v0.296 her own key for a key app: straight to Composio through the server, never kept on the phone.

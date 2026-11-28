@@ -549,9 +549,10 @@ async def tick() -> None:
         check_approvals, send_batches, pump_simulated_statuses, finish_campaigns, fire_reminders, morning_briefings,
         run_routines, expire_device_actions, expire_stale_asks, bazar_reminders, offline_digests, pc_cleanup,
         home_device_alerts, mail_jobs, employee_jobs, kaam_jobs, followup_jobs, goal_resume_jobs, inbox_jobs, card_park_jobs,
-        team_jobs, research_jobs, scrape_crawl_jobs, dhara_jobs, eventlog_jobs, kaan_jobs, aboutme_jobs, applogic_jobs,
+        team_jobs, research_jobs, scrape_crawl_jobs, spider_jobs, dhara_jobs, eventlog_jobs, kaan_jobs, aboutme_jobs, applogic_jobs,
         game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs, api_box_jobs, aiapp_ops_jobs, design_asset_jobs,
-        hoola_batch_jobs, pipeline_jobs, pipeline_branch_jobs,
+        hoola_batch_jobs, pipeline_jobs, pipeline_branch_jobs, practice_jobs, lead_desk_jobs, books_feed_jobs, vocal_sweep_jobs,
+        appengine_box_jobs, payroll_desk_jobs, sheet_watch_jobs, drive_watch_jobs, dod_jobs,
     ):
         await _slot(fn)
     BEAT["slot"] = ""
@@ -570,6 +571,14 @@ def health() -> dict:
     return {"ok": not (in_slot or no_tick), "started": True, "slot": BEAT["slot"],
             "last_tick_s": round(now - BEAT["tick_at"], 1) if BEAT["tick_at"] else None,
             "ticks": BEAT["ticks"], "slot_timeouts": BEAT["slot_timeouts"]}
+
+async def appengine_box_jobs() -> None:
+    """ONE ENGINE: while the new engine builds new websites, its builder box is checked every 10 minutes; a missing /
+    old image is rebuilt by itself, what code cannot fix (Docker down, a full disk) is told to the owner."""
+    from .appengine import boxcare
+    if boxcare.on() and boxcare.in_use():
+        await asyncio.to_thread(boxcare.tick)
+
 
 _ops_last = 0.0
 
@@ -904,6 +913,41 @@ async def dhara_jobs() -> None:
         log.exception("dhara tick failed")
 
 
+_dod_last = 0.0
+
+
+async def dod_jobs() -> None:
+    """v0.999.306 HOOLA DOD: tasks cut by a restart continue, and coworkers with no work go to sleep (their memory
+    stays on disk). Nothing runs for anyone who never opened Hoola DOD."""
+    global _dod_last
+    import time
+    if time.time() - _dod_last < 60:
+        return
+    _dod_last = time.time()
+    if not get_settings().dod_engine:
+        return
+    from .dod import gateway as _dg, service as _ds
+    _ds.recover()
+    await _dg.sleep_idle()
+
+
+_spider_last = 0.0
+
+
+async def spider_jobs() -> None:
+    """v0.999.59 HOOLA SPIDER: queued spider runs start, a stalled run resumes from its checkpoint."""
+    global _spider_last
+    import time
+    if time.time() - _spider_last < 15:
+        return
+    _spider_last = time.time()
+    try:
+        from . import spider
+        await spider.tick()
+    except Exception:
+        log.exception("spider tick failed")
+
+
 async def scrape_crawl_jobs() -> None:
     """v0.486 CRAWL JOBS: queued background crawls start, a stalled one is picked up again from its
     checkpoint, old finished ones are forgotten (the research tick shape, on the scrape lane's own
@@ -933,6 +977,8 @@ def eventlog_jobs() -> None:
         from .agent import eventlog
         from .config import get_settings
         eventlog.forget_old(int(getattr(get_settings(), "event_log_retain_days", 14) or 14))
+        from . import connhub
+        connhub.forget_old()
     except Exception:
         log.exception("event log retention failed")
 
@@ -955,6 +1001,93 @@ def kaan_jobs() -> None:
 
 
 _coder_last = 0.0
+
+
+_pr_last = {"mirror": 0.0, "mail": 0.0, "drop": 0.0}
+
+
+async def practice_jobs() -> None:
+    """v0.999.46 CA document desk: copy filed client files to her Google Drive and her PC, read client emails with
+    attachments, collect files dropped in the PC's '_Drop here' folders."""
+    import time
+    from .bahi import practice as _pr
+    t = time.time()
+    if t - _pr_last["mirror"] >= 30:
+        _pr_last["mirror"] = t
+        await _pr.mirror_tick()
+    if t - _pr_last["mail"] >= 300:
+        _pr_last["mail"] = t
+        await asyncio.to_thread(_pr.email_tick)
+    if t - _pr_last["drop"] >= 300:
+        _pr_last["drop"] = t
+        await _pr.pc_drop_tick()
+
+
+_ld_last = 0.0
+
+
+async def lead_desk_jobs() -> None:
+    """v0.999.52 LEAD DESK: her weekly saved searches on the FREE IndiaMART route (a paid route never runs by itself)."""
+    global _ld_last
+    import time
+    if time.time() - _ld_last < 3600:
+        return
+    _ld_last = time.time()
+    from .leads import pipeline as _lp
+    await _lp.weekly_tick()
+
+
+async def books_feed_jobs() -> None:
+    """v0.999.163 BOOKS INBOX: invoices and bills from her mail (5 min), her programs (hourly), her shop."""
+    from .fin.desks import books_feed as _bf
+    await _bf.tick()
+    from .fin.desks import books_bank as _bb      # v0.999.166 bank connections: new bank lines every hour
+    await asyncio.to_thread(_bb.tick)
+
+
+_payroll_last = 0.0
+
+
+async def payroll_desk_jobs() -> None:
+    """v0.999.169 PAYROLL DESK: pay inputs from her payroll email, sheet and programs, and the Paid check, every 30 minutes."""
+    global _payroll_last
+    if time.time() - _payroll_last < 1800:
+        return
+    _payroll_last = time.time()
+    from .fin.desks import payroll_desk as _pd
+    await _pd.tick()
+
+
+_sheet_watch_last = 0.0
+
+
+async def sheet_watch_jobs() -> None:
+    """v0.999.184 SHEETS 100%: her sheet watches - new rows start the job she asked for (each watch on its own clock)."""
+    global _sheet_watch_last
+    if time.time() - _sheet_watch_last < 60:
+        return
+    _sheet_watch_last = time.time()
+    from .sheets import more as _sm
+    await asyncio.to_thread(_sm.check_watches)
+
+
+_drive_watch_last = 0.0
+
+
+async def drive_watch_jobs() -> None:
+    """v0.999.186 DRIVE COMPLETE: her folder watches - a new / changed file starts the job she asked for."""
+    global _drive_watch_last
+    if time.time() - _drive_watch_last < 60:
+        return
+    _drive_watch_last = time.time()
+    from .drive import more as _dm
+    await asyncio.to_thread(_dm.check_watches)
+
+
+async def vocal_sweep_jobs() -> None:
+    """v0.999.126 HOOLA VOCAL: deletes sounds older than the time she chose (Settings > Keep my sounds), every 6 hours."""
+    from .vocal import more as _vm
+    await asyncio.to_thread(_vm.sweep_all)
 
 
 _bh_last = 0.0
@@ -1028,6 +1161,11 @@ async def pc_cleanup() -> None:
         await asyncio.to_thread(pcs.cleanup_files)
     except Exception:
         log.exception("pc cleanup failed")
+    try:   # v0.999.118 P8 once a week: lessons drafted from the week's PC job records (candidates only - an exam decides)
+        from .pc import lessons as _lessons
+        await _lessons.weekly_tick()
+    except Exception:
+        log.exception("pc lessons tick failed")
 
 
 _offline_last = 0.0
@@ -1092,6 +1230,10 @@ async def mail_jobs() -> None:
         _mail_last["cal"] = t
         from .cal import service as cs
         jobs.append(cs.alerts_tick)
+    if t - _mail_last.get("calwatch", 0) >= 300:  # v0.999.189 Google Calendar: new invites / changes she watches
+        _mail_last["calwatch"] = t
+        from .cal import more as cmore
+        jobs.append(cmore.watch_tick)
     if t - _mail_last["forms"] >= 600:          # Google Forms: "N naye jawab" alerts
         _mail_last["forms"] = t
         from .forms import service as fsv
@@ -1235,6 +1377,8 @@ async def employee_jobs() -> None:
     try:
         from .seva import service as _seva_svc
         await asyncio.to_thread(_seva_svc.tick)
+        from .seva import brain as _seva_brain
+        await asyncio.to_thread(_seva_brain.check_pages)          # G1: a changed page marks its answers stale
     except Exception:
         log.exception("seva tick failed")
     try:
@@ -1272,6 +1416,13 @@ async def employee_jobs() -> None:
         await asyncio.to_thread(_callcentre_svc.tick)
     except Exception:
         log.exception("callcentre tick failed")
+    try:   # v0.999.67 AI TELECALLER: dial the next due people of running call lists; re-read business knowledge
+        from .callcentre import knowledge as _cc_kb
+        from .callcentre import outbound as _cc_out
+        await asyncio.to_thread(_cc_out.tick)
+        await asyncio.to_thread(_cc_kb.refresh_due)
+    except Exception:
+        log.exception("AI telecaller tick failed")
     # v0.137 Tech suite: CI / deploy polling, renewals, alerts, morning notes, scheduled test runs (each throttles itself)
     for _mod in ("devsahayak", "hoolaauto", "qa", "itadmin", "ispnoc", "cyber", "devops", "docwriter", "appreview", "product"):
         try:

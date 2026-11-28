@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 import hmac
 import logging
 from typing import Any
@@ -17,6 +18,9 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket
 from fastapi.responses import JSONResponse, Response
 
+from . import countries as CO
+from . import knowledge as K
+from . import outbound as O
 from . import providers as P
 from . import rules as R
 from . import service as S
@@ -41,12 +45,16 @@ async def _params(request: Request) -> dict[str, Any]:
     try:
         if "json" in ct:
             body = await request.json()
+            if isinstance(body, list) and body and isinstance(body[0], dict):   # some send one event in a list
+                body = body[0]
             out = dict(body) if isinstance(body, dict) else {}
         elif request.method == "POST":
             form = await request.form()
             out = {k: v for k, v in form.items() if isinstance(v, str)}
     except Exception:
         out = {}
+    if request.method == "GET" and not out:
+        out = dict(request.query_params)
     return out
 
 
@@ -63,9 +71,11 @@ async def _checked(request: Request, name: str, token: str) -> tuple[str, P.Prov
     if not tenant:
         raise HTTPException(404, "unknown line")
     prov = await asyncio.to_thread(_provider_for, tenant, name)
+    raw = (await request.body()).decode("utf-8", "replace") if request.method == "POST" else ""
     params = await _params(request)
     secret = str(S.creds(tenant).get("secret") or "") if name == "fake" else ""
-    if not prov.verify(request.method, _public_url(request), params if request.method == "POST" else {}, dict(request.headers), secret):
+    hdrs = dict(request.headers) | {"x-hoola-raw": raw}     # Ed25519 / JWT / HMAC providers sign the raw body
+    if not prov.verify(request.method, _public_url(request), params if request.method == "POST" else {}, hdrs, secret):
         log.warning("callcentre: bad signature on %s for %s", request.url.path, tenant)
         raise HTTPException(403, "bad signature")
     return tenant, prov, params
@@ -86,6 +96,92 @@ def make_router(require_key, current_tenant) -> APIRouter:
             raise _err(e)
 
     # ---------------------------------------------------------------- her app
+    async def runk(fn, *a, **kw):
+        try:
+            return await asyncio.to_thread(fn, *a, **kw)
+        except (S.CcError, K.KbError, O.OutError, P.ProviderError) as e:
+            raise _err(e)
+
+    # v0.999.67 the Business Brain: where the line's knowledge comes from
+    @r.get("/api/callcentre/knowledge", dependencies=dep)
+    async def kb_list(tenant: str = Depends(current_tenant)):
+        return {"sources": await runk(K.sources, tenant)}
+
+    @r.post("/api/callcentre/knowledge", dependencies=dep)
+    async def kb_add(body: dict, tenant: str = Depends(current_tenant)):
+        keys = ("kind", "name", "mode", "text", "file_id", "url", "api_key", "header", "prefix", "path", "fields", "lookup",
+                "system", "role", "target", "query", "refresh_h", "trust_updates", "title")
+        return await runk(K.add_source, tenant, **{k: body[k] for k in keys if k in body})
+
+    @r.get("/api/callcentre/knowledge/{sid}", dependencies=dep)
+    async def kb_get(sid: str, tenant: str = Depends(current_tenant)):
+        return await runk(K.preview, tenant, sid, 60)
+
+    @r.post("/api/callcentre/knowledge/{sid}/sync", dependencies=dep)
+    async def kb_sync(sid: str, tenant: str = Depends(current_tenant)):
+        return await runk(K.sync, tenant, sid)
+
+    @r.post("/api/callcentre/knowledge/{sid}/decide", dependencies=dep)
+    async def kb_decide(sid: str, body: dict, tenant: str = Depends(current_tenant)):
+        return await runk(K.approve, tenant, sid, str(body.get("hash") or ""), bool(body.get("yes", True)))
+
+    @r.delete("/api/callcentre/knowledge/{sid}", dependencies=dep)
+    async def kb_delete(sid: str, tenant: str = Depends(current_tenant)):
+        return await runk(K.remove, tenant, sid)
+
+    @r.get("/api/callcentre/countries", dependencies=dep)
+    async def countries(tenant: str = Depends(current_tenant)):
+        st = await runk(S.settings, tenant)
+        return {"countries": CO.summary(), "confirmed": st.get("confirmed_countries") or [], "home": st.get("country")}
+
+    @r.post("/api/callcentre/countries/{code}/confirm", dependencies=dep)
+    async def country_confirm(code: str, body: dict, tenant: str = Depends(current_tenant)):
+        return await runk(S.confirm_country, tenant, code, bool(body.get("yes", True)))
+
+    # v0.999.67 AI calls out: her call lists
+    @r.get("/api/callcentre/campaigns", dependencies=dep)
+    async def camp_list(tenant: str = Depends(current_tenant)):
+        return {"campaigns": await runk(O.lists, tenant)}
+
+    @r.post("/api/callcentre/campaigns", dependencies=dep)
+    async def camp_new(body: dict, tenant: str = Depends(current_tenant)):
+        keys = ("name", "goal", "purpose", "country", "basis", "start_hour", "end_hour", "at_once", "max_tries", "retry_min",
+                "daily_cap", "voicemail", "fields")
+        return await runk(O.create, tenant, **{k: body[k] for k in keys if k in body})
+
+    @r.patch("/api/callcentre/campaigns/{cid}", dependencies=dep)
+    async def camp_edit(cid: str, body: dict, tenant: str = Depends(current_tenant)):
+        return await runk(O.update, tenant, cid, **body)
+
+    @r.post("/api/callcentre/campaigns/{cid}/people", dependencies=dep)
+    async def camp_people_add(cid: str, body: dict, tenant: str = Depends(current_tenant)):
+        return await runk(O.add_people, tenant, cid, body.get("rows"), str(body.get("file_id") or ""), body.get("lead_ids"),
+                          str(body.get("basis") or ""))
+
+    @r.get("/api/callcentre/campaigns/{cid}/people", dependencies=dep)
+    async def camp_people(cid: str, status: str = "", tenant: str = Depends(current_tenant)):
+        return {"people": await runk(O.people, tenant, cid, status)}
+
+    @r.get("/api/callcentre/campaigns/{cid}/card", dependencies=dep)
+    async def camp_card(cid: str, tenant: str = Depends(current_tenant)):
+        return await runk(O.start_card, tenant, cid)
+
+    @r.post("/api/callcentre/campaigns/{cid}/start", dependencies=dep)
+    async def camp_start(cid: str, body: dict, tenant: str = Depends(current_tenant)):
+        """HER tap only (the chat model never starts a list): the hash of the card she saw."""
+        return await runk(O.start, tenant, cid, str(body.get("hash") or ""))
+
+    @r.post("/api/callcentre/campaigns/{cid}/{what}", dependencies=dep)
+    async def camp_status(cid: str, what: str, tenant: str = Depends(current_tenant)):
+        if what not in ("pause", "stop"):
+            raise HTTPException(404, "pause or stop")
+        return await runk(O.set_status, tenant, cid, "paused" if what == "pause" else "stopped")
+
+    @r.post("/api/callcentre/test-chat", dependencies=dep)
+    async def test_chat(body: dict, tenant: str = Depends(current_tenant)):
+        return await runk(O.test_chat, tenant, body.get("turns") or [], str(body.get("campaign_id") or ""),
+                          bool(body.get("draft", True)))
+
     @r.get("/api/callcentre", dependencies=dep)
     async def cc_all(tenant: str = Depends(current_tenant)):
         return await run(S.day, tenant)
@@ -97,7 +193,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.put("/api/callcentre/settings", dependencies=dep)
     async def cc_save(body: dict, tenant: str = Depends(current_tenant)):
         keys = ("provider", "number", "agent_name", "voice", "hours", "after_hours", "max_concurrent", "queue_max", "overflow",
-                "handover", "transfer_on", "record", "max_minutes", "rate_inr_per_min")
+                "handover", "transfer_on", "record", "max_minutes", "rate_inr_per_min", "country", "currency", "registered_line")
         return await run(S.save_settings, tenant, **{k: body[k] for k in keys if k in body})
 
     @r.put("/api/callcentre/keys", dependencies=dep)
@@ -167,28 +263,70 @@ def make_router(require_key, current_tenant) -> APIRouter:
         return await run(S.forget_caller, tenant, str(body.get("number") or ""))
 
     # ---------------------------------------------------------------- the phone provider (public, verified)
-    @r.post("/api/callcentre/hook/{name}/{token}/answer")
-    async def hook_answer(name: str, token: str, request: Request):
-        tenant, prov, params = await _checked(request, name, token)
+    # one provider webhook can carry several kinds of event (Vonage event_url, Sinch ICE / ACE / DiCE, Bandwidth,
+    # jambonz): each provider says what a request means and the same three handlers run for every provider
+    async def _on_answer(request, tenant, prov, params):
         info = prov.call_info(params)
+        out_id = request.query_params.get("out", "")
+        if out_id:      # v0.999.67 the person Hoola called picked up (or their answering machine did)
+            d = await asyncio.to_thread(O.answered, tenant, out_id, request.query_params.get("ot", ""), info,
+                                        prov.answered_by(params))
+            return _reply(prov, await asyncio.to_thread(_answer_body, tenant, prov, d, request))
         tries = int(request.query_params.get("try") or 0)
         d = await asyncio.to_thread(S.incoming, tenant, info, tries)
         return _reply(prov, await asyncio.to_thread(_answer_body, tenant, prov, d, request))
 
-    @r.post("/api/callcentre/hook/{name}/{token}/hangup")
-    async def hook_hangup(name: str, token: str, request: Request):
-        tenant, prov, params = await _checked(request, name, token)
+    async def _on_end(request, tenant, prov, params):
         info = prov.call_info(params)
-        dur = params.get("Duration") or params.get("BillDuration") or params.get("seconds")
-        try:
-            secs = float(dur) if dur not in (None, "") else None
-        except ValueError:
-            secs = None
-        if info.get("call"):
+        secs = prov.seconds(params)
+        out_id = request.query_params.get("out", "")
+        if out_id:
+            await asyncio.to_thread(O.dial_ended, tenant, out_id, request.query_params.get("ot", ""), prov.end_status(params), secs)
+        elif info.get("call"):
             await asyncio.to_thread(S.hung_up, tenant, info["call"], secs)
-        return Response(status_code=200)
+        return _reply(prov, prov.ack())
 
-    @r.post("/api/callcentre/hook/{name}/{token}/transfer/{call_id}")
+    async def _on_machine(request, tenant, prov, params):
+        out_id, ot = request.query_params.get("out", ""), request.query_params.get("ot", "")
+        got = await asyncio.to_thread(O.machine, tenant, out_id, ot, prov.answered_by(params))
+        if got and got.get("provider_call"):
+            url = _public_url(request).split("?")[0].rsplit("/", 1)[0] + f"/voicemail?out={out_id}&ot={ot}"
+            with contextlib.suppress(P.ProviderError):
+                await asyncio.to_thread(prov.transfer, got["provider_call"], url)
+        return _reply(prov, prov.ack())
+
+    async def _dispatch(request, name, token, hook):
+        tenant, prov, params = await _checked(request, name, token)
+        kind = prov.event(params, hook)
+        if kind == "answer":
+            return await _on_answer(request, tenant, prov, params)
+        if kind == "end":
+            return await _on_end(request, tenant, prov, params)
+        if kind == "machine":
+            return await _on_machine(request, tenant, prov, params)
+        return _reply(prov, prov.ack())
+
+    @r.api_route("/api/callcentre/hook/{name}/{token}/answer", methods=["GET", "POST"])
+    async def hook_answer(name: str, token: str, request: Request):
+        return await _dispatch(request, name, token, "answer")
+
+    @r.api_route("/api/callcentre/hook/{name}/{token}/hangup", methods=["GET", "POST"])
+    async def hook_hangup(name: str, token: str, request: Request):
+        return await _dispatch(request, name, token, "hangup")
+
+    @r.api_route("/api/callcentre/hook/{name}/{token}/machine", methods=["GET", "POST"])
+    async def hook_machine(name: str, token: str, request: Request):
+        """The answering-machine check that comes after the pick-up: a machine -> the voicemail line."""
+        return await _dispatch(request, name, token, "machine")
+
+    @r.api_route("/api/callcentre/hook/{name}/{token}/voicemail", methods=["GET", "POST"])
+    async def hook_voicemail(name: str, token: str, request: Request):
+        tenant, prov, _ = await _checked(request, name, token)
+        d = await asyncio.to_thread(O.voicemail_line, tenant, request.query_params.get("out", ""),
+                                    request.query_params.get("ot", ""))
+        return _reply(prov, prov.say(d.get("text") or "", d.get("lang") or "en-IN"))
+
+    @r.api_route("/api/callcentre/hook/{name}/{token}/transfer/{call_id}", methods=["GET", "POST"])
     async def hook_transfer(name: str, token: str, call_id: str, request: Request):
         tenant, prov, _ = await _checked(request, name, token)
         if not S.ticket_ok(call_id, request.query_params.get("t", "")):
@@ -197,9 +335,47 @@ def make_router(require_key, current_tenant) -> APIRouter:
         if not row or row.get("tenant") != tenant or not row.get("transfer_to"):
             raise HTTPException(404, "no transfer")
         with S.session() as s:
-            num = S._row(s, tenant).number
-        return _reply(prov, prov.say(R.CONNECTING[R.lang3(row.get("lang") or R.default_lang())], row.get("lang") or R.default_lang(),
-                                     dial=row["transfer_to"], caller_id=num))
+            st = S._row(s, tenant)
+            num, warm = st.number, st.warm_transfer is not False
+        lang = row.get("lang") or R.default_lang()
+        if warm and getattr(prov, "warm_ok", False):     # G3: the person hears who is calling and why, presses 1
+            base = _public_url(request).split("?")[0].rsplit("/transfer/", 1)[0]
+            t = S.ticket(call_id, 15)
+            return _reply(prov, prov.warm_dial(R.CONNECTING[R.lang3(lang)], lang, row["transfer_to"], num,
+                                               f"{base}/whisper/{call_id}?t={t}", f"{base}/dialdone/{call_id}?t={t}"))
+        return _reply(prov, prov.say(R.CONNECTING[R.lang3(lang)], lang, dial=row["transfer_to"], caller_id=num))
+
+    @r.api_route("/api/callcentre/hook/{name}/{token}/whisper/{call_id}", methods=["GET", "POST"])
+    async def hook_whisper(name: str, token: str, call_id: str, request: Request):
+        """G3: what the PERSON hears when they pick up the transfer, before the caller joins."""
+        tenant, prov, _ = await _checked(request, name, token)
+        if not S.ticket_ok(call_id, request.query_params.get("t", "")):
+            raise HTTPException(403, "bad ticket")
+        row = await asyncio.to_thread(S.call_row, call_id)
+        if not row or row.get("tenant") != tenant:
+            raise HTTPException(404, "no call")
+        text, lang = await asyncio.to_thread(S.whisper_text, call_id)
+        base = _public_url(request).split("?")[0].rsplit("/whisper/", 1)[0]
+        return _reply(prov, prov.whisper(text, lang, f"{base}/whisper_ok/{call_id}?t={request.query_params.get('t', '')}"))
+
+    @r.api_route("/api/callcentre/hook/{name}/{token}/whisper_ok/{call_id}", methods=["GET", "POST"])
+    async def hook_whisper_ok(name: str, token: str, call_id: str, request: Request):
+        tenant, prov, params = await _checked(request, name, token)
+        if not S.ticket_ok(call_id, request.query_params.get("t", "")):
+            raise HTTPException(403, "bad ticket")
+        got = prov.whisper_accept(params)
+        return _reply(prov, got if got else prov.ack())
+
+    @r.api_route("/api/callcentre/hook/{name}/{token}/dialdone/{call_id}", methods=["GET", "POST"])
+    async def hook_dialdone(name: str, token: str, call_id: str, request: Request):
+        """G3: how the person's leg of the transfer ended. Nobody picked up = a call-back window said to the caller."""
+        tenant, prov, params = await _checked(request, name, token)
+        if not S.ticket_ok(call_id, request.query_params.get("t", "")):
+            raise HTTPException(403, "bad ticket")
+        d = await asyncio.to_thread(S.transfer_done, tenant, call_id, prov.dial_status(params))
+        if d.get("answered") or not d.get("say"):
+            return _reply(prov, ("<Response><Hangup /></Response>", "application/xml") if prov.xml else prov.ack())
+        return _reply(prov, prov.say(d["say"], d.get("lang") or "en-IN"))
 
     # Exotel flow helpers (Passthru = 200 / 302 branch; Connect applet dynamic URL; Voicebot dynamic stream URL)
     @r.get("/api/callcentre/hook/exotel/{token}/stream_url")
@@ -251,7 +427,9 @@ def make_router(require_key, current_tenant) -> APIRouter:
             log.warning("callcentre: stream refused for %s", tenant)
             await ws.close(code=1008)
             return
-        await ws.accept()
+        want = [x.strip() for x in ws.headers.get("sec-websocket-protocol", "").split(",") if x.strip()]
+        sub = next((x for x in want if x in getattr(prov, "subprotocols", ())), None)
+        await ws.accept(subprotocol=sub)
         from .bridge import CallBridge, Sock
         sock = Sock(ws)
         line = prov.line()

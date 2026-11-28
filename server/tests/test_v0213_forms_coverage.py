@@ -11,6 +11,8 @@ This pin sits next to the Drive (v0.209) / Sheets (v0.210/v0.212) coverage pins 
 silently shrinks."""
 from __future__ import annotations
 
+import pytest
+
 from app.agent import forms_tools as ft
 from app.agent import gdrive_tools as gt
 from app.agent import sheets_tools as st
@@ -25,12 +27,12 @@ NEW_TYPES = ["page", "grid", "checkbox_grid", "upload"]
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.39"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert APP_VERSION == "0.999.169"    # conscious-bump guard: moves with every release (bump with pubspec)
 
 
 def test_registry_has_13_tools():
     names = [t["name"] for t in ft.FORMS_TOOLS]
-    assert len(names) == 13 and len(set(names)) == 13
+    assert len(names) == 15 and len(set(names)) == 15      # 13 + form_logic, form_link (v0.999.187 FORMS COMPLETE)
     for n in NEW:
         assert n in names and n in ft.FORMS_HANDLERS and n in ft.FORMS_LABELS
     assert set(ft.FORMS_HANDLERS) == set(names) and set(ft.FORMS_LABELS) == set(names)
@@ -64,8 +66,8 @@ def test_schemas_carry_the_new_surface():
     # question types grew
     assert set(NEW_TYPES) <= set(spec["form_create"]["input_schema"]["properties"]["questions"]["items"]["properties"]["type"]["enum"])
     q = spec["form_create"]["input_schema"]["properties"]["questions"]["items"]["properties"]
-    for k in ("rows", "columns", "max_files", "max_file_mb", "file_types", "folder_id",
-              "feedback", "feedback_right", "feedback_wrong", "duration"):
+    # v0.999.187: the upload fields left - Google's API cannot create a file-upload question
+    for k in ("rows", "columns", "feedback", "feedback_right", "feedback_wrong", "duration", "icon", "image"):
         assert k in q, f"QUESTION schema missing {k}"
     # form_move requires question + new_index
     assert set(spec["form_move"]["input_schema"]["required"]) == {"form", "question", "new_index"}
@@ -88,22 +90,22 @@ def test_run_pending_dispatches_delete_form():
 
 
 def test_item_shapes_for_new_types():
-    """page -> pageBreakItem, grid -> questionGroupItem with rows/columns, upload -> fileUploadQuestion,
-    feedback lands inside grading."""
+    """page -> pageBreakItem; grid -> questionGroupItem in Google's real shape (v0.999.187: questions = one
+    rowQuestion per row, grid.columns = a ChoiceQuestion); upload is refused (Google's API cannot create one);
+    feedback lands inside grading by Google's rules."""
     page = fs.item_for({"title": "Naya page", "type": "page", "description": "x"})
     assert "pageBreakItem" in page and page["description"] == "x"
     grid = fs.item_for({"title": "G", "type": "grid", "rows": ["r1", "r2"], "columns": ["c1", "c2"]})
-    g = grid["questionGroupItem"]["grid"]
-    assert [r["value"] for r in g["rows"]] == ["r1", "r2"] and "type" not in g
+    g = grid["questionGroupItem"]
+    assert [q["rowQuestion"]["title"] for q in g["questions"]] == ["r1", "r2"]
+    assert g["grid"]["columns"]["type"] == "RADIO"
     cb = fs.item_for({"title": "G", "type": "checkbox_grid", "rows": ["r"], "columns": ["c"]})
-    assert cb["questionGroupItem"]["grid"]["type"] == "CHECKBOX"
-    up = fs.item_for({"title": "U", "type": "upload", "max_files": 3, "max_file_mb": 8, "file_types": ["PDF"]})
-    fq = up["questionItem"]["question"]["fileUploadQuestion"]
-    assert fq == {"maxFiles": 3, "maxFileSizeMb": 8, "types": ["PDF"]}
+    assert cb["questionGroupItem"]["grid"]["columns"]["type"] == "CHECKBOX"
+    with pytest.raises(fs.FormError, match="file-upload"):
+        fs.item_for({"title": "U", "type": "upload", "max_files": 3})
     graded = fs.item_for({"title": "Q", "type": "choice", "options": ["a", "b"], "correct": "a",
-                          "feedback": "gen", "feedback_right": "right", "feedback_wrong": "wrong"})
+                          "feedback_right": "right", "feedback_wrong": "wrong"})
     grading = graded["questionItem"]["question"]["grading"]
-    assert grading["generalFeedback"] == {"text": "gen"} and grading["whenRight"] == {"text": "right"} \
-        and grading["whenWrong"] == {"text": "wrong"}
+    assert grading["whenRight"] == {"text": "right"} and grading["whenWrong"] == {"text": "wrong"}
     t = fs.item_for({"title": "T", "type": "time", "duration": True})
     assert t["questionItem"]["question"]["timeQuestion"] == {"duration": True}

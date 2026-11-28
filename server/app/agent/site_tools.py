@@ -104,15 +104,24 @@ SITE_TOOLS = [
         "AFTER LAUNCH: action=care (+ days) = visits, enquiries, uptime, SSL / domain dates, what to improve; action=github (+ "
         "repo, private) = card to put the code in HER GitHub (her tap pushes). AGENCY: action=assign* + client / staff (staff "
         "member id) = whose site it is and who may work on it (a staff member only touches sites given to them); "
-        "action=client_report + client. action=delete*. (* owner only)"),
+        "action=client_report + client. action=delete*. action=upgrade = where \"Upgrade this site\" (her HTML website in the new design engine) stands - read only, she starts / keeps / undoes it in the Web Studio. (* owner only)"),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "edit_lines", "write_file", "restore_version", "draft_new", "draft_list", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "catalog", "design_from", "design_use", "moves", "moves_ok", "compare_old", "animation", "stop", "resume",
+         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "edit_lines", "write_file", "rx_edit", "rx_undo", "upgrade", "restore_version", "draft_new", "draft_list", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "catalog", "design_from", "design_use", "moves", "moves_ok", "compare_old", "animation", "stop", "resume",
                                                "export", "launch", "domain", "dns_check", "email_dns", "rollback",
                                                "takedown", "domain_ideas", "domain_check", "domain_buy", "domain_kyc",
                                                "care", "github", "assign", "client_report", "delete"]},
          "site": {"type": "string", "description": "site number (S-0001) or name; empty = the latest"},
          "file": {"type": "string", "description": "edit_lines / write_file / code: a code file path from website_dekho what=search|code (pages/<page>/<section>.html|css|js or design/kit.css)"},
          "search": {"type": "string", "description": "edit_lines: the EXACT text in the file (must appear once; copy it from website_dekho)"},
+         "sec": {"type": "string", "description": "rx_edit (a React website): the section key, e.g. home:2 (from the site's section list)"},
+         "old": {"type": "string", "description": "rx_edit: the words now in that section (exactly as listed)"},
+         "new": {"type": "string", "description": "rx_edit: her new words"},
+         "variant": {"type": "string", "description": "rx_edit: another layout for that section (one it lists)"},
+         "tone": {"type": "string", "description": "rx_edit: another background: plain / surface / ink (primary for a call-to-action band)"},
+         "drop": {"type": "boolean", "description": "rx_edit: true = leave the section out, false = bring it back"},
+         "picture": {"type": "string", "description": "rx_edit: the place of a picture in that section, as listed (e.g. photo, items.0.photo, photos.2)"},
+         "photo_name": {"type": "string", "description": "rx_edit with picture: one of HER website's photos by name (as listed); empty = no picture there"},
+         "alt": {"type": "string", "description": "rx_edit with picture: what the picture shows (for blind visitors and Google)"},
          "replace": {"type": "string", "description": "edit_lines: the new text"},
          "code": {"type": "string", "description": "write_file: the whole new file"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
@@ -258,6 +267,28 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         try:
             return WP.restore(t, site, int(a.get("version") or 0))
         except WP.WapasError as e:
+            raise S.SiteError(str(e))
+    if action == "upgrade":                       # v0.999.119 D9: where "Upgrade this site" stands (read only)
+        from ..site import upgrade as UP
+        r = UP.site_of(t, site)
+        return {"upgrade": UP.view(r), "say": UP.summary(r) + " Starting it, keeping it, going back or throwing it away is "
+                "her tap in the Web Studio (Preview of this website); the chat never does it."}
+    if action in ("rx_edit", "rx_undo"):          # v0.999.76 D7: a React website changed exactly, by code (Rs 0)
+        from ..site import rxedit as RX
+        try:
+            if action == "rx_undo":
+                return RX.undo(t, site)
+            sec = str(a.get("sec") or "")
+            if a.get("picture"):                     # v0.999.130: her own photo there, none, or what it shows
+                path = [int(k) if k.isdigit() else k for k in str(a["picture"]).split(".") if k]
+                return RX.picture(t, site, sec, path, a.get("photo_name") if "photo_name" in a else None,
+                                  a.get("alt") if "alt" in a else None)
+            if a.get("new"):
+                return RX.words(t, site, sec, str(a.get("old") or ""), str(a.get("new") or ""))
+            drop = a.get("drop")
+            return RX.section(t, site, sec, str(a.get("variant") or ""), str(a.get("tone") or ""),
+                              None if drop is None else bool(drop))
+        except RX.EditError as e:
             raise S.SiteError(str(e))
     if action in ("edit_lines", "write_file"):    # v0.789 CHHOTA BADLAAV: exact search / replace, no AI rewrite
         from ..site import lineedit as LE

@@ -12,8 +12,9 @@ How, in code:
   set ask_before_pr.
 * Every change is checked BEFORE commit: path rules, size limits, secrets / personal data in the diff (refused, nothing pushed),
   secure-coding warnings on added lines (OWASP Top 10 2025) and DPDP hints, a fix without a test is said plainly.
-* Hoola never runs repo code on the Hoola server: tests run in HER CI; Hoola reads the result via the Checks + Statuses API and can
-  try a fix for a failed check (its log text = data).
+* Repo code runs on Hoola's server ONLY inside the locked box (devlab: no network unless the repo's level allows it, no
+  keys, read-only root, its own user) - the working copy engine's tests and commands; the checks that count run in HER CI,
+  read via the Checks + Statuses API, and Hoola can try a fix for a failed check (its log text = data).
 * Review of her / her team's PRs: diff from the API -> findings by code + the model's comments (only on lines in the diff) ->
   DRAFT review card; posted only on her tap (any event incl. APPROVE, her choice) or, if she set review_post=direct, as COMMENT
   only. Hoola never approves by itself.
@@ -28,7 +29,9 @@ from __future__ import annotations
 import json
 import logging
 import re
+import shutil
 import threading
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
@@ -720,8 +723,8 @@ def ws_files(tenant: str, ref: str, path: str = "") -> dict[str, Any]:
         raise DevError(str(e))
 
 
-def ws_rewind(tenant: str, ref: str, n: int) -> dict[str, Any]:
-    """Back to checkpoint n: the working copy and the conversation as they were then. GitHub is not touched; a PR
+def ws_rewind(tenant: str, ref: str, n: int, what: str = "both") -> dict[str, Any]:
+    """Back to checkpoint n, Claude Code's /rewind: what = both | code | conversation. GitHub is not touched; a PR
     already open keeps its commits until the next push."""
     from . import engine as EN
     with session() as s:
@@ -730,7 +733,9 @@ def ws_rewind(tenant: str, ref: str, n: int) -> dict[str, Any]:
             raise DevError("Hoola is working in this session right now - stop it first.")
         tid = t.id
     try:
-        cp = EN.rewind(tid, n)
+        if what not in ("both", "code", "conversation"):
+            raise DevError("Choose what goes back: both, code or conversation.")
+        cp = EN.rewind(tid, n, what)
     except ValueError as e:
         raise DevError(str(e))
     with session() as s:
@@ -739,12 +744,71 @@ def ws_rewind(tenant: str, ref: str, n: int) -> dict[str, Any]:
     # v0.945 the step where that checkpoint was saved: what came after it is undone (the phone dims it)
     since = next((int(x.get("n", -1)) for x in reversed(steps) if isinstance(x, dict) and x.get("k") == "ckpt"
                   and int(x.get("num", -1)) == int(cp["n"])), -1)
-    _Step(tid).event({"k": "rewind", "n": cp["n"], "from": since, "text": cp.get("label", "")[:80]})
+    _Step(tid).event({"k": "rewind", "n": cp["n"], "from": since if what != "code" else -1, "what": what,
+                      "text": cp.get("label", "")[:80]})
     with session() as s:
         row = s.get(DevTask, tid)
-        _log(row, f"rewound to checkpoint {cp['n']}")
+        _log(row, f"rewound {'' if what == 'both' else what + ' '}to checkpoint {cp['n']}")
         out = task_view(row, full=True)
     return out
+
+
+def ws_redo(tenant: str, ref: str) -> dict[str, Any]:
+    """v0.999 undo the last 'go back to a checkpoint' (OpenCode's staged revert), until her next message."""
+    from . import engine as EN
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        if t.id in _RUNNING:
+            raise DevError("Hoola is working in this session right now - stop it first.")
+        tid = t.id
+    try:
+        r = EN.redo(tid)
+    except ValueError as e:
+        raise DevError(str(e))
+    _Step(tid).event({"k": "redo", "n": r.get("n"), "what": r.get("what")})
+    with session() as s:
+        row = s.get(DevTask, tid)
+        _log(row, f"undid going back to checkpoint {r.get('n')}")
+        out = task_view(row, full=True)
+    return out
+
+
+def ws_worktrees(tenant: str, ref: str, wid: str = "", action: str = "list") -> dict[str, Any]:
+    """v0.999 the agents' own copies of one session (Claude Code's worktrees): list | show | apply | discard. Bringing one
+    in or throwing it away waits while Hoola works in the session (it would change the copy under it)."""
+    from . import engine as EN
+    from . import worktree as WT
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        tid, running = t.id, t.id in _RUNNING
+    if not EN.exists(tid):
+        return {"rows": []}
+    ses = EN.Session(tid)
+    try:
+        if action == "list":
+            return {"rows": WT.listing(ses)}
+        if action == "show":
+            return {"id": wid, "diff": WT.show(ses, wid, limit=200000)}
+        if action not in ("apply", "discard"):
+            raise DevError("Choose list, show, apply or discard.")
+        if running or tid in EN.LIVE:
+            raise DevError("Hoola is working in this session right now - stop it first, or let Hoola bring it in.")
+        if action == "apply":
+            r = WT.apply(None, ses, wid, _cfg(tenant).allow_workflows)
+            ev = {"k": "worktree", "id": wid, "state": "applied", "by_her": True, "files": r["files"][:40],
+                  "conflicts": r["conflicts"], "text": r["how"]}
+        else:
+            WT.discard(None, ses, wid)
+            r, ev = {"ok": True}, {"k": "worktree", "id": wid, "state": "discarded", "by_her": True}
+    except WT.WTError as e:
+        raise DevError(str(e)[:1].upper() + str(e)[1:] + ".")
+    _Step(tid).event(ev)
+    if action == "apply" and r.get("ok"):
+        ses.meta["pending_note"] = ((ses.meta.get("pending_note") or "") + f" She brought agent copy {wid}'s changes into the "
+                                    f"working copy ({', '.join(r['files'][:12])}). Read those files again before you edit them."
+                                    + (f" CONFLICT markers wait in {', '.join(r['conflicts'])}." if r["conflicts"] else "")).strip()
+        ses.save_meta()
+    return {**r, "rows": WT.listing(ses)}
 
 
 def _env_label(t: DevTask) -> dict[str, Any]:
@@ -817,8 +881,8 @@ def task_view(t: DevTask, full: bool = False) -> dict[str, Any]:
          "updated": _aware(t.updated_at).isoformat() if t.updated_at else "",
          "run_at": _RUN_AT.get(t.id, ""),
          "live": _live_text(t.id),
-         "now": _now_step(t.id),
-         "model_label": _model_label(t)}
+         "now": _now_step(t.id), "now_info": _now_more(t.id), "ask": _asking(t.id), "ctx": _ctx(t.id),
+         "model_label": _model_label(t), "srv_now": round(time.time(), 2)}
     v["risky_files"] = risky_files([f["path"] for f in v["files"]], ch)   # v0.943 files that change how tools / CI / agents run
     try:                                # G9: the card says what the facts back, never only the model's words
         from . import truth as TR
@@ -925,7 +989,7 @@ def made_restore(tenant: str, ref: str, mid: str, v: int) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------- Phase 3: the composer (mode, model, branch, attachments, cost)
-MODES = ("ask", "auto", "plan")
+MODES = ("ask", "auto", "plan", "steps")   # v0.999 steps = ask before each command / edit
 EFFORTS = ("low", "medium", "high")
 _IMG = ((b"\x89PNG\r\n\x1a\n", "image/png", "png"), (b"\xff\xd8\xff", "image/jpeg", "jpg"), (b"GIF8", "image/gif", "gif"))
 MAX_IMAGES, MAX_IMAGE_BYTES, MAX_DOCS, MAX_DOC_CHARS = 3, 3_000_000, 3, 12000
@@ -1245,7 +1309,40 @@ def live_state(tid: str) -> dict[str, Any]:
     """v0.962 what the live stream sends: the words being written, the step working now, the newest step number and
     whether a round runs. All in this process's memory - read ten times a second, no database."""
     return {"live": _live_text(tid), "now": _now_step(tid) if tid in _RUNNING else "", "n": STEP_N.get(tid, -1),
-            "running": tid in _RUNNING}
+            "running": tid in _RUNNING, **_now_more(tid), "ask": _asking(tid), "ctx": _ctx(tid)}
+
+
+def _ctx(tid: str) -> int:
+    """v0.999 the context meter: how full the conversation is, in percent of where it gets summarised (-1 = unknown)."""
+    try:
+        from . import engine as EN
+        c = EN.CTX.get(tid)
+        return max(0, min(100, round(100 * c["used"] / max(1, c["limit"])))) if c else -1
+    except Exception:
+        return -1
+
+
+def _asking(tid: str) -> dict[str, Any] | None:
+    """v0.999 the step waiting for her yes ('Ask each step'), or None."""
+    if tid not in _RUNNING:
+        return None
+    try:
+        from . import engine as EN
+        return EN.asking(tid)
+    except Exception:
+        return None
+
+
+def _now_more(tid: str) -> dict[str, Any]:
+    """v0.999 the running step's clock start, its tool and the last lines its command printed (her live terminal)."""
+    if tid not in _RUNNING:
+        return {"out": [], "t0": 0, "tool": ""}
+    try:
+        from . import engine as EN
+        return {"out": list(EN.LIVE_OUT.get(tid) or [])[-EN.LIVE_OUT_LINES:], "t0": round(float(EN.NOW_AT.get(tid) or 0), 2),
+                "tool": EN.NOW_TOOL.get(tid, "")}
+    except Exception:
+        return {"out": [], "t0": 0, "tool": ""}
 
 
 def live_delta(last: dict[str, Any], cur: dict[str, Any]) -> dict[str, Any]:
@@ -1258,7 +1355,7 @@ def live_delta(last: dict[str, Any], cur: dict[str, Any]) -> dict[str, Any]:
             ev["add"] = now_live[len(was):]
         else:
             ev["live"] = now_live
-    for k in ("now", "n", "running"):
+    for k in ("now", "n", "running", "out", "t0", "tool", "ask", "ctx"):
         if cur.get(k) != last.get(k):
             ev[k] = cur.get(k)
     return ev
@@ -1613,7 +1710,7 @@ def _prepare(tenant: str, t: DevTask, out: dict[str, Any], read: list[dict[str, 
         warnings += R.code_checks(added, path)
         changes.append({"path": path, "why": str(f.get("why") or "")[:200], "old_sha": old_sha, "new": new, "added": add,
                         "removed": rem, "diff": R.unified(path, old, new)[:20000]})
-    for k in ("pr_title", "pr_summary", "test_plan", "risk", "explain", "rules_followed"):
+    for k in ("pr_title", "pr_summary", "test_plan", "risk", "explain", "rules_followed", "assumptions"):
         if R.secrets_in(str(out.get(k) or "")):
             problems.append(f"{k} has text that looks like a secret")
     if len(changes) > cfg.max_files:
@@ -1626,14 +1723,31 @@ def _prepare(tenant: str, t: DevTask, out: dict[str, Any], read: list[dict[str, 
     return {"changes": changes, "problems": problems, "warnings": warnings}
 
 
+def _kr_review() -> str:
+    """v0.999 Karpathy's rules in Hoola's own review of its change (karpathy.py)."""
+    try:
+        from . import karpathy as KR
+        txt = KR.SELF_REVIEW_EXTRA if KR.on() else ""
+    except Exception:  # noqa: BLE001
+        txt = ""
+    try:                                                  # v0.999 Ponytail: a finding needs a concrete case
+        from . import ponytail as PT
+        txt += PT.REVIEW_EXTRA if PT.default_level() != "off" else ""
+    except Exception:  # noqa: BLE001
+        pass
+    return txt
+
+
 def _pr_body(t: DevTask, out: dict[str, Any], warnings: list[dict[str, Any]], issue: int) -> str:
-    lines = [f"**{KINDS.get(t.kind, t.kind)} · {t.number}*** (by Hoola Code, for review)", "",
+    lines = [f"**{KINDS.get(t.kind, t.kind)} · {t.number}** (by Hoola Code, for review)", "",
              str(out.get("pr_summary") or "").strip() or "-"]
     if out.get("cause"):
         lines += ["", f"**Root cause:** {str(out['cause']).strip()}"]
     if issue:
         lines += ["", f"Refs #{issue}"]
     lines += ["", "### Test plan", str(out.get("test_plan") or "- CI").strip(), "", "### Risk", str(out.get("risk") or "-").strip()]
+    if str(out.get("assumptions") or "").strip():         # v0.999 Karpathy rule 1: what Hoola assumed, for the reviewer
+        lines += ["", "### Assumptions", str(out["assumptions"]).strip()]
     pl = _j(t.plan or "", {}) or {}                 # v0.451 ECC PHASE 4: the approved plan, so a reviewer sees the target
     if pl.get("done_when") or pl.get("steps"):
         lines += ["", f"### Plan ({t.tier or 'standard'})", (str(pl.get("goal") or "")).strip() or "-"]
@@ -1652,8 +1766,11 @@ def _pr_body(t: DevTask, out: dict[str, Any], warnings: list[dict[str, Any]], is
         for w in warnings[:20]:
             tag = f"{w['owasp']} {w['owasp_name']}: " if w.get("owasp") else ""
             lines.append(f"- `{w.get('path', '')}` +{w.get('line', 0)}: {tag}{w['say']}")
-    lines += ["", "---", "_Not merged. Tests run in this repo's CI; nothing was executed on Hoola's server. Merge / deploy only on the "
-                      "owner's tap._"]
+    # v0.999.245 said true: since the working-copy engine (v0.787) Hoola runs the repo's tests and commands itself, inside
+    # a locked box on Hoola's server (no internet unless the repo allows it, no keys); it used to say nothing ran there
+    lines += ["", "---", "_Not merged. Any tests or commands Hoola ran for this change ran in a locked box on Hoola's server "
+                      "(no keys; no internet unless this repo allows it); the checks that count are this repo's CI. Merge / "
+                      "deploy only on the owner's tap._"]
     return "\n".join(lines)[:60000]
 
 
@@ -1748,6 +1865,8 @@ class _Step:
                 if row is None:
                     return
                 steps = _j(row.steps or "", [])
+                if ev.get("k") == "title" and str(ev.get("text") or "").strip():   # v0.999 a hook's sessionTitle names the session
+                    row.title = str(ev["text"]).strip()[:120]
                 last_n = max((int(x.get("n", -1)) for x in steps if isinstance(x, dict)), default=len(steps) - 1)
                 steps.append({**ev, "at": now().isoformat(), "n": int(last_n) + 1})   # v0.944 a stable number per step
                 row.steps = json.dumps(fold_steps(steps))
@@ -1931,7 +2050,12 @@ def archive(tenant: str, ref: str, on: bool = True) -> dict[str, Any]:
             raise DevError("Hoola is still working on this - stop it first.")
         t.archived_at = now() if on else None
         s.flush()
-        return task_view(t)
+        tid = t.id
+        out = task_view(t)
+    if on:                                                 # v0.999 the repo's SessionEnd hook (in the background)
+        from . import engine as _EN
+        threading.Thread(target=_EN.session_end_hook, args=(tid, tenant), daemon=True).start()
+    return out
 
 
 def delete_task(tenant: str, ref: str) -> dict[str, Any]:
@@ -1951,6 +2075,7 @@ def delete_task(tenant: str, ref: str) -> dict[str, Any]:
         import shutil
         shutil.rmtree(_attach_dir(tid), ignore_errors=True)      # the pictures she attached go with the session
         from . import engine as _EN
+        _EN.session_end_hook(tid, tenant)                         # v0.999 the repo's SessionEnd hook, before it goes
         _EN.forget(tid)                                           # v0.784 and its working copy
     except Exception:
         pass
@@ -2129,7 +2254,7 @@ def start_bg(tenant: str, kind: str, text: str, repo: str = "", issue: int = 0, 
         raise DevError("Describe the change, or paste the error.")
     mode = (mode or "").strip().lower()
     if mode and mode not in MODES:
-        raise DevError("mode = ask | auto | plan")
+        raise DevError("mode = ask | auto | plan | steps")
     effort = (effort or "").strip().lower()
     if effort and effort not in EFFORTS:
         raise DevError("effort = low | medium | high")
@@ -2449,7 +2574,7 @@ def _work(tenant: str, tid: str, g: Gh, extra_files: list[str], warn: str, ask_p
         row.hash = R.card_hash(row.id, row.repo, row.branch, base_sha, *[c["path"] + c["new"] for c in prep["changes"]])
         # Phase 3: 'ask' = this session waits for her PR tap, 'auto' = it does not (a PUBLIC repo always asks), no mode = her setting
         # v0.946 work that is not finished never goes out by itself: it waits for her look, with the reason
-        if unfinished or public or ask_pr or (t.mode or "") == "ask" or ((t.mode or "") != "auto" and cfg.ask_before_pr):
+        if unfinished or public or ask_pr or (t.mode or "") in ("ask", "steps") or ((t.mode or "") != "auto" and cfg.ask_before_pr):
             row.status = "ready"
             _log(row, "not finished: waiting for her" if unfinished else "waiting for your approval to open the PR")
             s.flush()
@@ -3621,7 +3746,7 @@ def _ready_or_self_review(tenant: str, t: DevTask, g: Gh, say: str) -> dict[str,
                    f"The task it must do: {t.text[:1500]}\n{str(t.pr_body or '')[:2000]}{acc}\n</pr>")
         _pass(t.id, "review", "start", "Hoola reads its own pull request")
         out = explore_review(g, t.repo, t.head_sha, pr_text, diff_parts, added_lines, cfg.rules,
-                             json.dumps(findings[:20], ensure_ascii=False) if findings else "", extra=SP.SELF_REVIEW)
+                             json.dumps(findings[:20], ensure_ascii=False) if findings else "", extra=SP.SELF_REVIEW + _kr_review())
     except Exception as e:  # noqa: BLE001 - the own review is extra: a PR is never stuck because it could not run
         log.info("devsahayak self review %s: %s", t.id, e)
         _pass(t.id, "review", "end", "could not run", ok=False)
@@ -3900,6 +4025,61 @@ def _plan_reminders(at: datetime) -> None:
                                   "Hoola starts as soon as you say so, or tell it what to change.")
 
 
+_IDLE_BUSY: set[str] = set()
+
+
+def _idle_compact(at: datetime | None = None) -> list[str]:
+    """Claude Code's idle compaction: a long session (dev_idle_compact_chars) whose conversation has not moved for
+    dev_idle_compact_after_s - just inside the 5-minute prompt cache - is summarised through its own cached request, once
+    per idle spell, in its own thread. Only on the Claude brain (the cache it relies on is Claude's)."""
+    from ..config import get_settings
+    from . import brain as B
+    from . import engine as EN
+    st = get_settings()
+    if not bool(getattr(st, "dev_idle_compact", True)) or B.brain_name() != "claude":
+        return []
+    after = int(getattr(st, "dev_idle_compact_after_s", 240) or 240)
+    root = EN.folder("x").parent
+    started = []
+    if not root.is_dir():
+        return []
+    for d in list(root.iterdir())[:2000]:
+        mp = d / "messages.json"
+        tid = d.name
+        try:
+            age = time.time() - mp.stat().st_mtime
+        except OSError:
+            continue
+        if not (after <= age <= after + 90) or tid in _IDLE_BUSY or tid in _RUNNING or tid in EN.LIVE:
+            continue
+        ses = EN.Session(tid)
+        if ses.meta.get("idle_at") == int(mp.stat().st_mtime):          # once per idle spell
+            continue
+        if mp.stat().st_size < int(getattr(st, "dev_idle_compact_chars", 800000) or 800000):
+            continue
+        ses.meta["idle_at"] = int(mp.stat().st_mtime)
+        ses.save_meta()
+        _IDLE_BUSY.add(tid)
+
+        def run(tid=tid):
+            try:
+                with session() as s:
+                    t = s.get(DevTask, tid)
+                    if t is None:
+                        return
+                    B.session(t)
+                    s.expunge(t)
+                if EN.idle_compact(tid):
+                    _Step(tid).event({"k": "compact", "text": "Summarised while idle, before the model's cache ran out - your next message starts light"})
+            except Exception:  # noqa: BLE001
+                log.debug("idle compaction of %s failed", tid, exc_info=True)
+            finally:
+                _IDLE_BUSY.discard(tid)
+        threading.Thread(target=run, name=f"dev-idle-{tid}", daemon=True).start()
+        started.append(tid)
+    return started
+
+
 def tick(at: datetime | None = None) -> None:
     """Every minute: open Hoola PRs' CI every 5 min (card when the result changes), running deploys every minute."""
     at = at or now()
@@ -3915,6 +4095,10 @@ def tick(at: datetime | None = None) -> None:
         _plan_reminders(at)
     except Exception:
         log.debug("plan reminders failed", exc_info=True)
+    try:
+        _idle_compact(at)                       # v0.999 long idle sessions summarised before their prompt cache expires
+    except Exception:
+        log.debug("idle compaction failed", exc_info=True)
     try:
         from . import around as AR
         AR.tick_schedules(at)                   # Phase 5: scheduled coding tasks that are due
@@ -3973,3 +4157,402 @@ def tick(at: datetime | None = None) -> None:
             _follow_deploy(a.tenant_id, a, gh(a.tenant_id))
         except (DevError, GhError) as e:
             log.info("devsahayak deploy follow %s: %s", a.id, e)
+
+
+# ---------------------------------------------------------------- v0.999 the rest of Claude Code's session controls
+INIT_WORDS = ("<her_command>/init</her_command>\nRead this repository and write its rules file for coding agents: "
+              "AGENTS.md at the root (if CLAUDE.md or AGENTS.md exists, improve that file instead and keep what is "
+              "there). Put in it: what the project is, how to install, build, run, test and lint it (the real commands "
+              "you checked), the layout (which folder holds what), the code style the repo really uses, and rules a "
+              "newcomer must not break. Short, accurate, no guesses - run the commands to check them. Change no other file.")
+
+
+def set_mode(tenant: str, ref: str, mode: str) -> dict[str, Any]:
+    """Her mode for this session (ask / auto / plan / steps). A running session takes it from its next step."""
+    mode = (mode or "").strip().lower()
+    if mode and mode not in MODES:
+        raise DevError("mode = ask | auto | plan | steps")
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        t.mode = mode or None
+        tid = t.id
+        s.flush()
+        out = task_view(t)
+    try:
+        from . import engine as EN
+        EN.PERM_MODE[tid] = mode
+    except Exception:
+        pass
+    return out
+
+
+def permit(tenant: str, ref: str, pid: str, answer: str, note: str = "") -> dict[str, Any]:
+    """Her answer to the step waiting for her: yes (once), always (this session: edits, or this command), no (+ words)."""
+    clean, _ = _clean_text(note or "")
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    from . import engine as EN
+    if not EN.give_ok(tid, str(pid or ""), str(answer or "").lower(), clean):
+        raise DevError("That step is not waiting any more.")
+    return {"ok": True}
+
+
+def terminal(tenant: str, ref: str) -> dict[str, Any]:
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    from . import engine as EN
+    return EN.terminal(tid)
+
+
+def stop_shell(tenant: str, ref: str, bid: str) -> dict[str, Any]:
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    from . import engine as EN
+    if not EN.stop_shell(tid, str(bid or "")):
+        raise DevError("No such background command.")
+    _Step(tid).event({"k": "bgkill", "id": str(bid), "by": "you"})
+    return EN.terminal(tid)
+
+
+def compact_now(tenant: str, ref: str, focus: str = "") -> dict[str, Any]:
+    """/compact: the session's conversation summarised now (her words kept whole), so the next message starts light."""
+    from . import engine as EN
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        if t.id in _RUNNING:
+            raise DevError("Hoola is working right now - compact after this round.")
+        tid = t.id
+    if not EN.exists(tid):
+        raise DevError("This session has no conversation to compact yet.")
+    ses = EN.Session(tid)
+    msgs = ses.messages()
+    if len(msgs) < 4:
+        raise DevError("The conversation is still short - nothing to compact.")
+    before = sum(len(json.dumps(m)) for m in msgs)
+    try:
+        if True:                                           # v0.999 the repo's PreCompact hook first
+            try:
+                from . import plugins as PL
+                from . import repoconf as RC
+                tl = EN.Tools(ses, False)
+                tl.plugins = PL.roots(tenant)
+                tl.conf, tl.tid = RC.settings(ses.repo, tl.plugins), tid
+                if RC.hooks_for(tl.conf, "PreCompact"):
+                    EN.run_hooks(tl, "PreCompact")
+            except Exception:  # noqa: BLE001
+                pass
+        new = EN.compact(msgs, focus=str(focus or "")[:600])
+    except Exception as e:  # noqa: BLE001
+        raise DevError(f"Could not summarise it now: {str(e)[:200]}")
+    ses.save_messages(new)
+    after = sum(len(json.dumps(m)) for m in new)
+    _Step(tid).event({"k": "compact", "text": f"Summarised on your word ({before // 1000}k -> {after // 1000}k characters)"})
+    with session() as s:
+        return task_view(s.get(DevTask, tid), full=True)
+
+
+def init_rules(tenant: str, ref: str) -> dict[str, Any]:
+    """/init: Hoola writes (or improves) the repo's AGENTS.md as the next round of this session."""
+    return in_background(tenant, ref, "revise", words=INIT_WORDS)
+
+
+def edit_message(tenant: str, ref: str, step: int, words: str) -> dict[str, Any]:
+    """Edit one of her earlier messages and ask again: the session goes back to the checkpoint just before that
+    message (files + conversation) and her new words go in its place. Her first message = a new session."""
+    clean, _ = _clean_text(words)
+    if not clean:
+        raise DevError("Write the new message.")
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        if t.id in _RUNNING:
+            raise DevError("Hoola is working right now - stop it first.")
+        steps = _j(t.steps or "", [])
+        tid, repo, kind, base = t.id, t.repo, t.kind, t.base
+        mode, model, effort, conv = t.mode or "", t.model or "", t.effort or "", t.conv or ""
+    if int(step) < 0:                                      # her first message: the work starts again, as a new session
+        return start_bg(tenant, kind, clean, repo=repo, base=base, mode=mode, model=model, effort=effort, conv=conv)
+    mine = next((x for x in steps if isinstance(x, dict) and int(x.get("n", -1)) == int(step)
+                 and x.get("k") == "note" and x.get("her")), None)
+    if mine is None:
+        raise DevError("That message is not one of yours in this session.")
+    cp = next((int(x.get("num", -1)) for x in reversed(steps) if isinstance(x, dict) and x.get("k") == "ckpt"
+               and int(x.get("n", -1)) < int(step)), -1)
+    if cp < 1:
+        raise DevError("There is no saved point before that message to go back to.")
+    ws_rewind(tenant, ref, cp)
+    return in_background(tenant, ref, "revise", words=clean)
+
+
+def fork(tenant: str, ref: str, checkpoint: int = 0) -> dict[str, Any]:
+    """A copy of this session to try another way: the same repo, the working copy and conversation as they are now
+    (or at a checkpoint), its own branch and pull request later. The original is not touched."""
+    from . import engine as EN
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        if t.id in _RUNNING:
+            raise DevError("Hoola is working right now - fork after this round.")
+        src = t
+        steps = _j(t.steps or "", [])
+        if checkpoint:
+            at = next((int(x.get("n", -1)) for x in steps if isinstance(x, dict) and x.get("k") == "ckpt"
+                       and int(x.get("num", -1)) == int(checkpoint)), None)
+            if at is None:
+                raise DevError("There is no such checkpoint.")
+            steps = [x for x in steps if isinstance(x, dict) and int(x.get("n", -1)) <= at]
+        number = _next_number(tenant)
+        new = DevTask(tenant_id=tenant, number=number, kind=src.kind, repo=src.repo, text=src.text, issue=src.issue,
+                      base=src.base, base_sha=src.base_sha, explain=src.explain, found=src.found, changes=src.changes,
+                      status="explained", conv=src.conv, mode=src.mode, model=src.model, effort=src.effort,
+                      attach=src.attach, refs=src.refs, env_id=src.env_id, tier=src.tier,
+                      title=("Fork of " + (src.title or src.pr_title or src.text[:60] or src.number))[:200],
+                      steps=json.dumps(steps + [{"k": "ws", "text": f"Forked from {src.number}"
+                                                 + (f" at checkpoint {checkpoint}" if checkpoint else ""),
+                                                 "at": now().isoformat(), "n": (max([int(x.get("n", -1)) for x in steps] or [-1]) + 1)}]))
+        _log(new, f"forked from {src.number}")
+        s.add(new)
+        s.flush()
+        nid, sid = new.id, src.id
+    if EN.exists(sid):
+        try:
+            shutil.copytree(EN.folder(sid), EN.folder(nid), symlinks=True)
+            ses = EN.Session(nid)
+            ses.tid = nid
+            ses.meta.pop("bg", None)                       # the original's background commands stay the original's
+            ses.meta.pop("pushed", None)
+            ses.save_meta()
+            if checkpoint:
+                ses.rewind(int(checkpoint))
+        except Exception as e:  # noqa: BLE001
+            log.warning("fork copy failed: %s", e)
+    with session() as s:
+        return task_view(s.get(DevTask, nid), full=True)
+
+
+def find_files(tenant: str, ref: str, q: str = "") -> dict[str, Any]:
+    """v0.999 the @ picker: files of the session's working copy whose name / path matches what she typed."""
+    from . import engine as EN
+    from . import repoconf as RC
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    if not EN.exists(tid):
+        return {"files": []}
+    ses = EN.Session(tid)
+    hid = set(ses.meta.get("hidden") or [])
+    return {"files": [p for p in RC.find_files(ses.walk(), q, 30) if p not in hid][:20]}
+
+
+def repo_commands(tenant: str, ref: str) -> dict[str, Any]:
+    """v0.999 the slash menu: this repo's own commands (.claude/commands) beside Hoola's."""
+    from . import engine as EN
+    from . import repoconf as RC
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    from . import plugins as PL
+    pls = PL.roots(tenant)
+    out = {"commands": [], "agents": [], "hooks": [], "rules": {"allow": 0, "ask": 0, "deny": 0}, "skills": [], "mcp": [],
+           "styles": [], "style": "default", "env": [], "mode": "", "plugins": PL.listing(tenant), "files": []}
+    if not EN.exists(tid):
+        return out
+    ses = EN.Session(tid)
+    repo = ses.repo
+    try:
+        out["commands"] = [{"name": k, "description": v["description"], "hint": v["hint"], "origin": v.get("origin", "repo")}
+                           for k, v in sorted(RC.commands(repo, pls).items())]
+        out["commands"] += [{"name": p["name"], "description": p.get("description") or "An MCP server's prompt",   # v0.999 MCP prompts
+                             "hint": " ".join(f"<{a}>" for a in p.get("args") or []), "origin": "mcp"}
+                            for p in ses.meta.get("mcp_prompts") or []]
+        out["agents"] = [{"name": k, "description": v["description"], "tools": v["tools"], "origin": v.get("origin", "repo"), "model": v.get("model", "")}
+                         for k, v in sorted(RC.agents(repo, pls).items())]
+        conf = RC.settings(repo, pls)
+        out["hooks"] = sorted(conf["hooks"])
+        out["rules"] = {k: len(conf[k]) for k in ("allow", "ask", "deny")}
+        out["env"], out["mode"] = sorted(conf["env"]), conf["mode"]
+        out["skills"] = [{"name": k, "description": v["description"], "origin": v["origin"]} for k, v in sorted(RC.skills(repo, pls).items())]
+        out["mcp"] = [{"name": k, "ok": v["ok"], "why": v["why"], "kind": v.get("kind", "http"),
+                       "program": " ".join(v.get("argv") or [])[:200]} for k, v in sorted(RC.mcp_servers(repo, pls).items())]
+        out["styles"] = [{"name": k, "description": v["description"], "origin": v["origin"]} for k, v in RC.styles(repo, pls).items()]
+        out["style"] = str(ses.meta.get("style") or conf.get("style") or "default")
+        from . import ponytail as PT
+        out["ponytail"] = PT.level(ses, conf)
+        from . import eccskills as EK                     # v0.999 ECC's skills that fit this repo
+        if EK.on():
+            out["skills"] += [{"name": "ecc:" + n, "description": EK.skills()[n]["description"], "origin": "ecc"}
+                              for n in EK.for_repo(repo, ses.walk())]
+        from . import superpowers as SPW                  # v0.999 Hoola Code's own skills, beside the repo's
+        if SPW.on():
+            out["skills"] += [{"name": "superpowers:" + k, "description": v["description"], "origin": "superpowers"}
+                              for k, v in SPW.skills().items()]
+        out["files"] = claude_paths(ses)
+    except Exception:  # noqa: BLE001
+        log.debug("repo setup read failed", exc_info=True)
+    return out
+
+
+# ---------------------------------------------------------------- v0.999 /export, the .claude files from the screen, the style
+CLAUDE_FILE = re.compile(r"^(?:CLAUDE\.md|CLAUDE\.local\.md|AGENTS\.md|\.mcp\.json|\.claude/settings(?:\.local)?\.json|"
+                         r"\.claude/(?:commands|agents|output-styles)/[\w.-]{1,60}\.md|\.claude/skills/[\w.-]{1,60}/SKILL\.md)$")
+
+
+def claude_paths(ses: Any) -> list[str]:
+    return sorted(p for p in ses.walk() if CLAUDE_FILE.match(p))[:200]
+
+
+def claude_file(tenant: str, ref: str, path: str) -> dict[str, Any]:
+    from . import engine as EN
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    path = str(path or "").strip().lstrip("/")
+    if not CLAUDE_FILE.match(path) or not EN.exists(tid):
+        raise DevError("Only this repo's Claude Code files can be opened here.")
+    f = EN.Session(tid).real(path)
+    return {"path": path, "text": f.read_text("utf-8", errors="replace")[:200000] if f is not None and f.is_file() else "", "exists": bool(f and f.is_file())}
+
+
+def claude_write(tenant: str, ref: str, path: str, text: str) -> dict[str, Any]:
+    """Her own change to a Claude Code file of the repo (a command, an agent, a skill, settings.json, CLAUDE.md...), made
+    from the screen like Claude Code's /agents /hooks /permissions: written in the session's working copy, so it rides in
+    this session's pull request like any change. settings.json / .mcp.json must be valid JSON. Empty text = delete."""
+    from . import engine as EN
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        if t.id in _RUNNING:
+            raise DevError("Hoola is working right now - change it after this round.")
+        tid = t.id
+    path = str(path or "").strip().lstrip("/")
+    if not CLAUDE_FILE.match(path):
+        raise DevError("Only this repo's Claude Code files can be changed here.")
+    if not EN.exists(tid):
+        raise DevError("This session has no working copy yet.")
+    text = str(text or "")
+    if len(text) > 200000:
+        raise DevError("That file is too long.")
+    if text.strip() and path.endswith(".json"):
+        try:
+            json.loads(text)
+        except ValueError as e:
+            raise DevError(f"That is not valid JSON: {e}")
+    if R.secrets_in(text):
+        raise DevError("That text has a key or a password in it - keep secrets out of the repo.")
+    ses = EN.Session(tid)
+    f = ses.repo / path
+    if f.is_symlink():
+        raise DevError("That file is a link - it is not changed.")
+    if not text.strip():
+        f.unlink(missing_ok=True)
+        what = "deleted"
+    else:
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(text if text.endswith("\n") else text + "\n", "utf-8")
+        what = "saved"
+    _Step(tid).event({"k": "claudefile", "path": path, "what": what, "by": "you"})
+    return {"ok": True, "path": path, "what": what, "files": claude_paths(ses)}
+
+
+def set_style(tenant: str, ref: str, style: str) -> dict[str, Any]:
+    """Her output style for this session (default / explanatory / learning / one of the repo's own)."""
+    from . import engine as EN
+    from . import plugins as PL
+    from . import repoconf as RC
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    if not EN.exists(tid):
+        raise DevError("This session has no working copy yet.")
+    ses = EN.Session(tid)
+    style = str(style or "default").strip().lower()
+    if style not in RC.styles(ses.repo, PL.roots(tenant)):
+        raise DevError("No such output style.")
+    ses.meta["style"] = style
+    ses.save_meta()
+    return {"ok": True, "style": style}
+
+
+def set_ponytail(tenant: str, ref: str, level: str) -> dict[str, Any]:
+    """v0.999 /ponytail [lite|full|ultra|off] for this session (ponytail.py)."""
+    from . import engine as EN
+    from . import plugins as PL
+    from . import ponytail as PT
+    from . import repoconf as RC
+    with session() as s:
+        tid = _find_task(s, tenant, ref).id
+    if not EN.exists(tid):
+        raise DevError("This session has no working copy yet.")
+    ses = EN.Session(tid)
+    try:
+        return PT.set_level(ses, RC.settings(ses.repo, PL.roots(tenant)), level)
+    except ValueError as e:
+        raise DevError(str(e)) from None
+
+
+def export(tenant: str, ref: str) -> dict[str, Any]:
+    """/export: the whole conversation as Markdown - her words, Hoola's words, every step in one line, the result."""
+    with session() as s:
+        t = _find_task(s, tenant, ref)
+        v = task_view(t, full=True)
+    lines = [f"# {v.get('title') or v.get('number')}", "",
+             f"Hoola Code session {v.get('number')} · {v.get('repo')} · {v.get('kind_label')} · {v.get('status_label')}", "",
+             "## You", "", str(t.text or ""), ""]
+    for x in v.get("steps") or []:
+        if not isinstance(x, dict):
+            continue
+        k = x.get("k")
+        if k == "say":
+            lines += ["## Hoola", "", str(x.get("text") or ""), ""]
+        elif k == "note" and x.get("her"):
+            lines += ["## You", "", str(x.get("text") or ""), ""]
+        elif k == "think":
+            continue
+        else:
+            one = (x.get("did") or x.get("text") or x.get("desc") or x.get("what") or x.get("q") or x.get("path") or x.get("cmd") or "")
+            lines.append(f"- {k}: {str(one)[:300]}")
+    if v.get("explain"):
+        lines += ["", "## Result", "", str(v["explain"])]
+    if v.get("pr_url"):
+        lines += ["", f"Pull request: {v['pr_url']}"]
+    name = re.sub(r"[^\w-]+", "-", str(v.get("title") or v.get("number") or "session")).strip("-")[:60] or "session"
+    return {"name": f"hoola-code-{name}.md", "text": "\n".join(lines) + "\n"}
+
+
+def plugins_list(tenant: str) -> dict[str, Any]:
+    from . import plugins as PL
+    return {"plugins": PL.listing(tenant)}
+
+
+def plugin_add(tenant: str, url: str) -> dict[str, Any]:
+    from . import plugins as PL
+    try:
+        return {"plugins": PL.add(tenant, url)}
+    except PL.PluginError as e:
+        raise DevError(str(e))
+
+
+def plugin_set(tenant: str, name: str, on: bool | None = None, remove: bool = False) -> dict[str, Any]:
+    from . import plugins as PL
+    try:
+        return {"plugins": PL.remove(tenant, name) if remove else PL.set_enabled(tenant, name, bool(on))}
+    except PL.PluginError as e:
+        raise DevError(str(e))
+
+
+def on_mention(tenant: str, full: str, f: dict[str, Any]) -> dict[str, Any]:
+    """v0.999 '@hoola <ask>' in HER comment on GitHub (Claude Code's @claude): on a pull request Hoola made, the ask is a
+    follow-up in that same session; on another pull request, a new session working from that PR's branch; on an issue,
+    a new session on that issue. Every run is an ordinary session: same checks, merging stays her tap."""
+    words = (f"{f.get('text', '')}\n\n(She asked this in a GitHub comment on {'pull request' if f.get('pr') else 'issue'} "
+             f"#{f.get('n')}{f.get('where', '')}: \"{str(f.get('title') or '')[:160]}\".)")
+    with session() as s:
+        own = s.scalars(select(DevTask).where(DevTask.tenant_id == tenant, DevTask.repo == full,
+                                              DevTask.pr_number == int(f.get("n") or 0)).order_by(DevTask.created_at.desc())).first() \
+            if f.get("pr") else None
+        tid = own.id if own is not None else ""
+    if tid:
+        if tid in _RUNNING:
+            return add_note(tenant, tid, words)
+        return in_background(tenant, tid, "revise", words=words)
+    if f.get("pr"):
+        base = ""
+        try:
+            base = str(((gh(tenant).pr(full, int(f["n"])) or {}).get("head") or {}).get("ref") or "")
+        except Exception:  # noqa: BLE001 - the branch could not be read: work from the default branch, said in the ask
+            base = ""
+        return start_bg(tenant, guess_kind(words), words, repo=full, base=base if base and not base.startswith("hoola/") else "")
+    return start_bg(tenant, guess_kind(words), words, repo=full, issue=int(f.get("n") or 0))

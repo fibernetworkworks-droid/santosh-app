@@ -188,7 +188,7 @@ def test_every_page_is_on_one_scale_and_lines_up(arena_server):  # noqa: F811
     # 1 home
     pg.goto(base + "/console/code")
     pg.wait_for_selector("#hcdLine")
-    assert pg.locator(".hcd-hero h1").text_content() == "Ready when you are" and pg.locator(".hcd-envcard").count() == 1   # v0.914 the approved home
+    assert pg.locator(".hcd-hero h1").text_content() == "What should we build today?" and pg.locator(".hcd-envcard").count() == 1   # v0.914 the approved home
     check(pg, "home", errs)
     # 2 a finished session
     pg.goto(base + "/console/code#/s/dt1")
@@ -277,8 +277,8 @@ def test_every_page_is_on_one_scale_and_lines_up(arena_server):  # noqa: F811
     ctx.close()
     ctx, pg, errs = page(reduce=True)
     pg.goto(base + "/console/code#/s/dt2")
-    pg.wait_for_selector(".hcd-pulse")
-    assert pg.evaluate("getComputedStyle(document.querySelector('.hcd-pulse')).animationName") == "none"
+    pg.wait_for_selector(".hcd-rs.now .hcd-rsd")
+    assert pg.evaluate("getComputedStyle(document.querySelector('.hcd-rs.now .hcd-rsd')).animationName") == "none"   # v0.999 the run timeline stays still under reduced motion
     assert pg.evaluate("getComputedStyle(document.querySelector('.hcd-btn')).transitionDuration") in ("0s", "")
     ctx.close()
 

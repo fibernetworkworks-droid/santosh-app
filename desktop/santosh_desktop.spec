@@ -89,3 +89,24 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
+
+# v0.999.121 ULTIMATE PC PLAN P9: on a Mac the same onefile program is wrapped as "Hoola Desktop.app" (build-desktop.yml
+# mac-linux job adds the agent-desktop helper inside Contents/MacOS and an ad-hoc signature). macOS asks her for Screen
+# Recording + Accessibility the first time; these strings say why. Windows and Linux builds are unchanged.
+import sys as _sys
+if _sys.platform == "darwin":
+    app = BUNDLE(
+        exe,
+        name="Hoola Desktop.app",
+        bundle_identifier="com.newtika.hoola.desktop",
+        info_plist={
+            "CFBundleShortVersionString": "1.10.0",
+            "NSHighResolutionCapable": True,
+            "LSUIElement": False,
+            "NSAppleEventsUsageDescription": "Hoola works the apps you ask it to on this Mac.",
+            "NSScreenCaptureUsageDescription": "Hoola sees the screen while it does a job you asked for.",
+            "NSDesktopFolderUsageDescription": "Hoola finds and sends files you ask for.",
+            "NSDocumentsFolderUsageDescription": "Hoola finds and sends files you ask for.",
+            "NSDownloadsFolderUsageDescription": "Hoola finds and sends files you ask for.",
+        },
+    )

@@ -170,11 +170,11 @@ def test_new_project_keeps_her_picks_and_shots_take_a_model():
 def test_console_picker_live_price_and_itemised_card():
     js, css = (CON / "studio.js").read_text(), (CON / "studio.css").read_text()
     for k in ('<div class="picker" id="picker" hidden></div>', "async function picker(ctx)", "function compareHTML()",
-              "'/api/studio/models'", "'/api/studio/price'", "data-pickmodel", "data-vres", "data-vaudio", "data-vtake",
+              "'/api/studio/models'", "'/api/studio/price'", "data-pickmodel", "seg('res', resOpts(m), VID.res)", "data-vaudio", "seg('takes', [1, 2, 3, 4], VID.takes)",
               "data-pmodel", "data-pres", "data-smodel", "data-dnewmodel", "Compare up to 3 models", "Hoola Auto",
               "You are never charged more than", "Yes, make it · ${inr(a.inr)}", "class=\"aprows\"", "money(rateAt(m, res) * s.duration)"):
         assert k in js, k
-    assert "id=\"vidPrev\"" in js and "newClip(true)" in js                      # the free preview stays one tap
-    for k in (".picker{", ".mcard{", ".mprice{", ".cmp{", ".pricebox{", ".aprows{"):
+    assert "async function newClip(preview, src)" in js                    # v0.999.43 the chat's straight-away path keeps it
+    for k in (".picker{", ".mcard{", ".mprice{", ".cmp{", ".aprows{"):
         assert k in css, k
     assert css.count("{") == css.count("}")

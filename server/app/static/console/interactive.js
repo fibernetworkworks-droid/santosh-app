@@ -1,640 +1,2849 @@
-/* v0.772 HOOLA INTERACTIVE - the whole product as its own full page with its own sidebar (owner: "GO - BUILD IT INTO
-   CONSOLE END TO END", after the approved twelve-page design).
+/* v0.999.170 HOOLA INTERACTIVE, REBUILT (owner: "GO BUILD" on the design canvas claude.ai/artifact/38Ejw9Eekn9y8u8H8nEwGp;
+   the build contract is docs/HOOLA_INTERACTIVE_REBUILD.md). Hoola Interactive now sits on the Create Studio / Hoola Vocal
+   frame: a 248 px sidebar with the real Hoola mark and four groups (Make, Faces and voices, Live, Assets) plus the
+   credits card, a 52 px top bar with the crumb "Interactive · <page>", and the Interactive chat as the home.
 
-   Twelve pages: Home, Avatars, Voices, Studio, Templates, Brand, Translate, Live, Apps, Projects, Developers, Settings.
-   What each one stands on is real: /api/interactive/studio/* (the film: draft -> scenes -> make) and
-   /api/interactive/hub/* (brand, glossary, templates, batch, names, translate, trash, brains, usage).
-   What is NOT connected on this server (twin, cloned voice, lip-matched dubbing of outside videos, the live stream,
-   the public API) is read from hub.status().connected and SAID on the page - no control pretends to work.
-   Her text is always shown with esc(); every number on a look is hers (the server blanks the rest). */
-window.HoolaInteractive = function ({api, esc, toast, upload, back}) {
-  const S = '/api/interactive/studio', H = '/api/interactive/hub';
-  let ROOT = null, PAGE = 'home', ARG = '', D = null, P = null, POLL = 0, SAVE_T = 0, DLG = '';
-  const UI = {tab: {}, tool: 'Look', scene: 0, list: false, slim: null, use: '', pick: '', tlang: ''};
+   What each page stands on is real:
+     /api/interactive/chat*            the Interactive chat (kind 'interactive'): she says it, Hoola plans a DRAFT
+     /api/interactive/studio/*         the film: draft -> scenes -> make (progress, stop, the video, her faces)
+     /api/interactive/hub/*            brand, glossary, templates, batch, names, translate, trash
+     /api/interactive/x/*              engines + defaults, voices (Vocal's), languages (140), the price card, B-roll,
+                                       live agents (ask, session pass, publish), app keys + webhooks
+   A paid face engine starts only with her tap on the exact price (quote key). An engine that is not connected says
+   which key it needs. Every dropdown is the console menu (HoolaMenu). Colours are console tokens (interactive2.css).
+   Her text is always esc()'d. No data-v attributes (the console's global [data-v] handler would take them). */
+'use strict';
+window.HoolaInteractive = function (ctx) {
+  const {api, esc, upload, back} = ctx;
+  const X = '/api/interactive/x', S = '/api/interactive/studio', H = '/api/interactive/hub', C0 = '/api/interactive';
+  let ROOT = null, PAGE = 'chat', ARG = '', D = null;
+  const store = {get: (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+    set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private window */ } }};
+  const scrub = t => String(t ?? '').replace(/\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_(?:API_)?(?:KEY|TOKEN|SECRET)\b/g, 'its key');
+  const toast = (m, bad) => ctx.toast(scrub(m), bad);
+  const SET = Object.assign({lang: 'auto', face: '', voice: '', engine: '', shape: 'talking_head', kind: 'presenter', len: 30}, store.get('hx.set', {}));
+  if (SET.lang === 'hi' && !store.get('hx.langv2', false)) { SET.lang = 'auto'; store.set('hx.langv2', true); store.set('hx.set', SET); }   // v0.999.172 the old India default becomes Auto
+  // v0.999.210 her starting choices live on her account too: every change goes to the server (quietly), so the computer and the phone start the same way
+  const PREFK = ['lang', 'voice', 'face', 'kind', 'len'];
+  let prefT = 0;
+  function persist() { store.set('hx.set', SET); clearTimeout(prefT); prefT = setTimeout(() => prefPush().catch(() => {}), 700); }
+  function prefPush(body) { return api('PUT', `/api/interactive/x/settings`, body || Object.fromEntries(PREFK.map(k => [k, SET[k]]))); }
+  function prefApply(p) {
+    if (!p) return;
+    if (!p.saved) { prefPush().catch(() => {}); return; }          // first time on the server: this browser's choices become hers
+    PREFK.forEach(k => { if (p[k] !== undefined) SET[k] = p[k]; }); SET.folder = p.folder || '';
+    SET.shape = SET.kind === 'reel' ? 'reel' : SET.kind === 'product' ? 'product' : 'talking_head'; store.set('hx.set', SET);
+  }
+  const C = {conv: '', title: '', rows: [], items: [], ask: '', files: [], sending: false, waitUntil: 0, t: 0, gen: 0};
+  const UI = {slim: store.get('hx.slim', false), nav: false, etab: 'video', ptab: 'Videos', scene: 0, tool: 'Scene', lf: 'all', lq: '', ls: store.get('hx.lsort', 'new'), lv: store.get('hx.lview', 'grid'), edv: 'video', edp: false, edt: 0, jp: {}, q: null, cmp: null, V: null, L: null,
+    live: '', liveOut: [], pub: null, broll: {prompt: '', seconds: 6, aspect: '16:9', q: null}, jobs: {},
+    me: '', credits: null, recent: [], est: null, ideaG: 'business', pv: {id: '', scene: 0, tab: 'sketch', play: false, t: 0}, audio: null};
   const URLS = new Map();
-  const PAGES = [['home', 'Home', 'home'], ['avatars', 'Avatars', 'user'], ['voices', 'Voices', 'mic'], ['studio', 'Studio', 'film'],
-    ['templates', 'Templates', 'grid'], ['brand', 'Brand', 'brand'], ['translate', 'Translate', 'globe'], ['live', 'Live', 'live'],
-    ['apps', 'Apps', 'apps'], ['projects', 'Projects', 'folder'], ['developers', 'Developers', 'code'], ['settings', 'Settings', 'gear']];
-  const KIND = {talking_head: 'Talking avatar', product: 'Product film', reel: 'Reel with captions'};
-  const LOOK = {none: 'Just the words', title: 'Big title', big_number: 'Big number', price: 'Price reveal', bar_chart: 'Bar chart', lower_third: 'Name strip'};
-  const PATHS = {
-    home: '<path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/>',
-    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/>',
-    mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
-    film: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/>',
-    grid: '<rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="5" rx="2"/><rect x="13" y="10" width="8" height="11" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/>',
-    brand: '<path d="M12 3a9 9 0 1 0 0 18c1.6 0 2-1 2-2s-1-1.5-1-2.5 1-1.5 2-1.5h2a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/><circle cx="8" cy="11" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16" cy="10" r="1"/>',
-    globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/>',
-    live: '<circle cx="12" cy="12" r="2.5"/><path d="M7.5 7.5a6.4 6.4 0 0 0 0 9M16.5 7.5a6.4 6.4 0 0 1 0 9M4.5 4.5a10.6 10.6 0 0 0 0 15M19.5 4.5a10.6 10.6 0 0 1 0 15"/>',
-    apps: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><path d="M17.5 14v7M14 17.5h7"/>',
-    folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
-    code: '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14"/>',
-    gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/>',
-    plus: '<path d="M12 5v14M5 12h14"/>', check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
-    play: '<path d="M8 5.5v13l11-6.5z"/>', side: '<rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M9 4.5v15"/>', warn: '<path d="M12 4l9 15.5H3zM12 10v4.5M12 17.2v.1"/>', left: '<path d="M14.5 6l-6 6 6 6"/>', right: '<path d="M9.5 6l6 6-6 6"/>',
-    rows: '<path d="M4 6.5h16M4 12h16M4 17.5h16"/>', clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', lang: '<path d="M4 6h9M8.5 4v2M6 6c.6 3.6 3 6.4 6 7.6M11.5 6c-.7 3.8-3.4 6.8-7 8M13 20l4-9 4 9M14.4 17h5.2"/>',
-    up: '<path d="M12 19V5M6 11l6-6 6 6"/>', down: '<path d="M12 5v14M6 13l6 6 6-6"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>', back: '<path d="M19 12H5M11 6l-6 6 6 6"/>'};
-  const ic = n => `<svg class="hi-i" viewBox="0 0 24 24" aria-hidden="true">${PATHS[n] || ''}</svg>`;
+  const q = encodeURIComponent;
   const $ = s => ROOT && ROOT.querySelector(s);
   const $$ = s => ROOT ? [...ROOT.querySelectorAll(s)] : [];
-  const q = encodeURIComponent;
+
+  const NAV = [['Make', [['chat', 'Interactive chat', 'chat'], ['studio', 'Studio', 'film'], ['templates', 'Templates', 'grid'], ['apps', 'Apps', 'apps']]],
+    ['Faces and voices', [['avatars', 'Avatars', 'user'], ['voices', 'Voices', 'mic']]],
+    ['Live', [['live', 'Live agents', 'live']]],
+    ['Assets', [['projects', 'Projects', 'folder'], ['brand', 'Brand', 'brand'], ['engines', 'Engines', 'bolt'], ['developers', 'Developers', 'code'], ['settings', 'Settings', 'gear']]]];
+  const TITLE = Object.fromEntries(NAV.flatMap(([, r]) => r.map(([k, n]) => [k, n])));
+  const SHAPE = {talking_head: 'Talking person', product: 'Product film', reel: 'Reel 9:16'};
+  const LOOK = {none: 'Just the words', title: 'Big title', big_number: 'Big number', price: 'Price reveal', bar_chart: 'Bar chart', lower_third: 'Name strip'};
+  const P = {
+    chat: '<path d="M4 5h16v11H9l-5 4z"/>', film: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/>',
+    grid: '<rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/>',
+    apps: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><path d="M17.5 14v7M14 17.5h7"/>',
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/>', mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+    live: '<circle cx="12" cy="12" r="2.5"/><path d="M7.5 7.5a6.4 6.4 0 0 0 0 9M16.5 7.5a6.4 6.4 0 0 1 0 9M4.5 4.5a10.6 10.6 0 0 0 0 15M19.5 4.5a10.6 10.6 0 0 1 0 15"/>',
+    folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    brand: '<path d="M12 3a9 9 0 1 0 0 18c1.6 0 2-1 2-2s-1-1.5-1-2.5 1-1.5 2-1.5h2a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/>',
+    bolt: '<path d="M13 3L5 13h6l-1 8 8-10h-6z"/>', code: '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>',
+    gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>', up: '<path d="M12 19V5M6 11l6-6 6 6"/>', down: '<path d="M6 9l6 6 6-6"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>',
+    back: '<path d="M19 12H5M11 6l-6 6 6 6"/>', side: '<rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M9 4.5v15"/>', menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+    play: '<path d="M8 5.5v13l11-6.5z"/>', stop: '<rect x="7" y="7" width="10" height="10" rx="1.5"/>', check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/>',
+    dl: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>', copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
+    trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13"/>', warn: '<path d="M12 4l9 15.5H3zM12 10v4.5M12 17.2v.1"/>', spark: '<path d="M12 3v6M12 15v6M3 12h6M15 12h6"/>',
+    dots: '<circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18.5" cy="12" r="1.3"/>', search: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+    sort: '<path d="M7 5v14M4 16l3 3 3-3M17 19V5M14 8l3-3 3 3"/>', rows: '<path d="M4 6h16M4 12h16M4 18h16"/>', doc: '<path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6"/>',
+    fwd: '<path d="M5 12h14M13 6l6 6-6 6"/>', dn: '<path d="M12 5v14M6 13l6 6 6-6"/>', vol: '<path d="M4 9.5v5h4l5 4v-13l-5 4zM16.5 9a4.5 4.5 0 0 1 0 6M19 6.5a8 8 0 0 1 0 11"/>'};
+  const ic = (n, s = 16) => `<svg class="hx-i" width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true">${P[n] || ''}</svg>`;
+  const markSvg = () => window.HoolaMark ? HoolaMark.svg() : '<img src="/static/hoola-mark.png" alt="" width="26" height="26">';
+  const num = n => (+n || 0).toLocaleString('en-IN');
+  const cr = n => `${num(n)} credit${+n === 1 ? '' : 's'}`;
+  const secs = s => { s = Math.round(+s || 0); return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`; };
   const ago = iso => { const t = Date.parse(iso || ''); if (!t) return ''; const m = Math.round((Date.now() - t) / 60000);
     return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
-  const secs = s => { s = Math.round(+s || 0); return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`; };
-  const clock = s => { s = Math.round(+s || 0); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
-  const mb = b => `${((+b || 0) / 1048576).toFixed(1)} MB`;
-  const langs = () => D?.status?.langs || {hi: 'Hindi'};
-  const con = () => D?.status?.connected || {};
-  const state = p => ({ready: ['ok', 'Ready'], making: ['pri', 'Making it'], failed: ['bad', 'Could not make it']}[p.status]
+  const strip = t => String(t || '').replace(/(?:\s*\[(?:Web console [^\]\n]*|Interactive settings:[^\]\n]*)\])+\s*$/, '');
+  const engine = id => (D?.engines?.engines || []).find(e => e.id === id);
+  const face = id => (D?.avatars || []).find(a => a.id === id);
+  const voiceName = id => { const v = UI.V && [...UI.V.mine, ...UI.V.library].find(x => x.id === id); return v ? v.name : (id ? 'Chosen voice' : 'Hoola picks'); };
+  const LN0 = {en: 'English', es: 'Spanish', fr: 'French', ar: 'Arabic', pt: 'Portuguese', de: 'German', ja: 'Japanese', ko: 'Korean', it: 'Italian', tr: 'Turkish', nl: 'Dutch', sw: 'Swahili', id: 'Indonesian', hi: 'Hindi', zh: 'Chinese (Mandarin)', auto: 'Auto'};
+  const langName = c => (UI.L || []).find(l => l.code === c)?.name || LN0[c] || c || 'Auto';
+  const defEngine = () => SET.engine || D?.engines?.defaults?.video || 'hoola';
+  const status = p => ({ready: ['ok', 'Ready'], making: ['work', 'Making it'], failed: ['bad', 'Could not make it']}[p.status]
     || ((p.scenes || []).some(s => s.needs) ? ['warn', 'Waiting for your numbers'] : ['', 'Draft']));
-  const chip = p => { const [c, t] = state(p); return `<span class="hi-chip ${c}">${t}</span>`; };
-  const estimate = p => (p.scenes || []).reduce((n, s) => n + Math.max(2, (s.say || '').split(/\s+/).filter(Boolean).length / 2.6) + .35, 0);
-  const tabs = (id, names) => { const on = UI.tab[id] || names[0];
-    return `<div class="hi-tabs" role="tablist">${names.map(n => `<button class="hi-tab" role="tab" aria-selected="${n === on}" data-a="tab" data-k="${id}" data-val="${esc(n)}">${esc(n)}</button>`).join('')}</div>`; };
-  const cur = (id, d) => UI.tab[id] || d;
-  const opts = (o, on) => Object.entries(o).map(([k, n]) => `<option value="${esc(k)}"${k === on ? ' selected' : ''}>${esc(n)}</option>`).join('');
-  const avOpts = on => `<option value="">Brand mark (no face)</option>${(D.avatars || []).map(a => `<option value="${esc(a.id)}"${a.id === on ? ' selected' : ''}>${esc(a.name)}</option>`).join('')}`;
-  const init = n => (String(n || '').trim() || 'H').slice(0, 2).toUpperCase();
-  const hex = c => /^#[0-9a-f]{6}$/i.test(c || '') ? c : '#7C5CFF';
-  const TINT = ['#7C5CFF', '#F27A52', '#C055F5', '#2DB8A8', '#E0A23A'];
-  const tint = id => TINT[[...String(id || '')].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) >>> 0, 7) % TINT.length];
-  const face = (a, cls = '') => `<span class="hi-face ${cls}">${a ? `<img data-av="${esc(a.id)}" alt="${esc(a.name)}">` : esc(init(D.brand?.name))}</span>`;
-  const pick = (id, label, inner, i) => `<label class="hi-pick">${i ? ic(i) : ''}<select id="${id}" aria-label="${label}">${inner}</select></label>`;
-  const thumb = (id, title, extra = '') => `<span class="hi-thumb" style="--t:${tint(id)}">${extra}<span class="cap">${esc(title)}</span></span>`;
-  const mini = s => { const k = s.look || {}, t = k.kind === 'title' ? k.text : k.kind === 'big_number' ? k.value : k.kind === 'price' ? k.new : k.kind === 'lower_third' ? k.title : '';
-    return `<span class="mini" aria-hidden="true">${k.kind === 'bar_chart' ? '<span class="mb"><u style="height:45%"></u><u style="height:70%"></u><u style="height:100%"></u></span>' : t ? `<b>${esc(t)}</b>` : '<span class="ml"><u></u><u></u></span>'}${s.needs ? '<i class="wn"></i>' : ''}</span>`; };
-  const blockBox = list => list?.length ? `<div class="hi-block" role="status">${ic('warn')}<div><b>Before Hoola can make it</b>${list.map(x => `<span>${esc(x)}</span>`).join('')}</div></div>` : '';
-  const engine = () => { const st = D.status || {};
-    return D.error ? ['bad', D.error, 'Not loaded'] : !st.draw ? ['bad', 'The video engine is not installed on this server yet', 'Engine missing']
-      : st.voice ? ['ok', `Video and voice engines are ready${st.busy ? ' - another video is being drawn' : ''}`, 'Engines ready'] : ['warn', 'Voice engine is not set up - videos are made with captions, no voice', 'Captions only']; };
-  const notYet = why => `<div class="hi-note warn"><b>Not connected on this server yet.</b> ${esc(why)}</div>`;
-  const head = (h, p, btn = '') => `<div class="hi-head"><div><h1>${h}</h1>${p ? `<p>${p}</p>` : ''}</div>${btn}</div>`;
-  const vidCard = p => `<button class="hi-av" data-a="open" data-id="${esc(p.id)}">${thumb(p.id, p.title, p.status === 'ready' ? `<span class="play">${ic('play')}</span>${p.video?.duration ? `<span class="len hi-num">${clock(p.video.duration)}</span>` : ''}` : `<span class="cnt hi-num">${(p.scenes || []).length} scene${(p.scenes || []).length === 1 ? '' : 's'}</span>`)}
-    <span class="hi-row nw" style="justify-content:space-between"><span class="hi-sm hi-mut">${esc(langs()[p.lang] || p.lang)} · ${esc(ago(p.updated || p.created))}</span>${chip(p)}</span></button>`;
+  const chip = p => { const [c, t] = status(p); return `<span class="hx-st ${c}">${t}</span>`; };
 
   async function blobUrl(path) {
     if (URLS.has(path)) return URLS.get(path);
     const r = await api('GET', path, undefined, {raw: true});
-    const u = URL.createObjectURL(await r.blob());
-    URLS.set(path, u);
-    return u;
+    const u = URL.createObjectURL(await r.blob()); URLS.set(path, u); return u;
   }
-  async function photos() {                           // avatar pictures need the key, so they come as blobs
-    for (const img of $$('img[data-av]')) {
-      const gone = () => img.isConnected && img.replaceWith(document.createTextNode(init(img.alt)));   // a picture that cannot be shown = her initials, never a broken image
-      img.onerror = gone;
-      try { img.src = await blobUrl(`${S}/photo?id=${q(img.dataset.av)}`); } catch { gone(); }
-    }
+  function fillMedia() {
+    $$('img[data-av]').forEach(async img => { try { img.src = await blobUrl(`${S}/photo?id=${q(img.dataset.av)}`); } catch { img.remove(); } });
+    $$('img[data-ci]').forEach(async img => { try { img.src = await blobUrl(`/api/create/items/${q(img.dataset.ci)}`); } catch { img.remove(); } });
+    $$('video[data-vid]').forEach(async v => { try { v.src = await blobUrl(`${S}/video?id=${q(v.dataset.vid)}`); } catch { /* not ready */ } });
+    $$('video[data-broll]').forEach(async v => { try { v.src = await blobUrl(`${X}/broll/file?id=${q(v.dataset.broll)}`); } catch { /* not ready */ } });
   }
+  const avImg = (a, cls = '') => a ? `<span class="hx-face ${cls}"><img data-av="${esc(a.id)}" alt=""><span>${esc((a.name || 'H').slice(0, 1).toUpperCase())}</span></span>`
+    : `<span class="hx-face ${cls} none">${ic('user', 18)}</span>`;
+
+  // ------------------------------------------------------------------ data ---
   async function load() {
-    try { D = await api('GET', `${H}/overview`); }
-    catch (e) { D = {projects: [], avatars: [], templates: [], glossary: [], trash: [], brains: [], brand: {}, usage: {}, status: {connected: {}}, error: e.message}; }
+    try { D = await api('GET', `${X}/home`); prefApply(D.prefs); }
+    catch (e) { D = D || {projects: [], avatars: [], engines: {engines: [], defaults: {}}, live: {agents: [], broll: [], faces: []}, apps: {keys: [], hooks: []}, usage: {}, templates: [], glossary: [], brand: {}, trash: []};
+      toast(e.message, true); }
   }
+  async function voicesLoad() { if (UI.V) return; try { UI.V = await api('GET', `${X}/voices`); } catch { UI.V = {mine: [], library: []}; } }
+  async function langsLoad() { if (UI.L) return; try { UI.L = (await api('GET', `${X}/langs`)).langs; } catch { UI.L = Object.entries(LN0).filter(([c]) => c !== 'auto').map(([code, name]) => ({code, name})); } }
 
   // ------------------------------------------------------------------ shell ---
+  function cssHref() { const s = document.querySelector('script[src*="/interactive.js"]')?.getAttribute('src') || ''; return `/static/console/interactive2.css${s.includes('?') ? s.slice(s.indexOf('?')) : ''}`; }
   function mount() {
     if (ROOT) { ROOT.hidden = false; return; }
-    ROOT = document.createElement('div');
-    ROOT.id = 'hiRoot';
-    ROOT.setAttribute('role', 'application');
-    ROOT.setAttribute('aria-label', 'Hoola Interactive');
-    ROOT.innerHTML = `<nav class="hi-rail" id="hiRail" aria-label="Hoola Interactive pages"></nav>
-      <div class="hi-main"><main class="hi-view" id="hiView"></main></div>`;
+    if (!document.querySelector('link[data-hx], link[href*="interactive2.css"]')) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = cssHref(); l.dataset.hx = '1'; document.head.appendChild(l); }
+    ROOT = document.createElement('div'); ROOT.id = 'hxRoot'; ROOT.className = 'hx'; ROOT.setAttribute('aria-label', 'Hoola Interactive');
+    ROOT.innerHTML = `<aside class="hx-side" id="hxSide" aria-label="Hoola Interactive pages"></aside><div class="hx-scrim" data-a="navoff" aria-hidden="true"></div>
+      <div class="hx-main"><header class="hx-top"><button type="button" class="hx-ib hx-menu" data-a="navon" aria-label="Open the menu">${ic('menu', 18)}</button>
+        <div class="hx-crumb" id="hxCrumb"></div><span class="hx-grow"></span><div class="hx-topr" id="hxTopR"></div></header><main class="hx-view" id="hxView"></main></div>`;
     document.body.appendChild(ROOT);
-    ROOT.addEventListener('click', onClick);
-    ROOT.addEventListener('input', onInput);
-    ROOT.addEventListener('change', onChange);
-    ROOT.addEventListener('submit', onSubmit);
+    ROOT.addEventListener('click', onClick); ROOT.addEventListener('input', onInput); ROOT.addEventListener('change', onChange);
+    ROOT.addEventListener('focusin', e => { const n = e.target.dataset?.sc; if (n != null && PAGE === 'studio' && +n !== UI.scene) { edStop(); UI.scene = +n; edPaint(); } });
+    ROOT.addEventListener('keydown', e => { if (e.target.id === 'hxAsk' && e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); chatSend(); }
+      if (e.key === 'Enter' && !e.isComposing && e.target.id === 'hxTryIn') { e.preventDefault(); lvAsk(); }
+      if (e.key === 'Enter' && !e.isComposing && e.target.id === 'hxLvSite') { e.preventDefault(); ROOT.querySelector('[data-a=lvsiteadd]')?.click(); }
+      if (e.key === 'Escape' && UI.dlg) { dlgClose(); return; }
+      if (e.key === 'Escape' && UI.nav) { UI.nav = false; side(); } });
   }
-  async function open() {
-    mount();
-    clearInterval(POLL);
-    await load();
-    if (D.running) return go('making', D.running);
-    go(PAGE === 'making' ? 'home' : PAGE, ARG);
+  async function open() { mount(); await load(); go(PAGE, ARG); voicesLoad().then(() => { if (PAGE === 'chat') refreshBar(); }); langsLoad().then(() => { if (PAGE === 'chat' && $('.hx-hero')) draw(); }); meLoad(); recentLoad(); estimate(); }
+  function leave() { clearTimeout(C.t); pvStop(); clearTimeout(UI.edt); UI.edp = false; UI.audio?.pause(); Object.values(UI.jobs).forEach(clearTimeout); UI.jobs = {}; window.HoolaMenu?.close(); if (ROOT) { ROOT.querySelectorAll('audio,video').forEach(m => m.pause?.()); ROOT.hidden = true; } }
+  function creditCard() {
+    const u = D?.usage || {};
+    return `<div class="hx-cred"><div class="r"><span>This month</span><b class="hx-num">${num(u.videos || 0)} video${u.videos === 1 ? '' : 's'}</b></div>
+      <span>${num(u.minutes || 0)} min made · the price shows before every paid video</span></div>`;
   }
-  function leave() { clearInterval(POLL); clearTimeout(SAVE_T); if (ROOT) ROOT.hidden = true; }
-  function rail() {
-    const on = {editor: 'studio', making: 'studio', video: 'projects', avatar: 'avatars', proof: 'translate'}[PAGE] || PAGE, [ec, et, es] = engine();
-    const slim = UI.slim ?? PAGE === 'editor';                       // the editor opens folded so the canvas has room; her own choice wins
-    ROOT.dataset.slim = slim ? 1 : 0;
-    $('#hiRail').innerHTML = `<div class="hi-rhead"><button class="hi-mark" data-a="go" data-p="home" title="Hoola Interactive home"><i>${ic('play')}</i><span>Hoola<small>Interactive</small></span></button>
-        <button class="hi-ib" data-a="slim" aria-label="${slim ? 'Open' : 'Fold'} the sidebar" title="${slim ? 'Open' : 'Fold'} the sidebar">${ic('side')}</button></div>
-      <button class="hi-new" data-a="go" data-p="home" aria-label="Create a video" title="Create a video">${ic('plus')}<span>Create video</span></button>` +
-      PAGES.map(([id, n, i], k) => `${k === 10 ? '<hr>' : ''}<button class="hi-rb" data-a="go" data-p="${id}" title="${n}"${id === on ? ' aria-current="page"' : ''}><span class="hi-tile">${ic(i)}</span><span class="hi-rl">${n}</span></button>`).join('') +
-      `<span class="hi-sp"></span><button class="hi-rs ${ec}" data-a="go" data-p="settings" data-arg="Engines" aria-label="${esc(et)}" title="${esc(et)}"><i></i><span class="hi-rl">${es}</span></button>
-       <button class="hi-rb" data-a="back" title="Back to the Hoola console"><span class="hi-tile">${ic('back')}</span><span class="hi-rl">Back to console</span></button>`;
+  function side() {
+    ROOT.classList.toggle('hx-slim', UI.slim); ROOT.classList.toggle('hx-navon', UI.nav);
+    const on = PAGE;
+    const row = ([id, n, i]) => `<button type="button" class="hx-nv" data-a="go" data-p="${id}"${UI.slim && !UI.nav ? ` title="${n}"` : ''}${id === on ? ' aria-current="page"' : ''}>${ic(i)}<span>${n}</span></button>`;
+    $('#hxSide').innerHTML = `<div class="hx-brand"><span class="hx-mark" aria-hidden="true">${markSvg()}</span><b>Hoola</b><span class="hx-badge">Interactive</span><span class="hx-grow"></span>
+        <button type="button" class="hx-ib" data-a="slim" aria-label="${UI.slim ? 'Open the sidebar' : 'Close the sidebar'}">${ic('side', 18)}</button></div>
+      <button type="button" class="hx-nv" data-a="back">${ic('back')}<span>Back to chat</span></button>
+      <button type="button" class="hx-newchat" data-a="newchat">${ic('plus')}<span>New video</span></button>
+      ${NAV.map(([g, rows]) => `<span class="hx-gh">${g}</span>${rows.map(row).join('')}`).join('')}
+      ${UI.recent?.length && !(UI.slim && !UI.nav) ? `<span class="hx-gh">Recent chats</span>${UI.recent.map(c => `<button type="button" class="hx-nv hx-rc" data-a="openchat" data-id="${esc(c.id)}"${PAGE === 'chat' && C.conv === c.id ? ' aria-current="true"' : ''}><span>${esc(c.title || 'Interactive chat')}</span></button>`).join('')}
+        <button type="button" class="hx-nv hx-rc dim" data-a="chats"><span>All chats</span></button>` : ''}
+      <span class="hx-grow"></span>${creditCard()}`;
   }
-  const flash = (cls, ms) => { const v = $('#hiView'); if (!v) return; v.classList.remove('hi-in', 'hi-tabin', 'hi-scin'); void v.offsetWidth; v.classList.add(cls);
-    clearTimeout(flash.t); flash.t = setTimeout(() => v.classList.remove(cls), ms); };
+  function crumb() {
+    const p = PAGE === 'apps' && ARG && appOf(ARG) ? ['Apps', appOf(ARG).name] : PAGE === 'templates' && ARG ? ['Templates', tplOf(ARG)?.name || 'Template'] : PAGE === 'studio' && ARG ? ['Studio', (D.projects || []).find(x => x.id === ARG)?.title || 'Video'] : PAGE === 'chat' ? [C.title && C.title !== 'Interactive chat' ? C.title : 'Interactive chat'] : [TITLE[PAGE] || ''];
+    $('#hxCrumb').innerHTML = `<span>Interactive ·${p.length > 1 ? ' ' + esc(p[0]) + ' ·' : ''}</span><h1 class="hx-h">${esc(p[p.length - 1])}</h1>`;
+    const t = $('#hxTopR');
+    t.innerHTML = PAGE === 'chat' ? `${UI.credits != null ? `<button type="button" class="hx-credp hx-num" data-a="credits" title="Your credits">${ic('spark', 14)}${num(UI.credits)} credits</button>` : ''}
+      <button type="button" class="hx-ib" data-a="chats" aria-label="Earlier chats" title="Earlier chats">${ic('clock', 18)}</button>
+      <button type="button" class="hx-ib" data-a="newchat" aria-label="New chat" title="New chat">${ic('plus', 18)}</button>`
+      : PAGE === 'studio' || PAGE === 'templates' || PAGE === 'apps' || PAGE === 'avatars' || PAGE === 'voices' || PAGE === 'live' || PAGE === 'projects' ? (UI.credits != null ? `<button type="button" class="hx-credp hx-num" data-a="credits" title="Your credits">${ic('spark', 14)}${num(UI.credits)} credits</button>` : '') : '';
+  }
   function go(page, arg) {
-    clearInterval(POLL); clearTimeout(SAVE_T);
-    PAGE = V[page] ? page : 'home'; ARG = arg || ''; DLG = '';
-    rail(); draw(); flash('hi-in', 900);                // the page rises in once; later redraws of the same page do not replay it
-    $('#hiView').scrollTop = 0;
+    window.HoolaMenu?.close();
+    clearTimeout(UI.edt); UI.edp = false; if (page !== 'studio' || arg !== ARG) UI.q = null;
+    clearTimeout(abT); tuStop(); if (UI.dlg && !(UI.dlg.k === 'sheet' && page === 'templates')) { UI.dlg = null; dlgPaint(); }
+    PAGE = V[page] ? page : 'chat'; ARG = arg || ''; UI.nav = false;
+    side(); crumb(); draw();
+    const v = $('#hxView'); v.scrollTop = 0; v.classList.remove('hx-enter'); void v.offsetWidth; v.classList.add('hx-enter');
+    ENTER[PAGE]?.();
   }
   function draw() {
-    const r = V[PAGE]();
-    if (typeof r === 'string') { $('#hiView').innerHTML = r + (DLG ? `<div class="hi-ov" id="hiOv">${DLG}</div>` : ''); photos(); }
-  }
-  const dialog = html => { DLG = `<div class="hi-dlg" role="dialog" aria-modal="true">${html}</div>`; draw(); $('#hiOv button, #hiOv input')?.focus(); };
-  const closeDlg = () => { DLG = ''; draw(); };
-  async function act(fn, done) {
-    try { const r = await fn(); await load(); if (done) done(r); else { rail(); draw(); } }
-    catch (e) { toast(e.message || 'That did not work.', true); }
+    const keep = $$('#hxView [data-keep]').map(e => [e.dataset.keep, e.scrollTop]);
+    $('#hxView').innerHTML = V[PAGE](); keep.forEach(([k, t]) => { const e = $(`#hxView [data-keep="${CSS.escape(k)}"]`); if (e) e.scrollTop = t; });
+    AFTER[PAGE]?.(); fillMedia();
   }
 
-  // ------------------------------------------------------------------ pages ---
-  const V = {
-    home() {
-      const mine = D.avatars[0], c = con(), u = D.usage || {}, [ec, et] = engine(), kept = u.kept_max || 40;
-      const step = (ok, n, t) => `<li class="hi-step ${ok ? 'done' : ''}"><span class="n">${ok ? ic('check') : n}</span>${t}</li>`;
-      return `<div class="hi-wrap"><section class="hi-hero"><span class="hi-eye"><i></i>Hoola Interactive</span><h1>What video should Hoola make?</h1>
-        <form class="hi-ask" data-f="draft"><label class="hi-sm hi-mut" for="hiLine">Describe the video in one line</label>
-          <textarea id="hiLine" rows="2" maxlength="1200" placeholder="e.g. A Diwali offer for my shop - Rs 40 off every cement bag till 10 November"></textarea>
-          <div class="hi-askrow">${pick('hiKind', 'Kind of video', opts(KIND, 'talking_head'), 'film')}${pick('hiLang', 'Language', opts(langs(), 'hi'), 'lang')}
-            ${pick('hiSecs', 'Length', [15, 30, 45, 60].map(s => `<option value="${s}"${s === 30 ? ' selected' : ''}>${s} seconds</option>`).join(''), 'clock')}${pick('hiAvSel', 'Avatar', avOpts(''), 'user')}
-            <span class="hi-fill"></span><button class="hi-btn lg" id="hiGo">Write the script ${ic('arrow')}</button></div></form>
-        <div class="hi-row"><span class="hi-sm hi-mut">Try</span>${['A festival offer for my shop', 'Tomorrow the shop is closed', 'Introduce my business in half a minute', 'Thank a customer by name']
-          .map(t => `<button type="button" class="hi-sel" data-a="eg" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div></section>
-        <div class="hi-strap ${ec}"><i></i><span class="hi-fill">${esc(et)}</span><button class="hi-link" data-a="go" data-p="settings" data-arg="Engines">See engines</button></div>
-        <section class="hi-grid"><h2>Start a different way</h2><div class="hi-grid hi-g3">${[
-          ['film', 'Build scene by scene', 'Open a draft: script on the left, your avatar on the canvas.', 'studio'], ['user', 'Create my avatar', 'A photo of you, or of a person who agreed.', 'avatars'],
-          ['grid', 'Start from a template', 'Offers, lessons, updates, greetings - you fill the words.', 'templates'], ['globe', 'Translate a video', 'The same video in another Indian language.', 'translate'],
-          ['apps', 'Batches and names', 'Many scripts at once, or one video for many people.', 'apps'], ['brand', 'Set my brand', 'Your name, closing line and colour on every video.', 'brand'],
-          ['mic', 'Voices', 'Hear the Hoola voice in each language.', 'voices'], ['live', 'Talk live', 'What a live avatar should know about your business.', 'live']]
-          .map(([i, t, d, g]) => `<button class="hi-flow" data-a="go" data-p="${g}"><span class="hi-ftop"><span class="ic">${ic(i)}</span><span class="arr">${ic('arrow')}</span></span><h3>${t}</h3><span class="hi-mut hi-sm">${d}</span></button>`).join('')}</div></section>
-        <section class="hi-cols"><div class="hi-card hi-grid"><div class="hi-sh"><h3>Your avatar</h3><button class="hi-btn q s" data-a="go" data-p="avatars">Open</button></div>
-            ${mine ? `<div class="hi-row nw"><span class="hi-dot">${face(mine)}</span><span><b>${esc(mine.name)}</b><br><span class="hi-sm hi-mut">Photo avatar · consent given ${esc(ago(mine.consent_at))}</span></span></div>`
-                   : `<p class="hi-mut">No avatar yet. Without one, videos show your brand mark.</p>`}
-            <ol class="hi-steps">${step(mine, 1, 'Photo with consent')}${step(c.voice, 2, `Hoola voice${c.voice ? '' : ' - engine not set up'}`)}${step(false, 3, 'Talking face - not connected yet')}</ol></div>
-          <div class="hi-card hi-grid"><div class="hi-sh"><h3>This month</h3><button class="hi-btn q s" data-a="go" data-p="settings">Usage</button></div>
-            <div class="hi-stats"><div class="hi-stat"><b>${u.videos || 0}</b><span class="hi-sm hi-mut">videos made</span></div><div class="hi-stat"><b>${u.minutes || 0}</b><span class="hi-sm hi-mut">minutes of video</span></div>
-              <div class="hi-stat"><b>${u.stored || 0} / ${kept}</b><span class="hi-sm hi-mut">kept on this server</span></div></div>
-            <div class="hi-bar"><i style="width:${Math.min(100, (u.stored || 0) / kept * 100)}%"></i></div>
-            <p class="hi-sm hi-mut">Counted from the videos on this server. There is no rupee meter yet.</p></div></section>
-        <section class="hi-grid"><div class="hi-sh"><h2>Recent</h2>${D.projects.length ? `<button class="hi-btn q s" data-a="go" data-p="projects">See all</button>` : ''}</div>
-          ${D.projects.length ? `<div class="hi-grid hi-g3">${D.projects.slice(0, 6).map(vidCard).join('')}</div>` : `<div class="hi-empty"><b>No videos yet</b>Write one line above and Hoola drafts the scenes.</div>`}</section></div>`;
-    },
+  // ------------------------------------------------------------------ the chat (v0.999.172: design claude.ai/artifact/5wm914F3jEgnNNfNr3rXPn) ---
+  // The home: the kind of video, one box with every pick and the price before anything is planned, start from something
+  // she has, ideas from around the world, her videos. The chat: her words, then a plan card (scene thumbnails, face,
+  // voice she can hear for free, language, engine, the itemised price, Make), and beside it a sketch / the script / the
+  // subtitles of that plan. Making is always her tap on the card's price.
+  const KINDS = [['presenter', 'Talking presenter', 'P', 'Describe your video, or paste a script. Any language.'],
+    ['explainer', 'Explainer', 'E', 'What should people understand after watching?'],
+    ['reel', 'Social reel', 'R', 'A short reel: what is new, and who is it for?'],
+    ['product', 'Product video', '$', 'Your product, its price, and why people love it.'],
+    ['lesson', 'Lesson', 'L', 'The topic, who is learning, and how long it should be.'],
+    ['translate', 'Translate a video', 'T', '']];
+  const KIND_NAME = Object.fromEntries(KINDS.map(k => [k[0], k[1]]));
+  const shapeOf = k => k === 'reel' ? 'reel' : k === 'product' ? 'product' : 'talking_head';
+  const aspectOf = k => k === 'reel' ? '9:16' : '16:9';
+  const LENS = [15, 30, 45, 60, 90];
+  const IDEA_G = {business: 'For a business', teach: 'Teaching', personal: 'Personal', nonprofit: 'Nonprofits'};
+  const IDEAS = {
+    business: [['Welcome new guests to my café in Lisbon, friendly, with English subtitles', 'pt', 'presenter'],
+      ['Spring sale: 20% off all plants until 30 April, as a 15-second reel', 'es', 'reel'],
+      ['Our clinic has new opening hours from Monday, 8 am to 6 pm', 'ar', 'presenter'],
+      ['Introduce my new skincare serum in 30 seconds, with its price', 'en', 'product']],
+    teach: [['Lesson 1 of my photography course: light and shadow, in 90 seconds', 'fr', 'lesson'],
+      ['Explain photosynthesis to 12-year-olds in three simple scenes', 'de', 'explainer'],
+      ['Welcome my new students and explain how the class works this term', 'ja', 'presenter'],
+      ['Turn my training notes into a short video for new staff', 'ko', 'lesson']],
+    personal: [['A birthday message for my grandmother, warm and short', 'it', 'presenter'],
+      ['Introduce myself for a job application in 45 seconds', 'en', 'presenter'],
+      ['Invite our friends to our wedding, with the date and the place', 'tr', 'reel'],
+      ['A thank-you video for my running club', 'nl', 'presenter']],
+    nonprofit: [['Thank our donors and show what their gifts paid for this year', 'sw', 'explainer'],
+      ['Ask volunteers to join our beach clean-up on Saturday', 'id', 'reel'],
+      ['Explain how to apply for our scholarship, step by step', 'hi', 'explainer'],
+      ['Our year in numbers, from the report I attach', 'pt', 'explainer']]};
+  const SUGGEST = ['Make it shorter', 'More energetic', 'Add a call to action at the end', 'Make a vertical version for social media', 'Use a calmer voice'];
+  const MORE_LANGS = ['en', 'es', 'fr', 'ar', 'zh', 'pt', 'hi', 'de', 'ja'];
+  const kindNow = () => KIND_NAME[SET.kind] && SET.kind !== 'translate' ? SET.kind : 'presenter';
+  const settingsNote = () => `[Interactive settings: kind ${kindNow()}; language ${SET.lang || 'auto'}; face ${SET.face || 'none'}; voice ${SET.voice || 'auto'}; engine ${defEngine()}; shape ${shapeOf(kindNow())}; length ${SET.len || 30} s]`;
+  const greet = () => { const h = new Date().getHours(); return (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + (UI.me ? `, ${UI.me}` : ''); };
+  const brandColor = () => /^#[0-9a-f]{6}$/i.test(D?.brand?.color || '') ? D.brand.color : '#2F4B5C';
+  const lenOf = p => p?.video?.duration || (p?.scenes || []).reduce((n, s) => n + Math.max(2, (s.say || '').split(/\s+/).filter(Boolean).length / 2.6) + .35, 0) + 1.2;
+  const clock = s => { s = Math.max(0, Math.round(+s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+  const lookText = lk => !lk ? '' : lk.kind === 'title' ? lk.text : lk.kind === 'big_number' ? `${lk.value || ''} ${lk.label || ''}` : lk.kind === 'price' ? `${lk.new || ''}${lk.old ? ' · was ' + lk.old : ''}`
+    : lk.kind === 'lower_third' ? `${lk.title || ''}${lk.sub ? ' · ' + lk.sub : ''}` : lk.kind === 'bar_chart' ? (lk.bars || []).map(b => `${b.label} ${b.value}`).join(' · ') : '';
+  const sceneTimes = p => { let t = 0; return (p.scenes || []).map(s => { const d = Math.max(2, (s.say || '').split(/\s+/).filter(Boolean).length / 2.6) + .35; const r = [t, t + d]; t += d; return r; }); };
 
-    avatars() {
-      const t = cur('av', 'My avatars'), c = con();
-      return `<div class="hi-wrap">${head('Avatars', 'A photo avatar appears beside your words in every scene. Every real face needs a yes.', `<button class="hi-btn" data-a="tab" data-k="av" data-val="New avatar">${ic('plus')}New avatar</button>`)}
-        ${tabs('av', ['My avatars', 'Hoola faces', 'New avatar'])}
-        ${t === 'My avatars' ? (D.avatars.length ? `<div class="hi-grid hi-g4">${D.avatars.map(a => `<button class="hi-av" data-a="go" data-p="avatar" data-arg="${esc(a.id)}">${face(a)}<span><b>${esc(a.name)}</b><br><span class="hi-sm hi-mut">${esc(langs()[a.lang] || a.lang)}</span></span>
-            <span class="hi-row" style="gap:6px"><span class="hi-chip pri">Photo</span><span class="hi-chip ok">Consent given</span></span></button>`).join('')}</div>`
-            : `<div class="hi-empty"><b>No avatars yet</b>Add a clear photo of a face looking at the camera.<button class="hi-btn" data-a="tab" data-k="av" data-val="New avatar">Add a photo avatar</button></div>`)
-        : t === 'Hoola faces' ? `<div class="hi-empty"><b>No Hoola faces on this server yet</b>Ready-made presenters are AI-made on the GPU lab, each with a record that says it is not a real person. None has been published here.</div>`
-        : `<div class="hi-cols"><form class="hi-card hi-grid" data-f="avatar"><h3>Photo avatar</h3>
-              <label class="hi-f">Name<input id="hiAvName" maxlength="40" required placeholder="e.g. Priya"></label>
-              <label class="hi-f">Photo (png, jpg or webp, face to camera)<input id="hiAvFile" type="file" accept="image/png,image/jpeg,image/webp" required></label>
-              <label class="hi-check"><input type="checkbox" id="hiAvOk" required><span>This is me, or the person in the photo agreed to be my avatar</span></label>
-              <button class="hi-btn hi-start" id="hiAvGo">Add avatar</button>
-              <p class="hi-sm hi-mut">Not accepted: anyone under 18, public figures, or a person who has not agreed.</p></form>
-            <div class="hi-grid"><div class="hi-card hi-grid"><h3>My twin</h3><p class="hi-mut">Record 30 to 60 seconds and read a consent line. The avatar looks and sounds like you.</p>${c.twin ? '' : notYet('It needs the face engine on the GPU, and a consent recording step that is not built.')}</div>
-              <div class="hi-card hi-grid"><h3>AI-made face</h3><p class="hi-mut">Describe a person who does not exist and choose from four.</p>${c.ai_face ? '' : notYet('Faces are made in the GPU lab today; the console cannot ask for one yet.')}</div></div></div>`}</div>`;
-    },
-
-    avatar() {
-      const a = D.avatars.find(x => x.id === ARG);
-      if (!a) return V.avatars();
-      const used = D.projects.filter(p => p.avatar_id === a.id).length, t = cur('avd', 'Look');
-      return `<div class="hi-wrap"><button class="hi-btn q s hi-start" data-a="go" data-p="avatars">${ic('left')}Avatars</button>
-        <div class="hi-cols"><div style="max-width:300px">${face(a)}</div><div class="hi-grid"><div class="hi-row"><h1>${esc(a.name)}</h1><span class="hi-chip pri">Photo avatar</span></div>
-          <p class="hi-mut">${esc(langs()[a.lang] || a.lang)} · used in ${used} video${used === 1 ? '' : 's'}</p>
-          <div class="hi-row"><button class="hi-btn" data-a="go" data-p="home">Use in a video</button><button class="hi-btn danger" data-a="rmav" data-id="${esc(a.id)}">Remove</button></div>
-          ${tabs('avd', ['Look', 'Voice', 'Consent'])}
-          ${t === 'Look' ? `<p class="hi-mut">One photo. It is shown beside your words; it does not move. A talking face that moves its lips is not connected on this server yet.</p>`
-          : t === 'Voice' ? `<p class="hi-mut">Videos with this avatar are spoken in the Hoola voice, in the language you choose for each video.${con().voice ? '' : ' The voice engine is not set up here, so videos are made with captions and no voice.'}</p><button class="hi-btn q hi-start" data-a="go" data-p="voices">Open Voices</button>`
-          : `<div class="hi-card hi-grid"><h3>Consent on record</h3><div class="hi-kv"><span class="hi-mut">Given</span><span>${esc((a.consent_at || '').replace('T', ' '))}</span></div><div class="hi-kv"><span class="hi-mut">By</span><span>You, when you added the photo</span></div>
-              <p class="hi-sm hi-mut">If the person in the photo asks for it to be removed, press Remove. Videos already made keep their copy.</p></div>`}</div></div></div>`;
-    },
-
-    voices() {
-      const c = con();
-      return `<div class="hi-wrap">${head('Voices', 'One Hoola voice, in every language your videos use.')}
-        ${c.voice ? '' : notYet('The voice engine is not set up, so videos are made with captions and no voice. "Hear it" will work once it is.')}
-        <div class="hi-card" style="padding:4px 20px">${Object.entries(langs()).map(([k, n]) => `<div class="hi-kv" style="align-items:center">
-          <span class="hi-row nw"><span class="hi-sn" style="width:36px;height:36px;border-radius:11px;background:var(--pri-soft);color:var(--pri-ink)">${ic('mic')}</span><span><b>${esc(n)}</b><br><span class="hi-sm hi-mut">Hoola voice</span></span></span>
-          <button class="hi-btn q s" data-a="hear" data-lang="${esc(k)}"${c.voice ? '' : ' disabled'}>Hear it</button></div>`).join('')}</div>
-        <div class="hi-cols"><div class="hi-card hi-grid"><h3>Clone my voice</h3><p class="hi-mut">One minute of your speech, with your recorded yes.</p>${notYet('Voice cloning runs on the GPU engine and its console step is not built.')}</div>
-          <div class="hi-card hi-grid"><h3>Words that must stay as written</h3><p class="hi-mut">Names of places, brands and products are kept when a video is translated.</p><button class="hi-btn q hi-start" data-a="go" data-p="brand" data-arg="Glossary">Open the glossary</button></div></div></div>`;
-    },
-
-    studio() {
-      const drafts = D.projects.filter(p => p.status !== 'ready');
-      return `<div class="hi-wrap">${head('Studio', 'Script on the left, your avatar on the canvas, tools on the right.', `<button class="hi-btn" data-a="go" data-p="home">${ic('plus')}New video</button>`)}
-        ${drafts.length ? `<div class="hi-grid hi-g3">${drafts.map(vidCard).join('')}</div>` : `<div class="hi-empty"><b>No drafts open</b>Start from one line on Home, or from a template.<div class="hi-row"><button class="hi-btn" data-a="go" data-p="home">Home</button><button class="hi-btn q" data-a="go" data-p="templates">Templates</button></div></div>`}</div>`;
-    },
-
-    editor() {
-      if (!P || P.id !== ARG) { loadProject(ARG); return `<div class="hi-wrap"><p class="hi-mut">Opening…</p></div>`; }
-      const p = P, i = Math.min(UI.scene, p.scenes.length - 1), sc = p.scenes[i] || {say: '', look: {kind: 'none'}}, lk = sc.look || {kind: 'none'};
-      const av = D.avatars.find(a => a.id === p.avatar_id), noVoice = !con().voice, tools = ['Look', 'Avatar', 'Voice', 'Video', 'Brand'];
-      const f = (k, label, ph) => `<label class="hi-f">${label}<input data-lk="${k}" value="${esc(lk[k] ?? '')}" placeholder="${esc(ph)}" maxlength="60"></label>`;
-      const lookFields = lk.kind === 'title' ? f('text', 'Title words', 'Diwali offer')
-        : lk.kind === 'big_number' ? f('value', 'The number', 'e.g. 500+') + f('label', 'What it is', 'happy customers')
-        : lk.kind === 'price' ? f('new', 'Price now', 'Rs 512') + f('old', 'Old price (optional)', 'Rs 640') + f('label', 'Label (optional)', 'per kg')
-        : lk.kind === 'lower_third' ? f('title', 'Main line', 'Station Road, Akola') + f('sub', 'Second line (optional)', 'Open 9 am to 9 pm')
-        : lk.kind === 'bar_chart' ? (lk.bars?.length ? lk.bars : [{label: '', value: ''}, {label: '', value: ''}]).map((b, j) =>
-            `<div class="hi-row nw"><label class="hi-f hi-fill">Bar ${j + 1}<input data-bar="${j}" data-bk="label" value="${esc(b.label || '')}" maxlength="16" placeholder="2025"></label>
-             <label class="hi-f hi-fill">Number<input data-bar="${j}" data-bk="value" value="${esc(b.value || '')}" inputmode="decimal" maxlength="16"></label></div>`).join('')
-            + ((lk.bars || []).length < 6 ? `<button type="button" class="hi-btn q s" data-a="addbar">Add a bar</button>` : '') : '';
-      const panel = {
-        Look: `<label class="hi-f">Scene ${i + 1} shows<select id="hiLook">${opts(LOOK, lk.kind)}</select></label>${lookFields}<p class="hi-sm hi-mut">Numbers come only from your own words. Hoola never fills one in.</p>`,
-        Avatar: `<div class="hi-row nw"><span class="hi-dot">${face(av)}</span><span><b>${esc(av ? av.name : 'Brand mark')}</b><br><span class="hi-sm hi-mut">${av ? 'Photo avatar' : 'No face'}</span></span></div>
-          <label class="hi-f">Avatar<select id="hiAv">${avOpts(p.avatar_id)}</select></label><button type="button" class="hi-btn q s" data-a="go" data-p="avatars">Add an avatar</button>`,
-        Voice: `<label class="hi-f">Language of the voice<select id="hiPLang">${opts(langs(), p.lang)}</select></label>
-          <label class="hi-check"><input type="checkbox" id="hiSilent"${noVoice ? ' checked disabled' : ''}><span>No voice, captions only</span></label>
-          ${noVoice ? `<p class="hi-sm hi-mut">The voice engine is not set up on this server, so this video is made with captions.</p>` : ''}`,
-        Video: `<label class="hi-f">Kind<select id="hiShape">${opts(KIND, p.shape)}</select></label>
-          ${p.shape !== 'reel' ? `<label class="hi-f">Size<select id="hiAspect">${opts({'16:9': 'Wide 16:9', '1:1': 'Square 1:1'}, p.aspect)}</select></label>` : `<p class="hi-sm hi-mut">A reel is always tall, 9:16.</p>`}`,
-        Brand: `<label class="hi-f">Business name<input id="hiBrand" value="${esc(p.brand || '')}" maxlength="40"></label>
-          <label class="hi-f">Closing card<input id="hiClose" value="${esc(p.closing || '')}" maxlength="80" placeholder="Order today"></label>
-          ${D.brand?.color ? `<div class="hi-row"><span class="hi-sw" style="background:${esc(D.brand.color)}"></span><span class="hi-sm hi-mut">Your brand colour is drawn into the film.</span></div>` : `<button type="button" class="hi-btn q s" data-a="go" data-p="brand">Set a brand colour</button>`}`}[UI.tool];
-      const shown = lk.kind === 'title' ? `<div class="big">${esc(lk.text || '')}</div>`
-        : lk.kind === 'big_number' ? (lk.value ? `<div class="big hi-num">${esc(lk.value)}</div><div>${esc(lk.label || '')}</div>` : `<div class="ph">Needs your number</div>`)
-        : lk.kind === 'price' ? (lk.new ? `${lk.old ? `<div class="old hi-num">${esc(lk.old)}</div>` : ''}<div class="big hi-num">${esc(lk.new)}</div><div>${esc(lk.label || '')}</div>` : `<div class="ph">Needs your price</div>`)
-        : lk.kind === 'lower_third' ? `<div style="font-weight:600;font-size:clamp(14px,2.2vw,24px)">${esc(lk.title || '')}</div><div style="color:var(--hi-stage-mut)">${esc(lk.sub || '')}</div>`
-        : lk.kind === 'bar_chart' ? (() => { const v = (lk.bars || []).map(b => parseFloat(String(b.value).replace(/,/g, '')) || 0), m = Math.max(...v, 1);
-            return v.some(Boolean) ? `<div class="bars" role="img" aria-label="Bar chart preview">${v.map(x => `<span style="height:${Math.max(6, x / m * 90)}px"></span>`).join('')}</div>` : `<div class="ph">Needs your numbers</div>`; })() : '';
-      const last = p.scenes.length - 1, size = p.aspect === '9:16' ? '9:16' : p.aspect === '1:1' ? '1:1' : '16:9';
-      return `<div class="hi-wrap wide"><div class="hi-edhead"><button class="hi-btn q ico" data-a="go" data-p="studio" aria-label="Back to Studio" title="Back to Studio">${ic('left')}</button>
-            <input id="hiTitle" class="hi-title" aria-label="Video title" value="${esc(p.title)}" maxlength="80"><span class="hi-saved" id="hiSaved">Saved</span>
-            <button class="hi-btn q" data-a="tpl">Save as template</button><button class="hi-btn" id="hiMake" data-a="gen"${p.problems?.length ? ' disabled' : ''}>${ic('play')}Generate</button></div>
-        <div id="hiProblems">${blockBox(p.problems)}</div>
-        <div class="hi-ed"><section class="hi-edcol" aria-label="Script"><h3>Script, scene by scene</h3>
-            ${p.scenes.map((s, n) => `<div class="hi-scene" data-on="${n === i ? 1 : 0}" data-a="scene" data-n="${n}"><div class="hd"><span class="hi-sn">${n + 1}</span><span class="hi-sm hi-mut hi-fill">Scene ${n + 1}</span>
-                <button type="button" class="hi-ib" data-a="mv" data-n="${n}" data-d="-1" aria-label="Move scene ${n + 1} up" title="Move up"${n ? '' : ' disabled'}>${ic('up')}</button>
-                <button type="button" class="hi-ib" data-a="mv" data-n="${n}" data-d="1" aria-label="Move scene ${n + 1} down" title="Move down"${n < last ? '' : ' disabled'}>${ic('down')}</button>
-                <button type="button" class="hi-ib" data-a="rm" data-n="${n}" aria-label="Remove scene ${n + 1}" title="Remove">${ic('x')}</button></div>
-              <textarea aria-label="Scene ${n + 1} line" data-say="${n}" maxlength="300" placeholder="What is said in this scene">${esc(s.say)}</textarea>
-              <div class="ft">${s.needs ? `<span class="hi-chip warn">${esc(s.needs)}</span>` : `<span class="hi-chip">${esc(LOOK[s.look?.kind] || LOOK.none)}</span>`}<span class="hi-sm hi-dim hi-num">about ${secs(estimate({scenes: [s]}))}</span></div></div>`).join('')}
-            ${p.scenes.length < 12 ? `<button type="button" class="hi-add" data-a="add">${ic('plus')}Add scene</button>` : ''}
-            ${p.shape === 'product' ? `<h3>Products</h3>${(p.items.length ? p.items : [{name: '', price: '', note: ''}]).map((it, j) => `<div class="hi-scene"><label class="hi-f">Product<input data-item="${j}" data-ik="name" value="${esc(it.name)}" maxlength="48"></label>
-              <label class="hi-f">Price<input data-item="${j}" data-ik="price" value="${esc(it.price)}" maxlength="24"></label></div>`).join('')}${p.items.length < 8 ? `<button type="button" class="hi-btn q s hi-start" data-a="additem">Add a product</button>` : ''}` : ''}</section>
-          <section class="hi-edcol" style="--hi-brand:${hex(D.brand?.color)}"><div class="hi-stage ${p.aspect === '9:16' ? 'tall' : p.aspect === '1:1' ? 'sq' : ''}"><span class="hi-stag hi-num">Scene ${i + 1} of ${p.scenes.length} · ${size}</span><div class="who">${face(av)}</div><div class="look" id="hiShown">${shown}</div><div class="sub" id="hiSub">${esc(sc.say)}</div></div>
-            <div class="hi-trans"><button type="button" class="hi-ib" data-a="scene" data-n="${i - 1}" aria-label="Previous scene"${i ? '' : ' disabled'}>${ic('left')}</button><span class="hi-num">${i + 1} / ${p.scenes.length}</span>
-              <button type="button" class="hi-ib" data-a="scene" data-n="${i + 1}" aria-label="Next scene"${i < last ? '' : ' disabled'}>${ic('right')}</button><span class="hi-fill"></span><span>About <span class="hi-num">${secs(estimate(p))}</span> long</span></div>
-            <div class="hi-strip">${p.scenes.map((s, n) => `<button type="button" class="hi-sc" data-on="${n === i ? 1 : 0}" data-a="scene" data-n="${n}">${mini(s)}<span class="lb"><b class="hi-num">${n + 1}</b><span class="hi-mut">${esc(LOOK[s.look?.kind] || LOOK.none)}</span></span></button>`).join('')}</div>
-            <p class="hi-sm hi-mut">This is a layout preview. The real scenes are checked and drawn when you generate.</p></section>
-          <aside class="hi-card hi-tools" aria-label="Tools"><div class="hi-tt">${tools.map(t => `<button type="button" aria-pressed="${t === UI.tool}" data-a="tool" data-t="${t}">${t}</button>`).join('')}</div><div class="hi-panel">${panel}</div></aside></div></div>`;
-    },
-
-    making() {
-      const p = D.projects.find(x => x.id === ARG) || {title: ''};
-      setTimeout(() => poll(ARG), 0);
-      return `<div class="hi-wrap narrow">${head('Hoola is making your video', esc(p.title), `<button class="hi-btn q" id="hiStop" data-a="stop">Stop</button>`)}
-        <div class="hi-card hi-grid"><div class="hi-row"><span class="hi-chip hi-now">Working</span><span id="hiClock" class="hi-mut hi-num" aria-live="polite">Starting…</span></div><ol class="hi-steps" id="hiStepsBox"></ol></div>
-        <p class="hi-note">One video is drawn at a time on the server, at low priority so calls never stutter. You can leave this page - the video keeps being made and waits for you under Projects.</p></div>`;
-    },
-
-    video() {
-      const p = D.projects.find(x => x.id === ARG);
-      if (!p || p.status !== 'ready') return V.projects();
-      const v = p.video || {}, tall = (v.aspect || p.aspect) === '9:16';
-      setTimeout(async () => { const path = `${S}/video?id=${q(p.id)}`;
-        try { const u = await blobUrl(path); const b = $('#hiPlayer'); if (b) b.innerHTML = `<video controls playsinline preload="metadata" src="${u}" aria-label="${esc(p.title)}"></video>`; }
-        catch (e) { const b = $('#hiPlayer'); if (b) b.textContent = e.message || 'The video file could not be loaded.'; } }, 0);
-      return `<div class="hi-wrap"><button class="hi-btn q s hi-start" data-a="go" data-p="projects">${ic('left')}Projects</button>
-        <div class="hi-cols"><div class="hi-player ${tall ? 'tall' : ''}" id="hiPlayer">Loading the video…</div>
-          <div class="hi-grid"><span class="hi-chip ok hi-start">Ready${v.made_s ? ' · made in ' + secs(v.made_s) : ''}</span><h1>${esc(p.title)}</h1>
-            <p class="hi-mut">${esc(KIND[p.shape])} · ${(p.scenes || []).length} scenes · ${v.silent ? 'captions, no voice' : 'spoken in ' + esc(langs()[p.lang] || p.lang)}</p>
-            <div class="hi-row" style="gap:8px"><button class="hi-btn" data-a="dl" data-id="${esc(p.id)}">${ic('down')}Download MP4</button><button class="hi-btn q" data-a="edit" data-id="${esc(p.id)}">Change something</button>
-              <button class="hi-btn q" data-a="go" data-p="translate" data-arg="${esc(p.id)}">Translate</button><button class="hi-btn q" data-a="dup" data-id="${esc(p.id)}">Duplicate</button>
-              <button class="hi-btn danger" data-a="trash" data-id="${esc(p.id)}">Move to trash</button></div>
-            <div><div class="hi-kv"><span class="hi-mut">Length</span><span class="hi-num">${v.duration ? secs(v.duration) : '-'}</span></div>
-              <div class="hi-kv"><span class="hi-mut">Size</span><span class="hi-num">${tall ? '1080 × 1920' : p.aspect === '1:1' ? '1080 × 1080' : '1920 × 1080'} · ${mb(v.size)}</span></div>
-              <div class="hi-kv"><span class="hi-mut">Captions</span><span>${v.silent ? 'timed at reading speed' : v.words_estimated ? 'timed by sentence' : 'on each spoken word'}</span></div>
-              <div class="hi-kv"><span class="hi-mut">Made</span><span>${esc(ago(v.made))}</span></div></div>
-            <p class="hi-note">To send it on WhatsApp or post it, download it - or ask Hoola in chat; sending always asks you first. A public share link is not built yet.</p></div></div></div>`;
-    },
-
-    templates() {
-      const groups = ['All', ...new Set(D.templates.map(t => t.group))], g = cur('tpg', 'All'), t = D.templates.find(x => x.id === UI.use);
-      const list = D.templates.filter(x => g === 'All' || x.group === g);
-      return `<div class="hi-wrap">${head('Templates', 'A shape that works. The marked words are the ones you fill in - Hoola never fills them for you.')}
-        ${t ? `<form class="hi-card hi-grid" data-f="use"><div class="hi-sh"><h3>${esc(t.name)}</h3><button type="button" class="hi-btn q s" data-a="use" data-id="">Close</button></div>
-            <div class="hi-cols">${t.variables.map(v => `<label class="hi-f">${esc(v.replace(/_/g, ' '))}<input data-var="${esc(v)}" maxlength="60" required></label>`).join('')}
-              <label class="hi-f">Language<select id="hiTLang">${opts(langs(), 'hi')}</select></label><label class="hi-f">Avatar<select id="hiTAv">${avOpts('')}</select></label></div>
-            <button class="hi-btn hi-start">Make the draft</button></form>` : ''}
-        <div class="hi-row">${groups.map(x => `<button class="hi-sel" aria-pressed="${x === g}" data-a="tab" data-k="tpg" data-val="${esc(x)}">${esc(x)}</button>`).join('')}</div>
-        <div class="hi-grid hi-g3">${list.map(x => `<div class="hi-av hov">${thumb(x.id, x.name, `<span class="cnt">${esc(x.mine ? 'Yours' : x.group || '')}</span>`)}<span class="hi-sm hi-mut">${x.count} scenes · ${esc(KIND[x.shape] || '')}</span>
-          <span class="hi-row" style="gap:6px">${x.variables.map(v => `<span class="hi-chip pri">{${esc(v)}}</span>`).join('') || '<span class="hi-chip">no blanks</span>'}</span>
-          <span class="hi-row" style="gap:6px"><button class="hi-btn s" data-a="use" data-id="${esc(x.id)}">Use this</button>${x.mine ? `<button class="hi-btn danger s" data-a="rmtpl" data-id="${esc(x.id)}">Remove</button>` : ''}</span></div>`).join('')}</div>
-        <p class="hi-sm hi-mut">To make your own: open any video in Studio, write {name} or {price} where the words change, and press Save as template.</p></div>`;
-    },
-
-    brand() {
-      if (ARG) { UI.tab.br = ARG; ARG = ''; }
-      const t = cur('br', 'Brand kit'), b = D.brand || {};
-      return `<div class="hi-wrap">${head('Brand', 'Set it once. Every new video starts with it.')}${tabs('br', ['Brand kit', 'Glossary'])}
-        ${t === 'Brand kit' ? `<div class="hi-cols"><form class="hi-card hi-grid" data-f="brand"><label class="hi-f">Business name<input id="hiBName" value="${esc(b.name || '')}" maxlength="40" placeholder="Sharma Traders"></label>
-              <label class="hi-f">Closing card<input id="hiBClose" value="${esc(b.closing || '')}" maxlength="80" placeholder="Station Road, Akola"></label>
-              <label class="hi-f">Brand colour<span class="hi-row nw"><input type="color" id="hiBColor" value="${esc(hex(b.color))}"><span class="hi-sm hi-mut">Drawn into titles, prices and charts.</span></span></label>
-              <button class="hi-btn hi-start">Save</button></form>
-            <div class="hi-card hi-grid"><h3>How it looks</h3><div class="hi-stage" style="--hi-brand:${hex(b.color)}"><div class="look" style="left:8%;right:8%;width:auto;top:30%;text-align:center"><div class="big">${esc(b.name || 'Your business')}</div><div style="color:var(--hi-stage-mut)">${esc(b.closing || 'Your closing line')}</div></div></div>
-              <p class="hi-sm hi-mut">Logo and fonts are not built yet: the film uses Hoola's bundled font so Hindi and Marathi always draw correctly.</p></div></div>`
-        : `<form class="hi-card hi-cols" data-f="gloss"><label class="hi-f">Word<input id="hiGTerm" maxlength="40" required placeholder="Akola"></label>
-              <label class="hi-f">Rule<select id="hiGMode"><option value="keep">Keep exactly as written</option><option value="as">Always translate as…</option></select></label>
-              <label class="hi-f">Becomes (for "translate as")<input id="hiGTo" maxlength="60" placeholder="sawlat"></label>
-              <label class="hi-f">In language<select id="hiGLang">${opts(langs(), 'mr')}</select></label><button class="hi-btn" style="align-self:end;justify-self:start">Add</button></form>
-            ${D.glossary.length ? `<div class="hi-card hi-scroll"><table><thead><tr><th>Word</th><th>Rule</th><th>Language</th><th></th></tr></thead><tbody>${D.glossary.map(x => `<tr><td><b>${esc(x.term)}</b></td>
-              <td>${x.mode === 'keep' ? 'Kept as written' : 'Becomes "' + esc(x.to) + '"'}</td><td>${x.mode === 'keep' ? 'All' : esc(langs()[x.lang] || x.lang)}</td><td><button class="hi-btn danger s" data-a="rmgl" data-id="${esc(x.id)}">Remove</button></td></tr>`).join('')}</tbody></table></div>`
-              : `<div class="hi-empty"><b>No words yet</b>Add your shop name, place names and product names so a translation never changes them.</div>`}
-            <p class="hi-sm hi-mut">Hoola checks every translated line against these rules and flags a line that breaks one. How a word is pronounced cannot be set yet.</p>`}</div>`;
-    },
-
-    translate() {
-      if (ARG) { UI.pick = ARG; ARG = ''; }
-      const src = D.projects.filter(p => !p.from), p = src.find(x => x.id === UI.pick) || null, done = D.projects.filter(x => x.from);
-      return `<div class="hi-wrap">${head('Translate', 'The same video in another Indian language. Hoola translates the lines; you check them; then it is made.')}
-        <div class="hi-cols"><div class="hi-card hi-grid"><h3>1. Choose a video</h3>${src.length ? `<label class="hi-f">Video<select id="hiTrPick"><option value="">Choose…</option>${src.map(x => `<option value="${esc(x.id)}"${x.id === UI.pick ? ' selected' : ''}>${esc(x.title)} (${esc(langs()[x.lang] || x.lang)})</option>`).join('')}</select></label>`
-              : `<p class="hi-mut">You have no videos yet. Make one on Home first.</p>`}
-            <h3>2. Translate into</h3><div class="hi-row">${Object.entries(langs()).filter(([k]) => !p || k !== p.lang).map(([k, n]) => `<button class="hi-sel" aria-pressed="${k === UI.tlang}" data-a="tlang" data-lang="${esc(k)}">${esc(n)}</button>`).join('')}</div>
-            <button class="hi-btn hi-start" id="hiTrGo" data-a="translate"${p && UI.tlang ? '' : ' disabled'}>Translate the lines</button>
-            <p class="hi-sm hi-mut">Every number, price and date must come through unchanged. A line where one changed is flagged for you.</p></div>
-          <div class="hi-card hi-grid"><h3>A video made somewhere else</h3><p class="hi-mut">Upload any video and get it back in another language with the lips matched.</p>${notYet('Lip-matched dubbing runs on the GPU engine and is not connected to the console.')}</div></div>
-        ${done.length ? `<section class="hi-grid"><h2>Translations</h2><div class="hi-grid hi-g3">${done.map(x => `<button class="hi-av" data-a="go" data-p="proof" data-arg="${esc(x.id)}">${thumb(x.id, x.title)}
-          <span class="hi-row nw" style="justify-content:space-between"><span class="hi-sm hi-mut">${esc(langs()[x.from_lang] || '')} to ${esc(langs()[x.lang] || x.lang)}</span>${(x.tr || []).some(n => n.flag) && x.status !== 'ready' ? '<span class="hi-chip warn">Lines to check</span>' : chip(x)}</span></button>`).join('')}</div></section>` : ''}</div>`;
-    },
-
-    proof() {
-      const p = D.projects.find(x => x.id === ARG);
-      if (!p) return V.translate();
-      const flags = (p.tr || []).filter(n => n.flag).length;
-      return `<div class="hi-wrap"><button class="hi-btn q s hi-start" data-a="go" data-p="translate">${ic('left')}Translate</button>
-        <div class="hi-sh"><div class="hi-row"><h1>${esc(p.title)}</h1><span class="hi-chip pri">${esc(langs()[p.from_lang] || '')} to ${esc(langs()[p.lang] || p.lang)}</span>${flags ? `<span class="hi-chip warn">${flags} line${flags === 1 ? '' : 's'} to check</span>` : '<span class="hi-chip ok">Numbers and glossary hold</span>'}</div>
-          <div class="hi-row"><button class="hi-btn q" data-a="proofsave" data-id="${esc(p.id)}">Save</button><button class="hi-btn" data-a="proofopen" data-id="${esc(p.id)}">Open in Studio</button></div></div>
-        <div class="hi-card hi-scroll"><table><thead><tr><th>#</th><th>Original</th><th>Translation, tap to edit</th><th>Check</th></tr></thead><tbody>${p.scenes.map((s, n) => `<tr><td class="hi-num hi-dim">${n + 1}</td><td class="hi-mut">${esc((p.tr || [])[n]?.src || '')}</td>
-          <td><textarea data-pf="${n}" aria-label="Translation of line ${n + 1}" rows="2" maxlength="300" class="hi-area" style="min-width:220px">${esc(s.say)}</textarea></td>
-          <td>${(p.tr || [])[n]?.flag ? `<span class="hi-chip warn">${esc(p.tr[n].flag)}</span>` : `<span class="hi-chip ok">OK</span>`}</td></tr>`).join('')}</tbody></table></div>
-        <p class="hi-sm hi-mut">The words on screen (titles, name strips) were translated too - check them in Studio. Nothing is made until you press Generate there.</p></div>`;
-    },
-
-    live() {
-      const b = D.brains.find(x => x.id === UI.brain) || {};
-      return `<div class="hi-wrap">${head('Live', 'An avatar that listens and answers from the facts you give it.')}
-        ${notYet('The live face runs on the GPU engine and was measured there, but the stream to a visitor\'s browser has not been tested end to end. You can write what it should know now; "Try it" and the website embed open when the stream is connected.')}
-        <div class="hi-cols"><form class="hi-card hi-grid" data-f="brain"><h3>${b.id ? 'Edit' : 'New'} brain</h3><input type="hidden" id="hiBrId" value="${esc(b.id || '')}">
-            <label class="hi-f">Name<input id="hiBrName" value="${esc(b.name || '')}" maxlength="40" required placeholder="Shop helper"></label>
-            <label class="hi-f">What it knows<textarea id="hiBrKnows" rows="5" maxlength="4000" required placeholder="Your timings, products, prices, address, delivery rules.">${esc(b.knows || '')}</textarea></label>
-            <label class="hi-f">First line it says<input id="hiBrOpen" value="${esc(b.opening || '')}" maxlength="160" placeholder="Hello! Welcome."></label>
-            <label class="hi-f">Pages it may read (one per line)<textarea id="hiBrLinks" rows="2">${esc((b.links || []).join('\n'))}</textarea></label>
-            <label class="hi-f">Language<select id="hiBrLang">${opts(langs(), b.lang || 'hi')}</select></label>
-            <div class="hi-row"><button class="hi-btn">Save</button>${b.id ? `<button type="button" class="hi-btn q" data-a="brain" data-id="">New</button>` : ''}</div>
-            <p class="hi-sm hi-mut">If a question is outside these facts, the avatar must say it does not know.</p></form>
-          <div class="hi-grid">${D.brains.length ? D.brains.map(x => `<div class="hi-card hi-grid"><div class="hi-sh"><h3>${esc(x.name)}</h3><span class="hi-chip">${esc(langs()[x.lang] || x.lang)}</span></div>
-              <p class="hi-mut hi-sm">${esc((x.knows || '').slice(0, 180))}${(x.knows || '').length > 180 ? '…' : ''}</p>
-              <div class="hi-row"><button class="hi-btn q s" data-a="brain" data-id="${esc(x.id)}">Edit</button><button class="hi-btn q s" disabled>Try it</button><button class="hi-btn danger s" data-a="rmbrain" data-id="${esc(x.id)}">Remove</button></div></div>`).join('')
-            : `<div class="hi-empty"><b>No brains yet</b>Write what a live avatar should know about your business.</div>`}</div></div></div>`;
-    },
-
-    apps() {
-      const t = cur('ap', ''), withName = D.projects.filter(p => JSON.stringify(p.scenes).includes('{name}'));
-      const card = (i, n, d, ok, a) => `<button class="hi-flow" ${ok ? a : 'disabled'}><span class="hi-ftop"><span class="ic">${ic(i)}</span>${ok ? '<span class="hi-chip ok">Ready</span>' : '<span class="hi-chip">Not connected yet</span>'}</span><h3>${n}</h3><span class="hi-mut hi-sm">${d}</span></button>`;
-      return `<div class="hi-wrap">${head('Apps', 'Small tools that each do one job.')}
-        ${t === 'Batch' ? `<form class="hi-card hi-grid" data-f="batch"><div class="hi-sh"><h3>Batch</h3><button type="button" class="hi-btn q s" data-a="tab" data-k="ap" data-val="">Close</button></div>
-            <label class="hi-f">Scripts - leave an empty line between two videos (up to ${D.limits?.batch || 20})<textarea id="hiBatch" rows="8" required placeholder="Today's cement rate is three hundred and eighty rupees.&#10;&#10;The shop is closed tomorrow."></textarea></label>
-            <div class="hi-row"><label class="hi-pick"><select id="hiBLang" aria-label="Language">${opts(langs(), 'hi')}</select></label><label class="hi-pick"><select id="hiBAv" aria-label="Avatar">${avOpts('')}</select></label><button class="hi-btn">Make the drafts</button></div>
-            <p class="hi-sm hi-mut">Each script becomes one draft, cut into scenes at sentence ends. Your words are not rewritten.</p></form>` : ''}
-        ${t === 'Names' ? `<form class="hi-card hi-grid" data-f="names"><div class="hi-sh"><h3>One video, many names</h3><button type="button" class="hi-btn q s" data-a="tab" data-k="ap" data-val="">Close</button></div>
-            ${withName.length ? `<label class="hi-f">Video that says {name}<select id="hiNPick">${withName.map(p => `<option value="${esc(p.id)}">${esc(p.title)}</option>`).join('')}</select></label>
-              <label class="hi-f">Names, one per line (up to ${D.limits?.batch || 20})<textarea id="hiNames" rows="6" required placeholder="Sunita&#10;Rahul"></textarea></label><button class="hi-btn hi-start">Make a draft for each</button>
-              <p class="hi-sm hi-mut">Only for people who agreed to hear from you. Nothing is sent from here.</p>`
-              : `<p class="hi-mut">First write {name} in a video's script where the person's name should be said. The "Thank-you to a customer" template has it.</p><button type="button" class="hi-btn q hi-start" data-a="go" data-p="templates">Open Templates</button>`}</form>` : ''}
-        <section class="hi-grid"><h2>Make a video</h2><div class="hi-grid hi-g3">
-          ${card('film', 'Quick video', 'One line in, scenes out.', true, 'data-a="go" data-p="home"')}${card('grid', 'From a template', 'Fill the blanks, get the draft.', true, 'data-a="go" data-p="templates"')}
-          ${card('apps', 'Batch', 'Many scripts at once, one draft each.', true, 'data-a="tab" data-k="ap" data-val="Batch"')}${card('user', 'One video, many names', 'Each person hears their own name.', true, 'data-a="tab" data-k="ap" data-val="Names"')}
-          ${card('globe', 'Translate', 'A video you made, in another language.', true, 'data-a="go" data-p="translate"')}${card('user', 'Talking photo', 'A photo whose lips move with the words.', false)}
-          ${card('grid', 'Slides to video', 'A deck or PDF, one scene per slide.', false)}${card('globe', 'Link to video', 'A web page becomes a script.', false)}
-          ${card('mic', 'Podcast', 'Two hosts talk through your topic.', false)}${card('film', 'Series', 'The same kind of video, on a schedule.', false)}</div></section>
-        <section class="hi-grid"><h2>Improve a video</h2><div class="hi-grid hi-g3">${card('film', 'Clips', 'A long recording becomes short clips.', false)}${card('mic', 'Speech cleanup', 'Removes "um" and long pauses.', false)}
-          ${card('live', 'Lip sync', 'New audio on a video you already have.', false)}${card('grid', 'Sharper picture', 'To 1080p and 4K.', false)}</div></section></div>`;
-    },
-
-    projects() {
-      const t = cur('pr', 'Videos');
-      const list = t === 'Videos' ? D.projects.filter(p => p.status === 'ready') : t === 'Drafts' ? D.projects.filter(p => p.status !== 'ready' && !p.from)
-        : t === 'Translations' ? D.projects.filter(p => p.from) : D.trash;
-      return `<div class="hi-wrap">${head('Projects', 'Everything you have made, in one place.', `<span class="hi-tabs" role="group" aria-label="View"><button class="hi-tab" aria-pressed="${!UI.list}" data-a="view" data-l="0" aria-label="Grid view" title="Grid">${ic('grid')}</button><button class="hi-tab" aria-pressed="${UI.list}" data-a="view" data-l="1" aria-label="List view" title="List">${ic('rows')}</button></span>`)}
-        ${tabs('pr', ['Videos', 'Drafts', 'Translations', 'Trash'])}
-        ${t === 'Trash' ? (list.length ? `<div class="hi-row"><span class="hi-mut hi-sm">Kept for ${D.limits?.trash_days || 30} days, then removed for good.</span><span class="hi-fill"></span><button class="hi-btn danger" data-a="emptytrash">Empty the trash</button></div>
-            <div class="hi-card hi-scroll"><table><thead><tr><th>Name</th><th>Deleted</th><th></th></tr></thead><tbody>${list.map(p => `<tr><td><b>${esc(p.title)}</b></td><td>${esc(ago(p.trashed))}</td><td><button class="hi-btn q s" data-a="restore" data-id="${esc(p.id)}">Restore</button></td></tr>`).join('')}</tbody></table></div>`
-            : `<div class="hi-empty"><b>Nothing in the trash</b>Deleted videos wait here for ${D.limits?.trash_days || 30} days.</div>`)
-        : !list.length ? `<div class="hi-empty"><b>Nothing here yet</b><button class="hi-btn" data-a="go" data-p="home">Make a video</button></div>`
-        : UI.list ? `<div class="hi-card hi-scroll"><table><thead><tr><th>Name</th><th>Language</th><th>Length</th><th>Changed</th><th>Status</th><th></th></tr></thead><tbody>${list.map(p => `<tr><td><button data-a="open" data-id="${esc(p.id)}" class="hi-link" style="color:var(--ink);font-size:14px;text-align:left">${esc(p.title)}</button></td>
-            <td>${esc(langs()[p.lang] || p.lang)}</td><td class="hi-num">${p.video?.duration ? clock(p.video.duration) : '-'}</td><td>${esc(ago(p.updated || p.created))}</td><td>${chip(p)}</td>
-            <td><span class="hi-row nw" style="gap:6px;justify-content:flex-end"><button class="hi-btn q s" data-a="dup" data-id="${esc(p.id)}">Duplicate</button><button class="hi-btn danger s" data-a="trash" data-id="${esc(p.id)}">Trash</button></span></td></tr>`).join('')}</tbody></table></div>`
-        : `<div class="hi-grid hi-g3">${list.map(vidCard).join('')}</div>`}</div>`;
-    },
-
-    developers() {
-      return `<div class="hi-wrap">${head('Developers', 'Make videos from your own software.')}
-        ${notYet('The public API, keys and webhooks are not open. Nothing below can be called yet; it is the shape they will have.')}
-        <div class="hi-cols"><div class="hi-card hi-grid"><h3>What it will do</h3><ol class="hi-steps"><li class="hi-step"><span class="n">1</span>Create a video from a script or a template</li><li class="hi-step"><span class="n">2</span>Ask for its status, or get a signed message when it is ready</li>
-            <li class="hi-step"><span class="n">3</span>Send the same request twice safely (one video, not two)</li></ol></div>
-          <div class="hi-card hi-grid"><h3>Planned request</h3><pre>POST /v1/interactive/videos
-Authorization: Bearer &lt;your key&gt;
-Idempotency-Key: diwali-offer-01
-
-{"type": "template", "template": "tp_offer",
- "language": "hi", "values": {"shop": "...", "price": "..."}}</pre></div></div>
-        <p class="hi-sm hi-mut">Until then, Hoola's chat can make videos for you: ask it there.</p></div>`;
-    },
-
-    settings() {
-      if (ARG) { UI.tab.se = ARG; ARG = ''; }
-      const t = cur('se', 'Usage'), u = D.usage || {}, st = D.status || {}, c = con();
-      const line = (ok, a, b) => `<li class="hi-step ${ok ? 'done' : 'off'}"><span class="n">${ok ? ic('check') : ic('x')}</span><span><b>${a}</b><br><span class="hi-sm hi-mut">${b}</span></span></li>`;
-      return `<div class="hi-wrap">${head('Settings', 'What you have used, which engines are connected, and the rules Hoola keeps.')}${tabs('se', ['Usage', 'Engines', 'Safety'])}
-        ${t === 'Usage' ? `<div class="hi-cols"><div class="hi-card hi-grid"><h3>This month (${esc(u.month || '')})</h3>
-              <div class="hi-kv"><span class="hi-mut">Videos made</span><b class="hi-num">${u.videos || 0}</b></div><div class="hi-kv"><span class="hi-mut">Minutes of video</span><b class="hi-num">${u.minutes || 0}</b></div>
-              ${(u.by_language || []).map(x => `<div class="hi-kv"><span class="hi-mut">${esc(x.lang)}</span><span class="hi-num">${x.minutes} min</span></div>`).join('')}
-              <div class="hi-grid" style="gap:8px;padding-top:10px"><div class="hi-row nw" style="justify-content:space-between"><span class="hi-mut">Videos kept on this server</span><b class="hi-num">${u.stored || 0} / ${u.kept_max || 40}</b></div><div class="hi-bar"><i style="width:${Math.min(100, (u.stored || 0) / (u.kept_max || 40) * 100)}%"></i></div></div>
-              <p class="hi-sm hi-mut">When the limit is reached, the oldest video file is removed. Download the ones you need.</p></div>
-            <div class="hi-card hi-scroll"><table><thead><tr><th>Made</th><th>Video</th><th>Length</th></tr></thead><tbody>${(u.recent || []).map(r => `<tr><td>${esc(ago(r.made))}</td><td>${esc(r.title)}</td><td class="hi-num">${clock(r.seconds)}</td></tr>`).join('') || '<tr><td colspan="3" class="hi-mut">No videos made this month.</td></tr>'}</tbody></table></div></div>`
-        : t === 'Engines' ? `<div class="hi-card"><ol class="hi-steps">${line(st.draw, 'Scene drawing', st.draw ? 'HyperFrames is installed.' : 'HyperFrames is not installed on this server.')}
-              ${line(c.voice, 'Voice', c.voice ? 'The voice engine answers.' : 'Not set up. Videos are made with captions, no voice.')}
-              ${line(st.whisper, 'Word timing', st.whisper ? 'Captions follow each spoken word.' : 'Not installed. Captions are timed by sentence.')}
-              ${line(c.twin, 'Talking face, twin, AI-made faces', 'Built in the GPU lab. Not connected to this page.')}${line(c.voice_clone, 'Voice cloning', 'Built in the GPU lab. Not connected to this page.')}
-              ${line(c.dub_outside_video, 'Lip-matched dubbing', 'Built in the GPU lab. Not connected to this page.')}${line(c.live_stream, 'Live stream', 'Measured on the GPU. The stream to a browser is not tested end to end.')}
-              ${line(c.api, 'Public API', 'Not open.')}</ol></div>`
-        : `<div class="hi-card"><ol class="hi-steps">${line(true, 'Every real face needs your yes', 'A photo avatar cannot be added without the consent tick. The date is kept.')}
-              ${line(true, 'Numbers come only from your words', 'A price or count Hoola wrote without you is removed and the video waits for you.')}
-              ${line(true, 'Translations are checked by code', 'A line where a number changed, or a glossary rule broke, is flagged.')}
-              ${line(true, 'Your photos and videos stay on this server', 'They are files in your own folder. Deleting a video moves it to the trash for 30 days.')}
-              ${line(false, 'AI mark inside the video file', 'Not built yet. Videos are not labelled as AI-made in the file.')}</ol></div>`}</div>`;
-    }
-  };
-
-  // ------------------------------------------------------------------ the editor ---
-  async function loadProject(pid) {
-    try { P = await api('GET', `${S}/project?id=${q(pid)}`); UI.scene = 0; if (PAGE === 'editor' && ARG === pid) draw(); }
-    catch (e) { toast(e.message, true); go('studio'); }
+  async function openChat(fresh) {
+    const gen = ++C.gen;
+    try { const c = await api(fresh ? 'POST' : 'GET', fresh ? `${C0}/chat/new` : `${C0}/chat`);
+      if (gen !== C.gen) return;                    // she started another chat meanwhile: that one wins
+      C.conv = c.id; C.title = c.title; }
+    catch (e) { toast(e.message, true); }
   }
-  function collect() {
-    const p = P; if (!p) return;
-    for (const t of $$('[data-say]')) if (p.scenes[+t.dataset.say]) p.scenes[+t.dataset.say].say = t.value;
-    const sc = p.scenes[Math.min(UI.scene, p.scenes.length - 1)];
-    if (sc) { sc.look = sc.look || {kind: 'none'};
-      for (const inp of $$('[data-lk]')) sc.look[inp.dataset.lk] = inp.value;
-      for (const inp of $$('[data-bar]')) { sc.look.bars = sc.look.bars?.length ? sc.look.bars : [{label: '', value: ''}, {label: '', value: ''}];
-        (sc.look.bars[+inp.dataset.bar] ||= {label: '', value: ''})[inp.dataset.bk] = inp.value; } }
-    for (const inp of $$('[data-item]')) (p.items[+inp.dataset.item] ||= {name: '', price: '', note: ''})[inp.dataset.ik] = inp.value;
-    const v = id => $(id)?.value;
-    p.title = v('#hiTitle') || p.title;
-    for (const [id, k] of [['#hiShape', 'shape'], ['#hiAspect', 'aspect'], ['#hiPLang', 'lang'], ['#hiAv', 'avatar_id'], ['#hiBrand', 'brand'], ['#hiClose', 'closing']]) if ($(id)) p[k] = v(id);
+  async function chatLoad() {
+    const conv = C.conv; if (!conv) return;
+    let rows, items;
+    try { rows = (await api('GET', `/api/conversations/${q(conv)}/messages?limit=200`)).messages || []; } catch { return; }
+    try { items = (await api('GET', `${C0}/chat/${q(conv)}/items`)).items || []; } catch { items = null; }
+    if (conv !== C.conv) return;                     // a slower load of the chat she just left never paints over this one
+    C.rows = rows; if (items) C.items = items;
   }
-  async function persist(redraw) {
-    if (!P) return;
-    collect();
-    const p = P, mark = $('#hiSaved'); if (mark) mark.textContent = 'Saving…';
-    try {
-      const out = await api('PUT', `${S}/project?id=${q(p.id)}`, {title: p.title, shape: p.shape, lang: p.lang, aspect: p.aspect, avatar_id: p.avatar_id,
-        brand: p.brand, closing: p.closing, scenes: p.scenes.map(s => ({say: s.say, look: s.look})), items: p.items});
-      if (P && P.id === out.id) { if (redraw) { P = out; draw(); } else { P.problems = out.problems; out.scenes.forEach((s, n) => { if (P.scenes[n]) P.scenes[n].needs = s.needs; }); syncProblems(); } }
-    } catch (e) { toast(e.message, true); if (mark) mark.textContent = 'Not saved'; }
+  async function recentLoad() { try { UI.recent = ((await api('GET', `${C0}/chats`)).chats || []).slice(0, 4); if (ROOT && !ROOT.hidden) side(); } catch { UI.recent = []; } }
+  async function meLoad() {
+    try { const m = await api('GET', '/api/console/me'); const o = String(m.owner || ''); UI.me = o && o !== 'Hoola user' ? o.split(' ')[0] : ''; } catch { UI.me = ''; }
+    try { const w = await api('GET', '/api/credits'); UI.credits = w && w.on && !w.exempt ? (w.unlocked ? w.paid_left : w.free_left) : null; } catch { UI.credits = null; }
+    if (PAGE === 'chat' && ROOT && !ROOT.hidden) { crumb(); if ($('.hx-hero')) { const h = $('#hxGreet'); if (h) h.textContent = `${greet()}. What should your video say?`; } }
   }
-  function syncProblems() {                       // after a quiet save: the block list + Generate button, without stealing focus
-    const box = $('#hiProblems'), mk = $('#hiMake'), mark = $('#hiSaved');
-    if (mark) mark.textContent = 'Saved';
-    if (box) box.innerHTML = blockBox(P.problems);
-    if (mk) mk.disabled = !!P.problems?.length;
+  let estT = 0;
+  function estimate() {
+    clearTimeout(estT);
+    estT = setTimeout(async () => {
+      try { UI.est = await api('GET', `${X}/estimate?engine=${q(defEngine())}&seconds=${SET.len || 30}&voice=${q(SET.voice || '')}`); }
+      catch { UI.est = null; }
+      const el = $('#hxEst'); if (el) el.textContent = UI.est ? `About ${cr(UI.est.credits)}` : '';
+    }, 250);
   }
-  const later = () => { clearTimeout(SAVE_T); const m = $('#hiSaved'); if (m) m.textContent = 'Editing…'; SAVE_T = setTimeout(() => persist(false), 700); };
-
-  async function poll(pid) {
-    clearInterval(POLL);
+  const fresh = () => !C.rows.some(r => r.role === 'user') && !C.items.length;
+  function chatPoll() {
+    clearTimeout(C.t);
     const tick = async () => {
-      let v; try { v = await api('GET', `${S}/progress?id=${q(pid)}`); } catch (e) { clearInterval(POLL); toast(e.message, true); return; }
-      if (PAGE !== 'making' || ARG !== pid) return clearInterval(POLL);
-      if (v.lost) { clearInterval(POLL); $('#hiClock').textContent = 'The server restarted while this was being made. Open the video and press Generate again - your script is kept.'; return; }
-      const box = $('#hiStepsBox');
-      if (box && v.steps?.length) box.innerHTML = v.steps.map(s => { const on = s.k === v.current && !v.done, did = s.at !== null && !on;
-        return `<li class="hi-step ${on ? 'on' : did ? 'done' : ''}"><span class="n">${did ? ic('check') : ''}</span><span><b>${esc(s.label)}</b>${s.detail ? `<br><span class="hi-sm hi-mut">${esc(s.detail)}</span>` : ''}</span><span class="t hi-num">${on ? 'now' : did ? secs(s.at) : ''}</span></li>`; }).join('');
-      $('#hiClock').textContent = v.done ? '' : `${secs(v.elapsed)} so far${v.stopping ? ' · stopping after this step' : ''}`;
-      if (v.done) {
-        clearInterval(POLL); await load(); P = null;
-        if (v.status === 'ready') return go('video', pid);
-        toast(v.status === 'stopped' ? 'Stopped. Nothing was kept - your script is still here.' : `Could not make it: ${v.error}`, v.status !== 'stopped');
-        go('editor', pid);
-      }
+      if (PAGE !== 'chat' || !ROOT || ROOT.hidden) return;
+      const n = C.rows.length, m = C.items.map(i => i.id + i.status + i.updated).join();
+      await chatLoad();
+      if (C.rows.length !== n || C.items.map(i => i.id + i.status + i.updated).join() !== m) { if ($('.hx-hero') && !fresh()) draw(); else paintChat(); }
+      const waiting = Date.now() < C.waitUntil && C.rows[C.rows.length - 1]?.role === 'user';
+      C.t = setTimeout(tick, waiting || C.items.some(i => i.status === 'making') ? 2000 : 8000);
     };
-    await tick();
-    POLL = setInterval(tick, 1500);
+    C.t = setTimeout(tick, 1500);
   }
-  const openProject = id => { const p = D.projects.find(x => x.id === id); if (!p) return;
-    go(p.status === 'ready' ? 'video' : p.status === 'making' ? 'making' : p.from && (p.tr || []).some(n => n.flag) ? 'proof' : 'editor', id); };
-
-  // ------------------------------------------------------------------ events ---
-  function onClick(ev) {
-    if (ev.target.id === 'hiOv') return closeDlg();
-    const b = ev.target.closest('[data-a]'); if (!b || b.disabled) return;
-    const d = b.dataset, id = d.id;
-    switch (d.a) {
-      case 'back': return back ? back() : leave();
-      case 'go': if (PAGE === 'editor') { clearTimeout(SAVE_T); persist(false); } return go(d.p, d.arg);
-      case 'tab': UI.tab[d.k] = d.val; draw(); return flash('hi-tabin', 400);
-      case 'slim': UI.slim = ROOT.dataset.slim !== '1'; return rail();
-      case 'view': UI.list = d.l === '1'; return draw();
-      case 'open': return openProject(id);
-      case 'edit': P = null; return go('editor', id);
-      case 'use': UI.use = id; return draw();
-      case 'tlang': UI.tlang = d.lang; return draw();
-      case 'brain': UI.brain = id; return draw();
-      case 'close': return closeDlg();
-      case 'scene': if (ev.target.closest('button[data-a="mv"],button[data-a="rm"]')) return; if (+d.n === UI.scene) return; collect(); UI.scene = +d.n; UI.tool = 'Look'; later(); draw(); return flash('hi-scin', 600);
-      case 'tool': collect(); UI.tool = d.t; draw(); return flash('hi-tabin', 400);
-      case 'eg': { const t = $('#hiLine'); if (t) { t.value = d.t; t.focus(); } return; }
-      case 'add': collect(); P.scenes.push({say: '', look: {kind: 'none'}, needs: ''}); UI.scene = P.scenes.length - 1; draw(); return $(`[data-say="${UI.scene}"]`)?.focus();
-      case 'rm': collect(); P.scenes.splice(+d.n, 1); UI.scene = Math.max(0, Math.min(UI.scene, P.scenes.length - 1)); return persist(true);
-      case 'mv': { collect(); const n = +d.n, m = n + +d.d; [P.scenes[n], P.scenes[m]] = [P.scenes[m], P.scenes[n]]; UI.scene = m; return persist(true); }
-      case 'addbar': { collect(); const sc = P.scenes[UI.scene]; sc.look.bars = [...(sc.look.bars || []), {label: '', value: ''}]; return draw(); }
-      case 'additem': collect(); P.items.push({name: '', price: '', note: ''}); return draw();
-      case 'gen': return genBox();
-      case 'make': return startMake(id, d.silent === '1');
-      case 'stop': return act(() => api('POST', `${S}/stop`, {id: ARG}), () => { const s = $('#hiStop'); if (s) { s.disabled = true; s.textContent = 'Stopping after this step…'; } });
-      case 'tpl': return act(async () => { await persist(false); return api('POST', `${H}/template`, {project: P.id}); }, t => { toast(`Saved as a template with ${t.variables.length} blank${t.variables.length === 1 ? '' : 's'}.`); go('templates'); });
-      case 'rmtpl': return confirm('Remove this template?') && act(() => api('DELETE', `${H}/template?id=${q(id)}`));
-      case 'rmgl': return act(() => api('DELETE', `${H}/glossary?id=${q(id)}`));
-      case 'rmbrain': return confirm('Remove this brain?') && act(() => api('DELETE', `${H}/brain?id=${q(id)}`), () => { UI.brain = ''; draw(); });
-      case 'rmav': return confirm('Remove this avatar? Videos already made keep their copy.') && act(() => api('DELETE', `${S}/avatar?id=${q(id)}`), () => go('avatars'));
-      case 'dup': return act(() => api('POST', `${H}/duplicate`, {id}), p => { toast('Copied.'); P = null; go('editor', p.id); });
-      case 'trash': return confirm('Move this to the trash? You can restore it for 30 days.') && act(() => api('POST', `${H}/trash`, {id}), () => { P = null; go('projects'); });
-      case 'restore': return act(() => api('POST', `${H}/restore`, {id}), () => { toast('Restored.'); draw(); });
-      case 'emptytrash': return confirm('Remove everything in the trash for good?') && act(() => api('POST', `${H}/trash/empty`));
-      case 'translate': { const btn = b; btn.disabled = true; btn.textContent = 'Translating…';
-        return act(() => api('POST', `${H}/translate`, {id: UI.pick, lang: UI.tlang}), p => { UI.tlang = ''; go('proof', p.id); }).finally(() => { if (btn.isConnected) { btn.disabled = false; btn.textContent = 'Translate the lines'; } }); }
-      case 'proofsave': case 'proofopen': { const p = D.projects.find(x => x.id === id); if (!p) return;
-        const scenes = p.scenes.map((s, n) => ({say: $(`[data-pf="${n}"]`)?.value ?? s.say, look: s.look}));
-        return act(() => api('PUT', `${S}/project?id=${q(id)}`, {scenes}), () => { if (d.a === 'proofopen') { P = null; go('editor', id); } else { toast('Saved.'); draw(); } }); }
-      case 'hear': return hear(d.lang, b);
-      case 'dl': return download(id);
-    }
+  function chips(home = true) {
+    const e = engine(defEngine()), f = face(SET.face), k = kindNow();
+    const add = `<button type="button" class="hx-chip s" data-a="attach" aria-haspopup="menu" aria-label="Add a file or a web page">${ic('plus', 14)}</button>`;
+    if (!home) return add;                          // in a chat the plan card holds every pick; the box stays one line
+    return `${add}
+      <button type="button" class="hx-chip s" data-a="pick" data-k="face" aria-haspopup="menu">${f ? avImg(f, 'xs') : ic('user', 14)}<span>${esc(f ? f.name : 'No face')}</span></button>
+      <button type="button" class="hx-chip s" data-a="pick" data-k="voice" aria-haspopup="menu">${ic('mic', 14)}<span>${esc(voiceName(SET.voice))}</span></button>
+      <button type="button" class="hx-chip s" data-a="pick" data-k="lang" aria-haspopup="menu">${ic('globe', 14)}<span>${esc(SET.lang && SET.lang !== 'auto' ? langName(SET.lang) : 'Auto · matches what you write')}</span></button>
+      <button type="button" class="hx-chip s" data-a="pick" data-k="len" aria-haspopup="menu">${ic('film', 14)}<span>${aspectOf(k)} · ${SET.len || 30} s</span></button>
+      <button type="button" class="hx-chip s" data-a="pick" data-k="engine" aria-haspopup="menu">${ic('bolt', 14)}<span>${esc(e ? e.label : 'Hoola standard')}</span></button>`;
   }
-  function onInput(ev) {
-    const t = ev.target;
-    if (PAGE !== 'editor' || !P) return;
-    if (t.dataset.say !== undefined) { if (+t.dataset.say === UI.scene && $('#hiSub')) $('#hiSub').textContent = t.value; later(); }
-    else if (t.dataset.lk || t.dataset.bar !== undefined || t.dataset.item !== undefined || ['hiTitle', 'hiBrand', 'hiClose'].includes(t.id)) later();
+  function tray() {
+    return C.files.length ? `<div class="hx-tray">${C.files.map((f, i) => `<span class="hx-file">${f.up ? '<span class="hx-spin" aria-hidden="true"></span>' : ic('folder', 14)}<span>${esc(f.name)}</span>
+      <button type="button" class="hx-ib s" data-a="unfile" data-n="${i}" aria-label="Remove ${esc(f.name)}">${ic('x', 13)}</button></span>`).join('')}</div>` : '';
   }
-  function onChange(ev) {
-    const t = ev.target;
-    if (t.id === 'hiTrPick') { UI.pick = t.value; UI.tlang = ''; return draw(); }
-    if (PAGE !== 'editor' || !P) return;
-    if (t.id === 'hiLook') { collect(); const sc = P.scenes[UI.scene]; sc.look = {kind: t.value, ...(t.value === 'bar_chart' ? {bars: [{label: '', value: ''}, {label: '', value: ''}]} : {})}; return persist(true); }
-    if (['hiShape', 'hiAspect', 'hiPLang', 'hiAv'].includes(t.id)) return persist(true);
-    if (t.dataset.lk || t.dataset.bar !== undefined) { clearTimeout(SAVE_T); return persist(true); }
+  function composer(home) {
+    const ph = home ? (KINDS.find(k => k[0] === kindNow())?.[3] || KINDS[0][3]) : 'Change anything: a line, the tone, the length, the face';
+    return `<div class="hx-comp${home ? ' home' : ''}" id="hxComp"><div class="hx-box"><label class="hx-sr" for="hxAsk">${home ? 'Describe your video' : 'Change the plan'}</label>
+      <div id="hxTray">${tray()}</div>
+      <textarea id="hxAsk" rows="${home ? 3 : 1}" placeholder="${esc(ph)}">${esc(C.ask)}</textarea>
+      <div class="hx-boxrow"><div class="hx-chips" id="hxChips">${chips(home)}</div><span class="hx-grow"></span>
+        ${home ? `<span class="hx-est hx-num" id="hxEst">${UI.est ? `About ${cr(UI.est.credits)}` : ''}</span>` : ''}
+        <button type="button" class="hx-send${C.ask.trim() ? ' on' : ''}" data-a="send" aria-label="${home ? 'Plan the video' : 'Send'}">${ic('up', 18)}</button></div></div>
+      ${home ? '' : '<p class="hx-foot">Hoola changes the plan. <b>Nothing is made until you tap Make.</b></p>'}</div>`;
   }
-  function onSubmit(ev) {
-    const f = ev.target.closest('form[data-f]'); if (!f) return;
-    ev.preventDefault();
-    const v = id => ($(id)?.value || '').trim(), btn = f.querySelector('button.hi-btn:not(.q)');
-    const busy = (on, txt) => { if (btn?.isConnected) { btn.disabled = on; if (txt) btn.dataset.t = btn.dataset.t || btn.textContent, btn.textContent = on ? txt : btn.dataset.t; } };
-    const run = (fn, done, txt) => { busy(true, txt); act(fn, done).finally(() => busy(false, txt)); };
-    switch (f.dataset.f) {
-      case 'draft': if (v('#hiLine').length < 6) { toast('Say in one line what the video should be about.', true); return $('#hiLine').focus(); }
-        return run(() => api('POST', `${S}/draft`, {ask: v('#hiLine'), shape: v('#hiKind'), lang: v('#hiLang'), seconds: +v('#hiSecs') || 30, avatar_id: v('#hiAvSel')}), p => { P = null; go('editor', p.id); }, 'Writing the script…');
-      case 'avatar': { const file = $('#hiAvFile').files[0]; if (!file) return;
-        return run(async () => { const up = await upload(file); return api('POST', `${S}/avatar`, {name: v('#hiAvName'), file_id: up?.file_id || up?.id, consent: $('#hiAvOk').checked}); }, () => { toast('Avatar added.'); UI.tab.av = 'My avatars'; go('avatars'); }, 'Adding…'); }
-      case 'brand': return run(() => api('PUT', `${H}/brand`, {name: v('#hiBName'), closing: v('#hiBClose'), color: v('#hiBColor')}), () => { toast('Saved. New videos start with it.'); draw(); });
-      case 'gloss': return run(() => api('POST', `${H}/glossary`, {term: v('#hiGTerm'), mode: v('#hiGMode'), to: v('#hiGTo'), lang: v('#hiGLang')}));
-      case 'use': { const values = {}; for (const i of $$('[data-var]')) values[i.dataset.var] = i.value;
-        return run(() => api('POST', `${H}/template/use`, {id: UI.use, values, lang: v('#hiTLang'), avatar_id: v('#hiTAv')}), p => { UI.use = ''; P = null; go('editor', p.id); }, 'Making the draft…'); }
-      case 'batch': return run(() => api('POST', `${H}/batch`, {scripts: $('#hiBatch').value.split(/\n\s*\n/), lang: v('#hiBLang'), avatar_id: v('#hiBAv')}), r => { toast(`${r.made.length} draft${r.made.length === 1 ? '' : 's'} made.`); UI.tab.ap = ''; UI.tab.pr = 'Drafts'; go('projects'); }, 'Making the drafts…');
-      case 'names': return run(() => api('POST', `${H}/personalise`, {project: v('#hiNPick'), names: $('#hiNames').value.split('\n')}), r => { toast(`${r.made.length} draft${r.made.length === 1 ? '' : 's'} made.`); UI.tab.ap = ''; UI.tab.pr = 'Drafts'; go('projects'); }, 'Making the drafts…');
-      case 'brain': return run(() => api('POST', `${H}/brain`, {id: v('#hiBrId'), name: v('#hiBrName'), knows: v('#hiBrKnows'), opening: v('#hiBrOpen'), links: v('#hiBrLinks').split('\n'), lang: v('#hiBrLang')}), b => { UI.brain = b.id; toast('Saved.'); draw(); });
-    }
+  function refreshBar() { const c = $('#hxChips'); if (c) { c.innerHTML = chips(!!$('#hxComp.home')); fillMedia(); } estimate(); }
+  function vthumb(p) {
+    const f = face(p.avatar_id), tall = p.aspect === '9:16';
+    return `<span class="hx-vth${tall ? ' tall' : ''}" style="--brand:${esc(brandColor())}"><i class="l1"></i><i class="l2"></i>
+      ${f ? `<span class="hx-vthf">${avImg(f, 'xs')}</span>` : ''}<span class="hx-vtht hx-num">${clock(lenOf(p))}</span></span>`;
+  }
+  function vstate(p) {
+    return p.status === 'ready' ? ['ok', `Ready · ${langName(p.lang)}`] : p.status === 'making' ? ['work', 'Making it now'] : p.status === 'failed' ? ['bad', 'Could not be made'] : ['', 'Plan · not made yet'];
+  }
+  function vidsGrid() {
+    const ps = (D.projects || []).slice(0, 8);
+    return ps.length ? `<div class="hx-vgrid">${ps.map(p => { const [c, t] = vstate(p);
+      return `<button type="button" class="hx-vc" data-a="openv" data-id="${esc(p.id)}">${vthumb(p)}<b>${esc(p.title)}</b><span class="hx-st ${c}">${esc(t)}</span></button>`; }).join('')}</div>`
+      : `<p class="hx-mut hx-sm">Your videos appear here: plans you have not made yet, the ones being made, and the finished ones.</p>`;
+  }
+  function home() {
+    const g = UI.ideaG || 'business';
+    return `<div class="hx-hero"><div class="hx-herob">
+        <h2 class="hx-serif" id="hxGreet">${esc(greet())}. What should your video say?</h2>
+        <p class="hx-mut">Write it in any language. Hoola writes the script, plans the scenes and shows the price. Nothing is made until you tap Make.</p>
+        <div class="hx-kinds" role="radiogroup" aria-label="Kind of video">${KINDS.map(([k, n, m]) => `<button type="button" role="radio" aria-checked="${kindNow() === k && SET.kind !== 'translate'}" class="hx-kind k-${k}" data-a="kind" data-val="${k}"><span class="hx-km" aria-hidden="true">${esc(m)}</span>${esc(n)}</button>`).join('')}</div>
+        ${composer(true)}
+        <p class="hx-foot c">The plan and a short voice sample are free. Credits are used only when you tap <b>Make the video</b>.</p></div>
+      <section class="hx-sec" aria-labelledby="hxSt"><b class="hx-t" id="hxSt">Or start from something you have</b><div class="hx-starts">
+        <button type="button" class="hx-start" data-a="from" data-val="doc"><span class="hx-sic">${ic('folder', 18)}</span><span><b>A document</b>A PDF or Word file into an explainer</span></button>
+        <button type="button" class="hx-start" data-a="from" data-val="web"><span class="hx-sic">${ic('globe', 18)}</span><span><b>A web page</b>Your product page into a video</span></button>
+        <button type="button" class="hx-start" data-a="from" data-val="slides"><span class="hx-sic">${ic('film', 18)}</span><span><b>Slides</b>A deck into a narrated lesson</span></button>
+        <button type="button" class="hx-start" data-a="from" data-val="video"><span class="hx-sic">${ic('mic', 18)}</span><span><b>A video</b>Into another language, in the same voice</span></button></div></section>
+      <section class="hx-sec" aria-labelledby="hxId"><div class="hx-sech"><b class="hx-t" id="hxId">Ideas</b>
+        <div class="hx-gtabs" role="tablist" aria-label="Idea groups">${Object.entries(IDEA_G).map(([k, n]) => `<button type="button" role="tab" aria-selected="${g === k}" data-a="ideag" data-val="${k}">${esc(n)}</button>`).join('')}</div></div>
+        <div class="hx-ideas">${IDEAS[g].map(([t, l, k], i) => `<button type="button" class="hx-idea" data-a="idea" data-n="${i}"><span>${esc(t)}</span>
+          <span class="hx-tags"><span>${esc(langName(l))}</span><span>${esc(KIND_NAME[k])}</span></span></button>`).join('')}</div></section>
+      <section class="hx-sec" aria-labelledby="hxYv"><div class="hx-sech"><b class="hx-t" id="hxYv">Your videos</b><span class="hx-grow"></span>
+        ${(D.projects || []).length > 8 ? '<button type="button" class="hx-lnk" data-a="go" data-p="projects">See all</button>' : ''}</div>${vidsGrid()}</section></div>`;
   }
 
-  async function genBox() {
-    clearTimeout(SAVE_T); await persist(false);
-    if (!P || P.problems?.length) return draw();
-    const p = P, silent = !con().voice || !!$('#hiSilent')?.checked, st = D.status || {};
-    dialog(`<h2>Generate video</h2><div><div class="hi-kv"><span class="hi-mut">Scenes</span><b class="hi-num">${p.scenes.length}</b></div>
-        <div class="hi-kv"><span class="hi-mut">Length</span><b class="hi-num">about ${secs(estimate(p))}</b></div>
-        <div class="hi-kv"><span class="hi-mut">Size</span><span>${p.aspect === '9:16' ? 'Tall 9:16' : p.aspect === '1:1' ? 'Square 1:1' : 'Wide 16:9'}</span></div>
-        <div class="hi-kv"><span class="hi-mut">Sound</span><span>${silent ? 'Captions only, no voice' : 'Hoola voice, ' + esc(langs()[p.lang] || p.lang)}</span></div></div>
-      ${st.draw ? '' : `<div class="hi-note warn">The video engine is not installed on this server, so this cannot be made here yet.</div>`}
-      <p class="hi-sm hi-mut">Drawing takes a few minutes. No money is charged on this server; a rupee meter is not built yet.</p>
-      <div class="hi-row" style="justify-content:flex-end"><button class="hi-btn q" data-a="close">Not now</button><button class="hi-btn" data-a="make" data-id="${esc(p.id)}" data-silent="${silent ? 1 : 0}"${st.draw ? '' : ' disabled'}>Make the video</button></div>`);
+  // ---- the plan card
+  function sceneGrid(it) {
+    const f = face(it.avatar_id), on = UI.pv.id === it.id ? UI.pv.scene : -1;
+    return `<div class="hx-scg">${(it.scenes || []).map((s, i) => { const lk = s.look?.kind && s.look.kind !== 'none';
+      return `<button type="button" class="hx-sct${i === on ? ' on' : ''}" data-a="pvscene" data-id="${esc(it.id)}" data-n="${i}" aria-label="Scene ${i + 1}">
+        <span class="hx-scth" style="--brand:${esc(brandColor())}"><small class="hx-num">${i + 1} · ${clock(sceneTimes(it)[i][0])}</small><i></i>${f && (it.face_layout !== 'full' || i === 0) ? `<span class="hx-scf">${avImg(f, 'xs')}</span>` : ''}</span>
+        <b>${esc(lk ? (LOOK[s.look.kind] || 'Scene') : (f ? 'Presenter' : 'Words'))}</b><span class="hx-scl">${esc(s.say)}</span>${s.needs ? `<em>${esc(s.needs)}</em>` : ''}</button>`; }).join('')}</div>`;
   }
-  async function startMake(id, silent) {
-    try { await api('POST', `${S}/make`, {id, silent}); URLS.delete(`${S}/video?id=${q(id)}`); await load(); P = null; go('making', id); }
-    catch (e) { toast(e.message, true); closeDlg(); }
+  function priceBox(qn) {
+    if (!qn) return '';
+    return `<div class="hx-pbox hx-num"><div><span>Voice, about ${secs(qn.seconds)}</span><span>${qn.voice_credits ? cr(qn.voice_credits) : 'Included'}</span></div>
+      <div><span>${esc(qn.label)}${qn.face_credits ? ', the talking face' : ''}</span><span>${qn.face_credits ? cr(qn.face_credits) : 'Included'}</span></div>
+      <div><span>Scenes, titles and subtitles</span><span>Included</span></div>
+      <div class="t"><span>Total</span><span>${cr(qn.credits)}${qn.usd ? ` <small>≈ US$${(+qn.usd).toFixed(2)}</small>` : ''}</span></div></div>`;
   }
-  async function hear(lang, btn) {
-    btn.disabled = true; const was = btn.textContent; btn.textContent = 'Speaking…';
-    try { const r = await api('GET', `${H}/voice?lang=${q(lang)}`, undefined, {raw: true}); const a = new Audio(URL.createObjectURL(await r.blob())); await a.play(); }
-    catch (e) { toast(e.message || 'The voice engine did not answer.', true); }
-    btn.disabled = false; btn.textContent = was;
+  function planCard(it, newest) {
+    const e = engine(it.engine) || engine('hoola'), f = face(it.avatar_id), qn = it.quote || null, pr = it.problems || [];
+    const making = it.status === 'making', ready = it.status === 'ready', failed = it.status === 'failed';
+    const meta = [KIND_NAME[it.kind] || SHAPE[it.shape] || 'Video', `${(it.scenes || []).length} scenes`, it.aspect || '16:9', clock(lenOf(it)), langName(it.lang)].join(' · ');
+    const head = `<div class="hx-planh"><span class="hx-ct"><b>${esc(it.title)}</b><small>${esc(meta)}</small></span>${ready ? '' : `<span class="hx-pstate ${making ? 'work' : failed ? 'bad' : ''}">${making ? 'Making it' : failed ? 'Not made' : 'Plan · nothing made yet'}</span>`}</div>`;
+    if (ready) return `<article class="hx-plan" data-id="${esc(it.id)}" aria-label="Finished video">${head}
+      <div class="hx-vwrap"><video class="hx-player" controls playsinline preload="metadata" data-vid="${esc(it.id)}"></video><span class="hx-aimark">Made with AI</span></div>
+      <div class="hx-acts"><span class="hx-mut hx-sm hx-num">${esc(it.video?.engine_label || e?.label || '')}${it.video?.credits ? ' · used ' + cr(it.video.credits) : ''}</span><span class="hx-grow"></span>
+        <button type="button" class="hx-btn dark" data-a="dlv" data-id="${esc(it.id)}">${ic('dl', 14)}Download MP4</button>
+        <button type="button" class="hx-btn" data-a="openp" data-id="${esc(it.id)}">Open in Studio</button></div>
+      <div class="hx-next"><b class="hx-sm">Next with this video</b><div class="hx-nextg">
+        <button type="button" class="hx-nx" data-a="morelang" data-id="${esc(it.id)}"><b>More languages</b><span>Same face and voice, in any of 140</span></button>
+        <button type="button" class="hx-nx" data-a="say" data-t="Make a 9:16 reel version of this video, about 15 seconds, for Instagram and TikTok."><b>Reel cut</b><span>A vertical version for social media</span></button>
+        <button type="button" class="hx-nx" data-a="openp" data-id="${esc(it.id)}"><b>Change a line</b><span>Edit the script in the Studio, make it again</span></button>
+        <button type="button" class="hx-nx" data-a="tplsave" data-id="${esc(it.id)}"><b>Save as a template</b><span>Reuse it with new names and numbers</span></button></div></div>
+      ${newest ? `<div class="hx-mk"><span class="hx-mut hx-sm">Make it in:</span>${MORE_LANGS.filter(c => c !== it.lang).slice(0, 5).map(c => `<button type="button" class="hx-chip s" data-a="say" data-t="Make the same video in ${esc(langName(c))}, keeping every name and number.">${esc(langName(c))}</button>`).join('')}
+        <button type="button" class="hx-chip s" data-a="morelang" data-id="${esc(it.id)}">${ic('plus', 13)}Choose</button></div>` : ''}</article>`;
+    return `<article class="hx-plan" data-id="${esc(it.id)}" aria-label="Video plan">${head}
+      ${sceneGrid(it)}
+      <div class="hx-prow"><span class="k">Face</span>${avImg(f, 'xs')}<span class="v">${esc(f ? f.name : 'No face')}<small>${f ? 'Consent on record' : 'Scenes and voice only'}</small></span>
+        ${f ? `<div class="hx-seg" role="radiogroup" aria-label="Where the face appears"><button type="button" role="radio" aria-checked="${it.face_layout !== 'full'}" data-a="flay" data-id="${esc(it.id)}" data-val="corner">In a corner</button><button type="button" role="radio" aria-checked="${it.face_layout === 'full'}" data-a="flay" data-id="${esc(it.id)}" data-val="full">Full frame</button></div>` : ''}
+        <button type="button" class="hx-btn s" data-a="ipick" data-k="face" data-id="${esc(it.id)}"${making ? ' disabled' : ''}>Change</button></div>
+      <div class="hx-prow"><span class="k">Voice</span><button type="button" class="hx-hear" data-a="hear" data-id="${esc(it.id)}" aria-label="Hear a short sample, free">${ic('play', 12)}</button>
+        <span class="v">${esc(voiceName(it.voice))}<small>Hear a short sample, free</small></span>
+        <button type="button" class="hx-btn s" data-a="ipick" data-k="voice" data-id="${esc(it.id)}"${making ? ' disabled' : ''}>Change</button></div>
+      <div class="hx-prow"><span class="k">Language</span><span class="v">${esc(langName(it.lang))}<small>Spoken, with subtitles in the same language</small></span>
+        <button type="button" class="hx-btn s" data-a="morelang" data-id="${esc(it.id)}">${ic('plus', 13)}Another language</button></div>
+      <div class="hx-prow"><span class="k">Engine</span><span class="v">${esc(e ? e.label : 'Hoola standard')}<small>${esc(e?.what || '')}</small></span>
+        <button type="button" class="hx-btn s" data-a="cmp" data-id="${esc(it.id)}"${making ? ' disabled' : ''}>Compare engines</button></div>
+      ${priceBox(qn)}
+      ${pr.length ? `<ul class="hx-why">${pr.map(w => `<li>${esc(scrub(w))}</li>`).join('')}</ul>` : ''}
+      ${failed && it.error ? `<p class="hx-why">${esc(scrub(it.error))}</p>` : ''}
+      <div id="hxJob-${esc(it.id)}">${making ? '<p class="hx-mut hx-sm">Making it…</p>' : ''}</div>
+      ${making ? '' : `<div class="hx-acts big">
+        <button type="button" class="hx-btn dark l" data-a="make" data-id="${esc(it.id)}" data-k="${esc(qn?.key || '')}"${pr.length ? ' disabled' : ''}>${failed ? 'Try again' : 'Make the video'}${qn ? ' · ' + cr(qn.credits) : ''}</button>
+        <button type="button" class="hx-btn l" data-a="openp" data-id="${esc(it.id)}">Open in Studio</button><span class="hx-grow"></span>
+        <span class="hx-mut hx-sm hx-pnote">If the face engine fails, its credits are not used. The plan stays.</span></div>`}</article>
+      ${newest && !making ? `<div class="hx-sugg">${SUGGEST.map(t => `<button type="button" class="hx-chip s" data-a="say" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div>` : ''}`;
+  }
+  function thread() {
+    const items = [...C.items].reverse();
+    const out = [];
+    let it = 0;
+    const rows = C.rows.filter(r => r.role === 'user' || r.role === 'assistant');
+    const last = items[items.length - 1]?.id;
+    const mark = `<span class="hx-mark s" aria-hidden="true">${markSvg()}</span>`;
+    rows.forEach(r => {
+      while (it < items.length && Date.parse(items[it].created) <= Date.parse(r.at)) { const x = items[it++]; out.push(`<div class="hx-turn">${mark}<div class="hx-tb">${planCard(x, x.id === last)}</div></div>`); }
+      out.push(r.role === 'user' ? `<div class="hx-me">${esc(strip(r.text))}</div>` : `<div class="hx-turn">${mark}<div class="hx-tb"><div class="hx-ho">${esc(r.text).replace(/\n/g, '<br>')}</div></div></div>`);
+    });
+    while (it < items.length) { const x = items[it++]; out.push(`<div class="hx-turn">${mark}<div class="hx-tb">${planCard(x, x.id === last)}</div></div>`); }
+    if (C.sending || (Date.now() < C.waitUntil && rows[rows.length - 1]?.role === 'user')) out.push(`<div class="hx-working"><span class="hx-mark s">${markSvg()}</span><span>Writing the script and planning the scenes…</span></div>`);
+    return out.join('');
+  }
+
+  // ---- the preview beside the chat: a sketch, the script, the subtitles of one plan
+  const pvItem = () => C.items.find(i => i.id === UI.pv.id) || C.items[0];
+  function srt(p, vtt) {
+    const T = sceneTimes(p), fmt = s => { const ms = Math.round(s * 1000), h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, ss = Math.floor(ms / 1000) % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}${vtt ? '.' : ','}${String(ms % 1000).padStart(3, '0')}`; };
+    const body = (p.scenes || []).map((s, i) => `${vtt ? '' : (i + 1) + '\n'}${fmt(T[i][0])} --> ${fmt(T[i][1])}\n${s.say}`).join('\n\n');
+    return vtt ? `WEBVTT\n\n${body}\n` : `${body}\n`;
+  }
+  function sketch(p) {
+    const n = Math.min(UI.pv.scene, (p.scenes || []).length - 1), sc = p.scenes[n] || {}, f = face(p.avatar_id), full = p.face_layout === 'full';
+    const T = sceneTimes(p), total = T.length ? T[T.length - 1][1] : 1, at = T[n] ? T[n][0] : 0;
+    return `<div class="hx-preview ${p.aspect === '9:16' ? 'tall' : p.aspect === '1:1' ? 'sq' : ''}" style="--brand:${esc(brandColor())}">
+        ${f && full ? `<span class="hx-pvfull">${avImg(f, 'xl')}</span>` : ''}
+        <div class="hx-pvlook">${lookText(sc.look) ? `<b>${esc(lookText(sc.look))}</b>` : n === 0 ? `<b>${esc(p.title)}</b>` : ''}</div>
+        ${f && !full ? `<span class="hx-pvface">${avImg(f, 'l')}</span>` : ''}<p class="hx-pvcap">${esc(sc.say || '')}</p></div>
+      <div class="hx-pvbar"><button type="button" class="hx-pplay" data-a="pvplay" aria-label="${UI.pv.play ? 'Pause the sketch' : 'Play the sketch'}">${ic(UI.pv.play ? 'stop' : 'play', 14)}</button>
+        <span class="hx-track"><i style="width:${Math.round(100 * at / total)}%"></i></span><span class="hx-mut hx-sm hx-num">${clock(at)} / ${clock(total)}</span></div>
+      <p class="hx-mut hx-sm">A free sketch with the real scenes and timing. Your talking face and the voice are made when you tap Make.</p>`;
+  }
+  function pvPane() {
+    const p = pvItem();
+    if (!p) return `<div class="hx-pvempty"><span class="hx-mark l" aria-hidden="true">${markSvg()}</span><b>Your plan appears here</b><span class="hx-mut hx-sm">A sketch of every scene, the script and the subtitles, before anything is made.</span></div>`;
+    const tab = UI.pv.tab;
+    const body = p.status === 'ready' && tab === 'sketch' ? `<div class="hx-vwrap"><video class="hx-player" controls playsinline preload="metadata" data-vid="${esc(p.id)}"></video><span class="hx-aimark">Made with AI</span></div>`
+      : tab === 'sketch' ? sketch(p)
+      : tab === 'script' ? `<p class="hx-mut hx-sm">Change any line here; the plan updates and the price follows.${p.status === 'ready' ? ' Make it again for a new version.' : ''}</p>
+          <ol class="hx-pvscript">${(p.scenes || []).map((s, i) => `<li><span class="hx-mut hx-sm hx-num">Scene ${i + 1} · ${clock(sceneTimes(p)[i][0])}</span>
+            <textarea class="hx-in hx-serifp" rows="2" data-isc="${i}" data-id="${esc(p.id)}" aria-label="Scene ${i + 1} words"${p.status === 'making' ? ' disabled' : ''}>${esc(s.say)}</textarea></li>`).join('')}</ol>`
+      : `<pre class="hx-srt">${esc(srt(p))}</pre><div class="hx-acts"><button type="button" class="hx-btn s" data-a="subdl" data-val="srt">${ic('dl', 13)}Download .srt</button>
+          <button type="button" class="hx-btn s" data-a="subdl" data-val="vtt">${ic('dl', 13)}Download .vtt</button></div>
+          <p class="hx-mut hx-sm">${p.status === 'ready' ? 'Timed from the plan; the finished video follows the same scenes.' : 'Timed from the plan. The finished video follows the same scenes.'}</p>`;
+    return `<div class="hx-pvh"><div class="hx-tabs" role="tablist" aria-label="Preview">${[['sketch', p.status === 'ready' ? 'Video' : 'Sketch'], ['script', 'Script'], ['subs', 'Subtitles']].map(([k, n]) => `<button type="button" role="tab" aria-selected="${tab === k}" data-a="pvtab" data-val="${k}">${n}</button>`).join('')}</div>
+      <span class="hx-grow"></span>${C.items.length > 1 ? `<button type="button" class="hx-btn s" data-a="pvwhich" aria-haspopup="menu">${esc((p.title || '').slice(0, 22))}${ic('down', 13)}</button>` : ''}</div>
+      <div class="hx-pvb">${body}</div>`;
+  }
+  function paintPv() { const a = $('#hxPv'); if (!a) return; a.innerHTML = pvPane(); fillMedia(); }
+  /* v0.999.203 her sent message lands at the top of the chat with room kept for the reply (chatkit.js lander) */
+  let LAND = null;
+  function lander(t, log) { if (!window.HoolaChat?.lander) return null; if (!LAND || LAND.t !== t) LAND = {t, l: HoolaChat.lander(t, log)}; return LAND.l; }
+  function paintChat() {
+    const t = $('#hxThread'); if (!t) return; const log = $('#hxLog'), atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
+    t.innerHTML = thread(); fillMedia();
+    const L = lander(t, log), me = [...t.querySelectorAll('.hx-me')].pop();
+    if (C.landNow && me && L) { C.landNow = false; me.classList.add('hx-landed'); L.at(me); }
+    else if (L && L.anchored) { L.again(me); if (!L.held && atEnd) log.scrollTop = Math.max(log.scrollTop, log.scrollHeight - L.pad - log.clientHeight); }
+    else if (atEnd) log.scrollTop = log.scrollHeight;
+    if (!C.items.some(i => i.id === UI.pv.id)) { UI.pv.id = C.items[0]?.id || ''; UI.pv.scene = 0; }
+    if (!$('#hxPv textarea:focus')) paintPv();
+    C.items.filter(i => i.status === 'making').forEach(i => watchJob(i.id));
+  }
+  function pvStop() { clearTimeout(UI.pv.t); UI.pv.play = false; }
+  function pvPlay() {
+    const p = pvItem(); if (!p) return;
+    if (UI.pv.play) { pvStop(); return paintPv(); }
+    UI.pv.play = true; if (UI.pv.scene >= p.scenes.length - 1) UI.pv.scene = 0;
+    const step = () => {
+      if (!UI.pv.play || PAGE !== 'chat') return;
+      paintPv(); const T = sceneTimes(p)[UI.pv.scene]; const d = T ? (T[1] - T[0]) * 1000 : 2500;
+      UI.pv.t = setTimeout(() => { if (UI.pv.scene < p.scenes.length - 1) { UI.pv.scene++; step(); } else { pvStop(); paintPv(); } }, d);
+    };
+    step();
+  }
+  async function saveItem(id, body) {
+    try { const p = await api('PUT', `${S}/project?id=${q(id)}`, body); const i = (D.projects || []).findIndex(x => x.id === id); if (i >= 0) D.projects[i] = p;
+      await chatLoad(); paintChat(); }
+    catch (e) { toast(e.message, true); }
+  }
+  let iscT = 0;
+  function saveLine(id, n, text) {
+    const p = C.items.find(x => x.id === id); if (!p) return;
+    p.scenes = p.scenes.map((s, i) => i === n ? {...s, say: text} : s);
+    clearTimeout(iscT); iscT = setTimeout(() => saveItem(id, {scenes: p.scenes}), 700);
+  }
+  async function hear(id, line) {
+    const p = C.items.find(x => x.id === id) || (D.projects || []).find(x => x.id === id), text = (line || p?.scenes?.[0]?.say || p?.title || '').split(/(?<=[.!?。！？])\s/)[0].slice(0, 160);
+    if (!text) return;
+    try { const r = await api('POST', '/api/vocal/hear', {text, voice: p.voice || '', lang: p.lang || ''}, {raw: true});
+      if (!r.ok) { let m = 'The sample could not be made.'; try { m = (await r.json()).detail || m; } catch { /* keep */ } throw new Error(m); }
+      UI.audio?.pause(); UI.audio = new Audio(URL.createObjectURL(await r.blob())); UI.audio.play().catch(() => {}); }
+    catch (e) { toast(e.message, true); }
+  }
+  async function compare(el, id) {
+    let r; try { r = await api('GET', `${X}/compare?id=${q(id)}`); } catch (e) { return toast(e.message, true); }
+    menu(el, [{header: `Price for this ${secs(r.seconds)} video`}, ...r.engines.map(e => ({label: e.label, sub: e.ready ? `${cr(e.credits)} · ${e.what}` : `Not connected · ${e.what}`,
+      disabled: !e.ready, checked: r.chosen === e.id, run: () => saveItem(id, {engine: e.id})})), {sep: true}, {label: 'Set a default engine', icon: 'bolt', run: () => go('engines')}], {width: 340});
+  }
+  async function addFiles(list, kind, ask) {
+    if (!C.conv) await openChat(); if (!C.conv) return;
+    for (const file of list) {
+      if (file.size > 30 * 1024 * 1024) { toast(`${file.name} is larger than 30 MB.`, true); continue; }
+      const row = {name: file.name, up: true}; C.files.push(row); const tr = $('#hxTray'); if (tr) tr.innerHTML = tray();
+      try { const fd = new FormData(); fd.append('file', file, file.name); const r = await api('POST', `/api/conversations/${q(C.conv)}/files`, undefined, {form: fd}); row.id = r.file_id; row.up = false; }
+      catch (e) { C.files.splice(C.files.indexOf(row), 1); toast(e.message, true); }
+      const t2 = $('#hxTray'); if (t2) t2.innerHTML = tray();
+    }
+    if (kind) { SET.kind = kind; persist(); }
+    if (ask && !C.ask.trim()) { C.ask = ask; const t = $('#hxAsk'); if (t) t.value = ask; }
+    if ($('.hx-hero')) draw(); $('.hx-send')?.classList.toggle('on', !!C.ask.trim()); $('#hxAsk')?.focus();
+  }
+  function pickFiles(accept, kind, ask) {
+    const i = document.createElement('input'); i.type = 'file'; i.multiple = true; i.accept = accept || '';
+    i.onchange = () => { if (i.files?.length) addFiles([...i.files], kind, ask); }; i.click();
+  }
+  function fromWeb() {
+    const u = (prompt('Paste the address of the web page') || '').trim(); if (!u) return;
+    if (!/^https?:\/\/\S+\.\S+/i.test(u)) return toast('Paste a full web address that starts with https://', true);
+    SET.kind = 'product'; persist(); C.ask = `Make a product video from this page: ${u}`; draw(); $('#hxAsk')?.focus(); $('.hx-send')?.classList.add('on');
+  }
+  function toDubbing() { window.__hvPage = 'dub'; leave(); return ctx.go ? ctx.go('vocal') : back?.(); }
+  async function chatSend(textIn) {
+    const text = String(textIn ?? $('#hxAsk')?.value ?? C.ask).trim();
+    if (C.files.some(f => f.up)) return toast('Wait for the files to finish uploading.');
+    if (!text && !C.files.length) { $('#hxAsk')?.focus(); toast('Say what the video should say first.'); return; }
+    if (!C.conv) await openChat(); if (!C.conv) return;
+    const files = textIn == null ? C.files.filter(f => f.id) : [];
+    const said = text || 'Make a video from the file I attached.';
+    C.sending = true; if (textIn == null) { C.ask = ''; C.files = []; } const ta = $('#hxAsk'); if (ta && textIn == null) ta.value = '';
+    C.rows.push({role: 'user', text: said + (files.length ? `\n(${files.map(f => f.name).join(', ')})` : ''), at: new Date().toISOString()});
+    pvStop(); C.landNow = true;
+    if ($('.hx-hero')) draw(); else paintChat();
+    try {
+      await api('POST', `/api/conversations/${q(C.conv)}/messages`, {text: `${said}\n\n${settingsNote()}`, files: files.map(f => f.id), client_id: 'ix' + Date.now().toString(36)});
+      C.waitUntil = Date.now() + 180000;
+    } catch (e) { toast(e.message, true); if (textIn == null) C.ask = text; }
+    C.sending = false; await chatLoad(); paintChat(); chatPoll(); recentLoad();
+  }
+
+  // ------------------------------------------------------------------ the make job ---
+  async function make(id, key) {
+    try {
+      await api('POST', `${X}/make`, {id, quote_key: key || ''});
+      toast('Making the video. You can leave this page; it carries on.');
+      await load(); await chatLoad(); PAGE === 'chat' ? paintChat() : draw(); watchJob(id);
+    } catch (e) { toast(e.message, true); }
+  }
+  function jobHTML(j) {
+    if (!j || !j.steps) return '';
+    const steps = j.steps.filter(s => s.k !== 'done' && (s.k !== 'face' || (j.engine && j.engine !== 'hoola')));
+    const pct = jobPct(j);
+    return `<div class="hx-jobh"><span class="hx-ct"><b>${j.done ? (j.status === 'ready' ? 'Ready' : j.status === 'failed' ? 'Not made' : 'Stopped') : 'Making the video'}</b>
+        <small class="hx-num">Working for ${clock(j.elapsed)}${j.credits ? ' · ' + cr(j.credits) : ''}</small></span><span class="hx-grow"></span>
+        ${j.done ? '' : `<button type="button" class="hx-btn s danger" data-a="stop" data-id="${esc(j.pid)}">${ic('stop', 14)}Stop</button>`}</div>
+      <div class="hx-pbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>
+      <ol class="hx-steps">${steps.map(s => {
+      const ok = s.at != null && s.k !== j.current, now = s.k === j.current && !j.done;
+      return `<li class="${ok ? 'ok' : now ? 'now' : ''}">${ok ? ic('check', 14) : now ? '<span class="hx-spin" aria-hidden="true"></span>' : '<span class="hx-dot"></span>'}
+        <span>${esc(s.label)}</span>${s.detail ? `<small>${esc(scrub(s.detail))}</small>` : ''}</li>`; }).join('')}</ol>
+      ${j.done ? '' : '<p class="hx-mut hx-sm">You can close this page. The video keeps being made, and it appears here when it is ready.</p>'}
+      ${j.error && j.status === 'failed' ? `<p class="hx-why">${esc(scrub(j.error))}</p>` : ''}`;
+  }
+  function watchJob(id) {
+    if (UI.jobs[id]) return;
+    const tick = async () => {
+      let j; try { j = await api('GET', `${S}/progress?id=${q(id)}`); } catch { delete UI.jobs[id]; return; }
+      const box = $(`#hxJob-${CSS.escape(id)}`); if (box) box.innerHTML = jobHTML(j);
+      UI.jp[id] = jobPct(j); $$(`[data-jobm="${CSS.escape(id)}"] i`).forEach(i => { i.style.width = UI.jp[id] + '%'; });
+      if (j.done) { delete UI.jobs[id]; await load(); if (PAGE === 'chat') { await chatLoad(); paintChat(); } else draw();
+        if (j.status === 'ready') toast('Your video is ready.'); else if (j.status === 'failed') toast(j.error || 'The video could not be made.', true); return; }
+      UI.jobs[id] = setTimeout(tick, 2000);
+    };
+    UI.jobs[id] = setTimeout(tick, 600);
   }
   async function download(id) {
-    const p = D.projects.find(x => x.id === id);
+    const p = (D.projects || []).find(x => x.id === id);
     try { const a = document.createElement('a'); a.href = await blobUrl(`${S}/video?id=${q(id)}`); a.download = `${(p?.title || 'hoola-video').replace(/[^\w .-]+/g, '_').slice(0, 60)}.mp4`; document.body.appendChild(a); a.click(); a.remove(); }
     catch (e) { toast(e.message, true); }
   }
 
+  // ------------------------------------------------------------------ the Studio (v0.999.173: the library + the editor) ---
+  const LIBF = [['all', 'All'], ['plan', 'Plans'], ['making', 'Making'], ['ready', 'Ready'], ['failed', 'Not made']];
+  const LSORT = {new: 'Newest first', old: 'Oldest first', title: 'Title A to Z'};
+  const TOOLS = ['Scene', 'Face', 'Voice', 'Engine', 'Video'];
+  const libKind = p => p.status === 'ready' ? 'ready' : p.status === 'making' ? 'making' : p.status === 'failed' ? 'failed' : 'plan';
+  const total = p => { const T = sceneTimes(p); return p?.video?.duration || (T.length ? T[T.length - 1][1] + (p.closing ? 2.2 : 1.2) : 0); };
+  const metaOf = p => [KIND_NAME[p.kind] || SHAPE[p.shape] || 'Video', langName(p.lang), clock(total(p))].join(' · ');
+  function jobPct(j) {
+    if (!j || !j.steps) return 4;
+    const steps = j.steps.filter(s => s.k !== 'done' && (s.k !== 'face' || (j.engine && j.engine !== 'hoola')));
+    const done = steps.filter(s => s.at != null && s.k !== j.current).length;
+    return j.done ? 100 : Math.max(4, Math.round(100 * (done + .5) / Math.max(1, steps.length)));
+  }
+  function libRows() {
+    const qy = (UI.lq || '').trim().toLowerCase(), f = UI.lf || 'all', s = UI.ls || 'new';
+    const ps = (D.projects || []).filter(p => (f === 'all' || libKind(p) === f)
+      && (!qy || `${p.title} ${p.ask || ''} ${(p.scenes || []).map(x => x.say).join(' ')}`.toLowerCase().includes(qy)));
+    return ps.sort((a, b) => s === 'title' ? String(a.title).localeCompare(String(b.title))
+      : s === 'old' ? String(a.updated || '').localeCompare(String(b.updated || '')) : String(b.updated || '').localeCompare(String(a.updated || '')));
+  }
+  function libThumb(p) {
+    const k = libKind(p);
+    const f = face(p.avatar_id), sc = (p.scenes || [])[0] || {}, lt = lookText(sc.look) || p.title;
+    return `<span class="hx-lth"><span class="hx-pst k-${esc(p.kind || 'presenter')}${p.aspect === '9:16' ? ' tall' : ''}" style="--brand:${esc(brandColor())}"><b>${esc(lt)}</b>${sc.say ? `<small>${esc(sc.say)}</small>` : ''}
+      ${f ? `<span class="hx-pstf">${avImg(f, 'xs')}</span>` : ''}<span class="hx-vtht hx-num">${clock(total(p))}</span></span>${k === 'ready' ? `<span class="hx-lplay" aria-hidden="true">${ic('play', 16)}</span>` : ''}
+      ${k === 'making' ? `<span class="hx-lbar" data-jobm="${esc(p.id)}"><i style="width:${UI.jp[p.id] || 4}%"></i></span>` : ''}</span>`;
+  }
+  function libCard(p) {
+    return `<article class="hx-lc" data-k="${libKind(p)}">
+      <button type="button" class="hx-lco" data-a="openp" data-id="${esc(p.id)}" aria-label="Open ${esc(p.title)}">${libThumb(p)}</button>
+      <div class="hx-lcb"><button type="button" class="hx-lct" data-a="openp" data-id="${esc(p.id)}" tabindex="-1">${esc(p.title)}</button>
+        <span class="hx-lcm hx-num">${esc(metaOf(p))} · ${(p.scenes || []).length} scenes</span>
+        <div class="hx-lcf">${chip(p)}<span class="hx-mut hx-sm">${esc(ago(p.updated))}</span><span class="hx-grow"></span>
+          <button type="button" class="hx-ib s" data-a="vmenu" data-id="${esc(p.id)}" aria-label="More for ${esc(p.title)}">${ic('dots', 16)}</button></div></div></article>`;
+  }
+  function libRow(p) {
+    return `<div class="hx-lr" role="row"><button type="button" class="hx-lro" data-a="openp" data-id="${esc(p.id)}">${libThumb(p)}
+        <span class="hx-ct"><b>${esc(p.title)}</b><small class="hx-num">${esc(metaOf(p))} · ${(p.scenes || []).length} scenes</small></span></button>
+      <span class="hx-lrs">${chip(p)}</span><span class="hx-mut hx-sm hx-lru">${esc(ago(p.updated))}</span>
+      <button type="button" class="hx-ib s" data-a="vmenu" data-id="${esc(p.id)}" aria-label="More for ${esc(p.title)}">${ic('dots', 16)}</button></div>`;
+  }
+  function libList() {
+    const rows = libRows();
+    if (!rows.length) return `<div class="hx-empty"><b>No videos match</b><span>Try another word, or show every video.</span>
+      <button type="button" class="hx-btn s" data-a="lclear">Show all videos</button></div>`;
+    return UI.lv === 'list' ? `<div class="hx-lrows hx-card" role="table" aria-label="Your videos">${rows.map(libRow).join('')}</div>`
+      : `<div class="hx-lgrid">${rows.map(libCard).join('')}</div>`;
+  }
+  function libEmpty() {
+    const tp = (D.templates || []).length;
+    return `<div class="hx-doc hx-lib"><div class="hx-lempty">
+      <div class="hx-lart" aria-hidden="true" style="--brand:${esc(brandColor())}"><span class="f"><i class="t"></i><i class="t2"></i><i class="c"></i><b class="av"></b></span>
+        <span class="r"><i></i><i></i><i></i><i></i></span></div>
+      <h2 class="hx-serif">Your first video starts with one sentence</h2>
+      <p class="hx-mut">Say what it should say, in any language. Hoola writes the scenes; you check the plan and the price. Nothing is made until you tap Make.</p>
+      <div class="hx-lstarts">
+        <button type="button" class="hx-lst" data-a="newchat"><span class="hx-lsi a">${ic('chat', 18)}</span><b>Describe it</b><span>Write or say what the video is for</span></button>
+        <button type="button" class="hx-lst" data-a="go" data-p="templates"><span class="hx-lsi b">${ic('grid', 18)}</span><b>Start from a template</b><span>${tp ? `${num(tp)} ready-made videos; your words fill the blanks` : 'Ready-made videos; your words fill the blanks'}</span></button>
+        <button type="button" class="hx-lst" data-a="lfrom"><span class="hx-lsi c">${ic('doc', 18)}</span><b>From a document</b><span>A PDF, Word file or slides become an explainer</span></button></div>
+      <ol class="hx-how"><li><span class="n">1</span><span><b>Say it</b>One line, any language</span></li>
+        <li><span class="n">2</span><span><b>Check the plan</b>Scenes, face, voice and the price</span></li>
+        <li><span class="n">3</span><span><b>Make it</b>Your tap; it carries on if you leave</span></li></ol></div></div>`;
+  }
+  function libPage() {
+    const all = D.projects || [];
+    if (!all.length) return libEmpty();
+    const n = k => all.filter(p => k === 'all' || libKind(p) === k).length, u = D.usage || {};
+    const waiting = all.filter(p => libKind(p) === 'plan' && (p.scenes || []).some(s => s.needs)).length;
+    const kpi = (lab, val, sub) => `<div class="hx-kpi"><span>${lab}</span><b class="hx-num">${val}</b><small>${sub}</small></div>`;
+    return `<div class="hx-doc hx-lib"><div class="hx-libh"><div class="hx-growf"><h2 class="hx-serif">Studio</h2>
+        <p class="hx-mut">Every video you planned or made. Open one to change its scenes, face, voice and engine.</p></div>
+        <div class="hx-acts"><button type="button" class="hx-btn" data-a="go" data-p="templates">${ic('grid', 14)}From a template</button>
+          <button type="button" class="hx-btn dark" data-a="newchat">${ic('plus', 14)}New video</button></div></div>
+      <div class="hx-kpis">${kpi('Videos', num(all.length), `${num(n('ready'))} ready to download`)}
+        ${kpi('Plans', num(n('plan')), waiting ? `${num(waiting)} need your numbers` : 'Nothing is spent until you tap')}
+        ${kpi('Made this month', num(u.videos || 0), `${num(u.minutes || 0)} minutes`)}
+        ${kpi('Kept on Hoola', `${num(u.stored || 0)}<small> of ${num(u.kept_max || 0)}</small>`, 'Older videos make room for new ones')}</div>
+      <div class="hx-libbar"><div class="hx-seg hx-lf" role="tablist" aria-label="Show">${LIBF.map(([k, l]) => `<button type="button" role="tab" aria-selected="${(UI.lf || 'all') === k}" aria-checked="${(UI.lf || 'all') === k}" data-a="lf" data-val="${k}">${l}<span class="hx-num">${num(n(k))}</span></button>`).join('')}</div>
+        <span class="hx-grow"></span>
+        <label class="hx-lsearch">${ic('search', 15)}<span class="hx-sr">Find a video</span><input id="hxLq" type="search" placeholder="Find a video" value="${esc(UI.lq || '')}" autocomplete="off"></label>
+        <button type="button" class="hx-btn" data-a="lsort">${ic('sort', 14)}<span>${LSORT[UI.ls || 'new']}</span></button>
+        <div class="hx-seg hx-lv" role="radiogroup" aria-label="View">${[['grid', 'grid', 'Cards'], ['list', 'rows', 'List']].map(([k, i, l]) => `<button type="button" role="radio" aria-checked="${(UI.lv || 'grid') === k}" data-a="lview" data-val="${k}" aria-label="${l}" title="${l}">${ic(i, 15)}</button>`).join('')}</div></div>
+      <div id="hxLibList">${libList()}</div>
+      ${(D.trash || []).length ? `<button type="button" class="hx-lnk hx-ltrash" data-a="ltrash">${ic('trash', 14)}Trash · ${num(D.trash.length)} video${D.trash.length === 1 ? '' : 's'}, kept for 30 days</button>` : ''}</div>`;
+  }
+
+  // the editor
+  function edStage(p) {
+    const n = Math.min(UI.scene, Math.max(0, p.scenes.length - 1)), sc = p.scenes[n] || {say: '', look: {kind: 'none'}}, f = face(p.avatar_id), full = p.face_layout === 'full';
+    const T = sceneTimes(p), tot = total(p), at = T[n] ? T[n][0] : 0, vid = p.status === 'ready' && UI.edv !== 'sketch';
+    const lt = lookText(sc.look) || (n === 0 ? p.title : '');
+    return `<div class="hx-edframe"><div class="hx-preview ${p.aspect === '9:16' ? 'tall' : p.aspect === '1:1' ? 'sq' : ''}" style="--brand:${esc(brandColor())}">
+        ${vid ? `<video class="hx-player" controls playsinline preload="metadata" data-vid="${esc(p.id)}"></video><span class="hx-aimark">Made with AI</span>`
+          : `${f && full ? `<span class="hx-pvfull">${avImg(f, 'xl')}</span>` : ''}
+            <div class="hx-pvlook">${lt ? `<b>${esc(lt)}</b>` : ''}</div>${f && !full ? `<span class="hx-pvface">${avImg(f, 'l')}</span>` : ''}
+            <p class="hx-pvcap">${esc(sc.say || '')}</p>`}</div></div>
+      <div class="hx-edctl">${vid ? `<span class="hx-mut hx-sm">The finished video. Tap a scene below to jump to it.</span>`
+        : `<button type="button" class="hx-pplay" data-a="edplay" aria-label="${UI.edp ? 'Pause the sketch' : 'Play the sketch'}">${ic(UI.edp ? 'stop' : 'play', 14)}</button>
+          <button type="button" class="hx-ib s" data-a="scprev" aria-label="Previous scene"${n ? '' : ' disabled'}>${ic('back', 15)}</button>
+          <button type="button" class="hx-ib s" data-a="scnext" aria-label="Next scene"${n < p.scenes.length - 1 ? '' : ' disabled'}>${ic('fwd', 15)}</button>
+          <span class="hx-sm hx-num"><b>Scene ${n + 1}</b> of ${p.scenes.length} · ${clock(at)} / ${clock(tot)}</span>`}
+        <span class="hx-grow"></span>
+        ${p.status === 'ready' ? `<div class="hx-seg" role="radiogroup" aria-label="Show">${[['video', 'Video'], ['sketch', 'Sketch']].map(([k, l]) => `<button type="button" role="radio" aria-checked="${(UI.edv || 'video') === k}" data-a="edview" data-val="${k}">${l}</button>`).join('')}</div>` : ''}</div>`;
+  }
+  function edTimeline(p) {
+    const T = sceneTimes(p), tot = total(p);
+    return `<div class="hx-tl" role="tablist" aria-label="Scenes on the timeline">${p.scenes.map((s, i) => {
+      const lk = s.look?.kind && s.look.kind !== 'none';
+      return `<button type="button" role="tab" aria-selected="${i === UI.scene}" class="hx-tlb${i === UI.scene ? ' on' : ''}${s.needs ? ' warn' : ''}" data-a="scene" data-n="${i}" style="flex:${(T[i][1] - T[i][0]).toFixed(2)} 1 0" title="Scene ${i + 1} · ${clock(T[i][0])}">
+        <span class="hx-num">${i + 1}</span><small>${esc(lk ? LOOK[s.look.kind] : (s.say || '').slice(0, 40))}</small></button>`; }).join('')}
+      ${p.closing ? `<span class="hx-tlb end" style="flex:2.2 1 0" title="Closing card"><small>${esc(p.closing)}</small></span>` : ''}</div>
+      <div class="hx-tlr hx-num"><span>0:00</span><span>${clock(tot / 2)}</span><span>${clock(tot)}</span></div>`;
+  }
+  function edScenes(p) {
+    const T = sceneTimes(p), dis = p.status === 'making' ? ' disabled' : '', last = p.scenes.length - 1;
+    return `<div class="hx-edsech"><b class="hx-t">Scenes</b><span class="hx-mut hx-sm hx-num" id="hxEdLen">${p.scenes.length} · ${clock(total(p))}</span><span class="hx-grow"></span>
+        <button type="button" class="hx-btn s" data-a="addsc"${dis}>${ic('plus', 14)}Scene</button></div>
+      <ol class="hx-edsc">${p.scenes.map((s, i) => `<li class="hx-scc${i === UI.scene ? ' on' : ''}" data-n="${i}">
+        <div class="hx-scch"><button type="button" class="hx-scnum" data-a="scene" data-n="${i}" aria-label="Show scene ${i + 1}">${i + 1}</button>
+          <span class="hx-mut hx-sm hx-num hx-sct">${clock(T[i][0])} · ${secs(T[i][1] - T[i][0])}</span>
+          ${s.look?.kind && s.look.kind !== 'none' ? `<span class="hx-sclk">${esc(LOOK[s.look.kind])}</span>` : ''}<span class="hx-grow"></span>
+          <span class="hx-scops"><button type="button" class="hx-ib xs" data-a="scmove" data-n="${i}" data-d="-1" aria-label="Move scene ${i + 1} up"${i && !dis ? '' : ' disabled'}>${ic('up', 14)}</button>
+            <button type="button" class="hx-ib xs" data-a="scmove" data-n="${i}" data-d="1" aria-label="Move scene ${i + 1} down"${i < last && !dis ? '' : ' disabled'}>${ic('dn', 14)}</button>
+            <button type="button" class="hx-ib xs" data-a="scdup" data-n="${i}" aria-label="Copy scene ${i + 1}"${dis}>${ic('copy', 14)}</button>
+            <button type="button" class="hx-ib xs" data-a="delsc" data-n="${i}" aria-label="Remove scene ${i + 1}"${last && !dis ? '' : ' disabled'}>${ic('trash', 14)}</button></span></div>
+        <textarea class="hx-in hx-serifp" data-sc="${i}" rows="3" aria-label="Scene ${i + 1} words"${dis}>${esc(s.say)}</textarea>
+        ${s.needs ? `<p class="hx-why">${ic('warn', 14)}<span>${esc(s.needs)}</span></p>` : ''}</li>`).join('')}</ol>
+      <label class="hx-fld hx-edclose"><span class="hx-lab">Closing line</span><input class="hx-in" data-f="closing" value="${esc(p.closing || '')}" maxlength="80" placeholder="Visit us at…"${dis}>
+        <span class="hx-hint">Shown on the last card, after the final scene.</span></label>`;
+  }
+  function edTool(p) {
+    const sc = p.scenes[UI.scene] || {say: '', look: {kind: 'none'}}, lk = sc.look || {kind: 'none'}, f = face(p.avatar_id), e = engine(p.engine);
+    const dis = p.status === 'making' ? ' disabled' : '';
+    if (UI.tool === 'Scene') {
+      const field = (k, l, ph) => `<label class="hx-fld"><span class="hx-lab">${l}</span><input class="hx-in" data-lk="${k}" value="${esc(lk[k] || '')}" maxlength="60" placeholder="${esc(ph || '')}"${dis}></label>`;
+      const extra = {title: field('text', 'Title', 'Grand opening'), big_number: field('value', 'Number', '1,200') + field('label', 'What it is', 'happy customers'),
+        price: `<div class="hx-row2">${field('new', 'Price now', '€19')}${field('old', 'Price before', '€25')}</div>${field('label', 'Item', 'Lunch menu')}`,
+        lower_third: field('title', 'Name', 'Maya Costa') + field('sub', 'Line under it', 'Owner, Café Azul'),
+        bar_chart: `<div class="hx-fld"><span class="hx-lab">Bars</span>${(lk.bars || []).map((b, i) => `<div class="hx-barr"><input class="hx-in" data-bar="${i}" data-bk="label" value="${esc(b.label)}" placeholder="Label" aria-label="Bar ${i + 1} label"${dis}><input class="hx-in" data-bar="${i}" data-bk="value" value="${esc(b.value)}" placeholder="Value" aria-label="Bar ${i + 1} value"${dis}>
+          <button type="button" class="hx-ib xs" data-a="bardel" data-n="${i}" aria-label="Remove bar ${i + 1}"${(lk.bars || []).length > 1 && !dis ? '' : ' disabled'}>${ic('x', 14)}</button></div>`).join('')}
+          ${(lk.bars || []).length < 6 ? `<button type="button" class="hx-btn s" data-a="baradd"${dis}>${ic('plus', 13)}Add a bar</button>` : ''}</div>`}[lk.kind] || '';
+      return `<div class="hx-fld"><span class="hx-lab">What scene ${UI.scene + 1} shows</span><div class="hx-looks" role="radiogroup">${Object.entries(LOOK).map(([k, n]) => `<button type="button" role="radio" aria-checked="${(lk.kind || 'none') === k}" class="hx-lkt" data-a="lookset" data-val="${k}"${dis}>
+          <span class="hx-lka ${k}" aria-hidden="true"><i></i><i></i><i></i></span><span>${esc(n)}</span></button>`).join('')}</div></div>
+        ${extra}<p class="hx-hint">Numbers on screen are yours: a number you did not write is never added.</p>`;
+    }
+    if (UI.tool === 'Face') {
+      const talk = (D.engines?.engines || []).filter(x => x.job === 'video' && x.face && x.ready).map(x => x.label);
+      return `<div class="hx-fld"><span class="hx-lab">Who presents</span><div class="hx-faces" role="radiogroup">
+          <button type="button" role="radio" aria-checked="${!p.avatar_id}" class="hx-fct" data-a="faceset" data-val=""${dis}>${avImg(null, 'm')}<span>No face</span></button>
+          ${(D.avatars || []).map(a => `<button type="button" role="radio" aria-checked="${p.avatar_id === a.id}" class="hx-fct" data-a="faceset" data-val="${esc(a.id)}"${dis}>${avImg(a, 'm')}<span>${esc(a.name)}</span></button>`).join('')}
+          <button type="button" class="hx-fct add" data-a="go" data-p="avatars">${ic('plus', 18)}<span>Add a face</span></button></div></div>
+        ${f ? `<div class="hx-fld"><span class="hx-lab">Where the person sits</span><div class="hx-seg" role="radiogroup">${[['corner', 'In a corner'], ['full', 'The whole frame']].map(([k, n]) => `<button type="button" role="radio" aria-checked="${(p.face_layout || 'corner') === k}" data-a="layout" data-val="${k}"${dis}>${n}</button>`).join('')}</div></div>` : ''}
+        <p class="hx-hint">${f ? (e?.face ? `${esc(e.label)} makes this photo talk.` : `Hoola standard shows the photo still. ${talk.length ? `To make it talk, pick ${esc(talk.join(' or '))} in Engine.` : 'A talking-face engine is not connected yet.'}`) : 'A face is used only with consent: it is you, or the person agreed.'}</p>`;
+    }
+    if (UI.tool === 'Voice') return `<div class="hx-fld"><span class="hx-lab">Voice</span><button type="button" class="hx-dd" data-a="ppick" data-k="voice"${dis}><span>${esc(voiceName(p.voice))}</span>${ic('down', 14)}</button></div>
+      <div class="hx-fld"><span class="hx-lab">Language</span><button type="button" class="hx-dd" data-a="ppick" data-k="lang"${dis}><span>${esc(langName(p.lang))}</span>${ic('down', 14)}</button></div>
+      <button type="button" class="hx-btn" data-a="edhear">${ic('vol', 14)}Hear scene ${UI.scene + 1} in this voice<span class="hx-mut">· free</span></button>
+      <p class="hx-hint">Your Hoola Vocal dictionary applies: names are said your way. <button type="button" class="hx-lnk" data-a="go" data-p="voices">All voices</button></p>`;
+    if (UI.tool === 'Engine') {
+      const r = UI.cmp?.id === p.id ? UI.cmp.r : null;
+      if (!r) return '<p class="hx-mut hx-sm">Pricing every engine for this video…</p>';
+      const bars = n => `<span class="hx-q" aria-label="Quality ${n} of 5">${[0, 1, 2, 3, 4].map(i => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
+      return `<p class="hx-hint">Prices for this exact video, about ${secs(r.seconds)}, in this voice.</p><div class="hx-engs" role="radiogroup">${r.engines.map(x => `<button type="button" role="radio" aria-checked="${r.chosen === x.id}" class="hx-eng${x.ready ? '' : ' off'}" data-a="engset" data-id="${esc(x.id)}"${x.ready && !dis ? '' : ' disabled'}>
+        <span class="hx-ct"><b>${esc(x.label)}</b><small>${esc(x.ready ? x.what : `Not connected · ${scrub(x.status || '')}`)}</small></span>
+        <span class="hx-engr">${bars(x.quality)}<b class="hx-num">${cr(x.credits)}</b></span></button>`).join('')}</div>
+        <button type="button" class="hx-lnk" data-a="go" data-p="engines">Set a default engine</button>`;
+    }
+    return `<div class="hx-fld"><span class="hx-lab">Shape</span><div class="hx-seg" role="radiogroup">${Object.entries(SHAPE).map(([k, n]) => `<button type="button" role="radio" aria-checked="${p.shape === k}" data-a="pshape" data-val="${k}"${dis}>${n}</button>`).join('')}</div></div>
+      ${p.shape !== 'reel' ? `<div class="hx-fld"><span class="hx-lab">Frame</span><div class="hx-seg" role="radiogroup">${[['16:9', 'Wide 16:9'], ['1:1', 'Square 1:1']].map(([k, n]) => `<button type="button" role="radio" aria-checked="${p.aspect === k}" data-a="paspect" data-val="${k}"${dis}>${n}</button>`).join('')}</div></div>` : ''}
+      <label class="hx-fld"><span class="hx-lab">Business name on screen</span><input class="hx-in" data-f="brand" value="${esc(p.brand || '')}" maxlength="40" placeholder="${esc(D.brand?.name || 'Your business')}"${dis}></label>
+      ${p.shape === 'product' ? `<div class="hx-fld"><span class="hx-lab">Products</span><div id="hxItems">${(p.items || []).map((it, i) => `<div class="hx-itrow"><input class="hx-in" data-it="${i}" data-ik="name" value="${esc(it.name)}" placeholder="Name" maxlength="48" aria-label="Product ${i + 1} name"${dis}>
+          <input class="hx-in" data-it="${i}" data-ik="price" value="${esc(it.price)}" placeholder="Price" maxlength="24" aria-label="Product ${i + 1} price"${dis}>
+          <button type="button" class="hx-ib xs" data-a="itdel" data-n="${i}" aria-label="Remove product ${i + 1}"${dis}>${ic('x', 14)}</button></div>`).join('')}</div>
+          ${(p.items || []).length < 8 ? `<button type="button" class="hx-btn s" data-a="itadd"${dis}>${ic('plus', 13)}Add a product</button>` : ''}</div>` : ''}
+      <div class="hx-fld"><span class="hx-lab">Subtitles</span><div class="hx-acts"><button type="button" class="hx-btn s" data-a="subdl" data-val="srt">${ic('dl', 13)}.srt</button>
+        <button type="button" class="hx-btn s" data-a="subdl" data-val="vtt">${ic('dl', 13)}.vtt</button></div><span class="hx-hint">Timed from the scenes.</span></div>`;
+  }
+  function makeBtn(p, big) {
+    if (p.status === 'making') return `<button type="button" class="hx-btn ${big ? 'hx-mkb' : ''} danger" data-a="stop" data-id="${esc(p.id)}">${ic('stop', 14)}<span>Stop</span></button>`;
+    const qn = UI.q?.id === p.id ? UI.q : null, blocked = !qn || (qn.problems || []).length;
+    return `<button type="button" class="hx-btn dark ${big ? 'hx-mkb' : ''}" data-a="make" data-mk="1" data-id="${esc(p.id)}" data-k="${esc(qn?.quote?.key || '')}"${blocked ? ' disabled' : ''}>${ic('play', 14)}<span>${p.status === 'ready' ? 'Make it again' : 'Make the video'}${qn ? ` · ${cr(qn.quote.credits)}` : ''}</span></button>`;
+  }
+  function edMakeBox(p) {
+    const qn = UI.q?.id === p.id ? UI.q : null, pr = qn?.problems || [];
+    return `<div class="hx-edmk"><div id="hxEdPrice">${qn ? priceBox(qn.quote) : '<p class="hx-mut hx-sm">Working out the price…</p>'}</div>
+      ${pr.length ? `<ul class="hx-probs">${pr.map(x => `<li>${ic('warn', 14)}<span>${esc(scrub(x))}</span></li>`).join('')}</ul>` : ''}
+      ${makeBtn(p, true)}<p class="hx-hint">${p.status === 'making' ? 'Making it now. You can leave this page; it carries on.' : 'The price is for this exact video. Nothing is spent until you tap.'}</p></div>`;
+  }
+  function edPage() {
+    const p = cur();
+    if (!p) return `<div class="hx-doc"><div class="hx-empty"><b>This video was not found</b><span>It may be in the trash.</span><button type="button" class="hx-btn" data-a="go" data-p="studio">All videos</button></div></div>`;
+    if (UI.scene >= p.scenes.length) UI.scene = Math.max(0, p.scenes.length - 1);
+    if (!TOOLS.includes(UI.tool)) UI.tool = 'Scene';
+    const dis = p.status === 'making' ? ' disabled' : '';
+    return `<div class="hx-ed"><div class="hx-edh"><button type="button" class="hx-ib" data-a="go" data-p="studio" aria-label="All videos" title="All videos">${ic('back', 18)}</button>
+        <div class="hx-edtt"><label class="hx-sr" for="hxEdTitle">Title</label><input id="hxEdTitle" class="hx-edti" data-f="title" value="${esc(p.title)}" maxlength="80"${dis}>
+          <span class="hx-edmeta">${chip(p)}<span class="hx-num">${esc([KIND_NAME[p.kind] || SHAPE[p.shape] || 'Video', p.aspect, langName(p.lang)].join(' · '))}</span>${p.chat ? `<button type="button" class="hx-lnk" data-a="openchat" data-id="${esc(p.chat)}">Its chat</button>` : ''}</span></div>
+        <span class="hx-grow"></span>
+        ${p.status === 'ready' ? `<button type="button" class="hx-btn" data-a="dlv" data-id="${esc(p.id)}">${ic('dl', 14)}<span>Download</span></button>` : ''}
+        <button type="button" class="hx-ib" data-a="vmenu" data-id="${esc(p.id)}" aria-label="More for this video">${ic('dots', 18)}</button>
+        <span class="hx-edhmk">${makeBtn(p)}</span></div>
+      <div class="hx-edb"><section class="hx-edl" data-keep="edl-${esc(p.id)}" aria-label="Scenes">${edScenes(p)}</section>
+        <section class="hx-edc" aria-label="Preview"><div id="hxEdStage">${edStage(p)}</div><div id="hxEdTl">${edTimeline(p)}</div>
+          <div id="hxJob-${esc(p.id)}" class="hx-edjob"></div>${p.error && p.status === 'failed' ? `<p class="hx-why">${ic('warn', 14)}<span>${esc(scrub(p.error))}</span></p>` : ''}</section>
+        <aside class="hx-edr" data-keep="edr-${esc(p.id)}" aria-label="Settings"><div class="hx-tabs hx-edtabs" role="tablist">${TOOLS.map(t => `<button type="button" role="tab" aria-selected="${UI.tool === t}" data-a="tool" data-val="${t}">${t}</button>`).join('')}</div>
+          <div id="hxEdTool" class="hx-edtool">${edTool(p)}</div>${edMakeBox(p)}</aside></div></div>`;
+  }
+  function edPaint(tool = true) {
+    const p = cur(); if (!p || PAGE !== 'studio') return;
+    const s = $('#hxEdStage'); if (s) { s.innerHTML = edStage(p); fillMedia(); }
+    const t = $('#hxEdTl'); if (t) t.innerHTML = edTimeline(p);
+    $$('.hx-scc').forEach(li => li.classList.toggle('on', +li.dataset.n === UI.scene));
+    if (tool && UI.tool === 'Scene') { const x = $('#hxEdTool'); if (x) x.innerHTML = edTool(p); }
+  }
+  function edTimes(p) {
+    const T = sceneTimes(p);
+    $$('.hx-scc').forEach(li => { const i = +li.dataset.n, el = li.querySelector('.hx-sct'); if (el && T[i]) el.textContent = `${clock(T[i][0])} · ${secs(T[i][1] - T[i][0])}`; });
+    const l = $('#hxEdLen'); if (l) l.textContent = `${p.scenes.length} · ${clock(total(p))}`;
+    const t = $('#hxEdTl'); if (t) t.innerHTML = edTimeline(p);
+  }
+  function edScene(n, show) {
+    const p = cur(); if (!p) return; UI.scene = Math.max(0, Math.min(n, p.scenes.length - 1));
+    const v = $('#hxEdStage video');
+    if (v) { const T = sceneTimes(p)[UI.scene]; try { v.currentTime = T ? T[0] : 0; v.play().catch(() => {}); } catch { /* not loaded */ } $$('.hx-tlb').forEach((b, i) => b.classList.toggle('on', i === UI.scene)); $$('.hx-scc').forEach(li => li.classList.toggle('on', +li.dataset.n === UI.scene)); }
+    else edPaint();
+    if (show) $(`.hx-scc[data-n="${UI.scene}"]`)?.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+  }
+  function edPlay() {
+    if (UI.edp) return edStop();
+    const p = cur(); if (!p || !p.scenes.length) return;
+    UI.edp = true; if (UI.scene >= p.scenes.length - 1) UI.scene = 0; edTick(true);
+  }
+  function edTick(first) {
+    const p = cur(); if (!UI.edp || !p || PAGE !== 'studio') return edStop();
+    if (!first) { if (UI.scene >= p.scenes.length - 1) return edStop(); UI.scene++; }
+    edPaint(); $(`.hx-scc[data-n="${UI.scene}"]`)?.scrollIntoView({block: 'nearest'});
+    const T = sceneTimes(p)[UI.scene]; UI.edt = setTimeout(() => edTick(false), Math.max(1500, (T[1] - T[0]) * 1000));
+  }
+  function edStop() { clearTimeout(UI.edt); if (!UI.edp) return; UI.edp = false; edPaint(false); }
+  async function edCompare() {
+    const id = ARG; if (!id) return;
+    try { const r = await api('GET', `${X}/compare?id=${q(id)}`); UI.cmp = {id, r}; } catch (e) { UI.cmp = {id, r: {engines: [], seconds: 0, chosen: ''}}; toast(e.message, true); }
+    if (PAGE === 'studio' && ARG === id && UI.tool === 'Engine') { const x = $('#hxEdTool'); if (x) x.innerHTML = edTool(cur()); }
+  }
+  function scenesSave(sc, n) { if (n != null) UI.scene = n; return save({scenes: sc}); }
+  async function newVideo() { clearTimeout(C.t); C.gen++; C.conv = ''; C.rows = []; C.items = []; C.files = []; C.ask = ''; UI.pv.id = ''; pvStop(); await openChat(true); recentLoad(); go('chat'); }
+  function trMenu(el, id) {
+    return menu(el, [{search: 'Translate into', empty: 'No language matches'}, ...(UI.L || []).map(l => ({label: l.native && l.native !== l.name ? `${l.name} · ${l.native}` : l.name, sub: l.region, run: async () => {
+      try { const p = await api('POST', `${H}/translate`, {id, lang: l.code}); toast('A translated draft is ready. Check it, then make it.'); await load(); UI.scene = 0; go('studio', p.id); } catch (er) { toast(er.message, true); } }}))], {width: 280});
+  }
+  async function dupP(id) { try { const p = await api('POST', `${H}/duplicate`, {id}); await load(); toast('A copy is ready.'); UI.scene = 0; go('studio', p.id); } catch (er) { toast(er.message, true); } }
+  function tplSave(id) { return svOpen(id); }
+  async function trashP(id) {
+    try { await api('POST', `${H}/trash`, {id}); await load(); toast('Moved to the trash for 30 days.'); if (PAGE === 'studio' && ARG === id) go('studio'); else draw(); }
+    catch (er) { toast(er.message, true); }
+  }
+  function vMenu(el, id) {
+    const p = (D.projects || []).find(x => x.id === id); if (!p) return;
+    return menu(el, [...(PAGE === 'studio' && ARG === id ? [] : [{label: 'Open in the Studio', icon: 'library', run: () => { UI.scene = 0; UI.edv = 'video'; go('studio', id); }}]),
+      ...(p.chat ? [{label: 'Open its chat', icon: 'clip', run: () => openChatId(p.chat)}] : []),
+      ...(p.status === 'ready' ? [{label: 'Download the MP4', run: () => download(id)}] : []),
+      {label: 'Duplicate', icon: 'plus', run: () => dupP(id)},
+      {label: 'Translate into another language', run: () => trMenu(el, id)},
+      {label: 'Save as a template', icon: 'grid', run: () => tplSave(id)},
+      {sep: true}, {label: 'Move to the trash', icon: 'trash', danger: true, disabled: p.status === 'making', run: () => trashP(id)}], {align: 'end', width: 260});
+  }
+  async function openChatId(conv) { clearTimeout(C.t); C.gen++; C.conv = conv; C.rows = []; C.items = []; UI.pv.id = ''; pvStop(); await chatLoad(); go('chat'); }
+
+  // ------------------------------------------------------------------ templates (v0.999.174: design claude.ai/artifact/JzJ7s7bqJGC983XfwCZbMk) ---
+  // The library (her own templates first, then the ready-made ones as cards with a poster of their first scene, what they
+  // are for and the blanks), the Use page (one field per blank, the live preview filling in as she types, language / face /
+  // voice / engine / frame, the price: the draft is free, the video is priced again in the Studio), the save dialog (tap
+  // the words that change; Hoola marks prices, dates and names by code) and a sheet with one free draft per row.
+  const TGROUP = {Offers: 'Offers & sales', Updates: 'Updates', Reminders: 'Reminders', Lessons: 'Lessons', Greetings: 'Greetings', Events: 'Events', Reels: 'Social reels', Mine: 'Yours'};
+  const TSORT = {used: 'Most used', name: 'Name A to Z', short: 'Shortest first'};
+  const TSHAPE = {any: 'Any shape', wide: 'Landscape', tall: 'Vertical', sq: 'Square'};
+  const HI_TPL = ['tp_offer', 'tp_rate', 'tp_batch', 'tp_timing', 'tp_thanks', 'tp_reel'];   // written in Hindi too
+  const tplOf = id => (D.templates || []).find(t => t.id === id);
+  const shapeKey = t => t.aspect === '9:16' || t.shape === 'reel' ? 'tall' : t.aspect === '1:1' ? 'sq' : 'wide';
+  const shapeName = t => ({tall: 'Vertical', sq: 'Square', wide: 'Landscape'})[shapeKey(t)];
+  const sampleOf = t => Object.fromEntries((t.blanks || []).map(b => [b.key, String(b.example || '').replace(/^e\.g\.\s*/i, '').split(/,\s*/)[0].replace(/^with its \w+,\s*/i, '') || b.label]));
+  const fillStr = (s, v) => String(s || '').replace(/\{([a-z][a-z0-9_]*)\}/g, (m, k) => v[k] || m);
+  const shown = s => { s = String(s || '').replace(/\{[a-z][a-z0-9_]*\}/g, '…'); return s.charAt(0).toUpperCase() + s.slice(1); };   // a poster never shows {braces}
+  const fillLook = (lk, v) => { const o = {...(lk || {kind: 'none'})}; for (const k of ['text', 'label', 'title', 'sub', 'unit', 'value', 'new', 'old']) if (o[k]) o[k] = fillStr(o[k], v);
+    if (o.bars) o.bars = o.bars.map(b => ({label: fillStr(b.label, v), value: fillStr(b.value, v)})); return o; };
+  function fillParts(s, v, tb) {   // her words in the line: a value she typed, a gap she has not filled yet
+    const out = []; let at = 0; const rx = /\{([a-z][a-z0-9_]*)\}/g; let m;
+    while ((m = rx.exec(s || ''))) { if (m.index > at) out.push(esc(s.slice(at, m.index)));
+      const b = (tb || []).find(x => x.key === m[1]), val = v[m[1]];
+      out.push(val ? `<mark class="hx-tv">${esc(val)}</mark>` : `<mark class="hx-tgap">${esc((b?.label || m[1]).toLowerCase())}</mark>`); at = rx.lastIndex; }
+    out.push(esc(String(s || '').slice(at))); return out.join('');
+  }
+  function tplPoster(t, cls) {
+    const v = sampleOf(t), sc = (t.scenes || []).find(s => s.look?.kind && s.look.kind !== 'none') || (t.scenes || [])[0] || {}, lk = fillLook(sc.look, v), g = (t.group || 'Mine').toLowerCase();
+    const body = shapeKey(t) === 'tall' ? `<span class="hx-tph"><b>${esc(fillStr((t.scenes || [])[0]?.say, v))}</b><i></i><i></i></span>`
+      : lk.kind === 'price' ? `<small>${esc(lk.label || '')}</small><span class="hx-tpp">${lk.old ? `<s>${esc(lk.old)}</s>` : ''}<b>${esc(lk.new || '')}</b></span>`
+      : lk.kind === 'big_number' ? `<b class="big">${esc(lk.value || '')}</b><small>${esc(lk.label || '')}</small>`
+      : lk.kind === 'lower_third' ? `<b>${esc(lk.title || '')}</b><small>${esc(lk.sub || '')}</small>`
+      : `<b>${esc(shown(lookText(lk) || fillStr(sc.say, v)))}</b>${t.closing ? `<small>${esc(shown(fillStr(t.closing, v)))}</small>` : ''}`;
+    return `<span class="hx-tpo g-${esc(g)}${cls ? ' ' + cls : ''}${shapeKey(t) === 'tall' ? ' tall' : ''}">${body}
+      <span class="hx-tpg">${esc(TGROUP[t.group] || t.group || 'Yours')}</span><span class="hx-tplen hx-num">${clock(t.seconds)}</span></span>`;
+  }
+  const blankChips = t => (t.blanks || []).map(b => `<span class="hx-tbk">${esc(b.label.toLowerCase())}</span>`).join('');
+  function tplRows() {
+    const qy = (UI.tq || '').trim().toLowerCase(), g = UI.tg || 'all', sh = UI.tsh || 'any', so = UI.tso || 'used';
+    const rows = (D.templates || []).filter(t => (g === 'all' || t.group === g) && (sh === 'any' || shapeKey(t) === sh)
+      && (!qy || `${t.name} ${t.line || ''} ${TGROUP[t.group] || ''} ${(t.scenes || []).map(s => s.say).join(' ')} ${(t.blanks || []).map(b => b.label).join(' ')}`.toLowerCase().includes(qy)));
+    return rows.sort((a, b) => so === 'name' ? a.name.localeCompare(b.name) : so === 'short' ? a.seconds - b.seconds : (b.used || 0) - (a.used || 0));
+  }
+  function tplCard(t) {
+    return `<article class="hx-tc"><button type="button" class="hx-tco" data-a="tpluse" data-id="${esc(t.id)}" aria-label="Use ${esc(t.name)}">${tplPoster(t)}</button>
+      <div class="hx-tcb"><div class="hx-tcn"><b>${esc(t.name)}</b>${t.id === 'tp_remind' || t.id === 'tp_event' ? '<span class="hx-tnew">New</span>' : ''}</div>
+        <p>${esc(t.line || '')}</p><div class="hx-tbks">${blankChips(t)}</div><span class="hx-grow"></span>
+        <div class="hx-tcf"><span class="hx-mut hx-sm hx-num">${t.count} scene${t.count === 1 ? '' : 's'} · ${shapeName(t)}${t.used ? ` · used ${num(t.used)}×` : ''}</span><span class="hx-grow"></span>
+          <button type="button" class="hx-ib s ring" data-a="tplsample" data-id="${esc(t.id)}" aria-label="Watch a sample of ${esc(t.name)}" title="Watch a sample">${ic('play', 13)}</button>
+          <button type="button" class="hx-btn s dark" data-a="tpluse" data-id="${esc(t.id)}">Use</button></div></div></article>`;
+  }
+  function tplMine(t) {
+    return `<article class="hx-tm"><button type="button" class="hx-tmo" data-a="tpluse" data-id="${esc(t.id)}" aria-label="Use ${esc(t.name)}">${tplPoster(t, 'mini')}</button>
+      <div class="hx-ct"><b>${esc(t.name)}</b><small class="hx-num">${esc(t.line || 'Yours')} · ${t.count} scene${t.count === 1 ? '' : 's'}${t.used ? ` · used ${num(t.used)}×` : ''}</small><span class="hx-tbks">${blankChips(t)}</span></div>
+      <button type="button" class="hx-ib s" data-a="tplmenu" data-id="${esc(t.id)}" aria-label="More for ${esc(t.name)}">${ic('dots', 16)}</button>
+      <button type="button" class="hx-btn s dark" data-a="tpluse" data-id="${esc(t.id)}">Use</button></article>`;
+  }
+  function tplEmptyMine() {
+    return `<div class="hx-tempty"><div class="hx-teart" aria-hidden="true"><span class="a"></span><span class="b"><b>Only <mark class="hx-tv">price</mark> this week</b><i></i><i></i><em><u></u><u></u></em></span><span class="c">${ic('plus', 20)}</span></div>
+      <div class="hx-growf"><h3 class="hx-serif">Make a video once. Reuse it every week.</h3>
+        <p class="hx-mut">Turn any of your videos into a template. The words that change, like a price, a date or a name, become blanks you fill in next time.</p>
+        <ol class="hx-how"><li><span class="n">1</span><span>Pick a video you made: an offer, a lesson, a weekly update.</span></li>
+          <li><span class="n">2</span><span>Tap the words that change. They become blanks.</span></li>
+          <li><span class="n">3</span><span>Next time, fill the blanks and the draft is ready in seconds.</span></li></ol>
+        <div class="hx-acts"><button type="button" class="hx-btn dark" data-a="tplfrom">Choose one of my videos</button>
+          <button type="button" class="hx-btn" data-a="ttab" data-val="ready">Browse ready-made</button></div>
+        <span class="hx-mut hx-sm">Up to 40 templates. Only you can see them.</span></div></div>`;
+  }
+  function tplList() {
+    const tab = UI.tt || 'all', rows = tplRows(), mine = rows.filter(t => t.mine), ready = rows.filter(t => !t.mine), all = D.templates || [];
+    if (tab === 'mine' && !all.some(t => t.mine)) return tplEmptyMine();
+    if (!rows.length) return `<div class="hx-empty"><b>No templates match</b><span>Try another word, or show every template.</span><button type="button" class="hx-btn s" data-a="tclear">Show all templates</button></div>`;
+    const nm = all.filter(t => t.mine).length;
+    return `${tab !== 'ready' && mine.length ? `<section class="hx-tsec" aria-labelledby="hxTm"><div class="hx-sech"><b class="hx-t" id="hxTm">Your templates</b><span class="hx-mut hx-sm">${num(nm)} of 40 · made from your own videos</span></div>
+        <div class="hx-tmg">${mine.map(tplMine).join('')}</div></section>` : ''}
+      ${tab !== 'mine' && ready.length ? `<section class="hx-tsec" aria-labelledby="hxTr"><div class="hx-sech"><b class="hx-t" id="hxTr">Ready-made</b><span class="hx-mut hx-sm">Every one speaks in any of 140 languages</span></div>
+        <div class="hx-tgrid">${ready.map(tplCard).join('')}</div></section>` : ''}`;
+  }
+  function tplLib() {
+    const all = D.templates || [], n = k => k === 'all' ? all.length : k === 'mine' ? all.filter(t => t.mine).length : all.filter(t => !t.mine).length;
+    const groups = ['all', ...Object.keys(TGROUP).filter(g => g !== 'Mine' && all.some(t => t.group === g))];
+    return `<div class="hx-doc hx-tlib"><div class="hx-libh"><div class="hx-growf"><h2 class="hx-serif">Templates</h2>
+        <p class="hx-mut">Start from a video that already works. Fill in a few words, and Hoola writes the draft in your language. Making the draft is free; you see the price before the video is made.</p></div>
+        <div class="hx-acts"><button type="button" class="hx-btn" data-a="tplfrom">${ic('plus', 14)}Save a video as a template</button></div></div>
+      <div class="hx-libbar"><label class="hx-lsearch hx-tsearch">${ic('search', 15)}<span class="hx-sr">Search templates</span><input id="hxTq" type="search" placeholder="Search: offer, reminder, lesson, thank you…" value="${esc(UI.tq || '')}" autocomplete="off"></label>
+        <div class="hx-seg" role="tablist" aria-label="Which templates">${[['all', 'All'], ['ready', 'Ready-made'], ['mine', 'Yours']].map(([k, l]) => `<button type="button" role="tab" aria-selected="${(UI.tt || 'all') === k}" aria-checked="${(UI.tt || 'all') === k}" data-a="ttab" data-val="${k}">${l}<span class="hx-num">${num(n(k))}</span></button>`).join('')}</div>
+        <span class="hx-grow"></span>
+        <button type="button" class="hx-btn" data-a="tshape">${esc(TSHAPE[UI.tsh || 'any'])}${ic('down', 13)}</button>
+        <button type="button" class="hx-btn" data-a="tsort">${ic('sort', 14)}<span>${esc(TSORT[UI.tso || 'used'])}</span></button></div>
+      <div class="hx-tchips" role="radiogroup" aria-label="Kind">${groups.map(g => `<button type="button" role="radio" aria-checked="${(UI.tg || 'all') === g}" class="hx-chip s" data-a="tgrp" data-val="${esc(g)}">${esc(g === 'all' ? 'All kinds' : TGROUP[g])}</button>`).join('')}</div>
+      <div id="hxTplList">${tplList()}</div></div>`;
+  }
+
+  // ---- using one
+  function tuState(t) {
+    if (!UI.tu || UI.tu.id !== t.id) UI.tu = {id: t.id, vals: {}, lang: 'auto', face: SET.face || '', voice: SET.voice || '', engine: defEngine(), aspect: t.aspect, layout: 'corner', scene: 0, play: false, sample: false, est: null};
+    return UI.tu;
+  }
+  const tuVals = (t, u) => u.sample ? {...sampleOf(t), ...Object.fromEntries(Object.entries(u.vals).filter(([, x]) => x))} : u.vals;
+  const tuMissing = (t, u) => (t.blanks || []).filter(b => !(u.vals[b.key] || '').trim());
+  const tuShape = (t, u) => t.shape === 'reel' ? '9:16' : u.aspect;
+  const tuProject = (t, u) => { const v = tuVals(t, u); return {scenes: (t.scenes || []).map(s => ({say: fillStr(s.say, v), look: fillLook(s.look, v)})), closing: fillStr(t.closing, v)}; };
+  function tuStage(t, u) {
+    const v = tuVals(t, u), n = Math.min(u.scene, t.scenes.length - 1), sc = t.scenes[n] || {}, lk = fillLook(sc.look, v), f = face(u.face), full = u.layout === 'full', asp = tuShape(t, u);
+    const pp = tuProject(t, u), T = sceneTimes(pp), tot = T.length ? T[T.length - 1][1] : 1, at = T[n] ? T[n][0] : 0;
+    return `<div class="hx-preview ${asp === '9:16' ? 'tall' : asp === '1:1' ? 'sq' : ''}" style="--brand:${esc(brandColor())}">
+        ${f && full ? `<span class="hx-pvfull">${avImg(f, 'xl')}</span>` : ''}
+        <div class="hx-pvlook">${lookText(lk) ? `<b>${esc(shown(lookText(lk)))}</b>` : n === 0 ? `<b>${esc(t.name)}</b>` : ''}</div>
+        ${f && !full ? `<span class="hx-pvface">${avImg(f, 'l')}</span>` : ''}<p class="hx-pvcap">${fillParts(sc.say, v, t.blanks)}</p>
+        <span class="hx-tsn hx-num">Scene ${n + 1} of ${t.scenes.length} · ${clock(at)}</span></div>
+      <div class="hx-pvbar"><button type="button" class="hx-pplay" data-a="tuplay" aria-label="${u.play ? 'Pause the sketch' : 'Play the sketch'}">${ic(u.play ? 'stop' : 'play', 14)}</button>
+        <span class="hx-tseg">${T.map((x, i) => `<button type="button" class="${i === n ? 'on' : i < n ? 'past' : ''}" data-a="tuscene" data-n="${i}" style="flex:${(x[1] - x[0]).toFixed(2)} 1 0" aria-label="Scene ${i + 1}"></button>`).join('')}</span>
+        <span class="hx-mut hx-sm hx-num">${clock(at)} / ${clock(tot)}</span>
+        <button type="button" class="hx-btn s" data-a="tuhear">${ic('vol', 14)}Hear it<span class="hx-mut">· free</span></button></div>`;
+  }
+  function tuScenes(t, u) {
+    const v = tuVals(t, u), pp = tuProject(t, u), T = sceneTimes(pp), n = Math.min(u.scene, t.scenes.length - 1);
+    return `<ol class="hx-tsl">${t.scenes.map((s, i) => { const lk = s.look?.kind && s.look.kind !== 'none';
+      return `<li><button type="button" class="hx-tsr${i === n ? ' on' : ''}" data-a="tuscene" data-n="${i}">
+        <span class="hx-tsm g-${esc((t.group || 'Mine').toLowerCase())}">${esc(shown(lookText(fillLook(s.look, v))) || (i + 1))}</span>
+        <span class="hx-growf"><span class="hx-tsh hx-num"><b>Scene ${i + 1}</b><span>${esc(lk ? LOOK[s.look.kind] : 'Just the words')}</span><span class="hx-grow"></span><span>${secs(T[i][1] - T[i][0])}</span></span>
+          <span class="hx-tsw">${fillParts(s.say, v, t.blanks)}</span></span></button></li>`; }).join('')}</ol>
+      <div class="hx-tclose">${ic('doc', 15)}<span>Closing card: ${t.closing ? `<strong>${fillParts(t.closing, v, t.blanks)}</strong>` : '<strong>your business name</strong>'} with your logo and colour from Brand</span></div>`;
+  }
+  function tuPrice(t, u) {
+    const miss = tuMissing(t, u), e = u.est;
+    return `<div class="hx-tprice"><div class="r"><b>The draft</b><span class="hx-grow"></span><b class="ok">Free</b></div>
+      <div class="r hx-mut"><span>The video, later in the Studio</span><span class="hx-grow"></span><span class="hx-num">${e ? 'about ' + cr(e.credits) : '…'}</span></div>
+      <p class="hx-mut hx-sm">${esc(secs(Math.round(sceneTimes(tuProject(t, u)).slice(-1)[0]?.[1] || t.seconds)))} · ${esc(e?.label || 'Hoola standard')} · ${esc(voiceName(u.voice))}. The exact price is shown again before anything is made.</p>
+      <div class="r"><span class="hx-tmiss">${miss.length ? `Fill in: ${esc(miss.map(b => b.label.toLowerCase()).join(', '))}.` : '<span class="ok">Ready.</span> Opens in the Studio.'}</span>
+        <button type="button" class="hx-btn dark l" data-a="tumake"${miss.length || u.busy ? ' disabled' : ''}>${u.busy ? 'Making the draft…' : 'Make the draft'}</button></div></div>`;
+  }
+  function tplUse(t) {
+    const u = tuState(t), bl = t.blanks || [], filled = bl.length - tuMissing(t, u).length, langNow = u.lang === 'auto' ? `Auto · ${langName(t.lang || 'en')}` : langName(u.lang);
+    const where = b => [b.where.length ? `scene${b.where.length > 1 ? 's' : ''} ${b.where.join(', ').replace(/, (\d+)$/, ' and $1')}` : '', b.closing ? 'closing' : ''].filter(Boolean).join(' and ');
+    const opt = (k, lab, val, mark) => `<button type="button" class="hx-topt" data-a="tupick" data-k="${k}">${mark}<span class="hx-growf"><small>${lab}</small><b>${esc(val)}</b></span>${ic('down', 13)}</button>`;
+    const eng = (D.engines?.engines || []).find(e => e.id === u.engine);
+    return `<div class="hx-tuse"><section class="hx-tform" aria-label="Fill in the blanks">
+        <div class="hx-tfh"><h2 class="hx-t">Fill in the blanks</h2><span class="hx-grow"></span><span class="hx-sm hx-num" id="hxTuN">${filled} of ${bl.length} filled</span></div>
+        <div class="hx-tbar"><i id="hxTuBar" style="width:${bl.length ? Math.round(100 * filled / bl.length) : 100}%"></i></div>
+        <p class="hx-mut hx-sm">Hoola only uses the words you give. Nothing is guessed or filled in for you.</p>
+        <div class="hx-tfl">${bl.map((b, i) => { const v = u.vals[b.key] || '';
+          return `<label class="hx-fld${v ? '' : ' miss'}" data-tf="${esc(b.key)}"><span class="hx-lab"><span class="hx-tdot">${i + 1}</span>${esc(b.label)}<small>${esc(where(b))}</small></span>
+            <input class="hx-in" data-tv="${esc(b.key)}" value="${esc(v)}" placeholder="${esc(b.example || '')}" maxlength="60" autocomplete="off"></label>`; }).join('')}
+          ${bl.length ? '' : '<p class="hx-mut">This template has no blanks. Make the draft and change it in the Studio.</p>'}
+          ${bl.length ? `<button type="button" class="hx-lnk" data-a="tusheet">${ic('rows', 15)}Many people or shops? Fill a sheet and make one draft for each row</button>` : ''}</div>
+        <div class="hx-tfo"><h3 class="hx-t">How it looks and sounds</h3><div class="hx-topts">
+          ${opt('lang', 'Language', langNow, '<span class="hx-tom a">Aa</span>')}
+          ${opt('face', 'Face', face(u.face)?.name || 'No face', face(u.face) ? avImg(face(u.face), 'xs') : '<span class="hx-tom b">—</span>')}
+          ${opt('voice', 'Voice', voiceName(u.voice), `<span class="hx-tom c">${ic('vol', 14)}</span>`)}
+          ${opt('engine', 'Engine', eng?.label || 'Hoola standard', `<span class="hx-tom d">${ic('bolt', 14)}</span>`)}</div>
+          ${face(u.face) ? `<div class="hx-seg" role="radiogroup" aria-label="Where the face sits">${[['corner', 'In a corner'], ['full', 'The whole frame']].map(([k, l]) => `<button type="button" role="radio" aria-checked="${u.layout === k}" data-a="tulayout" data-val="${k}">${l}</button>`).join('')}</div>` : ''}
+          <div class="hx-seg" role="radiogroup" aria-label="Frame">${[['16:9', 'Landscape 16:9'], ['9:16', 'Vertical 9:16'], ['1:1', 'Square 1:1']].map(([k, l]) => `<button type="button" role="radio" aria-checked="${tuShape(t, u) === k}" data-a="tuaspect" data-val="${k}"${t.shape === 'reel' && k !== '9:16' ? ' disabled' : ''}>${l}</button>`).join('')}</div>
+          ${u.lang !== 'auto' && u.lang !== (t.lang || 'en') && !(u.lang === 'hi' && !t.mine && HI_TPL.includes(t.id)) ? `<p class="hx-hint">Hoola translates the words into ${esc(langName(u.lang))}, keeping your names, prices and dates exactly. Lines that change a number are marked for you to check.</p>` : ''}</div>
+        <div id="hxTuPrice">${tuPrice(t, u)}</div></section>
+      <section class="hx-tlive" aria-label="Live preview"><div class="hx-tfh"><h2 class="hx-t">Live preview</h2><span class="hx-grow"></span><span class="hx-mut hx-sm">${u.sample ? 'A sample with example words' : 'Updates as you type'}</span></div>
+        <div id="hxTuStage">${tuStage(t, u)}</div><div id="hxTuScenes">${tuScenes(t, u)}</div>
+        <p class="hx-mut hx-sm">After the draft opens in the Studio you can change any word, scene, face or voice. Nothing is made until you press Make there.</p></section></div>`;
+  }
+  function tuPaint(full) {
+    const t = tplOf(ARG), u = UI.tu; if (!t || !u) return;
+    const set = (sel, html) => { const e = $(sel); if (e) e.innerHTML = html; };
+    set('#hxTuStage', tuStage(t, u)); set('#hxTuScenes', tuScenes(t, u)); set('#hxTuPrice', tuPrice(t, u)); fillMedia();
+    const bl = t.blanks || [], filled = bl.length - tuMissing(t, u).length, nEl = $('#hxTuN'), bar = $('#hxTuBar');
+    if (nEl) nEl.textContent = `${filled} of ${bl.length} filled`; if (bar) bar.style.width = `${bl.length ? Math.round(100 * filled / bl.length) : 100}%`;
+    $$('[data-tf]').forEach(l => l.classList.toggle('miss', !(u.vals[l.dataset.tf] || '').trim()));
+    if (full) draw();
+  }
+  let tuEstT = 0;
+  function tuEstimate() {
+    const t = tplOf(ARG), u = UI.tu; if (!t || !u) return;
+    clearTimeout(tuEstT); tuEstT = setTimeout(async () => {
+      const sec = Math.round(sceneTimes(tuProject(t, u)).slice(-1)[0]?.[1] || t.seconds) + (t.closing ? 2 : 1);
+      try { u.est = await api('GET', `${X}/estimate?engine=${q(u.engine)}&seconds=${sec}&voice=${q(u.voice || '')}`); } catch { u.est = null; }
+      if (PAGE === 'templates' && ARG === t.id) { const e = $('#hxTuPrice'); if (e) e.innerHTML = tuPrice(t, u); }
+    }, 350);
+  }
+  function tuStop() { clearTimeout(UI.tut); if (UI.tu) UI.tu.play = false; }
+  function tuPlay() {
+    const t = tplOf(ARG), u = UI.tu; if (!t || !u) return;
+    if (u.play) { tuStop(); return tuPaint(); }
+    u.play = true; if (u.scene >= t.scenes.length - 1) u.scene = 0;
+    const step = () => {
+      if (!u.play || PAGE !== 'templates' || ARG !== t.id) return;
+      tuPaint(); const T = sceneTimes(tuProject(t, u))[u.scene]; const d = T ? (T[1] - T[0]) * 1000 : 2500;
+      UI.tut = setTimeout(() => { if (u.scene < t.scenes.length - 1) { u.scene++; step(); } else { u.play = false; tuPaint(); } }, d);
+    };
+    step();
+  }
+  async function tuMake() {
+    const t = tplOf(ARG), u = UI.tu; if (!t || !u || tuMissing(t, u).length) return;
+    u.busy = true; tuPaint();
+    try {
+      const p = await api('POST', `${H}/template/use`, {id: t.id, values: u.vals, lang: u.lang, avatar_id: u.face,
+        opts: {aspect: tuShape(t, u), voice: u.voice, engine: u.engine, face_layout: u.layout}});
+      u.busy = false; UI.tu = null; await load(); go('studio', p.id); if (p.notice) toast(p.notice, true); else toast('Draft ready. Nothing is made until you press Make.');
+    } catch (er) { u.busy = false; tuPaint(); toast(er.message, true); }
+  }
+
+  // ---- a dialog: save a video as a template, or fill a sheet
+  function dlgPaint() {
+    let w = $('#hxDlg');
+    if (!UI.dlg) { if (w) w.remove(); return; }
+    if (!w) { w = document.createElement('div'); w.id = 'hxDlg'; w.className = 'hx-dlgw'; ROOT.appendChild(w); }
+    w.innerHTML = `<div class="hx-dlgs" data-a="dlgx" aria-hidden="true"></div>${({save: svBody, pick: pickBody, need: needBody, pjfolder: pjFolderBody, voput: voPutBody, lvweb: lvWebBody, lvlearn: lvLearnBody, avphoto: avPhBody, avai: avAiBody, avtwin: avTwinBody, avren: avRenBody, eng: enOneBody, dvnew: dvNewBody, dvkey: dvKeyBody, dvren: dvRenBody, dvdel: dvDelBody, stempty: stEmptyBody, dvhook: dvHookBody, dvsecret: dvSecretBody, brkit: brKitBody, brlogodel: brLogoDelBody}[UI.dlg.k] || shBody)()}`;
+    const f = w.querySelector('[data-auto]'); if (f && !w.contains(document.activeElement)) f.focus();
+    fillMedia();
+  }
+  function dlgClose() { UI.dlg = null; dlgPaint(); }
+  function pickBody() {
+    const ps = (D.projects || []).filter(p => (p.scenes || []).length);
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><h2 class="hx-serif" id="hxDlgT">Which video?</h2><span class="hx-grow"></span>
+      <button type="button" class="hx-ib" data-a="dlgx" aria-label="Close" data-auto="1">${ic('x', 16)}</button></div>
+      ${ps.length ? `<div class="hx-dlgb"><div class="hx-tpick">${ps.slice(0, 40).map(p => `<button type="button" class="hx-tpr" data-a="svopen" data-id="${esc(p.id)}">${libThumb(p)}<span class="hx-ct"><b>${esc(p.title)}</b><small class="hx-num">${esc(metaOf(p))} · ${(p.scenes || []).length} scenes</small></span></button>`).join('')}</div></div>`
+        : `<div class="hx-dlgb"><p class="hx-mut">You have no videos yet. Make one first, then save it as a template.</p><div class="hx-acts"><button type="button" class="hx-btn dark" data-a="newchat">New video</button></div></div>`}</div>`;
+  }
+  function svMark(s, bl, sg) {   // her words as tappable words; blanks as chips; Hoola's suggestions underlined
+    const spans = []; const marks = [...bl.map(b => ({text: b.text, k: 'b', key: b.label || 'blank'})), ...sg.filter(x => !bl.some(b => b.text === x.text)).map(x => ({text: x.text, k: 's'}))].sort((a, b) => b.text.length - a.text.length);
+    let rest = [{t: String(s || '')}];
+    for (const m of marks) rest = rest.flatMap(x => { if (x.m) return [x]; const parts = x.t.split(m.text); return parts.flatMap((p, i) => i ? [{t: m.text, m}, {t: p}] : [{t: p}]); });
+    for (const x of rest) {
+      if (x.m?.k === 'b') spans.push(`<button type="button" class="hx-svb" data-a="svdrop" data-t="${esc(x.t)}" aria-label="Keep “${esc(x.t)}” as it is">${esc(x.m.key)}</button>`);
+      else if (x.m) spans.push(`<button type="button" class="hx-svs" data-a="svadd" data-t="${esc(x.t)}" title="Make this a blank">${esc(x.t)}</button>`);
+      else spans.push(x.t.split(/(\s+)/).map(w => /^\s*$/.test(w) ? w : (() => { const core = w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ''); if (!core) return esc(w);
+        const i = w.indexOf(core); return `${esc(w.slice(0, i))}<button type="button" class="hx-svw" data-a="svadd" data-w="1" data-t="${esc(core)}">${esc(core)}</button>${esc(w.slice(i + core.length))}`; })()).join(''));
+    }
+    return spans.join('');
+  }
+  function svBody() {
+    const s = UI.dlg, p = (D.projects || []).find(x => x.id === s.id); if (!p) return '';
+    const used = (D.templates || []).filter(t => t.mine).length;
+    return `<div class="hx-dlg w" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><div class="hx-growf"><h2 class="hx-serif" id="hxDlgT">Save as a template</h2>
+        <span class="hx-mut hx-sm">From <b>${esc(p.title)}</b> · ${p.scenes.length} scenes · ${esc(p.aspect === '9:16' ? 'Vertical' : p.aspect === '1:1' ? 'Square' : 'Landscape')} · ${esc(langName(p.lang))}</span></div>
+        <button type="button" class="hx-ib" data-a="dlgx" aria-label="Close">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb"><label class="hx-fld"><span class="hx-lab">Name</span><input class="hx-in" id="hxSvName" value="${esc(s.name)}" maxlength="60" data-auto="1"></label>
+        <div class="hx-fld"><div class="hx-sech"><span class="hx-lab">Words that change each time</span><span class="hx-grow"></span><span class="hx-sm hx-num">${s.blanks.length} blank${s.blanks.length === 1 ? '' : 's'}</span></div>
+          <p class="hx-mut hx-sm">Tap a word to make it a blank; tap the next word too to make the blank longer. Next time you only fill these in. ${s.sugg.length ? 'Underlined: words Hoola thinks change, like prices, dates and names.' : ''}</p>
+          <div class="hx-svs-list" id="hxSvText">${p.scenes.map((sc, i) => `<div class="hx-svr"><span class="hx-sm hx-num">Scene ${i + 1}</span><div class="hx-serifp">${svMark(sc.say, s.blanks, s.sugg)}</div></div>`).join('')}
+            ${p.closing ? `<div class="hx-svr"><span class="hx-sm">Closing</span><div class="hx-serifp">${svMark(p.closing, s.blanks, s.sugg)}</div></div>` : ''}</div></div>
+        ${s.blanks.length ? `<div class="hx-fld"><span class="hx-lab">Name each blank</span><div class="hx-svbl">${s.blanks.map((b, i) => `<div class="hx-svbr"><span class="hx-svq">“${esc(b.text)}”</span><span class="hx-mut hx-sm">becomes</span>
+            <input class="hx-in" data-svk="${i}" value="${esc(b.label)}" maxlength="40" aria-label="Name for “${esc(b.text)}”">
+            <button type="button" class="hx-ib xs" data-a="svdrop" data-t="${esc(b.text)}" aria-label="Keep “${esc(b.text)}” as it is">${ic('x', 14)}</button></div>`).join('')}</div></div>`
+          : '<p class="hx-why">No blanks yet. Every video made from it will say exactly the same words.</p>'}</div>
+      <div class="hx-dlgf"><span class="hx-mut hx-sm hx-grow">${num(used + 1)} of 40 templates · the video itself stays as it is</span>
+        <button type="button" class="hx-btn" data-a="dlgx">Cancel</button><button type="button" class="hx-btn dark" data-a="svsave"${s.busy ? ' disabled' : ''}>Save template</button></div></div>`;
+  }
+  async function svOpen(id) {
+    const p = (D.projects || []).find(x => x.id === id); if (!p) return;
+    UI.dlg = {k: 'save', id, name: p.title, blanks: [], sugg: []}; dlgPaint();
+    try { const r = await api('GET', `${H}/template/suggest?project=${q(id)}`); if (UI.dlg?.id === id) { UI.dlg.sugg = r.words || []; dlgPaint(); } } catch { /* the dialog works without them */ }
+  }
+  const svLabel = (txt, sg) => { const k = (sg || []).find(x => x.text === txt)?.key; return k ? k.replace(/_\d+$/, '').replace(/_/g, ' ') : txt.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().split(' ').slice(0, 3).join(' '); };
+  function svAdd(txt, tapped) {
+    const s = UI.dlg; txt = (txt || '').trim(); if (!s || !txt || s.blanks.some(b => b.text === txt)) return;
+    const p = (D.projects || []).find(x => x.id === s.id), words = p ? [...p.scenes.map(x => x.say), p.closing || ''].join('\n') : '';
+    const last = s.blanks[s.blanks.length - 1];
+    if (tapped && last && Date.now() - (s.at || 0) < 8000) {     // the next word after the last blank: the blank grows
+      const join = [`${last.text} ${txt}`, `${last.text}, ${txt}`].find(j => words.includes(j));
+      if (join) { if (last.auto) last.label = svLabel(join, s.sugg); last.text = join; s.at = Date.now(); return dlgPaint(); }
+    }
+    s.at = tapped ? Date.now() : 0;
+    if (s.blanks.length >= 12) return toast('A template can have up to 12 blanks.', true);
+    let label = svLabel(txt, s.sugg) || 'blank', n = 2; const base = label; while (s.blanks.some(b => b.label === label)) label = `${base} ${n++}`;
+    s.blanks.push({text: txt, label, auto: !(s.sugg || []).some(x => x.text === txt)}); dlgPaint();
+  }
+  async function svSave() {
+    const s = UI.dlg; if (!s) return; s.name = ($('#hxSvName')?.value || '').trim() || s.name;
+    const blanks = s.blanks.map(b => ({text: b.text, key: b.label, label: b.label.charAt(0).toUpperCase() + b.label.slice(1), example: `e.g. ${b.text}`}));
+    s.busy = true; dlgPaint();
+    try { await api('POST', `${H}/template`, {project: s.id, name: s.name, blanks}); dlgClose(); await load(); UI.tt = 'mine'; toast('Saved as a template.'); if (PAGE === 'templates' && !ARG) draw(); else go('templates'); }
+    catch (er) { s.busy = false; dlgPaint(); toast(er.message, true); }
+  }
+  function csvRows(text) {
+    const rows = []; let row = [], f = '', qd = false;
+    for (let i = 0; i < text.length; i++) { const c = text[i];
+      if (qd) { if (c === '"' && text[i + 1] === '"') { f += '"'; i++; } else if (c === '"') qd = false; else f += c; continue; }
+      if (c === '"') qd = true; else if (c === ',' || c === '\t' || c === ';') { row.push(f); f = ''; } else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; } else f += c; }
+    if (f || row.length) { row.push(f); rows.push(row); }
+    return rows.map(r => r.map(x => x.trim())).filter(r => r.some(Boolean));
+  }
+  function sheetParse(t, text) {
+    const rows = csvRows(text || ''); if (rows.length < 2) return {rows: [], cols: [], miss: []};
+    const norm = s => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_+|_+$/g, '');
+    const cols = rows[0].map(h => (t.blanks || []).find(b => norm(b.key) === norm(h) || norm(b.label) === norm(h))?.key || (norm(h) === 'title' ? 'title' : ''));
+    const out = rows.slice(1).map(r => Object.fromEntries(cols.map((k, i) => [k, r[i] || '']).filter(([k]) => k)));
+    return {rows: out, cols, miss: (t.blanks || []).filter(b => !cols.includes(b.key))};
+  }
+  function shBody() {
+    const s = UI.dlg, t = tplOf(s.id); if (!t) return '';
+    const r = sheetParse(t, s.text), head = (t.blanks || []).map(b => b.label).join(', ');
+    return `<div class="hx-dlg w" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><div class="hx-growf"><h2 class="hx-serif" id="hxDlgT">One draft for each row</h2>
+        <span class="hx-mut hx-sm">${esc(t.name)} · up to 50 rows · each draft is free</span></div><button type="button" class="hx-ib" data-a="dlgx" aria-label="Close">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb">${s.done ? `<p><b>${num(s.done.made.length)} draft${s.done.made.length === 1 ? '' : 's'} made.</b> They are in the Studio; nothing is made until you press Make on each.</p>
+          ${s.done.skipped.length ? `<ul class="hx-why">${s.done.skipped.map(x => `<li>Row ${x.row}: ${esc(x.why)}</li>`).join('')}</ul>` : ''}`
+        : `<p class="hx-mut hx-sm">The first row names the columns: <b>${esc(head)}</b>. A column called <b>title</b> names each draft. Copy cells from a spreadsheet, or choose a CSV file.</p>
+          <textarea class="hx-in hx-mono" id="hxShText" rows="8" placeholder="${esc((t.blanks || []).map(b => b.label).join(','))}&#10;${esc(Object.values(sampleOf(t)).join(','))}" data-auto="1">${esc(s.text || '')}</textarea>
+          <div class="hx-acts"><button type="button" class="hx-btn s" data-a="shfile">${ic('doc', 13)}Choose a CSV file</button><input type="file" id="hxShFile" accept=".csv,.tsv,.txt,text/csv" hidden>
+            <span class="hx-sm hx-mut" id="hxShSum">${r.rows.length ? `${num(r.rows.length)} row${r.rows.length === 1 ? '' : 's'}${r.miss.length ? ` · no column for: ${esc(r.miss.map(b => b.label.toLowerCase()).join(', '))}` : ' · every blank has a column'}` : ''}</span></div>`}</div>
+      <div class="hx-dlgf"><span class="hx-grow"></span>${s.done ? `<button type="button" class="hx-btn" data-a="dlgx">Close</button><button type="button" class="hx-btn dark" data-a="shstudio">Open the Studio</button>`
+        : `<button type="button" class="hx-btn" data-a="dlgx">Cancel</button><button type="button" class="hx-btn dark" data-a="shmake"${r.rows.length && r.rows.length <= 50 && !s.busy ? '' : ' disabled'}>${s.busy ? 'Making…' : `Make ${r.rows.length ? num(r.rows.length) + ' ' : ''}draft${r.rows.length === 1 ? '' : 's'} · free`}</button>`}</div></div>`;
+  }
+  async function shMake() {
+    const s = UI.dlg, t = tplOf(s.id), u = UI.tu; if (!t) return;
+    const r = sheetParse(t, s.text); if (!r.rows.length) return;
+    s.busy = true; dlgPaint();
+    try { s.done = await api('POST', `${H}/template/many`, {id: t.id, rows: r.rows, lang: u?.lang || 'auto', avatar_id: u?.face || '',
+        opts: u ? {aspect: tuShape(t, u), voice: u.voice, engine: u.engine, face_layout: u.layout} : {}}); s.busy = false; await load(); dlgPaint(); }
+    catch (er) { s.busy = false; dlgPaint(); toast(er.message, true); }
+  }
+  function tplMenu(el, id) {
+    const t = tplOf(id); if (!t) return;
+    menu(el, [{label: 'Use', icon: 'play', run: () => go('templates', id)},
+      {label: 'Make many from a sheet', icon: 'rows', run: () => { go('templates', id); UI.dlg = {k: 'sheet', id, text: ''}; dlgPaint(); }},
+      {sep: true}, {label: 'Delete template', icon: 'trash', danger: true, run: async () => { if (!confirm(`Delete “${t.name}”? Videos made from it stay.`)) return;
+        try { await api('DELETE', `${H}/template?id=${q(id)}`); await load(); draw(); } catch (er) { toast(er.message, true); } }}]);
+  }
+
+  // ------------------------------------------------------------------ apps (v0.999.175: design claude.ai/artifact/EW7fbQi3VZeBoTyPyG88Ke) ---
+  // Every tool that works with her videos, each saying whether it is ready on this server (read from the engines it uses,
+  // GET /hub/apps), where it opens and what it costs. Five run right on this page - many names, a batch, translate, a B-roll
+  // shot, from a sheet (through a template) - the rest open Hoola Vocal or Create. An app that is not connected opens a
+  // short check of what it needs instead of a page that cannot work.
+  const AGROUP = {voice: ['Voice & sound', 'In Hoola Vocal and Create'], shots: ['Shots & languages', 'Two run right here'], many: ['Make many', 'Every one runs here; drafts are free']};
+  const AWHERE = {here: 'Runs here', vocal: 'Opens in Hoola Vocal', create: 'Opens in Create'};
+  const ACOST = {free: 'Free', free_draft: 'Free draft', free_drafts: 'Free drafts', priced: 'Priced before it runs'};
+  const ATINT = {voice: 'g-events', shots: 'g-updates', many: 'g-offers', face: 'g-greetings'};
+  const AICON = {
+    podcast: 'M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3', cleanup: 'M3 12h2M7 8v8M11 5v14M15 9v6M19 11v2',
+    ownvoice: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c1.5-4 4.5-6 8-6s6.5 2 8 6',
+    music: 'M9 18V5l11-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM20 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
+    broll: 'M3 5h18v14H3zM7 5v14M17 5v14M3 9h4M17 9h4M3 15h4M17 15h4',
+    translate: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18',
+    dub: 'M4 6h10M9 4v2M6 6c0 4 3 7 7 8M12 6c-1 4-4 7-8 8M14 20l4-9 4 9M15.5 17h5',
+    lipsync: 'M3 12c3-4 6-5 9-3 3-2 6-1 9 3-3 4-6 5-9 5s-6-1-9-5zM3 12h18', batch: 'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5',
+    names: 'M4 6h16M4 12h10M4 18h7M17 15l2 2 4-4', sheet: 'M4 4h16v16H4zM4 10h16M4 16h16M10 4v16',
+    aiface: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9 10h.01M15 10h.01M8.5 15a5 5 0 0 0 7 0'};
+  const BR_IDEAS = ['A café counter in soft morning light', 'Rain on a shop window at night', 'Hands wrapping a gift', 'A busy market street, slow pan'];
+  const appOf = id => (UI.apps?.apps || []).find(a => a.id === id);
+  const aTint = a => ATINT[['lipsync', 'aiface'].includes(a.id) ? 'face' : a.group];
+  const aIcon = (a, s = 22) => `<svg class="hx-i" width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true"><path d="${AICON[a.id] || ''}"/></svg>`;
+  async function appsLoad() { try { UI.apps = await api('GET', `${H}/apps`); } catch (e) { UI.apps = UI.apps || {apps: [], recent: []}; toast(e.message, true); } }
+  function appsRows() {
+    const qy = (UI.aq || '').trim().toLowerCase(), g = UI.ag || 'all';
+    return (UI.apps?.apps || []).filter(a => (g === 'all' || a.group === g) && (!UI.aready || a.ready)
+      && (!qy || `${a.name} ${a.line} ${AGROUP[a.group][0]}`.toLowerCase().includes(qy)));
+  }
+  function appCard(a) {
+    return `<article class="hx-ac${a.ready ? '' : ' off'}"><div class="hx-ach"><span class="hx-ati ${aTint(a)}">${aIcon(a)}</span><span class="hx-grow"></span>
+        <span class="hx-ast ${a.ready ? 'ok' : 'no'}"><i></i>${a.ready ? 'Ready' : 'Not connected'}</span></div>
+      <b class="hx-acn">${esc(a.name)}</b><p>${esc(a.line)}</p>
+      <div class="hx-atags"><span>${esc(AWHERE[a.where])}</span><span class="${a.cost === 'priced' ? 'p' : 'f'}">${esc(ACOST[a.cost])}</span></div>
+      <button type="button" class="hx-btn ${a.ready ? 'dark' : ''}" data-a="aopen" data-id="${esc(a.id)}">${a.ready ? (a.where === 'here' ? 'Start' : 'Open') : 'See what it needs'}</button></article>`;
+  }
+  function appsList() {
+    const rows = appsRows();
+    if (!(UI.apps?.apps || []).length) return '<p class="hx-mut">Loading the apps…</p>';
+    if (!rows.length) return `<div class="hx-empty"><b>No apps match</b><span>Try another word, or show every app.</span><button type="button" class="hx-btn s" data-a="aclear">Show all apps</button></div>`;
+    return Object.keys(AGROUP).map(g => { const r = rows.filter(a => a.group === g); return r.length ? `<section class="hx-asec" aria-labelledby="hxAg-${g}"><div class="hx-sech"><b class="hx-t" id="hxAg-${g}">${esc(AGROUP[g][0])}</b><span class="hx-mut hx-sm">${esc(AGROUP[g][1])}</span></div>
+      <div class="hx-agrid">${r.map(appCard).join('')}</div></section>` : ''; }).join('');
+  }
+  function appFeature(id, kicker, line, cta, meta) {
+    const a = appOf(id); if (!a) return '';
+    return `<article class="hx-afeat ${aTint(a)}"><div class="hx-afst" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="hx-growf"><small>${esc(kicker)}</small><h3 class="hx-serif">${esc(a.name)}</h3><p>${esc(line)}</p>
+        <div class="hx-acts"><button type="button" class="hx-btn dark" data-a="aopen" data-id="${esc(id)}">${esc(a.ready ? cta : 'See what it needs')}</button><span class="hx-sm">${esc(a.ready ? meta : 'Needs an engine on this server')}</span></div></div></article>`;
+  }
+  function appsLib() {
+    const all = UI.apps?.apps || [], n = g => all.filter(a => g === 'all' || a.group === g).length, rec = UI.apps?.recent || [];
+    return `<div class="hx-doc hx-alib"><div class="hx-libh"><div class="hx-growf"><h2 class="hx-serif">Apps</h2>
+        <p class="hx-mut">Tools that work with your videos. Some run right here; others open in Hoola Vocal or Create. Each one says what it needs and what it costs before you start.</p></div></div>
+      <div class="hx-libbar"><label class="hx-lsearch hx-tsearch">${ic('search', 15)}<span class="hx-sr">Search apps</span><input id="hxAq" type="search" placeholder="What do you want to do? Dub, clean up, names…" value="${esc(UI.aq || '')}" autocomplete="off"></label>
+        <div class="hx-tchips" role="radiogroup" aria-label="Kind">${['all', ...Object.keys(AGROUP)].map(g => `<button type="button" role="radio" aria-checked="${(UI.ag || 'all') === g}" class="hx-chip" data-a="agrp" data-val="${g}">${esc(g === 'all' ? 'All' : AGROUP[g][0])}<span class="hx-num hx-mut">${num(n(g))}</span></button>`).join('')}</div>
+        <span class="hx-grow"></span><label class="hx-acheck"><input type="checkbox" id="hxAready"${UI.aready ? ' checked' : ''}>Only ready to use</label></div>
+      ${rec.length ? `<div class="hx-arec"><span class="hx-mut hx-sm">Recently used</span>${rec.map(a => `<button type="button" class="hx-arp" data-a="aopen" data-id="${esc(a.id)}"><span class="hx-ati xs ${aTint(a)}">${aIcon(a, 13)}</span>${esc(a.name)}<span class="hx-mut">${esc(ago(a.used))}</span></button>`).join('')}</div>` : ''}
+      ${!UI.aq && (UI.ag || 'all') === 'all' && !UI.aready ? `<div class="hx-afeats">${appFeature('names', 'MAKE MANY · RUNS HERE', 'Thank each customer by name, or greet every student. Paste the names; each becomes its own draft.', 'Start', `Drafts are free · up to ${num(D.limits?.batch || 20)}`)}
+        ${appFeature('dub', 'LANGUAGES · OPENS IN HOOLA VOCAL', 'Your video in other languages, in voices matched to each speaker. You check every line first.', 'Choose a video', '140 languages · priced before it runs')}</div>` : ''}
+      <div id="hxAppList">${appsList()}</div></div>`;
+  }
+
+  // ---- the apps that run right here
+  const arState = () => (UI.ar = UI.ar || {vid: '', names: '', scripts: '', lang: '', face: SET.face || '', est: null, busy: false, tlang: ''});
+  const nameList = t => [...new Set(String(t || '').split(/\n|,/).map(s => s.trim()).filter(Boolean))];
+  const scriptList = t => String(t || '').split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+  const hasName = p => JSON.stringify(p.scenes || []).includes('{name}') || String(p.closing || '').includes('{name}');
+  function arHead(a) {
+    return `<div class="hx-arh"><span class="hx-ati ${aTint(a)}">${aIcon(a, 18)}</span><div class="hx-growf"><h2 class="hx-serif">${esc(a.name)}</h2><span class="hx-mut hx-sm">${esc(a.line)}</span></div>
+      <span class="hx-atag ${a.cost === 'priced' ? 'p' : 'f'}">${esc(AWHERE[a.where])} · ${esc(ACOST[a.cost].toLowerCase())}</span></div>`;
+  }
+  const arVid = (p, on) => `<button type="button" class="hx-tpr${on ? ' on' : ''}" data-a="arvid" data-id="${esc(p.id)}" role="radio" aria-checked="${on}">${libThumb(p)}<span class="hx-ct"><b>${esc(p.title)}</b><small class="hx-num">${esc(metaOf(p))} · ${(p.scenes || []).length} scenes</small></span><span class="hx-arr" aria-hidden="true"></span></button>`;
+  function arPrice(count, unit, sec) {
+    const r = arState(), e = r.est;
+    return `<div class="hx-tprice"><div class="r"><b>${num(count)} ${unit}${count === 1 ? '' : 's'}</b><span class="hx-grow"></span><b class="ok">Free</b></div>
+      <div class="r hx-mut"><span>Each video, made later from the Studio</span><span class="hx-grow"></span><span class="hx-num">${e ? `about ${cr(e.credits)} each` : '…'}</span></div>
+      <p class="hx-mut hx-sm">Nothing is made or sent until you press Make on each draft.${sec ? ` About ${esc(secs(sec))} each.` : ''}</p></div>`;
+  }
+  let arEstT = 0;
+  function arEstimate(sec) {
+    clearTimeout(arEstT); arEstT = setTimeout(async () => {
+      const r = arState(); try { r.est = await api('GET', `${X}/estimate?engine=${q(defEngine())}&seconds=${Math.max(10, Math.round(sec || 30))}&voice=${q(SET.voice || '')}`); } catch { r.est = null; }
+      const e = $('#hxArPrice'); if (e) e.innerHTML = arPriceNow();
+    }, 300);
+  }
+  function arPriceNow() {
+    const r = arState();
+    if (ARG === 'names') { const p = (D.projects || []).find(x => x.id === r.vid); return arPrice(nameList(r.names).length, 'draft', p ? lenOf(p) : 0); }
+    if (ARG === 'batch') return arPrice(scriptList(r.scripts).length, 'draft', 0);
+    return '';
+  }
+  function arNames(a) {
+    const r = arState(), ps = (D.projects || []).filter(hasName), p = ps.find(x => x.id === r.vid) || ps[0]; if (p) r.vid = p.id;
+    const names = nameList(r.names), max = D.limits?.batch || 20, first = names[0] || 'Amara';
+    const fill = s => esc(String(s || '')).replace(/\{name\}/g, `<mark class="hx-tv">${esc(first)}</mark>`);
+    return `<div class="hx-tuse"><section class="hx-tform" aria-label="Set it up">${arHead(a)}
+        <div class="hx-arstep"><span class="hx-tdot">1</span><b>The video</b></div>
+        <p class="hx-mut hx-sm">Only videos that say <mark class="hx-tv">{name}</mark> are shown. Write {name} in a scene in the Studio to add one.</p>
+        ${ps.length ? `<div class="hx-tpick" role="radiogroup" aria-label="The video">${ps.slice(0, 8).map(x => arVid(x, x.id === r.vid)).join('')}</div>`
+          : `<div class="hx-why">None of your videos says {name} yet. Open one in the Studio and write {name} where the person's name goes.</div><div class="hx-acts"><button type="button" class="hx-btn" data-a="go" data-p="studio">Open the Studio</button></div>`}
+        <div class="hx-arstep"><span class="hx-tdot">2</span><label for="hxArNames"><b>The names, one a line</b></label><span class="hx-grow"></span><span class="hx-sm hx-num" id="hxArN">${num(names.length)} name${names.length === 1 ? '' : 's'} · up to ${num(max)}</span></div>
+        <textarea class="hx-in" id="hxArNames" rows="7" placeholder="Amara&#10;Kenji&#10;Sofía">${esc(r.names)}</textarea>
+        <p class="hx-hint">Each name is said the way your Hoola Vocal dictionary says it. Duplicates are left out.</p>
+        <div id="hxArPrice">${arPriceNow()}</div>
+        <div class="hx-acts"><span class="hx-grow"></span><button type="button" class="hx-btn dark l" data-a="arnames"${p && names.length && names.length <= max && !r.busy ? '' : ' disabled'}>${r.busy ? 'Making the drafts…' : `Make ${names.length ? num(names.length) + ' ' : ''}draft${names.length === 1 ? '' : 's'}`}</button></div></section>
+      <section class="hx-tlive" aria-label="What you will get"><div class="hx-tfh"><h2 class="hx-t">What you will get</h2><span class="hx-grow"></span><span class="hx-mut hx-sm">${names.length ? 'Showing the first name' : 'An example name'}</span></div>
+        ${p ? `<div class="hx-preview ${p.aspect === '9:16' ? 'tall' : p.aspect === '1:1' ? 'sq' : ''}" style="--brand:${esc(brandColor())}"><div class="hx-pvlook"><b>${fill(lookText(p.scenes[0]?.look) || p.title)}</b></div>
+            ${face(p.avatar_id) ? `<span class="hx-pvface">${avImg(face(p.avatar_id), 'l')}</span>` : ''}<p class="hx-pvcap">${fill(p.scenes[0]?.say)}</p></div>
+          <ol class="hx-arl" id="hxArList">${(names.length ? names : []).slice(0, 6).map((n, i) => `<li><span class="n">${i + 1}</span><b>${esc(n)}</b><span>${esc(String(p.scenes[0]?.say || '').replace(/\{name\}/g, n))}</span></li>`).join('')}</ol>
+          ${names.length > 6 ? `<p class="hx-mut hx-sm">and ${num(names.length - 6)} more</p>` : ''}` : '<p class="hx-mut">Choose a video to see it here.</p>'}</section></div>`;
+  }
+  function arBatch(a) {
+    const r = arState(), sc = scriptList(r.scripts), max = D.limits?.batch || 20;
+    return `<div class="hx-tuse"><section class="hx-tform" aria-label="Set it up">${arHead(a)}
+        <div class="hx-arstep"><span class="hx-tdot">1</span><label for="hxArBatch"><b>The scripts</b></label><span class="hx-grow"></span><span class="hx-sm hx-num" id="hxArN">${num(sc.length)} script${sc.length === 1 ? '' : 's'} · up to ${num(max)}</span></div>
+        <textarea class="hx-in hx-serifp" id="hxArBatch" rows="10" placeholder="Our new opening hours are 9 am to 7 pm, Monday to Saturday.&#10;&#10;This week only: 20% off every plant in the shop.">${esc(r.scripts)}</textarea>
+        <p class="hx-hint">Leave an empty line between scripts. Each one becomes its own video, split into scenes by sentence.</p>
+        <div class="hx-arstep"><span class="hx-tdot">2</span><b>Who says them</b></div>
+        <div class="hx-topts"><button type="button" class="hx-topt" data-a="arpick" data-k="lang"><span class="hx-tom a">Aa</span><span class="hx-growf"><small>Language</small><b>${esc(r.lang ? langName(r.lang) : 'Auto')}</b></span>${ic('down', 13)}</button>
+          <button type="button" class="hx-topt" data-a="arpick" data-k="face">${face(r.face) ? avImg(face(r.face), 'xs') : '<span class="hx-tom b">—</span>'}<span class="hx-growf"><small>Face</small><b>${esc(face(r.face)?.name || 'No face')}</b></span>${ic('down', 13)}</button></div>
+        <div id="hxArPrice">${arPriceNow()}</div>
+        <div class="hx-acts"><span class="hx-grow"></span><button type="button" class="hx-btn dark l" data-a="arbatch"${sc.length && sc.length <= max && !r.busy ? '' : ' disabled'}>${r.busy ? 'Making the drafts…' : `Make ${sc.length ? num(sc.length) + ' ' : ''}draft${sc.length === 1 ? '' : 's'}`}</button></div></section>
+      <section class="hx-tlive" aria-label="What you will get"><div class="hx-tfh"><h2 class="hx-t">What you will get</h2></div>
+        ${sc.length ? `<ol class="hx-arl" id="hxArList">${sc.slice(0, 8).map((s, i) => `<li><span class="n">${i + 1}</span><span>${esc(s)}</span></li>`).join('')}</ol>${sc.length > 8 ? `<p class="hx-mut hx-sm">and ${num(sc.length - 8)} more</p>` : ''}`
+          : '<p class="hx-mut">Each script you paste shows here as its own draft.</p>'}</section></div>`;
+  }
+  function arTranslate(a) {
+    const r = arState(), ps = (D.projects || []).filter(p => (p.scenes || []).length), p = ps.find(x => x.id === r.vid) || ps[0]; if (p) r.vid = p.id;
+    return `<div class="hx-tuse"><section class="hx-tform" aria-label="Set it up">${arHead(a)}
+        <div class="hx-arstep"><span class="hx-tdot">1</span><b>The video</b></div>
+        ${ps.length ? `<div class="hx-tpick" role="radiogroup" aria-label="The video">${ps.slice(0, 8).map(x => arVid(x, x.id === r.vid)).join('')}</div>` : '<p class="hx-why">You have no videos yet. Make one first.</p>'}
+        <div class="hx-arstep"><span class="hx-tdot">2</span><b>The language</b></div>
+        <button type="button" class="hx-topt" data-a="arpick" data-k="tlang"><span class="hx-tom a">Aa</span><span class="hx-growf"><small>Into</small><b>${esc(r.tlang ? langName(r.tlang) : 'Choose a language')}</b></span>${ic('down', 13)}</button>
+        <p class="hx-hint">A new draft; the video you have stays as it is. Names, prices and dates are kept exactly, and a line that changes a number is marked for you to check.</p>
+        <div class="hx-tprice"><div class="r"><b>The translated draft</b><span class="hx-grow"></span><b class="ok">Free</b></div><p class="hx-mut hx-sm">The video is priced again in the Studio before anything is made.</p></div>
+        <div class="hx-acts"><span class="hx-grow"></span><button type="button" class="hx-btn dark l" data-a="artrans"${p && r.tlang && r.tlang !== p.lang && !r.busy ? '' : ' disabled'}>${r.busy ? 'Translating…' : 'Make the translated draft'}</button></div></section>
+      <section class="hx-tlive" aria-label="The words"><div class="hx-tfh"><h2 class="hx-t">The words now</h2><span class="hx-grow"></span><span class="hx-mut hx-sm">${p ? esc(langName(p.lang)) : ''}</span></div>
+        ${p ? `<ol class="hx-arl">${p.scenes.map((s, i) => `<li><span class="n">${i + 1}</span><span class="hx-serifp">${esc(s.say)}</span></li>`).join('')}</ol>` : ''}</section></div>`;
+  }
+  function arBroll(a) {
+    const br = UI.broll, shots = D.live?.broll || [], qn = br.q;
+    return `<div class="hx-tuse"><section class="hx-tform" aria-label="Describe the shot">${arHead(a)}
+        <label class="hx-fld"><span class="hx-lab">What the shot shows</span><textarea class="hx-in" id="hxArBr" rows="4" maxlength="800" placeholder="Morning light on a bakery counter, fresh bread on wooden shelves, slow push in.">${esc(br.prompt || '')}</textarea>
+          <span class="hx-hint">A place, a product or a mood. Shots never show a real person; a face goes in through your avatar.</span></label>
+        <div class="hx-tchips">${BR_IDEAS.map(t => `<button type="button" class="hx-chip s" data-a="abidea" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div>
+        <div class="hx-fld"><span class="hx-lab">Length</span><div class="hx-seg" role="radiogroup" aria-label="Length">${[4, 6, 8].map(n => `<button type="button" role="radio" aria-checked="${br.seconds === n}" data-a="abs" data-val="${n}">${n} s</button>`).join('')}</div></div>
+        <div class="hx-fld"><span class="hx-lab">Frame</span><div class="hx-seg" role="radiogroup" aria-label="Frame">${[['16:9', 'Landscape 16:9'], ['9:16', 'Vertical 9:16']].map(([k, l]) => `<button type="button" role="radio" aria-checked="${br.aspect === k}" data-a="aba" data-val="${k}">${l}</button>`).join('')}</div></div>
+        <div class="hx-tprice"><div class="r hx-mut"><span>${num(br.seconds)}-second shot</span><span class="hx-grow"></span><span class="hx-num">${qn ? cr(qn.credits) : '…'}</span></div>
+          <div class="r"><b>Total</b><span class="hx-grow"></span><b class="hx-num">${qn ? cr(qn.credits) : '…'}${qn?.usd ? ` <small class="hx-mut">≈ US$${(+qn.usd).toFixed(2)}</small>` : ''}</b></div>
+          <div class="r"><span class="hx-mut hx-sm hx-grow">If the shot cannot be made, its credits are not used.</span>
+            <button type="button" class="hx-btn dark l" data-a="abmake"${qn && !br.busy ? '' : ' disabled'}>${br.busy ? 'Starting…' : `Make the shot${qn ? ' · ' + cr(qn.credits) : ''}`}</button></div></div></section>
+      <section class="hx-tlive" aria-label="Your shots"><div class="hx-tfh"><h2 class="hx-t">Your shots</h2><span class="hx-grow"></span><span class="hx-mut hx-sm">Use one in any scene from the Studio</span></div>
+        ${shots.length ? `<div class="hx-abg">${shots.map(s => `<article class="hx-abs"><div class="hx-absv${s.aspect === '9:16' ? ' tall' : ''}">${s.status === 'ready' ? `<video class="hx-player" controls playsinline preload="metadata" data-broll="${esc(s.id)}"></video>`
+            : `<span class="hx-st ${s.status === 'failed' ? 'bad' : 'work'}">${s.status === 'failed' ? 'Could not make it' : 'Making it'}</span>`}<span class="hx-tplen hx-num">${clock(s.seconds)}</span></div>
+          <div class="hx-absb"><span>${esc(s.prompt)}</span>${s.status === 'failed' && s.error ? `<small class="hx-why">${esc(scrub(s.error))}</small>` : ''}</div></article>`).join('')}</div>`
+          : '<p class="hx-mut">Your shots appear here as they are made.</p>'}</section></div>`;
+  }
+  function appRun(id) {
+    const a = appOf(id); if (!a) return '<div class="hx-doc"><p class="hx-mut">Loading…</p></div>';
+    return id === 'names' ? arNames(a) : id === 'batch' ? arBatch(a) : id === 'translate' ? arTranslate(a) : id === 'broll' ? arBroll(a) : appsLib();
+  }
+  async function appOpen(el, id) {
+    if (!appOf(id)) await appsLoad();
+    const a = appOf(id); if (!a) return;
+    if (!a.ready) { UI.dlg = {k: 'need', id}; return dlgPaint(); }
+    api('POST', `${H}/apps/used`, {id}).then(appsLoad).catch(() => {});
+    if (id === 'sheet') { const ts = (D.templates || []).filter(t => (t.blanks || []).length);
+      return menu(el, [{header: 'Which template?'}, ...ts.map(t => ({label: t.name, sub: `${t.blanks.length} blank${t.blanks.length === 1 ? '' : 's'}${t.mine ? ' · yours' : ''}`, run: () => { go('templates', t.id); UI.dlg = {k: 'sheet', id: t.id, text: ''}; dlgPaint(); }}))], {width: 300}); }
+    if (a.where === 'here') { UI.ar = null; return go('apps', id); }
+    if (a.where === 'vocal') { window.__hvPage = a.page; leave(); return ctx.go ? ctx.go('vocal') : back?.(); }
+    location.assign(`/console/?v=creative&a=${q(a.page)}`);
+  }
+  function needBody() {
+    const a = appOf(UI.dlg.id); if (!a) return '';
+    const alt = (UI.apps?.apps || []).filter(x => x.ready && x.id !== a.id && (x.group === a.group || ['dub', 'translate'].includes(x.id))).slice(0, 3);
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><span class="hx-ati ${aTint(a)}">${aIcon(a)}</span>
+        <div class="hx-growf"><h2 class="hx-serif" id="hxDlgT">${esc(a.name)}</h2><span class="hx-ast no"><i></i>Not connected on this Hoola yet</span></div>
+        <button type="button" class="hx-ib" data-a="dlgx" aria-label="Close" data-auto="1">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb"><p>${esc(a.line)} It needs ${esc(a.needs)}, which the owner of this Hoola connects once on the server. Nothing is charged and nothing is sent while it is off.</p>
+        <div class="hx-svs-list"><div class="hx-svr"><span class="hx-anck no">!</span><div><b>${esc(a.needs.charAt(0).toUpperCase() + a.needs.slice(1))}</b><p class="hx-mut hx-sm">Not connected. Once it is, this app turns Ready by itself.</p></div></div>
+          <div class="hx-svr"><span class="hx-anck ok">✓</span><div><b>${esc(AWHERE[a.where])}</b><p class="hx-mut hx-sm">${a.where === 'here' ? 'This page is ready for it.' : 'That tool is ready to open it.'}</p></div></div></div>
+        ${alt.length ? `<div class="hx-fld"><span class="hx-lab">Meanwhile, these work today</span><div class="hx-acts">${alt.map(x => `<button type="button" class="hx-btn" data-a="aopen" data-id="${esc(x.id)}">${esc(x.name)}</button>`).join('')}</div></div>` : ''}</div>
+      <div class="hx-dlgf"><span class="hx-mut hx-sm hx-grow">The owner sees what to add in Engines.</span><button type="button" class="hx-btn" data-a="dlgx">Close</button><button type="button" class="hx-btn dark" data-a="aeng">Open Engines</button></div></div>`;
+  }
+  let abT = 0;
+  function abWatch() {
+    clearTimeout(abT);
+    if (!(D.live?.broll || []).some(s => s.status === 'making')) return;
+    abT = setTimeout(async () => { if (PAGE !== 'apps' || ARG !== 'broll') return; await load(); if (PAGE === 'apps' && ARG === 'broll' && !$('#hxArBr:focus')) draw(); abWatch(); }, 20000);
+  }
+  async function abQuote() { try { UI.broll.q = await api('GET', `${X}/broll/quote?seconds=${UI.broll.seconds}`); } catch { UI.broll.q = null; } if (PAGE === 'apps' && ARG === 'broll') draw(); }
+
+  // ---- avatars (v0.999.176 AVATARS, REDESIGNED: her faces as cards with their consent record, a side panel per face,
+  //      a face from a photo (whose face, size checked), a face made by AI (no real person, priced first), a video twin explained)
+  Object.assign(P, {
+    camera: '<path d="M4 7h3l2-3h6l2 3h3v13H4z"/><circle cx="12" cy="13" r="4"/>',
+    wand: '<path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z"/>',
+    video: '<rect x="3" y="6" width="12" height="12" rx="2"/><path d="M15 10l6-3v10l-6-3z"/>',
+    shield: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
+    pen: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>',
+    star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>'});
+  const AVMAX = 12;
+  const avKind = a => (a.kind === 'ai' || a.ai) ? 'ai' : 'photo';
+  const avUses = a => (D.projects || []).filter(p => p.avatar_id === a.id);
+  const avWhen = s => { const d = String(s || '').slice(0, 10); if (!d) return ''; const t = new Date(d + 'T00:00:00');
+    return isNaN(t) ? d : t.toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'}); };
+  const avConsent = a => avKind(a) === 'ai' ? 'Not a real person · marked as AI'
+    : a.who === 'agreed' && a.person ? `${a.person} agreed · ${avWhen(a.consent_at)}` : `Consent · ${avWhen(a.consent_at)}`;
+  const avUsedLine = a => { const n = avUses(a).length; return n ? `In ${num(n)} video${n === 1 ? '' : 's'}` : 'Not used yet'; };
+  const avTint = a => avKind(a) === 'ai' ? 'ai' : ['t1', 't2', 't3', 't4'][[...String(a.id)].reduce((x, c) => x + c.charCodeAt(0), 0) % 4];
+  const avPortrait = (a, cls = '') => `<span class="hx-avp ${avTint(a)} ${cls}"><img data-av="${esc(a.id)}" alt=""><b aria-hidden="true">${esc((a.name || 'H').slice(0, 1).toUpperCase())}</b></span>`;
+  function avTalkers() {
+    const es = (D.engines?.engines || []).filter(e => e.job === 'video');
+    const still = es.find(e => !e.face) || {label: 'Hoola standard (still photo)', ready: true, price: 'free'};
+    return [{label: still.face ? still.label : 'Hoola standard (still photo)', ready: true, price: 'Free'},
+      ...es.filter(e => e.face).map(e => ({label: e.label, ready: e.ready, price: e.ready ? (e.price === 'free' ? 'Free' : e.price.replace('≈ ', 'about ')) : 'Not connected'}))];
+  }
+  function avList() {
+    const st = UI.av || {}, all = D.avatars || [], ql = (st.q || '').trim().toLowerCase();
+    let xs = all.filter(a => (st.kind || 'all') === 'all' || avKind(a) === st.kind).filter(a => !ql || a.name.toLowerCase().includes(ql));
+    if ((st.sort || 'used') === 'used') xs = [...xs].sort((x, y) => avUses(y).length - avUses(x).length);
+    else if (st.sort === 'name') xs = [...xs].sort((x, y) => x.name.localeCompare(y.name));
+    if (!xs.length) return `<div class="hx-empty"><b>No face matches</b><span>Try another word, or show all faces.</span></div>`;
+    return `<div class="hx-avgrid">${xs.map(a => { const on = (UI.av?.sel || all[0]?.id) === a.id, def = SET.face === a.id;
+      return `<button type="button" class="hx-avc2${on ? ' on' : ''}" data-a="avsel" data-id="${esc(a.id)}" aria-pressed="${on}">
+        ${avPortrait(a)}<span class="hx-avk ${avKind(a)}">${avKind(a) === 'ai' ? 'Made by AI' : 'Your photo'}</span>${def ? '<span class="hx-avdef">Default</span>' : ''}
+        <span class="hx-avt"><b>${esc(a.name)}</b><small>${esc(avConsent(a))}</small><small class="hx-mut">${esc(avUsedLine(a))}</small></span></button>`; }).join('')}</div>`;
+  }
+  function avPanel(a) {
+    if (!a) return '';
+    const uses = avUses(a), def = SET.face === a.id, ai = avKind(a) === 'ai';
+    return `<aside class="hx-avside" aria-label="${esc(a.name)}">${avPortrait(a, 'big')}
+      <span class="hx-avk ${avKind(a)} in">${ai ? 'Made by AI' : 'Your photo'}</span>
+      <div class="hx-avsb"><div class="hx-avnm"><h2 class="hx-serif">${esc(a.name)}</h2>
+          <button type="button" class="hx-ib" data-a="avren" data-id="${esc(a.id)}" aria-label="Rename ${esc(a.name)}">${ic('pen', 15)}</button></div>
+        <div class="hx-avrec ${ai ? 'ai' : ''}">${ic(ai ? 'wand' : 'shield', 16)}<span><b>${ai ? 'Not a real person' : 'Consent on record'}</b><br>${ai
+          ? 'Made by AI from your words. Every video with this face carries the AI mark.'
+          : esc(a.who === 'agreed' && a.person ? `${a.person} agreed to be in AI videos, ticked on ${avWhen(a.consent_at)}.` : `Your own face, ticked on ${avWhen(a.consent_at)}.`) + ' Only you can use it.'}</span></div>
+        <div class="hx-avsec"><span class="hx-lab">Can talk with</span>${(() => { const ts = avTalkers(), on = ts.filter(t => t.ready), off = ts.length - on.length;
+          return on.map(t => `<div class="hx-avtk"><i class="ok"></i><span class="hx-grow">${esc(t.label)}</span><span class="hx-mut hx-num">${esc(t.price)}</span></div>`).join('')
+            + (off ? `<button type="button" class="hx-avtk more" data-a="aeng"><i class="no"></i><span class="hx-grow">${num(off)} more face engine${off === 1 ? ' is' : 's are'} not connected on this server</span>${ic('fwd', 14)}</button>` : ''); })()}</div>
+        <div class="hx-avsec"><span class="hx-lab">${uses.length ? `In ${num(uses.length)} video${uses.length === 1 ? '' : 's'}` : 'Not in a video yet'}</span>
+          ${uses.length ? `<div class="hx-avvids">${uses.slice(0, 4).map(p => `<button type="button" class="hx-avvid" data-a="avvid" data-id="${esc(p.id)}" title="${esc(p.title)}">${libThumb(p)}</button>`).join('')}</div>` : ''}</div>
+        <div class="hx-avact"><button type="button" class="hx-btn dark l" data-a="avtest" data-id="${esc(a.id)}"${UI.av?.busy ? ' disabled' : ''}>${UI.av?.busy ? 'Making the draft…' : 'Make a test video'}</button>
+          <div class="hx-acts"><button type="button" class="hx-btn hx-grow" data-a="avdefault" data-id="${esc(a.id)}"${def ? ' aria-pressed="true"' : ''}>${def ? `${ic('check', 14)}Default face` : 'Make it the default'}</button>
+            <button type="button" class="hx-btn danger hx-grow" data-a="avdel" data-id="${esc(a.id)}">Remove</button></div>
+          <span class="hx-mut hx-sm">The test video is a free one-scene draft in the Studio. Making it talk is priced before it runs.</span></div></div></aside>`;
+  }
+  function avPage() {
+    const all = D.avatars || [], st = UI.av || (UI.av = {kind: 'all', q: '', sort: 'used', sel: ''});
+    if (st.sel && !all.some(a => a.id === st.sel)) st.sel = '';
+    const sel = all.find(a => a.id === (st.sel || all[0]?.id)), full = all.length >= AVMAX;
+    const n = k => all.filter(a => k === 'all' || avKind(a) === k).length;
+    const way = (k, icon, name, line, tag, tcls) => `<button type="button" class="hx-avway" data-a="${k}"${full && k !== 'avtwin' ? ' disabled' : ''}>
+      <span class="hx-avwi ${k}">${ic(icon, 22)}</span><span class="hx-ct"><b>${name}</b><small>${line}</small><span class="hx-avtag ${tcls}">${tag}</span></span></button>`;
+    return `<div class="hx-doc hx-avpage"><div class="hx-doch"><div class="hx-growf"><h2 class="hx-serif">Avatars</h2>
+          <p class="hx-mut">The faces in your videos. A real face is used only with consent: it is you, or the person agreed. An AI-made face is no real person and is marked as AI wherever it shows.</p></div>
+        <div class="hx-acts hx-avhd"><span class="hx-avcount hx-num">${num(all.length)} of ${AVMAX} faces</span>
+        <button type="button" class="hx-btn dark" data-a="avadd"${full ? ' disabled' : ''}>${ic('plus', 14)}Add a face</button></div></div>
+      <section class="hx-avways" aria-label="Ways to add a face">
+        ${way('avadd', 'camera', 'From your photo', 'A clear photo facing the camera. You confirm it is you, or the person agreed.', 'Free', 'ok')}
+        ${way('avai', 'wand', 'Made by AI', 'Describe a presenter; pick one of four. No real person, so no consent is needed.', 'Priced first', 'pr')}
+        ${way('avtwin', 'video', 'A video twin', 'A short filmed video of you, read with a consent line, for lips that move.', 'Needs an engine on this server', 'no')}</section>
+      ${full ? `<p class="hx-why">You have ${AVMAX} faces, the most there can be. Remove one to add another.</p>` : ''}
+      ${all.length ? `<div class="hx-avbody"><div class="hx-avmain"><div class="hx-avbar">
+          ${[['all', 'All'], ['photo', 'Your photos'], ['ai', 'Made by AI']].map(([k, l]) => `<button type="button" class="hx-chip${(st.kind || 'all') === k ? ' on' : ''}" data-a="avkind" data-val="${k}">${l} <span class="hx-num">${n(k)}</span></button>`).join('')}
+          <span class="hx-grow"></span><label class="hx-avq">${ic('search', 15)}<span class="hx-sr">Search faces</span><input type="search" id="hxAvq" placeholder="Search faces" value="${esc(st.q || '')}"></label>
+          <button type="button" class="hx-chip" data-a="avsort" aria-haspopup="menu">${{used: 'Most used', name: 'By name', new: 'Newest'}[st.sort || 'used']}${ic('down', 12)}</button></div>
+        <div id="hxAvList">${avList()}</div></div>${avPanel(sel)}</div>`
+        : `<div class="hx-avfirst"><span class="hx-avp t1 big" aria-hidden="true"><b>${ic('user', 40)}</b></span><div><b class="hx-serif">No faces yet</b>
+          <p class="hx-mut">Add your photo and your videos can show you talking, or make a presenter with AI. Videos work without a face too: the words and your voice carry them.</p>
+          <div class="hx-acts"><button type="button" class="hx-btn dark" data-a="avadd">${ic('camera', 14)}Add your photo</button><button type="button" class="hx-btn" data-a="avai">${ic('wand', 14)}Make one with AI</button></div></div></div>`}</div>`;
+  }
+  // the photo window
+  function avPhBody() {
+    const s = UI.dlg, ok = s.file && s.real && s.big && s.consent;
+    const chk = (good, t, d) => `<div class="hx-avck"><span class="hx-anck ${good === true ? 'ok' : good === false ? 'no' : 'i'}">${good === true ? '✓' : good === false ? '!' : 'i'}</span><span><b>${t}</b> <span class="hx-mut">${d}</span></span></div>`;
+    return `<div class="hx-dlg w" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><div class="hx-growf"><h2 class="hx-serif" id="hxDlgT">Add a face from a photo</h2>
+        <span class="hx-mut hx-sm">Free. Nothing is made until you use the face in a video.</span></div><button type="button" class="hx-ib" data-a="dlgx" aria-label="Close">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb"><div class="hx-avph"><div class="hx-avphl">
+          <button type="button" class="hx-avdrop${s.url ? ' has' : ''}" data-a="avpick" aria-label="${s.url ? 'Choose another photo' : 'Choose a photo'}">${s.url ? `<img src="${esc(s.url)}" alt="The chosen photo"><span class="hx-avoval" aria-hidden="true"></span><span class="hx-avre">Choose another</span>`
+            : `${ic('camera', 28)}<b>Choose a photo</b><small>PNG, JPG or WebP · a clear face, facing the camera</small>`}</button>
+          ${s.file ? `<div class="hx-avcks">${chk(s.real, s.real ? 'A real photo.' : 'Not a photo.', s.real ? `${esc(s.type)}, ${s.size >= 1048576 ? (s.size / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(s.size / 1024)) + ' KB'}.` : 'Use a PNG, JPG or WebP picture.')}
+            ${s.real ? chk(s.big, s.big ? 'Big enough.' : 'Too small.', `${num(s.w)} × ${num(s.h)}${s.big ? (Math.min(s.w, s.h) >= 720 ? ', good for a full-screen face.' : ', fine for a face in the corner.') : `. Use one at least 300 pixels on each side.`}`) : ''}
+            ${s.real ? chk(s.h >= s.w ? true : null, s.h >= s.w ? 'Upright.' : 'Wider than tall.', s.h >= s.w ? 'Taller than it is wide, like a portrait.' : 'It works; a portrait photo frames the face better.') : ''}
+            ${chk(null, 'Look at it yourself:', 'one face, facing the camera, nothing covering the mouth.')}</div>` : ''}</div>
+        <div class="hx-avphr"><label class="hx-fld"><span class="hx-lab">Name</span><input class="hx-in" id="hxAvNm" maxlength="40" placeholder="Meghana" value="${esc(s.name || '')}" data-auto="1"></label>
+          <fieldset class="hx-avwho"><legend class="hx-lab">Whose face is this?</legend>
+            <label class="hx-avopt${s.who !== 'agreed' ? ' on' : ''}"><input type="radio" name="hxAvWho" value="me"${s.who !== 'agreed' ? ' checked' : ''}><span><b>Mine</b><small>It is my own face.</small></span></label>
+            <label class="hx-avopt${s.who === 'agreed' ? ' on' : ''}"><input type="radio" name="hxAvWho" value="agreed"${s.who === 'agreed' ? ' checked' : ''}><span><b>Someone who agreed</b><small>A colleague, family member or staff member who said yes to being in AI videos. Their name goes on the record.</small></span></label>
+            ${s.who === 'agreed' ? `<label class="hx-fld"><span class="hx-lab">Their full name</span><input class="hx-in" id="hxAvPer" maxlength="60" value="${esc(s.person || '')}"></label>` : ''}</fieldset>
+          <label class="hx-avok"><input type="checkbox" id="hxAvOk"${s.consent ? ' checked' : ''}><span>I confirm this is me, or the person agreed to be shown speaking in AI videos. It is not a public figure and not anyone under 18. Hoola keeps this confirmation with the date.</span></label>
+          <p class="hx-avnote">Hoola checks that this is a real photo and that it is big enough. It cannot check who is in it: your confirmation is the record.</p></div></div></div>
+      <div class="hx-dlgf"><span class="hx-mut hx-sm hx-grow">You can remove the face any time. Videos already made keep it.</span><button type="button" class="hx-btn" data-a="dlgx">Cancel</button>
+        <button type="button" class="hx-btn dark" data-a="avphsave"${!ok || s.busy ? ' disabled' : ''}>${s.busy ? 'Adding…' : 'Add the face'}</button></div>
+      <input type="file" id="hxAvPh" accept="image/png,image/jpeg,image/webp" hidden></div>`;
+  }
+  function avPhFile(f) {
+    const s = UI.dlg; if (!s || s.k !== 'avphoto' || !f) return;
+    if (s.url) URL.revokeObjectURL(s.url);
+    Object.assign(s, {file: f, size: f.size, type: (f.type.split('/')[1] || '').toUpperCase().replace('JPEG', 'JPG'), real: /^image\/(png|jpeg|webp)$/.test(f.type) && f.size <= 15 * 1048576, w: 0, h: 0, big: false, url: URL.createObjectURL(f)});
+    if (!s.name) s.name = f.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').slice(0, 40);
+    if (!s.real) return dlgPaint();
+    const im = new Image(); im.onload = () => { s.w = im.naturalWidth; s.h = im.naturalHeight; s.big = Math.min(s.w, s.h) >= 300; dlgPaint(); };
+    im.onerror = () => { s.real = false; dlgPaint(); }; im.src = s.url;
+  }
+  async function avPhSave() {
+    const s = UI.dlg; if (!s || s.busy) return;
+    const name = ($('#hxAvNm')?.value || s.name || '').trim(), person = ($('#hxAvPer')?.value || s.person || '').trim();
+    if (!name) return toast('Give the face a name.');
+    if (s.who === 'agreed' && !person) return toast('Write the name of the person who agreed.');
+    if (!s.consent) return toast('Tick that this is you, or that the person agreed.', true);
+    s.busy = true; dlgPaint();
+    try { const up = await upload(s.file); const row = await api('POST', `${S}/avatar`, {file_id: up.file_id, name, consent: true, who: s.who || 'me', person, lang: SET.lang});
+      if (s.url) URL.revokeObjectURL(s.url); UI.dlg = null; dlgPaint(); await load(); (UI.av ||= {}).sel = row.id; draw(); toast('Face added.'); }
+    catch (er) { s.busy = false; dlgPaint(); toast(er.message, true); }
+  }
+  // the AI window
+  const AIROWS = [['age', 'Age', [['20s', '20s'], ['30s', '30s'], ['40s', '40s'], ['50s', '50s +']]],
+    ['look', 'Look', [['warm', 'Warm'], ['formal', 'Formal'], ['casual', 'Casual'], ['expert', 'Doctor or teacher']]],
+    ['behind', 'Behind', [['wall', 'Plain wall'], ['shop', 'A shop'], ['office', 'An office'], ['outdoors', 'Outdoors']]]];
+  function avAiBody() {
+    const s = UI.dlg, q = s.quote, run = s.job && s.status === 'running', items = s.items || [];
+    return `<div class="hx-dlg w x" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><div class="hx-growf"><h2 class="hx-serif" id="hxDlgT">A face made by AI</h2>
+        <span class="hx-mut hx-sm">A presenter who is no real person. Every video with this face carries the AI mark.</span></div><button type="button" class="hx-ib" data-a="dlgx" aria-label="Close">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb"><div class="hx-avph"><div class="hx-avphl">
+          <label class="hx-fld"><span class="hx-lab">Describe the presenter</span><textarea class="hx-in hx-ta" id="hxAiD" rows="4" maxlength="400" placeholder="A friendly woman in her thirties, warm smile, simple teal kurta." data-auto="1">${esc(s.describe || '')}</textarea></label>
+          ${AIROWS.map(([k, l, os]) => `<div class="hx-fld"><span class="hx-lab">${l}</span><div class="hx-acts">${os.map(([v, t]) => `<button type="button" class="hx-chip s${s[k] === v ? ' on' : ''}" data-a="aiopt" data-k="${k}" data-val="${v}" aria-pressed="${s[k] === v}">${t}</button>`).join('')}</div></div>`).join('')}
+          <p class="hx-avwarn">Asking for a real or famous person is refused. The face is made up, so it needs no consent, and it is never passed off as someone real.</p></div>
+        <div class="hx-avphr">${items.length ? `<div class="hx-sech"><b>Pick one</b><span class="hx-mut hx-sm">${num(items.length)} made</span></div>
+            <div class="hx-aipicks">${items.map(it => `<button type="button" class="hx-aipick${s.pick === it.id ? ' on' : ''}" data-a="aipick" data-id="${esc(it.id)}" aria-pressed="${s.pick === it.id}"><img data-ci="${esc(it.id)}" alt="An AI-made face"><span class="hx-avk ai">AI</span>${s.pick === it.id ? `<span class="hx-aion">${ic('check', 14)}</span>` : ''}</button>`).join('')}</div>
+            <label class="hx-fld"><span class="hx-lab">Name the face</span><input class="hx-in" id="hxAiNm" maxlength="40" value="${esc(s.name || '')}" placeholder="Asha (AI)"></label>`
+          : run ? `<div class="hx-aiwait"><span class="hx-spin" aria-hidden="true"></span><b>Making ${num(s.count || 4)} faces…</b><span class="hx-mut hx-sm">${esc(s.step || 'Usually under a minute')}</span></div>`
+          : `<div class="hx-aiwait idle">${ic('wand', 28)}<b>Your four faces appear here</b><span class="hx-mut hx-sm">${s.error ? esc(s.error) : 'Describe the presenter, then make them.'}</span></div>`}</div></div></div>
+      <div class="hx-dlgf"><span class="hx-mut hx-sm hx-grow">${q ? (q.ready ? `4 faces · about ${cr(q.credits)}. Kept in Create › My creations too.` : 'Making faces needs the picture engine on this server.') : 'Checking the price…'}</span>
+        <button type="button" class="hx-btn${items.length ? '' : ' dark'}" data-a="aimake"${run || !q?.ready ? ' disabled' : ''}>${items.length ? 'Make 4 more' : `Make 4 faces${q?.ready ? ' · ' + cr(q.credits) : ''}`}</button>
+        ${items.length ? `<button type="button" class="hx-btn dark" data-a="aikeep"${!s.pick || s.busy ? ' disabled' : ''}>${s.busy ? 'Keeping…' : 'Keep this face'}</button>` : ''}</div></div>`;
+  }
+  let aiT = 0;
+  async function aiMake() {
+    const s = UI.dlg; if (!s || s.k !== 'avai') return;
+    s.describe = ($('#hxAiD')?.value || s.describe || '').trim();
+    if (!s.describe && !s.age && !s.look) return toast('Describe the presenter in a few words.');
+    s.error = ''; s.status = 'running'; s.step = ''; dlgPaint();
+    try { const r = await api('POST', `${S}/avatar/ai`, {describe: s.describe, age: s.age, look: s.look, behind: s.behind, count: 4});
+      s.job = r.job; s.count = r.count; aiPoll(); }
+    catch (er) { s.status = ''; s.error = er.message; dlgPaint(); }
+  }
+  function aiPoll() {
+    clearTimeout(aiT);
+    aiT = setTimeout(async () => { const s = UI.dlg; if (!s || s.k !== 'avai' || !s.job) return;
+      try { const j = await api('GET', `/api/create/jobs/${q(s.job)}`); s.step = j.step ? `Face ${j.step}` : '';
+        if (j.status === 'running') { dlgPaint(); return aiPoll(); }
+        s.status = j.status; if (j.status === 'failed') s.error = j.error || 'The faces could not be made. Nothing was kept.';
+        s.items = [...(j.items || []).filter(i => i.kind === 'image'), ...(s.items || [])].slice(0, 8);
+        if (!s.pick && s.items[0]) s.pick = s.items[0].id; dlgPaint(); }
+      catch (er) { s.status = ''; s.error = er.message; dlgPaint(); } }, 2500);
+  }
+  async function aiKeep() {
+    const s = UI.dlg; if (!s?.pick || s.busy) return;
+    const name = ($('#hxAiNm')?.value || s.name || '').trim(); if (!name) return toast('Give the face a name.');
+    s.busy = true; dlgPaint();
+    try { const row = await api('POST', `${S}/avatar/keep`, {item_id: s.pick, name}); UI.dlg = null; dlgPaint(); await load(); (UI.av ||= {}).sel = row.id; draw(); toast('Face kept.'); }
+    catch (er) { s.busy = false; dlgPaint(); toast(er.message, true); }
+  }
+  function avTwinBody() {
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><span class="hx-avwi avtwin">${ic('video', 22)}</span>
+        <div class="hx-growf"><h2 class="hx-serif" id="hxDlgT">A video twin</h2><span class="hx-ast no"><i></i>Needs an engine on this server</span></div>
+        <button type="button" class="hx-ib" data-a="dlgx" aria-label="Close" data-auto="1">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb"><p>A short video of you, filmed facing the camera, so the face in your videos moves its lips with the words. It needs a face engine that learns from a video, which the owner of this Hoola connects on the server. Nothing is filmed, sent or charged while it is off.</p>
+        <div class="hx-svs-list"><div class="hx-svr"><span class="hx-anck ok">✓</span><div><b>Your consent line</b><p class="hx-mut hx-sm">You will read one sentence on camera saying you agree. That recording is the record.</p></div></div>
+          <div class="hx-svr"><span class="hx-anck no">!</span><div><b>The video face engine</b><p class="hx-mut hx-sm">Not connected on this server yet.</p></div></div></div>
+        <div class="hx-fld"><span class="hx-lab">Meanwhile, these work today</span><div class="hx-acts"><button type="button" class="hx-btn" data-a="avadd">From your photo</button><button type="button" class="hx-btn" data-a="avai">Made by AI</button></div></div></div>
+      <div class="hx-dlgf"><span class="hx-mut hx-sm hx-grow">Your photo face can already talk through the face engines in Engines.</span><button type="button" class="hx-btn" data-a="dlgx">Close</button><button type="button" class="hx-btn dark" data-a="aeng">Open Engines</button></div></div>`;
+  }
+  function avRenBody() {
+    const a = face(UI.dlg.id); if (!a) return '';
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><h2 class="hx-serif hx-growf" id="hxDlgT">Rename ${esc(a.name)}</h2>
+        <button type="button" class="hx-ib" data-a="dlgx" aria-label="Close">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb"><label class="hx-fld"><span class="hx-lab">Name</span><input class="hx-in" id="hxAvRn" maxlength="40" value="${esc(a.name)}" data-auto="1"></label></div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx">Cancel</button><button type="button" class="hx-btn dark" data-a="avrensave">Save</button></div></div>`;
+  }
+  async function avTest(id) {
+    const a = face(id); if (!a || UI.av?.busy) return;
+    UI.av.busy = true; draw();
+    try { const r = await api('POST', `${H}/batch`, {scripts: [`Hello, I am ${a.name}. This is how I look in a Hoola video.`], lang: SET.lang === 'auto' ? 'en' : SET.lang, avatar_id: id});
+      UI.av.busy = false; await load(); const p = (r.made || [])[0]; toast('Test draft ready. Nothing is made until you press Make.'); return p ? go('studio', p.id) : go('studio'); }
+    catch (er) { UI.av.busy = false; draw(); toast(er.message, true); }
+  }
+
+  // ---- voices (v0.999.201 VOICES, REDESIGNED: the voice her videos speak in, find one by describing it, a sample in her
+  //      language, favourites shared with Hoola Vocal, a voice put into several videos at once)
+  const VOWORDS = {man: 'male', men: 'male', male: 'male', boy: 'male', guy: 'male', woman: 'female', women: 'female', lady: 'female', female: 'female', girl: 'female',
+    old: 'older', older: 'older', elderly: 'older', senior: 'older', young: 'young', youthful: 'young', teen: 'young', middle: 'middle'};
+  const VOSKIP = new Set(['a', 'an', 'the', 'for', 'and', 'with', 'of', 'to', 'in', 'voice', 'voices', 'who', 'that', 'very', 'bit', 'little', 'my', 'some', 'like', 'sounds', 'sounding']);
+  const VOSETS = [['narrat', 'story', 'stories', 'audiobook', 'informative', 'knowledgeable', 'documentary', 'clear', 'mature', 'firm', 'even', 'news'],
+    ['upbeat', 'excited', 'lively', 'bright', 'energetic', 'ad', 'ads', 'promo', 'youthful', 'social', 'reels'],
+    ['friendly', 'casual', 'easy', 'warm', 'conversation', 'support', 'breezy', 'forward', 'chat'],
+    ['gravelly', 'breathy', 'playful', 'character', 'games', 'rough', 'husky', 'deep', 'quirky'],
+    ['calm', 'soft', 'smooth', 'gentle', 'soothing', 'meditation', 'relaxed', 'mellow']];
+  const voAll = () => { const Vv = UI.V || {mine: [], library: []}; return [...(Vv.mine || []).map(v => ({...v, mine: true})), ...(Vv.library || [])]; };
+  const voOf = id => voAll().find(v => v.id === id);
+  const voHay = v => [v.name, v.tone, v.accent, v.use, v.gender, v.age].join(' ').toLowerCase();
+  const voFav = id => (UI.V?.favs || []).includes(id);
+  const voUses = id => (D.projects || []).filter(p => p.voice === id);
+  const voTint = id => [...String(id || 'x')].reduce((a, c) => a + c.charCodeAt(0), 0) % 5;
+  const voGender = v => v.gender === 'male' ? 'man' : v.gender === 'female' ? 'woman' : '';
+  const voLine = v => v.mine ? (v.kind === 'designed' ? 'Your voice, designed from words' : v.kind === 'remix' ? 'Your voice, changed from another' : 'Your own voice, kept with your consent')
+    : [v.tone, voGender(v), v.accent].filter(Boolean).join(' · ') || 'A ready-made voice';
+  const voTier = v => v.mine ? ['mine', 'Your voice'] : v.tier === 'premium' ? ['pr', 'Premium'] : ['st', 'Standard'];
+  const voCur = () => SET.voice || UI.V?.default || '';
+  function voMatch(v, q) {
+    const hay = voHay(v), why = []; let n = 0;
+    for (const raw of String(q).toLowerCase().split(/[\s,;.]+/).filter(Boolean)) {
+      if (VOSKIP.has(raw)) continue;
+      const g = VOWORDS[raw];
+      if (g === 'male' || g === 'female') { if (v.gender === g) { n += 2; why.push(g === 'male' ? 'man' : 'woman'); } else if (v.gender) n -= 3; continue; }
+      if (g) { if (v.age === g || hay.includes(g)) { n += 2; why.push(g); } continue; }
+      const w = raw.replace(/s$/, '');
+      if (hay.includes(w)) { n += 3; why.push(raw); continue; }
+      const set = VOSETS.find(x => x.some(k => raw.startsWith(k) || k.startsWith(w)));
+      if (set && set.some(k => new RegExp(`\\b${k}`).test(hay))) { n += 1; why.push(raw); }
+    }
+    return {n, why: [...new Set(why)].slice(0, 4).join(', ')};
+  }
+  function voList() {
+    const st = UI.vo || (UI.vo = {k: 'all', q: '', g: '', lang: '', more: 0, sel: ''}), q = (st.q || '').trim();
+    let xs = voAll().filter(v => st.k === 'all' || (st.k === 'mine' ? v.mine : st.k === 'fav' ? voFav(v.id) : st.k === 'premium' ? !v.mine && v.tier === 'premium' : !v.mine && v.tier !== 'premium'))
+      .filter(v => !st.g || v.gender === st.g);
+    let why = {};
+    if (q) { const m = xs.map(v => [v, voMatch(v, q)]).filter(([v, r]) => r.n > 0 || v.name.toLowerCase().includes(q.toLowerCase()));
+      m.sort((a, b) => b[1].n - a[1].n); xs = m.map(([v]) => v); why = Object.fromEntries(m.map(([v, r]) => [v.id, r.why])); }
+    if (!xs.length) return `<div class="hx-empty"><b>No voice matches</b><span>${q ? 'Try other words, like warm, deep, calm, young, woman.' : st.k === 'fav' ? 'Tap the star on a voice to keep it here.' : 'Try another filter.'}</span></div>`;
+    const lim = 60 + (st.more || 0) * 120, sel = st.sel || voCur();
+    return `<div class="hx-vol">${xs.slice(0, lim).map(v => { const [tc, tl] = voTier(v), on = sel === v.id, pl = UI.voPlay === v.id;
+      return `<div class="hx-vor${on ? ' on' : ''}"><button type="button" class="hx-vop${pl ? ' on' : ''}" data-a="voplay" data-id="${esc(v.id)}" aria-label="${pl ? 'Stop' : 'Play'} ${esc(v.name)}">${ic(pl ? 'stop' : 'play', 13)}</button>
+        <button type="button" class="hx-vom" data-a="vosel" data-id="${esc(v.id)}" aria-pressed="${on}"><span class="hx-vot t${voTint(v.id)}" aria-hidden="true">${esc(v.name.slice(0, 1).toUpperCase())}</span>
+          <span class="hx-ct"><b>${esc(v.name)}${voCur() === v.id ? ' <small class="hx-vous">Your videos</small>' : ''}</b><small>${esc(voLine(v))}${why[v.id] ? ` · matches “${esc(why[v.id])}”` : ''}</small></span></button>
+        <span class="hx-vtier ${tc}">${tl}</span>${v.ready ? '' : '<span class="hx-vtier no">Not connected</span>'}
+        <button type="button" class="hx-ib hx-vofav${voFav(v.id) ? ' on' : ''}" data-a="vofav" data-id="${esc(v.id)}" aria-pressed="${voFav(v.id)}" aria-label="${voFav(v.id) ? 'Remove from favourites' : 'Add to favourites'}">${ic('star', 17)}</button></div>`; }).join('')}</div>
+      ${xs.length > lim ? `<div class="hx-acts hx-vomore"><span class="hx-mut hx-sm hx-num">Showing ${num(lim)} of ${num(xs.length)}</span><button type="button" class="hx-btn" data-a="vomore">Show more voices</button></div>` : ''}`;
+  }
+  const voWave = (id, n = 28) => { let h = [...String(id || 'x')].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 9973, 7); const bars = [];
+    for (let i = 0; i < n; i++) { h = (h * 17 + 7) % 101; bars.push(6 + (h % 22)); } return `<span class="hx-vow" aria-hidden="true">${bars.map(b => `<i style="height:${b}px"></i>`).join('')}</span>`; };
+  const voLang = () => UI.vo?.lang || (SET.lang && SET.lang !== 'auto' ? SET.lang : 'en');
+  function voPanel(v) {
+    if (!v) return '';
+    const uses = voUses(v.id), [tc, tl] = voTier(v), pl = UI.voPlay === v.id, line = (UI.V?.sample_lines || {})[voLang()] || (UI.V?.sample_lines || {}).en || '';
+    return `<aside class="hx-voside" aria-label="${esc(v.name)}"><div class="hx-vosh t${voTint(v.id)}">
+        <div class="hx-vohd"><span class="hx-vot big t${voTint(v.id)}" aria-hidden="true">${esc(v.name.slice(0, 1).toUpperCase())}</span><div class="hx-growf"><h2 class="hx-serif">${esc(v.name)}</h2><span class="hx-sm">${esc(voLine(v))}</span></div></div>
+        <div class="hx-voplay"><button type="button" class="hx-vop big${pl ? ' on' : ''}" data-a="voplay" data-id="${esc(v.id)}" aria-label="${pl ? 'Stop' : 'Play'} ${esc(v.name)}">${ic(pl ? 'stop' : 'play', 15)}</button>${voWave(v.id, 26)}
+          <button type="button" class="hx-chip s" data-a="volang" aria-haspopup="menu">${esc(langName(voLang()))}${ic('down', 12)}</button></div>
+        ${line ? `<p class="hx-voline">“${esc(line)}”</p>` : ''}</div>
+      <div class="hx-vosb"><div class="hx-acts hx-votags"><span class="hx-vtier ${tc}">${tl}</span>${voGender(v) ? `<span class="hx-vtag">${esc(voGender(v).replace(/^./, c => c.toUpperCase()))}</span>` : ''}${v.accent ? `<span class="hx-vtag">${esc(v.accent)}</span>` : ''}<span class="hx-vtag">${v.any || v.mine ? 'Speaks every language' : esc(`${(v.langs || []).length} language${(v.langs || []).length === 1 ? '' : 's'}`)}</span></div>
+        <span class="hx-mut hx-sm">${uses.length ? `In ${num(uses.length)} of your video${uses.length === 1 ? '' : 's'}` : 'Not in a video yet'}</span>
+        ${v.ready ? '' : '<p class="hx-why">This voice is not connected on this server, so it cannot speak yet.</p>'}
+        <button type="button" class="hx-btn dark l" data-a="vouse" data-id="${esc(v.id)}"${voCur() === v.id && SET.voice ? ' aria-pressed="true"' : ''}${v.ready ? '' : ' disabled'}>${voCur() === v.id && SET.voice ? `${ic('check', 14)}Your videos use this voice` : 'Use for my videos'}</button>
+        <div class="hx-acts"><button type="button" class="hx-btn hx-grow" data-a="voput" data-id="${esc(v.id)}"${v.ready ? '' : ' disabled'}>Put in a video</button><button type="button" class="hx-btn hx-grow" data-a="vovocal" data-id="${esc(v.id)}">Open in Vocal</button></div>
+        <span class="hx-mut hx-sm">A sample is made once per voice and language, then it is free to hear again. The first one in a new language uses a few credits.</span></div></aside>`;
+  }
+  function voPage() {
+    if (!UI.V) return `<div class="hx-doc"><p class="hx-mut">Loading voices…</p></div>`;
+    const st = UI.vo || (UI.vo = {k: 'all', q: '', g: '', lang: '', more: 0, sel: ''}), all = voAll(), cur = voOf(voCur()), sel = voOf(st.sel) || cur || all[0];
+    const n = k => all.filter(v => k === 'all' || (k === 'mine' ? v.mine : k === 'fav' ? voFav(v.id) : k === 'premium' ? !v.mine && v.tier === 'premium' : !v.mine && v.tier !== 'premium')).length;
+    const pl = cur && UI.voPlay === cur.id;
+    return `<div class="hx-doc hx-vopage"><div class="hx-doch"><div class="hx-growf"><h2 class="hx-serif">Voices</h2>
+          <p class="hx-mut">The voice that speaks your videos. The same voices as Hoola Vocal: 140 languages, premium voices and your own. Every voice speaks any language.</p></div>
+        <button type="button" class="hx-btn" data-a="aopen" data-id="ownvoice">${ic('mic', 14)}Make your own voice</button></div>
+      <section class="hx-vocur" aria-label="The voice for your videos">${cur ? `<button type="button" class="hx-vop big inv${pl ? ' on' : ''}" data-a="voplay" data-id="${esc(cur.id)}" aria-label="${pl ? 'Stop' : 'Play'} ${esc(cur.name)}">${ic(pl ? 'stop' : 'play', 16)}</button>` : ''}
+        <div class="hx-growf"><span class="hx-vok">YOUR VIDEOS SPEAK IN</span><b class="hx-serif">${esc(cur ? cur.name : 'Hoola picks')}</b><span class="hx-sm">${cur ? `${esc(voLine(cur))} · ${voTier(cur)[1]}${SET.voice ? '' : ' · Hoola picks it until you choose'}` : 'A ready-made voice that fits each video.'}</span></div>
+        ${cur ? voWave(cur.id, 30) : ''}<button type="button" class="hx-btn" data-a="pick" data-k="voice" aria-haspopup="menu">Change</button></section>
+      <div class="hx-vobody"><div class="hx-vomain">
+          <label class="hx-vodesc">${ic('wand', 18)}<span class="hx-sr">Describe a voice</span><input type="search" id="hxVoq" placeholder="Describe a voice: warm woman, calm older man, bright and young…" value="${esc(st.q || '')}"><small class="hx-mut">${st.q ? 'Best matches first' : ''}</small></label>
+          <div class="hx-avbar">${[['all', 'All'], ['mine', 'Your voices'], ['fav', 'Favourites'], ['premium', 'Premium'], ['standard', 'Standard']].map(([k, l]) => `<button type="button" class="hx-chip${st.k === k ? ' on' : ''}" data-a="vokind" data-val="${k}">${l} <span class="hx-num">${num(n(k))}</span></button>`).join('')}
+            <span class="hx-grow"></span><button type="button" class="hx-chip" data-a="vogen" aria-haspopup="menu">${st.g === 'male' ? 'Men' : st.g === 'female' ? 'Women' : 'Any gender'}${ic('down', 12)}</button>
+            <button type="button" class="hx-chip" data-a="volang" aria-haspopup="menu">Samples in ${esc(langName(voLang()))}${ic('down', 12)}</button></div>
+          <div id="hxVoList">${voList()}</div></div>${voPanel(sel)}</div></div>`;
+  }
+  async function voPlay(id) {
+    if (UI.voPlay === id) { UI.audio?.pause(); UI.voPlay = ''; return voRepaint(); }
+    UI.audio?.pause(); UI.voPlay = id; voRepaint();
+    try { const r = await api('GET', `/api/vocal/voice/preview?id=${q(id)}&lang=${q(voLang())}`, undefined, {raw: true});
+      if (!r.ok) { let m = 'The sample could not be made.'; try { m = (await r.json()).detail || m; } catch { /* keep */ } throw new Error(m); }
+      if (UI.voPlay !== id) return;
+      UI.audio = new Audio(URL.createObjectURL(await r.blob())); UI.audio.onended = () => { if (UI.voPlay === id) { UI.voPlay = ''; voRepaint(); } };
+      UI.audio.play().catch(() => {}); }
+    catch (er) { if (UI.voPlay === id) { UI.voPlay = ''; voRepaint(); } toast(er.message, true); }
+  }
+  function voRepaint() { if (PAGE !== 'voices') return; const y = $('#hxView')?.scrollTop; const qf = document.activeElement?.id === 'hxVoq'; draw(); if (y != null && $('#hxView')) $('#hxView').scrollTop = y;
+    if (qf) { const i = $('#hxVoq'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } } }
+  async function voFavToggle(id) {
+    const on = !voFav(id);
+    try { const r = await api('PUT', '/api/vocal/voices/fav', {id, on}); UI.V.favs = r.favs || []; voRepaint();
+      toast(on ? `${voOf(id)?.name || 'The voice'} is in your favourites, here and in Hoola Vocal.` : `${voOf(id)?.name || 'The voice'} is out of your favourites.`); }
+    catch (er) { toast(er.message, true); }
+  }
+  function voPutBody() {
+    const s = UI.dlg, v = voOf(s.id); if (!v) return '';
+    const ps = (D.projects || []).filter(p => (p.scenes || []).length || p.title);
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><span class="hx-vot t${voTint(v.id)}" aria-hidden="true">${esc(v.name.slice(0, 1).toUpperCase())}</span>
+        <div class="hx-growf"><h2 class="hx-serif" id="hxDlgT">Put ${esc(v.name)} in a video</h2><span class="hx-mut hx-sm">Only the voice changes. The words, faces and scenes stay as they are.</span></div>
+        <button type="button" class="hx-ib" data-a="dlgx" aria-label="Close" data-auto="1">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb">${ps.length ? `<div class="hx-vopick">${ps.slice(0, 50).map(p => { const on = s.ids.includes(p.id), mk = p.status === 'making';
+          return `<label class="hx-vopr${on ? ' on' : ''}${mk ? ' off' : ''}"><input type="checkbox" data-vop="${esc(p.id)}"${on ? ' checked' : ''}${mk ? ' disabled' : ''}>${libThumb(p)}
+            <span class="hx-ct"><b>${esc(p.title)}</b><small>${num((p.scenes || []).length)} scene${(p.scenes || []).length === 1 ? '' : 's'} · now ${esc(p.voice ? (voOf(p.voice)?.name || 'another voice') : 'Hoola picks')}</small></span>${chip(p)}</label>`; }).join('')}</div>
+          <p class="hx-mut hx-sm">A video that is already made keeps its old voice until you make it again, priced first in the Studio.</p>`
+        : `<p class="hx-mut">You have no videos yet. Choose “Use for my videos” and every new video starts with this voice.</p>`}</div>
+      <div class="hx-dlgf"><span class="hx-mut hx-sm hx-grow">${num(s.ids.length)} video${s.ids.length === 1 ? '' : 's'} chosen · free</span><button type="button" class="hx-btn" data-a="dlgx">Cancel</button>
+        <button type="button" class="hx-btn dark" data-a="voputgo"${!s.ids.length || s.busy ? ' disabled' : ''}>${s.busy ? 'Saving…' : `Use in ${num(s.ids.length)} video${s.ids.length === 1 ? '' : 's'}`}</button></div></div>`;
+  }
+  async function voPutGo() {
+    const s = UI.dlg; if (!s || !s.ids.length || s.busy) return;
+    s.busy = true; dlgPaint();
+    try { const r = await api('POST', `${X}/voices/apply`, {voice: s.id, ids: s.ids}); UI.dlg = null; dlgPaint(); await load(); draw();
+      toast(`${voOf(s.id)?.name || 'The voice'} is in ${num(r.done.length)} video${r.done.length === 1 ? '' : 's'}.${r.skipped.length ? ` ${num(r.skipped.length)} left out: ${r.skipped[0].why}` : ''}`, !!r.skipped.length); }
+    catch (er) { s.busy = false; dlgPaint(); toast(er.message, true); }
+  }
+
+  // ---- live agents (v0.999.202 LIVE AGENTS, REDESIGNED: this week's numbers, a card per agent, the questions they could not
+  //      answer with "Add the answer", a builder in four steps beside Try it, the website window)
+  const LVTINT = ['#8A5A2B', '#2E4F8A', '#4A36C9', '#2F6B48', '#8A2F4E'];
+  const lvTint = id => LVTINT[[...String(id || 'x')].reduce((a, c) => a + c.charCodeAt(0), 0) % LVTINT.length];
+  const lvAgents = () => D.live?.agents || [];
+  const lvOf = id => lvAgents().find(a => a.id === id);
+  const lvFaceLabel = a => engine(a.face)?.label || (a.face === 'voice_only' ? 'Voice only' : a.face);
+  const lvWho = a => [langName(a.lang), voiceName(a.voice), a.face === 'voice_only' ? 'voice only' : (face(a.avatar_id)?.name ? `${face(a.avatar_id).name}’s face` : lvFaceLabel(a))].filter(Boolean).join(' · ');
+  const lvNums = t => [...new Set(String(t || '').replace(/,/g, '').match(/\d+(?:\.\d+)?/g) || [])].slice(0, 18);
+  const lvAgo = iso => { const t = Date.parse(String(iso || '') + (String(iso || '').endsWith('Z') ? '' : 'Z')); if (!t) return ''; const m = Math.round((Date.now() - t) / 60000);
+    return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : m < 2880 ? 'yesterday' : `${Math.round(m / 1440)} days ago`; };
+  function lvLib() {
+    const ag = lvAgents(), asked = ag.reduce((n, a) => n + (a.asked_week || 0), 0), missed = ag.reduce((n, a) => n + (a.missed_week || 0), 0);
+    const used = Math.round(ag.reduce((n, a) => n + (a.used_today_s || 0), 0) / 60), allow = ag.reduce((n, a) => n + (+a.minutes_day || 0), 0);
+    const pub = ag.filter(a => a.published), hosts = [...new Set(pub.flatMap(a => a.sites || []))];
+    const misses = ag.flatMap(a => (a.misses || []).map(m => ({...m, aid: a.id, an: a.name}))).sort((x, y) => String(y.at).localeCompare(String(x.at))).slice(0, 6);
+    const kpi = (l, v, sub) => `<div class="hx-lvk"><span>${l}</span><b class="hx-serif hx-num">${v}</b><small>${sub}</small></div>`;
+    return `<div class="hx-doc hx-lvpage"><div class="hx-doch"><div class="hx-growf"><h2 class="hx-serif">Live agents</h2>
+          <p class="hx-mut">An assistant that listens and answers your customers from your facts only, in a voice and face you choose. It never says a price, time or number you did not write.</p></div>
+        <div class="hx-acts hx-avhd"><span class="hx-avcount hx-num">${num(ag.length)} of 10 agents</span><button type="button" class="hx-btn dark" data-a="livenew"${ag.length >= 10 ? ' disabled' : ''}>${ic('plus', 14)}New agent</button></div></div>
+      ${ag.length ? `<section class="hx-lvks" aria-label="This week">${kpi('Questions this week', num(asked), 'From your website and Try it')}
+          ${kpi('Answered from your facts', asked ? `${Math.round(100 * (asked - missed) / asked)}%` : '—', asked ? `${num(asked - missed)} of ${num(asked)}` : 'No questions yet')}
+          ${kpi('Minutes today', num(used), `of ${num(allow)} allowed across agents`)}
+          ${kpi('On your website', num(pub.length), hosts.length ? esc(hosts.slice(0, 3).join(', ')) : 'Not on a website yet')}</section>
+        <section class="hx-lvgrid" aria-label="Your agents">${ag.map(a => { const pct = Math.min(100, Math.round(100 * (a.used_today_s || 0) / 60 / Math.max(1, +a.minutes_day || 30)));
+          return `<article class="hx-lvc"><div class="hx-lvct" style="--gc:${lvTint(a.id)}">${face(a.avatar_id) ? avImg(face(a.avatar_id), 'l') : `<span class="hx-lvf" aria-hidden="true">${esc(a.name.slice(0, 1).toUpperCase())}</span>`}
+              <div class="hx-growf"><b>${esc(a.name)}</b><small>${esc(lvWho(a))}</small></div><span class="hx-lvst${a.published ? ' on' : ''}"><i></i>${a.published ? 'On your website' : 'Not published'}</span></div>
+            <div class="hx-lvcb"><p class="hx-serifp">${esc(String(a.knows || '').slice(0, 150))}${String(a.knows || '').length > 150 ? '…' : ''}</p>
+              <div class="hx-lvbar"><div><span class="hx-mut">Minutes today</span><b class="hx-num">${num(Math.round((a.used_today_s || 0) / 60))} of ${num(a.minutes_day)} min</b></div><span class="hx-lvtrack"><i style="width:${pct}%"></i></span></div>
+              <div class="hx-lvstat"><span><b class="hx-num">${num(a.asked_week || 0)}</b> questions this week</span><span class="${a.missed_week ? 'miss' : ''}"><b class="hx-num">${num(a.missed_week || 0)}</b> it could not answer</span></div></div>
+            <div class="hx-lvcf"><button type="button" class="hx-btn dark hx-grow" data-a="liveopen" data-id="${esc(a.id)}">Open</button><button type="button" class="hx-btn hx-grow" data-a="livetry" data-id="${esc(a.id)}">Try it</button></div></article>`; }).join('')}</section>
+        <section class="hx-lvmiss" aria-label="Questions your agents could not answer"><div class="hx-sech"><b>They could not answer these</b><span class="hx-mut hx-sm">Add the answer to the agent’s facts and it answers next time.</span></div>
+          ${misses.length ? misses.map(m => `<div class="hx-lvq"><span class="hx-serifp">“${esc(m.q)}”</span><small class="hx-mut">${esc(m.an)} · ${m.src === 'web' ? 'website' : 'Try it'} · ${esc(lvAgo(m.at))}</small>
+              <button type="button" class="hx-btn s" data-a="lvlearn" data-id="${esc(m.aid)}" data-q="${esc(m.id)}">Add the answer</button></div>`).join('')
+            : '<p class="hx-mut hx-sm">Nothing waiting. Every question was answered from the facts.</p>'}</section>`
+        : `<div class="hx-avfirst"><span class="hx-lvf big" aria-hidden="true">${ic('live', 40)}</span><div><b class="hx-serif">No agents yet</b>
+          <p class="hx-mut">Write what your business knows: hours, prices, address, how to book. The agent answers your customers only from that, out loud, in the voice you choose, and says when it does not know.</p>
+          <div class="hx-acts"><button type="button" class="hx-btn dark" data-a="livenew">${ic('plus', 14)}Make your first agent</button></div></div></div>`}</div>`;
+  }
+  function lvDraft() {
+    const a = lvOf(UI.live);
+    if (!UI.ld || UI.ld._for !== UI.live) UI.ld = a ? {_for: UI.live, ...a} : {_for: 'new', name: '', knows: '', opening: '', lang: SET.lang && SET.lang !== 'auto' ? SET.lang : 'en', voice: SET.voice || '', face: 'voice_only', avatar_id: '', face_ref: '', minutes_day: 30};
+    return UI.ld;
+  }
+  function lvEdit() {
+    const a = lvDraft(), cur = lvOf(UI.live), faces = D.live?.faces || [], fe = faces.find(f => f.id === a.face), needRef = ['simli', 'anam', 'liveavatar', 'tavus'].includes(a.face);
+    const step = (n, t, extra = '') => `<div class="hx-lvsh"><span class="hx-lvn">${n}</span><b>${t}</b><span class="hx-grow"></span>${extra}</div>`, nums = lvNums(a.knows);
+    return `<div class="hx-lved"><header class="hx-lvhd"><button type="button" class="hx-btn" data-a="liveback">${ic('back', 14)}All agents</button>
+        <h2 class="hx-serif hx-growf">${esc(a.name || 'New agent')}</h2>${UI.ldDirty ? '<span class="hx-mut hx-sm">Not saved</span>' : cur ? '<span class="hx-mut hx-sm">Saved</span>' : ''}
+        ${cur ? `<button type="button" class="hx-btn" data-a="lvweb" data-id="${esc(cur.id)}">${cur.published ? `${ic('check', 14)}On your website` : 'Put on your website'}</button>` : ''}
+        <button type="button" class="hx-btn dark" data-a="livesave"${UI.ldBusy ? ' disabled' : ''}>${UI.ldBusy ? 'Saving…' : 'Save'}</button></header>
+      <div class="hx-lvbody"><div class="hx-lvform">
+        <section class="hx-lvs">${step(1, 'Who it is')}<div class="hx-row2">
+          <label class="hx-fld"><span class="hx-lab">Name</span><input class="hx-in" data-lv="name" maxlength="40" value="${esc(a.name)}" placeholder="Shop helper"></label>
+          <label class="hx-fld"><span class="hx-lab">First words</span><input class="hx-in" data-lv="opening" maxlength="160" value="${esc(a.opening || '')}" placeholder="Hello! Ask me about our hours, prices or delivery."></label>
+          <div class="hx-fld"><span class="hx-lab">Language</span><button type="button" class="hx-dd" data-a="lvpick" data-k="lang"><span>${esc(langName(a.lang))}</span>${ic('down', 14)}</button></div>
+          <div class="hx-fld"><span class="hx-lab">Voice</span><div class="hx-lvvoice"><button type="button" class="hx-dd" data-a="lvpick" data-k="voice"><span>${esc(voiceName(a.voice))}</span>${ic('down', 14)}</button>
+            <button type="button" class="hx-vop${UI.lvHear ? ' on' : ''}" data-a="lvhear" aria-label="Hear this voice"${a.voice ? '' : ' disabled'}>${ic(UI.lvHear ? 'stop' : 'play', 13)}</button></div></div></div></section>
+        <section class="hx-lvs">${step(2, 'What it knows', `<span class="hx-mut hx-sm hx-num" id="hxLvLen">${num((a.knows || '').length)} of 6,000 characters</span>`)}
+          <textarea class="hx-in hx-ta hx-serifp" data-lv="knows" rows="6" maxlength="6000" placeholder="Your hours, prices, address, delivery, how to book. Write it the way you would tell a new member of staff.">${esc(a.knows)}</textarea>
+          <div class="hx-lvnums" id="hxLvNums">${nums.length ? `<span class="hx-mut hx-sm">Numbers it may say:</span>${nums.map(n => `<span class="hx-lvnum hx-num">${esc(n)}</span>`).join('')}` : '<span class="hx-mut hx-sm">No numbers yet. It will not say a price, time or number until you write it here.</span>'}</div>
+          <span class="hx-mut hx-sm">It answers only from these words. Any other number is never said; it says it does not know and offers that you will help.</span></section>
+        <section class="hx-lvs">${step(3, 'Its face')}<div class="hx-lvfaces" role="radiogroup" aria-label="Face engine">${faces.map(f => `<button type="button" role="radio" aria-checked="${f.id === a.face}" class="hx-lvface${f.id === a.face ? ' on' : ''}" data-a="lvface" data-id="${esc(f.id)}"${f.ready ? '' : ' disabled'}>
+              <b>${esc(f.label)}</b><small>${esc(f.price === 'free' ? 'Free' : f.price)}</small><span class="hx-ast ${f.ready ? 'ok' : 'no'}"><i></i>${f.ready ? 'Ready' : 'Not connected'}</span></button>`).join('')}</div>
+          ${a.face !== 'voice_only' ? `<div class="hx-row2"><div class="hx-fld"><span class="hx-lab">Picture shown with it</span><button type="button" class="hx-dd" data-a="lvpick" data-k="face"><span>${esc(face(a.avatar_id)?.name || 'None')}</span>${ic('down', 14)}</button></div>
+            ${needRef ? `<label class="hx-fld"><span class="hx-lab">${esc(fe?.label || '')} face id</span><input class="hx-in" data-lv="face_ref" maxlength="80" value="${esc(a.face_ref || '')}" placeholder="Made in ${esc(fe?.label || 'the engine')}’s own dashboard"></label>` : ''}</div>` : ''}</section>
+        <section class="hx-lvs hx-lvmin">${step(4, 'Minutes a day')}<div class="hx-lvminr"><span class="hx-mut hx-sm hx-growf">When they are used up it stops answering until tomorrow, so the bill cannot run away.</span>
+          <input type="range" min="5" max="240" step="5" data-lv="minutes_day" value="${esc(a.minutes_day || 30)}" aria-label="Minutes a day"><b class="hx-num" id="hxLvMin">${num(a.minutes_day || 30)} min</b></div></section>
+        ${cur ? `<div class="hx-acts"><span class="hx-grow"></span><button type="button" class="hx-btn danger" data-a="livedel" data-id="${esc(cur.id)}">Remove this agent</button></div>` : ''}</div>
+      <aside class="hx-lvtry" aria-label="Try it">${lvTryPane(cur, a)}</aside></div></div>`;
+  }
+  function lvTryPane(cur, a) {
+    const tab = UI.lvTab || 'try', qs = UI.lvQs && cur && UI.lvQs.id === cur.id ? UI.lvQs.rows : null;
+    const tabs = `<div class="hx-lvtabs"><button type="button" class="hx-chip${tab === 'try' ? ' on' : ''}" data-a="lvtab" data-val="try">Try it</button><button type="button" class="hx-chip${tab === 'qs' ? ' on' : ''}" data-a="lvtab" data-val="qs"${cur ? '' : ' disabled'}>Questions${cur ? ` <span class="hx-num">${num(cur.asked_week || 0)}</span>` : ''}</button></div>`;
+    if (!cur) return `${tabs}<div class="hx-lvempty">${ic('live', 28)}<b>Save the agent first</b><span class="hx-mut hx-sm">Then talk to it here, the way your customers will.</span></div>`;
+    if (tab === 'qs' && !qs && !UI.lvQsBusy) { UI.lvQsBusy = true; setTimeout(() => lvQsLoad(cur.id).finally(() => { UI.lvQsBusy = false; })); }
+    if (tab === 'qs') return `${tabs}<div class="hx-lvqs">${!qs ? '<p class="hx-mut">Loading…</p>' : qs.length ? qs.map(x => `<div class="hx-lvqr${x.known ? '' : ' miss'}"><span class="hx-ct"><b>“${esc(x.q)}”</b><small>${esc(x.a)}</small>
+          <small class="hx-mut">${x.src === 'web' ? 'Website' : 'Try it'} · ${esc(lvAgo(x.at))}${x.known ? ' · From your facts' : x.resolved ? ' · Answer added' : ''}</small></span>
+          ${!x.known && !x.resolved ? `<button type="button" class="hx-btn s" data-a="lvlearn" data-id="${esc(cur.id)}" data-q="${esc(x.id)}">Add the answer</button>` : ''}</div>`).join('') : '<p class="hx-mut hx-sm">No questions yet. Questions from Try it and your website show here.</p>'}</div>`;
+    const used = Math.round((cur.used_today_s || 0) / 60);
+    return `${tabs}<div class="hx-lvstage" style="--gc:${lvTint(cur.id)}">${face(cur.avatar_id) ? avImg(face(cur.avatar_id), 'xl') : `<span class="hx-lvf big" aria-hidden="true">${esc(cur.name.slice(0, 1).toUpperCase())}</span>`}
+        <span class="hx-livebadge"><i></i>${esc(lvFaceLabel(cur))}</span>${cur.face !== 'voice_only' ? `<button type="button" class="hx-btn s hx-lvsess" data-a="livesess">Start the face</button>` : ''}</div>
+      <div class="hx-lvlog" id="hxTry">${cur.opening ? `<div class="hx-lvb ho">${esc(cur.opening)}</div>` : ''}${UI.liveOut.map(o => o.me ? `<div class="hx-lvb me">${esc(o.t)}</div>`
+        : `<div class="hx-lvb ho${o.known === false ? ' miss' : ''}">${esc(o.t)}<small>${o.err ? 'Not answered' : o.known === false ? `Not in your facts · <button type="button" class="hx-lnk" data-a="lvlearn" data-id="${esc(cur.id)}" data-q="${esc(o.qid || '')}">Add the answer</button>` : `From your facts${o.secs ? ` · ${num(Math.round(o.secs))} s spoken` : ''}`}</small></div>`).join('')}
+        ${UI.lvBusy ? '<div class="hx-lvb ho"><span class="hx-spin" aria-hidden="true"></span></div>' : ''}</div>
+      <form class="hx-lvask" onsubmit="return false">${window.SpeechRecognition || window.webkitSpeechRecognition ? `<button type="button" class="hx-ib${UI.lvMic ? ' on' : ''}" data-a="lvmic" aria-label="${UI.lvMic ? 'Stop listening' : 'Speak'}">${ic('mic', 16)}</button>` : ''}
+        <input class="hx-in" id="hxTryIn" placeholder="Ask it something" maxlength="400"><button type="button" class="hx-btn dark" data-a="liveask"${UI.lvBusy ? ' disabled' : ''}>Ask</button></form>
+      <span class="hx-mut hx-sm hx-num">${num(used)} of ${num(cur.minutes_day)} minutes used today. Trying it counts toward the minutes.</span>`;
+  }
+  function lvWebBody() {
+    const s = UI.dlg, a = lvOf(s.id); if (!a) return '';
+    const sites = s.sites || [];
+    return `<div class="hx-dlg w" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><div class="hx-growf"><h2 class="hx-serif" id="hxDlgT">${esc(a.name)} on your website</h2>
+        <span class="hx-mut hx-sm">Visitors talk to it in a small window on your pages. Your keys never reach the page.</span></div><button type="button" class="hx-ib" data-a="dlgx" aria-label="Close" data-auto="1">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb"><div class="hx-avph"><div class="hx-avphr">
+          <div class="hx-fld"><span class="hx-lab">Your website addresses</span><div class="hx-acts hx-lvsites">${sites.map((h, i) => `<span class="hx-lvsite">${esc(h)}<button type="button" class="hx-ib xs" data-a="lvsitedel" data-i="${i}" aria-label="Remove ${esc(h)}">${ic('x', 12)}</button></span>`).join('')}
+            <input class="hx-in" id="hxLvSite" placeholder="${sites.length ? 'Add another address' : 'myshop.com'}" maxlength="120"><button type="button" class="hx-btn s" data-a="lvsiteadd">Add</button></div>
+            <span class="hx-mut hx-sm">It only answers on these addresses (and their sub-addresses). On any other site it stays silent. Up to 5.</span></div>
+          ${s.embed ? `<div class="hx-fld"><span class="hx-lab">The line to paste into your website</span><code class="hx-lvcode">${esc(s.embed)}</code>
+              <div class="hx-acts"><button type="button" class="hx-btn dark s" data-a="lvcopy">${ic('copy', 14)}Copy the line</button><span class="hx-why">The pass is shown only once. Copy it now.</span></div></div>`
+            : a.published ? `<p class="hx-mut hx-sm">It is on your website. The line you pasted keeps working; putting it on again gives a new pass and the old line stops.</p>` : ''}
+          ${a.published ? `<div class="hx-lvfacts"><div><span>Pass ends in</span><b>${esc(a.pass_last4 || '—')}</b></div><div><span>Each visitor</span><b>20 questions / 10 min</b></div><div><span>Today</span><b class="hx-num">${num(Math.round((a.used_today_s || 0) / 60))} of ${num(a.minutes_day)} min</b></div></div>` : ''}</div>
+        <div class="hx-lvprev" aria-hidden="true"><span class="hx-vok">WHAT VISITORS SEE</span><div class="hx-lvpw"><div class="hx-lvph"><span class="hx-lvf s" style="--gc:${lvTint(a.id)}">${esc(a.name.slice(0, 1).toUpperCase())}</span><b>${esc(a.name)}</b><span class="hx-vtier pr">AI</span></div>
+          <div class="hx-lvpb">${a.opening ? `<span class="hx-lvb ho">${esc(a.opening)}</span>` : ''}<span class="hx-lvb me">Are you open today?</span></div><div class="hx-lvpf">Ask a question…</div></div></div></div></div>
+      <div class="hx-dlgf"><span class="hx-mut hx-sm hx-grow">${a.published ? 'Taking it off stops it at once on every address.' : 'Nothing goes live until you press the button.'}</span>
+        ${a.published ? `<button type="button" class="hx-btn danger" data-a="lvunpub">Take it off my website</button>` : ''}
+        <button type="button" class="hx-btn dark" data-a="lvpub"${!sites.length || s.busy ? ' disabled' : ''}>${s.busy ? 'Working…' : a.published ? (s.embed ? 'Done' : 'Save the addresses and get a new line') : 'Put it on my website'}</button></div></div>`;
+  }
+  function lvLearnBody() {
+    const s = UI.dlg, a = lvOf(s.id); if (!a) return '';
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><div class="hx-growf"><h2 class="hx-serif" id="hxDlgT">Add the answer</h2>
+        <span class="hx-mut hx-sm">${esc(a.name)} will answer from it next time.</span></div><button type="button" class="hx-ib" data-a="dlgx" aria-label="Close">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb"><p class="hx-serifp hx-lvqq">“${esc(s.q)}”</p>
+        <label class="hx-fld"><span class="hx-lab">The answer</span><textarea class="hx-in hx-ta" id="hxLvAns" rows="3" maxlength="600" data-auto="1" placeholder="Yes, we deliver on Sundays between 10 am and 2 pm.">${esc(s.answer || '')}</textarea></label>
+        <span class="hx-mut hx-sm">It is added to its facts as this question and your answer. Numbers you write here are numbers it may say.</span></div>
+      <div class="hx-dlgf"><button type="button" class="hx-btn" data-a="lvdismiss">Not needed</button><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx">Cancel</button>
+        <button type="button" class="hx-btn dark" data-a="lvlearnsave"${s.busy ? ' disabled' : ''}>Add to its facts</button></div></div>`;
+  }
+  async function lvQsLoad(id) { try { const r = await api('GET', `${X}/live/questions?id=${q(id)}`); UI.lvQs = {id, rows: r.questions || []}; } catch { UI.lvQs = {id, rows: []}; } if (PAGE === 'live') draw(); }
+  async function lvSave() {
+    const a = lvDraft(); if (UI.ldBusy) return;
+    UI.ldBusy = true; draw();
+    try { const body = {id: lvOf(UI.live) ? UI.live : '', name: a.name, knows: a.knows, opening: a.opening, lang: a.lang, voice: a.voice, face: a.face, avatar_id: a.avatar_id, face_ref: a.face_ref, minutes_day: a.minutes_day};
+      const r = await api('POST', `${X}/live`, body); UI.ldBusy = false; UI.ldDirty = false; UI.live = r.id; UI.ld = null; await load(); draw(); toast('Saved.'); }
+    catch (er) { UI.ldBusy = false; draw(); toast(er.message, true); }
+  }
+  async function lvAsk() {
+    const i = $('#hxTryIn'), t = (i?.value || '').trim(); if (!t || UI.lvBusy) return;
+    UI.liveOut.push({me: true, t}); UI.lvBusy = true; draw();
+    try { const r = await api('POST', `${X}/live/ask`, {id: UI.live, text: t}); UI.lvBusy = false;
+      await load(); const cur = lvOf(UI.live), m = (cur?.misses || [])[0];
+      UI.liveOut.push({t: r.answer, known: r.known, secs: r.seconds, qid: r.known === false && m && m.q === t.slice(0, 400) ? m.id : ''}); UI.lvQs = null; draw();
+      if (r.audio) { UI.audio?.pause(); UI.audio = new Audio(`data:${r.mime || 'audio/wav'};base64,${r.audio}`); UI.audio.play().catch(() => {}); } else if (r.voice_error) toast(r.voice_error, true); }
+    catch (er) { UI.lvBusy = false; UI.liveOut.push({t: er.message, err: true}); draw(); }
+    const l = $('#hxTry'); if (l) l.scrollTop = l.scrollHeight; $('#hxTryIn')?.focus();
+  }
+  function lvMic() {
+    const R = window.SpeechRecognition || window.webkitSpeechRecognition; if (!R) return;
+    if (UI.lvRec) { UI.lvRec.stop(); return; }
+    const r = new R(); r.lang = lvDraft().lang || 'en'; r.interimResults = false;
+    r.onresult = e => { const t = e.results?.[0]?.[0]?.transcript || ''; const i = $('#hxTryIn'); if (i && t) { i.value = t; lvAsk(); } };
+    r.onend = () => { UI.lvRec = null; UI.lvMic = false; if (PAGE === 'live') draw(); };
+    r.onerror = () => {}; UI.lvRec = r; UI.lvMic = true; draw(); try { r.start(); } catch { UI.lvRec = null; UI.lvMic = false; draw(); }
+  }
+  async function lvHear() {
+    const a = lvDraft(); if (!a.voice) return;
+    if (UI.lvHear) { UI.audio?.pause(); UI.lvHear = false; return draw(); }
+    UI.lvHear = true; draw();
+    try { const r = await api('GET', `/api/vocal/voice/preview?id=${q(a.voice)}&lang=${q(a.lang || 'en')}`, undefined, {raw: true});
+      if (!r.ok) { let m = 'The sample could not be made.'; try { m = (await r.json()).detail || m; } catch { /* keep */ } throw new Error(m); }
+      UI.audio?.pause(); UI.audio = new Audio(URL.createObjectURL(await r.blob())); UI.audio.onended = () => { UI.lvHear = false; if (PAGE === 'live') draw(); }; UI.audio.play().catch(() => {}); }
+    catch (er) { UI.lvHear = false; draw(); toast(er.message, true); }
+  }
+  function lvSet(k, v) { const a = lvDraft(); a[k] = v; UI.ldDirty = true; }
+
+  // ---- settings (v0.999.210: starting choices on her account, usage, kept + trash, this server) ----
+  const STTABS = [['new', 'New videos'], ['usage', 'Usage'], ['kept', 'Kept & trash'], ['server', 'This server']];
+  const stS = () => (UI.st ||= {tab: 'new', v: null, est: null});
+  async function stLoad() {
+    const s = stS();
+    try { s.v = await api('GET', `${X}/settings`); prefApply(s.v.prefs); s.err = ''; } catch (e) { s.err = e.message; }
+    if (PAGE === 'settings') draw(); stEstimate();
+  }
+  async function stEstimate() {
+    const s = stS();
+    try { s.est = await api('GET', `${X}/estimate?engine=${q(defEngine())}&seconds=${SET.len || 30}&voice=${q(SET.voice || '')}`); } catch { s.est = null; }
+    const el = $('#hxStEst'); if (el) el.innerHTML = stEstLine();
+  }
+  const stEstLine = () => { const e = stS().est; return e ? `A video like this costs about <b>${esc(cr(e.credits))}</b> · you see the exact price before it is made` : 'You see the exact price before anything is made.'; };
+  const stLen = n => n < 60 ? `${n} seconds` : n === 60 ? '1 minute' : '1.5 minutes';
+  const stFolder = id => (D.folders || []).find(f => f.id === id);
+  const stEng = () => (D.engines?.engines || []).find(e => e.id === defEngine());
+  async function stSave(body, said) {
+    try { const r = await api('PUT', `${X}/settings`, body); prefApply(r.prefs); if (stS().v) stS().v.prefs = r.prefs;
+      if ((r.refused || []).length) toast(r.refused[0].why, true); else if (said) toast(said);
+    } catch (e) { toast(e.message, true); }
+    draw(); stEstimate();
+  }
+  function stField(label, val, sub, act, k) {
+    return `<div class="hx-fld"><span class="hx-lab">${esc(label)}</span><button type="button" class="hx-dd" data-a="${act}" data-k="${k}" aria-haspopup="menu"><span>${esc(val)}</span>${ic('down', 14)}</button><span class="hx-stsub">${esc(sub)}</span></div>`;
+  }
+  function stNew() {
+    const f = face(SET.face), e = stEng(), fo = stFolder(SET.folder), b = D.brand || {}, p = stS().v?.prefs || {};
+    const kind = KIND_NAME[SET.kind] || 'Talking presenter', ratio = SET.kind === 'reel' ? 'tall 9:16' : 'wide 16:9';
+    const card = b.closing || b.name ? 'Your Brand kit card' : 'No closing card yet';
+    const look = `${kind}, ${ratio}, about ${stLen(SET.len || 30)}${f ? `, ${f.name}'s face` : ', no face'}, ${voiceName(SET.voice)} voice, ${SET.lang && SET.lang !== 'auto' ? `in ${langName(SET.lang)}` : 'in the language you write in'}${e ? `, made by ${e.label}` : ''}.`;
+    return `<div class="hx-stgrid"><section class="hx-card hx-stcard"><div class="hx-strow"><b class="hx-t hx-growf">Every new video starts with</b><span class="hx-sm hx-mut">You can change any of these in the chat, per video</span></div>
+      <div class="hx-stfields">${stField('Language', langName(SET.lang || 'auto'), 'Any of the 140 languages; Auto follows your words', 'stpick', 'lang')}
+        ${stField('Voice', voiceName(SET.voice), 'From Voices; play it there first', 'stpick', 'voice')}
+        ${stField('Face', f ? f.name : 'No face', f ? 'Consent on record' : 'Words, pictures and voice only', 'stpick', 'face')}
+        ${stField('Face engine', e ? e.label : 'Hoola picks', 'The same default as on Engines', 'stpick', 'engine')}
+        ${stField('Folder', fo ? fo.name : 'No folder', 'New videos land here in Projects', 'stpick', 'folder')}
+        <div class="hx-fld"><span class="hx-lab">Closing card</span><button type="button" class="hx-dd" data-a="go" data-p="brand"><span>${esc(card)}</span>${ic('fwd', 14)}</button><span class="hx-stsub">Set on Brand: line, logo, QR</span></div></div>
+      <div class="hx-fld"><span class="hx-lab">Kind of video</span>${dvSeg(SET.kind || 'presenter', 'stkind', KINDS.filter(k => k[0] !== 'translate').map(k => [k[0], k[1]]))}</div>
+      <div class="hx-fld"><span class="hx-lab">About how long</span>${dvSeg(String(SET.len || 30), 'stlen', LENS.map(n => [String(n), n < 60 ? `${n} s` : n === 60 ? '1 min' : '1.5 min']))}</div>
+      <div class="hx-strow hx-stfoot"><span class="hx-sm hx-mut hx-growf">${p.updated ? `Saved to your account ${esc(ago(p.updated))}` : 'Saved to your account'}</span><button type="button" class="hx-btn s" data-a="streset">Back to Hoola's starting choices</button></div></section>
+      <section class="hx-stside"><div class="hx-stprev"><div class="hx-stpic${SET.kind === 'reel' ? ' tall' : ''}">${f ? `<img data-av="${esc(f.id)}" alt="">` : ''}<span>${esc(b.name || kind)}</span></div>
+        <div class="hx-stpv"><b>How your next video will look</b><span class="hx-sm hx-mut">${esc(look)}</span><span class="hx-sm hx-mut" id="hxStEst">${stEstLine()}</span></div></div>
+        <div class="hx-card hx-stcard"><b class="hx-t">Where this also changes</b>${[['avatars', 'Faces', 'Make a face the default on Avatars'], ['engines', 'Engines', 'Your default engine for each job'], ['brand', 'Brand', 'Name on screen, colour, closing card']].map(([pg, t, d]) =>
+          `<button type="button" class="hx-stlink" data-a="go" data-p="${pg}"><span class="hx-growf"><b>${t}</b><span class="hx-sm hx-mut">${d}</span></span>${ic('fwd', 14)}</button>`).join('')}</div></section></div>`;
+  }
+  function stUsage() {
+    const u = stS().v?.usage || D.usage || {}, langs = u.by_language || [], top = Math.max(0.1, ...langs.map(l => l.minutes || 0));
+    const diff = (u.videos || 0) - (u.videos_before || 0);
+    const stats = [['Videos this month', num(u.videos || 0), diff === 0 ? 'the same as last month' : `${num(Math.abs(diff))} ${diff > 0 ? 'more' : 'fewer'} than last month`],
+      ['Minutes', num(u.minutes || 0), 'finished videos only'], ['Credits spent', num(u.credits || 0), 'drafts and samples are free'], ['Made by your apps', num(u.apps_videos || 0), 'through your app keys']];
+    return `<div class="hx-dvstats">${stats.map(([k, v, d]) => `<div class="hx-dvstat"><span class="hx-lab">${k}</span><b class="hx-num">${v}</b><small>${esc(d)}</small></div>`).join('')}</div>
+      <div class="hx-stgrid u"><section class="hx-card hx-stcard"><b class="hx-t">Minutes by language</b>${langs.length ? langs.map(l => `<div class="hx-stbar"><div class="hx-strow"><span class="hx-growf">${esc(l.lang)}</span><b class="hx-num">${num(l.minutes)} min</b></div>
+          <span class="hx-dvbar" role="meter" aria-label="${esc(l.lang)} minutes" aria-valuemin="0" aria-valuemax="${top}" aria-valuenow="${l.minutes}"><i style="width:${Math.round((l.minutes || 0) / top * 100)}%"></i></span></div>`).join('') : '<p class="hx-mut hx-sm">No finished videos this month yet.</p>'}</section>
+        <section class="hx-card hx-stcard"><b class="hx-t">Videos made this month</b>${(u.recent || []).length ? `<div class="hx-sttab"><span>Video</span><span>Length</span><span>Credits</span></div>${u.recent.map(r => `<div class="hx-sttab"><span><b>${esc(r.title)}</b><small>${esc(ago(r.made))}${r.lang ? ` · ${esc(r.lang)}` : ''}</small></span><span class="hx-num">${Math.floor((r.seconds || 0) / 60)}:${String((r.seconds || 0) % 60).padStart(2, '0')}</span><span class="hx-num">${num(r.credits || 0)}</span></div>`).join('')}` : '<p class="hx-mut hx-sm">Nothing made yet this month. Drafts and samples are free and do not count.</p>'}</section></div>`;
+  }
+  function stKept() {
+    const k = stS().v?.kept || {stored: D.usage?.stored || 0, max: D.usage?.kept_max || 40, trash: [], trash_days: 30, things: []}, pct = Math.min(100, Math.round(k.stored / Math.max(1, k.max) * 100));
+    return `<div class="hx-stgrid k"><section class="hx-card hx-stcard"><b class="hx-t">Finished videos kept for you</b><div class="hx-stbig"><b class="hx-num">${num(k.stored)}</b><span class="hx-mut">of ${num(k.max)}</span></div>
+        <span class="hx-dvbar big" role="meter" aria-label="Places used" aria-valuemin="0" aria-valuemax="${k.max}" aria-valuenow="${k.stored}"><i style="width:${pct}%"></i></span>
+        <p class="hx-sm hx-mut">When all ${num(k.max)} places are full, a new video cannot be made until you download and remove an old one. Hoola never removes a finished video by itself.</p>
+        <div class="hx-strow"><button type="button" class="hx-btn s" data-a="go" data-p="projects">Open Projects</button></div></section>
+      <section class="hx-card hx-stcard"><b class="hx-t">Trash</b><div class="hx-stbig"><b class="hx-num">${num(k.trash.length)}</b><span class="hx-mut">video${k.trash.length === 1 ? '' : 's'}</span></div>
+        <p class="hx-sm hx-mut">A video you remove waits here for ${num(k.trash_days)} days, then it is deleted for good. Bring it back any time before then.</p>
+        ${k.trash.slice(0, 8).map(t => `<div class="hx-strow hx-sttr"><b class="hx-growf">${esc(t.title)}</b><span class="hx-sm hx-mut">${num(t.days_left)} day${t.days_left === 1 ? '' : 's'} left</span><button type="button" class="hx-btn s" data-a="strestore" data-id="${esc(t.id)}">Bring back</button></div>`).join('')}
+        ${k.trash.length > 8 ? `<button type="button" class="hx-btn s" data-a="go" data-p="projects">See all ${num(k.trash.length)} in Projects</button>` : ''}
+        ${k.trash.length ? `<div class="hx-strow"><span class="hx-grow"></span><button type="button" class="hx-btn s danger" data-a="stemptyask">Delete all now</button></div>` : ''}</section></div>
+      <section class="hx-card hx-stcard"><b class="hx-t">Your other things</b><div class="hx-stthings">${(k.things || []).map(t => `<div><b class="hx-num">${num(t.v)}</b><span class="hx-sm hx-mut">${esc(t.k)}</span></div>`).join('')}</div></section>`;
+  }
+  function stServer() {
+    const v = stS().v?.server || {caps: [], limits: []};
+    return `<div class="hx-stgrid"><section class="hx-card hx-stcard"><div class="hx-strow"><b class="hx-t hx-growf">What this server can do right now</b><span class="hx-sm hx-mut">Checked ${esc(ago(stS().v?.checked))}</span><button type="button" class="hx-btn s" data-a="stcheck">Check again</button></div>
+        ${v.caps.map(c => `<div class="hx-stcap"><span class="hx-stdot${c.ok ? ' on' : ''}" aria-hidden="true"></span><span class="hx-growf"><b>${esc(c.title)}</b><span class="hx-sm hx-mut">${esc(scrub(c.what))}</span></span><span class="hx-sttag${c.ok ? ' on' : ''}">${esc(c.state)}</span></div>`).join('')}</section>
+      <section class="hx-card hx-stcard"><b class="hx-t">Limits</b>${v.limits.map(l => `<div class="hx-strow hx-stlim"><span class="hx-growf">${esc(l.k)}</span><b class="hx-num">${num(l.v)}</b></div>`).join('')}
+        <p class="hx-sm hx-mut">Something not connected? The person who runs your Hoola server adds it there. Nothing on this page asks you for a key.</p></section></div>`;
+  }
+  function stPage() {
+    const s = stS(), body = {new: stNew, usage: stUsage, kept: stKept, server: stServer}[s.tab] || stNew;
+    return `<div class="hx-doc hx-stpage"><div class="hx-dvhead"><div class="hx-growf"><h2 class="hx-serif">Settings</h2>
+        <p class="hx-mut">How every new video starts, what you used this month, what is kept for you, and what this server can do.</p></div>
+        <span class="hx-stsaved">${ic('check', 14)}Saved to your account · follows you to the phone</span></div>
+      ${dvSeg(s.tab, 'sttab', STTABS)}${s.err ? `<p class="hx-why">${esc(s.err)}</p>` : ''}${body()}</div>`;
+  }
+  function stEmptyBody() {
+    const n = stS().v?.kept?.trash?.length || 0;
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT">${dvHead(`Delete the ${num(n)} video${n === 1 ? '' : 's'} in Trash now?`)}
+      <div class="hx-dlgb"><p>They are gone for good and cannot be brought back. Your faces, voices and templates stay.</p></div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx" data-auto="1">Keep them</button><button type="button" class="hx-btn danger" data-a="stempty">Delete for good</button></div></div>`;
+  }
+  function stPickMenu(el, k) {
+    if (k === 'engine') return menu(el, (D.engines?.engines || []).filter(e => e.job === 'video').map(e => ({label: e.label, sub: e.ready ? e.price : 'Not connected', disabled: !e.ready, checked: defEngine() === e.id,
+      run: async () => { try { await api('PUT', `${X}/engines/default`, {id: e.id}); SET.engine = ''; persist(); await load(); toast(`New videos are made by ${e.label}.`); } catch (er) { toast(er.message, true); } draw(); stEstimate(); }})), {width: 300});
+    if (k === 'folder') return menu(el, [{label: 'No folder', checked: !SET.folder, run: () => stSave({folder: ''}, 'New videos land outside folders.')},
+      ...(D.folders || []).map(f => ({label: f.name, checked: SET.folder === f.id, run: () => stSave({folder: f.id}, `New videos land in ${f.name}.`)})), {sep: true}, {label: 'Make a folder', icon: 'plus', run: () => go('projects')}]);
+    return pickMenu(el, k, v => { SET[k] = v; stSave({[k]: v}); });
+  }
+  // ---- developers (v0.999.209 DEVELOPERS, REDESIGNED: what her apps did, the four steps, keys with their hourly limit,
+  //      webhooks with their recent deliveries, a key shown once with a first call, the API with real requests)
+  const dvS = () => UI.dv || (UI.dv = {tab: 'over', door: 2, lang: 'curl'});
+  const DVLANG = [['curl', 'curl'], ['js', 'JavaScript'], ['py', 'Python']];
+  const DVDOORS = [
+    {m: 'GET', p: '/v1/engines', does: 'The engines and which are connected', price: 'free',
+      ans: '{\n  "engines": [\n    {"id": "kling", "label": "Kling AI Avatar", "job": "video",\n     "ready": true, "default": true, "max_s": 300}\n  ],\n  "defaults": {"video": "kling", "live": "voice_only"}\n}'},
+    {m: 'GET', p: '/v1/avatars', does: 'Your faces', price: 'free',
+      ans: '{\n  "avatars": [\n    {"id": "av_3k9…", "name": "Asha", "kind": "photo",\n     "lang": "en", "consent_at": "2026-11-20T09:12:00Z"}\n  ]\n}'},
+    {m: 'POST', p: '/v1/videos', does: 'A script in, a draft and its price out', price: 'free',
+      body: {brief: 'Our summer offers, 30 seconds', lang: 'en', seconds: 30, engine: 'kling'},
+      ans: '{\n  "id": "iv_8f2c…",\n  "status": "draft",\n  "scenes": [{"say": "…", "look": "title"}],\n  "problems": [],\n  "quote": {\n    "credits": 1557, "face_credits": 1515,\n    "voice_credits": 42, "key": "51ab9c…"\n  }\n}',
+      fields: [['brief', 'yes', 'What the video says, in your words'], ['lang', 'no', 'Any of the 140 languages, for example en, hi, es, ar'],
+        ['seconds', 'no', 'About how long; 30 if left out'], ['shape', 'no', 'talking_head, explainer, product or reel'],
+        ['engine', 'no', 'A face engine id from /v1/engines; your default if left out'], ['avatar_id', 'no', 'One of your faces from /v1/avatars'],
+        ['voice', 'no', 'A voice id from Voices; your default if left out'], ['scenes', 'no', 'Your own scenes instead of the written ones']]},
+    {m: 'POST', p: '/v1/videos/{id}/make', does: 'Make it at the price you confirmed', price: 'spends credits',
+      body: {quote_key: '51ab9c…'},
+      ans: '{\n  "pid": "iv_8f2c…",\n  "status": "making",\n  "done": false,\n  "steps": [{"k": "voice", "label": "Speaking the script"}, …]\n}',
+      fields: [['quote_key', 'for a paid face', 'The quote.key you got from POST /v1/videos. A changed price is refused, never charged']]},
+    {m: 'GET', p: '/v1/videos/{id}', does: 'Status, progress and the download address', price: 'free',
+      ans: '{\n  "id": "iv_8f2c…",\n  "status": "ready",\n  "progress": {"done": true, "elapsed": 84.2},\n  "download": "…/v1/videos/iv_8f2c…/file"\n}'},
+    {m: 'GET', p: '/v1/videos/{id}/file', does: 'The finished MP4', price: 'free', ans: 'The video itself (video/mp4). 404 until it is ready.'},
+  ];
+  const DVERR = [['401', 'No key, or a key that was removed'], ['429', 'More than 120 calls in an hour on one key; wait a little'],
+    ['409', 'The price changed since your quote, or a problem stops the make (the reason is in detail)'], ['404', 'No such video, or it is not ready yet'],
+    ['422', 'A field is missing or wrong'], ['502', 'The script writer did not answer; try again']];
+  function dvBase() { const b = (D.apps || {}).base || '/api/interactive'; return b.startsWith('/') ? location.origin + b : b; }
+  function dvCode(d, lang, key) {
+    const url = dvBase() + d.p.replace('{id}', 'iv_8f2c…'), k = key || '$HOOLA_KEY', body = d.body ? JSON.stringify(d.body, null, 2) : '';
+    if (lang === 'js') return `const r = await fetch("${url}", {\n  method: "${d.m}",\n  headers: {\n    "Authorization": "Bearer " + ${key ? `"${k}"` : 'process.env.HOOLA_KEY'},${d.body ? '\n    "Content-Type": "application/json",' : ''}\n  },${d.body ? `\n  body: JSON.stringify(${body.replace(/\n/g, '\n  ')}),` : ''}\n});\nconst out = await r.json();`;
+    if (lang === 'py') return `import os, requests\n\nr = requests.${d.m.toLowerCase()}(\n    "${url}",\n    headers={"Authorization": "Bearer " + ${key ? `"${k}"` : 'os.environ["HOOLA_KEY"]'}},${d.body ? `\n    json=${body.replace(/\n/g, '\n    ')},` : ''}\n)\nprint(r.json())`;
+    return `curl${d.m === 'POST' ? ' -X POST' : ''} "${url}" \\\n  -H "Authorization: Bearer ${k}"${d.body ? ` \\\n  -H "Content-Type: application/json" \\\n  -d '${JSON.stringify(d.body)}'` : ''}`;
+  }
+  const DVSIG = {
+    py: 'import hmac, hashlib, time\n\ndef from_hoola(raw_body, header, secret):\n    parts = dict(p.split("=", 1) for p in header.split(","))\n    t, v1 = int(parts["t"]), parts["v1"]\n    mine = hmac.new(secret.encode(), f"{t}.".encode() + raw_body,\n                    hashlib.sha256).hexdigest()\n    return abs(time.time() - t) < 300 and hmac.compare_digest(mine, v1)',
+    js: 'import crypto from "node:crypto";\n\nfunction fromHoola(rawBody, header, secret) {\n  const parts = Object.fromEntries(header.split(",").map(p => p.split("=")));\n  const t = Number(parts.t);\n  const mine = crypto.createHmac("sha256", secret)\n    .update(t + "." + rawBody).digest("hex");\n  return Math.abs(Date.now() / 1000 - t) < 300 &&\n    crypto.timingSafeEqual(Buffer.from(mine), Buffer.from(parts.v1));\n}',
+  };
+  const DVPAY = '{"event": "video.ready", "id": "iv_8f2c…", "title": "Summer offers",\n "status": "ready", "lang": "en", "engine": "kling", "seconds": 31,\n "credits": 1557, "error": "", "download": "…/v1/videos/iv_8f2c…/file"}';
+  const dvSeg = (cur, act, list) => `<div class="hx-seg" role="radiogroup">${list.map(([v, l]) => `<button type="button" role="radio" aria-checked="${v === cur}" data-a="${act}" data-val="${esc(v)}">${esc(l)}</button>`).join('')}</div>`;
+  const dvPre = (txt, what) => `<div class="hx-dvcode"><pre><code>${esc(txt)}</code></pre><button type="button" class="hx-dvcp" data-a="dvcopy" data-val="${esc(what)}">${ic('copy', 13)}Copy</button></div>`;
+  function dvStatus(s) {
+    const t = String(s || ''), ok = /^2\d\d$/.test(t);
+    return `<span class="hx-dvst ${ok ? 'ok' : 'bad'}">${esc(ok ? t + ' OK' : t ? (/^\d+$/.test(t) ? t : 'No answer') : '—')}</span>`;
+  }
+  function dvPage() {
+    const A = D.apps || {keys: [], hooks: []}, s = dvS(), m = A.month || {}, mk = A.max_keys || 5, mh = A.max_hooks || 3, rate = A.rate_hour || 120;
+    const lastHook = (A.hooks || []).find(h => h.last_status);
+    const head = `<div class="hx-dvhead"><div class="hx-growf"><h2 class="hx-serif">Developers</h2>
+        <p class="hx-mut">Let your own programs make videos with your credits: send a script, get the price, confirm it, and hear back when the video is ready.</p></div>
+        <div class="hx-dvbtns"><button type="button" class="hx-btn" data-a="dvtab" data-val="${s.tab === 'api' ? 'over' : 'api'}">${s.tab === 'api' ? 'Back to your keys' : 'Read the API'}</button>
+        <button type="button" class="hx-btn dark" data-a="dvkeyask"${(A.keys || []).length >= mk ? ' disabled title="Up to 5 keys. Remove one first."' : ''}>${ic('plus', 14)}Make an app key</button></div></div>
+      ${dvSeg(s.tab, 'dvtab', [['over', 'Your keys and webhooks'], ['api', 'The API']])}`;
+    if (s.tab === 'api') return `<div class="hx-doc hx-dvpage">${head}${dvApi()}</div>`;
+    const stats = [['App keys', `${(A.keys || []).length} of ${mk}`, 'each key is shown once'], ['Calls this month', num(m.calls || 0), 'across your keys'],
+      ['Videos from your apps', num(m.videos || 0), 'this month'], ['Webhooks', `${(A.hooks || []).length} of ${mh}`, lastHook ? 'last answer ' + (/^2\d\d$/.test(lastHook.last_status) ? lastHook.last_status + ' OK' : lastHook.last_status) : 'none answered yet']];
+    const steps = [['Send a script', 'POST /v1/videos', 'Your words, length and language. You get a draft and its price.'],
+      ['Read the price', 'quote.credits', 'The same price the Make card shows here. Nothing is spent yet.'],
+      ['Make it', 'POST /v1/videos/{id}/make', 'Send quote.key back. A changed price is refused, not charged.'],
+      ['Get the video', 'video.ready', 'Your webhook hears it, then download the MP4.']];
+    const keys = (A.keys || []).map(k => `<div class="hx-dvcard"><div class="hx-dvrow"><b class="hx-growf">${esc(k.name)}</b><code class="hx-dvmono">hi_live_…${esc(k.last4)}</code></div>
+        <div class="hx-dvmeta"><span>Made ${esc(ago(k.made))}</span><span>${k.used_at ? 'Used ' + esc(ago(k.used_at)) : 'Not used yet'}</span><span><b class="hx-num">${num(k.calls || 0)}</b> calls</span></div>
+        <div class="hx-dvrate"><span class="hx-dvbar" role="meter" aria-label="Calls this hour" aria-valuemin="0" aria-valuemax="${rate}" aria-valuenow="${k.calls_hour || 0}"><i style="width:${Math.min(100, Math.round((k.calls_hour || 0) / rate * 100))}%"></i></span><span class="hx-num">${num(k.calls_hour || 0)} of ${rate} this hour</span></div>
+        <div class="hx-dvrow"><button type="button" class="hx-btn s" data-a="dvren" data-id="${esc(k.id)}">Rename</button><button type="button" class="hx-btn s danger" data-a="dvdel" data-val="key" data-id="${esc(k.id)}">Remove</button></div></div>`).join('')
+      || `<div class="hx-dvempty"><b>No app keys yet</b><p class="hx-mut">A key lets one of your programs call the API. It is shown once, then Hoola keeps only a fingerprint of it.</p><button type="button" class="hx-btn dark s" data-a="dvkeyask">Make an app key</button></div>`;
+    const hooks = (A.hooks || []).map(h => `<div class="hx-dvcard"><code class="hx-dvmono hx-dvurl">${esc(h.url)}</code>
+        <div class="hx-dvrow">${(h.events || []).map(e => `<span class="hx-dvev">${esc(e)}</span>`).join('')}</div>
+        <div class="hx-dvmeta">${h.last_status ? `${dvStatus(h.last_status)}<span>Last: ${esc(h.last_event || '')} · ${esc(ago(h.last_at))}</span>` : '<span>Nothing sent yet. Send a test to check your server.</span>'}</div>
+        ${(h.log || []).length ? `<div class="hx-dvlog"><span class="hx-lab">Recent deliveries</span>${h.log.map(l => `<div class="hx-dvlrow">${dvStatus(l.status)}<span class="hx-growf">${esc(l.event)}${l.title ? ' · ' + esc(l.title) : ''}</span><span class="hx-mut">${esc(ago(l.at))}</span></div>`).join('')}</div>` : ''}
+        <div class="hx-dvrow"><button type="button" class="hx-btn s" data-a="hooktest" data-id="${esc(h.id)}">Send a test</button><button type="button" class="hx-btn s danger" data-a="dvdel" data-val="hook" data-id="${esc(h.id)}">Remove</button></div></div>`).join('')
+      || `<div class="hx-dvempty"><b>No webhooks yet</b><p class="hx-mut">Hoola calls your server when a video from your apps is ready or fails, so your program does not have to keep asking.</p></div>`;
+    return `<div class="hx-doc hx-dvpage">${head}
+      <div class="hx-dvstats">${stats.map(([k, v, sub]) => `<div class="hx-dvstat"><span class="hx-lab">${esc(k)}</span><b class="hx-num">${esc(v)}</b><small>${esc(sub)}</small></div>`).join('')}</div>
+      <section class="hx-dvsteps" aria-labelledby="hxDvStepsT"><div class="hx-dvrow"><b id="hxDvStepsT" class="hx-growf">How a video is made from your program</b><span class="hx-mut hx-sm">Nothing is spent until step 3</span></div>
+        <ol>${steps.map(([t, c, d], i) => `<li><span class="hx-dvn">${i + 1}</span><span class="hx-ct"><b>${esc(t)}</b><code class="hx-dvmono">${esc(c)}</code><small>${esc(d)}</small></span></li>`).join('')}</ol></section>
+      <div class="hx-dvcols">
+        <section aria-labelledby="hxDvKeysT"><div class="hx-dvrow hx-dvsech"><b id="hxDvKeysT" class="hx-growf">App keys</b><span class="hx-mut hx-sm">${(A.keys || []).length} of ${mk} · each key up to ${rate} calls an hour</span></div>${keys}</section>
+        <section aria-labelledby="hxDvHooksT"><div class="hx-dvrow hx-dvsech"><b id="hxDvHooksT" class="hx-growf">Webhooks</b><span class="hx-mut hx-sm">${(A.hooks || []).length} of ${mh}</span>
+          <button type="button" class="hx-btn s" data-a="dvhookask"${(A.hooks || []).length >= mh ? ' disabled' : ''}>Add a webhook</button></div>${hooks}
+          <p class="hx-hint">Hoola tries three times (now, after 5 s, after 30 s). Every delivery is signed with your webhook's secret: see The API.</p></section>
+      </div></div>`;
+  }
+  function dvApi() {
+    const s = dvS(), d = DVDOORS[s.door] || DVDOORS[0], sl = s.lang === 'curl' ? 'py' : s.lang;
+    return `<div class="hx-dvapi"><div class="hx-dvdoors"><span class="hx-lab">Base address</span><code class="hx-dvmono hx-dvbase">${esc(dvBase())}</code>
+        <div role="listbox" aria-label="API calls">${DVDOORS.map((x, i) => `<button type="button" role="option" aria-selected="${i === s.door}" class="hx-dvdoor${i === s.door ? ' on' : ''}" data-a="dvdoor" data-val="${i}"><span class="hx-dvm ${x.m === 'POST' ? 'post' : ''}">${x.m}</span><span class="hx-ct"><code class="hx-dvmono">${esc(x.p)}</code><small>${esc(x.does)}</small></span></button>`).join('')}</div>
+        <div class="hx-dverr"><b>When something is refused</b>${DVERR.map(([c, t]) => `<div><code class="hx-dvmono">${c}</code><span>${esc(t)}</span></div>`).join('')}</div></div>
+      <div class="hx-dvdoc"><div class="hx-dvrow"><span class="hx-dvm big ${d.m === 'POST' ? 'post' : ''}">${d.m}</span><code class="hx-dvmono hx-dvpath hx-growf">${esc(d.p)}</code>${dvSeg(s.lang, 'dvlang', DVLANG)}</div>
+        <p class="hx-mut">${esc(d.does)} · ${esc(d.price)}. Send your key as <code class="hx-dvmono">Authorization: Bearer hi_live_…</code></p>
+        <div class="hx-dvpair"><div><span class="hx-lab">Request</span>${dvPre(dvCode(d, s.lang), 'req')}</div><div><span class="hx-lab">Answer</span>${dvPre(d.ans, 'ans')}</div></div>
+        ${d.fields ? `<div class="hx-tablew hx-card"><table class="hx-table hx-dvfields"><thead><tr><th>Field</th><th>Needed</th><th>What it is</th></tr></thead><tbody>${d.fields.map(([n, r, w]) => `<tr><td><code class="hx-dvmono">${esc(n)}</code></td><td>${esc(r)}</td><td>${esc(w)}</td></tr>`).join('')}</tbody></table></div>` : ''}
+        <section class="hx-dvcard" aria-labelledby="hxDvSigT"><b id="hxDvSigT">Check that a webhook really came from Hoola</b>
+          <p class="hx-mut hx-sm">Each call carries <code class="hx-dvmono">X-Hoola-Event</code> and <code class="hx-dvmono">X-Hoola-Signature: t=&lt;unix time&gt;,v1=&lt;hex&gt;</code>, where v1 is the HMAC-SHA256 of “t.body” with your webhook's signing secret. Refuse anything older than 5 minutes.</p>
+          ${dvSeg(sl, 'dvlang', [['py', 'Python'], ['js', 'JavaScript']])}${dvPre(DVSIG[sl], 'sig')}
+          <span class="hx-lab">What Hoola sends</span>${dvPre(DVPAY, 'pay')}</section>
+      </div></div>`;
+  }
+  function dvTxt(what) {
+    const s = dvS(), d = DVDOORS[s.door] || DVDOORS[0], sl = s.lang === 'curl' ? 'py' : s.lang;
+    if (what === 'key') return UI.dlg?.key || '';
+    if (what === 'secret') return UI.dlg?.secret || '';
+    if (what === 'try') return dvCode(DVDOORS[0], s.lang, UI.dlg?.key || '');
+    if (what === 'req') return dvCode(d, s.lang);
+    if (what === 'ans') return d.ans;
+    if (what === 'sig') return DVSIG[sl];
+    return DVPAY;
+  }
+  const dvHead = t => `<div class="hx-dlgh"><h2 class="hx-serif hx-growf" id="hxDlgT">${esc(t)}</h2><button type="button" class="hx-ib" data-a="dlgx" aria-label="Close">${ic('x', 16)}</button></div>`;
+  function dvNewBody() {
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT">${dvHead('Make an app key')}
+      <div class="hx-dlgb"><label class="hx-fld"><span class="hx-lab">What will use it</span><input class="hx-in" id="hxDvName" maxlength="40" placeholder="Shop website" data-auto="1"></label>
+        <p class="hx-mut hx-sm">The key can make videos with your credits. You will see it once.</p></div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx">Cancel</button><button type="button" class="hx-btn dark" data-a="keynew">Make the key</button></div></div>`;
+  }
+  function dvKeyBody() {
+    const k = UI.dlg || {};
+    return `<div class="hx-dlg w hx-dvonce" role="dialog" aria-modal="true" aria-labelledby="hxDlgT">${dvHead('Your new app key')}
+      <div class="hx-dlgb"><p>“${esc(k.name || '')}” can now make videos with your credits. Copy the key now: it is shown only this once. Hoola keeps only a fingerprint of it.</p>
+        <div class="hx-dvkey"><code class="hx-dvmono">${esc(k.key || '')}</code><button type="button" class="hx-btn dark s" data-a="dvcopy" data-val="key" data-auto="1">${ic('copy', 13)}Copy</button></div>
+        <div class="hx-dvrow"><b class="hx-growf">Try it now</b>${dvSeg(dvS().lang, 'dvlang', DVLANG)}</div>${dvPre(dvTxt('try'), 'try')}
+        <p class="hx-mut hx-sm">Keep it on your server, never in a web page or a phone app anyone can open. Lost it? Remove it and make a new one.</p></div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn dark" data-a="dlgx">I have copied it</button></div></div>`;
+  }
+  function dvRenBody() {
+    const k = ((D.apps || {}).keys || []).find(x => x.id === UI.dlg.id); if (!k) return '';
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT">${dvHead('Rename ' + k.name)}
+      <div class="hx-dlgb"><label class="hx-fld"><span class="hx-lab">Name</span><input class="hx-in" id="hxDvRn" maxlength="40" value="${esc(k.name)}" data-auto="1"></label></div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx">Cancel</button><button type="button" class="hx-btn dark" data-a="dvrensave">Save</button></div></div>`;
+  }
+  function dvDelBody() {
+    const A = D.apps || {}, isKey = UI.dlg.what === 'key', x = (isKey ? A.keys : A.hooks || []).find(y => y.id === UI.dlg.id); if (!x) return '';
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT">${dvHead(isKey ? `Remove ${x.name}?` : 'Remove this webhook?')}
+      <div class="hx-dlgb"><p>${isKey ? 'Programs that use this key stop working at once. Videos they made stay.' : `Hoola stops calling <code class="hx-dvmono">${esc(x.url)}</code>.`}</p></div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx" data-auto="1">Keep it</button><button type="button" class="hx-btn danger" data-a="${isKey ? 'keydel' : 'hookdel'}" data-id="${esc(x.id)}">Remove</button></div></div>`;
+  }
+  function dvHookBody() {
+    const ev = UI.dlg.ev || ['video.ready', 'video.failed'];
+    const D2 = [['video.ready', 'The video is made; the download is in the message'], ['video.failed', 'It could not be made; the reason is in error']];
+    return `<div class="hx-dlg w" role="dialog" aria-modal="true" aria-labelledby="hxDlgT">${dvHead('Add a webhook')}
+      <div class="hx-dlgb"><p class="hx-mut">Hoola calls this address when a video made by your apps is ready or fails.</p>
+        <label class="hx-fld"><span class="hx-lab">Your server's address</span><input class="hx-in hx-dvmono" id="hxDvUrl" maxlength="400" placeholder="https://your-server.com/hoola" value="${esc(UI.dlg.url || '')}" data-auto="1"><small class="hx-mut">https only, your own server, no user name or password in it.</small></label>
+        <fieldset class="hx-dvevs"><legend class="hx-lab">Tell me when</legend>${D2.map(([e, t]) => `<label><input type="checkbox" name="hxDvEv" value="${e}"${ev.includes(e) ? ' checked' : ''}><code class="hx-dvmono">${e}</code><span class="hx-mut">${esc(t)}</span></label>`).join('')}</fieldset></div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx">Cancel</button><button type="button" class="hx-btn dark" data-a="hooknew">Add the webhook</button></div></div>`;
+  }
+  function dvSecretBody() {
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT">${dvHead('Your webhook signing secret')}
+      <div class="hx-dlgb"><p>Your server uses it to check that a call really came from Hoola. Copy it now: it is shown only this once.</p>
+        <div class="hx-dvkey"><code class="hx-dvmono">${esc(UI.dlg.secret || '')}</code><button type="button" class="hx-btn dark s" data-a="dvcopy" data-val="secret" data-auto="1">${ic('copy', 13)}Copy</button></div></div>
+      <div class="hx-dlgf"><button type="button" class="hx-btn" data-a="dvsig">How to check a call</button><span class="hx-grow"></span><button type="button" class="hx-btn dark" data-a="dlgx">I have copied it</button></div></div>`;
+  }
+  async function dvReload() { try { D.apps = await api('GET', `${X}/apps`); } catch { /* keep what is shown */ } if (PAGE === 'developers') draw(); }
+
+  // ---- engines (v0.999.208 ENGINES, REDESIGNED: her three defaults, every engine of a job priced for one length the way
+  // the Make price card prices it, cards with ready / default / not connected said plainly (never a key name), a panel per
+  // engine with its price at each length and her videos on it, the B-roll shot maker with its price first)
+  const ENJOB = [['video', 'Videos'], ['live', 'Live agents'], ['broll', 'B-roll shots']];
+  const ENLEN = {video: [15, 30, 60, 180], live: [60, 300, 900, 1800], broll: [4, 6, 8]};
+  const ENQ = ['', 'Basic', 'Simple', 'Good', 'Very good', 'Best'];
+  const enS = () => UI.en || (UI.en = {len: {video: 30, live: 300, broll: 6}, ready: store.get('hx.enready', false), sort: store.get('hx.ensort', 'price'), p: {}, one: null});
+  const enLen = s => s < 60 ? `${s} s` : `${Math.round(s / 60)} min`;
+  const enLong = e => e.max_s ? enLen(e.max_s) : e.id === 'frames_looks' ? 'Inside your videos' : (e.job === 'video' ? 'Any length' : e.job === 'live' ? 'No limit' : '8 s');
+  const enAll = () => D.engines?.engines || [];
+  async function enPrices(job) {
+    const st = enS(), secs = st.len[job], k = `${job}:${secs}`;
+    if (st.p[k]) return;
+    try { st.p[k] = await api('GET', `${X}/engines/prices?job=${q(job)}&seconds=${secs}&voice=${q(SET.voice || '')}`); }
+    catch { st.p[k] = {engines: [], failed: true}; }
+    if (PAGE === 'engines') draw();
+  }
+  function enPrice(e) {
+    const st = enS(), r = st.p[`${e.job}:${st.len[e.job]}`];
+    return r ? (r.engines || []).find(x => x.id === e.id) || null : undefined;
+  }
+  function enCard(e) {
+    const pr = enPrice(e), ok = e.ready;
+    const offl = e.status === 'Not built yet' ? 'Not built yet' : 'Not connected';
+    const chip = e.default ? `<span class="hx-enchip def">${ok ? 'Default' : `Default · ${offl.toLowerCase()}`}</span>` : ok ? '<span class="hx-enchip ok">Ready</span>' : `<span class="hx-enchip off">${offl}</span>`;
+    const big = pr === undefined ? '<span class="hx-enbig ghost">…</span>' : pr === null ? '<span class="hx-enbig">—</span>'
+      : pr.too_long ? `<span class="hx-enbig">Too long</span><small>this engine stops at ${esc(enLen(e.max_s))}</small>`
+      : !pr.face_credits && !pr.voice_credits ? '<span class="hx-enbig">Free</span><small>nothing to pay</small>'
+      : !pr.face_credits ? `<span class="hx-enbig">Free</span><small>only the voice, about ${esc(cr(pr.voice_credits))}</small>`
+      : `<span class="hx-enbig">${num(pr.face_credits)}</span><small>credits${e.job === 'video' ? ' + voice' : ''}</small>`;
+    const act = e.default && ok ? '<span class="hx-btn s hx-enstatic">Your default</span>'
+      : e.default ? `<button type="button" class="hx-btn s" data-a="enone" data-id="${esc(e.id)}">How to connect</button>`
+      : ok ? `<button type="button" class="hx-btn s dark" data-a="edef" data-id="${esc(e.id)}">Make default</button>`
+      : `<button type="button" class="hx-btn s" data-a="enone" data-id="${esc(e.id)}">How to connect</button>`;
+    return `<article class="hx-encard${e.default ? ' def' : ''}${ok ? '' : ' off'}"><div class="hx-enh"><b>${esc(e.label)}</b>${chip}</div>
+      <p class="hx-enw">${esc(e.what)}</p>
+      <div class="hx-enq" aria-label="Quality ${e.quality} of 5"><span>${[0, 1, 2, 3, 4].map(i => `<i class="${i < e.quality ? 'on' : ''}"></i>`).join('')}</span><small>${ENQ[e.quality] || ''}</small></div>
+      <div class="hx-enp hx-num">${big}</div>
+      <small class="hx-mut">${esc(enLong(e))} · ${esc(e.price === 'free' ? 'free' : e.price.replace('/min', ' a minute'))}</small>
+      <div class="hx-acts">${act}<button type="button" class="hx-btn s" data-a="enone" data-id="${esc(e.id)}">Details</button></div></article>`;
+  }
+  function enPage() {
+    const st = enS(), E = D.engines || {engines: [], defaults: {}, notes: {}}, all = enAll(), job = UI.etab;
+    const of = j => all.filter(e => e.job === j);
+    const defs = ENJOB.map(([j, n]) => { const d = all.find(e => e.job === j && e.default) || of(j)[0] || {}; const rs = of(j).filter(e => e.ready).length;
+      return `<button type="button" class="hx-endef${job === j ? ' on' : ''}" data-a="etab" data-val="${j}"><span class="hx-lab">${n}</span><b>${esc(d.label || '—')}</b><small>${esc(d.what || '')}</small>
+        <span class="hx-mut hx-sm">${num(rs)} of ${num(of(j).length)} ready</span></button>`; }).join('');
+    let rows = of(job);
+    if (st.ready) rows = rows.filter(e => e.ready);
+    const key = e => { const pr = enPrice(e); return pr && !pr.too_long ? pr.credits : 1e12; };
+    rows = rows.slice().sort(st.sort === 'quality' ? (a, b) => b.quality - a.quality || key(a) - key(b)
+      : st.sort === 'ready' ? (a, b) => (b.ready - a.ready) || key(a) - key(b) : (a, b) => key(a) - key(b) || b.quality - a.quality);
+    const rdy = of(job).filter(e => e.ready).length, tot = of(job).length;
+    const sorts = {price: 'Lowest price', quality: 'Best quality', ready: 'Ready first'};
+    const lenLab = {video: 'Price for a video of', live: 'Price for a talk of', broll: 'Price for a shot of'}[job];
+    return `<div class="hx-doc hx-enpage"><div class="hx-doch"><div class="hx-growf"><h2 class="hx-serif">Engines</h2>
+        <p class="hx-mut">Choose who draws the face. The listening, the words and the voice stay Hoola's, so every engine speaks every language your Vocal voices speak.</p></div></div>
+      <section class="hx-endefs" aria-label="Your defaults">${defs}</section>
+      <div class="hx-enbar"><div class="hx-seg" role="radiogroup" aria-label="Kind of engine">${ENJOB.map(([j, n]) => `<button type="button" role="radio" aria-checked="${job === j}" data-a="etab" data-val="${j}">${n} <span class="hx-num">${num(of(j).length)}</span></button>`).join('')}</div>
+        <span class="hx-grow"></span><span class="hx-mut hx-sm">${lenLab}</span>
+        <div class="hx-seg" role="radiogroup" aria-label="${lenLab}">${ENLEN[job].map(n => `<button type="button" role="radio" aria-checked="${st.len[job] === n}" data-a="enlen" data-val="${n}">${enLen(n)}</button>`).join('')}</div>
+        <button type="button" class="hx-chip${st.ready ? ' on' : ''}" data-a="enready" aria-pressed="${!!st.ready}">Ready only</button>
+        <button type="button" class="hx-dd s" data-a="ensort"><span>Sort: ${sorts[st.sort] || sorts.price}</span>${ic('down', 14)}</button></div>
+      <p class="hx-note">${esc(E.notes?.[job] || '')} ${num(rdy)} of ${num(tot)} ${tot === 1 ? 'is' : 'are'} ready on this server.</p>
+      ${rows.length ? `<div class="hx-engrid">${rows.map(enCard).join('')}</div>` : '<p class="hx-mut">No engine is ready for this yet. Switch off Ready only to see them all.</p>'}
+      ${job === 'broll' ? enBroll() : ''}</div>`;
+  }
+  function enBroll() {
+    const br = UI.broll, shots = D.live?.broll || [], g = enAll().find(e => e.id === 'gemini_broll');
+    const ok = !!g?.ready, ql = br.q?.line || '';
+    const tile = s => `<article class="hx-enshot"><div class="hx-enshv${s.aspect === '9:16' ? ' tall' : ''}">${s.status === 'ready' ? `<video class="hx-player" controls playsinline preload="metadata" data-broll="${esc(s.id)}"></video>` : `<span class="hx-enshp" aria-hidden="true">${ic('play', 22)}</span>`}
+        <span class="hx-enchip ${s.status === 'ready' ? 'ok' : s.status === 'failed' ? 'bad' : 'work'}">${s.status === 'ready' ? 'Ready' : s.status === 'failed' ? 'Could not make it' : 'Making it'}</span><span class="hx-enlen hx-num">${num(s.seconds || 6)} s</span></div>
+      <div class="hx-enshb"><span>${esc(s.prompt)}</span><small class="hx-mut">${esc(ago(s.created) || '')}${s.status === 'failed' ? ' · not charged' : s.credits ? ` · ${esc(cr(s.credits))}` : ''}</small>${s.error ? `<small class="hx-why">${esc(scrub(s.error))}</small>` : ''}</div></article>`;
+    return `<div class="hx-enbr"><section class="hx-card hx-form tight hx-enmk"><b class="hx-t">Make a shot</b>
+        <p class="hx-mut hx-sm">A short shot with its own sound for between your scenes: the place, the product, the street. Never a person and never your face.</p>
+        <label class="hx-fld"><span class="hx-lab">What is seen</span><textarea class="hx-in" id="hxBr" rows="3" placeholder="Slow pan over a bakery counter with fresh bread, warm morning light"${ok ? '' : ' disabled'}>${esc(br.prompt)}</textarea></label>
+        <div class="hx-row2"><div class="hx-fld"><span class="hx-lab">Length</span><div class="hx-seg" role="radiogroup">${[4, 6, 8].map(n => `<button type="button" role="radio" aria-checked="${br.seconds === n}" data-a="brs" data-val="${n}">${n} s</button>`).join('')}</div></div>
+          <div class="hx-fld"><span class="hx-lab">Shape</span><div class="hx-seg" role="radiogroup">${[['16:9', 'Wide'], ['9:16', 'Tall']].map(([n, l]) => `<button type="button" role="radio" aria-checked="${br.aspect === n}" data-a="bra" data-val="${n}">${l}</button>`).join('')}</div></div></div>
+        ${ok ? `<div class="hx-enpr"><span class="hx-grow hx-num"><b>${esc(ql ? ql.replace(/ · nothing is spent until you tap$/, '') : 'Pricing the shot…')}</b><br><span class="hx-mut hx-sm">Nothing is spent until you tap</span></span>
+          <button type="button" class="hx-btn dark" data-a="brmake"${br.q ? '' : ' disabled'}>Make the shot</button></div>`
+          : `<p class="hx-note warn">Gemini Omni makes these shots and it is not connected on this server yet. ${esc(g?.need || '')}</p>`}</section>
+      <section class="hx-enshots"><div class="hx-sech"><b>Your shots</b><span class="hx-mut hx-sm">${num(shots.length)} of 30 kept</span></div>
+        ${shots.length ? `<div class="hx-enshg">${shots.map(tile).join('')}</div>` : '<p class="hx-mut hx-sm">No shots yet. The ones you make appear here and in the Studio.</p>'}</section></div>`;
+  }
+  function enOneBody() {
+    const o = enS().one || {}, e = o.r?.engine || enAll().find(x => x.id === o.id) || {};
+    const prices = o.r?.prices || [], vids = o.r?.videos || [], jobn = {video: 'Videos', live: 'Live agents', broll: 'B-roll shots'}[e.job] || '';
+    const kind = e.job === 'video' ? (e.face ? 'talking face' : 'your photo beside the words') : e.job === 'live' ? 'a face that talks live' : 'a shot without a person';
+    const chip = e.default ? '<span class="hx-enchip def">Default</span>' : e.ready ? '<span class="hx-enchip ok">Ready</span>' : '<span class="hx-enchip off">Not connected</span>';
+    const facts = [['Quality', ENQ[e.quality] || ''], ['Longest', enLong(e)], ['Languages', /140|any/i.test(e.langs || '') ? 'Every language' : e.langs], ['Published', e.price === 'free' ? 'Free' : (e.price || '').replace('/min', ' a minute')]];
+    const main = !e.ready ? '' : e.job === 'video' ? `<button type="button" class="hx-btn dark" data-a="enuse" data-id="${esc(e.id)}">Start a video with ${esc(e.label)}</button>`
+      : e.job === 'live' ? '<button type="button" class="hx-btn dark" data-a="go" data-p="live">Open Live agents</button>'
+      : e.id === 'gemini_broll' ? '<button type="button" class="hx-btn dark" data-a="enmkshot">Make a shot</button>' : '';
+    return `<div class="hx-dlg w hx-enone" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><div class="hx-growf"><span class="hx-lab">${esc(jobn)} · ${esc(kind)}</span>
+        <h2 class="hx-serif" id="hxDlgT">${esc(e.label || '')}</h2><p class="hx-mut hx-sm">${esc(e.what || '')}</p></div>${chip}
+        <button type="button" class="hx-ib" data-a="dlgx" aria-label="Close" data-auto="1">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb">${e.ready ? '' : `<div class="hx-note warn"><b>${esc(e.label)} is not connected on this server</b><br>${esc(e.need || '')}</div>`}
+        <div class="hx-enfacts">${facts.map(([k, v]) => `<div><span class="hx-mut hx-sm">${k}</span><b>${esc(v || '')}</b></div>`).join('')}</div>
+        <div class="hx-sech"><b>Price by length</b></div>
+        ${o.r ? `<div class="hx-enlad">${prices.map(p => `<div class="hx-num"><span>${esc(enLen(p.seconds))}</span>${p.too_long ? `<span class="hx-mut">longer than this engine makes</span><b>—</b>`
+          : `<span class="hx-mut">${p.face ? `face ${num(p.face)}` : 'face free'}${e.job === 'video' ? ` · voice ${num(p.voice)}` : ''}</span><b>${p.credits ? esc(cr(p.credits)) : 'Free'}</b>`}</div>`).join('')}</div>
+          <p class="hx-hint">${e.job === 'video' ? "The face from the engine's published price, the voice from Vocal for about that many words." : e.job === 'live' ? 'The face for that long a talk. The voice is priced by Vocal as it speaks.' : "From the engine's published price."} Nothing is spent until you tap Make.</p>`
+          : `<p class="hx-mut">${o.err ? esc(o.err) : 'Pricing…'}</p>`}
+        ${e.job === 'video' ? `<div class="hx-sech"><b>Your videos on ${esc(e.label || '')}</b><span class="hx-mut hx-sm">${num(vids.length)}</span></div>
+          ${vids.length ? `<div class="hx-envids">${vids.map(v => `<div class="hx-envid"><span class="hx-ct"><b>${esc(v.title)}</b><small class="hx-mut">${v.seconds ? esc(secs(v.seconds)) + ' · ' : ''}${esc(v.status === 'ready' ? 'made' : v.status || 'draft')} ${esc(ago(v.updated) || '')}</small></span>
+            <button type="button" class="hx-btn s" data-a="avvid" data-id="${esc(v.id)}">Open</button></div>`).join('')}</div>` : '<p class="hx-mut hx-sm">None yet.</p>'}` : ''}</div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx">Close</button>
+        ${e.ready && !e.default ? `<button type="button" class="hx-btn" data-a="edef" data-id="${esc(e.id)}">Make default</button>` : ''}${main}</div></div>`;
+  }
+  async function enOpen(id) {
+    const st = enS(); st.one = {id}; UI.dlg = {k: 'eng'}; dlgPaint();
+    try { st.one.r = await api('GET', `${X}/engines/one?id=${q(id)}&voice=${q(SET.voice || '')}`); } catch (er) { st.one.err = er.message; }
+    if (UI.dlg?.k === 'eng' && st.one?.id === id) dlgPaint();
+  }
+
+  // ---- brand (v0.999.207 BRAND, REDESIGNED: name on screen, colour with a contrast check, the shared logo, the closing card
+  //      (line + logo / QR), a preview drawn the way the video draws it, words to keep, and Use my Brand kit)
+  const BR_COLORS = ['#5B45E0', '#2E6F8E', '#B4462F', '#2F6B48', '#C27A1A', '#8A2F4E', '#1E293B', '#1A1A19'];
+  const BR_CARDS = [['logo', 'Logo'], ['qr', 'QR code'], ['both', 'Logo and QR'], ['none', 'Nothing']];
+  const brOk = c => /^#[0-9a-f]{6}$/i.test(c || '');
+  function brLum(h) { const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(v => v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; }
+  const brContrast = h => brOk(h) ? 1.05 / (brLum(h) + 0.05) : 0;
+  function brS() {
+    const b = UI.bri?.brand || D.brand || {};
+    if (!UI.brd) UI.brd = {name: b.name || '', show_name: b.show_name !== false, color: brOk(b.color) ? b.color.toUpperCase() : '#5B45E0', closing: b.closing || '', card: b.card || 'logo', qr_url: b.qr_url || ''};
+    return UI.brd;
+  }
+  const brSaved = () => { const b = UI.bri?.brand || D.brand || {}, d = brS(); return d.name === (b.name || '') && d.show_name === (b.show_name !== false) && d.color === (brOk(b.color) ? b.color.toUpperCase() : '#5B45E0') && d.closing === (b.closing || '') && d.card === (b.card || 'logo') && d.qr_url === (b.qr_url || ''); };
+  async function brLoad() { try { UI.bri = await api('GET', `${H}/brand`); } catch (er) { UI.bri = {brand: D.brand || {}, kit: {}, logo: {on: false}, glossary_max: 200}; } }
+  function brSwatches() {
+    const d = brS(), pal = UI.bri?.kit?.palette || [], all = [...new Set([...pal, ...BR_COLORS].map(c => c.toUpperCase()))].slice(0, 10);
+    return `<div class="hx-brsws" role="radiogroup" aria-label="Colour">${all.map(c => `<button type="button" class="hx-brsw${d.color === c ? ' on' : ''}" role="radio" aria-checked="${d.color === c}" data-a="brsw" data-val="${c}" style="background:${c}" aria-label="Colour ${c}"></button>`).join('')}
+      <label class="hx-brhex"><span class="hx-sr">Colour code</span><input class="hx-in hx-num" id="hxBrHex" maxlength="7" value="${esc(d.color)}" spellcheck="false"></label>
+      <label class="hx-brpick" title="Any colour"><span class="hx-sr">Any colour</span><input type="color" id="hxBrPick" value="${esc(d.color.toLowerCase())}"></label></div>
+      ${pal.length ? `<span class="hx-mut hx-sm">The first ${pal.length === 1 ? 'one comes' : num(pal.length) + ' come'} from your logo.</span>` : ''}`;
+  }
+  function brContrastLine() {
+    const r = brContrast(brS().color);
+    const [k, t] = r >= 4.5 ? ['ok', 'White words read well on it'] : r >= 3 ? ['warn', 'White words read only when they are big'] : ['bad', 'Too light: white words will be hard to read'];
+    return `<div class="hx-brcon ${k}" id="hxBrCon"><b>${t}</b><span class="hx-num">contrast ${r.toFixed(1)} to 1</span></div>`;
+  }
+  function brLogoCard() {
+    const L = UI.bri?.logo || {};
+    return `<section class="hx-card hx-brsec"><b class="hx-t">Logo</b>
+      ${L.on ? `<div class="hx-brlogo"><span class="hx-brlimg"><img data-brlogo="1" alt="Your logo"></span><div class="hx-brlmeta"><b>Your logo${L.px?.length ? ` <span class="hx-num hx-mut">· ${L.px[0]} × ${L.px[1]}</span>` : ''}</b>
+          <span class="hx-mut hx-sm">Shared with your Brand kit, so your posters use it too. It goes on the closing card.</span>
+          ${L.px?.length && L.px[0] < 300 && L.px[1] < 300 ? '<span class="hx-why">It is small - a bigger PNG looks sharper.</span>' : ''}
+          <span class="hx-acts"><button type="button" class="hx-btn s" data-a="brlogo">Change</button><button type="button" class="hx-btn s danger" data-a="brlogodel">Remove</button></span></div></div>`
+        : `<div class="hx-brlogo"><span class="hx-brlimg none">${ic('camera', 22)}</span><div class="hx-brlmeta"><b>No logo yet</b><span class="hx-mut hx-sm">A PNG or JPG. It is kept in your Brand kit and goes on the closing card.</span>
+          <span class="hx-acts"><button type="button" class="hx-btn s dark" data-a="brlogo">Add your logo</button></span></div></div>`}
+      <input type="file" id="hxBrLogoF" accept="image/png,image/jpeg,image/webp" hidden></section>`;
+  }
+  function brPreview() {
+    const d = brS(), shape = UI.brShape || 'wide', col = d.color;
+    const corner = d.show_name && d.name ? `<span class="hx-brpn">${esc(d.name)}</span>` : '';
+    const img = d.card !== 'none' ? `<img id="hxBrCard" alt="" hidden>` : '';
+    return `<div class="hx-brpvh"><b class="hx-t hx-growf">How it looks</b><div class="hx-seg" role="radiogroup" aria-label="Shape">${[['wide', 'Wide'], ['tall', 'Tall'], ['square', 'Square']].map(([k, n]) => `<button type="button" role="radio" aria-checked="${shape === k}" data-a="brshape" data-val="${k}">${n}</button>`).join('')}</div></div>
+      <span class="hx-lab">During the video</span>
+      <div class="hx-brfr ${shape}" style="--brand:${esc(col)}">${corner}<span class="hx-brlt"><b>Your words appear here</b><small>One scene of your video</small></span></div>
+      <span class="hx-lab">The last 2 seconds</span>
+      <div class="hx-brfr end ${shape}" style="--brand:${esc(col)}"><span class="hx-brcta">${img}${d.closing ? `<b>${esc(d.closing)}</b>` : ''}${!d.closing && d.card === 'none' ? '<small>No closing card: add a line, your logo or a QR code.</small>' : ''}</span></div>
+      <p class="hx-mut hx-sm">Drawn the way Hoola draws your videos. Nothing is made or charged here.</p>`;
+  }
+  function brPvPaint() { const a = $('#hxBrPv'); if (a) { a.innerHTML = brPreview(); brCardLoad(); } const c = $('#hxBrCon'); if (c) c.outerHTML = brContrastLine(); const sv = $('[data-a=brsave]'); if (sv) sv.disabled = brSaved(); }
+  async function brCardLoad() {
+    const d = brS(), img = $('#hxBrCard'); if (!img) return;
+    const key = `${d.card}|${d.qr_url}|${UI.brLogoV || 0}`; UI.brCardKey = key;
+    if (UI.brCardLast === key) { if (UI.brCardUrl) { img.src = UI.brCardUrl; img.hidden = false; } return; }
+    clearTimeout(UI.brCardT); UI.brCardT = setTimeout(async () => {
+      try { const r = await api('GET', `${H}/brand/card?card=${q(d.card)}&url=${q(d.qr_url)}&v=${UI.brLogoV || 0}`, undefined, {raw: true});
+        const b = await r.blob(); if (UI.brCardKey !== key) return; const el = $('#hxBrCard'); if (!el) return;
+        if (UI.brCardUrl) URL.revokeObjectURL(UI.brCardUrl); UI.brCardUrl = b.size ? URL.createObjectURL(b) : ''; UI.brCardLast = key;
+        if (UI.brCardUrl) { el.src = UI.brCardUrl; el.hidden = false; } else el.hidden = true; }
+      catch { /* the line still shows */ } }, 250);
+  }
+  function brGlossary() {
+    const g = UI.gl ||= {mode: 'keep', lang: ''}, xs = D.glossary || [], max = UI.bri?.glossary_max || 200;
+    const langs = (UI.L || []).filter(l => l.code !== 'auto');
+    return `<section class="hx-card hx-brsec"><div class="hx-brgh"><b class="hx-t hx-growf">Words to keep</b><span class="hx-mut hx-sm hx-num">${num(xs.length)} of ${num(max)}</span></div>
+      <p class="hx-mut hx-sm">Names a translation must not change, or words that must always become one exact word in a language. Checked on every translated video.</p>
+      ${xs.length ? `<div class="hx-brgl">${xs.map(w => `<div class="hx-brgr"><b>${esc(w.term)}</b><span>${w.mode === 'keep' ? 'Kept as written' : `Becomes "${esc(w.to)}" in ${esc(langName(w.lang))}`}</span><button type="button" class="hx-ib s" data-a="glodel" data-id="${esc(w.id)}" aria-label="Remove ${esc(w.term)}">${ic('x', 15)}</button></div>`).join('')}</div>`
+        : '<p class="hx-mut hx-sm">None yet. Your business name is a good first one.</p>'}
+      <div class="hx-brgadd"><label class="hx-fld hx-growf"><span class="hx-sr">A word or name</span><input class="hx-in" id="hxGlo" maxlength="40" placeholder="A word or name"></label>
+        <label class="hx-fld"><span class="hx-sr">What happens to it</span><select class="hx-in" id="hxGloMode"><option value="keep"${g.mode === 'keep' ? ' selected' : ''}>Keep as written</option><option value="as"${g.mode === 'as' ? ' selected' : ''}>Always becomes…</option></select></label>
+        ${g.mode === 'as' ? `<label class="hx-fld"><span class="hx-sr">It becomes</span><input class="hx-in" id="hxGloTo" maxlength="60" placeholder="It becomes"></label>
+          <label class="hx-fld"><span class="hx-sr">In which language</span><select class="hx-in" id="hxGloLang"><option value="">In which language?</option>${langs.map(l => `<option value="${esc(l.code)}"${g.lang === l.code ? ' selected' : ''}>${esc(l.name)}</option>`).join('')}</select></label>` : ''}
+        <button type="button" class="hx-btn dark" data-a="gloadd">Add</button></div></section>`;
+  }
+  function brPage() {
+    const d = brS(), kit = UI.bri?.kit || {};
+    return `<div class="hx-doc hx-brpage"><div class="hx-doch hx-avhd"><div class="hx-growf"><h2 class="hx-serif">Brand</h2><p class="hx-mut">Every new video starts with these. You can still change them on one video in the Studio.</p></div>
+        <button type="button" class="hx-btn" data-a="brkit"${kit.name || kit.logo || kit.color || kit.website ? '' : ' title="Your Brand kit is empty"'}>Use my Brand kit</button>
+        <button type="button" class="hx-btn dark" data-a="brsave"${brSaved() ? ' disabled' : ''}>Save</button></div>
+      <div class="hx-brgrid"><div class="hx-brcol">
+        <section class="hx-card hx-brsec"><b class="hx-t">Your name on screen</b>
+          <label class="hx-fld"><span class="hx-lab">Business name</span><input class="hx-in" id="hxBrName" maxlength="40" value="${esc(d.name)}" placeholder="Your business"></label>
+          <button type="button" class="hx-brtog" role="switch" aria-checked="${d.show_name}" data-a="brshow"><span class="hx-brknob" aria-hidden="true"></span>Show it in the corner of every scene</button></section>
+        <section class="hx-card hx-brsec"><b class="hx-t">Colour</b>${brSwatches()}${brContrastLine()}</section>
+        ${brLogoCard()}
+        <section class="hx-card hx-brsec"><b class="hx-t">The closing card</b>
+          <label class="hx-fld"><span class="hx-lab">Closing line</span><input class="hx-in" id="hxBrClose" maxlength="80" value="${esc(d.closing)}" placeholder="Book a visit today"></label>
+          <div class="hx-fld"><span class="hx-lab">Also on it</span><div class="hx-seg" role="radiogroup" aria-label="Also on the closing card">${BR_CARDS.map(([k, n]) => `<button type="button" role="radio" aria-checked="${d.card === k}" data-a="brcard" data-val="${k}">${n}</button>`).join('')}</div>
+            ${(d.card === 'logo' || d.card === 'both') && !UI.bri?.logo?.on ? '<span class="hx-why">Add your logo above, or it is left out.</span>' : ''}</div>
+          ${d.card === 'qr' || d.card === 'both' ? `<label class="hx-fld"><span class="hx-lab">QR code opens</span><input class="hx-in" id="hxBrQr" type="url" maxlength="300" value="${esc(d.qr_url)}" placeholder="https://"></label>` : ''}
+          <span class="hx-mut hx-sm">The closing card stays on screen for the last 2 seconds.</span></section>
+      </div><aside class="hx-card hx-brpv" id="hxBrPv">${brPreview()}</aside></div>
+      ${brGlossary()}</div>`;
+  }
+  function brKitBody() {
+    const s = UI.dlg, k = UI.bri?.kit || {}, d = brS(), L = UI.bri?.logo || {};
+    const rows = [['name', 'Name', d.name || 'empty', k.name], ['color', 'Colour', d.color, k.color ? `${k.color} (main colour)` : ''], ['logo', 'Logo', L.on && (d.card === 'logo' || d.card === 'both') ? 'on the closing card' : 'not on the closing card', k.logo ? 'your logo' : ''],
+      ['qr', 'QR code', (d.qr_url || '').replace(/^https?:\/\//, '') || 'none', k.website ? `website: ${k.website.replace(/^https?:\/\//, '')}` : ''], ['closing', 'Closing line', d.closing || 'empty', k.tagline ? `tagline: ${k.tagline}` : '']];
+    const any = rows.some(r => r[3]);
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><h2 class="hx-serif hx-growf" id="hxDlgT">Use my Brand kit</h2><button type="button" class="hx-ib" data-a="dlgx" aria-label="Close" data-auto="1">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb">${any ? `<p class="hx-mut">Your Brand kit is what Hoola uses for posters. Tick what should come into your videos.</p>
+        <div class="hx-brkit">${rows.map(([f, n, now, kv]) => `<label class="hx-brkr${kv ? '' : ' off'}"><input type="checkbox" data-brkit="${f}"${s.pick.includes(f) ? ' checked' : ''}${kv ? '' : ' disabled'}><b>${n}</b><span class="hx-mut">Now: ${esc(now)}</span><span>${kv ? 'Kit: ' + esc(kv) : 'Not in your kit'}</span></label>`).join('')}</div>
+        <p class="hx-mut hx-sm">Nothing changes until you press Use these. Videos already made stay as they are.</p>`
+        : '<p class="hx-mut">Your Brand kit is empty. Fill it in Create, Brand kit, or set your brand right here.</p>'}</div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx">Cancel</button>${any ? `<button type="button" class="hx-btn dark" data-a="brkitgo"${s.pick.length && !s.busy ? '' : ' disabled'}>Use these</button>` : ''}</div></div>`;
+  }
+  function brLogoDelBody() {
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><h2 class="hx-serif hx-growf" id="hxDlgT">Remove your logo?</h2><button type="button" class="hx-ib" data-a="dlgx" aria-label="Close" data-auto="1">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb"><p>It comes out of your Brand kit too, so new posters and new videos go without it. Videos already made keep it.</p></div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx">Cancel</button><button type="button" class="hx-btn dark danger" data-a="brlogogo"${UI.dlg.busy ? ' disabled' : ''}>Remove the logo</button></div></div>`;
+  }
+  function brFillLogo() { $$('img[data-brlogo]').forEach(async img => { try { img.src = await blobUrl(`${H}/brand/logo?v=${UI.brLogoV || 0}`); } catch { img.remove(); } }); }
+  async function brSave() {
+    const d = brS();
+    if (!brOk(d.color)) return toast('The colour must look like #5B45E0.', true);
+    try { D.brand = await api('PUT', `${H}/brand`, d); UI.bri = {...(UI.bri || {}), brand: D.brand}; UI.brd = null; draw(); toast('Saved. Every new video starts with this.'); }
+    catch (er) { toast(er.message, true); }
+  }
+
+  // ---- projects (v0.999.204 PROJECTS, REDESIGNED: this month, folders, many videos changed at once, a trash with days left)
+  const pjS = () => UI.pj || (UI.pj = {f: 'all', q: '', sort: 'new', sel: []});
+  const pjFolders = () => D.folders || [];
+  const pjFolder = id => pjFolders().find(f => f.id === id);
+  function pjRows() {
+    const st = pjS(), ql = (st.q || '').trim().toLowerCase();
+    let xs = (D.projects || []).filter(p => st.f === 'all' || (st.f === 'none' ? !pjFolder(p.folder) : p.folder === st.f)).filter(p => !ql || String(p.title || '').toLowerCase().includes(ql));
+    xs = [...xs].sort(st.sort === 'name' ? (a, b) => String(a.title).localeCompare(String(b.title)) : st.sort === 'old' ? (a, b) => String(a.updated || '').localeCompare(String(b.updated || '')) : (a, b) => String(b.updated || '').localeCompare(String(a.updated || '')));
+    return xs;
+  }
+  function pjTable() {
+    const st = pjS(), xs = pjRows(), sel = st.sel.filter(id => xs.some(p => p.id === id)), all = xs.length && sel.length === xs.length;
+    if (!xs.length) return `<div class="hx-empty"><b>${st.q ? 'No video matches' : st.f === 'all' ? 'No videos yet' : 'This folder is empty'}</b><span>${st.q ? 'Try another word.' : st.f === 'all' ? 'Start one in the Interactive chat, from a template or in the Studio.' : 'Choose videos in All videos, then Move to folder.'}</span></div>`;
+    return `${sel.length ? `<div class="hx-pjbulk" role="toolbar" aria-label="Change the chosen videos"><b class="hx-num">${num(sel.length)} chosen</b><button type="button" class="hx-lnk" data-a="pjnone">Clear</button><span class="hx-grow"></span>
+        <button type="button" class="hx-pjbb" data-a="pjbulk" data-k="move" aria-haspopup="menu">${ic('folder', 14)}Move to folder</button>
+        <button type="button" class="hx-pjbb" data-a="pjbulk" data-k="voice" aria-haspopup="menu">${ic('mic', 14)}Change voice</button>
+        <button type="button" class="hx-pjbb" data-a="pjbulk" data-k="face" aria-haspopup="menu">${ic('user', 14)}Change face</button>
+        <button type="button" class="hx-pjbb" data-a="pjbulk" data-k="duplicate">${ic('copy', 14)}Duplicate</button>
+        <button type="button" class="hx-pjbb bad" data-a="pjbulk" data-k="trash">${ic('trash', 14)}Move to trash</button></div>` : ''}
+      <div class="hx-pjt" role="table" aria-label="Videos"><div class="hx-pjr hd" role="row"><span role="columnheader"><input type="checkbox" id="hxPjAll" aria-label="Choose all"${all ? ' checked' : ''}></span>
+          <span role="columnheader">Video</span><span role="columnheader">State</span><span role="columnheader">Language</span><span role="columnheader">Face and voice</span><span role="columnheader">Length</span><span role="columnheader">Changed</span></div>
+        ${xs.map(p => { const on = sel.includes(p.id), fd = st.f === 'all' ? pjFolder(p.folder) : null;
+          return `<div class="hx-pjr${on ? ' on' : ''}" role="row"><span role="cell"><input type="checkbox" data-pjsel="${esc(p.id)}" aria-label="Choose ${esc(p.title)}"${on ? ' checked' : ''}></span>
+            <span role="cell" class="hx-pjv"><button type="button" class="hx-pjth" data-a="openp" data-id="${esc(p.id)}" tabindex="-1" aria-hidden="true">${libThumb(p)}</button>
+              <span class="hx-ct"><button type="button" class="hx-lnk hx-pjtt" data-a="openp" data-id="${esc(p.id)}">${esc(p.title)}</button>${fd ? `<small><i style="background:${esc(fd.color)}"></i>${esc(fd.name)}</small>` : ''}</span></span>
+            <span role="cell">${chip(p)}</span><span role="cell" class="hx-sm">${esc(langName(p.lang))}</span>
+            <span role="cell" class="hx-sm hx-pjfv">${esc(face(p.avatar_id)?.name || 'No face')} · ${esc(voiceName(p.voice))}</span>
+            <span role="cell" class="hx-sm hx-num">${clock(total(p))}</span><span role="cell" class="hx-sm hx-mut">${esc(ago(p.updated))}</span></div>`; }).join('')}</div>`;
+  }
+  function pjMain() {
+    const st = pjS(), ps = D.projects || [], u = D.usage || {}, fs = pjFolders();
+    if (st.f !== 'all' && st.f !== 'none' && !pjFolder(st.f)) st.f = 'all';
+    const drafts = ps.filter(p => p.status !== 'ready' && p.status !== 'making').length;
+    const kpi = (l, v, sub) => `<div class="hx-lvk"><span>${l}</span><b class="hx-serif hx-num">${v}</b><small>${sub}</small></div>`;
+    const fchip = (id, name, n, color, extra = '') => `<div class="hx-pjf${st.f === id ? ' on' : ''}"><button type="button" class="hx-pjfb" data-a="pjf" data-id="${esc(id)}" aria-pressed="${st.f === id}"><i style="background:${esc(color)}"></i>
+        ${ic('folder', 20)}<b>${esc(name)}</b><small class="hx-num">${num(n)} video${n === 1 ? '' : 's'}</small></button>${extra}</div>`;
+    const cur = st.f === 'all' ? 'All videos' : st.f === 'none' ? 'Not in a folder' : pjFolder(st.f)?.name;
+    return `<div class="hx-doc hx-pjpage"><div class="hx-doch"><div class="hx-growf"><h2 class="hx-serif">Projects</h2><p class="hx-mut">Keep your videos in folders, change many at once, and see what you made this month.</p></div>
+        <div class="hx-acts hx-avhd"><button type="button" class="hx-btn" data-a="pjnewf">${ic('plus', 14)}New folder</button><button type="button" class="hx-btn dark" data-a="newchat">New video</button></div></div>
+      <section class="hx-lvks hx-pjks" aria-label="This month">${kpi('Made this month', num(u.videos || 0), 'videos')}${kpi('Minutes made', num(u.minutes || 0), 'this month')}
+        ${kpi('Credits used', num(u.credits || 0), 'this month')}${kpi('Drafts waiting', num(drafts), 'not made yet')}
+        <button type="button" class="hx-lvk hx-pjtr" data-a="ptab" data-val="Trash"><span>In the trash</span><b class="hx-serif hx-num">${num((D.trash || []).length)}</b><small>kept 30 days · open</small></button></section>
+      <section class="hx-pjfs" aria-label="Folders">${fchip('all', 'All videos', ps.length, '#57564F')}
+        ${fs.map(f => fchip(f.id, f.name, ps.filter(p => p.folder === f.id).length, f.color, `<button type="button" class="hx-ib xs hx-pjfm" data-a="pjfmenu" data-id="${esc(f.id)}" aria-label="More for ${esc(f.name)}" aria-haspopup="menu">${ic('dots', 15)}</button>`)).join('')}
+        ${fchip('none', 'Not in a folder', ps.filter(p => !pjFolder(p.folder)).length, '#9A988F')}
+        <button type="button" class="hx-pjfadd" data-a="pjnewf">${ic('plus', 18)}<span>New folder</span></button></section>
+      <div class="hx-pjbar"><b>${esc(cur || 'All videos')}</b><span class="hx-grow"></span>
+        <label class="hx-avq">${ic('search', 15)}<span class="hx-sr">Search videos</span><input type="search" id="hxPjq" placeholder="Search videos" value="${esc(st.q || '')}"></label>
+        <button type="button" class="hx-chip" data-a="pjsort" aria-haspopup="menu">${{new: 'Newest first', old: 'Oldest first', name: 'By name'}[st.sort]}${ic('down', 12)}</button></div>
+      <div id="hxPjTable">${pjTable()}</div>
+      <p class="hx-mut hx-sm">Making many at once (a batch, or one video for many names) is in <button type="button" class="hx-lnk" data-a="go" data-p="apps">Apps</button>.</p></div>`;
+  }
+  function pjTrash() {
+    const tr = D.trash || [], now = Date.now() / 1000;
+    return `<div class="hx-doc hx-pjpage"><div class="hx-doch"><div class="hx-growf"><button type="button" class="hx-lnk hx-sm" data-a="ptab" data-val="Videos">${ic('back', 13)} Projects</button><h2 class="hx-serif">Trash</h2>
+          <p class="hx-mut">Removed videos stay here for 30 days, then they are gone for good. Bring one back any time before that.</p></div>
+        ${tr.length ? `<button type="button" class="hx-btn danger" data-a="emptytrash">Empty the trash</button>` : ''}</div>
+      ${tr.length ? `<div class="hx-pjtrl">${tr.map(p => { const left = Math.max(0, 30 - Math.floor((now - (+p.trashed_ts || now)) / 86400)), fd = pjFolder(p.folder);
+          return `<div class="hx-pjtri">${libThumb(p)}<span class="hx-ct"><b>${esc(p.title)}</b><small>Removed ${esc(ago(p.trashed))}${fd ? ` · was in ${esc(fd.name)}` : ''} · ${p.video ? `made, ${clock(total(p))}` : 'draft'}</small></span>
+            <span class="hx-pjleft${left <= 5 ? ' soon' : ''}"><small class="hx-num">${num(left)} day${left === 1 ? '' : 's'} left</small><span class="hx-lvtrack"><i style="width:${Math.round(100 * left / 30)}%"></i></span></span>
+            <button type="button" class="hx-btn dark s" data-a="restore" data-id="${esc(p.id)}">Bring it back</button><button type="button" class="hx-btn danger s" data-a="pjpurge" data-id="${esc(p.id)}">Delete now</button></div>`; }).join('')}</div>`
+        : `<div class="hx-empty"><b>The trash is empty</b><span>Videos you move to the trash wait here for 30 days.</span></div>`}</div>`;
+  }
+  function pjFolderBody() {
+    const s = UI.dlg, colors = ['#B07A3A', '#2E4F8A', '#2F6B48', '#8A2F4E', '#4A36C9', '#57564F'];
+    return `<div class="hx-dlg" role="dialog" aria-modal="true" aria-labelledby="hxDlgT"><div class="hx-dlgh"><h2 class="hx-serif hx-growf" id="hxDlgT">${s.id ? 'Rename the folder' : 'A new folder'}</h2>
+        <button type="button" class="hx-ib" data-a="dlgx" aria-label="Close">${ic('x', 16)}</button></div>
+      <div class="hx-dlgb"><label class="hx-fld"><span class="hx-lab">Name</span><input class="hx-in" id="hxPjFn" maxlength="40" value="${esc(s.name || '')}" placeholder="Summer offers" data-auto="1"></label>
+        <div class="hx-fld"><span class="hx-lab">Colour</span><div class="hx-acts" role="radiogroup" aria-label="Colour">${colors.map(c => `<button type="button" class="hx-pjsw${s.color === c ? ' on' : ''}" role="radio" aria-checked="${s.color === c}" data-a="pjcol" data-val="${c}" style="background:${c}" aria-label="Colour ${c}"></button>`).join('')}</div></div>
+        ${s.ids?.length ? `<p class="hx-mut hx-sm">The ${num(s.ids.length)} chosen video${s.ids.length === 1 ? ' goes' : 's go'} into it.</p>` : ''}</div>
+      <div class="hx-dlgf"><span class="hx-grow"></span><button type="button" class="hx-btn" data-a="dlgx">Cancel</button><button type="button" class="hx-btn dark" data-a="pjfsave"${s.busy ? ' disabled' : ''}>${s.id ? 'Save' : 'Make the folder'}</button></div></div>`;
+  }
+  async function pjBulk(action, value) {
+    const st = pjS(), ids = st.sel.filter(id => (D.projects || []).some(p => p.id === id)); if (!ids.length) return;
+    try { const r = await api('POST', `${H}/bulk`, {ids, action, value}); st.sel = action === 'trash' ? [] : st.sel; await load(); draw();
+      const verb = {move: value ? `moved to ${pjFolder(value)?.name || 'the folder'}` : 'taken out of their folder', voice: 'now speak in ' + voiceName(value), face: value ? `now show ${face(value)?.name || 'that face'}` : 'now have no face', duplicate: 'copied', trash: 'moved to the trash for 30 days'}[action];
+      toast(`${num(r.done.length)} video${r.done.length === 1 ? '' : 's'} ${verb}.${r.skipped.length ? ` ${num(r.skipped.length)} left out: ${r.skipped[0].why}` : ''}${(action === 'voice' || action === 'face') && r.done.some(id => (D.projects || []).find(p => p.id === id)?.status === 'ready') ? ' Made videos change when you make them again.' : ''}`, !!r.skipped.length); }
+    catch (er) { toast(er.message, true); }
+  }
+  function pjPaint() { const t = $('#hxPjTable'); if (t) { t.innerHTML = pjTable(); fillMedia(); } }
+
+  // ------------------------------------------------------------------ pages ---
+  const V = {
+    chat() {
+      if (fresh()) return home();
+      return `<div class="hx-split hx-ixchat"><div class="hx-chat"><div class="hx-log" id="hxLog"><div id="hxThread">${thread()}</div></div>${composer(false)}</div>
+        <aside class="hx-stage hx-pv" id="hxPv" aria-label="Preview">${pvPane()}</aside></div>`;
+    },
+    studio() { return ARG ? edPage() : libPage(); },
+    templates() { const t = ARG && tplOf(ARG); return t ? tplUse(t) : tplLib(); },
+    apps() { return ARG && appOf(ARG) ? appRun(ARG) : appsLib(); },
+    avatars() { return avPage(); },
+    voices() { return voPage(); },
+    live() { return UI.live ? lvEdit() : lvLib(); },
+    projects() { return UI.ptab === 'Trash' ? pjTrash() : pjMain(); },
+    brand() { return brPage(); },
+    engines() { return enPage(); },
+    developers() { return dvPage(); },
+    settings() { return stPage(); },
+  };
+  const ENTER = {
+    chat() { (C.conv ? Promise.resolve() : openChat()).then(chatLoad).then(() => { if (PAGE !== 'chat') return; if ($('.hx-hero') && !fresh()) draw(); else paintChat(); chatPoll(); }); estimate(); },
+    voices() { Promise.all([voicesLoad(), langsLoad()]).then(() => { if (PAGE === 'voices') draw(); }); },
+    apps() { appsLoad().then(() => { if (PAGE !== 'apps') return; draw(); if (ARG === 'broll') { abQuote(); abWatch(); } if (ARG === 'names' || ARG === 'batch') arEstimate(ARG === 'names' ? lenOf((D.projects || []).find(x => x.id === arState().vid) || {}) : 30); }); },
+    templates() { const t = ARG && tplOf(ARG); if (!t) return; const u = tuState(t); tuEstimate(); if (u.sample) { u.scene = 0; tuPlay(); } },
+    studio() { if (ARG) { const p = cur(); if (!p) return; if (p.status === 'making') watchJob(ARG); studioQuote(); if (UI.tool === 'Engine') edCompare(); }
+      else (D.projects || []).filter(p => p.status === 'making').forEach(p => watchJob(p.id)); },
+    developers() { dvReload(); },
+    settings() { stLoad(); },
+    engines() { enPrices(UI.etab); if (UI.etab === 'broll') brQuote(); },
+    brand() { UI.brd = null; Promise.all([brLoad(), langsLoad()]).then(() => { if (PAGE !== 'brand') return; draw(); }); },
+  };
+  const AFTER = {brand() { brFillLogo(); brCardLoad(); }};
+
+  // ------------------------------------------------------------------ studio edits ---
+  const cur = () => (D.projects || []).find(x => x.id === ARG);
+  async function save(body, redraw = true) {
+    try { const p = await api('PUT', `${S}/project?id=${q(ARG)}`, body); const i = D.projects.findIndex(x => x.id === ARG); if (i >= 0) D.projects[i] = p; if (redraw) { draw(); } studioQuote(); if (UI.tool === 'Engine') edCompare(); }
+    catch (e) { toast(e.message, true); }
+  }
+  let saveT = 0;
+  function saveSoon(body) { clearTimeout(saveT); saveT = setTimeout(() => save(body, false), 600); }
+  async function studioQuote() {
+    if (PAGE !== 'studio' || !ARG) return; const id = ARG;
+    let r; try { r = await api('GET', `${X}/quote?id=${q(id)}`); }
+    catch (e) { const el = $('#hxEdPrice'); if (el) el.innerHTML = `<p class="hx-why">${esc(e.message)}</p>`; return; }
+    if (PAGE !== 'studio' || ARG !== id) return;
+    UI.q = {id, ...r}; const p = cur(); if (!p) return;
+    const box = $('.hx-edmk'); if (box) box.outerHTML = edMakeBox(p);
+    const h = $('.hx-edhmk'); if (h) h.innerHTML = makeBtn(p);
+  }
+  async function brQuote() { try { UI.broll.q = await api('GET', `${X}/broll/quote?seconds=${UI.broll.seconds}`); if (PAGE === 'engines') draw(); } catch { /* shown on make */ } }
+
+  // ------------------------------------------------------------------ menus ---
+  function menu(el, items, opts) { if (window.HoolaMenu) HoolaMenu.open(el, items, {align: 'start', ...(opts || {})}); }
+  function pickMenu(el, k, onPick, item) {
+    const cbs = v => () => onPick(v);
+    if (k === 'len') return menu(el, [{header: kindNow() === 'reel' ? 'Vertical 9:16, for social media' : 'Wide 16:9 (a reel is vertical)'}, ...LENS.map(n => ({label: n < 60 ? `${n} seconds` : `${n / 60 === 1 ? '1 minute' : '1.5 minutes'}`, checked: (SET.len || 30) === n, run: () => setPick('len', n)}))]);
+    if (k === 'face') return menu(el, [{label: 'No face', checked: !SET.face, run: cbs('')}, ...(D.avatars || []).map(a => ({label: a.name, sub: 'Consent on record', checked: SET.face === a.id, run: cbs(a.id)})),
+      {sep: true}, {label: 'Add a face', icon: 'plus', run: () => go('avatars')}]);
+    if (k === 'voice') { const Vv = UI.V || {mine: [], library: []};
+      return menu(el, [{search: 'Find a voice', empty: 'No voice matches'}, {label: 'Hoola picks', checked: !SET.voice, run: cbs('')}, ...(Vv.mine.length ? [{header: 'Your voices'}] : []),
+        ...Vv.mine.map(v => ({label: v.name, sub: 'Your own', disabled: !v.ready, run: cbs(v.id)})), {header: 'Ready-made'},
+        ...Vv.library.slice(0, 120).map(v => ({label: v.name, sub: [v.gender, v.tier === 'premium' ? 'Premium' : ''].filter(Boolean).join(' · '), disabled: !v.ready, run: cbs(v.id)}))], {width: 300}); }
+    if (k === 'engine') return menu(el, (D.engines?.engines || []).filter(e => e.job === 'video').map(e => ({label: e.label, sub: e.ready ? e.price : scrub(e.status), disabled: !e.ready, checked: defEngine() === e.id, run: cbs(e.id)})), {width: 300});
+    if (k === 'lang') return menu(el, [{search: 'Find a language', empty: 'No language matches'}, ...(item ? [] : [{label: 'Auto', sub: 'Matches the language you write in', checked: !SET.lang || SET.lang === 'auto', run: cbs('auto')}]), ...(UI.L || []).map(l => ({label: l.native && l.native !== l.name ? `${l.name} · ${l.native}` : l.name, sub: l.region, run: cbs(l.code)}))], {width: 280});
+    if (k === 'shape') return menu(el, Object.entries(SHAPE).map(([s, n]) => ({label: n, checked: SET.shape === s, run: cbs(s)})));
+  }
+  function setPick(k, v) { SET[k] = v; persist(); if (PAGE === 'chat') refreshBar(); else draw(); }
+
+  // ------------------------------------------------------------------ clicks ---
+  async function onClick(e) {
+    const b = e.target.closest('[data-a]'); if (!b || !ROOT.contains(b)) return;
+    const a = b.dataset.a, id = b.dataset.id;
+    switch (a) {
+      case 'go': return go(b.dataset.p);
+      case 'back': leave(); return back?.();
+      case 'slim': UI.slim = !UI.slim; store.set('hx.slim', UI.slim); return side();
+      case 'navon': UI.nav = true; return side();
+      case 'navoff': UI.nav = false; return side();
+      case 'newchat': return newVideo();
+      case 'openchat': clearTimeout(C.t); C.gen++; C.conv = id; C.rows = []; C.items = []; UI.pv.id = ''; pvStop(); await chatLoad(); return go('chat');
+      case 'credits': leave(); location.assign('/console/?v=credits'); return;
+      case 'kind': if (b.dataset.val === 'translate') return toDubbing();
+        SET.kind = b.dataset.val; SET.shape = shapeOf(SET.kind); if (SET.kind === 'reel' && (SET.len || 30) > 30) SET.len = 15; persist(); estimate(); return draw();
+      case 'ideag': UI.ideaG = b.dataset.val; return draw();
+      case 'from': { const v = b.dataset.val;
+        if (v === 'doc') return pickFiles('.pdf,.doc,.docx,.txt,.md,.rtf,.odt', 'explainer', 'Make an explainer video from this document.');
+        if (v === 'slides') return pickFiles('.pptx,.ppt,.pdf,.key,.odp', 'lesson', 'Turn these slides into a narrated lesson.');
+        if (v === 'web') return fromWeb();
+        return toDubbing(); }
+      case 'attach': return menu(b, [{label: 'A file', sub: 'PDF, Word, slides, a photo, notes', icon: 'plus', run: () => pickFiles('', '', '')},
+        {label: 'A web page', sub: 'Hoola reads the page you give', icon: 'globe', run: fromWeb}]);
+      case 'unfile': { C.files.splice(+b.dataset.n, 1); const t = $('#hxTray'); if (t) t.innerHTML = tray(); return; }
+      case 'openv': { const p = (D.projects || []).find(x => x.id === id); if (!p) return;
+        if (p.chat) { clearTimeout(C.t); C.gen++; C.conv = p.chat; C.rows = []; C.items = []; await chatLoad(); UI.pv = {...UI.pv, id: p.id, scene: 0, tab: 'sketch'}; return go('chat'); }
+        UI.scene = 0; return go('studio', id); }
+      case 'say': return chatSend(b.dataset.t);
+      case 'morelang': return menu(b, [{search: 'Make it in', empty: 'No language matches'}, ...(UI.L || []).map(l => ({label: l.native && l.native !== l.name ? `${l.name} · ${l.native}` : l.name, sub: l.region,
+        run: () => chatSend(`Make the same video in ${l.name}, keeping every name and number.`)}))], {width: 300});
+      case 'ipick': { const k = b.dataset.k; return pickMenu(b, k, v => saveItem(id, {[k === 'face' ? 'avatar_id' : k]: v}), id); }
+      case 'flay': return saveItem(id, {face_layout: b.dataset.val});
+      case 'hear': return hear(id);
+      case 'edhear': { const p = cur(); return p && hear(p.id, p.scenes[UI.scene]?.say); }
+      case 'cmp': return compare(b, id);
+      case 'pvtab': UI.pv.tab = b.dataset.val; pvStop(); return paintPv();
+      case 'pvscene': pvStop(); UI.pv.id = id; UI.pv.scene = +b.dataset.n; UI.pv.tab = 'sketch'; $$('.hx-sct.on').forEach(x => x.classList.remove('on')); b.classList.add('on'); return paintPv();
+      case 'pvplay': return pvPlay();
+      case 'pvwhich': return menu(b, C.items.map(i => ({label: i.title, sub: vstate(i)[1], checked: pvItem()?.id === i.id, run: () => { pvStop(); UI.pv.id = i.id; UI.pv.scene = 0; paintChat(); }})), {align: 'end', width: 300});
+      case 'subdl': { const p = PAGE === 'studio' && ARG ? cur() : pvItem(); if (!p) return; const vtt = b.dataset.val === 'vtt';
+        const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([srt(p, vtt)], {type: vtt ? 'text/vtt' : 'application/x-subrip'}));
+        link.download = `${(p.title || 'subtitles').replace(/[^\w .-]+/g, '_').slice(0, 60)}.${vtt ? 'vtt' : 'srt'}`; document.body.appendChild(link); link.click(); link.remove(); return; }
+      case 'chats': { let list = []; try { list = (await api('GET', `${C0}/chats`)).chats || []; } catch (er) { return toast(er.message, true); }
+        return menu(b, list.length ? list.map(c => ({label: c.title, sub: ago(c.at), run: async () => { clearTimeout(C.t); C.gen++; C.conv = c.id; C.title = c.title; C.rows = []; C.items = []; await chatLoad(); go('chat'); }})) : [{note: 'No earlier chats yet.'}], {align: 'end', width: 300}); }
+      case 'send': return chatSend();
+      case 'idea': { const [t, l, k] = IDEAS[UI.ideaG || 'business'][+b.dataset.n]; C.ask = t; SET.lang = l; SET.kind = k; SET.shape = shapeOf(k); persist();
+        draw(); const ta = $('#hxAsk'); if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } return; }
+      case 'pick': return pickMenu(b, b.dataset.k, v => setPick(b.dataset.k, v));
+      case 'make': return make(id, b.dataset.k);
+      case 'stop': try { await api('POST', `${S}/stop`, {id}); toast('Stopping at the next step.'); } catch (er) { toast(er.message, true); } return;
+      case 'openp': UI.scene = 0; UI.edv = 'video'; return go('studio', id);
+      case 'dlv': return download(id);
+      case 'tr': return trMenu(b, id);
+      case 'dup': return dupP(id);
+      case 'trash': return trashP(id);
+      case 'restore': try { await api('POST', `${H}/restore`, {id}); await load(); draw(); } catch (er) { toast(er.message, true); } return;
+      case 'emptytrash': { const n = (D.trash || []).length; if (!confirm(`Empty the trash? ${n} video${n === 1 ? '' : 's'} and their made files are deleted for good. This cannot be undone. Videos you downloaded keep working.`)) return;
+        try { await api('POST', `${H}/trash/empty`); await load(); draw(); toast('The trash is empty.'); } catch (er) { toast(er.message, true); } return; }
+      case 'pjpurge': { const p = (D.trash || []).find(x => x.id === id); if (!confirm(`Delete “${p?.title || 'this video'}” for good? This cannot be undone.`)) return;
+        try { await api('POST', `${H}/trash/purge`, {id}); await load(); draw(); toast('Deleted for good.'); } catch (er) { toast(er.message, true); } return; }
+      case 'pjf': Object.assign(pjS(), {f: id, sel: []}); return draw();
+      case 'pjnone': pjS().sel = []; return pjPaint();
+      case 'pjsort': return menu(b, [['new', 'Newest first'], ['old', 'Oldest first'], ['name', 'By name']].map(([v, l]) => ({label: l, checked: pjS().sort === v, run: () => { pjS().sort = v; pjPaint(); draw(); }})));
+      case 'pjnewf': UI.dlg = {k: 'pjfolder', name: '', color: ['#B07A3A', '#2E4F8A', '#2F6B48', '#8A2F4E', '#4A36C9', '#57564F'][pjFolders().length % 6], ids: b.dataset.k === 'move' ? [...pjS().sel] : []}; return dlgPaint();
+      case 'pjcol': if (UI.dlg) { UI.dlg.name = $('#hxPjFn')?.value ?? UI.dlg.name; UI.dlg.color = b.dataset.val; dlgPaint(); } return;
+      case 'pjfsave': { const s = UI.dlg, n = ($('#hxPjFn')?.value || '').trim(); if (!s) return; if (!n) return toast('Give the folder a name.');
+        s.busy = true; dlgPaint();
+        try { const f = await api('POST', `${H}/folders`, {id: s.id || '', name: n, color: s.color}); UI.dlg = null; dlgPaint();
+          if (s.ids?.length) { await api('POST', `${H}/bulk`, {ids: s.ids, action: 'move', value: f.id}); pjS().sel = []; }
+          await load(); if (!s.id) pjS().f = f.id; draw(); toast(s.id ? 'Folder renamed.' : s.ids?.length ? `Folder made, ${num(s.ids.length)} video${s.ids.length === 1 ? '' : 's'} in it.` : 'Folder made.'); }
+        catch (er) { s.busy = false; dlgPaint(); toast(er.message, true); } return; }
+      case 'pjfmenu': { const f = pjFolder(id); if (!f) return;
+        return menu(b, [{label: 'Rename', icon: 'pen', run: () => { UI.dlg = {k: 'pjfolder', id, name: f.name, color: f.color, ids: []}; dlgPaint(); }},
+          {label: 'Remove the folder', icon: 'trash', danger: true, run: async () => { if (!confirm(`Remove the folder “${f.name}”? Its videos stay, out of any folder.`)) return;
+            try { await api('DELETE', `${H}/folders?id=${q(id)}`); if (pjS().f === id) pjS().f = 'all'; await load(); draw(); toast('Folder removed. Its videos are in Not in a folder.'); } catch (er) { toast(er.message, true); } }}]); }
+      case 'pjbulk': { const k = b.dataset.k, n = pjS().sel.length;
+        if (k === 'move') return menu(b, [{header: `Move ${num(n)} video${n === 1 ? '' : 's'} to`}, ...pjFolders().map(f => ({label: f.name, run: () => pjBulk('move', f.id)})),
+          {label: 'Not in a folder', run: () => pjBulk('move', '')}, {sep: true}, {label: 'A new folder…', icon: 'plus', run: () => { UI.dlg = {k: 'pjfolder', name: '', color: '#2E4F8A', ids: [...pjS().sel]}; dlgPaint(); }}], {width: 260});
+        if (k === 'voice' || k === 'face') return pickMenu(b, k, v => pjBulk(k, v), true);
+        if (k === 'duplicate') return pjBulk('duplicate');
+        if (!confirm(`Move ${n} video${n === 1 ? '' : 's'} to the trash? They stay there for 30 days.`)) return;
+        return pjBulk('trash'); }
+      case 'scene': return edScene(+b.dataset.n, true);
+      case 'tool': { UI.tool = b.dataset.val; $$('.hx-edtabs [role=tab]').forEach(t => t.setAttribute('aria-selected', String(t.dataset.val === UI.tool)));
+        const x = $('#hxEdTool'), p = cur(); if (x && p) x.innerHTML = edTool(p); else draw(); fillMedia(); if (UI.tool === 'Engine') edCompare(); return; }
+      case 'addsc': { const p = cur(); if (!p) return; UI.scene = p.scenes.length; return save({scenes: [...p.scenes, {say: '', look: {kind: 'none'}}]}); }
+      case 'delsc': { const p = cur(); if (!p || p.scenes.length < 2) return; const n = b.dataset.n != null ? +b.dataset.n : UI.scene;
+        if ((p.scenes[n]?.say || '').trim() && !confirm(`Remove scene ${n + 1}?`)) return;
+        return scenesSave(p.scenes.filter((_, i) => i !== n), Math.max(0, Math.min(UI.scene > n ? UI.scene - 1 : UI.scene, p.scenes.length - 2))); }
+      case 'scmove': { const p = cur(); if (!p) return; const n = +b.dataset.n, to = n + +b.dataset.d; if (to < 0 || to >= p.scenes.length) return;
+        const sc = [...p.scenes]; [sc[n], sc[to]] = [sc[to], sc[n]]; return scenesSave(sc, to); }
+      case 'scdup': { const p = cur(); if (!p) return; const n = +b.dataset.n, sc = [...p.scenes]; sc.splice(n + 1, 0, JSON.parse(JSON.stringify(sc[n]))); return scenesSave(sc, n + 1); }
+      case 'scprev': return edScene(UI.scene - 1, true);
+      case 'scnext': return edScene(UI.scene + 1, true);
+      case 'edplay': return edPlay();
+      case 'edview': UI.edv = b.dataset.val; edStop(); return edPaint(false);
+      case 'lookset': { const p = cur(); if (!p) return; const k = b.dataset.val, old = p.scenes[UI.scene]?.look || {};
+        if ((old.kind || 'none') === k) return;
+        return scenesSave(p.scenes.map((s, i) => i === UI.scene ? {...s, look: {kind: k, ...(k === 'bar_chart' ? {bars: [{label: '', value: ''}, {label: '', value: ''}]} : {})}} : s)); }
+      case 'baradd': { const p = cur(); if (!p) return; return scenesSave(p.scenes.map((s, i) => i === UI.scene ? {...s, look: {...s.look, bars: [...(s.look.bars || []), {label: '', value: ''}]}} : s)); }
+      case 'bardel': { const p = cur(); if (!p) return; return scenesSave(p.scenes.map((s, i) => i === UI.scene ? {...s, look: {...s.look, bars: (s.look.bars || []).filter((_, j) => j !== +b.dataset.n)}} : s)); }
+      case 'faceset': return save({avatar_id: b.dataset.val});
+      case 'engset': if (UI.cmp?.id === ARG) UI.cmp.r.chosen = id; return save({engine: id});
+      case 'paspect': return save({aspect: b.dataset.val});
+      case 'itadd': { const p = cur(); if (!p) return; p.items = [...(p.items || []), {name: '', price: '', note: ''}]; const x = $('#hxEdTool'); if (x) x.innerHTML = edTool(p); $$('#hxItems [data-ik="name"]').pop()?.focus(); return; }
+      case 'itdel': { const p = cur(); if (!p) return; return save({items: (p.items || []).filter((_, i) => i !== +b.dataset.n)}); }
+      case 'vmenu': return vMenu(b, id);
+      case 'lf': UI.lf = b.dataset.val; return draw();
+      case 'lview': UI.lv = b.dataset.val; store.set('hx.lview', UI.lv); return draw();
+      case 'lsort': return menu(b, Object.entries(LSORT).map(([k, l]) => ({label: l, checked: (UI.ls || 'new') === k, run: () => { UI.ls = k; store.set('hx.lsort', k); draw(); }})), {align: 'end'});
+      case 'lclear': UI.lf = 'all'; UI.lq = ''; return draw();
+      case 'ltrash': UI.ptab = 'Trash'; return go('projects');
+      case 'lfrom': await newVideo(); return pickFiles('.pdf,.doc,.docx,.txt,.md,.rtf,.odt,.pptx,.ppt,.key,.odp', 'explainer', 'Make an explainer video from this document.');
+      case 'lookpick': { const p = cur(); return menu(b, Object.entries(LOOK).map(([k, n]) => ({label: n, checked: (p.scenes[UI.scene]?.look?.kind || 'none') === k, run: () => {
+        const sc = p.scenes.map((s, i) => i === UI.scene ? {...s, look: {kind: k, ...(k === 'bar_chart' ? {bars: [{label: '', value: ''}, {label: '', value: ''}]} : {})}} : s); save({scenes: sc}); }}))); }
+      case 'ppick': { const k = b.dataset.k, p = cur(); const map = {avatar_id: 'face', voice: 'voice', lang: 'lang'};
+        return pickMenu(b, map[k], v => save({[k]: v}), true); }
+      case 'layout': return save({face_layout: b.dataset.val});
+      case 'pshape': return save({shape: b.dataset.val});
+      case 'peng': return;
+      case 'tpluse': { const t = tplOf(id); if (!t) return; if (UI.tu?.id === id) UI.tu.sample = false; return go('templates', id); }
+      case 'tplsample': { const t = tplOf(id); if (!t) return; tuState(t).sample = true; return go('templates', id); }
+      case 'tplmenu': return tplMenu(b, id);
+      case 'tplfrom': UI.dlg = {k: 'pick'}; return dlgPaint();
+      case 'ttab': UI.tt = b.dataset.val; return draw();
+      case 'tgrp': UI.tg = b.dataset.val; return draw();
+      case 'tclear': UI.tq = ''; UI.tg = 'all'; UI.tsh = 'any'; UI.tt = 'all'; return draw();
+      case 'tshape': return menu(b, Object.entries(TSHAPE).map(([k, l]) => ({label: l, checked: (UI.tsh || 'any') === k, run: () => { UI.tsh = k; draw(); }})));
+      case 'tsort': return menu(b, Object.entries(TSORT).map(([k, l]) => ({label: l, checked: (UI.tso || 'used') === k, run: () => { UI.tso = k; draw(); }})), {align: 'end'});
+      case 'tuscene': { if (!UI.tu) return; tuStop(); UI.tu.scene = +b.dataset.n; return tuPaint(); }
+      case 'tuplay': return tuPlay();
+      case 'tuhear': { const t = tplOf(ARG), u = UI.tu; if (!t || !u) return; const v = tuVals(t, u);
+        const say = fillStr(t.scenes[u.scene]?.say, v).replace(/\{([a-z][a-z0-9_]*)\}/g, (m, k) => ((t.blanks || []).find(x => x.key === k)?.label || k).toLowerCase());
+        try { const r = await api('POST', '/api/vocal/hear', {text: say.slice(0, 160), voice: u.voice || '', lang: t.lang || 'en'}, {raw: true});
+          if (!r.ok) { let m = 'The sample could not be made.'; try { m = (await r.json()).detail || m; } catch { /* keep */ } throw new Error(m); }
+          UI.audio?.pause(); UI.audio = new Audio(URL.createObjectURL(await r.blob())); UI.audio.play().catch(() => {}); } catch (er) { toast(er.message, true); } return; }
+      case 'tupick': { const k = b.dataset.k, u = UI.tu; if (!u) return;
+        return pickMenu(b, k, v => { u[k] = v; if (k === 'face' && !v) u.layout = 'corner'; draw(); tuEstimate(); }, k !== 'lang'); }
+      case 'tulayout': if (UI.tu) { UI.tu.layout = b.dataset.val; tuPaint(true); } return;
+      case 'tuaspect': if (UI.tu) { UI.tu.aspect = b.dataset.val; tuPaint(true); } return;
+      case 'tumake': return tuMake();
+      case 'tusheet': UI.dlg = {k: 'sheet', id: ARG, text: ''}; return dlgPaint();
+      case 'dlgx': return dlgClose();
+      case 'svopen': return svOpen(id);
+      case 'svadd': return svAdd(b.dataset.t, !!b.dataset.w);
+      case 'svdrop': if (UI.dlg) { UI.dlg.blanks = UI.dlg.blanks.filter(x => x.text !== b.dataset.t); dlgPaint(); } return;
+      case 'svsave': return svSave();
+      case 'shfile': return $('#hxShFile')?.click();
+      case 'shmake': return shMake();
+      case 'shstudio': dlgClose(); UI.lf = 'plan'; return go('studio');
+      case 'tpldel': { const t = tplOf(id); if (!confirm(`Delete “${t?.name || 'this template'}”? Videos made from it stay.`)) return;
+        try { await api('DELETE', `${H}/template?id=${q(id)}`); await load(); draw(); } catch (er) { toast(er.message, true); } return; }
+      case 'tplsave': return tplSave(id);
+      case 'aopen': if (UI.dlg?.k === 'need') dlgClose(); return appOpen(b, id);
+      case 'aeng': dlgClose(); return go('engines');
+      case 'agrp': UI.ag = b.dataset.val; return draw();
+      case 'aclear': UI.aq = ''; UI.ag = 'all'; UI.aready = false; return draw();
+      case 'arvid': arState().vid = id; draw(); if (ARG === 'names') arEstimate(lenOf((D.projects || []).find(x => x.id === id) || {})); return;
+      case 'arpick': { const r = arState(), k = b.dataset.k;
+        return pickMenu(b, k === 'tlang' ? 'lang' : k, v => { r[k] = v === 'auto' ? '' : v; draw(); }, k === 'tlang'); }
+      case 'arnames': { const r = arState(), names = nameList(r.names); if (!r.vid || !names.length) return;
+        r.busy = true; draw();
+        try { const out = await api('POST', `${H}/personalise`, {project: r.vid, names}); r.busy = false; r.names = ''; await load(); toast(`${num(out.made.length)} drafts made. Nothing is made until you press Make on each.`); UI.lf = 'plan'; return go('studio'); }
+        catch (er) { r.busy = false; draw(); toast(er.message, true); } return; }
+      case 'arbatch': { const r = arState(), scripts = scriptList(r.scripts); if (!scripts.length) return;
+        r.busy = true; draw();
+        try { const out = await api('POST', `${H}/batch`, {scripts, lang: r.lang || 'auto', avatar_id: r.face}); r.busy = false; r.scripts = ''; await load(); toast(`${num(out.made.length)} drafts made. Nothing is made until you press Make on each.`); UI.lf = 'plan'; return go('studio'); }
+        catch (er) { r.busy = false; draw(); toast(er.message, true); } return; }
+      case 'artrans': { const r = arState(); if (!r.vid || !r.tlang) return;
+        r.busy = true; draw();
+        try { const p = await api('POST', `${H}/translate`, {id: r.vid, lang: r.tlang}); r.busy = false; await load(); UI.scene = 0; toast('A translated draft is ready. Lines that changed a number are marked.'); return go('studio', p.id); }
+        catch (er) { r.busy = false; draw(); toast(er.message, true); } return; }
+      case 'abidea': UI.broll.prompt = b.dataset.t; return draw();
+      case 'abs': UI.broll.seconds = +b.dataset.val; UI.broll.q = null; draw(); return abQuote();
+      case 'aba': UI.broll.aspect = b.dataset.val; return draw();
+      case 'abmake': { const br = UI.broll; br.prompt = ($('#hxArBr')?.value || '').trim();
+        br.busy = true; draw();
+        try { await api('POST', `${X}/broll`, {prompt: br.prompt, seconds: br.seconds, aspect: br.aspect, quote_key: br.q?.key || ''}); br.busy = false; br.prompt = ''; await load(); draw(); abWatch(); toast('Making the shot. It appears here when ready.'); }
+        catch (er) { br.busy = false; draw(); toast(er.message, true); } return; }
+      case 'avadd': if ((D.avatars || []).length >= AVMAX) return toast(`You have ${AVMAX} faces. Remove one first.`);
+        UI.dlg = {k: 'avphoto', who: 'me', consent: false}; return dlgPaint();
+      case 'avai': if ((D.avatars || []).length >= AVMAX) return toast(`You have ${AVMAX} faces. Remove one first.`);
+        UI.dlg = {k: 'avai', age: '30s', look: 'warm', behind: 'wall', items: []}; dlgPaint();
+        api('GET', `${S}/avatar/ai/quote?count=4`).then(r => { if (UI.dlg?.k === 'avai') { UI.dlg.quote = r; dlgPaint(); } }).catch(() => { if (UI.dlg?.k === 'avai') { UI.dlg.quote = {ready: false}; dlgPaint(); } }); return;
+      case 'avtwin': UI.dlg = {k: 'avtwin'}; return dlgPaint();
+      case 'avpick': return $('#hxAvPh')?.click();
+      case 'avphsave': return avPhSave();
+      case 'aiopt': if (UI.dlg?.k === 'avai') { const k = b.dataset.k; UI.dlg.describe = $('#hxAiD')?.value ?? UI.dlg.describe; UI.dlg[k] = UI.dlg[k] === b.dataset.val ? '' : b.dataset.val; dlgPaint(); } return;
+      case 'aimake': return aiMake();
+      case 'aipick': if (UI.dlg?.k === 'avai') { UI.dlg.describe = $('#hxAiD')?.value ?? UI.dlg.describe; UI.dlg.name = $('#hxAiNm')?.value ?? UI.dlg.name; UI.dlg.pick = id; dlgPaint(); } return;
+      case 'aikeep': return aiKeep();
+      case 'avsel': (UI.av ||= {}).sel = id; return draw();
+      case 'avkind': (UI.av ||= {}).kind = b.dataset.val; return draw();
+      case 'avsort': return menu(b, [['used', 'Most used'], ['name', 'By name'], ['new', 'Newest']].map(([v, l]) => ({label: l, checked: (UI.av?.sort || 'used') === v, run: () => { (UI.av ||= {}).sort = v; draw(); }})));
+      case 'avvid': return go('studio', id);
+      case 'avren': UI.dlg = {k: 'avren', id}; return dlgPaint();
+      case 'avrensave': { const n = ($('#hxAvRn')?.value || '').trim(); if (!n) return toast('Give the face a name.');
+        try { await api('PATCH', `${S}/avatar`, {id: UI.dlg.id, name: n}); UI.dlg = null; dlgPaint(); await load(); draw(); toast('Renamed.'); } catch (er) { toast(er.message, true); } return; }
+      case 'avdefault': if (SET.face === id) { setPick('face', ''); toast('No default face now. New videos start without one.'); } else { setPick('face', id); toast(`New videos start with ${face(id)?.name || 'this face'}.`); } return;
+      case 'avtest': return avTest(id);
+      case 'avdel': { const a = face(id); const n = avUses(a || {}).length;
+        if (!confirm(`Remove ${a?.name || 'this face'}?${n ? ` ${n} video${n === 1 ? ' uses' : 's use'} it; those drafts lose the face, and videos already made keep it.` : ''} This cannot be undone.`)) return;
+        try { await api('DELETE', `${S}/avatar?id=${q(id)}`); if (SET.face === id) setPick('face', ''); if (UI.av?.sel === id) UI.av.sel = ''; await load(); draw(); toast('Face removed.'); } catch (er) { toast(er.message, true); } return; }
+      case 'useface': setPick('face', id); toast('Your next video uses this face.'); return;
+      case 'setvoice': setPick('voice', id); return;
+      case 'voplay': return voPlay(id);
+      case 'vosel': (UI.vo ||= {}).sel = id; return voRepaint();
+      case 'vokind': Object.assign(UI.vo ||= {}, {k: b.dataset.val, more: 0}); return voRepaint();
+      case 'vomore': (UI.vo ||= {}).more = (UI.vo.more || 0) + 1; return voRepaint();
+      case 'vofav': return voFavToggle(id);
+      case 'vogen': return menu(b, [['', 'Any gender'], ['female', 'Women'], ['male', 'Men']].map(([v, l]) => ({label: l, checked: (UI.vo?.g || '') === v, run: () => { Object.assign(UI.vo ||= {}, {g: v, more: 0}); voRepaint(); }})));
+      case 'volang': return menu(b, [{search: 'Samples in', empty: 'No language matches'}, ...(UI.L || []).map(l => ({label: l.native && l.native !== l.name ? `${l.name} · ${l.native}` : l.name, sub: l.region, checked: voLang() === l.code,
+        run: () => { (UI.vo ||= {}).lang = l.code; UI.audio?.pause(); UI.voPlay = ''; voRepaint(); }}))], {width: 280});
+      case 'vouse': setPick('voice', id); toast(`New videos speak in ${voOf(id)?.name || 'this voice'}.`); return;
+      case 'voput': UI.dlg = {k: 'voput', id, ids: []}; return dlgPaint();
+      case 'voputgo': return voPutGo();
+      case 'vovocal': window.__hvPage = 'voices'; leave(); return ctx.go ? ctx.go('vocal') : back?.();
+      case 'livenew': UI.live = 'new'; UI.ld = null; UI.ldDirty = false; UI.liveOut = []; UI.lvTab = 'try'; return draw();
+      case 'liveopen': UI.live = id; UI.ld = null; UI.ldDirty = false; UI.liveOut = []; UI.lvTab = 'try'; return draw();
+      case 'livetry': UI.live = id; UI.ld = null; UI.ldDirty = false; UI.liveOut = []; UI.lvTab = 'try'; draw(); return $('#hxTryIn')?.focus();
+      case 'liveback': if (UI.ldDirty && !confirm('Leave without saving your changes?')) return; UI.live = ''; UI.ld = null; UI.ldDirty = false; UI.audio?.pause(); return draw();
+      case 'lvpick': { const k = b.dataset.k;
+        if (k === 'face') return menu(b, [{label: 'None', checked: !lvDraft().avatar_id, run: () => { lvSet('avatar_id', ''); draw(); }}, ...(D.avatars || []).map(x => ({label: x.name, sub: x.kind === 'ai' ? 'Made by AI' : 'Consent on record', checked: lvDraft().avatar_id === x.id, run: () => { lvSet('avatar_id', x.id); draw(); }})),
+          {sep: true}, {label: 'Add a face', icon: 'plus', run: () => go('avatars')}]);
+        return pickMenu(b, k, v => { lvSet(k, v); UI.lvHear = false; draw(); }, true); }
+      case 'lvface': lvSet('face', id); return draw();
+      case 'lvhear': return lvHear();
+      case 'lvtab': UI.lvTab = b.dataset.val; if (UI.lvTab === 'qs' && UI.lvQs?.id !== UI.live) { UI.lvQs = null; draw(); return lvQsLoad(UI.live); } return draw();
+      case 'lvmic': return lvMic();
+      case 'livesave': return lvSave();
+      case 'livedel': if (!confirm('Remove this agent? If it is on your website it stops answering there.')) return; try { await api('DELETE', `${X}/live?id=${q(id)}`); UI.live = ''; UI.ld = null; UI.ldDirty = false; await load(); draw(); toast('Agent removed.'); } catch (er) { toast(er.message, true); } return;
+      case 'liveask': return lvAsk();
+      case 'livesess': return liveSession();
+      case 'lvweb': { const a = lvOf(id); UI.dlg = {k: 'lvweb', id, sites: [...(a?.sites || [])]}; return dlgPaint(); }
+      case 'lvsiteadd': { const s = UI.dlg, v = ($('#hxLvSite')?.value || '').trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0]; if (!s || !v) return;
+        if (!/^[a-z0-9.-]{3,120}$/.test(v) || !v.includes('.')) return toast('Write a website address, like myshop.com.');
+        if (!s.sites.includes(v) && s.sites.length < 5) s.sites.push(v); s.embed = ''; return dlgPaint(); }
+      case 'lvsitedel': UI.dlg.sites.splice(+b.dataset.i, 1); return dlgPaint();
+      case 'lvpub': { const s = UI.dlg; if (!s) return; if (s.embed) return dlgClose(); s.busy = true; dlgPaint();
+        try { const r = await api('POST', `${X}/live/publish`, {id: s.id, on: true, sites: s.sites}); s.busy = false; s.embed = r.embed; await load(); dlgPaint(); if (PAGE === 'live') draw(); toast('It is on your website once you paste the line.'); }
+        catch (er) { s.busy = false; dlgPaint(); toast(er.message, true); } return; }
+      case 'lvunpub': { const s = UI.dlg; if (!s || !confirm('Take it off your website? It stops answering there at once.')) return;
+        try { await api('POST', `${X}/live/publish`, {id: s.id, on: false}); UI.dlg = null; dlgPaint(); await load(); draw(); toast('Taken off your website.'); } catch (er) { toast(er.message, true); } return; }
+      case 'lvcopy': try { await navigator.clipboard.writeText(UI.dlg?.embed || ''); toast('Copied. Paste it before the closing body tag of your pages.'); } catch { toast('Select the line and copy it.', true); } return;
+      case 'lvlearn': { const qid = b.dataset.q; if (!qid) return toast('Open Questions to add the answer.');
+        const a = lvOf(id), m = (a?.misses || []).find(x => x.id === qid) || (UI.lvQs?.rows || []).find(x => x.id === qid);
+        UI.dlg = {k: 'lvlearn', id, qid, q: m?.q || '', answer: ''}; return dlgPaint(); }
+      case 'lvlearnsave': { const s = UI.dlg, t = ($('#hxLvAns')?.value || '').trim(); if (!s) return; if (!t) return toast('Write the answer.');
+        s.busy = true; dlgPaint();
+        try { await api('POST', `${X}/live/learn`, {id: s.id, qid: s.qid, answer: t}); UI.dlg = null; dlgPaint(); UI.ld = null; UI.lvQs = null; await load(); draw(); toast('Added to its facts. It answers that next time.'); }
+        catch (er) { s.busy = false; dlgPaint(); toast(er.message, true); } return; }
+      case 'lvdismiss': { const s = UI.dlg; if (!s) return; try { await api('POST', `${X}/live/dismiss`, {id: s.id, qid: s.qid}); UI.dlg = null; dlgPaint(); UI.lvQs = null; await load(); draw(); } catch (er) { toast(er.message, true); } return; }
+      case 'ptab': UI.ptab = b.dataset.val; return draw();
+      case 'brsave': return brSave();
+      case 'brshow': { const d = brS(); d.show_name = !d.show_name; b.setAttribute('aria-checked', String(d.show_name)); return brPvPaint(); }
+      case 'brsw': { brS().color = b.dataset.val.toUpperCase(); $$('.hx-brsw').forEach(x => { const on = x.dataset.val === brS().color; x.classList.toggle('on', on); x.setAttribute('aria-checked', String(on)); });
+        const h = $('#hxBrHex'); if (h) h.value = brS().color; const pk = $('#hxBrPick'); if (pk) pk.value = brS().color.toLowerCase(); return brPvPaint(); }
+      case 'brcard': brS().card = b.dataset.val; return draw();
+      case 'brshape': UI.brShape = b.dataset.val; return brPvPaint();
+      case 'brlogo': return $('#hxBrLogoF')?.click();
+      case 'brlogodel': UI.dlg = {k: 'brlogodel'}; return dlgPaint();
+      case 'brlogogo': { UI.dlg.busy = true; dlgPaint(); try { UI.bri = await api('DELETE', `${H}/brand/logo`); D.brand = UI.bri.brand; UI.brd = null; UI.brLogoV = (UI.brLogoV || 0) + 1; UI.dlg = null; dlgPaint(); draw(); toast('Logo removed.'); } catch (er) { UI.dlg.busy = false; dlgPaint(); toast(er.message, true); } return; }
+      case 'brkit': { const k = UI.bri?.kit || {}, d = brS(); const pick = [k.name && k.name !== d.name && 'name', k.color && k.color !== d.color && 'color', k.logo && !UI.bri?.logo?.on && 'logo', k.website && k.website !== d.qr_url && 'qr'].filter(Boolean);
+        UI.dlg = {k: 'brkit', pick}; return dlgPaint(); }
+      case 'brkitgo': { const s2 = UI.dlg; s2.busy = true; dlgPaint();
+        try { UI.bri = await api('POST', `${H}/brand/kit`, {fields: s2.pick}); D.brand = UI.bri.brand; UI.brd = null; UI.brLogoV = (UI.brLogoV || 0) + 1; UI.dlg = null; dlgPaint(); draw(); toast('Brought in from your Brand kit and saved.'); }
+        catch (er) { s2.busy = false; dlgPaint(); toast(er.message, true); } return; }
+      case 'gloadd': { const t = ($('#hxGlo')?.value || '').trim(), g = UI.gl ||= {mode: 'keep', lang: ''}; if (!t) return toast('Type the word first.');
+        const to = ($('#hxGloTo')?.value || '').trim(); g.lang = $('#hxGloLang')?.value || g.lang;
+        if (g.mode === 'as' && (!to || !g.lang)) return toast('Say what it becomes, and in which language.', true);
+        try { D.glossary = await api('POST', `${H}/glossary`, {term: t, mode: g.mode, to, lang: g.lang}); draw(); $('#hxGlo')?.focus(); } catch (er) { toast(er.message, true); } return; }
+      case 'glodel': try { D.glossary = await api('DELETE', `${H}/glossary?id=${q(id)}`); draw(); } catch (er) { toast(er.message, true); } return;
+      case 'etab': UI.etab = b.dataset.val; draw(); enPrices(UI.etab); if (UI.etab === 'broll') brQuote(); return;
+      case 'enlen': enS().len[UI.etab] = +b.dataset.val; draw(); return enPrices(UI.etab);
+      case 'enready': { const st = enS(); st.ready = !st.ready; store.set('hx.enready', st.ready); return draw(); }
+      case 'ensort': { const st = enS(), set = v => { st.sort = v; store.set('hx.ensort', v); draw(); };
+        return menu(b, [['price', 'Lowest price'], ['quality', 'Best quality'], ['ready', 'Ready first']].map(([v, l]) => ({label: l, checked: st.sort === v, run: () => set(v)})), {width: 220}); }
+      case 'enone': return enOpen(id);
+      case 'enuse': SET.engine = id; persist(); dlgClose(); return go('chat');
+      case 'enmkshot': dlgClose(); UI.etab = 'broll'; draw(); brQuote(); return setTimeout(() => $('#hxBr')?.focus(), 50);
+      case 'edef': try { await api('PUT', `${X}/engines/default`, {id}); await load(); if (D.engines.engines.find(x => x.id === id)?.job === 'video') { SET.engine = ''; persist(); } draw(); if (UI.dlg?.k === 'eng') { const r = enS().one?.r; if (r) r.engine = enAll().find(x => x.id === id) || r.engine; dlgPaint(); } toast('Default engine changed.'); } catch (er) { toast(er.message, true); } return;
+      case 'brs': UI.broll.seconds = +b.dataset.val; UI.broll.q = null; draw(); return brQuote();
+      case 'bra': UI.broll.aspect = b.dataset.val; return draw();
+      case 'brmake': { UI.broll.prompt = ($('#hxBr')?.value || '').trim();
+        try { await api('POST', `${X}/broll`, {prompt: UI.broll.prompt, seconds: UI.broll.seconds, aspect: UI.broll.aspect, quote_key: UI.broll.q?.key || ''}); toast('Making the shot. It appears here when ready.'); await load(); draw(); setTimeout(async () => { await load(); if (PAGE === 'engines') draw(); }, 60000); }
+        catch (er) { toast(er.message, true); } return; }
+      case 'sttab': stS().tab = b.dataset.val; return draw();
+      case 'stpick': return stPickMenu(b, b.dataset.k);
+      case 'stkind': SET.kind = b.dataset.val; SET.shape = shapeOf(SET.kind); return stSave({kind: SET.kind});
+      case 'stlen': SET.len = +b.dataset.val; return stSave({len: SET.len});
+      case 'streset': try { const r = await api('POST', `${X}/settings/reset`); prefApply({...r.prefs, saved: true}); SET.engine = ''; store.set('hx.set', SET); if (stS().v) stS().v.prefs = r.prefs; toast("Back to Hoola's starting choices."); } catch (er) { toast(er.message, true); } draw(); stEstimate(); return;
+      case 'stcheck': return stLoad();
+      case 'strestore': try { await api('POST', `${H}/restore`, {id}); await load(); await stLoad(); toast('Brought back to Projects.'); } catch (er) { toast(er.message, true); } return;
+      case 'stemptyask': UI.dlg = {k: 'stempty'}; return dlgPaint();
+      case 'stempty': try { const r = await api('POST', `${H}/trash/empty`); dlgClose(); await load(); await stLoad(); toast(`${num(r.removed || 0)} deleted for good.`); } catch (er) { toast(er.message, true); } return;
+      case 'dvtab': dvS().tab = b.dataset.val === 'api' ? 'api' : 'over'; return draw();
+      case 'dvdoor': dvS().door = +b.dataset.val || 0; return draw();
+      case 'dvlang': dvS().lang = b.dataset.val || 'curl'; if (UI.dlg?.k === 'dvkey') dlgPaint(); return draw();
+      case 'dvsig': dlgClose(); dvS().tab = 'api'; return draw();
+      case 'dvcopy': try { await navigator.clipboard.writeText(dvTxt(b.dataset.val)); toast('Copied.'); } catch { toast('Select the text and copy it.', true); } return;
+      case 'dvkeyask': UI.dlg = {k: 'dvnew'}; return dlgPaint();
+      case 'dvhookask': UI.dlg = {k: 'dvhook'}; return dlgPaint();
+      case 'dvren': UI.dlg = {k: 'dvren', id}; return dlgPaint();
+      case 'dvdel': UI.dlg = {k: 'dvdel', id, what: b.dataset.val}; return dlgPaint();
+      case 'dvrensave': { const n = ($('#hxDvRn')?.value || '').trim(); if (!n) return toast('Give the key a name.');
+        try { await api('PATCH', `${X}/apps/keys`, {id: UI.dlg.id, name: n}); dlgClose(); toast('Renamed.'); await dvReload(); } catch (er) { toast(er.message, true); } return; }
+      case 'keynew': try { const k = await api('POST', `${X}/apps/keys`, {name: $('#hxDvName')?.value || ''}); UI.dlg = {k: 'dvkey', key: k.key, name: k.name}; dlgPaint(); await dvReload(); } catch (er) { toast(er.message, true); } return;
+      case 'keydel': try { await api('DELETE', `${X}/apps/keys?id=${q(id)}`); dlgClose(); toast('Removed. Programs using it stop at once.'); await dvReload(); } catch (er) { toast(er.message, true); } return;
+      case 'hooknew': { const ev = [...document.querySelectorAll('input[name=hxDvEv]:checked')].map(x => x.value);
+        if (!ev.length) return toast('Pick at least one event.', true);
+        const url = $('#hxDvUrl')?.value || '';
+        try { const h = await api('POST', `${X}/apps/hooks`, {url, events: ev}); UI.dlg = {k: 'dvsecret', secret: h.secret}; dlgPaint(); await dvReload(); }
+        catch (er) { UI.dlg = {k: 'dvhook', url, ev}; dlgPaint(); toast(er.message, true); } return; }
+      case 'hookdel': try { await api('DELETE', `${X}/apps/hooks?id=${q(id)}`); dlgClose(); toast('Webhook removed.'); await dvReload(); } catch (er) { toast(er.message, true); } return;
+      case 'hooktest': b.disabled = true; try { const h = await api('POST', `${X}/apps/hooks/test`, {id}); toast(/^2\d\d$/.test(h.last_status || '') ? `Your server answered ${h.last_status} OK.` : `Your server answered: ${h.last_status || 'nothing'}`, !/^2\d\d$/.test(h.last_status || '')); await dvReload(); } catch (er) { toast(er.message, true); b.disabled = false; } return;
+    }
+  }
+  function onInput(e) {
+    const t = e.target;
+    if (t.dataset.isc != null) { saveLine(t.dataset.id, +t.dataset.isc, t.value); return; }
+    if (t.id === 'hxAsk') { C.ask = t.value; t.style.height = 'auto'; t.style.height = Math.min(180, t.scrollHeight) + 'px'; $('.hx-send')?.classList.toggle('on', !!t.value.trim()); return; }
+    if (t.dataset?.lv && PAGE === 'live') { const k = t.dataset.lv; lvSet(k, k === 'minutes_day' ? +t.value : t.value);
+      if (k === 'knows') { const n = $('#hxLvNums'), L = $('#hxLvLen'), xs = lvNums(t.value); if (L) L.textContent = `${num(t.value.length)} of 6,000 characters`;
+        if (n) n.innerHTML = xs.length ? `<span class="hx-mut hx-sm">Numbers it may say:</span>${xs.map(x => `<span class="hx-lvnum hx-num">${esc(x)}</span>`).join('')}` : '<span class="hx-mut hx-sm">No numbers yet. It will not say a price, time or number until you write it here.</span>'; }
+      if (k === 'minutes_day') { const m = $('#hxLvMin'); if (m) m.textContent = `${num(+t.value)} min`; }
+      return; }
+    if (t.id === 'hxPjq') { pjS().q = t.value; return pjPaint(); }
+    if (t.id === 'hxBrName') { brS().name = t.value; return brPvPaint(); }
+    if (t.id === 'hxBrClose') { brS().closing = t.value; return brPvPaint(); }
+    if (t.id === 'hxBrQr') { brS().qr_url = t.value.trim(); return brPvPaint(); }
+    if (t.id === 'hxBrHex' || t.id === 'hxBrPick') { let v = t.value.trim(); if (!v.startsWith('#')) v = '#' + v; if (!brOk(v)) return; brS().color = v.toUpperCase();
+      $$('.hx-brsw').forEach(x => { const on = x.dataset.val === brS().color; x.classList.toggle('on', on); x.setAttribute('aria-checked', String(on)); });
+      const o = $(t.id === 'hxBrHex' ? '#hxBrPick' : '#hxBrHex'); if (o) o.value = t.id === 'hxBrHex' ? brS().color.toLowerCase() : brS().color; return brPvPaint(); }
+    if (t.id === 'hxVoq') { Object.assign(UI.vo ||= {}, {q: t.value, more: 0}); const l = $('#hxVoList'); if (l) l.innerHTML = voList(); const sm = t.parentElement?.querySelector('small'); if (sm) sm.textContent = t.value ? 'Best matches first' : ''; return; }
+    if (t.id === 'hxAvq') { (UI.av ||= {}).q = t.value; const l = $('#hxAvList'); if (l) l.innerHTML = avList(); fillMedia(); return; }
+    if (UI.dlg && t.id === 'hxAvNm') { UI.dlg.name = t.value; return; }
+    if (UI.dlg && t.id === 'hxAvPer') { UI.dlg.person = t.value; return; }
+    if (UI.dlg && t.id === 'hxAiD') { UI.dlg.describe = t.value; return; }
+    if (UI.dlg && t.id === 'hxAiNm') { UI.dlg.name = t.value; return; }
+    if (t.id === 'hxAq') { UI.aq = t.value; const l = $('#hxAppList'); if (l) l.innerHTML = appsList(); return; }
+    if (t.id === 'hxArBr') { UI.broll.prompt = t.value; return; }
+    if (t.id === 'hxArNames' || t.id === 'hxArBatch') { const r = arState(); r[t.id === 'hxArNames' ? 'names' : 'scripts'] = t.value;
+      const nn = t.id === 'hxArNames' ? nameList(t.value).length : scriptList(t.value).length, max = D.limits?.batch || 20, wd = t.id === 'hxArNames' ? 'name' : 'script';
+      const c = $('#hxArN'); if (c) c.textContent = `${num(nn)} ${wd}${nn === 1 ? '' : 's'} · up to ${num(max)}`;
+      const pr = $('#hxArPrice'); if (pr) pr.innerHTML = arPriceNow();
+      const mk = $(t.id === 'hxArNames' ? '[data-a=arnames]' : '[data-a=arbatch]');
+      if (mk) { mk.disabled = !nn || nn > max || (t.id === 'hxArNames' && !r.vid); mk.textContent = `Make ${nn ? num(nn) + ' ' : ''}draft${nn === 1 ? '' : 's'}`; }
+      clearTimeout(UI.arT); UI.arT = setTimeout(() => { if (PAGE === 'apps' && !$('#hxArNames:focus, #hxArBatch:focus')) draw(); }, 2500);
+      const li = $('#hxArList'); if (li && t.id === 'hxArNames') { const p = (D.projects || []).find(x => x.id === r.vid);
+        li.innerHTML = nameList(t.value).slice(0, 6).map((n, i) => `<li><span class="n">${i + 1}</span><b>${esc(n)}</b><span>${esc(String(p?.scenes?.[0]?.say || '').replace(/\{name\}/g, n))}</span></li>`).join(''); }
+      return; }
+    if (t.id === 'hxTq') { UI.tq = t.value; const l = $('#hxTplList'); if (l) { l.innerHTML = tplList(); fillMedia(); } return; }
+    if (t.dataset.tv && UI.tu) { UI.tu.vals[t.dataset.tv] = t.value; tuPaint(); tuEstimate(); return; }
+    if (t.id === 'hxSvName' && UI.dlg) { UI.dlg.name = t.value; return; }
+    if (t.dataset.svk != null && UI.dlg?.blanks) { const bb = UI.dlg.blanks[+t.dataset.svk]; if (bb) { bb.label = t.value; bb.auto = false; $$('#hxSvText .hx-svb').filter(x => x.dataset.t === bb.text).forEach(x => { x.textContent = t.value || 'blank'; }); } return; }
+    if (t.id === 'hxShText' && UI.dlg) { UI.dlg.text = t.value; const tt = tplOf(UI.dlg.id), r = tt && sheetParse(tt, t.value), sm = $('#hxShSum'), mk = $('#hxDlg [data-a=shmake]');
+      if (r && sm) sm.textContent = r.rows.length ? `${num(r.rows.length)} row${r.rows.length === 1 ? '' : 's'}${r.miss.length ? ` · no column for: ${r.miss.map(x => x.label.toLowerCase()).join(', ')}` : ' · every blank has a column'}` : '';
+      if (r && mk) { mk.disabled = !r.rows.length || r.rows.length > 50; mk.textContent = `Make ${r.rows.length ? num(r.rows.length) + ' ' : ''}draft${r.rows.length === 1 ? '' : 's'} · free`; } return; }
+    if (t.id === 'hxLq') { UI.lq = t.value; const l = $('#hxLibList'); if (l) { l.innerHTML = libList(); fillMedia(); } return; }
+    const p = PAGE === 'studio' && cur(); if (!p) return;
+    if (t.dataset.sc != null) { const n = +t.dataset.sc, sc = p.scenes.map((s, i) => i === n ? {...s, say: t.value} : s); p.scenes = sc; saveSoon({scenes: sc});
+      if (n === UI.scene) { const c = $('#hxEdStage .hx-pvcap'); if (c) c.textContent = t.value; } edTimes(p); return; }
+    if (t.dataset.it != null) { const items = $$('#hxItems .hx-itrow').map(r => ({name: r.querySelector('[data-ik=name]').value, price: r.querySelector('[data-ik=price]').value, note: ''}));
+      p.items = items; saveSoon({items}); return; }
+    if (t.dataset.f) { saveSoon({[t.dataset.f]: t.value}); return; }
+    if (t.dataset.lk) { const sc = p.scenes.map((s, i) => i === UI.scene ? {...s, look: {...s.look, [t.dataset.lk]: t.value}} : s); p.scenes = sc; saveSoon({scenes: sc});
+      const lb = $('#hxEdStage .hx-pvlook'); if (lb) lb.innerHTML = lookText(sc[UI.scene].look) ? `<b>${esc(lookText(sc[UI.scene].look))}</b>` : ''; return; }
+    if (t.dataset.bar != null) { const sc = p.scenes.map((s, i) => i !== UI.scene ? s : {...s, look: {...s.look, bars: (s.look.bars || []).map((bb, j) => j === +t.dataset.bar ? {...bb, [t.dataset.bk]: t.value} : bb)}}); p.scenes = sc; saveSoon({scenes: sc});
+      const lb = $('#hxEdStage .hx-pvlook'); if (lb) lb.innerHTML = `<b>${esc(lookText(sc[UI.scene].look))}</b>`; }
+  }
+  function onChange(e) {
+    const t = e.target;
+    if (t.id === 'hxAready') { UI.aready = t.checked; const l = $('#hxAppList'); if (l) l.innerHTML = appsList(); return; }
+    if (t.id === 'hxShFile' && UI.dlg) { const f = t.files?.[0]; if (!f) return; if (f.size > 2 * 1024 * 1024) return toast('That file is larger than 2 MB.', true);
+      const rd = new FileReader(); rd.onload = () => { UI.dlg.text = String(rd.result || ''); dlgPaint(); }; rd.readAsText(f); return; }
+    if (t.dataset?.vop && UI.dlg?.k === 'voput') { const id = t.dataset.vop, ids = UI.dlg.ids; if (t.checked) { if (!ids.includes(id)) ids.push(id); } else UI.dlg.ids = ids.filter(x => x !== id); return dlgPaint(); }
+    if (t.id === 'hxGloMode') { (UI.gl ||= {mode: 'keep', lang: ''}).mode = t.value; const term = $('#hxGlo')?.value || ''; draw(); const f = $('#hxGlo'); if (f) { f.value = term; f.focus(); } return; }
+    if (t.id === 'hxGloLang') { (UI.gl ||= {mode: 'keep', lang: ''}).lang = t.value; return; }
+    if (t.dataset?.brkit && UI.dlg?.k === 'brkit') { const f = t.dataset.brkit; UI.dlg.pick = t.checked ? [...new Set([...UI.dlg.pick, f])] : UI.dlg.pick.filter(x => x !== f); const g = $('[data-a=brkitgo]'); if (g) g.disabled = !UI.dlg.pick.length; return; }
+    if (t.id === 'hxBrLogoF') { const f = t.files?.[0]; t.value = ''; if (!f) return; if (f.size > 8 * 1024 * 1024) return toast('That picture is larger than 8 MB.', true);
+      toast('Adding your logo…');
+      (async () => { try { const up = await upload(f); UI.bri = await api('POST', `${H}/brand/logo`, {file_id: up.file_id}); UI.brLogoV = (UI.brLogoV || 0) + 1;
+        const d = brS(); if (d.card === 'none') d.card = 'logo'; else if (d.card === 'qr') d.card = 'both'; draw(); toast('Logo added. Press Save to put it on the closing card.'); } catch (er) { toast(er.message, true); } })(); return; }
+    if (t.dataset?.pjsel) { const st = pjS(), id = t.dataset.pjsel; st.sel = t.checked ? [...new Set([...st.sel, id])] : st.sel.filter(x => x !== id); return pjPaint(); }
+    if (t.id === 'hxPjAll') { const st = pjS(); st.sel = t.checked ? pjRows().map(p => p.id) : []; return pjPaint(); }
+    if (t.id === 'hxAvPh') return avPhFile(t.files?.[0]);
+    if (t.name === 'hxAvWho' && UI.dlg?.k === 'avphoto') { UI.dlg.who = t.value; return dlgPaint(); }
+    if (t.id === 'hxAvOk' && UI.dlg?.k === 'avphoto') { UI.dlg.consent = t.checked; return dlgPaint(); }
+    if (t.name === 'peng' && PAGE === 'studio') return save({engine: t.value});
+  }
+  async function liveSession() {
+    try {
+      const s = await api('POST', `${X}/live/session`, {id: UI.live});
+      if (s.kind === 'tavus' && s.url) { window.open(s.url, '_blank', 'noopener'); toast('Tavus opened in a new tab.'); return; }
+      if (s.kind === 'gpulab') { window.open('/static/interactive/live.html', '_blank', 'noopener'); return; }
+      if (s.kind === 'voice') { toast('This agent answers by voice only. Ask it something.'); return; }
+      toast(`${engine(s.engine)?.label || 'The face engine'} gave a session pass. Showing its face in this page needs its browser kit, which is not added yet; Try it answers by voice meanwhile.`);
+    } catch (er) { toast(er.message, true); }
+  }
   return {open, leave};
 };

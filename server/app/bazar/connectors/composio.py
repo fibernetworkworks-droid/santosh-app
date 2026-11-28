@@ -31,8 +31,8 @@ def _need_account(pack: Pack, ctx: Ctx) -> str:
     if not ca and cmp.mode(_kit(pack)) in ("setup", "unknown"):
         raise ToolError(cmp.SETUP_TEXT.format(name=pack.name))
     if not ca and cmp.mode(_kit(pack)) == "key":
-        raise ToolError(f"NOT_LINKED: {pack.name} connects with its own API key. In the Hoola app go to Connect > MCP servers > Apps > "
-                        f"{pack.name} > 'Add key' and enter your {pack.name} key there (never in the chat).")
+        raise ToolError(f"NOT_LINKED: {pack.name} connects with its own API key. In the Hoola app open Connectors, find "
+                        f"{pack.name} and tap 'Add key' and enter your {pack.name} key there (never in the chat).")
     if not ca:
         raise ToolError(f"NOT_LINKED: {pack.name} is not connected yet. Ask Hoola to 'connect {pack.name}' or "
                         f"tap Connect on {pack.name} in Connect > Apps, then sign in with your {pack.name} account.")

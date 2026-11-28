@@ -1,6 +1,6 @@
 // v0.924 HOOLA CODE FIRST SCREEN (owner, on her Claude Code screenshot: "WE WANT SAME ... FOR HOOLA CODE WHEN ITS OWN
 // HOOLA CODE CHAT SESSION ... AND BAR" -> design canvas claude.ai/artifact/Au9zBc5gmkVsNLwVc41rCM -> "GO"):
-//   * CodeNewSessionPage = the New session screen: back + "New session", the Hoola mark and "Ready when you are",
+//   * CodeNewSessionPage = the New session screen: back + "New session", the Hoola mark and "What should we build today?",
 //     two chips (the environment, the repository + branch), one pill bar;
 //   * CodeBar = that pill bar, also used inside every session: +, the field, the mic (tap = dictate, hold = talk,
 //     slide left to cancel, let go to send), the round send (grey until there are words) or Stop while Hoola works.
@@ -22,7 +22,7 @@ import '../shell/hoola_credits.dart' show HoolaCreditsPage, hoolaCountry;
 import '../shell/hoola_quality.dart' show hoolaTierLoad, hoolaTierName, hoolaTierNow, showHoolaTierSheet;
 import '../shell/hoola_settings.dart' show hoolaOpenNew;
 import '../shell/hoola_tool_icons.dart' show svgPath;
-import '../devsahayak_new.dart' show DevEnvPage;
+import 'code_env.dart';
 import 'code_home.dart';
 import 'code_kit.dart';
 import 'code_more.dart';
@@ -625,8 +625,7 @@ class _CodeNewSessionPageState extends State<CodeNewSessionPage> {
             ]));
     if (!mounted || pick == null) return;
     if (pick == '+new') {
-      final saved = await Navigator.push<Map<String, dynamic>>(
-          context, MaterialPageRoute(builder: (_) => DevEnvPage(app: widget.app, netOn: _envs['net_on'] == true)));
+      final saved = await codePush<Map<String, dynamic>>(context, widget.app, CodeEnvPage(app: widget.app, netOn: _envs['net_on'] == true));
       if (saved == null || !mounted) return;
       await _load();
       if (mounted && cs(saved['id']).isNotEmpty) setState(() => _env = cs(saved['id']));
@@ -879,7 +878,7 @@ class _CodeNewSessionPageState extends State<CodeNewSessionPage> {
           return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             row('pic', Icons.photo_library_outlined, 'Pictures', 'A screenshot of the problem · up to 3'),
             row('doc', Icons.description_outlined, 'Text file', 'A log, an error, a spec · up to 3'),
-            row('mode', Icons.fact_check_outlined, 'How it works: $modeLabel', 'Ask first, plan first or on its own'),
+            row('mode', Icons.fact_check_outlined, 'How it works: $modeLabel', 'Ask first, plan first, each step or on its own'),
           ]);
         });
     if (!mounted || pick == null) return;
@@ -1023,7 +1022,7 @@ class _CodeNewSessionPageState extends State<CodeNewSessionPage> {
                             : Column(key: const ValueKey('ready'), mainAxisSize: MainAxisSize.min, children: [
                                 const HoolaMark(size: 58),
                                 const SizedBox(height: 20),
-                                Text('Ready when you are', textAlign: TextAlign.center, style: HoolaType.hero(c).copyWith(fontSize: 30)),
+                                Text('What should we build today?', textAlign: TextAlign.center, style: HoolaType.hero(c)),
                                 if (_st['github'] != true) ...[
                                   const SizedBox(height: 18),
                                   CodeOutline('Connect GitHub first', icon: Icons.link_rounded, onTap: () async {

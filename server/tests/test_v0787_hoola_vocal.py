@@ -51,8 +51,8 @@ def run(c):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.39"
-    assert "0.999.39+1037" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.169"
+    assert "0.999.169+1164" in (ROOT / "pubspec.yaml").read_text()
 
 
 def test_speech_is_kept_with_her_rules_applied_by_code(vocal):
@@ -77,6 +77,7 @@ def test_long_words_are_cut_at_sentence_ends_never_rewritten(vocal):
     assert all(p.endswith(".") for p in parts)
     assert V.pieces("x" * 1300, 500) and "".join(V.pieces("x" * 1300, 500)) == "x" * 1300
     r = run(V.tts("t1", text, voice="hv_Puck"))
+    parts = V.pieces(text, V.PIECE["gemini"])                         # v0.999.90: each engine has its own piece size
     assert len([s for s in vocal if s[0] == "hoola"]) == len(parts) and r["seconds"] > 0.2 * len(parts)
     with pytest.raises(V.VocalError, match="Studio"):
         run(V.tts("t1", "a" * (V.MAX_TOTAL + 1)))
@@ -148,14 +149,15 @@ def test_what_is_not_connected_is_reported_not_faked(vocal, monkeypatch):
     from app.create import service as CS
     from app.interactive import lab
     c = V.connected()
-    for never in ("changer", "isolate", "sfx_text", "pro_clone", "audio_native", "api", "watermark", "rupee_meter"):
+    for never in ("changer", "isolate", "sfx_text", "pro_clone", "audio_native"):   # v0.999.90: the AI mark + the price meter exist now; v0.999.125: her app keys = the api
         assert c[never] is False, never
+    assert c["api"] is True
     monkeypatch.setattr(CS, "ready", lambda: {"voice": False, "song": False, "dub": False})
     monkeypatch.setattr(lab, "configured", lambda: False)
     c = V.connected()
     assert not c["tts"] and not c["clone"] and not c["design"] and c["sfx_presets"]
     assert V.overview("t1")["voices"] == []                           # no engine = no voice offered
-    with pytest.raises(V.VocalError, match="GEMINI_API_KEY"):
+    with pytest.raises(V.VocalError, match="not set up on this server"):
         run(V.tts("t1", "Namaste.", voice="hv_Kore"))
     v = V.voice_design("t1", "Dadi", "An older woman, warm and slow, kind")
     with pytest.raises(V.VocalError, match="not connected"):
@@ -170,95 +172,51 @@ def test_no_code_from_the_agpl_project_and_the_routes_are_mounted():
     assert "_vocal_router(require_key, current_tenant)" in main and '"vocal": bool(getattr(st, "vocal_page", False))' in main
 
 
-OV = {"voices": [{"id": "hv_Kore", "name": "Kore", "gender": "female", "tone": "Confident", "kind": "hoola", "ready": True},
-                 {"id": "hv_Puck", "name": "Puck", "gender": "male", "tone": "Upbeat", "kind": "hoola", "ready": True},
-                 {"id": "mv_1", "name": "<i>Mine</i>", "kind": "clone", "tone": "Your recording", "gender": "", "ready": False, "consent_at": "2026-11-11T08:00:00+00:00"}],
-      "hoola_voices": 2, "my_voices": 1, "rules": [{"id": "pr_1", "word": "Akola", "say": "Uh-ko-laa", "lang": ""}],
-      "history": [{"id": "vo_aaaaaaaaaaaa", "kind": "tts", "title": "<b>Namaste</b> duniya", "voice_name": "Kore", "seconds": 4, "made": "2026-11-11T09:00:00+00:00", "ext": "wav"}],
-      "projects": [{"id": "vp_1", "title": "Kahani", "lang": "hi", "voice": "hv_Kore", "made": "2026-11-11T09:00:00+00:00",
-                    "chapters": [{"title": "Ek", "text": "Pehla.", "audio": "vo_aaaaaaaaaaaa", "seconds": 4}, {"title": "Do", "text": "Doosra."}]}],
-      "usage": {"month": "2026-11", "made": 1, "characters": 15, "minutes": 0.1, "by_kind": {"tts": 1}, "kept": 1, "kept_max": 200},
-      "langs": {"hi": "Hindi", "en": "English"}, "styles": {"friendly": "Friendly", "story": "Storyteller"}, "sfx": ["coin", "jump"],
-      "limits": {"characters": 40000, "lines": 40, "voices": 30, "sample_mb": 2, "history": 200},
-      "status": {"engines": {"speech": True, "lab": False, "ffmpeg": True, "music": False, "dub": False, "stt": False},
-                 "connected": {"tts": True, "library": True, "dialogue": True, "studio": True, "clone": False, "design": False, "sfx_presets": True,
-                               "sfx_text": False, "cleanup": True, "isolate": False, "changer": False, "stt": False, "music": False, "dub": False}}}
-
-
 def test_the_page_in_a_real_browser(arena_server):  # noqa: F811
-    """Hoola Vocal is its own full page with its own sidebar: every one of the twelve pages opens with no script error
-    and no sideways scroll, says its title once, never runs her text as HTML, SAYS what is not connected, and a
-    typed line is sent to the server with the voice and language she chose."""
+    """Hoola Vocal is its own full page with its own sidebar. v0.999.90 rebuilt it to the global design (the Vocal chat
+    home + 13 more pages; the full walk is tests/test_v0999_90_vocal_console.py). The intent kept here from v0.787:
+    every page opens with no script error and no sideways scroll and says its title once, her text is never run as
+    HTML, what is not connected is SAID, and a typed line is sent with the voice and language she chose."""
+    from tests.test_v0999_90_vocal_console import CONFIG, PAGES, install, open_vocal, page_to
     base, browser, key = arena_server
     ctx = browser.new_context(viewport={"width": 1280, "height": 900})
     ctx.add_init_script(f"localStorage.setItem('hoola.console.token', '{key}')")
     pg = ctx.new_page()
-    errs, sent = [], []
+    errs = []
+    st = {"calls": [], "tts": [], "sent": [], "rows": [], "items": []}
     pg.on("pageerror", lambda e: errs.append(str(getattr(e, "stack", "") or e)[:400]))
-    pg.route("**/api/console/config", lambda r: r.fulfill(json={"app": "Hoola", "v2": True, "stream": True, "sessions": True, "panel": True,
-                                                                   "projects": True, "human": True, "interactive": True, "vocal": True}))
-    pg.route("**/api/vocal/overview", lambda r: r.fulfill(json=OV))
-    pg.route("**/api/vocal/audio**", lambda r: r.fulfill(body=b"RIFF", content_type="audio/wav"))
-
-    def tts(r):
-        sent.append(r.request.post_data_json)
-        r.fulfill(json={**OV["history"][0], "id": "vo_bbbbbbbbbbbb"})
-    pg.route("**/api/vocal/tts", tts)
-    pg.goto(base + "/console/")
-    pg.wait_for_selector(".sn[data-v='vocal']")
-    pg.locator(".sn[data-v='vocal']").click()
-    pg.wait_for_selector("#hvRoot .hi-hero")
-    assert pg.locator("#hvRoot .hi-rb[data-p]").count() == 12
-    assert pg.evaluate("getComputedStyle(document.querySelector('#hvRoot .hi-rail')).display") == "flex"       # the shared design system reaches this page
-    home = pg.locator("#hvRoot").text_content()
-    assert "What should Hoola say?" in home and "<b>Namaste</b> duniya" in home and "GPU voice engine" in home
-    assert pg.locator("#hvRoot b b").count() == 0                                   # her title is text, never markup
-    import os
-    shots = os.environ.get("CONSOLE_SHOTS")
-    for page, said in [("voices", "Kore"), ("tts", "Generate speech"), ("dialogue", "Cast"), ("studio", "Kahani"), ("changer", "Not connected on this server yet"),
-                       ("sfx", "coin"), ("isolate", "Lift a voice out of music"), ("more", "Speech to text"), ("dict", "Uh-ko-laa"), ("history", "duniya"),
-                       ("settings", "Characters spoken")]:
-        pg.locator(f"#hvRoot .hi-rb[data-p='{page}']").click()
-        pg.wait_for_function("p => document.querySelector('#hvRoot .hi-rb[aria-current=page]')?.dataset.p === p", arg=page)
+    pg.route("**/api/console/config", lambda r: r.fulfill(json=CONFIG))
+    install(pg, st)
+    open_vocal(pg, base)
+    assert pg.locator("#hvRoot .hv-nv[data-p]").count() == 13                     # v0.999.96: four groups on the Create Studio frame
+    for page, said in PAGES:
+        page_to(pg, page)
+        if page == "dub":
+            pg.wait_for_function("() => document.querySelector('#hvView').textContent.includes('product-tour')")
         assert said in pg.locator("#hvView").text_content(), page
         assert pg.locator("#hvRoot h1").count() == 1, page
         assert pg.evaluate("document.querySelector('#hvView').scrollWidth <= document.querySelector('#hvView').clientWidth + 1"), page
-        assert pg.evaluate("[...document.querySelectorAll('#hvRoot select')].every(s => getComputedStyle(s).appearance === 'none')"), page
-        if shots:
-            pg.wait_for_timeout(1000)
-            pg.screenshot(path=f"{shots}/hv-{page}.png")
-    pg.locator("#hvRoot .hi-rb[data-p='voices']").click()
-    pg.locator("#hvRoot .hi-tab", has_text="My voices").click()
+    page_to(pg, "sounds")
+    assert "<b>Karibu</b> Mkate" in pg.locator("#hvView").text_content() and pg.locator("#hvRoot b b").count() == 0   # her title is text
+    page_to(pg, "changer")
+    assert "ElevenLabs is not connected" in pg.locator("#hvView").text_content()       # not connected = said, never faked
+    page_to(pg, "voices")
+    pg.locator("#hvRoot [data-a='vtab'][data-val='mine']").click()
     assert pg.evaluate("document.querySelector('#hvRoot').hidden") is False            # a tab click stays on the page (the console owns data-v)
-    v = pg.locator("#hvView").text_content()
-    assert "<i>Mine</i>" in v and "Consent given" in v and "needs the GPU voice engine" in v
-    assert pg.locator("#hvRoot .hv-voice [data-a='usev']").first.is_disabled()      # a voice that cannot speak here cannot be chosen
-    pg.locator("#hvRoot .hi-tab", has_text="Clone a voice").click()
-    assert pg.locator("#hvCOk").get_attribute("required") is not None               # the yes is a required field
-    pg.locator("#hvRoot .hi-rb[data-p='studio']").click()
-    pg.locator("#hvRoot .hi-av", has_text="Kahani").click()
-    pg.wait_for_selector("#hvPTitle")
-    assert pg.locator("#hvRoot [data-a='export']").is_disabled()                    # one chapter is not read yet
-    pg.locator("#hvRoot .hi-rb[data-p='tts']").click()
+    assert "<i>Mine</i>" in pg.locator("#hvView").text_content()
+    pg.locator("#hvRoot .hv-vrow [data-a='usev']").first.click()                        # Use = that voice on the Speech page
+    pg.wait_for_selector("#hvText")
     pg.locator("#hvText").fill("Namaste Akola.")
-    assert "14 / 40,000" in pg.locator("#hvCount").text_content()
-    pg.locator("#hvVoice").select_option("hv_Puck")
-    pg.locator("#hvRoot form[data-f='tts'] button.hi-btn").click()
-    pg.wait_for_function("() => !document.querySelector('#hvBar').hidden")           # the result opens in the player bar
-    assert sent == [{"text": "Namaste Akola.", "voice": "hv_Puck", "lang": "hi", "style": "friendly", "speed": 1, "rules": True}]
-    if shots:
-        pg.wait_for_timeout(600)
-        pg.screenshot(path=f"{shots}/hv-tts-done.png")
-        pg.locator("#hvRoot .hi-rb[data-p='home']").click()
-        pg.wait_for_timeout(1000)
-        pg.screenshot(path=f"{shots}/hv-home.png")
-        pg.evaluate("document.documentElement.setAttribute('data-theme','dark')")
-        pg.locator("#hvRoot .hi-rb[data-p='voices']").click()
-        pg.locator("#hvRoot .hi-tab", has_text="Library").click()
-        pg.wait_for_timeout(1000)
-        pg.screenshot(path=f"{shots}/hv-voices-dark.png")
-        pg.evaluate("document.documentElement.removeAttribute('data-theme')")
-    pg.locator("#hvRoot .hi-rb[data-a='back']").click()
+    assert "14 characters" in pg.locator("#hvCount").text_content()
+    if pg.locator("#hvRoot [data-a='spmore'][aria-expanded='false']").count():      # v0.999.133: the language sits under More settings
+        pg.locator("#hvRoot [data-a='spmore']").click()
+    pg.locator("#hvRoot [data-a='picklang']").click()
+    pg.locator(".hmenu .msearch input").fill("japanese")
+    pg.locator(".hmenu .mi:visible", has_text="Japanese").click()
+    pg.locator("#hvRoot [data-qbtn='speech']").click()
+    pg.wait_for_function("() => !document.querySelector('#hvBar').hidden")              # the first take opens in the player bar
+    assert len(st["tts"]) == 1 and st["tts"][0]["voice"] == "v_mine" and st["tts"][0]["lang"] == "ja" and st["tts"][0]["text"] == "Namaste Akola."
+    pg.locator("#hvRoot .hv-nv[data-a='back']").click()
     pg.wait_for_function("() => document.querySelector('#hvRoot').hidden === true")
     assert not errs, errs
     ctx.close()

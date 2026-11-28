@@ -38,6 +38,9 @@ Future<void> loadHoolaFamilies() async {
     HoolaFont.serif: ['Literata-Regular', 'Literata-Medium', 'Literata-SemiBold', 'Literata-Italic'],
     HoolaFont.mono: ['JetBrainsMono-Regular', 'JetBrainsMono-Medium'],
     HoolaFont.serifDark: ['LiterataDark-Regular', 'LiterataDark-SemiBold', 'LiterataDark-Italic'],   // v0.892
+    HoolaFont.greet: ['LiterataGreet-Regular'],   // v0.999.206 the greeting (330)
+    HoolaFont.greetDark: ['LiterataGreetDark-Regular'],   // v0.999.206 the dark greeting (290)
+    HoolaFont.title: ['LiterataTitle-SemiBold'],   // v0.999.206 page titles (530)
   };
   for (final e in fams.entries) {
     final l = FontLoader(e.key);

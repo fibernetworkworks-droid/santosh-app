@@ -13,6 +13,7 @@ const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAl
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const svg = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
 const IC = {
+  route: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="12" r="2"/><path d="M8 6h3a5 5 0 0 1 5 5M8 18h3a5 5 0 0 0 5-5"/>',   // v0.999.87 HOOLA ROUTE
   chat:'<path d="M4 5h16v11H8l-4 4z"/>', aaj:'<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
   kaam:'<path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>', baat:'<path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3"/>',
   main:'<path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0"/>'};
@@ -43,7 +44,7 @@ async function api(method, path, body, {raw = false, form = null, signal} = {}) 
     // v0.310 a 422 lists the field it did not like: say which and why ("seconds: must be 6 or more"), never a bare code
     const bad = data && Array.isArray(data.detail) && data.detail[0];
     const why = bad ? `${(bad.loc || []).filter(x => x !== 'body').join(' ') || 'value'}: ${String(bad.msg || '').replace(/^Input should be /, 'must be ').replace(/^Value error, /, '')}` : '';
-    const msg = (data && (data.detail?.message || (typeof data.detail === 'string' ? data.detail : '') || why || data.message)) || `The server refused the request (${r.status})`;
+    const msg = (data && (data.detail?.message || (typeof data.detail === 'string' ? data.detail : '') || why || data.message)) || ([502, 503, 504].includes(r.status) ? 'The server did not answer. It may be restarting after an update; nothing was charged. Try again in a minute.' : `The server refused the request (${r.status})`);
     if (r.status === 401 && path !== '/api/console/login' && path !== '/api/console/exchange') logout(true);
     throw new ApiError(r.status, msg);
   }
@@ -69,6 +70,8 @@ const APP_TOOLS = [['creative', 'Create', 'Pictures, videos, songs and voice-ove
   ['webdev', 'Web Development', 'Websites and web apps that go live'], ['appdev', 'App Development', 'Android and iPhone apps'],
   ['design', 'Design', 'Screens, posters and layouts'], ['prompting', 'Prompting', 'Turn a rough line into a clear brief'],
   ['code', 'Hoola Code', 'Changes to your code, as pull requests'], ['gamedev', 'Game Dev', 'Games built and tested for you'],
+  ['route', 'Route', 'Jobs that run by themselves, on a schedule or a trigger'],   // v0.999.87 HOOLA ROUTE
+  ['dod', 'Hoola DOD', 'Your coworker does real work for you'],   // v0.999.306 HOOLA DOD
   ['connectors', 'Connectors', 'Your apps, MCP servers and public APIs']];
 const HOUR_WORD = h => h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
 function soFar(iso) {   // "6 min so far" from a server time
@@ -112,7 +115,7 @@ function plusMenu(b) {
     {label: 'Use Hoola PC', sub: "Do it on Hoola's own cloud computer", icon: 'monitor', checked: on('qPc'), run: () => $('#qPc').click()}];
   if (imp && !imp.hidden) items.push({label: 'Improve my prompt', sub: 'See what Hoola understood first', icon: 'spark', run: () => imp.click()});
   items.push({sep: true}, {label: `Everything ${AV} can do`, icon: 'grid', run: () => go('kaam')});
-  HoolaMenu.open(b, items, {align: 'start', place: 'below', label: 'Add to this message', width: 280});
+  HoolaMenu.open(b, items, {align: 'start', place: 'below', label: 'Add to this message', width: 320, cls: 'plusm'});
 }
 function sessName() { const c = CH?.find(CONV), p = c?.project_id && PJ?.nameOf(c.project_id); return p ? `${p.emoji || ''} ${p.name}`.trim() : ''; }
 function drawSess() { const b = $('#sessBtn'); if (b) b.querySelector('.sl').textContent = sessName() || 'Session'; }
@@ -182,7 +185,7 @@ document.addEventListener('click', e => {   // v0.970 a start pill goes straight
   go('chat'); msg.value = b.dataset.send; msg.dispatchEvent(new Event('input')); composer.requestSubmit();
 });
 function showLogin(err) {
-  $('#app').hidden = true; $('#login').hidden = false; if (err) { $('#lerr').textContent = err; $('#lerr').hidden = false; }
+  $('#app').hidden = true; $('#login').hidden = false; lstep(1); if (err) lerr(err);
   $('#gbtn').disabled = false;
 }
 async function boot() {
@@ -193,8 +196,10 @@ async function boot() {
   const u = new URL(location.href), code = u.searchParams.get('code'), err = u.searchParams.get('error'), gApps = u.searchParams.get('google') === 'apps';
   if (code || err) history.replaceState(null, '', '/console/');
   if (code) {
-    try { const r = await api('POST', '/api/console/exchange', {code}); setToken(r.session_token); }
-    catch (e) { return showLogin(e.message); }
+    try {
+      const r = await api('POST', '/api/console/exchange', {code}); setToken(r.session_token);
+      if (r.new && !gApps) return gwelcome(r.name || '');   // GOOGLE SIGN UP: a new person gets the welcome step
+    } catch (e) { return showLogin(e.message); }
   }
   if (err) return showLogin(err);
   if (!TOKEN) return showLogin();
@@ -202,14 +207,80 @@ async function boot() {
 }
 function setToken(t) { TOKEN = t || ''; if (TOKEN) store.set('hoola.console.token', TOKEN); else store.del('hoola.console.token'); }
 $('#gbtn').addEventListener('click', () => {
-  if (!CONFIG.google) { $('#lerr').textContent = 'Google sign-in is unavailable. Use your Hoola ID and password.'; $('#lerr').hidden = false; return; }
-  $('#gbtn').innerHTML = '<span class="spin"></span> Opening Google…'; location.href = '/auth/google/start?web=1';
+  if (!CONFIG.google) return lerr('Google sign-in is not switched on for this server yet. Use your email.');
+  // GOOGLE SIGN UP: an email she already typed is picked for her on Google's page
+  const h = ($('#lemail').value || '').trim().toLowerCase(), hint = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(h) ? '&hint=' + encodeURIComponent(h) : '';
+  $('#gbtn').innerHTML = '<span class="spin"></span> Opening Google…'; location.href = '/auth/google/start?web=1' + hint;
 });
+function gwelcome(name) {   // GOOGLE SIGN UP: signed up with Google - her Google name filled in, she can change it
+  $('#app').hidden = true; $('#login').hidden = false; lstep(3);
+  $('#lname').value = name; $('#lname').dispatchEvent(new Event('input'));
+}
+/* SIGN UP: log in or sign up like Claude and ChatGPT - email -> a 6-digit code -> (new) your name */
+let LMAIL = '';
+function lerr(t) { const x = $('#lerr'); x.textContent = t || ''; x.hidden = !t; }
+function lstep(n) {
+  for (const i of [1, 2, 3]) $('#lstep' + i).hidden = i !== n;
+  $('#lmore').hidden = n !== 1; lerr('');
+  setTimeout(() => ($(n === 1 ? '#lemail' : n === 2 ? '#lcode' : '#lname') || {}).focus?.(), 30);
+}
+async function lbusy(btn, label, fn) {
+  const was = btn.textContent; btn.disabled = true; btn.textContent = label;
+  try { await fn(); } catch (er) { lerr(er.message); } finally { btn.disabled = false; btn.textContent = was; }
+}
+async function lsend() {
+  if (!CONFIG.email) throw new Error('Email sign-in is not switched on for this server yet. Use Continue with Google.');
+  const r = await api('POST', '/auth/email/start', {email: LMAIL});
+  $('#lgmail').hidden = !/@(gmail|googlemail)\.com$/.test(LMAIL);   // Open Gmail only where it helps
+  lcount();
+  $('#lsent').textContent = r.ok ? `We sent a 6-digit code to ${LMAIL}. It works for 10 minutes.` : (r.say || 'We sent a 6-digit code.');
+}
 $('#lform').addEventListener('submit', async e => {
-  e.preventDefault(); $('#lerr').hidden = true; const btn = $('#lbtn'); btn.disabled = true; btn.textContent = 'Signing in…';
+  e.preventDefault(); lerr('');
+  if (!$('#lstep1').hidden) {
+    const v = $('#lemail').value.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) return lerr('Enter a correct email address.');
+    LMAIL = v;
+    return lbusy($('#ebtn'), 'Sending the code…', async () => { await lsend(); $('#lcode').value = ''; lstep(2); });
+  }
+  if (!$('#lstep2').hidden) {
+    const c = $('#lcode').value.replace(/\D/g, '');
+    if (c.length !== 6) return lerr('Type the 6-digit code from the email.');
+    return lbusy($('#cbtn'), 'Checking…', async () => {
+      const r = await api('POST', '/auth/email/verify', {email: LMAIL, code: c});
+      setToken(r.session_token);
+      if (r.needs_name) return lstep(3);
+      await enter();
+    });
+  }
+  if (!$('#lstep3').hidden) {
+    const n = $('#lname').value.trim(); if (!n) return lerr('Type your name.');
+    return lbusy($('#nbtn'), 'Saving…', async () => { await api('POST', '/auth/email/name', {name: n}); await enter(); });
+  }
+});
+$('#lback').addEventListener('click', () => lstep(1));
+let LCOUNT = 0;
+function lcount() {   // "Send a new code" waits 30 seconds, counting down, like the big apps
+  const b = $('#lresend'); clearInterval(LCOUNT); let n = 30; b.disabled = true;
+  const tick = () => { b.textContent = n > 0 ? `Send a new code in 0:${String(n).padStart(2, '0')}` : 'Send a new code'; if (n-- <= 0) { clearInterval(LCOUNT); b.disabled = false; } };
+  tick(); LCOUNT = setInterval(tick, 1000);
+}
+$('#lresend').addEventListener('click', async () => {
+  try { await lsend(); toast('A new code is on its way.'); } catch (er) { lerr(er.message); }
+});
+$('#lname').addEventListener('input', e => {   // she sees how Hoola will greet her
+  const n = e.target.value.trim().split(/\s+/)[0];
+  $('#lgreet').textContent = n ? `Good to meet you, ${n}.` : 'Good to meet you.';
+});
+$('#lcode').addEventListener('input', e => {   // six digits typed or pasted = go, like the big apps
+  const c = e.target.value.replace(/\D/g, '').slice(0, 6); e.target.value = c;
+  if (c.length === 6) $('#lform').requestSubmit();
+});
+$('#lbtn').addEventListener('click', async () => {
+  lerr(''); const btn = $('#lbtn'); btn.disabled = true; btn.textContent = 'Signing in…';
   try { const r = await api('POST', '/api/console/login', {handle: $('#hid').value.trim(), password: $('#hpw').value}); setToken(r.session_token); $('#hpw').value = ''; await enter(); }
-  catch (er) { $('#lerr').textContent = er.message; $('#lerr').hidden = false; }
-  finally { btn.disabled = false; btn.textContent = 'Login'; }
+  catch (er) { lerr(er.message); }
+  finally { btn.disabled = false; btn.textContent = 'Log in with Hoola ID'; }
 });
 $('#kbtn').addEventListener('click', async () => {
   const k = $('#okey').value.trim(); if (!k) return; setToken(k); $('#okey').value = '';
@@ -231,7 +302,7 @@ let CREATE = null;      // v0.259 the Create Studio (studio.js): the Create butt
 /* v0.222 R2: the sidebar is Claude-style - New chat + Search on top, then the places; Chat is the brand mark (home),
    Account is the user card at the bottom. The phone tabbar keeps its own five. */
 const SMOOTH = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';   // v0.226 R6: no smooth scroll under reduced motion
-const NAV = [['computer','Hoola Computer'],['creative','Create'],['webdev','Web Development'],['appdev','App Development'],['gamedev','Game Dev'],['aaj','Today'],['kaam','Tools'],['connectors','Connectors'],['baat','Voice call']];   // v0.774 Connectors (was phone-only)   // v0.456 her ask: no Lab / Systems rows
+const NAV = [['computer','Hoola Computer'],['cred','Hoola Cred'],['wallet','Hoola Wallet'],['creative','Create'],['webdev','Web Development'],['appdev','App Development'],['gamedev','Game Dev'],['aaj','Today'],['kaam','Tools'],['connectors','Connectors'],['baat','Voice call']];   // v0.774 Connectors (was phone-only)   // v0.456 her ask: no Lab / Systems rows
 // (was ['lab','Lab'] since v0.415): Prayogshala opens from the Education Desk's Lab tab, Systems from an Enterprise
 // employee's Open desk - both views (#v-lab, #v-systems) and go('lab' | 'systems', arg) stay as they were.
 IC.creative = '<path d="M12 3l2.4 5.6L20 11l-5.6 2.4L12 19l-2.4-5.6L4 11l5.6-2.4z"/>';
@@ -267,6 +338,8 @@ IC.connectors = '<path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0zM12 16v5"/>';   
 let FD = null;         // v0.565 the Film Desk (filmdesk.js)
 IC.design = '<rect x="3" y="3" width="11" height="11" rx="2.5"/><circle cx="15.5" cy="15.5" r="5.5"/><path d="M3 20.5l3.2-.8 1.2-1.2-2.4-2.4-1.2 1.2z"/>';   // v0.777 Hoola Design (a square, a circle, a pen tip)
 let BAHI = null;       // v0.807 BAHI: the GST & Accounts desk (bahi.js)
+let WALLET = null;     // v0.999.60 HOOLA WALLET inside the console (wallet.js)
+let CRED = null;       // v0.999.57 HOOLA CRED inside the console (cred.js), the sidebar kept
 let CRD = null;        // v0.999.26 HOOLA CREDITS: the Credits page (credits.js)
 let DDK = null;        // v0.799 DESK ROOM (built as 0.796): the department desks (deptdesk.js) - Finance, Retail, Health Insurance, Construction
 let AIA = null;        // v0.772 HOOLA AI APPS (aiapps.js): AIs that answer her customers
@@ -274,6 +347,8 @@ IC.aiapps = '<rect x="3" y="4" width="18" height="13" rx="3"/><path d="M8 21l2.5
 IC.appdev = '<rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3M9.5 9l-2 2 2 2M14.5 9l2 2-2 2"/>';   // v0.693 App Development (phone + code)
 IC.gamedev = '<rect x="2.5" y="7" width="19" height="11" rx="5"/><path d="M7.5 10.5v4M5.5 12.5h4"/><circle cx="16" cy="11.5" r="1"/><circle cx="18" cy="13.8" r="1"/>';   // v0.783 Hoola Game Dev (a game controller)
 IC.computer = '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>';   // v0.890 Hoola Computer
+IC.wallet = '<path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18v3"/><rect x="4" y="8" width="16" height="11" rx="2.5"/><path d="M16 13.5h.01"/>';   // v0.999.60 Hoola Wallet
+IC.cred = '<rect x="5" y="10.5" width="14" height="10" rx="1.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5M12 14.2v2.6"/>';   // v0.999.53 Hoola Cred
 IC.webdev = '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M9 14l-2 2 2 2M15 14l2 2-2 2"/>';   // v0.635 Web Development
 let ENT = null;        // v0.317 the Employee Hub + desks (employees.js)
 const EDU_KEYS = ['tutor', 'school_office', 'curriculum', 'research', 'school_register', 'lab'];   // v0.453 any of them opens the Education Desk
@@ -308,16 +383,17 @@ function navBadge(k) {
   const live = JOBS.length ? `<span class="lv txt" title="${JOBS.length} running now"><i></i>${JOBS.length}</span>` : '';
   return live + (QUEUE.length ? `<span class="ct txt" title="Waiting for your approval">${QUEUE.length}</span>` : '');
 }
-const IC_APP = {more: '<circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18.5" cy="12" r="1.3"/>',   // v0.976 More
+const IC_APP = {more: '<circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18.5" cy="12" r="1.3"/>',
+  dod: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/><path d="m17.5 3.5.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6z"/>',   // v0.999.306 HOOLA DOD   // v0.976 More
   aaj: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
   bana: '<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/>',
   main: '<path d="M4 9.5h16v9A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5Z"/><path d="M8.5 9.5V7a3.5 3.5 0 0 1 7 0v2.5"/>'};
 function appNav() {   // v0.973 Claude's rows with Hoola's places: New chat + Search sit above, then these
   const own = ['chat', 'hire', 'kaam', 'computer', 'aaj', 'bana', 'baat', 'main', ...APP_TOOLS.map(t => t[0])];
-  // any other page the old sidebar carried (Arena for the owner, Skills, AI Apps...) keeps its row before Customize
+  // any other page the old sidebar carried (Arena for the owner, Skills, AI Apps...) keeps its row before More
   // v0.976 her ask: AI Apps + Arena hidden for now; Work + Docs and files live under More
   const more = NAV.filter(([k]) => !own.includes(k) && !APP_HIDE.includes(k));
-  return [['hire', 'AI Employees'], ['kaam', 'Tools'], ['computer', 'Computer'], ...more, ['more', 'More'], ['main', 'Customize']];
+  return [['hire', 'AI Employees'], ['kaam', 'Tools'], ['computer', 'Computer'], ['dod', 'Hoola DOD'], ...more, ['more', 'More']];   // v0.999.217 her ask: Customize lives in the profile menu now, not the sidebar
 }
 const APP_HIDE = ['aiapps', 'arena'];
 const APP_MORE = [['aaj', 'Work', 'briefcase'], ['bana', 'Docs and files', 'doc']];   // v0.976 the More menu
@@ -332,8 +408,8 @@ function drawNav() {
   if (APPD) {
     const studio = new Set(APP_TOOLS.map(t => t[0])), cur = k => k === VIEW || (k === 'hire' && /desk$/.test(VIEW)) || (k === 'kaam' && studio.has(VIEW));
     $('#snav').innerHTML = appNav().map(([k, n]) => k === '-' ? `<div class="snl">${esc(n)}</div>`
-      : k === 'more' ? `<button class="sn" type="button" data-more aria-haspopup="menu" aria-current="${APP_MORE.some(([m]) => m === VIEW)}">${svg(IC_APP.more)}<span class="txt">More</span>${navBadge('aaj')}</button>`
-      : `<button class="sn" data-v="${k}" aria-current="${cur(k)}">${k === 'chat' ? `<span class="hmk" aria-hidden="true">${MARK()}</span>` : svg(IC_APP[k] || IC[k === 'baat' ? 'call' : k] || IC.creative)}<span class="txt">${esc(n)}</span>${navBadge(k)}</button>`).join('');
+      : k === 'more' ? `<button class="sn" type="button" data-more aria-haspopup="menu" title="More" aria-label="More" aria-current="${APP_MORE.some(([m]) => m === VIEW)}">${svg(IC_APP.more)}<span class="txt">More</span>${navBadge('aaj')}</button>`
+      : `<button class="sn" data-v="${k}" title="${esc(n)}" aria-label="${esc(n)}" aria-current="${cur(k)}">${k === 'chat' ? `<span class="hmk" aria-hidden="true">${MARK()}</span>` : svg(IC_APP[k] || IC[k === 'baat' ? 'call' : k] || IC.creative)}<span class="txt">${esc(n)}</span>${navBadge(k)}</button>`).join('');
     return drawTabs();
   }
   $('#snav').innerHTML = NAV.map(([k, n]) => `<button class="sn" data-v="${k}" aria-current="${k === VIEW || (k === 'hire' && /desk$/.test(VIEW))}">${svg(IC[k === 'baat' ? 'call' : k])}<span class="txt">${n}</span>${navBadge(k)}</button>`).join('');
@@ -349,13 +425,19 @@ function go(v, arg) {
   if (v === 'gamedev') { location.assign('/console/games' + (arg ? '#/game/' + encodeURIComponent(arg) : '')); return; }   // v0.783 Hoola Game Dev = its own app
   if (v === 'appdev') { location.assign('/console/apps' + (arg ? '#/app/' + encodeURIComponent(arg) : '')); return; }   // v0.693 App Studio = its own app
   if (v === 'prompting') { location.assign('/console/prompting'); return; }   // HOOLA PROMPTING = its own page
+  if (v === 'route') { location.assign('/console/route'); return; }   // v0.999.87 HOOLA ROUTE = its own page
+  if (v === 'connectors') {   // v0.999.183 CONNECTORS = its own page (a Google result rides along)
+    const G = window.HOOLA_GCONN, q = G ? '?' + new URLSearchParams(G.ok ? {gconn: 'ok', got: G.got, miss: G.miss} : {gconn: 'err', why: G.why}) : '';
+    location.assign('/console/connectors' + q + (arg ? '#/' + encodeURIComponent(String(arg)) : '')); return;
+  }   // v0.999.183 CONNECTORS = its own page
   if (v === 'flow') { location.assign('/console/flow' + (arg ? '#/t/' + encodeURIComponent(arg) : '')); return; }   // v0.777 Hoola Flow = its own page, like Wispr Flow
   if (v === 'code') { location.assign('/console/code' + (arg ? '#/s/' + encodeURIComponent(arg) : '')); return; }   // v0.768 Hoola Code = its own page with its own sidebar
   if (v === 'design') { location.assign('/console/design' + (arg ? '#/f/' + encodeURIComponent(arg) : '')); return; }   // v0.777 Hoola Design = its own app
-  if (v === 'computer') { location.assign('/console/computer' + (arg ? '#/' + encodeURIComponent(arg) : '')); return; }   // v0.890 Hoola Computer = its own page
+  if (v === 'dod') { location.assign('/console/dod' + (arg ? '#/t/' + encodeURIComponent(arg) : '')); return; }   // v0.999.306 HOOLA DOD = its own page
+  if (v === 'computer') { location.assign('/console/computer' + (arg ? '#/' + encodeURIComponent(arg) : '')); return; }
   if (v === 'webdev') { location.assign('/console/web' + (arg ? '#/site/' + encodeURIComponent(arg) : '')); return; }   // v0.649 Web Studio = its own app
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Voice call', main:'· Account', bana: APPD ? '· Docs and files' : '· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Lab', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk', credits:'· Credits', deptdesk:'· Department desk', accountsdesk:'· GST & Accounts'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Voice call', main:'· Account', bana: APPD ? '· Docs and files' : '· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Lab', hire:'· AI Employees', seekh:'· Video Learner', interactive:'· Hoola Interactive', code:'· Hoola Code', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', connectors:'· Connectors', aiapps:'· AI Apps', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk', telecallerdesk:'· Telecaller', supportdesk:'· Customer Support', credits:'· Credits', cred:'· Hoola Cred', wallet:'· Hoola Wallet', deptdesk:'· Department desk', accountsdesk:'· GST & Accounts', moneydesk:'· Money Safety', booksdesk:'· Books & Accounts', payrolldesk:'· Payroll', taxdesk:'· Tax', cashdesk:'· Cash & Treasury', creditdesk:'· Credit & Lending', firmdesk:'· Firm Practice', paydesk:'· Payments', instdesk:'· Institution', invdesk:'· Investments', mktdesk:'· Markets', cmdesk:'· Community', dgdesk:'· Digital Assets', pbdesk:'· Public Finance', fodesk:'· Finance Desk', rkdesk:'· Risk Desk', insdesk:'· Insurance', qadesk:'· App tester (QA)', dvdesk:'· DevOps', cydesk:'· Cyber security', itdesk:'· IT Admin', prdesk:'· Product manager', ardesk:'· App reviewer', dwdesk:'· Technical writer', ncdesk:'· NOC', b3desk:'· 3D Studio', lcdesk:'· Compiler', kddesk:'· Kernel'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
@@ -384,10 +466,59 @@ function go(v, arg) {
   if (v === 'archdesk') EMP?.arch($('#archdesk'));   // v0.410
   if (v === 'edudesk') EMP?.edu($('#edudesk'));   // v0.453 Education, Research & Lab
   if (v === 'filmdesk') FD?.open($('#filmdesk'));   // v0.565 Film Desk
+  if (v === 'leadsdesk' && !window.HOOLA_FULL_DESK) { location.assign('/console/leads'); return; }
+  if (v === 'supportdesk') { location.assign('/console/support'); return; }   // v0.999.81 CUSTOMER SUPPORT: its own section
+  if (v === 'moneydesk') { location.assign('/console/money'); return; }   // v0.999.156 MONEY SAFETY DESK: its own section
+  if (v === 'booksdesk') { location.assign('/console/books'); return; }   // v0.999.158 BOOKS DESK: its own section
+  if (v === 'payrolldesk') { location.assign('/console/payroll'); return; }   // v0.999.169 PAYROLL DESK: its own section
+  if (v === 'taxdesk') { location.assign('/console/tax'); return; }   // v0.999.176 TAX DESK: its own section
+  if (v === 'cashdesk') { location.assign('/console/cash'); return; }   // CASH & TREASURY DESK: its own section
+  if (v === 'creditdesk') { location.assign('/console/credit'); return; }   // CREDIT & LENDING DESK: its own section
+  if (v === 'firmdesk') { location.assign('/console/firm'); return; }   // FIRM PRACTICE DESK: its own section
+  if (v === 'paydesk') { location.assign('/console/payments'); return; }   // PAYMENTS DESK: its own section
+  if (v === 'instdesk') { location.assign('/console/institution'); return; }   // INSTITUTION DESK: its own section
+  if (v === 'pbdesk') { location.assign('/console/public'); return; }   // PUBLIC FINANCE DESK: its own section
+  if (v === 'fodesk') { location.assign('/console/finops'); return; }   // FINANCE DESK ASSISTANT: its own section
+  if (v === 'rkdesk') { location.assign('/console/risk'); return; }   // RISK DESK: its own section
+  if (v === 'insdesk') { location.assign('/console/insurance'); return; }
+  if (v === 'qadesk') { location.assign('/console/qa'); return; }   // QA DESK: its own section
+  if (v === 'dvdesk') { location.assign('/console/devops'); return; }
+  if (v === 'cydesk') { location.assign('/console/cyber'); return; }
+  if (v === 'itdesk') { location.assign('/console/itadmin'); return; }
+  if (v === 'b3desk') { location.assign('/console/3d'); return; }   // 3D STUDIO DESK: its own section
+  if (v === 'lcdesk') { location.assign('/console/compiler'); return; }   // COMPILER DESK: its own section
+  if (v === 'kddesk') { location.assign('/console/kernel'); return; }   // KERNEL DESK: its own section
+  if (v === 'gxdesk') { location.assign('/console/graphics'); return; }   // GRAPHICS DESK: its own section
+  if (v === 'dbdesk') { location.assign('/console/database'); return; }   // DATABASE DESK: its own section
+  if (v === 'dsdesk') { location.assign('/console/distributed'); return; }   // DISTRIBUTED DESK: its own section
+  if (v === 'srdesk') { location.assign('/console/sre'); return; }   // SRE DESK: its own section
+  if (v === 'hvdesk') { location.assign('/console/virtualization'); return; }   // VIRTUALIZATION DESK: its own section
+  if (v === 'lldesk') { location.assign('/console/latency'); return; }   // LOW LATENCY DESK: its own section
+  if (v === 'mfdesk') { location.assign('/console/mainframe'); return; }   // MAINFRAME DESK: its own section
+  if (v === 'emdesk') { location.assign('/console/embedded'); return; }   // EMBEDDED DESK: its own section
+  if (v === 'rbdesk') { location.assign('/console/robotics'); return; }   // ROBOTICS DESK: its own section
+  if (v === 'cvdesk') { location.assign('/console/vision'); return; }   // VISION DESK: its own section
+  if (v === 'mldesk') { location.assign('/console/ml'); return; }   // ML DESK: its own section
+  if (v === 'dedesk') { location.assign('/console/data'); return; }   // DATA ENGINEER DESK: its own section
+  if (v === 'pfdesk') { location.assign('/console/platform'); return; }   // PLATFORM ENGINEER DESK: its own section
+  if (v === 'ncdesk') { location.assign('/console/noc'); return; }   // NOC DESK: its own section
+  if (v === 'dwdesk') { location.assign('/console/docs'); return; }   // TECHNICAL WRITER DESK: its own section
+  if (v === 'ardesk') { location.assign('/console/appreview'); return; }   // APP REVIEWER DESK: its own section
+  if (v === 'prdesk') { location.assign('/console/product'); return; }   // PRODUCT DESK: its own section   // IT ADMIN DESK: its own section   // CYBER DESK: its own section   // DEVOPS DESK: its own section   // INSURANCE AGENT DESK: its own section
+  if (v === 'dgdesk') { location.assign('/console/digital'); return; }   // DIGITAL ASSETS DESK: its own section
+  if (v === 'cmdesk') { location.assign('/console/community'); return; }   // COMMUNITY FINANCE DESK: its own section
+  if (v === 'invdesk') { location.assign('/console/investments'); return; }   // INVESTMENTS DESK: its own section
+  if (v === 'mktdesk') { location.assign('/console/markets'); return; }   // MARKETS DESK: its own section
+  if (v === 'telecallerdesk') { location.assign('/console/telecaller'); return; }   // v0.999.67 AI TELECALLER: its own section   // v0.999.52 LEAD DESK: its own section (chat beside the screens); ?full=1 keeps the old page
   if (v === 'leadsdesk') EMP?.leads($('#leadsdesk'));   // v0.686.0 Leads Desk (the Lead Generation employee)
   if (v === 'deptdesk') DDK?.open($('#deptdesk'), arg);
+  if (v === 'accountsdesk' && !window.HOOLA_FULL_DESK) { location.assign('/console/accounts'); return; }   // v0.999.43 ACCOUNTS DESK: its own section (chat beside the screens); ?full=1 keeps the old page
   if (v === 'accountsdesk') BAHI?.open($('#accountsdesk'));   // v0.807 BAHI: the GST & Accounts employee's desk   // v0.799 DESK ROOM (built as 0.796): a department desk, opened on one employee
   if (v === 'skills') SK?.draw($('#skills'));   // v0.481 the Skill Desk
+  if (v !== 'wallet') WALLET?.leave();
+  if (v === 'wallet') WALLET?.open($('#walletview'));   // v0.999.60 HOOLA WALLET
+  if (v !== 'cred') CRED?.leave();
+  if (v === 'cred') CRED?.open($('#credview'));   // v0.999.57 HOOLA CRED in the console
   if (v === 'credits') CRD?.open($('#credits'));   // v0.999.26 HOOLA CREDITS
   if (v === 'creative') WORKSPACE?.open();
   if (v === 'creative') $('#ttl').textContent = '· Creative workspace';
@@ -411,23 +542,22 @@ $('#liveBtn').addEventListener('click', () => {
 $('#liveClose').addEventListener('click', () => $('#app').classList.remove('open'));
 // v0.285 the account button opens Claude's account menu (above it): who is signed in, Settings, Library, the theme,
 // keyboard shortcuts, Log out
-$('#model').addEventListener('click', e => {
-  if (!window.HoolaMenu) { go('main'); return; }
-  const t = TH?.theme() || 'system', setT = v => () => TH?.setTheme(v);
-  HoolaMenu.open(e.currentTarget, [
+function acctItems() {   // v0.999.215 the account button's menu; v0.999.217 Customize moved in here
+  return [   // v0.999.220 Light / Dark / System live on the Customize page only
     {header: ME.email || ME.owner || 'Signed in'},
+    {label: 'Customize', icon: 'brush', run: () => go('main')},   // v0.999.217 moved here from the sidebar
     {label: 'Settings', icon: 'settings', run: () => go('main')},
     {label: 'Credits', icon: 'spark', run: () => go('credits')},   // v0.999.26 HOOLA CREDITS
     ...(PN ? [{label: 'Library', icon: 'library', run: () => go('bana')}] : []),
     {label: 'Skills', icon: 'skills', run: () => go('skills')},   // v0.481 the Skill Desk
     {sep: true},
-    {label: 'Light', icon: 'sun', checked: t === 'light', run: setT('light')},
-    {label: 'Dark', icon: 'moon', checked: t === 'dark', run: setT('dark')},
-    {label: 'System', icon: 'monitor', checked: t === 'system', run: setT('system')},
-    {sep: true},
     {label: 'Keyboard shortcuts', icon: 'keyboard', kbd: '?', run: () => openKeys()},
     {label: 'Log out', icon: 'logout', run: () => logout()},
-  ], {align: 'start', place: 'above', width: 'anchor', cls: 'acctm', label: 'Account', keyboard: e.detail === 0});
+  ];
+}
+$('#model').addEventListener('click', e => {
+  if (!window.HoolaMenu) { go('main'); return; }
+  HoolaMenu.open(e.currentTarget, acctItems(), {align: 'start', place: 'above', width: 'anchor', cls: 'acctm', label: 'Account', keyboard: e.detail === 0});
 });
 
 /* ================= v0.240 CALM BRAND: Light / Dark / System, text size, reduce motion, live border glow ================= */
@@ -441,12 +571,14 @@ function themeSync() {
   $$('[data-font-set]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.fontSet === f)));
   const c = $('#calmSw'); if (c) c.setAttribute('aria-checked', String(TH.calm()));
   const g = $('#glowSw'); if (g) g.setAttribute('aria-checked', String(TH.glow()));
+  czPreviewNote();   // v0.999.223
   $$('.themeseg').forEach(seg => { const bs = $$('button', seg), i = Math.max(0, bs.findIndex(b => b.getAttribute('aria-checked') === 'true'));
     const p = seg.querySelector('.tpill'), on = bs[i]; if (p && on) { p.style.width = on.offsetWidth + 'px'; p.style.transform = `translateX(${on.offsetLeft - 3}px)`; } });
 }
 TH?.onChange(themeSync); themeSync();
 if (window.ResizeObserver) new ResizeObserver(() => themeSync()).observe(document.querySelector('#app .side') || document.body);
 document.addEventListener('click', e => {
+  if (e.target.closest('#czReset') && TH) { TH.setTheme('system', e); TH.setSize('md'); TH.setChatFont?.('serif'); TH.setCalm(false); TH.setGlow(true); toast('Appearance is back to the default.'); return; }
   const b = e.target.closest('[data-theme-set],[data-size-set],[data-font-set],#calmSw,#glowSw'); if (!b || !TH) return;
   if (b.dataset.themeSet) TH.setTheme(b.dataset.themeSet, e);
   else if (b.dataset.sizeSet) TH.setSize(b.dataset.sizeSet);
@@ -454,19 +586,44 @@ document.addEventListener('click', e => {
   else if (b.id === 'calmSw') TH.setCalm(!TH.calm());
   else if (b.id === 'glowSw') TH.setGlow(!TH.glow());
 });
-function appearanceHTML() {
-  const card = (k, n, pv) => `<button type="button" class="tcard" role="radio" data-theme-set="${k}" aria-checked="false"><span class="pv">${pv}</span><span class="nm">${n}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></button>`;
-  const mini = c => `<span class="pvm ${c}"><i></i><b></b><u></u></span>`;
-  return `<div class="tile gl appear" id="appearance"><h3>Appearance</h3>
-    <p class="muted" style="font-size:13.5px;margin:-2px 0 12px">System follows your computer: light by day, dark at night.</p>
-    <div class="tcards" role="radiogroup" aria-label="Theme">${card('light', 'Light', `<span class="pvs pvL"></span>${mini('pvL')}`)}${card('dark', 'Dark', `<span class="pvs pvD"></span>${mini('pvD')}`)}${card('system', 'System', mini('pvL') + mini('pvD'))}</div>
-    <div class="aprow"><div><b>Text size</b><span>Chat text and the sidebar.</span></div>
-      <div class="themeseg sizeseg" role="radiogroup" aria-label="Text size"><span class="tpill" aria-hidden="true"></span><button type="button" role="radio" data-size-set="sm" aria-checked="false">Small</button><button type="button" role="radio" data-size-set="md" aria-checked="false">Default</button><button type="button" role="radio" data-size-set="lg" aria-checked="false">Large</button></div></div>
-    <div class="aprow"><div><b>Chat font</b><span>How Hoola's replies are written. Your messages stay as they are.</span></div>
-      <div class="themeseg fontseg" role="radiogroup" aria-label="Chat font"><span class="tpill" aria-hidden="true"></span><button type="button" role="radio" data-font-set="serif" aria-checked="false">Serif</button><button type="button" role="radio" data-font-set="sans" aria-checked="false">Sans</button><button type="button" role="radio" data-font-set="system" aria-checked="false">System</button><button type="button" role="radio" data-font-set="dyslexic" aria-checked="false">Dyslexic</button></div></div>
-    <div class="aprow"><div><b>Reduce motion</b><span>Replies appear at once. No glow, fades or moving borders.</span></div><button type="button" class="swt" role="switch" id="calmSw" aria-checked="false" aria-label="Reduce motion"><i></i></button></div>
-    <div class="aprow"><div><b>Live border glow</b><span>The soft light that runs round a card while Hoola works or waits for you.</span></div><button type="button" class="swt" role="switch" id="glowSw" aria-checked="true" aria-label="Live border glow"><i></i></button></div>
-  </div>`;
+function appearanceHTML() {   // v0.999.223 CUSTOMIZE, PREMIUM: controls left, a live preview of a chat right
+  const tick = '<svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.3l3 3 6-6.3"/></svg>';
+  const card = (k, n, pv) => `<button type="button" class="cz-th" role="radio" data-theme-set="${k}" aria-checked="false"><span class="pv">${pv}</span><span class="nm">${n}${tick}</span></button>`;
+  const mini = c => `<span class="czm ${c}"><span class="cps"><i></i><i></i><i></i></span><span class="cpm"><b></b><i></i><i></i><u><em></em></u></span></span>`;
+  const font = (k, n, note) => `<button type="button" class="cz-font" role="radio" data-font-set="${k}" aria-checked="false"><span class="aa f-${k}">Aa</span><span class="fn"><b>${n}</b><small>${note}</small></span></button>`;
+  return `<section class="cz-card cz-app" id="appearance" aria-labelledby="czhApp">
+    <div class="cz-hd">${CZ_ICON.app}<div><h2 id="czhApp">Appearance</h2><p>Saved on this computer. The preview shows how your chats will look.</p></div>
+      <button type="button" class="cz-btn sm" id="czReset">Reset to default</button></div>
+    <div class="cz-appgrid"><div class="cz-ctl">
+      <div class="cz-f"><span class="lb">Theme</span>
+        <div class="cz-ths" role="radiogroup" aria-label="Theme">${card('light', 'Light', mini('czL'))}${card('dark', 'Dark', mini('czD'))}${card('system', 'System', `<span class="czsplit">${mini('czL')}${mini('czD')}</span>`)}</div>
+        <span class="hint">System follows your computer: light by day, dark at night.</span></div>
+      <div class="cz-f"><span class="lb">Text size</span><div class="cz-seg" role="radiogroup" aria-label="Text size"><button type="button" role="radio" data-size-set="sm" aria-checked="false"><span class="g" style="font-size:11px">A</span>Small</button><button type="button" role="radio" data-size-set="md" aria-checked="false"><span class="g" style="font-size:13px">A</span>Default</button><button type="button" role="radio" data-size-set="lg" aria-checked="false"><span class="g" style="font-size:16px">A</span>Large</button></div><span class="hint">Chat text and the sidebar.</span></div>
+      <div class="cz-f"><span class="lb">Chat font</span><div class="cz-fonts" role="radiogroup" aria-label="Chat font">${font('serif', 'Serif', 'Literata')}${font('sans', 'Sans', 'Schibsted')}${font('system', 'System', 'Your computer')}${font('dyslexic', 'Dyslexic', 'Easier to read')}</div>
+        <span class="hint">How Hoola's replies are written. Your own messages stay as they are.</span></div>
+      <div class="cz-box"><div class="cz-row"><div><b id="calmSwL">Reduce motion</b><span>Replies appear at once. No glow, fades or moving borders.</span></div><button type="button" class="swt" role="switch" id="calmSw" aria-checked="false" aria-labelledby="calmSwL"><i></i></button></div><div class="cz-row"><div><b id="glowSwL">Live border glow</b><span>A soft light round a card while Hoola works or waits for you.</span></div><button type="button" class="swt" role="switch" id="glowSw" aria-checked="false" aria-labelledby="glowSwL"><i></i></button></div></div>
+    </div>
+    <div class="cz-pvwrap"><div class="cz-pvh"><span>Live preview</span><span class="cz-chip" id="czPvNote"></span></div>
+      <div class="cz-pv" aria-hidden="true"><div class="cps">${CZ_MARK}<i></i><i></i><i></i></div>
+        <div class="cpm"><div class="her">Draft a reply to Ramesh about Friday's delivery.</div>
+          <div class="rep"><b class="t">Reply for Ramesh</b><span>I kept the time you agreed on and added the tracking step.</span>
+            <span class="q">Hi Ramesh, the order reaches you on <b>Friday between 10 and 12</b>. I will share the tracking link once it leaves.</span></div>
+          <div class="sp"></div><div class="bx">Reply to Hoola<span><svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></span></div></div></div></div>
+    </div></section>`;
+}
+const CZ_MARK = '<svg class="czmk" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.2"/><path d="M5 19L19 5"/></svg>';
+const CZ_ICON = {   // line icons for the section heads + the page list
+  app: '<span class="cz-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path class="fl" d="M12 4a8 8 0 0 1 0 16z"/></svg></span>',
+  pw: '<span class="cz-ic"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2.2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg></span>',
+  con: '<span class="cz-ic"><svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></span>',
+  mem: '<span class="cz-ic"><svg viewBox="0 0 24 24"><path d="M12 4l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.6-4.8 2.6.9-5.4-3.9-3.8 5.4-.8z"/></svg></span>',
+  srv: '<span class="cz-ic"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/><path d="M8 7.5h.01M8 16.5h.01"/></svg></span>',
+};
+function czPreviewNote() {
+  const n = $('#czPvNote'); if (!n || !TH) return;
+  const t = {light: 'Light', dark: 'Dark', system: 'System'}[TH.theme()] || 'System';
+  const f = {serif: 'Serif', sans: 'Sans', system: 'System', dyslexic: 'Dyslexic'}[TH.chatFont ? TH.chatFont() : 'serif'];
+  n.textContent = `${t} · ${f} · ${{sm: 'Small', md: 'Default', lg: 'Large'}[TH.size()] || 'Default'}`;
 }
 
 // v0.740 MODEL DROPDOWN: she picks the chat model from the owner's list; her next message runs on it.
@@ -479,6 +636,10 @@ const mlabel = m => (m && (m.name || m.id || '')).replace(/^[^:]*:\s*/, '').repl
 let TIERS = null;
 const TIER_NAME = {'': 'Normal', ultra: 'Ultra', high: 'High', medium: 'Medium', low: 'Low'};
 const TIER_ROWS = ['', 'ultra', 'high', 'medium', 'low'];
+// v0.999.228 the quality sheet like the + card: a tile per tier and one plain line under each (no prices, no model names)
+const TIER_ICON = {'': 'qauto', ultra: 'qultra', high: 'qhigh', medium: 'qmed', low: 'qlow'};
+const TIER_SUB = {'': 'Hoola picks the model for each job', ultra: 'Best models, for the hardest work',
+  high: 'Stronger answers for harder work', medium: 'Good answers, credit lasts longer', low: 'Quick everyday answers, least credit'};
 async function loadModels() {
   const b = $('#modelBtn'); if (!b) return;
   try { MODELS = await api('GET', '/api/model/choices'); } catch { MODELS = null; }
@@ -488,7 +649,7 @@ async function loadModels() {
   const own = cur && !cur.default;        // an older one-model pick still runs until she picks a tier
   const name = own ? mlabel(cur) : TIER_NAME[TIERS.selected || ''] || 'Normal';
   b.querySelector('.mname').textContent = name;
-  b.title = 'Quality: ' + name; b.setAttribute('aria-label', 'Quality: ' + name);
+  b.removeAttribute('title'); b.setAttribute('aria-label', 'Quality: ' + name);   // v0.999.228 no browser tooltip over the sheet
   b.hidden = false;
 }
 async function setTier(id) {
@@ -499,24 +660,24 @@ async function setTier(id) {
 function tierRows() {
   const sel = TIERS.selected || '', own = MODELS?.models?.find(m => m.selected && !m.default);
   const lock = !!TIERS.locked;   // v0.999.26 Free = Normal only: the rest open once she buys credits
-  return TIER_ROWS.map(id => ({label: TIER_NAME[id], checked: !own && sel === id,
-    tag: id === '' ? 'Recommended' : lock ? '🔒 Buy credits' : id === 'ultra' ? '⚠ Up to 70× credit' : '', warn: id === 'ultra' && !lock,
+  return TIER_ROWS.map(id => ({label: TIER_NAME[id], checked: !own && sel === id, icon: TIER_ICON[id], sub: TIER_SUB[id],
+    tag: id === '' ? 'Recommended' : lock ? 'Buy credits' : id === 'ultra' ? 'Up to 70× credit' : '', warn: id === 'ultra' && !lock,
     run: () => id && lock ? go('credits') : id === 'ultra' && sel !== 'ultra' ? ultraAsk() : setTier(id)}));
 }
 function ultraAsk() {
   const b = $('#modelBtn');
   HoolaMenu.open(b, [
-    {title: 'Use Ultra?', tag: '⚠ Up to 70× credit', warn: true, backLabel: 'Back to the tiers', back: () => modelMenu(true)},
+    {title: 'Use Ultra?', tag: 'Up to 70× credit', warn: true, backLabel: 'Back to the tiers', back: () => modelMenu(true)},
     {note: 'Ultra runs the best and most expensive models in every field: chat, coding, AI employees, apps and videos.'},
     {note: 'Your credit runs out up to 70 times faster than on Medium.'},
     {actions: [{label: 'Not now', run: () => {}}, {label: 'Use Ultra', primary: true, run: () => setTier('ultra')}]},
-  ], {align: 'end', place: 'above', cls: 'tierask', label: 'Use Ultra?', width: 340, keyboard: true});
+  ], {align: 'end', place: 'below', cls: 'plusm tierask', label: 'Use Ultra?', width: 340, keyboard: true});
 }
 function modelMenu(again) {
   const b = $('#modelBtn'); if (!window.HoolaMenu || !(TIERS && TIERS.available)) return;
   if (again) HoolaMenu.close(false);
-  HoolaMenu.open(b, [{note: 'Better models give better answers and use your credit faster.'}, ...tierRows()],
-                 {align: 'end', place: 'above', cls: 'tiers', label: 'Quality', width: 340, keyboard: !!again});
+  HoolaMenu.open(b, [{header: 'Quality'}, ...tierRows(), {sep: true}, {note: 'Better models answer better and use credit faster.'}],
+                 {align: 'end', place: 'below', cls: 'plusm tiers', label: 'Quality', width: 372, keyboard: !!again});
 }
 document.addEventListener('click', e => { if (e.target.closest && e.target.closest('#modelBtn')) modelMenu(); });
 
@@ -566,9 +727,7 @@ async function enter() {
       setTimeout(() => { FLOW_TEXT = ''; }, 6000); }
   } catch (e) { /* private window */ }
   if (CONFIG.flow_mic && window.HoolaFlowMic && !FMIC) {   // v0.751 the chat box mic dictates through Kaan when its engine is ready
-    FMIC = HoolaFlowMic({api, toast, onText: t => { msg.value = t; msg.dispatchEvent(new Event('input')); scrollDown(true); },
-      onState: (on, why) => { $('#micBtn').classList.toggle('on', !!on); $('#micBtn').classList.toggle('busy', why === 'writing');
-        $('#micBtn').title = on ? 'Hoola Flow is listening - click (or Ctrl + Space) to finish' : 'Speak to type (Hoola Flow) - Ctrl + Space'; }});
+    FMIC = HoolaFlowMic({api, toast, onText: t => DICTATE?.flowText(t), onState: () => {}, onLevel: l => DICTATE?.level(l)});   // v0.999.224 the bar draws it
   }
   if (CONFIG.design) {   // v0.777 HOOLA DESIGN: the design editor, a row right under Create; opens /console/design
     if (!NAV.some(([k]) => k === 'design')) NAV.splice(NAV.findIndex(([k]) => k === 'creative') + 1, 0, ['design', 'Hoola Design']);
@@ -577,7 +736,7 @@ async function enter() {
     if (!NAV.some(([k]) => k === 'code')) NAV.splice(NAV.findIndex(([k]) => k === 'creative') + 1, 0, ['code', 'Hoola Code']);
   }
   if (CONFIG.interactive && window.HoolaInteractive && !HIV) {   // v0.747 HOOLA INTERACTIVE: a row right under Create
-    HIV = HoolaInteractive({api, esc, toast, back: () => go('chat'), upload: async file => {   // v0.772 its own full page; Console = back to chat
+    HIV = HoolaInteractive({api, esc, toast, back: () => go('chat'), go: v => go(NAV.some(([k]) => k === v) ? v : 'chat'), upload: async file => {   // v0.772 its own full page; Console = back to chat
       let id = CONV;
       if (!id) { const c = await api('POST', '/api/conversations?reuse=1'); id = c.id; }
       const fd = new FormData(); fd.append('file', file, file.name);
@@ -616,6 +775,8 @@ async function enter() {
     ENT = HoolaEnterprise({api, esc, toast});
   }
   if (window.HoolaFilmDesk && !FD) FD = HoolaFilmDesk({api, esc, toast});   // v0.565
+  if (window.HoolaWallet && !WALLET) WALLET = HoolaWallet({toast});   // v0.999.60
+  if (window.HoolaCred && !CRED) CRED = HoolaCred({toast});   // v0.999.57
   if (window.HoolaCredits && !CRD) CRD = HoolaCredits({api, esc, toast});   // v0.999.26
   if (window.HoolaBahi && !BAHI) BAHI = HoolaBahi({api, esc, toast, open: (v, arg) => go(v, arg), title: t => { if (VIEW === 'accountsdesk') $('#ttl').textContent = t; }});   // v0.806
   if (window.HoolaDeptDesk && !DDK) DDK = HoolaDeptDesk({api, esc, toast, open: (v, arg) => go(v, arg),   // v0.799 DESK ROOM (built as 0.796)
@@ -637,7 +798,9 @@ async function enter() {
   // employee's desk link here); only a view the console really has, else the chat stays
   try {
     const P = new URLSearchParams(location.search), want = (P.get('v') || '').replace(/[^a-z_]/g, '');
-    const OWN = ['creative', 'gamedev', 'appdev', 'prompting', 'flow', 'code', 'design', 'computer', 'webdev'];
+    const OWN = ['creative', 'gamedev', 'appdev', 'prompting', 'flow', 'route', 'connectors', 'code', 'design', 'computer', 'webdev', 'dod'];
+    if (P.get('full') === '1') window.HOOLA_FULL_DESK = true;   // v0.999.38 the full ad editor of the old Social desk
+    if (P.get('gconn')) window.HOOLA_GCONN = {ok: P.get('gconn') === 'ok', got: P.get('got') || '', miss: P.get('miss') || '', why: (P.get('why') || '').slice(0, 200)};   // v0.999.181 back from Google
     if (want && (OWN.includes(want) || $('#v-' + want))) { history.replaceState(null, '', '/console/'); go(want, (P.get('a') || '').slice(0, 60) || undefined); }
   } catch (e) { /* the chat stays */ }
   if (CONFIG.sessions && window.HoolaChats && window.HoolaStream && !CH) {   // v0.162 many chats (v0.170: on with CONSOLE_V2)
@@ -699,16 +862,59 @@ $('#slotLand').appendChild(composer);
 /* stick to the bottom: the newest line stays in view while a reply grows; scrolling up stops the pull and shows
    "Neeche jao". Handled here (Safari has no overflow-anchor): a ResizeObserver re-pins only while she is at the bottom. */
 let STICK = true;
-const scrollDown = force => { if (force) STICK = true; if (STICK) thread.scrollTop = thread.scrollHeight; $('#jump').hidden = STICK; };
-const unstick = () => { if (thread.scrollHeight - thread.clientHeight > 4) { STICK = false; $('#jump').hidden = false; } };
-thread.addEventListener('scroll', () => { const d = thread.scrollHeight - thread.scrollTop - thread.clientHeight; if (d < 48) { STICK = true; $('#jump').hidden = true; } else if (!STICK) $('#jump').hidden = false; }, {passive: true});
-thread.addEventListener('wheel', e => { if (e.deltaY < 0) unstick(); }, {passive: true});
+/* v0.999.199 SMOOTH LANDING like Claude: a message she sends lands at the TOP of the chat (16px under it), and the
+   space below is kept for the reply (LAND_PAD on the column), so the reply grows into it and the page does not jump
+   or pull her message away word by word. The page follows the reply again only when SHE scrolls to the bottom
+   (USER_AT: a wheel / touch / key within the last 800ms); then the arrow shows when the reply runs past the screen.
+   A chat opened or reloaded still opens at its bottom (scrollDown(true) drops the landing). */
+let ANCHOR = null, LAND_PAD = 0, LAND_BASE = 0, USER_AT = 0, LAND_T = 0;
+const yOf = el => el.getBoundingClientRect().top - thread.getBoundingClientRect().top + thread.scrollTop;
+const landTop = () => 16 + (parseFloat(getComputedStyle(thread).paddingTop) || 0);
+function landSpace() {
+  if (ANCHOR && !ANCHOR.isConnected) ANCHOR = null;
+  if (!LAND_PAD) LAND_BASE = parseFloat(getComputedStyle(col).paddingBottom) || 0;   // the column's own bottom padding
+  let pad = 0;
+  if (ANCHOR) {   // the page must reach (her message at the top) + one screen; the column alone ends at `natural`
+    const natural = col.getBoundingClientRect().bottom - thread.getBoundingClientRect().top + thread.scrollTop - LAND_PAD
+      + (parseFloat(getComputedStyle(thread).paddingBottom) || 0);
+    pad = Math.max(0, Math.ceil(yOf(ANCHOR) - landTop() + thread.clientHeight - natural));
+  }
+  if (Math.abs(pad - LAND_PAD) > 1 || (!pad && LAND_PAD)) {
+    LAND_PAD = pad;
+    col.style.paddingBottom = pad ? `${LAND_BASE + pad}px` : '';
+  }
+  if (ANCHOR && !STICK && USER_AT < LAND_T && Date.now() - LAND_T > 450) {   // held until she scrolls: a line added above
+    const want = Math.max(0, Math.round(yOf(ANCHOR) - landTop()));               // (an action row, a receipt) never moves it
+    if (Math.abs(thread.scrollTop - want) > 1) thread.scrollTop = want;
+  }
+  if (ANCHOR && !STICK) $('#jump').hidden = thread.scrollHeight - LAND_PAD - thread.scrollTop - thread.clientHeight < 48;
+}
+function dropAnchor() { ANCHOR = null; if (LAND_PAD) { LAND_PAD = 0; col.style.paddingBottom = ''; } }
+function landAt(el) {
+  ANCHOR = el; STICK = false; LAND_T = Date.now(); $('#jump').hidden = true; landSpace();
+  thread.scrollTo({top: Math.max(0, yOf(el) - landTop()), behavior: SMOOTH()});
+}
+const scrollDown = force => { if (force) { STICK = true; dropAnchor(); } if (STICK) thread.scrollTop = thread.scrollHeight; if (ANCHOR) landSpace(); else $('#jump').hidden = STICK; };
+const unstick = () => { USER_AT = Date.now(); if (thread.scrollHeight - thread.clientHeight > 4) { STICK = false; $('#jump').hidden = !!ANCHOR; } };
+thread.addEventListener('scroll', () => {
+  const d = thread.scrollHeight - thread.scrollTop - thread.clientHeight;
+  if (ANCHOR) {   // landed: only her own scroll to the very end gives the follow back
+    if (d < 48 && Date.now() - USER_AT < 800 && thread.scrollHeight - LAND_PAD - thread.scrollTop - thread.clientHeight < 48) STICK = true;
+    landSpace(); return;
+  }
+  if (d < 48) { STICK = true; $('#jump').hidden = true; } else if (!STICK) $('#jump').hidden = false;
+}, {passive: true});
+thread.addEventListener('wheel', e => { USER_AT = Date.now(); if (e.deltaY < 0) unstick(); }, {passive: true});
 let touchY = 0;
-thread.addEventListener('touchstart', e => { touchY = e.touches[0]?.clientY || 0; }, {passive: true});
-thread.addEventListener('touchmove', e => { if ((e.touches[0]?.clientY || 0) > touchY + 6) unstick(); }, {passive: true});
-thread.addEventListener('keydown', e => { if (['PageUp', 'ArrowUp', 'Home'].includes(e.key)) unstick(); });
-if (window.ResizeObserver) new ResizeObserver(() => { if (STICK) thread.scrollTop = thread.scrollHeight; }).observe(col);
-$('#jump').addEventListener('click', () => { thread.scrollTo({top: thread.scrollHeight, behavior: SMOOTH()}); STICK = true; $('#jump').hidden = true; });
+thread.addEventListener('touchstart', e => { USER_AT = Date.now(); touchY = e.touches[0]?.clientY || 0; }, {passive: true});
+thread.addEventListener('touchmove', e => { USER_AT = Date.now(); if ((e.touches[0]?.clientY || 0) > touchY + 6) unstick(); }, {passive: true});
+thread.addEventListener('pointerdown', () => { USER_AT = Date.now(); }, {passive: true});   // the scrollbar or a drag is hers too
+thread.addEventListener('keydown', e => { USER_AT = Date.now(); if (['PageUp', 'ArrowUp', 'Home'].includes(e.key)) unstick(); });
+if (window.ResizeObserver) {
+  const ro = new ResizeObserver(() => { if (ANCHOR) landSpace(); if (STICK) thread.scrollTop = thread.scrollHeight; });
+  ro.observe(col); ro.observe(thread);
+}
+$('#jump').addEventListener('click', () => { USER_AT = Date.now(); STICK = true; thread.scrollTo({top: thread.scrollHeight - LAND_PAD - thread.clientHeight, behavior: SMOOTH()}); $('#jump').hidden = true; });
 function landing(on) {
   $('#landing').hidden = !on; $('#thread').hidden = on; $('#dock').hidden = on;
   (on ? $('#slotLand') : $('#slotDock')).appendChild(composer);
@@ -804,7 +1010,7 @@ function flushStepBuf() {
 const ATT = window.HoolaAttach ? HoolaAttach({api, esc, toast, token: () => TOKEN,
   itemOf: (kind, p) => PN?.itemOf(kind, p), open: item => PN ? (PN.open(item), true) : false}) : null;
 const FILE_ONLY = 'Look at this file';   // the words a files-only message carries to Hoola
-function userBubble(text, files, eid, cid, at) {
+function userBubble(text, files, eid, cid, at, land) {
   const d = document.createElement('div'); d.className = 'mu';
   const tiles = files?.length && ATT ? ATT.sent(files) : null;   // v0.279 her files sit above the bubble, like Claude
   d.innerHTML = (files?.length && !ATT ? `<div class="att">${files.map(f => `<span class="chip">📎 ${esc(f.name || f)}</span>`).join('')}</div>` : '') + `<span class="mut">${esc(text)}</span>`;
@@ -813,7 +1019,9 @@ function userBubble(text, files, eid, cid, at) {
   if (eid && !files?.length) attachEdit(d, text, eid);
   if (at) d.dataset.at = at;                             // v0.178 the jump rail reads the day off this
   if (tiles) { if (at) tiles.dataset.at = at; SINK.appendChild(tiles); d._tiles = tiles; }
-  SINK.appendChild(d); if (SINK === col) scrollDown(true); TURN = null; return d;
+  SINK.appendChild(d);
+  if (SINK === col) { if (land) { d.classList.add('landed'); landAt(tiles || d); } else scrollDown(true); }   // v0.999.199 a new message lands at the top
+  TURN = null; return d;
 }
 /* v0.173 receipts: a message sent while Hoola works shows what became of it — queue mein (take-back possible),
    turant jawab (the quick lane answered beside the running kaam), bhej diya (the queued turn took it). */
@@ -1208,7 +1416,7 @@ const LABEL = {bazar_approval:'Your approval is required', employee_ask:'Employe
   email_draft:'Email draft', hoola_deal:'Hoola Deal', hoola_knock:'Hoola Network', hoola_msg:'Hoola Network message', calendar_event:'Calendar',
   reminders:'Reminders', lists:'Lists', gyaan_sources:'Sources', call_receipt:'Call receipt', procedure:'Learned', memory_saved:'Saved to memory', memory_used:'From memory', model_receipt:'Made with', model_switch:'Model',
   artifact:'Page', pc_file:'File', photo_made:'Picture', motion:'Reel', video_job:'Video', studio_approval:'AI video cost', gst_return:'GST return',
-  payroll_run:'Salary run', google_reconnect:'Reconnect Google', campaign:'WhatsApp campaign', share_ask:'Share this?'};
+  payroll_run:'Salary run', google_reconnect:'Reconnect Google', google_connect:'Connect Google', campaign:'WhatsApp campaign', share_ask:'Share this?'};
 const CARDS = new Map();      // kind:id -> element (updated in place)
 // Build studio (build.js): website / app design / Android builds live, like the phone app
 const B = window.HoolaBuild ? window.HoolaBuild({api, esc, toast, narrow, conv: () => CONV,
@@ -1595,6 +1803,18 @@ function renderCard(kind, p, at, live) {
         yes: async () => { const r = await api('POST', `/api/panel/share/${encodeURIComponent(p.id)}`, {approve: true}); renderCard(kind, r); },
         no: async () => { const r = await api('POST', `/api/panel/share/${encodeURIComponent(p.id)}`, {approve: false}); renderCard(kind, r); }});
       break; }
+    case 'google_reconnect': case 'google_connect': {   // v0.999.181 a Google app that stopped or is not connected: one button
+      const app = String(p.app || ''), email = String(p.email || '');
+      const nm = p.app_name || (app ? app[0].toUpperCase() + app.slice(1) : 'Google');
+      const re = kind === 'google_reconnect';
+      el.innerHTML = head(re ? `${nm} needs reconnecting` : `Connect ${nm}`, email || (re ? 'Google ended Hoola\u2019s access' : 'Not connected yet'), 'warn')
+        + `<p style="font-size:14px">${esc(String(p.say || (re ? 'One tap brings this Google account back. Nothing else changes.' : 'Google asks once. After that Hoola carries on.')).slice(0, 400))}</p>`
+        + `<div class="acts"><button class="btn go" type="button" data-gk>${re ? 'Reconnect' : 'Connect ' + esc(nm)}</button><button class="btn soft" type="button" data-gl>Not now</button></div>`;
+      el.querySelector('[data-gk]').addEventListener('click', async () => {
+        try { const r = await api('POST', '/api/google/connect', {apps: app ? [app] : ['core'], surface: 'web', hint: email}); location.href = r.url; } catch (e) { toast(e.message, true); }
+      });
+      el.querySelector('[data-gl]').addEventListener('click', () => el.querySelector('.acts')?.remove());
+      break; }
     default: {
       const tk = ['title', 'name', 'label', 'what', 'subject'].find(k => p[k]), sk = ['say', 'summary', 'text', 'reason', 'message'].find(k => p[k]);
       const title = (tk && p[tk]) || LABEL[kind] || kind.replace(/_/g, ' ');
@@ -1663,7 +1883,7 @@ function onEvent(ev) {
           if (b && !p.files?.length) attachEdit(b, p.text, ev.id); else if (b) b.dataset.eid = ev.id;
           return;
         }
-        landing(false); userBubble(p.text, p.files, ev.id, null, ev.at); return;
+        landing(false); userBubble(p.text, p.files, ev.id, null, ev.at, true); return;
       }
       if (p.source === 'greeting') return;        // v0.234 the console never draws the old greeting (the home greets), like Claude
       if (p.ack) { if (TYPING) simpleProgress('ack', p); return; }        // v0.227.3 the 5-second comfort line: one progress row, never a second avatar
@@ -2095,7 +2315,7 @@ composer.addEventListener('submit', async e => {
   const files = FILES.splice(0); drawFiles(); msg.value = ''; msg.style.height = 'auto'; $('#sendBtn').disabled = true;
   store.del('hoola.draft.' + origin);   // v0.173 the draft went out with the message
   const body = {text: text || FILE_ONLY, client_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())), files: files.map(f => f.file_id), hints: takeHints()};
-  landing(false); const bbl = userBubble(body.text, files, null, body.client_id);
+  landing(false); const bbl = userBubble(body.text, files, null, body.client_id, null, true);
   if (TYPING) receipt(bbl, body.client_id, 'queue');   // v0.173 steering: she sees it is queued and can take it back
   USER_ECHO.push(body.text);
   for (let i = 0; i < 3; i++) {
@@ -2267,45 +2487,14 @@ $('#files').addEventListener('click', e => {
   const v = e.target.closest('[data-view]');
   if (v && ATT) ATT.view(FILES, +v.dataset.view);
 });
-$('#micBtn').title = 'Speak to type (dictation)';
+$('#micBtn').title = 'Speak to type (Ctrl + Space)'; $('#micBtn').setAttribute('aria-pressed', 'false');
 $('#toolsBtn').addEventListener('click', () => go('kaam'));
 
-/* v0.173 dictation in the composer: mic button speaks hi-IN into the box (Chrome / Android); the live call
-   stays on Baat. No speech recognition in this browser = the old jump to Baat, with a one-line why. */
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-let DICT = null;
-async function flowMic() {   // v0.751 Kaan first (her own server), the browser's speech service only when Kaan cannot hear
-  if (FMIC?.on) { FMIC.stop(); return true; }
-  if (!FMIC || DICT || !(await FMIC.canUse())) return false;
-  try { await FMIC.start(msg.value); toast('Hoola Flow is listening. Click the microphone (or Ctrl + Space) to finish.'); return true; }
-  catch (e) { toast(/denied|NotAllowed|Permission/i.test(String(e?.message)) ? 'Allow the microphone for this site in your browser address bar.' : (e.message || 'The microphone could not start.'), true); return true; }
-}
-document.addEventListener('keydown', e => {   // v0.751 Ctrl + Space starts / finishes dictation while the chat box has focus
-  if (!FMIC || !e.ctrlKey || e.code !== 'Space' || document.activeElement !== msg) return;
-  e.preventDefault(); $('#micBtn').click();
-});
-$('#micBtn').addEventListener('click', async () => {
-  if (await flowMic()) return;
-  if (!SR) { go('baat'); return; }
-  if (DICT) { DICT.stop(); return; }
-  const r = new SR();
-  r.lang = 'hi-IN'; r.interimResults = true; r.continuous = true;
-  let base = msg.value ? msg.value.replace(/\s*$/, ' ') : '';
-  DICT = r;
-  $('#micBtn').classList.add('on');
-  r.onresult = ev => {
-    let fin = '', mid = '';
-    for (let i = ev.resultIndex; i < ev.results.length; i++) {
-      if (ev.results[i].isFinal) fin += ev.results[i][0].transcript; else mid += ev.results[i][0].transcript;
-    }
-    if (fin) { base += (base && !/\s$/.test(base) ? ' ' : '') + fin.trim(); }
-    msg.value = base + (mid ? (base ? ' ' : '') + mid : '');
-    msg.dispatchEvent(new Event('input')); scrollDown(true);
-  };
-  const stop = () => { DICT = null; $('#micBtn').classList.remove('on'); };
-  r.onend = stop; r.onerror = ev => { stop(); if (ev.error === 'not-allowed') toast('Allow microphone access in your browser address bar.', true); };
-  try { r.start(); toast('Speak to dictate. Click the microphone again to stop.'); } catch { stop(); go('baat'); }
-});
+/* v0.999.224 THE CHAT BOX MICROPHONE (dictate.js): her language, a recording bar in the page's ink, it never writes into
+   a sent message, carries on after a pause, keeps her typing, says why when it cannot hear. Hoola Flow first when ready. */
+const DICTATE = window.HoolaDictate ? window.HoolaDictate({composer, msg, button: $('#micBtn'), toast,
+  flow: {canUse: async () => !!(FMIC && await FMIC.canUse()), start: t => FMIC.start(t), stop: () => FMIC.stop(), cancel: () => FMIC.cancel()},
+  onWrite: () => scrollDown(true)}) : null;
 
 /* ================= landing ideas + "All tools" (real prompts) ================= */
 const KAAM = window.KAAM || [], KI = window.KAAM_ICON || {};
@@ -2317,9 +2506,9 @@ function usePrompt(id) {
 document.addEventListener('click', e => { const b = e.target.closest('[data-say]'); if (b) usePrompt(b.dataset.say); });
 function drawKaam(q = '') {
   const qq = q.trim().toLowerCase(), total = KAAM.reduce((n, g) => n + g[4].length, 0);
-  const studios = APPD ? APP_TOOLS.filter(([k]) => k === 'connectors' || NAV.some(([n]) => n === k)) : [];
+  const studios = APPD ? APP_TOOLS.filter(([k]) => k === 'connectors' || k === 'route' || k === 'dod' || NAV.some(([n]) => n === k)) : [];
   $('#kaam').innerHTML = (studios.length ? `<div class="apphead"><h2>Tools</h2><p>Everything ${esc(AV)} can make with you, in one place.</p></div>
-    <div class="apptools">${studios.map(([k, n, l]) => `<button type="button" class="apptool" data-v="${k}"><span class="disc">${svg(IC[k] || IC.creative)}</span><b>${esc(n)}</b><span class="tl">${esc(l)}</span></button>`).join('')}</div>` : '')
+    <div class="apptools">${studios.map(([k, n, l]) => `<button type="button" class="apptool" data-v="${k}"><span class="disc">${svg(IC[k] || IC_APP[k] || IC.creative)}</span><b>${esc(n)}</b><span class="tl">${esc(l)}</span></button>`).join('')}</div>` : '')
     + `<div class="vh"><h2>What ${esc(AV)} can do</h2><span class="faint" style="font-weight:500">${total} jobs · a tap sends it to the real ${esc(AV)}</span></div>
     <label class="ksearch gl"><span aria-hidden="true">⌕</span><input id="kq" placeholder="Search: GST, reel, OTP, TV…" value="${esc(q)}" aria-label="Search"></label>
     <div class="kchips">${KAAM.map(g => `<a class="chip" href="#k-${g[0]}" style="text-decoration:none"><span>${g[1]}</span>${esc(g[2])}</a>`).join('')}</div>
@@ -2434,34 +2623,128 @@ document.addEventListener('click', e => {
 
 /* ================= Main (profile + console password) ================= */
 const gOn = m => { const g = m.google_apps || {}; return !!(g.gmail && g.calendar && g.drive); };
-async function drawMain() {
+async function drawMain() {   // v0.999.223 CUSTOMIZE, PREMIUM (design claude.ai/artifact/ENS4Mk3mkFsgEJaA8hxSD2)
   const m = ME || {}; const box = $('#mainp');
-  box.innerHTML = appearanceHTML() + `<div class="prof gl"><span class="av"><img src="${$('#uimg').src}" alt=""></span><div><h2>${esc(AV)}</h2><div class="muted">${esc(m.handle || '')} · ${esc(m.owner || '')}${m.email ? ' · ' + esc(m.email) : ''}</div></div></div>
-    <div class="grid2">
-      <div class="tile gl"><h3>Console password <span class="tag ${m.has_password ? 'ok' : 'warn'}">${m.has_password ? 'set' : 'not set'}</span></h3>
-        <p class="muted" style="font-size:13.5px">Sign in on any computer with <b>${esc(m.handle || 'Hoola ID')}</b> + this password. Every sign-in is reported in your chat.</p>
-        <form class="pwbox" id="pwf" autocomplete="off">${m.has_password ? '<input type="password" id="pwc" placeholder="Current password" autocomplete="current-password" aria-label="Current password">' : ''}
-          <input type="password" id="pwn" placeholder="New password (10+ characters)" autocomplete="new-password" aria-label="New password" minlength="10">
-          <input type="password" id="pwn2" placeholder="Confirm new password" autocomplete="new-password" aria-label="Repeat new password">
-          <button class="btn go" type="submit">${m.has_password ? 'Change password' : 'Set password'}</button></form></div>
-      <div class="tile gl"><h3>Google apps <span class="tag ${gOn(m) ? 'ok' : 'warn'}">${gOn(m) ? 'connected' : 'not connected'}</span></h3>
-        <p class="muted" style="font-size:13.5px">Sign-in only reads your name and email. To work in Gmail, Calendar, Drive, Docs and Sheets, give Google permission separately.</p>
-        <div class="feat">${['gmail', 'calendar', 'drive', 'docs', 'sheets'].map(k => `<span class="chip">${(m.google_apps || {})[k] ? '✓' : '○'} ${k[0].toUpperCase() + k.slice(1)}</span>`).join('')}</div>
-        <div class="acts" style="margin-top:12px"><button class="btn ${gOn(m) ? 'soft' : 'go'}" type="button" id="gAppsBtn">${gOn(m) ? 'Reconnect' : 'Connect Google apps'}</button></div></div>
-      <div class="tile gl"><h3>Memory <span class="tag v" id="memc">…</span></h3><div class="mfacts" id="mfacts"><div class="empty">Loading…</div></div></div>
-      <div class="tile gl"><h3>Server</h3><div class="feat" id="feat"><span class="empty">…</span></div></div>
-    </div>
-    <div class="acts" style="margin-top:22px"><button class="btn soft" type="button" id="logoutBtn">Logout</button>
-      ${CONFIG.v2 ? '<a class="btn soft" href="/console/?legacy=1" style="text-decoration:none">Legacy console</a>' : ''}</div>`;
+  const toc = [['appearance', 'Appearance', 'app'], ['signin', 'Sign-in', 'pw'], ['connections', 'Connections', 'con'], ['memory', 'Memory', 'mem'], ['about', 'About this server', 'srv']];
+  const eye = '<button type="button" class="cz-eye" aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg></button>';
+  const chev = '<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
+  const pwf = (id, label, ph, ac) => `<div class="cz-fld"><label for="${id}">${label}</label><span class="cz-inp"><input type="password" id="${id}" placeholder="${ph}" autocomplete="${ac}">${eye}</span></div>`;
+  const stat = (k, label, to) => `<button type="button" class="cz-stat" data-czgo="${to}"><span>${label}</span><b id="${k}">…</b></button>`;
+  box.innerHTML = `<div class="cz">
+  <header class="cz-top"><div><span class="cz-crumb">Account · Customize</span><h1>Make Hoola yours</h1><p>How it looks, how you sign in, and what it remembers about you.</p></div>
+    <span class="cz-saved"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Changes save as you make them</span></header>
+  <section class="cz-card cz-me" aria-label="Your account">
+    <span class="cz-av"><img src="${esc($('#uimg').src)}" alt=""><i class="on" title="Online"></i></span>
+    <div class="who"><h2>${esc(AV)}</h2><div class="meta"><span class="mono">${esc(m.handle || '')}</span>${m.owner ? `<span class="dot" aria-hidden="true">·</span><span>${esc(m.owner)}</span>` : ''}${m.email ? `<span class="dot" aria-hidden="true">·</span><span>${esc(m.email)}</span>` : ''}</div></div>
+    <div class="cz-stats">${stat('czCred', 'Credits', 'credits')}${stat('czGapps', 'Google apps', 'connections')}${stat('czMemN', 'Memories', 'memory')}</div>
+  </section>
+  <div class="cz-body">
+    <nav class="cz-toc" aria-label="Customize sections">${toc.map(([id, t, ic], i) => `<a href="#${id}" data-cztoc="${id}"${i ? '' : ' class="on" aria-current="true"'}>${CZ_ICON[ic]}${t}</a>`).join('')}
+      <span class="sep"></span><span class="kb">Press <kbd>?</kbd> for keyboard shortcuts</span></nav>
+    <div class="cz-main">
+      ${appearanceHTML()}
+      <section class="cz-card" id="signin" aria-labelledby="czhPw">
+        <div class="cz-hd">${CZ_ICON.pw}<div><h2 id="czhPw">Console password</h2><p>Sign in on any computer with <b>${esc(m.handle || 'your Hoola ID')}</b> and this password. Every sign-in is reported in your chat.</p></div>
+          <span class="cz-pill ${m.has_password ? 'ok' : 'warn'}"><i></i>${m.has_password ? 'Set' : 'Not set'}</span></div>
+        <form class="cz-pad cz-pwf" id="pwf" autocomplete="off">
+          ${m.has_password ? `<div class="cz-two">${pwf('pwc', 'Current password', 'Your current password', 'current-password')}</div>` : ''}
+          <div class="cz-two"><div>${pwf('pwn', 'New password', 'At least 10 characters', 'new-password')}
+            <span class="cz-str" id="pwStr" data-s="0" aria-live="polite"><span class="bars"><i></i><i></i><i></i><i></i></span><span class="tx">Use 10 or more characters.</span></span></div>
+            ${pwf('pwn2', 'Confirm new password', 'Type it again', 'new-password')}</div>
+          <div class="cz-foot"><span class="cz-note"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/></svg>Hoola never shows or sends your password anywhere.</span>
+            <button class="cz-btn pri" type="submit">${m.has_password ? 'Change password' : 'Set password'}</button></div></form>
+      </section>
+      <section class="cz-card" id="connections" aria-labelledby="czhCon">
+        <div class="cz-hd">${CZ_ICON.con}<div><h2 id="czhCon">Connections</h2><p>The apps Hoola can work in for you.</p></div></div>
+        <div class="cz-pad"><div class="cz-list">
+          <div class="cz-li"><span class="lg g"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.2c0-.7-.1-1.3-.2-1.9H12v3.6h5.1a4.4 4.4 0 0 1-1.9 2.9v2.4h3.1c1.8-1.7 2.7-4.1 2.7-7z" fill="#4285F4"/><path d="M12 21.5c2.6 0 4.7-.9 6.3-2.3l-3.1-2.4c-.9.6-2 .9-3.2.9-2.5 0-4.6-1.7-5.3-3.9H3.5v2.5A9.5 9.5 0 0 0 12 21.5z" fill="#34A853"/><path d="M6.7 13.8a5.7 5.7 0 0 1 0-3.6V7.7H3.5a9.5 9.5 0 0 0 0 8.6z" fill="#FBBC05"/><path d="M12 6.3c1.4 0 2.6.5 3.6 1.4l2.7-2.7A9.5 9.5 0 0 0 3.5 7.7l3.2 2.5C7.4 8 9.5 6.3 12 6.3z" fill="#EA4335"/></svg></span><div class="tx"><span class="t">Google <span class="cz-pill" id="gSum">…</span></span><span>Gmail, Calendar, Drive, Docs, Sheets, Forms, Slides and more.</span></div>
+            <button type="button" class="cz-btn" id="gAppsBtn">Manage${chev}</button></div>
+          <div class="cz-li"><span class="lg"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><path d="M16.5 13v7M13 16.5h7"/></svg></span><div class="tx"><span class="t">All other apps</span><span>Slack, Notion, payments, your own servers and more, in Connectors.</span></div>
+            <button type="button" class="cz-btn" id="czConn">Open Connectors${chev}</button></div>
+        </div></div>
+      </section>
+      <section class="cz-card" id="memory" aria-labelledby="czhMem">
+        <div class="cz-hd">${CZ_ICON.mem}<div><h2 id="czhMem">Memory</h2><p>What Hoola remembers about you and your work. Pin what matters, forget the rest.</p></div>
+          <span class="cz-inp cz-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg><input id="czMemQ" type="search" placeholder="Search memories" aria-label="Search memories"></span></div>
+        <div class="cz-pad"><div class="cz-list" id="mfacts"><div class="cz-empty">Loading…</div></div>
+          <span class="cz-hint" id="czMemHint">Tell Hoola "remember that…" in any chat to add one. Pinned ones are always in Hoola's mind.</span></div>
+      </section>
+      <section class="cz-card" id="about" aria-labelledby="czhAb">
+        <div class="cz-hd">${CZ_ICON.srv}<div><h2 id="czhAb">About this server</h2><p>The Hoola version you are on and what is switched on.</p></div>
+          <button type="button" class="cz-btn sm" id="czFeatBtn" aria-expanded="false" aria-controls="feat">Show features</button></div>
+        <div class="cz-pad"><div class="cz-tiles"><div><span>Version</span><b class="mono" id="czVer">…</b></div><div><span>Status</span><b id="czUp">…</b></div><div><span>Features on</span><b id="czFeatN">…</b></div></div>
+          <div class="feat cz-feat" id="feat" hidden></div></div>
+      </section>
+      <section class="cz-card cz-out" aria-label="Session"><div><b>Signed in on this computer</b><span>Log out here when you leave a shared computer.${CONFIG.v2 ? ' <a href="/console/?legacy=1">Legacy console</a>' : ''}</span></div>
+        <button class="cz-btn bad" type="button" id="logoutBtn"><svg viewBox="0 0 24 24"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M10 16l-4-4 4-4M6 12h10"/></svg>Log out</button></section>
+    </div></div></div>`;
   themeSync();
+  const scroller = $('#mainp');
+  $$('[data-cztoc]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); $('#' + a.dataset.cztoc)?.scrollIntoView({block: 'start', behavior: SMOOTH()}); czToc(a.dataset.cztoc); }));
+  $$('[data-czgo]').forEach(b => b.addEventListener('click', () => { const to = b.dataset.czgo; if (to === 'credits') go('credits'); else $('#' + to)?.scrollIntoView({block: 'start', behavior: SMOOTH()}); }));
+  if (window.IntersectionObserver) { const io = new IntersectionObserver(es => { const v = es.filter(x => x.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0]; if (v) czToc(v.target.id); }, {root: scroller, rootMargin: '-10% 0px -70% 0px'}); toc.forEach(([id]) => { const el = $('#' + id); if (el) io.observe(el); }); }
+  $$('#mainp .cz-eye').forEach(b => b.addEventListener('click', () => { const i = b.previousElementSibling, show = i.type === 'password'; i.type = show ? 'text' : 'password'; b.setAttribute('aria-pressed', String(show)); b.setAttribute('aria-label', show ? 'Hide password' : 'Show password'); }));
+  $('#pwn').addEventListener('input', e => czStrength(e.target.value));
   $('#logoutBtn').addEventListener('click', () => logout(false));
-  $('#gAppsBtn').addEventListener('click', () => { if (!CONFIG.google) return toast('Google sign-in is not configured.', true); location.href = '/auth/google/start?web=1&apps=1'; });
+  $('#gAppsBtn').addEventListener('click', () => go('connectors', 'google'));   // v0.999.181 the apps step lives in Connectors › Google
+  $('#czConn').addEventListener('click', () => go('connectors'));
+  $('#czFeatBtn').addEventListener('click', e => { const f = $('#feat'), open = f.hidden; f.hidden = !open; e.currentTarget.setAttribute('aria-expanded', String(open)); e.currentTarget.textContent = open ? 'Hide features' : 'Show features'; });
+  api('GET', '/api/google').then(g => { const ok = (g.apps || []).filter(a => a.state === 'ok').length, bad = (g.accounts || []).filter(a => a.state === 'expired').length;
+    const s = $('#gSum'); if (s) { s.innerHTML = '<i></i>' + (bad ? 'Needs reconnecting' : ok ? ok + ' apps connected' : 'Not connected'); s.className = 'cz-pill ' + (bad ? 'warn' : ok ? 'ok' : 'warn'); }
+    const n = $('#czGapps'); if (n) n.textContent = String(ok); }).catch(() => { const n = $('#czGapps'); if (n) n.textContent = '—'; });
+  api('GET', '/api/credits').then(c => { const w = c.wallet || {}, n = $('#czCred'); if (!n) return;
+    n.textContent = !w.on ? 'Off' : w.exempt ? 'Unlimited' : Math.floor((w.free_left || 0) + (w.paid_left || 0)).toLocaleString('en-IN'); }).catch(() => { const n = $('#czCred'); if (n) n.textContent = '—'; });
   $('#pwf').addEventListener('submit', async e => { e.preventDefault(); const n = $('#pwn').value, n2 = $('#pwn2').value;
+    if (n.length < 10) return toast('Use at least 10 characters.', true);
     if (n !== n2) return toast('The new passwords do not match.', true);
     try { const r = await api('PUT', '/api/console/password', {password: n, current: $('#pwc')?.value || ''}); ME.has_password = true; toast(`Password set. You can now sign in with ${r.handle} + password.`); drawMain(); } catch (er) { toast(er.message, true); } });
-  api('GET', '/api/memory').then(r => { const f = r.facts || []; $('#memc').textContent = f.length; $('#mfacts').innerHTML = f.slice(0, 40).map(x => `<div>${x.pinned ? '📌 ' : ''}${esc(x.text)}</div>`).join('') || '<div class="empty">No memories yet.</div>'; }).catch(() => { $('#mfacts').innerHTML = '<div class="empty">—</div>'; });
-  fetch('/healthz').then(r => r.json()).then(h => { $('#feat').innerHTML = `<span class="chip">v${esc(h.version)}</span>` + (h.features || []).slice(0, 60).map(f => `<span class="chip">${esc(f.replace(/_/g, ' '))}</span>`).join(''); }).catch(() => {});
+  czMemory();
+  $('#czMemQ').addEventListener('input', () => czMemDraw());
+  fetch('/healthz').then(r => r.json()).then(h => { const fs = h.features || [];
+    $('#czVer').textContent = 'v' + (h.version || ''); $('#czUp').innerHTML = `<i class="up${h.ok === false ? ' down' : ''}"></i>${h.ok === false ? 'Needs a look' : 'Online'}`; $('#czFeatN').textContent = String(fs.length);
+    $('#feat').innerHTML = fs.map(f => `<span class="cz-chip">${esc(f.replace(/_/g, ' '))}</span>`).join('') || '<span class="cz-hint">No features reported.</span>'; })
+    .catch(() => { $('#czVer').textContent = '—'; $('#czUp').textContent = 'Not reachable'; $('#czFeatN').textContent = '—'; });
 }
+function czToc(id) { $$('[data-cztoc]').forEach(a => { const on = a.dataset.cztoc === id; a.classList.toggle('on', on); if (on) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current'); }); }
+function czStrength(v) {   // length first, then the kinds of characters; a hint, never a gate beyond the 10 the server asks for
+  const el = $('#pwStr'); if (!el) return;
+  const kinds = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter(r => r.test(v)).length;
+  const s = !v ? 0 : v.length < 10 ? 1 : (v.length >= 14 && kinds >= 3) ? 4 : (v.length >= 12 || kinds >= 3) ? 3 : 2;
+  el.dataset.s = String(s);
+  el.querySelector('.tx').textContent = ['Use 10 or more characters.', 'Too short: 10 characters at least.', 'Fair. Longer is stronger.', 'Good.', 'Strong.'][s];
+}
+let CZMEM = [];
+async function czMemory() {
+  try { const r = await api('GET', '/api/memory'); CZMEM = r.facts || []; } catch (e) { const b = $('#mfacts'); if (b) b.innerHTML = `<div class="cz-empty">${esc(e.message)}</div>`; return; }
+  const n = $('#czMemN'); if (n) n.textContent = String(CZMEM.length);
+  czMemDraw();
+}
+function czWhen(iso) { const d = (Date.now() - new Date(iso).getTime()) / 864e5; if (!(d >= 0)) return ''; return d < 1 ? 'Today' : d < 2 ? 'Yesterday' : d < 7 ? Math.floor(d) + ' days ago' : d < 30 ? Math.floor(d / 7) + (d < 14 ? ' week ago' : ' weeks ago') : new Date(iso).toLocaleDateString('en-IN', {day: 'numeric', month: 'short', year: 'numeric'}); }
+function czMemDraw() {
+  const box = $('#mfacts'); if (!box) return;
+  const q = ($('#czMemQ')?.value || '').trim().toLowerCase();
+  const rows = CZMEM.filter(f => !q || f.text.toLowerCase().includes(q)).sort((a, b) => (b.pinned - a.pinned)).slice(0, 80);
+  if (!CZMEM.length) { box.innerHTML = '<div class="cz-empty big"><b>Nothing remembered yet</b><span>Tell Hoola something in a chat, like "remember our shop opens at 9". It shows up here.</span></div>'; return; }
+  if (!rows.length) { box.innerHTML = '<div class="cz-empty">No memory matches that.</div>'; return; }
+  box.innerHTML = rows.map(f => `<div class="cz-fact" data-fid="${f.id}">${f.pinned ? '<span class="cz-tag">Pinned</span>' : ''}<span class="tx">${esc(f.text)}</span><span class="wh">${esc(czWhen(f.created_at))}</span>
+    <button type="button" class="cz-ib" data-czpin="${f.pinned ? 0 : 1}" aria-label="${f.pinned ? 'Unpin' : 'Pin'}" title="${f.pinned ? 'Unpin' : 'Pin: always in Hoola\'s mind'}" aria-pressed="${f.pinned}"><svg viewBox="0 0 24 24"><path d="M9 4h6l-1 5 3 3H7l3-3zM12 12v8"/></svg></button>
+    <button type="button" class="cz-ib" data-czdel aria-label="Forget" title="Forget"><svg viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg></button></div>`).join('');
+}
+document.addEventListener('click', async e => {   // pin / forget a memory; forgetting asks once more on the same row
+  const b = e.target.closest('#mfacts [data-czpin],#mfacts [data-czdel],#mfacts [data-czno]'); if (!b) return;
+  const row = b.closest('[data-fid]'), id = row?.dataset.fid; if (!id) return;
+  if (b.hasAttribute('data-czno')) { czMemDraw(); return; }
+  if (b.hasAttribute('data-czdel') && !row.classList.contains('ask')) {
+    row.classList.add('ask'); row.querySelectorAll('.cz-ib').forEach(x => x.remove());
+    row.insertAdjacentHTML('beforeend', '<span class="askt">Forget this everywhere?</span><button type="button" class="cz-btn sm bad" data-czdel>Forget</button><button type="button" class="cz-btn sm" data-czno>Keep</button>');
+    row.querySelector('[data-czno]').focus(); return;
+  }
+  try {
+    const r = b.hasAttribute('data-czdel') ? await api('DELETE', '/api/memory/' + id) : await api('PATCH', '/api/memory/' + id, {pinned: b.dataset.czpin === '1'});
+    CZMEM = r.facts || []; const n = $('#czMemN'); if (n) n.textContent = String(CZMEM.length); czMemDraw();
+    if (b.hasAttribute('data-czdel')) toast('Forgotten.');
+  } catch (er) { toast(er.message, true); }
+});
 
 /* ================= Baat: live voice in the browser ================= */
 let CALL = null;

@@ -12,6 +12,7 @@ start within a short wait says "queued" plainly instead of starting a third.
 by HOOLA_APPENGINE_NODE_MODULES - for development and tests only; the server default is the box."""
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -29,10 +30,17 @@ _GATE: threading.BoundedSemaphore | None = None
 _GATE_N = 0
 _GATE_LOCK = threading.Lock()
 STATS = {"builds": 0, "queued": 0, "failed": 0}
+# v0.999.64 D3: after the app builds, a server build renders every page to HTML (hoola.prerender.mjs). That step never
+# fails the build: when it cannot run, the app keeps its plain pages and ssr.txt says why.
+SSR = ("if [ -f src/entry-server.tsx ] && [ -f hoola.prerender.mjs ]; then "
+       "{ if grep -q '\"site\"' hoola.render.json 2>/dev/null; then "
+       "node node_modules/vite/bin/vite.js build --mode islands --configLoader runner --logLevel warn; fi; "
+       "node node_modules/vite/bin/vite.js build --ssr src/entry-server.tsx --configLoader runner --logLevel warn "
+       "&& node hoola.prerender.mjs; } > /out/ssr.txt 2>&1 || true; fi; ")
 SCRIPT = ("mkdir -p /tmp/w && cp -R /src/. /tmp/w/ && ln -s /opt/tpl/node_modules /tmp/w/node_modules && cd /tmp/w && "
           "{ node node_modules/typescript/bin/tsc --noEmit -p tsconfig.json --pretty false > /out/tsc.txt 2>&1; echo $? > /out/tsc.rc; } ; "
           "node node_modules/vite/bin/vite.js build --configLoader runner --logLevel warn > /out/vite.txt 2>&1; rc=$?; "
-          "if [ $rc = 0 ]; then cp -R dist /out/dist; fi; exit $rc")
+          "if [ $rc = 0 ]; then " + SSR + "cp -R dist /out/dist; fi; exit $rc")
 
 
 def _settings():
@@ -62,17 +70,19 @@ def available() -> dict[str, Any]:
         return {"ok": ok, "runner": "local", "why": "" if ok else "local runner: HOOLA_APPENGINE_NODE_MODULES + node are needed"}
     from ..devlab import box
     if not box.docker():
-        return {"ok": False, "runner": "box", "why": "docker is not on this server"}
+        return {"ok": False, "runner": "box", "fix": "docker", "why": "docker is not on this server"}
     rc, out, _ = box._run([box.docker(), "version", "--format", "{{.Server.Version}}"], 25)
     if rc != 0:
-        return {"ok": False, "runner": "box", "why": "the docker daemon is not answering"}
+        return {"ok": False, "runner": "box", "fix": "docker", "why": "the docker daemon is not answering"}
+    # ONE ENGINE: "fix": "image" = code can repair it (boxcare rebuilds the image by itself before the build)
     if not box.has_image(IMG.IMAGE):
-        return {"ok": False, "runner": "box", "why": "the App Engine image is not built yet: run `python -m app.appengine setup` "
-                                                     "(vps-ops > appengine_setup)"}
+        return {"ok": False, "runner": "box", "fix": "image",
+                "why": "the App Engine image is not built yet: run `python -m app.appengine setup` (vps-ops > appengine_setup)"}
     r = IMG.rev()
     if r != IMG.IMAGE_REV:
-        return {"ok": False, "runner": "box", "why": f"the App Engine image is older (rev {r or '?'}, needs {IMG.IMAGE_REV}): "
-                                                     "run `python -m app.appengine setup --rebuild`"}
+        return {"ok": False, "runner": "box", "fix": "image",
+                "why": f"the App Engine image is older (rev {r or '?'}, needs {IMG.IMAGE_REV}): "
+                       "run `python -m app.appengine setup --rebuild`"}
     return {"ok": True, "runner": "box", "image": IMG.IMAGE, "rev": r, "why": ""}
 
 
@@ -107,7 +117,10 @@ def _box_argv(src: str, out: str, source: bool = True) -> list[str]:
     return [box.docker(), "run", "--rm", "--network", "none", "--read-only", "--tmpfs", "/tmp:rw,exec,size=768m",
             "--user", "1000:1000", "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
             "--memory", "1536m", "--memory-swap", "1536m", "--cpus", "2", "--pids-limit", "256",
-            "--env", "NODE_OPTIONS=--max-old-space-size=1024", "--env", "CI=1", "--env", f"HOOLA_SOURCE={'1' if source else '0'}", "--env", "NO_COLOR=1", "--env", "FORCE_COLOR=0",
+            "--env", "NODE_OPTIONS=--max-old-space-size=1024", "--env", "CI=1",
+            # v0.999.64: the image sets NODE_ENV=development (so npm installs the build tools); a build must say
+            # production, or React's development build (twice the size, with dev warnings) ships to visitors
+            "--env", "NODE_ENV=production", "--env", f"HOOLA_SOURCE={'1' if source else '0'}", "--env", "NO_COLOR=1", "--env", "FORCE_COLOR=0",
             "-v", f"{os.path.abspath(src)}:/src:ro", "-v", f"{os.path.abspath(out)}:/out:rw",
             IMG.IMAGE, "sh", "-c", SCRIPT]
 
@@ -119,6 +132,7 @@ def _local(src: str, out: str, source: bool = True) -> tuple[int, str, float]:
         shutil.copytree(src, w, dirs_exist_ok=True)
         os.symlink(nm, os.path.join(w, "node_modules"))
         env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": w, "CI": "1", "LANG": "C.UTF-8", "NO_COLOR": "1", "FORCE_COLOR": "0",
+               "NODE_ENV": "production",
                "HOOLA_SOURCE": "1" if source else "0"}
         r1 = subprocess.run(["node", "node_modules/typescript/bin/tsc", "--noEmit", "-p", "tsconfig.json", "--pretty", "false"],
                             cwd=w, capture_output=True, text=True, timeout=TIMEOUT, env=env)
@@ -128,6 +142,26 @@ def _local(src: str, out: str, source: bool = True) -> tuple[int, str, float]:
                             cwd=w, capture_output=True, text=True, timeout=TIMEOUT, env=env)
         Path(out, "vite.txt").write_text(((r2.stdout or "") + (r2.stderr or "")).replace(w + "/", ""))
         if r2.returncode == 0:
+            if os.path.exists(os.path.join(w, "src", "entry-server.tsx")) and os.path.exists(os.path.join(w, "hoola.prerender.mjs")):
+                log = ""
+                try:
+                    rj = Path(w, "hoola.render.json")
+                    if rj.exists() and '"site"' in rj.read_text():     # an app never uses the islands build
+                        r0 = subprocess.run(["node", "node_modules/vite/bin/vite.js", "build", "--mode", "islands",
+                                             "--configLoader", "runner", "--logLevel", "warn"],
+                                            cwd=w, capture_output=True, text=True, timeout=TIMEOUT, env=env)
+                        log = (r0.stdout or "") + (r0.stderr or "")
+                    r3 = subprocess.run(["node", "node_modules/vite/bin/vite.js", "build", "--ssr", "src/entry-server.tsx",
+                                         "--configLoader", "runner", "--logLevel", "warn"],
+                                        cwd=w, capture_output=True, text=True, timeout=TIMEOUT, env=env)
+                    log += (r3.stdout or "") + (r3.stderr or "")
+                    if r3.returncode == 0:
+                        r4 = subprocess.run(["node", "hoola.prerender.mjs"], cwd=w, capture_output=True, text=True,
+                                            timeout=TIMEOUT, env=env)
+                        log += (r4.stdout or "") + (r4.stderr or "")
+                except subprocess.TimeoutExpired:
+                    log += "\nthe pre-render took too long"
+                Path(out, "ssr.txt").write_text(log.replace(w + "/", ""))
             shutil.copytree(os.path.join(w, "dist"), os.path.join(out, "dist"))
         return r2.returncode, "", time.time() - t0
 
@@ -138,6 +172,12 @@ def build(src: Path, wait: float = 20.0, source: bool = True) -> dict[str, Any]:
     and line + hidden source maps, v0.825 L9); False = the clean build that goes live. Never raises for a failed build; raises RuntimeError only when
     the box is not there."""
     av = available()
+    if not av["ok"] and mode() == "box":
+        # ONE ENGINE: the box is checked before every build and an image that is missing / old is rebuilt here first
+        # (one rebuild at a time; the owner is told) - like Lovable / Emergent, building never waits for a person
+        from . import boxcare
+        if boxcare.on():
+            av = boxcare.ensure("a build")
     if not av["ok"]:
         raise RuntimeError(av["why"])
     g = gate()
@@ -164,7 +204,17 @@ def build(src: Path, wait: float = 20.0, source: bool = True) -> dict[str, Any]:
         if not ok:
             STATS["failed"] += 1
         timed_out = rc == 124
+        pages = {}
+        if ok and (dist / "__pages.json").exists():
+            try:
+                pages = json.loads((dist / "__pages.json").read_text())
+            except ValueError:
+                pages = {}
+        prerender = {"ok": bool(pages.get("ok")), "mode": pages.get("mode") or "", "pages": len(pages.get("pages") or []),
+                     "failed": pages.get("failed") or [], "why": pages.get("why") or ("" if pages else _ANSI.sub("", read("ssr.txt"))[-600:]),
+                     "seconds": pages.get("seconds")} if ok else {}
         return {"ok": ok, "queued": False, "seconds": secs, "runner": mode(), "dist": str(dist) if ok else "",
+                "prerender": prerender,
                 "out_dir": str(out), "types_ok": tsc_rc == "0", "types": parse_tsc(tsc_txt),
                 "build_problems": [] if ok else parse_vite(vite_txt or txt),
                 "log": ((vite_txt or txt)[-6000:] if not ok else vite_txt[-2000:]), "types_log": tsc_txt[-4000:],

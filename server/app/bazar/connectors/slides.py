@@ -1,4 +1,5 @@
-"""Confirm cards for Google Slides changes that are hard to undo or reach other people (deleting slides, sharing).
+"""Confirm cards for Google Slides changes that are hard to undo or reach other people (deleting slides, sharing,
+removing access, the bin, removing a comment, many copies at once).
 The card and the action come from the stored change, never from model text."""
 from __future__ import annotations
 
@@ -7,7 +8,9 @@ from typing import Any
 from ..packs.registry import Pack
 from .base import Ctx, NeedsApproval, ToolError, ToolSpec
 
-TITLES = {"delete": "Delete slides?", "share": "Share presentation?"}
+TITLES = {"delete": "Delete slides?", "share": "Share presentation?", "unshare": "Remove access to the presentation?",
+          "link_share": "Let anyone with the link open it?", "trash": "Move the presentation to the bin?",
+          "comment_delete": "Remove the comment?", "fill": "Make the copies?"}
 
 
 class SlidesExecutor:

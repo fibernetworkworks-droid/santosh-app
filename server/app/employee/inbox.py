@@ -309,6 +309,12 @@ async def send(tenant: str, contact_id: str, text: str, by: str = "owner", force
     _publish_msg(tenant, cv, mv)
     if status == "failed":
         raise InboxError("WhatsApp did not accept the message (check the number / token / Meta setting).")
+    if by == "owner" or by.startswith("staff"):
+        try:                                  # G7: a person answering a handed-over chat has taken it
+            from ..seva import handover as H
+            H.replied(tenant, contact_id, by)
+        except Exception:   # noqa: BLE001
+            log.exception("handover replied")
     return mv
 
 
@@ -724,13 +730,22 @@ async def biz_promise(ctx, date: str, due_id: str = "", **_):
     return {"promised_on": d0.isoformat(), "amount": amt}
 
 
-async def biz_handover(ctx, reason: str = "", **_):
+async def biz_handover(ctx, reason: str = "", rule: str = "", **_):
     c = _contact(ctx)
     out = await asyncio.to_thread(set_human, ctx.tenant_id, c.id, True)
-    emp._note(ctx.tenant_id, "", f"{c.name or '+' + c.wa_id} on WhatsApp needs you: {str(reason)[:300]} "
-                                 "(reply in Employee > Inbox).")
     emp._publish(ctx.tenant_id, "biz_inbox", {"contact": out, "handover": True, "reason": str(reason)[:300]})
-    return {"handed_over": True, "note": "Tell the customer that the owner / team will reply soon."}
+    try:                                      # G7: a ticket with the hand-over packet + an honest line for the customer
+        from ..seva import handover as H
+        last = c.last_text or ""
+        h = await asyncio.to_thread(H.start, ctx.tenant_id, f"wa:{c.wa_id}", "whatsapp", str(reason or ""), str(rule or ""),
+                                    last, c.id, c.name or "")
+    except Exception:   # noqa: BLE001 - the person still gets told
+        log.exception("handover packet")
+        emp._note(ctx.tenant_id, "", f"{c.name or '+' + c.wa_id} on WhatsApp needs you: {str(reason)[:300]} "
+                                     "(reply in Employee > Inbox).")
+        return {"handed_over": True, "note": "Tell the customer that a person from the team will reply here; promise no time."}
+    return {"handed_over": True, "ticket": h["ticket"], "customer_line": h["customer_line"],
+            "note": "Tell the customer exactly `customer_line` (in their language); add no time or promise of your own."}
 
 
 async def biz_repair_status(ctx, **_):
@@ -797,8 +812,11 @@ BIZ_TOOLS = [
      "input_schema": {"type": "object", "properties": {"date": {"type": "string", "description": "YYYY-MM-DD"},
                                                         "due_id": {"type": "string"}}, "required": ["date"]}},
     {"name": "biz_handover", "description": ("Hand this chat to the owner / team: angry or upset customer, emergency, "
-                                             "something you can't answer, or they ask for a person."),
-     "input_schema": {"type": "object", "properties": {"reason": {"type": "string"}}, "required": ["reason"]}},
+                                             "something you can't answer, or they ask for a person. It makes the ticket and the "
+                                             "hand-over packet and returns customer_line: tell the customer exactly that."),
+     "input_schema": {"type": "object", "properties": {"reason": {"type": "string"},
+                                                       "rule": {"type": "string", "description": "asked|angry|safety|money|vip|topic|failed|unknown (from biz_seva_answer)"}},
+                      "required": ["reason"]}},
     {"name": "biz_note", "description": "Leave a message for the owner (after hours, a question you can't answer).",
      "input_schema": {"type": "object", "properties": {"text": {"type": "string"}}, "required": ["text"]}},
 ]
@@ -841,6 +859,13 @@ def _system(tenant: str, c: BizContact, extra: str = "") -> str:
     if not open_now and p.get("after_hours") == "note":
         s += ("\nThe business is closed right now: do no work (except bookings); say when it opens, pass their message to the owner with biz_note, "
               "and say they will get a reply when it opens.")
+    try:
+        from ..seva import handover as H
+        back = H.back_note(tenant, c.id)
+    except Exception:   # noqa: BLE001
+        back = ""
+    if back:
+        s += "\n\n" + back
     if extra:
         s += "\n\n" + extra
     return s
@@ -1001,12 +1026,48 @@ async def answer(tenant: str, contact_id: str, extra: str = "") -> str:
         history.append({"role": "user", "content": results})
     if not final:
         return ""
+    final = await _checked(tenant, contact_id, system, history, final, ctx)
+    if not final:
+        return ""
     try:
         await send(tenant, contact_id, final, by="hoola")
     except InboxError as e:
         emp._note(tenant, "", f"The WhatsApp reply was not sent ({e}).")
         return ""
     return final
+
+
+SAFE_LINE = "Thank you. A person from our team has your message and will reply to you here."
+
+
+async def _checked(tenant: str, contact_id: str, system: str, history: list[dict], final: str, ctx) -> str:
+    """G2: every reply is checked before it reaches the customer - each number must be in what this turn rests on, and no
+    call-back / escalation / refund promise unless a ticket, request or hand-over really happened. One rewrite; still
+    failing = a person (hand-over) and a plain line, never the unchecked words."""
+    if not get_settings().support_reply_check:
+        return final
+    from ..seva import engine as E
+    bad = E.outgoing_problems(final, system, history)
+    if not bad:
+        return final
+    log.info("inbox reply held by the check: %s", "; ".join(bad))
+    note = ("[Check before sending - not from the customer] Your reply cannot go out: " + "; ".join(bad) +
+            ". Write it again using ONLY what the tool results and the business details say, and promise nothing that no "
+            "tool did. If you cannot, say a person from the team will reply.")
+    hist = history + [{"role": "user", "content": note}]
+    try:
+        blocks, _stop = await _brain(system, hist, [])
+        again = "\n".join(b["text"] for b in blocks if b.get("type") == "text" and b.get("text", "").strip()).strip()
+    except Exception:   # noqa: BLE001
+        log.exception("inbox rewrite failed")
+        again = ""
+    if again and not E.outgoing_problems(again, system, history):
+        return again
+    try:
+        await biz_handover(ctx, reason="the reply could not be checked: " + "; ".join(bad)[:300])
+    except Exception:   # noqa: BLE001
+        log.exception("handover after a failed check")
+    return SAFE_LINE
 
 
 async def answer_pending(limit: int = 5) -> int:

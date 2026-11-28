@@ -29,6 +29,7 @@
      and her message shown at send time (t.her(text, {pending:true})) is matched, never drawn twice.
 
      t.set(messages)             history, drawn whole (what sync does the first time)
+     t.holding                   true while her sent message is held at the top (a panel that scrolls by itself leaves it)
      t.clear()                                                                                              */
 'use strict';
 (() => {
@@ -63,14 +64,24 @@ function mount(root, opts = {}) {
   let lastActs = null;
   let SY = null;                   // what sync() has drawn: {key, ids, text}
   const scroller = () => opts.scroller || root.parentElement;
-  const near = () => { const s = scroller(); return !s || s.scrollHeight - s.scrollTop - s.clientHeight < 90; };
+  const L = lander(root, scroller);           // v0.999.203 her sent message lands at the top (see lander below)
+  const near = () => { const s = scroller(); return !s || s.scrollHeight - (L.box === s ? L.pad : 0) - s.scrollTop - s.clientHeight < 90; };
   let follow = true, jumpBtn = null;
-  const down = () => { const s = scroller(); if (s && follow) s.scrollTop = s.scrollHeight; };
+  const landAt = n => { if (!L.at(n)) return false; follow = false; if (jumpBtn) jumpBtn.hidden = true; return true; };
+  const down = () => {
+    if (L.anchored) {
+      const s = L.box; L.space();
+      if (L.held) { if (jumpBtn) jumpBtn.hidden = near(); return; }
+      if (follow && s === scroller()) s.scrollTop = Math.max(s.scrollTop, s.scrollHeight - L.pad - s.clientHeight);
+      return;
+    }
+    const s = scroller(); if (s && follow) s.scrollTop = s.scrollHeight;
+  };
   const sc = scroller();
-  if (sc) sc.addEventListener('scroll', () => { follow = near(); if (jumpBtn) jumpBtn.hidden = follow; }, {passive: true});
+  if (sc) { sc.addEventListener('scroll', () => { follow = near(); if (jumpBtn) jumpBtn.hidden = follow; }, {passive: true}); L.watch(sc); }
   if (opts.jump && sc) {
     jumpBtn = el('button', 'hck-jump', 'Latest'); jumpBtn.type = 'button'; jumpBtn.hidden = true; root.after(jumpBtn);
-    jumpBtn.addEventListener('click', () => { follow = true; jumpBtn.hidden = true; down(); });
+    jumpBtn.addEventListener('click', () => { L.mine(); follow = true; jumpBtn.hidden = true; down(); });
   }
   // the Copy button on a code block
   root.addEventListener('click', async e => {
@@ -86,7 +97,9 @@ function mount(root, opts = {}) {
     if (text) { const b = el('div', 'hck-bub'); b.textContent = text; if (o.still) b.style.animation = 'none'; m.append(b); }
     if (o.pending) { m._pending = String(text || '').trim(); }
     if (o.id != null) m.dataset.id = o.id;
-    root.append(m); follow = true; if (jumpBtn) jumpBtn.hidden = true; down(); return m;
+    root.append(m);
+    if (o.still || !landAt(m)) { follow = true; if (jumpBtn) jumpBtn.hidden = true; down(); }
+    return m;
   }
   function block() { const h = el('div', 'hck-ho'); root.append(h); return h; }
   function raw(m) { const d = el('div', 'hck-raw'); if (m.node) d.append(m.node); else d.innerHTML = m.html || ''; if (m.id != null) d.dataset.id = m.id; root.append(d); down(); return d; }
@@ -216,7 +229,7 @@ function mount(root, opts = {}) {
     list.forEach((m, i) => drawOne(m, i === list.length - 1));
     follow = true; down();
   }
-  function clear() { if (T) { clearInterval(T.timer); for (const S of T.segs) S.pacer.flush?.(); T = null; } lastActs = null; SY = null; root.innerHTML = ''; }
+  function clear() { if (T) { clearInterval(T.timer); for (const S of T.segs) S.pacer.flush?.(); T = null; } lastActs = null; SY = null; L.drop(); root.innerHTML = ''; }
 
   /* a reply that arrived: lands at reading pace inside the running turn (a turn is opened when none is) */
   function land(m, working) {
@@ -262,7 +275,51 @@ function mount(root, opts = {}) {
       else { T.over = true; if (!T.landing) end(); }
     }
   }
-  return {her, begin, label, step, delta, text, final, nextBlock, end, stop, set, sync, clear, raw, get busy() { return !!T; }, get el() { return root; }};
+  return {her, begin, label, step, delta, text, final, nextBlock, end, stop, set, sync, clear, raw, get busy() { return !!T; }, get holding() { return L.held; }, get el() { return root; }};
+}
+
+/* v0.999.203 THE LANDING (the main chat's v0.999.199, for every thread): her sent message goes to the TOP of the box and
+   room is kept under the thread, so the reply grows into space that is already there; the view is held there until she
+   scrolls herself, then it is hers. lander(thread, box) -> {at(node), space(), drop(), watch(box), mine(), held, anchored, pad, box}
+   box: the element that scrolls, or a function giving it; a box that does not scroll -> the nearest scrolling box around
+   the thread. A thread drawn by innerHTML keeps it: call at(her newest bubble) after drawing, space() after each redraw. */
+function lander(root, box) {
+  const TOP = 16;
+  let A = null, PAD = 0, BASE = null, T0 = 0, U = 0, B = null;
+  const bound = new WeakSet();
+  const scrolls = s => { try { return !!s && s.isConnected && /(auto|scroll|overlay)/.test(getComputedStyle(s).overflowY); } catch { return false; } };
+  const yOf = (n, s) => n.getBoundingClientRect().top - s.getBoundingClientRect().top + s.scrollTop;
+  const mine = () => { U = Date.now(); };
+  const held = () => !!A && U < T0;
+  function find() {
+    const s = typeof box === 'function' ? box() : box; if (scrolls(s)) return s;
+    for (let p = root.parentElement; p && p !== document.body; p = p.parentElement) if (scrolls(p)) return p;
+    return null;
+  }
+  function watch(s) { if (!s || bound.has(s)) return; bound.add(s); for (const k of ['wheel', 'touchstart', 'pointerdown']) s.addEventListener(k, mine, {passive: true}); }
+  function space() {
+    const s = B; if (!A || !s) return;
+    if (!A.isConnected) return;
+    if (BASE == null) BASE = parseFloat(getComputedStyle(root).paddingBottom) || 0;
+    const natural = root.getBoundingClientRect().bottom - s.getBoundingClientRect().top + s.scrollTop - PAD + (parseFloat(getComputedStyle(s).paddingBottom) || 0);
+    const pad = Math.max(0, Math.ceil(yOf(A, s) - TOP + s.clientHeight - natural));
+    if (pad !== PAD) { PAD = pad; root.style.paddingBottom = (BASE + pad) + 'px'; }
+    if (held() && Date.now() - T0 > 450) { const want = Math.max(0, Math.round(yOf(A, s) - TOP)); if (Math.abs(s.scrollTop - want) > 1) s.scrollTop = want; }
+  }
+  function drop() { A = null; B = null; if (PAD) { PAD = 0; root.style.paddingBottom = BASE ? BASE + 'px' : ''; } }
+  function at(n) {
+    const s = find(); if (!s || !n) return false;
+    watch(s); A = n; B = s; T0 = Date.now(); space();
+    const top = Math.max(0, Math.round(yOf(n, s) - TOP));
+    const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    try { s.scrollTo({top, behavior: calm ? 'auto' : 'smooth'}); } catch { s.scrollTop = top; }
+    return true;
+  }
+  /* a node that was redrawn (innerHTML): the same place in the new drawing */
+  function again(n) { if (A && !A.isConnected && n) A = n; space(); }
+  document.addEventListener('keydown', e => { if (/^(PageUp|PageDown|ArrowUp|ArrowDown|Home|End| )$/.test(e.key) && !e.target.closest?.('textarea,input,[contenteditable]')) mine(); });
+  if (window.ResizeObserver) new ResizeObserver(() => { if (A) space(); }).observe(root);
+  return {at, space, again, drop, watch, mine, get held() { return held(); }, get anchored() { return !!A && !!B; }, get pad() { return PAD; }, get box() { return B; }};
 }
 
 /* the box she types in - the same pill everywhere; Send turns into Stop while Hoola works.
@@ -300,4 +357,5 @@ function bar(host, o = {}) {
 }
 
 window.HoolaChat = {mount, bar, fmtSecs, plain};
+window.HoolaChat.lander = lander;   // v0.999.203 the landing, for a thread drawn without the kit (Interactive)
 })();

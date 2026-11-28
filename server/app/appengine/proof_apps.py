@@ -94,7 +94,7 @@ export default function Tasks() {
          {"key": "slot", "label": "Time", "type": "choice", "options": ["morning", "evening"], "required": True},
          {"key": "status", "label": "Status", "type": "choice", "options": ["new", "called", "booked"], "default": "new", "admin_only": True}],
          "rules": {"create": "public", "read": "admin", "update": "admin", "delete": "admin"}}],
-     "fill": {"#name": "Asha Patil", "#mobile": "9876543210", "#date": "2026-12-01"}, "after_fill": "Request received",
+     "fill": {"#name": "Asha Patil", "#mobile": "9876543210", "#date": "@pick"}, "after_fill": "Request received",
      "files": {
          "src/App.tsx": '''import { Routes, Route } from "react-router-dom";
 import Book from "./pages/Book";
@@ -110,13 +110,15 @@ export default function App() {
 }
 ''',
          "src/pages/Book.tsx": '''import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { format, parseISO } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { hoola } from "@/lib/hoola";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -132,7 +134,7 @@ export default function Book() {
   const nav = useNavigate();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const { register, handleSubmit, formState: { errors } } = useForm<Form>({
+  const { register, control, handleSubmit, formState: { errors } } = useForm<Form>({
     resolver: zodResolver(schema),
     defaultValues: { name: "", mobile: "", date: "", slot: "morning" },
   });
@@ -169,7 +171,17 @@ export default function Book() {
             </div>
             <div className="space-y-1">
               <Label htmlFor="date">Date</Label>
-              <Input id="date" type="date" {...register("date")} />
+              <Controller
+                name="date"
+                control={control}
+                render={({ field }) => (
+                  <DatePicker
+                    id="date"
+                    value={field.value ? parseISO(field.value) : undefined}
+                    onChange={(d) => field.onChange(d ? format(d, "yyyy-MM-dd") : "")}
+                  />
+                )}
+              />
               {errors.date && <p className="text-sm text-bad">{errors.date.message}</p>}
             </div>
             <fieldset className="space-y-1">

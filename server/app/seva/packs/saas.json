@@ -1,0 +1,409 @@
+{
+ "key": "saas",
+ "name": "Software / SaaS",
+ "kind": "isp",
+ "sla": {
+  "urgent": [
+   1,
+   8
+  ],
+  "high": [
+   4,
+   24
+  ],
+  "normal": [
+   24,
+   72
+  ],
+  "low": [
+   48,
+   168
+  ]
+ },
+ "categories": {
+  "bug": {
+   "label": "Bug / error",
+   "words": [
+    "bug",
+    "error",
+    "crash",
+    "not loading",
+    "broken",
+    "500"
+   ]
+  },
+  "howto": {
+   "label": "How do I",
+   "words": [
+    "how do i",
+    "how to",
+    "where is",
+    "can i"
+   ]
+  },
+  "billing": {
+   "label": "Billing / plan",
+   "words": [
+    "invoice",
+    "billing",
+    "plan",
+    "upgrade",
+    "downgrade",
+    "charged"
+   ]
+  },
+  "access": {
+   "label": "Login / access",
+   "words": [
+    "login",
+    "sso",
+    "2fa",
+    "locked out",
+    "password"
+   ]
+  },
+  "feature": {
+   "label": "Feature request",
+   "words": [
+    "feature",
+    "would be nice",
+    "request",
+    "roadmap"
+   ]
+  },
+  "outage": {
+   "label": "Outage",
+   "words": [
+    "down",
+    "outage",
+    "status"
+   ]
+  }
+ },
+ "urgent_words": [
+  "data loss",
+  "security",
+  "breach",
+  "leak",
+  "outage",
+  "all users"
+ ],
+ "flows": [
+  {
+   "key": "bug",
+   "name": "Bug",
+   "stages": [
+    {
+     "key": "new",
+     "name": "New",
+     "owner": "hoola",
+     "hours": 2,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "reproduced",
+     "name": "Reproduced",
+     "owner": "team",
+     "hours": 24,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "engineering",
+     "name": "With engineering",
+     "owner": "engineering",
+     "hours": 120,
+     "customer_told": true,
+     "needs": [],
+     "waiting": true
+    },
+    {
+     "key": "released",
+     "name": "Fix released",
+     "owner": "engineering",
+     "hours": 0,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "confirmed",
+     "name": "Customer confirmed",
+     "owner": "hoola",
+     "hours": 72,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "closed",
+     "name": "Closed",
+     "owner": "team",
+     "hours": 0,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    }
+   ],
+   "arrows": {
+    "new": [
+     "reproduced",
+     "closed"
+    ],
+    "reproduced": [
+     "engineering"
+    ],
+    "engineering": [
+     "released"
+    ],
+    "released": [
+     "confirmed",
+     "engineering"
+    ],
+    "confirmed": [
+     "closed"
+    ],
+    "closed": []
+   }
+  },
+  {
+   "key": "feature",
+   "name": "Feature request",
+   "stages": [
+    {
+     "key": "new",
+     "name": "New",
+     "owner": "hoola",
+     "hours": 24,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "logged",
+     "name": "Logged for the product team",
+     "owner": "team",
+     "hours": 72,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "closed",
+     "name": "Closed",
+     "owner": "team",
+     "hours": 0,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    }
+   ],
+   "arrows": {
+    "new": [
+     "logged"
+    ],
+    "logged": [
+     "closed"
+    ],
+    "closed": []
+   }
+  },
+  {
+   "key": "refund",
+   "name": "Refund",
+   "stages": [
+    {
+     "key": "requested",
+     "name": "Requested",
+     "owner": "hoola",
+     "hours": 4,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "checked",
+     "name": "Checked against your rules",
+     "owner": "team",
+     "hours": 24,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "approval",
+     "name": "Waiting for approval",
+     "owner": "approver",
+     "hours": 24,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "paid",
+     "name": "Paid by a person",
+     "owner": "finance",
+     "hours": 72,
+     "customer_told": true,
+     "needs": [
+      "payment_ref"
+     ],
+     "waiting": false
+    },
+    {
+     "key": "closed",
+     "name": "Closed",
+     "owner": "team",
+     "hours": 0,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    }
+   ],
+   "arrows": {
+    "requested": [
+     "checked"
+    ],
+    "checked": [
+     "approval",
+     "closed"
+    ],
+    "approval": [
+     "paid",
+     "closed"
+    ],
+    "paid": [
+     "closed"
+    ],
+    "closed": []
+   }
+  },
+  {
+   "key": "question",
+   "name": "Question",
+   "stages": [
+    {
+     "key": "new",
+     "name": "New",
+     "owner": "hoola",
+     "hours": 1,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "answered",
+     "name": "Answered",
+     "owner": "hoola",
+     "hours": 24,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "confirmed",
+     "name": "Customer confirmed",
+     "owner": "hoola",
+     "hours": 72,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "closed",
+     "name": "Closed",
+     "owner": "team",
+     "hours": 0,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    }
+   ],
+   "arrows": {
+    "new": [
+     "answered"
+    ],
+    "answered": [
+     "confirmed",
+     "new"
+    ],
+    "confirmed": [
+     "closed"
+    ],
+    "closed": []
+   }
+  }
+ ],
+ "policy": {
+  "refund_days": 14
+ },
+ "knowledge_questions": [
+  "Where is your help center or docs?",
+  "How do upgrades, downgrades and cancellations work?",
+  "Where is your status page?",
+  "What details do you need for a bug report?"
+ ],
+ "saved_replies": [
+  {
+   "name": "Bug details",
+   "text": "Thanks {name}. To look into it, please send: the page, what you clicked, what you expected, and a screenshot."
+  }
+ ],
+ "law": [
+  {
+   "region": "EU",
+   "text": "Tell people they are talking to an AI (EU AI Act transparency duty).",
+   "source": "Regulation (EU) 2024/1689, Art. 50",
+   "id": "ai",
+   "status": "check"
+  },
+  {
+   "region": "US-CA",
+   "text": "Do not hide that a bot is talking when it sells or sways a vote.",
+   "source": "California Business and Professions Code 17940-17943",
+   "id": "ai_ca",
+   "status": "check"
+  },
+  {
+   "region": "EU/UK",
+   "text": "Answer a person's request about their own data within one month.",
+   "source": "GDPR / UK GDPR Art. 12(3)",
+   "id": "gdpr",
+   "status": "check"
+  },
+  {
+   "region": "US-CA",
+   "text": "Answer a consumer's data request within 45 days.",
+   "source": "California Civil Code 1798.130",
+   "id": "ccpa",
+   "status": "check"
+  },
+  {
+   "region": "IN",
+   "text": "Settle a grievance about personal data within 90 days.",
+   "source": "Digital Personal Data Protection Rules 2025",
+   "id": "dpdp",
+   "status": "check"
+  },
+  {
+   "region": "EU",
+   "text": "Consumer chat and websites must be usable with assistive technology.",
+   "source": "European Accessibility Act, Directive (EU) 2019/882",
+   "id": "eaa",
+   "status": "check"
+  },
+  {
+   "region": "EU",
+   "text": "Online traders: give customers the information about out-of-court dispute bodies their country requires.",
+   "source": "Directive 2013/11/EU (ADR)",
+   "id": "eu_odr",
+   "status": "check"
+  }
+ ],
+ "lookup": "accounts",
+ "version": 1,
+ "checked": "2026-11-21"
+}

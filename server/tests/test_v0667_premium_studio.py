@@ -21,7 +21,7 @@ def test_design_markers():
     assert "JetBrains+Mono" in html and "7..72,500" in html                       # the three typefaces load
     for m in ("class=\"eyebrow\"", "<kbd>", "class=\"tsep\"", "b dark", "chatact wcard", "class=\"wrow-foot\"",
               "class=\"vcard\"", "Go live…", "class=\"sugg\"", "class=\"dday\"", "class=\"livetag\"",
-              "class=\"bwin\"", "id=\"wsLUrl\"", "statusText(", "ago(v.updated_at)", "metaKey || e.ctrlKey"):
+              "id=\"wsLPages\"", "statusText(", "ago(v.updated_at)", "metaKey || e.ctrlKey"):
         assert m in js, m
     assert "font-family:'Literata'" in css and "--solid:#17161C" in css and "--live:#E5484D" in css and "--live:#F2777A" in css
     assert ".hero h1{font-family:'Literata'" in css and "font-size:52px" in css
@@ -66,8 +66,8 @@ def test_design_in_a_browser(arena_server, arch_env, monkeypatch):
     head = page.inner_text("#wsState .wrow .wrow-foot")
     assert head.startswith("Building your website"), head
     assert page.locator("#wsState .wrow .hck-mark .hm3").count() == 1
-    page.wait_for_selector("#ws .lbar .livetag", timeout=30000)
-    assert page.locator("#ws .bwin .bchrome").count() == 1
+    page.wait_for_selector("#ws .phd.lv .lstat .livetag", timeout=30000)     # v0.999.41 the LIVE tag sits in the header row
+    assert page.locator("#ws .bwin .bchrome").count() == 0                  # v0.999.41 owner: no browser bar above the page
     assert page.evaluate("getComputedStyle(document.querySelector('.top .b.dark')).backgroundColor") == "rgb(23, 22, 28)"
     page.wait_for_selector("#ws #wsPane .url", timeout=180000)                 # built
     page.wait_for_selector("#wsState .vcard", timeout=15000)

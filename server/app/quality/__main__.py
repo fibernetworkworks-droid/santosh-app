@@ -19,6 +19,10 @@
        | prompt proof [--live --budget-inr N] [--limit N] [--section web|image|script]   (P12: Hoola's own brief + ten users before / after)
    | studio [--proof] | studio --live --budget-inr N [--only id,id] [--engine site|app] [--limit N] [--label x] | studio compare <before.json> <after.json>
        (v0.841 STUDIO CARD, L0 + L15: 30 asks through the Site / App engines, scored in code, before vs after)
+   | design [--live --budget-inr N] [--limit N] [--only id,id] [--group business|other] [--no-critic] [--photos] [--label x]
+       | design --status [run] | design verdict <run> <id> good|ok|bad ["note"] | design compare <a.json> <b.json>
+   | proof [--live --budget-inr N] [--limit N] [--only id,id] | proof --status [run] | proof pick <run> <id> old|new|same
+       (v0.999.50 D0 DESIGN CARD: 40 briefs through the Web Studio's Build path, a critic scores the screenshots)
    | sdk [--setup]   (v0.378 the Dart / Kotlin toolchains the mobile coding card runs with)   (v0.360 coding card: 12 practice jobs through the real loop)"""
 from __future__ import annotations
 
@@ -101,6 +105,117 @@ def _studiocard(argv: list[str]) -> int:
     print("\n".join(SC.lines(card)))
     print(f"\n  saved: {card['file']}")
     return 0
+
+
+def _musiccard(argv: list[str]) -> int:
+    """v0.999.79 M0 MUSIC TEST CARD. Free by default; --live makes real songs and needs --budget-inr."""
+    from . import musiccard as MC
+    val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
+    if "--status" in argv:
+        c = MC.newest()
+        if not c:
+            print("No live music card has run yet.")
+            return 0
+        print(f"MUSIC CARD {c.get('label') or ''} · {c['made']}/{len(c['rows'])} made · {c['tested']} tested · "
+              f"Rs {c['inr_spent']} · {c['minutes']} min")
+        for r in c["rows"]:
+            print(f"  {r['id']:<14} {r.get('mark', ''):<8} {r['language']:<20} len {r.get('seconds', '-')}/{r.get('asked', '-')} "
+                  f"words {r.get('words')} heard {r.get('heard_lang', '-')} lufs {r.get('lufs', '-')} {r.get('why', '')}")
+        return 0
+    if "--live" in argv:
+        if not val("--budget-inr"):
+            print("A live card spends money: give --budget-inr N (about Rs 7 a song).")
+            return 2
+        asks = list(MC.ASKS)[: int(val("--limit"))] if val("--limit") else list(MC.ASKS)
+        card = asyncio.run(MC.live_card(asks, float(val("--budget-inr")), val("--label")))
+        print(f"\n  {card['made']}/{len(card['rows'])} made · {card['tested']} tested · Rs {card['inr_spent']} · {card['minutes']} min")
+        return 0
+    c = MC.free_card()
+    print(f"MUSIC CARD (free) · {c['songs']} songs · {len(c['languages'])} languages · set {'ok' if c['set_ok'] else 'BAD'} · "
+          f"scorer {'ok' if c['scorer_ok'] else 'BAD'}")
+    for p in c["set_problems"] + c["scorer_problems"]:
+        print("  - " + p)
+    print(f"  engine ready: {c['engine_ready']} · ffmpeg: {c['ffmpeg']} · listener (faster-whisper): {c['listener']} · "
+          f"a full live card costs about Rs {c['inr_estimate']}")
+    return 0 if c["set_ok"] and c["scorer_ok"] else 1
+
+
+def _designcard(argv: list[str]) -> int:
+    """v0.999.50 D0 DESIGN CARD. Free by default; --live builds real websites and needs --budget-inr."""
+    from . import designcard as DC
+    val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
+    if argv and argv[0] == "compare" and len(argv) >= 3:
+        a, b = json.load(open(argv[1])), json.load(open(argv[2]))
+        for x in DC.compare(a, b):
+            print(f"  {x['group']:8} {x['metric']:20} {x['before']} -> {x['after']}  {x['verdict']}")
+        return 0
+    if argv and argv[0] == "verdict" and len(argv) >= 4:
+        try:
+            v = DC.set_verdict(argv[1], argv[2], argv[3], " ".join(argv[4:]))
+        except ValueError as e:
+            print(str(e))
+            return 2
+        print(f"  {argv[1]} {argv[2]}: {v['verdict']}")
+        return 0
+    if "--status" in argv:
+        rest = [x for x in argv if not x.startswith("--")]
+        card = DC.load(rest[0] if rest else "")
+        if not card:
+            print("no live design card saved yet (python -m app.quality design --live --budget-inr N --limit 4)")
+            return 0
+        print("\n".join(DC.lines(card)))
+        print(f"\n  file: {card['file']}")
+        return 0
+    if "--live" in argv:
+        b = float(val("--budget-inr") or 0)
+        if b <= 0:
+            print("a live design card needs --budget-inr N (the rupees for the whole run); try --limit 4 first")
+            return 2
+        items = DC.pick(int(val("--limit") or 0), val("--only"), val("--group"))
+        card = DC.live_card(items, b, critic_on="--no-critic" not in argv, photos_off="--photos" not in argv,
+                            label=val("--label"))
+    else:
+        card = DC.save(DC.free_card(), val("--label"))
+    print("\n".join(DC.lines(card)))
+    print(f"\n  saved: {card['file']}")
+    return 0 if card.get("verdict", "PASS") == "PASS" else 1
+
+
+def _proofcard(argv: list[str]) -> int:
+    """v0.999.123 D10 PROOF CARD: old engine vs new. Free by default; --live builds every brief twice, needs --budget-inr."""
+    from . import designcard as DC
+    from . import proofcard as PC
+    val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
+    if argv and argv[0] == "pick" and len(argv) >= 4:
+        try:
+            v = PC.set_pick(argv[1], argv[2], argv[3], " ".join(argv[4:]))
+        except ValueError as e:
+            print(str(e))
+            return 2
+        print(f"  {argv[1]} {argv[2]}: {v['pick']}")
+        return 0
+    if "--status" in argv:
+        rest = [x for x in argv if not x.startswith("--")]
+        card = PC.load(rest[0] if rest else "")
+        if not card:
+            print("no live proof card saved yet (python -m app.quality proof --live --budget-inr N --limit 3)")
+            return 0
+        print("\n".join(PC.lines(card)))
+        print(f"\n  file: {card['file']}")
+        return 0
+    if "--live" in argv:
+        b = float(val("--budget-inr") or 0)
+        if b <= 0:
+            print("a live proof card needs --budget-inr N (the rupees for the whole run); try --limit 3 first")
+            return 2
+        items = DC.pick(int(val("--limit") or 0), val("--only"), val("--group"))
+        card = PC.live_card(items, b, critic_on="--no-critic" not in argv, photos_off="--photos" not in argv,
+                            label=val("--label"))
+    else:
+        card = PC.save(PC.free_card(), val("--label"))
+    print("\n".join(PC.lines(card)))
+    print(f"\n  saved: {card['file']}")
+    return 0 if card.get("verdict", "PASS") == "PASS" else 1
 
 
 def _promptcard(argv: list[str]) -> int:
@@ -384,6 +499,12 @@ def main(argv: list[str]) -> int:
         return _leadscard(argv[1:])
     if argv and argv[0] == "skills":        # v0.494 SKILLS card (free = reachability; --live = a real model's turns)
         return _skillscard(argv[1:])
+    if argv and argv[0] == "music":         # v0.999.79 M0 MUSIC TEST CARD (free; --live makes songs, needs --budget-inr)
+        return _musiccard(argv[1:])
+    if argv and argv[0] == "proof" and not (len(argv) > 1 and argv[1] in ("--help",)):   # v0.999.123 D10 PROOF CARD
+        return _proofcard(argv[1:])
+    if argv and argv[0] == "design":        # v0.999.50 D0 DESIGN CARD (free; --live builds websites, needs --budget-inr)
+        return _designcard(argv[1:])
     if argv and argv[0] == "studio":        # v0.841 STUDIO CARD (free; --live costs model calls, needs --budget-inr)
         return _studiocard(argv[1:])
     if argv and argv[0] == "prompt":        # v0.785 HOOLA PROMPTING P0 (free; --live costs model calls, needs --budget-inr)

@@ -431,6 +431,24 @@ class CalendarAlert(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class CalendarWatch(Base):
+    """v0.999.189: tell the user when a calendar gets a new invite or a change (Google's sync token, checked every few
+    minutes), and optionally run a job she asked for each time."""
+    __tablename__ = "calendar_watches"
+    __table_args__ = (UniqueConstraint("tenant_id", "box", "cal_id", name="uq_calendar_watch"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    box: Mapped[str] = mapped_column(String(40), default="")
+    cal_id: Mapped[str] = mapped_column(String(400), default="primary")
+    cal_name: Mapped[str] = mapped_column(String(300), default="")
+    conversation_id: Mapped[str] = mapped_column(String(40), default="")
+    kinds: Mapped[str] = mapped_column(String(20), default="invites")        # invites | changes | all
+    sync_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    job: Mapped[str | None] = mapped_column(Text, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class MailLinkState(Base):
     """Anti-CSRF state while the user connects a mailbox by OAuth (remembers whose mailbox it is)."""
     __tablename__ = "mail_link_states"
@@ -493,6 +511,7 @@ class MailSyncState(Base):
     recent: Mapped[list | None] = mapped_column(JSON, nullable=True)
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_error: Mapped[str] = mapped_column(Text, default="")
+    chosen: Mapped[bool | None] = mapped_column(Boolean, nullable=True)   # v0.999.213 she picked this mode herself (unset = the server default, off)
 
 
 class MailRule(Base):
@@ -771,7 +790,14 @@ def init_db(url: str | None = None):
     from .kaan import models as _kaan_models  # noqa: F401  v0.589 KAAN PACK (transcripts)
     from .design import models as _design_models  # noqa: F401  v0.777 HOOLA DESIGN (files, journal, versions, comments, shares)
     from . import bahar as _bahar  # noqa: F401  v0.616 BAHAR SE BAAT (outside channels)
+    from . import emailauth as _emailauth  # noqa: F401  SIGN UP (email sign-in codes)
     from . import computer as _computer  # noqa: F401  v0.890 HOOLA COMPUTER (her PC switch)
+    from .pc import vault as _pc_vault  # noqa: F401  v0.999.47 saved sign-ins
+    from .pc import onepw as _pc_onepw  # noqa: F401  v0.999.51 1Password sign-ins
+    from . import cred as _cred  # noqa: F401  v0.999.53 Hoola Cred
+    from . import googlehub as _googlehub  # noqa: F401  v0.999.181 GOOGLE CONNECTIONS (used-first prefs)
+    from . import wallet as _wallet  # noqa: F401  v0.999.60 Hoola Wallet
+    from . import agentmail as _agentmail  # noqa: F401  v0.999.47 Hoola's own inbox
     from .appcheck import models as _appcheck_models  # noqa: F401
     from .avatar import models as _avatar_models  # noqa: F401
     from .voiceid import models as _voiceid_models  # noqa: F401
@@ -805,6 +831,7 @@ def init_db(url: str | None = None):
     from .site import ops as _site_ops  # noqa: F401  (v0.564 visitors' errors + real-visit speed per day)
     from .site import catalog as _site_catalog  # noqa: F401  (v0.538 imported lists: products / doctors / properties)
     from .site import webpush as _site_webpush  # noqa: F401  (v0.459 browser notifications, visitor's yes)
+    from .site import board as _site_board  # noqa: F401  (v0.999.126 her members' board)
     from . import screen as _screen  # noqa: F401  (v0.127 Hoola Screen revoke versions)
     from . import convs as _convs  # noqa: F401  (v0.158 the chat she is in, chat health reports)
     from .appmaker import models as _app_models  # noqa: F401  (v0.128 App Sahayak designs)
@@ -862,6 +889,18 @@ def init_db(url: str | None = None):
     from .brand import service as _brand  # noqa: F401
     # v0.133 Seva suite
     from .seva import service as _seva  # noqa: F401
+    from .seva import brain as _seva_brain  # noqa: F401  (G1 versions / suggestions / watched pages)
+    from .seva import engine as _seva_engine  # noqa: F401  (G2 trust levels / drafts)
+    from .seva import flow as _seva_flow  # noqa: F401  (G8 workflows / stage moves)
+    from .seva import watch as _seva_watch  # noqa: F401  (G9 reminders / confirmations)
+    from .seva import handover as _seva_handover  # noqa: F401  (G7 hand-overs / corrections)
+    from .seva import channels as _seva_channels  # noqa: F401  (G4 messaging apps)
+    from .seva import webchat as _seva_webchat  # noqa: F401  (G5 website / app chat)
+    from .seva import supportmail as _seva_mail  # noqa: F401  (G6 support email)
+    from .seva import teams as _seva_teams  # noqa: F401  (G10 people, queues, rules, approval chains)
+    from .seva import quality as _seva_quality  # noqa: F401  (G11 reviews, simulations, data requests)
+    from .seva import layer as _seva_layer  # noqa: F401  (G12 her own helpdesk)
+    from .seva import reports as _seva_reports  # noqa: F401  (G13 monthly reports)
     from .helpdesk import models as _helpdesk  # noqa: F401
     from .shikayat import models as _shikayat  # noqa: F401
     from .aftersales import service as _aftersales  # noqa: F401
@@ -967,17 +1006,39 @@ def init_db(url: str | None = None):
     from .site import yehwala as _site_yehwala  # noqa: F401  (v0.795 YEH WALA site comments - registered here AND self-healing)
     from .site import galti as _site_galti  # noqa: F401  (v0.802 GALTI PAKDO preview errors + fix ledger - registered here AND self-healing)
     from .appengine import models as _appengine_models  # noqa: F401  (v0.814 APP ENGINE 1 app projects - registered here AND self-healing)
+    from .appengine import refs as _appengine_refs  # noqa: F401  (v0.999.75 D6 the reference library - registered here AND self-healing)
     from . import turncost as _turncost  # noqa: F401  (v0.777 CHAT JAISA each turn's rupees - registered here AND self-healing)
     from . import reqdump as _reqdump  # noqa: F401  (v0.732 PARITY Phase 0 the request dump - registered here AND self-healing)
     from . import home as _home  # noqa: F401  (v0.479.0 HOOLA SMART HOME the home_audit table - registered
         # HERE on day one AND self-healing via home.ensure_table(), same lesson)
+    from . import connhub as _connhub  # noqa: F401  (v0.999.183 Connectors activity + her Pause switch)
+    from .sheets import more as _sheets_more  # noqa: F401  (v0.999.184 SHEETS 100%: the new-row watch table)
+    from .sheets import extra as _sheets_extra  # noqa: F401  (v0.999.185 SHEETS COMPLETE: Apps Script per sheet)
+    from .drive import more as _drive_more  # noqa: F401  (v0.999.186 DRIVE COMPLETE: folder watches)
     from .agent import eventlog as _harness_eventlog  # noqa: F401  (v0.193.0 HARNESS-3 the event-sourced session
         # log - registered HERE on day one AND self-healing via eventlog.ensure_table(), same lesson)
     from .agent import team as _harness_team  # noqa: F401  (v0.193.0 HARNESS-3 the background agent crews'
         # agent_teams table - registered HERE on day one AND self-healing via team.ensure_table())
     from .blender3d import service as _blender3d  # noqa: F401  (v0.141 3D Studio)
+    from .langlab import service as _langlab  # noqa: F401  (v0.999.272 the Compiler Construction Engineer)
+    from .gfxdesk import service as _gfxdesk  # noqa: F401  (v0.999.277 the Graphics Engine Programmer)
+    from .dbdesk import service as _dbdesk  # noqa: F401  (v0.999.280 the Database Engine Developer)
+    from .distdesk import service as _distdesk  # noqa: F401  (v0.999.283 the Distributed Systems Engineer)
+    from .sredesk import service as _sredesk  # noqa: F401  (v0.999.285 the Site Reliability Engineer)
+    from .virtdesk import service as _virtdesk  # noqa: F401  (v0.999.286 the Virtualization / Hypervisor Engineer)
+    from .lldesk import service as _lldesk  # noqa: F401  (v0.999.288 the Backend Systems Engineer (Low Latency))
+    from .mfdesk import service as _mfdesk  # noqa: F401  (v0.999.291 the Mainframe Modernization Architect)
+    from .emdesk import service as _emdesk  # noqa: F401  (v0.999.294 the Embedded Systems Engineer)
+    from .rbdesk import service as _rbdesk  # noqa: F401  (v0.999.295 the Robotics Software Engineer)
+    from .cvdesk import service as _cvdesk  # noqa: F401  (v0.999.298 the Computer Vision Engineer)
+    from .mldesk import service as _mldesk  # noqa: F401  (v0.999.299 the Machine Learning Engineer)
+    from .dedesk import service as _dedesk  # noqa: F401  (v0.999.303 the Data Engineer)
+    from .pfdesk import service as _pfdesk  # noqa: F401  (v0.999.304 the Platform Engineer)
+    from .dod import models as _dod_models  # noqa: F401  (v0.999.306 HOOLA DOD - the coworker)
     from .engineering import service as _engineering  # noqa: F401  (v0.357 Engineering Desk)
     from .bahi import models as _bahi_models  # noqa: F401  (v0.807 BAHI - the GST & Accounts employee, A0)
+    from .fin import models as _fin_models  # noqa: F401  (F0 of FINANCE_GLOBAL_PLAN - the finance data spine)
+    from .bahi import practice as _bahi_practice  # noqa: F401  (v0.999.46 CA document desk: clients + their folders)
     from .archdesk import models as _archdesk  # noqa: F401  (v0.410 Architecture Desk: arch_projects, arch_reviews)
     from .gamedesk import service as _gamedesk  # noqa: F401  (v0.381 Game Desk)
     from .gamedesk import studio as _gamestudio  # noqa: F401  (v0.386 Studio Project)
@@ -1016,6 +1077,7 @@ def init_db(url: str | None = None):
         # store / labour / books / customer / quality / meetings tables - registered HERE on day one,
         # the v0.190.1 lesson: a lazily-imported model never reaches create_all() and the live DB
         # stays without its table)
+    from .leads import pipeline as _leads_pipeline  # noqa: F401  (v0.999.52 lead desk: stages / events / saved searches)
     from .leads import models as _leads_models  # noqa: F401  (v0.540 LEADS NEEV: lead_runs / lead_contacts /
         # lead_outreach / lead_cap_days / lead_list_refs - registered HERE on day one, same lesson, AND
         # self-healing via leads.models.ensure_tables())

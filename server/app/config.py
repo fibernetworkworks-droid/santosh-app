@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     """All settings come from environment variables or a .env file (see .env.example)."""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    wallet_partner: str = ""   # v0.999.60 HOOLA WALLET: the licensed partner holding wallet balances (empty = pay each time only)
 
     @model_validator(mode="after")
     def _graph_needs_langgraph(self):
@@ -59,7 +60,17 @@ class Settings(BaseSettings):
     app_engine: bool = True               # v0.814 APP ENGINE 1: React apps built in the box (L8); off = the tool + routes refuse
     app_engine_previews: int = 2          # v0.814 app builds at once on this server (the plan's decision 1: start at 2 on her VPS)
     app_engine_runner: str = "box"        # v0.814 "box" = Docker, no network (production); "local" = host node (dev / tests only)
+    app_engine_autofix: bool = True       # v0.999.65 D4 AUTOFIX: every App Engine write is repaired onto the tokens before the rules read it
+    site_critic: bool = True              # v0.999.67 D5: a React site is reviewed by a separate critic and fixed (max site_critic_rounds)
+    site_critic_bar: float = 7.5          # v0.999.67 D5: the critic's design score (1-10, the D0 card's 9 criteria) that ends the loop early (a judgement default)
+    site_critic_rounds: int = 3           # v0.999.67 D5: at most this many review rounds; the best round is kept
+    site_critic_hero: bool = True         # v0.999.67 D5: 3 hero directions made internally, the critic picks one
+    site_critic_alt_model: str = "google/gemini-3.8-flash"   # v0.999.67 D5: the critic through OpenRouter when the writer is Anthropic's (never the writer's company)
+    site_refs: bool = True                # v0.999.75 D6: the writer starts from Hoola's own references (built sites the critic scored, the kit, the sites she likes) and every reviewed site teaches the next
+    studio_react_sites: bool = False      # v0.999.65 D4: "Build the real website" writes a React site from the kit (owner decision 1: behind a switch until D10)
+    site_upgrade: bool = True             # v0.999.119 D9: "Upgrade this site" - her HTML website moved to the new engine, on her tap
     app_engine_publish_checks: bool = True  # v0.832 SABOOT (L11): going live runs the quick scan + rule tests + browser check and is refused on a FAIL
+    app_engine_box_care: bool = True     # ONE ENGINE: the builder box checked before every build + every 10 min, a missing / old image rebuilt by itself
     site_quick_checks: bool = True        # v0.789 CHHOTA BADLAAV: a one-section change is checked on its own page only
     studio_chat_model: str = ""            # v0.782 Chat mode may run on a cheaper model ("" = the turn's normal model)
     chat_turn_cost: bool = True           # v0.777 CHAT JAISA: each chat turn's rupees kept (turncost) for the Studio line
@@ -144,6 +155,13 @@ class Settings(BaseSettings):
     dev_lab: bool = True                    # v0.533 PRAYOGSHALA ON: her VPS answered lab_check with every wall holding (docker 29.8.1, base image built, pass + fail caught, network blocked, read-only root, uid 1000)
     dev_lab_timeout: int = 600              # ... seconds one check may run (her .hoola/lab.json may lower it)
     dev_lab_keep: int = 12                  # ... per-repo dependency snapshots kept before the oldest are dropped
+    # v0.999.245 five settings the Hoola Code code already read with a fallback but that were never defined here, so they
+    # could not be changed from the server's .env - same defaults as the code's fallbacks
+    dev_auto_continue: int = 3              # a round that ended unfinished continues by itself this many more times
+    dev_session_inr_cap: float = 1500.0     # one session never spends past this many rupees (0 = no limit)
+    dev_ci_poll_s: int = 60                 # one CI look per session at most this often (seconds)
+    dev_plan_remind_h: float = 2.0          # a plan waiting for her yes is said once more after this many hours (0 = never)
+    dev_unclear_steps: int = 10             # a vague ask gets at most this many steps before Hoola asks her one question
     dev_plan_first: bool = True             # v0.451 ECC PHASE 4: a standard / large job gets a read-only PLAN pass before any edit
     research_engines_allowed: str = "hoola"   # v0.477 R6: comma list of engines she lets run research ("hoola" is always allowed); a vendor must be listed here ...
     research_vendor_terms_ack: str = ""       # ... AND here: the vendors whose current terms SHE has read and accepts for this use (storing + showing the result to her). Nothing is assumed.
@@ -200,6 +218,37 @@ class Settings(BaseSettings):
     # v0.784 HOOLA CODE ENGINE (owner: "GO STEP 1 AND 2 --- 2 SESSIONS, USE CLAUDE"): devsahayak/engine.py + brain.py
     dev_claude: bool = True                 # every Hoola Code model call is Claude's own (stands SAB GLM / claude_one_model aside)
     dev_think: bool = True                  # ... with adaptive thinking
+    dev_fallback_models: str = "claude-sonnet-5-5,claude-opus-5-5,claude-haiku-5-5"   # v0.999 backups when the model is overloaded / down / gone (Claude Code's fallbackModel; up to 3, the session's own model skipped)
+    dev_auto_judge: bool = True             # v0.999 Auto mode's safety reviewer: risky steps checked by a model before they run (Claude Code's classifier)
+    dev_judge_modes: str = "auto"           # ... in these session modes (comma list)
+    dev_judge_model: str = "haiku"          # ... on this model (an alias or a full id)
+    dev_bg_agents_max: int = 4              # v0.999 background agents running at once in one session
+    dev_agent_worktrees: bool = True        # v0.999 an agent may work in its own copy (isolation=worktree, Claude Code's worktrees)
+    dev_worktree_max: int = 8               # ... open copies per session at most
+    dev_worktree_max_mb: int = 2000         # ... a working copy bigger than this gets no copy
+    dev_worktree_days: int = 7              # ... a kept copy nobody brought in is removed after this
+    dev_lsp: bool = True                    # v0.999 code intelligence: the lsp tool (a language server in the box, Claude Code's LSP tool)
+    dev_lsp_diagnostics: bool = True        # ... the server checks the files the coder edited; its problems arrive at the next step
+    dev_lsp_diag_wait_s: int = 25           # ... how long one check waits for the server's diagnostics
+    dev_lsp_diag_next_s: int = 6            # ... how long the next step waits for them (later ones arrive a step later)
+    dev_lsp_s: int = 300                    # ... one box run at most
+    dev_lsp_open_max: int = 40              # ... files that name the symbol, opened for references / callers
+    dev_mcp_tools: bool = True              # v0.999 every MCP tool as a tool of its own (mcp__server__tool, Claude Code's way)
+    dev_mcp_direct_max: int = 60            # ... more tools than this are held back behind mcp_tool_search
+    dev_mcp_direct_chars: int = 40000       # ... or more definition text than this
+    dev_bash_to_bg: bool = True             # v0.999 a command still running at its time limit keeps running in the background (OpenCode)
+    dev_auto_format: bool = True            # v0.999 the repo's own formatter runs on the files an edit changed (only when the repo declares it)
+    dev_mcp_instructions_chars: int = 8000  # v0.999 MCP servers' own instructions in the coder's prompt, at most this much
+    dev_steady_system: bool = True          # v0.999 a follow-up keeps the session's system prompt; changes ride as a note (OpenCode)
+    dev_cache_warm: bool = True             # v0.999 the prompt cache kept warm while a round waits for her answer (Claude only, 6 times max)
+    dev_compact_ahead: bool = True          # v0.999 the summary is written in the background at 80% and swapped in at once
+    dev_compact_ahead_at: float = 0.8
+    dev_early_reads: bool = True            # v0.999 read-only calls start while the model is still writing its reply (OpenCode; Claude streams)
+    dev_parallel_reads: bool = True         # v0.999 read-only calls of one reply run side by side (Claude Code's concurrency-safe tools)
+    dev_parallel_width: int = 8
+    dev_idle_compact: bool = True           # v0.999 a long session idle just under the 5-min prompt cache is summarised through its own cached request
+    dev_idle_compact_after_s: int = 240
+    dev_idle_compact_chars: int = 800000    # ... only past this size (~200k tokens, Claude Code's threshold)
     # v0.926 HOOLA CODE ON QWEN (owner: "27B FOR CODING ALSO"): every Hoola Code call on Qwen through OpenRouter
     dev_brain: str = "qwen"                 # "qwen" = OpenRouter (dev_qwen_model) | "claude" = Claude's own (dev_claude rules)
     dev_qwen_model: str = "qwen/qwen3.8-27b"   # the coder, plans, reviews, agents, compaction, hint and memory all on this
@@ -249,6 +298,17 @@ class Settings(BaseSettings):
     dev_agent_parallel: int = 4             # read / run agents asked in one reply that run at the same time
     # v0.814 THE AGENCY (owner: "GO 1 2 3"): 35 more agents in devsahayak/ecc/agency_*.py + the reality check before done
     dev_truth: bool = True                  # G9: a round's "done" judged from facts (exit codes, push, PR, CI) + its end notice told once
+    dev_ecc_skills: bool = True             # v0.999 ECC's 132 coding skills in Hoola Code (eccskills.py)
+    dev_hookify: bool = True                # v0.999 repo rule files in plain Markdown (hookify.py, ECC's Hookify)
+    dev_santa: bool = True                  # v0.999 /santa: two independent reviewers must both pass (santa.py)
+    dev_santa_rounds: int = 3               # fix-and-review-again rounds before the open issues go to her
+    dev_test_coverage: bool = True          # v0.999 /test-coverage on the lines a session changed (testcover.py)
+    dev_epic: bool = True                   # v0.999 /epic: a big job as linked GitHub issues, on her command (epic.py)
+    dev_config_protect: bool = True         # v0.999 ECC's config protection: lint / format / test settings (configguard.py)
+    dev_mcp_health: bool = True             # v0.999 ECC's MCP health check (mcphealth.py)
+    dev_superpowers: bool = True            # v0.999 Superpowers skills in Hoola Code + its two iron laws (superpowers.py)
+    dev_ponytail: str = "full"              # v0.999 Ponytail level by default: lite | full | ultra | off (ponytail.py)
+    dev_karpathy: bool = True               # v0.999 Karpathy's four coding rules + the drive-by check (karpathy.py)
     dev_reality_check: bool = True          # an independent reality-checker agent looks once before a round may finish
     dev_reality_min_lines: int = 30         # ... only for a change of at least this many added lines
     game_agency_experts: bool = True        # the Game Developer's crew roles carry The Agency's expert notes (gamedesk/agency.py)
@@ -472,6 +532,7 @@ class Settings(BaseSettings):
     pc_rescue_max: int = 4                  # rescues per task
     pc_playbook: bool = True                # v0.867 the fixed desktop playbook in the cheap worker's prompt
     pc_step_cap: int = 64                   # v0.867 hard step cap per PC task (= the browser budget, so by default it changes nothing; lower it with PC_STEP_CAP; 0 = off)
+    pc_lessons: bool = True                 # v0.999.118 P8 weekly PC lessons from job records (kept only if an exam rises); PC_LESSONS=false in .env stops it
     pc_daily_inr: int = 300                 # v0.867 daily PC allowance per person, an ESTIMATE (0 = no cap); PC_DAILY_INR in .env
     pc_qwen_openrouter_model: str = "qwen/qwen3.8-max-0902"   # v0.853 Qwen ONLY via OpenRouter on the server's OpenRouter key (never Alibaba Cloud)
     pc_sonnet_model: str = "claude-sonnet-5-5"   # never rewritten to Haiku / GLM for the PC loop
@@ -488,8 +549,13 @@ class Settings(BaseSettings):
     pc_max_tokens: int = 1500               # v0.879 output room per PC step (4000 held too much OpenRouter credit per request; thinking is off)
     pc_native_tools: bool = True            # v0.859 D1: Claude's own computer toolset (zoom ...) for the pixel lane
     pc_plan: bool = False                    # v0.859 D2: a job is split into checked stages before the PC works
-    pc_verify: bool = False                  # v0.859 D4: 'done' only after the screen is checked against her ask
+    pc_verify: bool = True                   # v0.999.47 on again (owner: "a check before done") - v0.859 D4: 'done' only after the screen is checked against her ask
     pc_check_model: str = "claude-haiku-5-5"   # v0.859 the stage / done checker (one look at the screen)
+    pc_otp_from_mail: bool = True            # v0.999.47 a fresh code mail in her connected inbox / Hoola's own inbox fills the PC's OTP box (never bank / card / payment codes)
+    mail_watch_default: str = "off"         # v0.999.213 new-mail news until she picks a mode: off = no cards unless she asks (vip / all = the old behaviour)
+    hoola_mail_domain: str = ""              # v0.999.47 Hoola's own email addresses: <name>@<this domain> (the owner's email worker)
+    hoola_mail_secret: str = ""              # v0.999.47 shared HMAC secret with that worker (VPS .env only)
+    hoola_pc_lanes: int = 3                  # v0.999.47 her jobs at once on ONE Hoola PC (side browser windows, same logins); 1 = off
     pc_action_check: bool = True             # v0.999.37 a separate check on HER words before a send / submit / pay / delete step
     hoola_pc_home_wait_s: int = 90           # v0.999.37 her own Hoola PC is busy for someone else: wait this long before another
     pc_plan_model: str = "claude-sonnet-5-5"   # v0.859 the planner (one call per PC job)
@@ -526,6 +592,7 @@ class Settings(BaseSettings):
     claude_all_glm: bool = False
     api_box_enabled: bool = True             # v0.750 the free public-API box (api_box tool, /api/box)
     api_box_check_per_day: int = 300         # v0.750 free APIs whose site is re-checked a day (all ~1,400 about monthly); 0 = off
+    design_card_critic_model: str = ""    # v0.999.50 D0 DESIGN CARD: the critic (an Anthropic model; "" = anthropic_model). Never the website writer's company.
     studio_build_architect: bool = True   # v0.711 Web Studio Build mode: every ask is planned by the architect first (not the library's page set for its business type)
     architect_opus: bool = False   # v0.735 ALL GLM (owner: "MOVE EVERYTHING ON GLM 5.3 FLASH"): off = the plan on GLM too. Was True since v0.710 - v0.710: the website architect's plan always on the Website Sahayak's Opus (the GLM door + claude_one_model stand aside for that one call)
     claude_all_glm_fallback: bool = False   # v0.735 ALL GLM: a failed GLM call is NOT re-asked on Claude (was True)
@@ -546,6 +613,7 @@ class Settings(BaseSettings):
 
     # --- realtime voice (Baat tab): Gemini Live speech-to-speech, key from aistudio.google.com ---
     gemini_api_key: str = ""
+    elevenlabs_api_key: str = ""         # v0.999.90 HOOLA VOCAL GLOBAL: ElevenLabs (premium voices, voice changer, voice out of music, sound effects, dubbing in their own voices). VPS .env only (ELEVENLABS_API_KEY); empty = those parts say "needs its key"
     gemini_live_model: str = "gemini-3.8-live"
     voice_default: str = "Puck"            # a male Gemini voice; the app can pick another
     gemini_search_model: str = ""          # model used for Google Search answers (empty = newest Flash)
@@ -663,6 +731,7 @@ class Settings(BaseSettings):
     pipeline_checker_s: float = 25.0        # C1: the model checker's clock; late = no problems (never blocks)
     pipeline_fix_after: bool = False        # C1: the old correction message AFTER the reply (off: fixed inside it)
     pipeline_receipt: bool = True            # v0.975 P6: the line under a Box reply naming which model did which part
+    support_reply_check: bool = True       # G2: every WhatsApp business reply is checked (numbers, promises) before it is sent
     pipeline_dead_h: float = 24.0            # v0.970 a banned / gone model stays out of the Box's choices this long
     pipeline_company_cap: int = 8            # v0.968 P4: model calls at once per company (6.8)
     pipeline_user_cap: int = 6               # v0.968 P4: model calls at once per user (6.8)
@@ -717,6 +786,16 @@ class Settings(BaseSettings):
     seekh_keep_media: bool = True          # v0.785 the learner keeps its own copy of an uploaded video (the chat lane is swept after 24 h)
     seekh_media_max_mb: int = 1024         # v0.785 kept videos per owner; over it the oldest copies go (the learned steps stay)
     interactive_page: bool = True          # v0.747 HOOLA INTERACTIVE: the console's video studio (one line -> scenes -> HyperFrames MP4)
+    # v0.999.170 HOOLA INTERACTIVE REBUILD: the face engines she chooses. Keys in the VPS .env ONLY, never in chat or the
+    # repo; an empty key = that engine says "Add <KEY>" on the Engines page. KIE_API_KEY (Kling / OmniHuman /
+    # InfiniteTalk / Wan) and GEMINI_API_KEY (B-roll shots) are the existing ones.
+    runway_api_key: str = ""
+    heygen_api_key: str = ""
+    hedra_api_key: str = ""
+    simli_api_key: str = ""
+    anam_api_key: str = ""
+    tavus_api_key: str = ""
+    interactive_credit_margin: float = 1.0   # credits = the engine's published price x this (1.0 = at cost; the margin is hers)
     hoola_api_enabled: bool = False       # v0.877 HOOLA AGENT API: companies call Hoola's tools with a Hoola key (/api/hoola-api/v1); OFF until the owner flips it
     hoola_api_prices: str = ""             # v0.877 optional JSON {"tool": micro_inr} overriding the catalogue's default per-call prices
     vocal_page: bool = True                # v0.787 HOOLA VOCAL: the console voice studio (speech, dialogue, readings, her voices, effects)
@@ -875,6 +954,13 @@ class Settings(BaseSettings):
     scrape_crawl_enabled: bool = True      # v0.486 background crawl jobs (crawl_start -> worker tick -> crawl_status/results)
     scrape_crawl_max_pages: int = 20       # v0.486 default page budget per crawl job (crawl_start clamps to 50)
     scrape_crawl_max_running: int = 1      # v0.486 crawl jobs running at once, globally (HTTP-only, politeness first)
+    spider_enabled: bool = True            # v0.999.59 HOOLA SPIDER: saved Scrapy-style crawls in the background
+    spider_max_running: int = 2            # spider runs at once, globally
+    spider_min_delay_s: float = 1.0        # AutoThrottle floor: never more than one page a second per site
+    spider_stale_s: int = 180              # a running spider silent this long is picked up again
+    spider_tries: int = 3
+    spider_browser_enabled: bool = False   # v0.999.60 JavaScript pages through the stealth browser (also needs scrape_stealth_enabled)
+    spider_browser_pages: int = 50         # browser pages per spider run at most
     scrape_crawl_stale_s: int = 180        # v0.486 a running crawl without a heartbeat this long is resumed from its checkpoint
     scrape_crawl_tries: int = 3            # v0.486 a crawl job is started at most this many times before it is failed
     graphify_enabled: bool = True          # v0.496 Graphify code graph (graph_build / graph_ask); inert until the graphifyy package is installed
@@ -887,7 +973,7 @@ class Settings(BaseSettings):
     scrape_crawl_keep_days: int = 7        # v0.486 finished crawl jobs (and their pages) older than this are forgotten
     dhara_enabled: bool = True             # v0.502 DHARA - her workflows (the n8n lane: save/run/schedule/webhook)
     dhara_max_steps: int = 40              # v0.502 top-level steps per workflow (dhara_save clamps)
-    dhara_loop_max: int = 50               # v0.502 iterations per loop step
+    dhara_loop_max: int = 1000             # v0.502 iterations per loop step (v0.999.239: 50 -> 1000)
     dhara_run_timeout_s: int = 600         # v0.502 one run's wall clock cap
     dhara_max_running: int = 1             # v0.502 runs executing at once, per tenant (politeness first)
     dhara_stale_s: int = 180               # v0.502 a running run without a write this long is resumed from its checkpoint
@@ -1036,7 +1122,7 @@ class Settings(BaseSettings):
 
     # --- Hoola Self-Teach (v0.474): skills + the nudge fork (Hermes's self-teaching loop) ---
     coder_skills: bool = True              # the SKILL.md store + skill_manage + primer injection (files + FTS5, zero model cost)
-    coder_nudge: bool = False              # the self-teaching fork (model calls: bake on the VPS, then flip to true)
+    coder_nudge: bool = True               # the self-teaching fork (v0.999 ON: every write passes coder/guard.py first)
     coder_nudge_every: int = 10            # turns between reflections (Hermes nudge_interval = 10)
     coder_nudge_max_writes: int = 4        # max observations + skill ops ONE reflection may write
 
@@ -1079,13 +1165,13 @@ class Settings(BaseSettings):
     # --- BD PACK: the public-dataset eval benchmarks + the campaign-graph analytics ---
     bdpack_enabled: bool = True             # Big Data pack seeds on first open (default ON)
     # --- Hoola Curator (the v0.480 weekly consolidation): the weekly memory consolidation ---
-    coder_curator: bool = False            # scan + arbitrate + promote (bake on the VPS, then flip to true)
+    coder_curator: bool = True             # scan + arbitrate + promote (v0.999 ON: skill promotions pass coder/guard.py)
     coder_curator_every_hours: int = 168   # one consolidation a week (the claude-mem cadence)
     coder_curator_max_pairs: int = 20      # pending pairs the brain arbitrates per tenant per run
     coder_curator_max_merges: int = 10     # merges per run; the rest stays pending (soft merges, revivable)
 
     # --- Hoola SAPNE (v0.484): the NIGHTLY curator (OpenClaw's dreaming sweep ported) ---
-    coder_dreams: bool = False             # the light+deep consolidation passes (bake on the VPS, then flip)
+    coder_dreams: bool = True              # the light+deep consolidation passes (v0.999 ON: every write passes coder/guard.py)
     coder_dreams_light_hours: int = 26     # the nightly window (26h catches the slow clock)
     coder_dreams_deep_days: int = 7        # the weekly window (deep subsumes light when both due)
     coder_dreams_max_writes: int = 4       # max curated rows ONE pass may write or rewrite
@@ -1250,12 +1336,25 @@ class Settings(BaseSettings):
     app_redirect_scheme: str = "santosh"    # deep link back into the phone app after sign-in
     hoola_signup: str = "open"              # who can make a NEW Hoola with Google sign-in: open (anyone) | invite
     hoola_signup_allow: str = ""            # invite mode: comma list of emails and/or @domain.com allowed to sign up
+    # v0.999.166 bank connection (open banking) through LICENSED partners only - keys here (VPS .env), never in the app or chat.
+    # A partner is offered only when its keys are set AND its name is in OPEN_BANKING_ACK (she read and signed its terms).
+    open_banking_ack: str = ""              # comma list: setu_aa, gocardless, plaid
+    setu_aa_base: str = "https://fiu-sandbox.setu.co"     # Setu Account Aggregator (India); production: https://fiu.setu.co
+    setu_aa_client_id: str = ""
+    setu_aa_client_secret: str = ""
+    setu_aa_product_instance: str = ""
+    gocardless_secret_id: str = ""          # GoCardless Bank Account Data (UK + EU/EEA), read only
+    gocardless_secret_key: str = ""
+    plaid_client_id: str = ""               # Plaid (US + Canada)
+    plaid_secret: str = ""
+    plaid_env: str = "sandbox"              # sandbox | production
     gstinapi_api_key: str = ""              # v0.765 gstinapi.in (gak_...) - PAID per lookup (Rs 0.40-0.80), ONE server key, VPS .env only
     gstin_daily_calls: int = 50             # v0.765 most paid GSTIN lookups a day for ALL users together (0 = switched off)
     # v0.807 BAHI (GST & Accounts employee, docs/ACCOUNTS_EMPLOYEE_PLAN.md): the WhiteBooks GSP. Keys ONLY in the VPS .env, never
     # in chat / the repo / any reply. Build to the OpenAPI specs in their Developer Hub (docs/research/accounts/04_whitebooks_api.md).
     bahi_enabled: bool = True               # the desk + register; off = the console page says it is switched off
     bahi_filing: bool = False               # A1+: filing calls refused while False (prepare-only); A0 never files
+    practice_files_dir: str = "./data/practice"   # v0.999.46 CA document desk: every client's files (kept, never swept)
     whitebooks_env: str = "sandbox"         # sandbox | production
     whitebooks_email: str = ""              # the WhiteBooks developer account email (sent as `email` on every call)
     whitebooks_gst_client_id: str = ""
@@ -1331,6 +1430,23 @@ class Settings(BaseSettings):
     leads_vendor_price_per_row_inr: float = 0.0 # rupees per row the vendor charges; 0 = the lane refuses
     leads_vendor_run_cap_inr: float = 2000.0    # one vendor run's rupee ceiling, refused AT PLAN TIME
     leads_vendor_terms_ack: str = ""            # the vendor's name once SHE has read its terms (CSV)
+    # v0.999.62 APIFY LANE: her own Apify token + terms ack (VPS .env only), a dollar ceiling per run
+    apify_token: str = ""                      # env APIFY_TOKEN; rides the Authorization header only
+    apify_terms_ack: str = ""                  # "apify" once SHE has read Apify's and the platforms' terms
+    apify_max_usd_per_run: float = 5.0         # sent to Apify as maxTotalChargeUsd, checked on its usage
+    apify_wait_s: int = 240                    # wait this long in the call, then the run is PAUSED + collect later
+    apify_actor_instagram: str = ""            # her own pick of scraper per platform (blank = Hoola's default)
+    apify_input_instagram: str = ""
+    apify_actor_facebook: str = ""
+    apify_input_facebook: str = ""
+    apify_actor_linkedin: str = ""
+    apify_input_linkedin: str = ""
+    apify_actor_tiktok: str = ""
+    apify_input_tiktok: str = ""
+    apify_actor_google_maps: str = ""
+    apify_input_google_maps: str = ""
+    apify_actor_contacts: str = ""
+    apify_input_contacts: str = ""
     # v0.544.0 SCALE: the P4 fan-out enrich pass (leads/scale.py, the HOOLA GRAPH walk) keeps at most this many
     # site passes in flight (shared Semaphore; politeness stays 1 req/s per site inside enrich.site_pass)
     leads_enrich_fanout_max: int = 4
@@ -1382,6 +1498,26 @@ class Settings(BaseSettings):
     gyaan_sync: bool = False                # tests: index + embed inline
     gyaan_ground: bool = True               # v0.135 cheap model checks each cited sentence against its sources
     gyaan_ground_timeout_s: float = 8.0
+    # v0.999.306 HOOLA DOD - the coworker, on each user's own OpenClaw Gateway (dod/gateway.py). The engine stays off
+    # until the owner switches it on; each user then gets her own container and her own model key with a limit.
+    dod_engine: bool = False                # DOD_ENGINE=true once Docker + the provisioning key are on the VPS
+    dod_image: str = "ghcr.io/openclaw/openclaw:2026.11.10-browser"   # pinned official image (with its browser)
+    openrouter_provisioning_key: str = ""   # OpenRouter provisioning key: mints each user's own limited model key
+    dod_model: str = "openrouter/anthropic/claude-sonnet-5.5"   # her coworker's model (through her own key)
+    dod_key_limit_usd: float = 10.0         # spending limit on each user's own model key
+    dod_memory: str = "2g"                  # memory per awake coworker (OpenClaw's Gateway needs ~1-2 GB)
+    dod_cpus: float = 1.5
+    dod_max_awake: int = 4                  # coworkers awake at once on this server (the rest wait their turn)
+    dod_idle_min: int = 20                  # a coworker with no work sleeps after this; its memory stays on disk
+    dod_port_base: int = 28100              # 127.0.0.1 ports of the Gateways
+    dod_start_wait_s: float = 600.0         # a real Gateway's first start runs its own repair + plugin fetch (~3-5 min)
+    dod_hoola_url: str = "http://172.18.0.1:8077"   # how her container reaches Hoola's MCP door (the server's docker address)
+    dod_uid: int = 1000                     # the OpenClaw image's `node` user: her state folder belongs to it
+    dod_mcp_any_ip: bool = False            # True only in tests: the MCP door then skips the container-network check
+    dod_read_timeout_s: float = 900.0       # longest quiet gap inside one agent run
+    dod_max_rounds: int = 600               # tool rounds in one task before it stops and says so
+    dod_file_max_mb: int = 50
+    dod_data_dir: str = ""                  # default data/dod
 
 
 @lru_cache

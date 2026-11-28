@@ -230,6 +230,12 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="santosh" android:host="youtube" />
             </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="santosh" android:host="google" />
+            </intent-filter>
         </activity>
         <meta-data android:name="flutterEmbedding" android:value="2" />
         <!-- v0.62 which build this is: github (updates itself, owner taps Install) | play (Play Store updates it) -->

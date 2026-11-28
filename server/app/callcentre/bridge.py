@@ -46,7 +46,7 @@ class Sock:
     def __init__(self, ws):
         self.ws = ws
 
-    async def recv(self) -> str | None:
+    async def recv(self) -> str | bytes | None:
         try:
             m = await self.ws.receive()
         except Exception:
@@ -56,19 +56,22 @@ class Sock:
         if m.get("text") is not None:
             return m["text"]
         if m.get("bytes") is not None:
-            return m["bytes"].decode("utf-8", "ignore")
+            return m["bytes"]          # v0.999.68 raw-audio providers (Vonage, Sinch, jambonz) send binary frames
         return ""
 
-    async def send(self, text: str) -> None:
+    async def send(self, data: str | bytes) -> None:
         with contextlib.suppress(Exception):
-            await self.ws.send_text(text)
+            if isinstance(data, (bytes, bytearray)):
+                await self.ws.send_bytes(bytes(data))
+            else:
+                await self.ws.send_text(data)
 
     async def close(self) -> None:
         with contextlib.suppress(Exception):
             await self.ws.close()
 
 
-def live_config(persona: str, specs: list[dict[str, Any]], voice: str, langst, vocab: list[str]):
+def live_config(persona: str, specs: list[dict[str, Any]], voice: str, langst, vocab: list[str], silence_ms: int = 800):
     from google.genai import types
     from .. import voice as V
     from .. import voicelang as VL
@@ -86,7 +89,7 @@ def live_config(persona: str, specs: list[dict[str, Any]], voice: str, langst, v
         realtime_input_config=types.RealtimeInputConfig(automatic_activity_detection=types.AutomaticActivityDetection(
             start_of_speech_sensitivity=types.StartSensitivity.START_SENSITIVITY_LOW,   # line noise is not the caller talking
             prefix_padding_ms=300,
-            silence_duration_ms=800,                                                     # phone audio arrives with jitter
+            silence_duration_ms=int(silence_ms or 800),          # G3: learned per caller (listen.ReplyWait); phone jitter
         )),
     )
     for f in V.UNSUPPORTED:      # settings this Gemini model refused before: same drops as the owner's calls
@@ -98,6 +101,18 @@ def live_config(persona: str, specs: list[dict[str, Any]], voice: str, langst, v
         elif f in type(cfg.realtime_input_config.automatic_activity_detection).model_fields:
             setattr(cfg.realtime_input_config.automatic_activity_detection, f, None)
     return cfg
+
+
+def _out_context(tenant: str, row: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """The person on the list (name, her columns, consent basis) and the list (goal, the answers to bring back)."""
+    from . import outbound as O
+    from .models import CcCampaign, CcTarget
+    with S.session() as s:
+        t = s.get(CcTarget, row.get("target_id") or "")
+        c = s.get(CcCampaign, row.get("campaign_id") or "")
+        target = {"name": t.name, "basis": t.basis, "data": O._j(t.data, {})} if t else {}
+        camp = O._view(c) if c else {}
+    return target, camp
 
 
 class CallBridge:
@@ -139,6 +154,16 @@ class CallBridge:
         except Exception:
             self._gate = None
         self._noise = 0.004       # learned line background (RMS)
+        # G3 (docs/SUPPORT_GLOBAL_PLAN.md): learned reply wait, idle / hold, fillers, what answered a call Hoola made
+        from . import listen as LI
+        self.LI = LI
+        self.wait = LI.ReplyWait(0)
+        self._last_voice = time.monotonic()
+        self._hold_at = 0.0
+        self._idle_asked = 0.0
+        self._tools_busy = 0
+        self._first_words = ""
+        self._answer_kind = ""
 
     # ---------------------------------------------------------------- set-up
     def _load(self):
@@ -179,25 +204,46 @@ class CallBridge:
             return await self._finish()
         lang = (self.row or {}).get("lang") or self.script["content"].get("default_lang") or R.default_lang()
         self.langst = VL.LangState(lang, "caller")
-        self.cc = S.CallCtx(self.tenant, self.call_id, self.caller, self.script | {"lang": lang})
+        self.out = (self.row or {}).get("direction") == "out"
+        self.cc = S.CallCtx(self.tenant, self.call_id, self.caller, self.script | {"lang": lang}, out=self.out)
         with S.session() as s:
             r = S._row(s, self.tenant)
             voice, self.recorded, self.max_s = r.voice, r.record, r.max_minutes * 60
         a = av.get(self.tenant)
         voice = voice or a["voice"]
         self.gender = a["gender"]
-        persona = await asyncio.to_thread(S.persona, self.tenant, self.script, self.langst, self.caller, self.recorded)
+        if self.out:      # v0.999.67 a call Hoola made to a person on one of her call lists
+            target, camp = await asyncio.to_thread(_out_context, self.tenant, self.row)
+            self.cc.fields = camp.get("fields") or []
+            persona = await asyncio.to_thread(S.persona_out, self.tenant, self.script, self.langst, target, camp, self.recorded)
+        else:
+            persona = await asyncio.to_thread(S.persona, self.tenant, self.script, self.langst, self.caller, self.recorded)
+            try:        # G3: what this caller already told her on WhatsApp / other apps / earlier calls
+                from ..seva import calls as SC
+                persona += await asyncio.to_thread(SC.brief, self.tenant, self.caller)
+            except Exception:      # noqa: BLE001 - the call goes on without it
+                log.info("callcentre: no support brief for this caller")
+        if self.out:
+            persona += ("\nIF A RECORDING ANSWERS: a phone menu, a voicemail greeting or a network message is not a person. "
+                        "The system tells you what it is; on a phone menu use press_keys only for the menu choice that leads "
+                        "to your goal or a person, and never say an account / card / PIN / birth date.\n")
+        ci = await asyncio.to_thread(S.caller_info, self.tenant, self.caller)
+        self.wait = self.LI.ReplyWait(int((ci or {}).get("reply_wait_ms") or 0))
+        self.stats["reply_wait_start_ms"] = self.wait.start
         persona += ("\nYou are female: use feminine Hindi / Marathi verb forms for yourself (kar rahi hoon, bolte aahe)."
                     if self.gender == "f" else "\nYou are male: use masculine Hindi / Marathi verb forms for yourself (kar raha hoon).")
         self.allowed = " ".join([json.dumps(self.script["content"], ensure_ascii=False)])
         reader = self._spawn(self.line_reader())
         try:
             for attempt in range(3):
-                cfg = live_config(persona, S.line_specs(self.script), voice, self.langst, S.vocab(self.script))
+                cfg = live_config(persona, S.line_specs(self.script, self.cc), voice, self.langst, S.vocab(self.script),
+                                  silence_ms=self.wait.start)
                 try:
                     async with contextlib.AsyncExitStack() as stack:
                         self.session = await asyncio.wait_for(stack.enter_async_context(_connect(cfg)), timeout=15)
                         await self.session.send_realtime_input(text=(
+                            "(System: the person you called just picked up. Say the FIRST LINE from your instructions now, "
+                            "in their language, then ask if it is a good time to talk.)" if self.out else
                             "(System: the phone call just connected. Say the FIRST LINE from your instructions now, in the "
                             "caller's language, then ask how you can help.)"))
                         ups = self._spawn(self.uplink())
@@ -256,6 +302,11 @@ class CallBridge:
         x = self.up(pcm)
         level = A.rms(x)
         speaking = time.monotonic() < self._ai_until
+        voiced_now = level >= max(0.012, self._noise * 3)
+        self.wait.frame(voiced_now and not speaking, len(x) / 32.0, speaking)       # 16 kHz 16-bit: 32 bytes a ms
+        if voiced_now and not speaking:
+            self._last_voice = time.monotonic()
+            self._idle_asked = 0.0
         if not speaking:
             self._noise = 0.95 * self._noise + 0.05 * min(level, 0.05)
         elif S._st() and getattr(S._st(), "callcentre_noise_gate", True):
@@ -315,6 +366,8 @@ class CallBridge:
                         if blob is not None and blob.data:
                             self.bytes_out += len(blob.data)
                             pcm = self.down(blob.data)
+                            if time.monotonic() >= self._ai_until:
+                                self.wait.turn_ended()
                             dur = len(pcm) / 2 / self.line.rate
                             self._ai_until = max(self._ai_until, time.monotonic()) + dur
                             for frame in self.line.out_audio(pcm):
@@ -342,6 +395,11 @@ class CallBridge:
             await self._said(reply, user)
 
     async def _heard(self, user: str) -> None:
+        self.cc.heard = (self.cc.heard + " " + R.mask_text(user))[-600:]
+        if self.LI.wait_words(user):
+            self._hold_at = time.monotonic()
+        if self.out and await self._what_answered(user):
+            return
         h = self.langst.hear(user)
         if h.get("switched"):
             self.note(self.langst.switched_note())
@@ -390,6 +448,68 @@ class CallBridge:
             self.note("(System: two questions in a row were outside her script. Offer the caller a person now (transfer_human "
                       "reason=out_of_script) or to take a message. Don't guess.)")
 
+    # ---------------------------------------------------------------- G3: a call Hoola made - who / what answered
+    async def _what_answered(self, user: str) -> bool:
+        """-> True when the call is being ended / moved because a recording answered."""
+        if self.cc.menu is not None:
+            if self.cc.menu.heard(user):
+                self.flags.append({"kind": "menu_loop", "text": "the phone menu went round in a loop; Hoola stopped"})
+                self.stats["answered"] = "ivr_loop"
+                self.note("(System: the phone menu is repeating itself. Stop pressing keys and end the call now.)")
+                self._spawn(self._end())
+                return True
+            return False
+        if self._answer_kind or time.monotonic() - self.t0 > 25:
+            return False
+        self._first_words = (self._first_words + " " + user).strip()
+        got = self.LI.classify(self._first_words)
+        if not got["sure"] and time.monotonic() - self.t0 < 8:
+            return False
+        kind = got["kind"]
+        self._answer_kind = kind
+        self.stats["answered"] = kind
+        if kind in ("human", "unknown"):
+            return False
+        await asyncio.to_thread(self._set_answered, kind)
+        if kind == "ivr":
+            self.cc.menu = self.LI.MenuWatch()
+            self.cc.menu.heard(self._first_words)
+            self.note("(System: a PHONE MENU answered, not a person. Stay quiet while it speaks. Use press_keys for the choice "
+                      "that reaches a person or your goal; if it asks for an account, card, PIN or birth date, end the call.)")
+            return False
+        if kind == "voicemail":
+            self.note("(System: an answering machine / voicemail greeting answered. Say nothing; the system leaves the message.)")
+            self._spawn(self._to_voicemail())
+            return True
+        why = "the number is unreachable / switched off" if kind == "unreachable" else "the voicemail box is full"
+        self.flags.append({"kind": kind, "text": f"no person: {why}"})
+        self._outcome = "no_answer"
+        self.note("(System: no person: " + why + ". Say nothing. The call ends.)")
+        self._spawn(self._end(quick=True))
+        return True
+
+    def _set_answered(self, kind: str) -> None:
+        with S.session() as s:
+            from .models import CcCall
+            c = s.get(CcCall, self.call_id)
+            if c is not None:
+                c.answered_by = {"ivr": "menu", "voicemail": "machine", "mailbox_full": "machine", "unreachable": "network"}.get(kind, kind)[:12]
+
+    async def _to_voicemail(self) -> None:
+        try:
+            with S.session() as s:
+                urls = S._urls(self.tenant, S._row(s, self.tenant))
+            url = urls.get("answer", "").rsplit("/answer", 1)[0] + f"/voicemail?out={self.call_id}&ot={S.ticket(self.call_id, 10)}"
+            await asyncio.to_thread(self.provider.transfer, self.provider_call, url)
+            self._outcome = "voicemail"
+        except Exception as e:      # noqa: BLE001 - no voicemail line: hang up and try again later
+            log.info("callcentre voicemail move failed: %s", e)
+            self._outcome = "no_answer"
+            await self._end(quick=True)
+            return
+        await asyncio.sleep(0.3)
+        self.closed.set()
+
     async def handover(self, reason: str, force: bool = False) -> None:
         if self.cc.handover is not None and not force:
             return
@@ -411,6 +531,7 @@ class CallBridge:
             if self._handover_due and t >= self._handover_due and not self.transferred:
                 self._handover_due = 0.0
                 await self._transfer()
+            await self._idle(t)
             if not warned and t - self.t0 > self.max_s - 60:
                 warned = True
                 self.note("(System: one minute left on this call. Wrap up: offer to take a message for anything left.)")
@@ -419,12 +540,53 @@ class CallBridge:
                 await self._end()
                 return
 
+    async def _idle(self, t: float) -> None:
+        """G3: nobody has spoken since Hoola finished. Ask once if they are there; then a short goodbye. A caller who
+        asked Hoola to hold on gets longer; a check that is still running is never 'silence'."""
+        if self.ending or self.transferred or self._tools_busy or self.cc.menu is not None or t < self._ai_until + 0.5:
+            return
+        quiet = t - max(self._last_voice, self._ai_until)
+        first = self.LI.HOLD_S if t - self._hold_at < self.LI.HOLD_S + 5 else self.LI.IDLE_ASK_S
+        if not self._idle_asked and quiet >= first:
+            self._idle_asked = t
+            self.stats["idle_asks"] = self.stats.get("idle_asks", 0) + 1
+            self.note("(System: the caller has been silent. Ask once, briefly, whether they are still there.)")
+        elif self._idle_asked and t - self._idle_asked >= self.LI.IDLE_END_S and quiet >= self.LI.IDLE_END_S:
+            self.flags.append({"kind": "silent", "text": "the caller stayed silent; Hoola said goodbye"})
+            self.note("(System: still silence. Say one short goodbye line (they can call again), then the call ends.)")
+            self._idle_asked = t + 3600
+            self._spawn(self._end())
+
+    async def _filler(self, name: str) -> None:
+        await asyncio.sleep(self.LI.FILLER_S)
+        self.stats["fillers"] = self.stats.get("fillers", 0) + 1
+        self.note("(System: this check takes a moment. Say ONE very short line in the caller's language, like 'one moment, "
+                  "I'm checking', then wait for the result. Do not guess the answer.)")
+
+    async def _press(self, keys: str) -> None:
+        pcm = A.dtmf(keys, self.line.rate)
+        self._ai_until = max(self._ai_until, time.monotonic()) + len(pcm) / 2 / self.line.rate
+        for frame in self.line.out_audio(pcm) + list(self.line.flush()):
+            await self.sock.send(frame)
+        self.stats["keys"] = self.stats.get("keys", "") + keys
+
     # ---------------------------------------------------------------- tools on the line
     async def run_tool(self, fc) -> None:
         from google.genai import types
         name, args = fc.name, dict(fc.args or {})
         self.tools.append(name)
-        out = await asyncio.to_thread(S.run_line_tool, self.cc, name, args)
+        filler = self._spawn(self._filler(name)) if name not in ("end_call", "transfer_human", "press_keys") else None
+        self._tools_busy += 1
+        try:
+            out = await asyncio.to_thread(S.run_line_tool, self.cc, name, args)
+        finally:
+            self._tools_busy -= 1
+            if filler is not None:
+                filler.cancel()
+        if name == "press_keys" and out.get("press"):
+            await self._press(out["press"])
+        if name == "press_keys" and out.get("end"):
+            self._spawn(self._end())
         if name == "faq_answer" and out.get("not_in_script"):
             self.unanswered.append(R.mask_text(str(args.get("question") or ""))[:160])
         try:
@@ -462,11 +624,11 @@ class CallBridge:
         base = urls.get("answer", "").rsplit("/answer", 1)[0]
         return f"{base}/transfer/{self.call_id}?t={S.ticket(self.call_id, 10)}"
 
-    async def _end(self) -> None:
+    async def _end(self, quick: bool = False) -> None:
         if self.ending:
             return
         self.ending = True
-        wait = max(0.0, min(8.0, self._ai_until - time.monotonic())) + 0.8   # let the closing line finish playing
+        wait = 0.2 if quick else max(0.0, min(8.0, self._ai_until - time.monotonic())) + 0.8   # let the closing line finish
         await asyncio.sleep(wait)
         with contextlib.suppress(Exception):
             await asyncio.to_thread(self.provider.hangup, self.provider_call)
@@ -500,7 +662,9 @@ class CallBridge:
                 "lang": getattr(getattr(self, "langst", None), "base", ""), "disclosed": self.disclosed,
                 "handover": getattr(getattr(self, "cc", None), "handover", None) or {}, "transferred": self.transferred,
                 "failed": self.failed, "stats": self.stats, "unanswered": self.unanswered,
-                "sec_in": self.bytes_in / 32000, "sec_out": self.bytes_out / 48000}
+                "sec_in": self.bytes_in / 32000, "sec_out": self.bytes_out / 48000,
+                "reply_wait_ms": self.wait.learned() if len(self.wait.pauses) >= 3 else 0,
+                "outcome": getattr(self, "_outcome", ""), "answered_by": self._answer_kind}
         from ..config import get_settings
         try:
             from .. import usage

@@ -16,6 +16,7 @@ class AppReviewSettings(Base):
     kids: Mapped[bool] = mapped_column(Boolean, default=False)              # app is (also) for children under 18
     ios: Mapped[bool] = mapped_column(Boolean, default=False)               # there is an iPhone version too
     developer: Mapped[str] = mapped_column(String(120), default="")         # her developer's name (fix list header)
+    country: Mapped[str | None] = mapped_column(String(2), nullable=True, default="")  # her country (ISO); "" = India (as before)
     gh_sealed: Mapped[str] = mapped_column(Text, default="")                # GitHub read-only token, sealed with the bazar vault
     gh_label: Mapped[str] = mapped_column(String(80), default="")
     seq: Mapped[int] = mapped_column(Integer, default=0)

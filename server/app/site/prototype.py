@@ -201,6 +201,10 @@ For EVERY section listed (same order, same count) give:
 - items: the section's parts as short strings (max 8, each max 14 words) - features, steps, plans with prices, FAQ
   questions, testimonial quotes with a first name, KPI tiles as "Label: value", form fields as "Field name",
   table columns are NOT items
+  For these sections write the items in this shape (Hoola builds them from the items): a schedule / programme =
+  "Saturday 14 Dec · 5:00 pm - what happens"; a resume / experience = "Role - place (2019 - 2023)", "Skills: a, b, c";
+  lessons / curriculum = "Part name: lesson, lesson, lesson"; a quiz = "Question? right answer* / other / other" (mark
+  the one right answer with *; the owner checks it in the prototype); members = "Name (sample) - role"
 - cta: a button label when the section has one ("" if none)
 - cols + rows: ONLY for a data screen (screen_table, screen_dashboard, screen_approvals, screen_board): 3-6 column names
   and 3-5 rows of SAMPLE values matching the columns (clearly made-up sample data)
@@ -618,8 +622,339 @@ def approve(tenant: str, ref: str, h: str, conv: str = "") -> dict[str, Any]:
     from . import library as L
     L.learn(r.field, "style", [style], 2)
     S._emit(S._load(r.id))
-    S._start(r.id, "proto_build", extra=guidance(pages))
+    if react_on():                               # v0.999.65 D4: a React website from the kit, built in the App Engine box
+        S._start(r.id, "proto_react")
+    else:
+        S._start(r.id, "proto_build", extra=guidance(pages))
     return {**S.view(S._load(r.id)), "say": f"Building the real website from prototype version {m['v']}."}
+
+
+# ---------------------------------------------------------------- v0.999.65 D4: the React website from the prototype
+def react_on() -> bool:
+    """New builds on the React engine: the server's switch, or (v0.999.123 D10) the owner's own decision."""
+    from ..config import get_settings
+    st = get_settings()
+    if not bool(getattr(st, "app_engine", True)):
+        return False
+    from . import enginedefault as ED
+    if ED.FORCE.get("engine"):                       # the D10 proof card builds each brief on a chosen engine
+        return ED.FORCE["engine"] == "new"
+    if bool(getattr(st, "studio_react_sites", False)):
+        return True
+    try:
+        return ED.new_default()
+    except Exception:                                # noqa: BLE001 - no decision readable: the old engine
+        return False
+
+
+def react_link(r) -> dict[str, Any]:
+    """The App Engine app this website is written into (facts.react_app), {} when none."""
+    return dict(_j(r.facts, {}).get("react_app") or {})
+
+
+def site_link(r) -> dict[str, Any]:
+    """v0.999.77 D8: what the React website needs to use her HTML website's own forms, booking and shop on Hoola (the
+    same leads, booking book, products, stock and orders): its id + the shop's public settings and products; v0.999.78
+    her published blog posts (each becomes a page)."""
+    out: dict[str, Any] = {"id": r.id}
+    try:
+        from . import service as S
+        from . import shop as SH
+        cfg = S._shop_cfg(r)
+        if cfg.get("on"):
+            out["shop"] = {"on": True, "cod": bool(cfg.get("cod")), "pickup": bool(cfg.get("pickup")),
+                           "upi": bool(cfg.get("upi")),
+                           "products": [{k: x.get(k) for k in ("slug", "title", "price", "unit", "in_stock", "photo")}
+                                        for x in SH.products(r.id)][:48]}
+    except Exception:                                # noqa: BLE001 - no shop: the products stay her words
+        log.info("shop not read for the React website", exc_info=True)
+    try:                                             # v0.999.78 D8 wave 2: her published blog posts become pages
+        from . import blog as BL
+        out["posts"] = [{k: x.get(k) for k in ("slug", "title", "excerpt", "date", "published_at", "category",
+                                                "author", "minutes", "cover")} | {"body": str(x.get("body") or "")[:60000]}
+                        for x in BL.live_posts(r.id)[:120]]
+        extra = S.extra_languages(r)
+        if extra and out.get("posts"):               # each extra language: its translated posts (else her own words)
+            out["posts_tr"] = {c: [{k: x.get(k) for k in ("slug", "title", "excerpt", "date", "published_at", "category",
+                                                         "author", "minutes", "cover")} | {"body": str(x.get("body") or "")[:60000]}
+                                   for x in BL.live_posts(r.id, c)[:120]] for c in extra}
+    except Exception:                                # noqa: BLE001 - no blog: no posts
+        log.info("blog not read for the React website", exc_info=True)
+    try:                                             # v0.999.82 D8 wave 7: her website's lists (its member app on Hoola)
+        from . import service as S
+        sch = S.app_schema(r) or {}
+        lists = [{"key": str(c.get("key") or ""), "label": str(c.get("label") or c.get("key") or "")}
+                 for c in sch.get("collections") or [] if isinstance(c, dict) and c.get("key")]
+        if lists:
+            out["app"] = {"lists": lists[:40], "signup": bool(sch.get("signup", True))}
+            try:                                     # v0.999.82 D8 wave 8: her clinic queue, when she switched it on
+                from . import applink as AL
+                from . import livesite as LS
+                pj = AL.project(r)
+                q = LS.cfg(pj) if pj is not None else {}
+                if q.get("on"):
+                    out["app"]["queue"] = {"label": str(q.get("label") or "Queue")[:40]}
+            except Exception:                        # noqa: BLE001 - no queue: none shown
+                log.info("queue not read for the React website", exc_info=True)
+    except Exception:                                # noqa: BLE001 - no lists: the app screens keep their sample rows
+        log.info("lists not read for the React website", exc_info=True)
+    try:                                             # v0.999.106 D8 wave 10: her own live Hoola AI App, embed on
+        ai = her_ai_app(str(r.tenant_id or ""))
+        if ai:
+            out["ai"] = ai
+    except Exception:                                # noqa: BLE001 - no assistant: none shown
+        log.info("AI app not read for the React website", exc_info=True)
+    return out
+
+
+def her_ai_app(tenant: str) -> dict[str, Any]:
+    """v0.999.106 D8 wave 10: her newest LIVE Hoola AI App whose website channel (embed) is on - its public face only
+    (the same fields its own chat page shows), {} when she has none. Nothing is made for her: an assistant appears on
+    her website only after she built and published it in AI Apps and left its website channel on."""
+    if not tenant:
+        return {}
+    from ..aiapps import public as AP
+    from ..aiapps import store as AST
+    for v in AST.apps(tenant):
+        if v.get("status") != "live" or not v.get("live_version"):
+            continue
+        a = AP.live_app(str(v.get("code") or ""), "embed")
+        if a is None or str(a.tenant_id or "") != tenant:
+            continue
+        info = AP.public_info(a)
+        return {"code": a.code, "name": str(info.get("name") or a.name or "")[:80],
+                "kind": str(info.get("kind") or "chat")[:12], "opening": str(info.get("opening") or "")[:400],
+                "notice": str(info.get("notice") or "")[:800],
+                "suggested": [str(x)[:120] for x in (info.get("suggested") or []) if str(x).strip()][:4]}
+    return {}
+
+
+PHOTO_W = 1600
+
+
+def sync_photos(r, ref: str) -> list[dict[str, str]]:
+    """v0.999.82 D8 wave 4: her website's photos in the React website - each one once as a web-sized WebP in the app's
+    public/photos/ (made again only when her photo changes; a photo she removed leaves), so the hero, gallery, products
+    and blog covers show HER pictures. Returns [{name, src, alt}] in her order (src relative to the page's base)."""
+    from PIL import Image
+
+    from ..appengine import service as AE
+    from . import build as B
+    src = B.src_dir(r.tenant_id, r.id) / "photos"
+    out_dir = AE.src_dir(AE._load(r.tenant_id, ref)) / "public" / "photos"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out, keep = [], set()
+    for ph in _j(r.photos, []):
+        name = re.sub(r"[^A-Za-z0-9_-]", "", str(ph.get("name") or ""))[:60]
+        f = src / f"{name}.jpg"
+        if not name or not f.is_file():
+            continue
+        dst = out_dir / f"{name}.webp"
+        keep.add(dst.name)
+        try:
+            if not dst.exists() or dst.stat().st_mtime < f.stat().st_mtime:
+                with Image.open(f) as im:
+                    im = im.convert("RGB")
+                    im.thumbnail((PHOTO_W, PHOTO_W))
+                    im.save(dst, "WEBP", quality=80, method=4)
+        except Exception:                            # noqa: BLE001 - a photo that cannot be read is left out
+            log.info("photo %s not copied to the React website", name, exc_info=True)
+            continue
+        out.append({"name": name, "src": f"./photos/{name}.webp", "alt": _t(ph.get("about") or "", 120)})
+    for old in out_dir.glob("*.webp"):              # a photo she removed from her website leaves this one too
+        if old.name not in keep:
+            old.unlink(missing_ok=True)
+    return out
+
+
+CAT_ITEMS = 5500                                     # the pre-render writes at most 6,000 pages a site
+
+
+def catalog_link(r, ref: str) -> list[dict[str, Any]]:
+    """v0.999.82 D8 wave 4: her catalogue (site/catalog.py - the same lists, items and addresses as her HTML website)
+    for the React website: each item as plain data (title, price, her columns, description, noindex when thin or a
+    copy), its photo linked into the app's public/catalog-img/ from the catalogue's own resized images."""
+    import os
+    import shutil
+
+    from ..appengine import service as AE
+    from . import catalog as CAT
+    cats = CAT.load(r.id)
+    if not cats:
+        return []
+    sold: set[str] = set()
+    try:                                             # v0.999.82 wave 6: items her shop sells (catalog.sync_shop slugs)
+        from . import service as S
+        from . import shop as SH
+        if S._shop_cfg(r).get("on"):
+            sold = {str(x.get("slug") or "") for x in SH.products(r.id) if x.get("in_stock", True)}
+    except Exception:                                # noqa: BLE001
+        log.info("shop not read for the catalogue", exc_info=True)
+    cache = CAT._img_cache(r.id)
+    img_dir = AE.src_dir(AE._load(r.tenant_id, ref)) / "public" / "catalog-img"
+    img_dir.mkdir(parents=True, exist_ok=True)
+    keep, out, left = set(), [], CAT_ITEMS
+    for c in cats[:CAT.MAX_LISTS]:
+        spec = c["spec"]
+        skip = {spec.get("price"), spec.get("desc"), spec.get("stock"), spec.get("image")}
+        items = []
+        for it in c["items"][:max(0, left)]:
+            d = it["data"]
+            img = ""
+            meta = it.get("img") or {}
+            if meta.get("sizes"):
+                w = meta["sizes"][min(1, len(meta["sizes"]) - 1)][0]
+                f = cache / f"{meta['name']}-{w}.webp"
+                if f.is_file():
+                    dst = img_dir / f.name
+                    keep.add(f.name)
+                    if not dst.exists():
+                        try:
+                            os.link(f, dst)
+                        except OSError:
+                            shutil.copy(f, dst)
+                    img = f"./catalog-img/{f.name}"
+            items.append({"s": it["slug"], "t": it["title"],
+                          "p": CAT.price_text(d.get(spec["price"])) if spec.get("price") else "", "img": img,
+                          "sub": next((str(d.get(k) or "") for k in spec.get("facets", []) if d.get(k)), "")[:80],
+                          "d": str(d.get(spec["desc"]) or "")[:2000] if spec.get("desc") else "",
+                          "f": [[f["label"], str(d.get(f["key"]))[:200]] for f in spec.get("fields", [])
+                                if f["key"] not in skip and d.get(f["key"]) and not CAT.URLISH.match(str(d.get(f["key"])))][:12],
+                          "ni": it.get("q") != "ok",
+                          # v0.999.82 wave 6: the filter bar's values, the price as a number, Add to cart when sold
+                          "fv": [str(d.get(k) or "").strip()[:60] for k in spec.get("facets", [])[:CAT.FACETS_MAX]],
+                          "pn": CAT.num(d.get(spec["price"])) if spec.get("price") else None,
+                          "cart": f"{c['key']}/{it['slug']}" if f"{c['key']}/{it['slug']}" in sold else ""})
+        left -= len(items)
+        facets = [{"key": f["key"], "label": f["label"]} for f in CAT._facets(c)[:CAT.FACETS_MAX]]
+        out.append({"key": c["key"], "label": c["label"], "itemLabel": c.get("item_label") or "", "per": CAT.PER_PAGE,
+                    "facets": facets, "items": items})
+    for old in img_dir.iterdir():                     # a photo of an item that left
+        if old.name not in keep:
+            old.unlink(missing_ok=True)
+    return out
+
+
+def lang_link(r, ref: str) -> dict[str, Any]:
+    """v0.999.77 D8 wave 2: her website's languages for the React website - the first, the extra ones (each with its
+    name and its html code) and the translations kept beside the app (appengine/langs.py)."""
+    from . import lang as SL
+    from . import service as S
+    first = (_j(r.languages, ["en"]) or ["en"])[0]
+    extra = S.extra_languages(r)
+    out: dict[str, Any] = {"first": first, "extra": extra,
+                           "labels": {c: SL.LANGS.get(c, c) for c in [first, *extra]},
+                           "html": {c: SL.html_lang(c) for c in [first, *extra]}, "tr": {}}
+    if extra and ref:
+        from ..appengine import langs as LG
+        try:
+            out["tr"] = {c: LG.stored(r.tenant_id, ref, c) for c in extra}
+        except Exception:                            # noqa: BLE001 - nothing translated yet
+            log.info("translations not read", exc_info=True)
+    return out
+
+
+def write_react(r, pages: list[dict[str, Any]], wfacts: dict[str, Any], ref: str = "", step=None,
+                pin: str = "", start: str = "") -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any] | None]:
+    """Pages (the prototype's shape) -> a React website in the App Engine box: the design genome (her colour pinned), her
+    languages, photos and catalogue, the writer (+ the critic when on), the build. `ref` = the app to write into ("" = a
+    new one). Returns (link, build result, writer stats, critic review). v0.999.119 D9: shared by Build the real
+    website and Upgrade this site."""
+    from ..appengine import critic as C
+    from ..appengine import genome as GN
+    from ..appengine import service as AE
+    from ..appengine import writer as W
+    from . import ai as AI
+    step = step or (lambda *a: None)
+    _, tk, _ = tokens_for(r)
+    S_work = step
+    S_work("start", "Writing the website", start or f"{len(pages)} pages, in React")
+    if ref:
+        try:
+            AE._load(r.tenant_id, ref)
+        except Exception:                    # noqa: BLE001 - the app was removed: a new one
+            ref = ""
+    if not ref:
+        gen = GN.generate(seed=r.id, pin=pin or str(tk.get("primary") or ""), words=r.brief or "", name=r.name or "")
+        app = AE.create(r.tenant_id, name=r.name or "My website", brief=r.brief or "", genome=gen, render="site",
+                        conversation_id=r.conv or "")
+        ref = app["id"]
+    wfacts["_langs"] = lang_link(r, ref)         # v0.999.77 D8: her extra languages (what is translated)
+    try:                                         # v0.999.82 D8: her photos in the React website
+        wfacts["_site"]["photos"] = sync_photos(r, ref)
+    except Exception:                            # noqa: BLE001 - stand-ins in the design's colours instead
+        log.info("photos not brought to the React website", exc_info=True)
+    try:                                         # v0.999.82 D8: her catalogue's lists and items
+        wfacts["_site"]["catalog"] = catalog_link(r, ref)
+    except Exception:                            # noqa: BLE001 - the catalogue stays on her HTML website
+        log.info("catalogue not brought to the React website", exc_info=True)
+    mdl = lambda system, prompt: AI.ask(system, prompt, 6000, "section")   # noqa: E731 - her tier's web writer
+    review: dict[str, Any] | None = None
+    if C.on():
+        # v0.999.67 D5: write -> build -> a SEPARATE critic looks on a computer + a phone -> code fixes, the best kept
+        spec = (_j(r.plan, {}) or {}).get("spec") or {}
+        gdir = ((AE._genome(AE._load(r.tenant_id, ref)) or {}).get("direction") or {}).get("seed") or ""
+        review = C.improve(r.tenant_id, ref, pages, name=r.name or "", facts=wfacts, model=mdl, seed=r.id,
+                           brief=r.brief or "", purpose=str(spec.get("purpose") or ""),
+                           field=str(spec.get("field_hint") or ""), kind=str(spec.get("kind") or ""),
+                           direction=str(gdir), step=lambda a, b: S_work(a, b, ""))
+        st, res = review["write"], review["build"]
+    else:
+        st = W.write_app(r.tenant_id, ref, pages, name=r.name or "", facts=wfacts, model=mdl, seed=r.id)
+        S_work("start", "Building the pages", "every page as finished HTML, code only where it moves")
+        res = AE.build(r.tenant_id, ref)
+    app = AE._load(r.tenant_id, ref)
+    link = {"id": app.id, "number": app.number, "version": app.version, "built": bool(res.get("built")),
+            "preview": f"/api/app-preview/{app.preview_token}/" if app.version else "",
+            "written": st["written"], "fixed": st["fixed"], "refused": st["refused_left"],
+            "custom": st["custom_written"], "blanks": st["blanks"], "say": res.get("say", "")[:600]}
+    if review is not None:
+        link["critic"] = {"score": review.get("score"), "passed": review.get("passed"), "bar": review.get("bar"),
+                          "rounds": len(review.get("rounds") or []), "best_round": review.get("best_round"),
+                          "inr": review.get("inr"), "hero": review.get("hero"), "model": review["critic"].get("model"),
+                          "skipped": review.get("skipped", ""), "say": C.say(review),
+                          "refs": int((review.get("refs") or {}).get("used") or 0),
+                          "problems": ((review.get("rounds") or [{}])[-1].get("problems") or [])[:3]}
+    return link, res, st, review
+
+
+def react_job(site_id: str) -> None:
+    """Her approved prototype -> a React website: the design genome from the colour she approved, every page written
+    by the writer (kit blocks + her words + her facts; custom sections by the model on her tier through AutoFix + the
+    rules), built in the box (every page pre-rendered, islands only). The site's preview shows the app's preview."""
+    from ..appengine import critic as C
+    from ..usage import scope
+    from . import service as S
+    r = S._load(site_id)
+    with scope(r.tenant_id, "site"):
+        try:
+            pages = pages_of(r)
+            facts = _j(r.facts, {})
+            wfacts = {**facts, "_site": site_link(r)}     # v0.999.77 D8: her website's forms, booking and shop
+            link, res, st, review = write_react(r, pages, wfacts, react_link(r).get("id") or "",
+                                                step=lambda a, b, c="": S._work(S._load(site_id), a, b, c),
+                                                start=f"{len(pages)} pages from your prototype, in React")
+            link["proto_v"] = meta(r).get("approved_v")
+            facts["react_app"] = link
+            ok = bool(res.get("built"))
+            S._save(site_id, facts=json.dumps(facts), status="ready" if ok else "failed",
+                    error="" if ok else _t("The React website did not build: " + res.get("say", ""), 300))
+            r = S._load(site_id)
+            S._work(r, "done" if ok else "error", "Your website is ready" if ok else "The build hit a problem",
+                    (f"{len(pages)} pages, {st['fixed']} small fixes made by code" + (
+                        f"; {C.say(review)}" if review is not None else "") + (
+                        f"; fill in: {', '.join(st['blanks'])}" if st.get("blanks") else "")) if ok else res.get("say", "")[:200])
+            S._emit(r, push=True)
+            if ok and S.extra_languages(r):          # v0.999.77 D8: her other languages, the parts not translated yet
+                from . import rxedit as RX
+                try:
+                    RX.translate(r.tenant_id, site_id)
+                except Exception:                    # noqa: BLE001 - the first language is ready; translation can wait
+                    log.info("translation of the React website failed", exc_info=True)
+        except Exception as e:
+            log.exception("react website failed")
+            S._save(site_id, status="failed", error=_t(f"The React website could not be made: {e}", 300))
+            S._emit(S._load(site_id), push=True)
 
 
 def build_job(site_id: str, extra: dict[str, str] | None = None) -> None:

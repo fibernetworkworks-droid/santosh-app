@@ -69,7 +69,8 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
     async def make(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         on()
         b = dict(body or {})
-        return wrap(S.make, tenant, str(b.get("id") or ""), silent=bool(b.get("silent")), code=409)
+        return wrap(S.make, tenant, str(b.get("id") or ""), silent=bool(b.get("silent")),
+                    quote_key=str(b.get("quote_key") or ""), code=409)
 
     @r.get("/progress")
     async def progress(id: str = "", tenant: str = Depends(current_tenant)):
@@ -112,7 +113,66 @@ def make_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
         if not Path(row.stored_path).is_file():
             raise HTTPException(404, "That photo was not found - upload it again.")
         return wrap(S.add_avatar, tenant, str(b.get("name") or ""), row.stored_path, lang=str(b.get("lang") or "en"),
-                    consent=bool(b.get("consent")), filename=row.name)
+                    consent=bool(b.get("consent")), filename=row.name, who=str(b.get("who") or "me"),
+                    person=str(b.get("person") or ""))
+
+    @r.patch("/avatar")
+    async def rename_avatar(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """v0.999.176 a new name for a face."""
+        on()
+        b = dict(body or {})
+        return wrap(S.rename_avatar, tenant, str(b.get("id") or ""), str(b.get("name") or ""))
+
+    def _ai_credits(count: int) -> int:
+        from .. import photogen
+        from ..credits import service as cr
+        rate = cr._inr_per_credit() or 0.088
+        return max(1, round(photogen.COST_INR["fast"] * count / rate))
+
+    @r.get("/avatar/ai/quote")
+    async def ai_quote(count: int = 4, tenant: str = Depends(current_tenant)):
+        """v0.999.176 the price of AI-made faces before she asks for them."""
+        on()
+        from ..create import service as cs
+        n = max(1, min(int(count or 4), 4))
+        return {"count": n, "credits": _ai_credits(n), "ready": bool(cs.ready().get("image"))}
+
+    @r.post("/avatar/ai")
+    async def ai_faces(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """v0.999.176 four AI-made presenters (no real person); she keeps one as a face. Refused for real or famous people."""
+        on()
+        from .. import photogen
+        from ..create import jobs, service as cs
+        b = dict(body or {})
+        if not cs.ready().get("image"):
+            raise HTTPException(409, "Making faces needs the picture engine on this server.")
+        prompt = wrap(S.ai_face_prompt, str(b.get("describe") or ""), str(b.get("age") or ""), str(b.get("look") or ""),
+                      str(b.get("behind") or ""))
+        why = photogen.problem(str(b.get("describe") or "")) or photogen.problem(prompt)
+        if why:
+            raise HTTPException(422, why)
+        n = max(1, min(int(b.get("count") or 4), 4))
+        try:
+            j = jobs.start(tenant, "image", {"prompt": prompt, "count": n, "aspect": "4:5", "quality": "fast",
+                                             "title": "AI face"})
+        except jobs.JobError as e:
+            raise HTTPException(400, str(e))
+        return {"job": j.get("id"), "credits": _ai_credits(n), "count": n}
+
+    @r.post("/avatar/keep")
+    async def keep_ai(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """v0.999.176 one of her AI-made pictures kept as a face."""
+        on()
+        from ..create import jobs
+        b = dict(body or {})
+        try:
+            path, it = jobs.item_file(tenant, str(b.get("item_id") or ""))
+        except jobs.JobError:
+            raise HTTPException(404, "That picture was not found.")
+        if it.get("kind") != "image":
+            raise HTTPException(422, "Only a picture can become a face.")
+        return wrap(S.add_ai_avatar, tenant, str(b.get("name") or ""), path.read_bytes(),
+                    prompt=str((it.get("meta") or {}).get("prompt") or ""))
 
     @r.delete("/avatar")
     async def del_avatar(id: str = "", tenant: str = Depends(current_tenant)):
@@ -150,6 +210,46 @@ def make_hub_router(require_key: Callable, current_tenant: Callable) -> APIRoute
         on()
         return wrap(H.brand_set, tenant, dict(body or {}))
 
+    @r.get("/brand")
+    async def brand_get(tenant: str = Depends(current_tenant)):
+        """v0.999.207 her brand + what her poster Brand kit holds (for Use my Brand kit)."""
+        on()
+        return H.brand_info(tenant)
+
+    @r.post("/brand/logo")
+    async def brand_logo(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """Her logo from a file she just uploaded; shared with the Brand kit (posters use it too)."""
+        on()
+        return wrap(H.logo_set, tenant, str((body or {}).get("file_id") or ""))
+
+    @r.delete("/brand/logo")
+    async def brand_logo_del(tenant: str = Depends(current_tenant)):
+        on()
+        return H.logo_clear(tenant)
+
+    @r.get("/brand/logo")
+    async def brand_logo_file(tenant: str = Depends(current_tenant)):
+        on()
+        from ..brand import service as BS
+        try:
+            p, m = BS.logo_file(tenant)
+        except BS.BrandError:
+            raise HTTPException(404, "There is no logo.")
+        return FileResponse(str(p), media_type=m)
+
+    @r.get("/brand/card")
+    async def brand_card(card: str = "", url: str | None = None, tenant: str = Depends(current_tenant)):
+        """The exact picture the closing card carries (her logo and / or the QR code); 204 when there is none."""
+        on()
+        from fastapi.responses import Response
+        img = H.card_image(tenant, card or None, url)
+        return Response(img, media_type="image/png") if img else Response(status_code=204)
+
+    @r.post("/brand/kit")
+    async def brand_kit(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        on()
+        return wrap(H.kit_apply, tenant, list((body or {}).get("fields") or []))
+
     @r.post("/glossary")
     async def glossary_add(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         on()
@@ -166,7 +266,21 @@ def make_hub_router(require_key: Callable, current_tenant: Callable) -> APIRoute
     async def template_save(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         on()
         b = dict(body or {})
-        return wrap(H.template_save, tenant, str(b.get("project") or ""), str(b.get("name") or ""))
+        return wrap(H.template_save, tenant, str(b.get("project") or ""), str(b.get("name") or ""), list(b.get("blanks") or []))
+
+    @r.get("/template/suggest")
+    async def template_suggest(project: str = "", tenant: str = Depends(current_tenant)):
+        """v0.999.174 words in her video that look like they change, so she can tap them into blanks. Code only."""
+        on()
+        return {"words": wrap(H.blank_suggestions, tenant, project)}
+
+    @r.post("/template/many")
+    async def template_many(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """v0.999.174 one free draft per row of her sheet; a row with an empty blank is skipped and named."""
+        on()
+        b = dict(body or {})
+        return wrap(H.template_many, tenant, str(b.get("id") or ""), list(b.get("rows") or []), lang=str(b.get("lang") or "en"),
+                    avatar_id=str(b.get("avatar_id") or ""), opts=dict(b.get("opts") or {}))
 
     @r.delete("/template")
     async def template_del(id: str = "", tenant: str = Depends(current_tenant)):
@@ -178,7 +292,19 @@ def make_hub_router(require_key: Callable, current_tenant: Callable) -> APIRoute
         on()
         b = dict(body or {})
         return view(wrap(H.template_use, tenant, str(b.get("id") or ""), dict(b.get("values") or {}),
-                         lang=str(b.get("lang") or "en"), avatar_id=str(b.get("avatar_id") or ""), title=str(b.get("title") or "")))
+                         lang=str(b.get("lang") or "en"), avatar_id=str(b.get("avatar_id") or ""), title=str(b.get("title") or ""),
+                         opts=dict(b.get("opts") or {})))
+
+    @r.get("/apps")
+    async def apps_list(tenant: str = Depends(current_tenant)):
+        """v0.999.175 every app on the Apps page with its real state on this server and her recently used ones."""
+        on()
+        return H.apps(tenant)
+
+    @r.post("/apps/used")
+    async def apps_used(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        on()
+        return wrap(H.app_used, tenant, str((body or {}).get("id") or ""))
 
     @r.post("/batch")
     async def batch(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
@@ -207,6 +333,30 @@ def make_hub_router(require_key: Callable, current_tenant: Callable) -> APIRoute
     async def restore(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         on()
         return view(wrap(H.restore, tenant, str((body or {}).get("id") or "")))
+
+    @r.post("/trash/purge")
+    async def purge_one(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """v0.999.204 one video out of the trash for good."""
+        on()
+        return {"ok": wrap(H.purge_one, tenant, str((body or {}).get("id") or ""))}
+
+    @r.post("/folders")
+    async def folder_save(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        on()
+        b = dict(body or {})
+        return wrap(H.folder_save, tenant, b.get("name"), b.get("color"), str(b.get("id") or ""))
+
+    @r.delete("/folders")
+    async def folder_delete(id: str = "", tenant: str = Depends(current_tenant)):
+        on()
+        return wrap(H.folder_delete, tenant, id)
+
+    @r.post("/bulk")
+    async def bulk(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """v0.999.204 many videos at once: move / voice / face / duplicate / trash."""
+        on()
+        b = dict(body or {})
+        return wrap(H.bulk, tenant, list(b.get("ids") or []), str(b.get("action") or ""), b.get("value"))
 
     @r.post("/trash/empty")
     async def empty(tenant: str = Depends(current_tenant)):

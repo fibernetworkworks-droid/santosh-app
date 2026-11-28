@@ -39,3 +39,6 @@ server/data/devlab/
 
 # v0.785 the Video Learner's runtime data (a test run once committed its sidecar and broke test_offline_status_action)
 server/data/seekh/
+server/data/pipeline/cache/
+server/data/pipeline/current.json
+server/data/pipeline/tables-*.json

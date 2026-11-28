@@ -8,8 +8,8 @@ from typing import Any
 
 from .google import CalError
 
-NEEDS_SIGNIN = ("This does not work on the old calendar connection (app password). In the app, link Google Calendar from "
-                "Profile > Calendar.")
+NEEDS_SIGNIN = ("This does not work on the old calendar connection (app password). Connect Google Calendar: on the web console "
+                "open Connectors > Google, or in the phone app open Settings > Google.")
 
 
 def _when(v) -> dict:

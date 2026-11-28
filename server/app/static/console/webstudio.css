@@ -761,6 +761,54 @@ body:has(#wsYW .ptb) .ws-toast{bottom:84px}
 @media (max-width:760px){.wsp .pane{margin:8px}.ptop.phd>.seg{display:none}.pttl{max-width:150px}.wsx{padding:20px 16px}}
 @media (prefers-reduced-motion:reduce){.psub .shim,.wsx-lbl{animation:none;color:var(--mut);background:none}.wsx-ups li,.wsx-res{animation:none}.wsx-ups .dot{animation:none}.wsx-ups .tk,.wstrip .tk{animation:none;stroke-dashoffset:0}}
 
+/* v0.999.41 ONE ROW WHILE IT BUILDS: the live status, the page picker, device, Follow and Code sit in the panel header;
+   no LIVE row, no row of page tabs, no browser bar above the page */
+.phd.lv{gap:10px}
+.phd.lv .pttl{flex:0 1 auto;max-width:200px}
+.lstat{display:inline-flex;align-items:center;gap:8px;min-width:0;flex:0 1 auto;font-size:13px;color:var(--dim)}
+.lstat .lead{min-width:40px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lstat b{color:var(--ink);font-weight:600}
+.lstat .tm,.lstat .lparts{flex:none;font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--dim)}
+.lpw{position:relative;flex:none}
+.lpbtn{gap:6px;max-width:200px;border:1px solid var(--line)}
+.lpbtn .ell{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+.lpmenu{position:absolute;left:0;top:calc(100% + 4px);z-index:30;min-width:210px;max-height:min(60vh,420px);overflow:auto;background:var(--bg);border:1px solid var(--hair);border-radius:12px;box-shadow:var(--sh2);padding:5px;display:flex;flex-direction:column}
+.lpmenu[hidden]{display:none}
+.lpmenu button{display:flex;align-items:center;gap:8px;min-height:34px;border:0;background:none;text-align:left;padding:6px 10px;border-radius:8px;font-size:13.5px;color:var(--ink);cursor:pointer}
+.lpmenu button .ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lpmenu button:hover,.lpmenu button:focus-visible{background:var(--sunk)}
+.lpmenu button[aria-current="page"]{font-weight:600}
+.lpmenu button:not(:has(.dot)):not(:has(.tick)){color:var(--dim)}
+.lpmenu .dot{width:7px;height:7px;flex:none;animation:lpulse 1s ease-in-out infinite}
+.b.ib{width:32px;padding:0;flex:none}
+.b.ib[data-live=follow][aria-pressed=true],.b.ib[data-live=code][aria-pressed=true]{background:var(--pri-soft);color:var(--pri-ink);border-color:transparent}
+.lstage{padding-top:16px}
+#wsPane{container:wpane/inline-size}
+@container wpane (max-width:760px){.phd.lv .pttl{display:none}.lstat .lmore{display:none}}
+@container wpane (max-width:520px){.lstat .tm,.lstat .lparts,.phd.lv [data-live=follow]{display:none}.lpbtn .ell{max-width:80px}.phd.lv>.seg{display:none}}
+@media (prefers-reduced-motion:reduce){.lpmenu .dot{animation:none}}
+
+/* v0.999.45 A PROFESSIONAL PREVIEW PANEL: the address bar names the site and says it is a private draft, the desktop page
+   fills the stage (no empty band under it), a phone / tablet is fitted whole, the header never squeezes its words to
+   one letter on a narrow panel, the Code files read as a file list. */
+.url{gap:7px;background:var(--sunk);border:1px solid transparent;color:var(--lit)}
+.url>svg{flex:none;color:var(--mut)}
+.url .un{font-weight:500;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis}
+.url .ubadge{flex:none;margin-left:auto;font-size:11.5px;font-weight:500;line-height:20px;padding:0 8px;border-radius:999px;background:var(--bg);color:var(--mut);border:1px solid var(--line)}
+.url .ubadge.ed{background:var(--pri-soft);color:var(--pri-ink);border-color:transparent}
+.stage>.frame{outline:1px solid rgba(20,20,30,.06)}
+.stage>.frame.pc{max-width:none}
+.subnav button .fty{flex:none;width:34px;height:18px;display:inline-flex;align-items:center;justify-content:center;border-radius:5px;font:600 9.5px/1 var(--mono,ui-monospace,monospace);letter-spacing:.02em;background:var(--sunk);color:var(--mut)}
+.subnav button .fty.html{background:#FCE8DC;color:#A4471B}.subnav button .fty.css{background:#E2ECFB;color:#2456A6}.subnav button .fty.js{background:#FBF2CF;color:#7A5B00}
+.subnav button[aria-current=page] .fty{background:var(--bg)}
+.code .cempty{margin:auto;max-width:360px;padding:32px 24px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;color:var(--mut);font-size:13.5px;line-height:1.5}
+.code .cempty b{color:var(--ink);font-weight:600;font-size:15px}
+.code .cempty .cico{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--sunk);color:var(--lit);margin-bottom:6px}
+@container wpane (max-width:640px){.phd:not(.lv) .pttl{display:none}.url .ubadge{display:none}}
+@container wpane (max-width:520px){.phd:not(.lv) .url{display:none}.phd:not(.lv) .vmore{padding:0 8px}}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .subnav button .fty.html{background:#3B2418;color:#F2A779}:root:not([data-theme=light]) .subnav button .fty.css{background:#1B2A44;color:#8DB5F5}:root:not([data-theme=light]) .subnav button .fty.js{background:#3A3216;color:#E7C95A}:root:not([data-theme=light]) .stage>.frame{outline-color:rgba(255,255,255,.08)}}
+:root[data-theme=dark] .subnav button .fty.html{background:#3B2418;color:#F2A779}:root[data-theme=dark] .subnav button .fty.css{background:#1B2A44;color:#8DB5F5}:root[data-theme=dark] .subnav button .fty.js{background:#3A3216;color:#E7C95A}:root[data-theme=dark] .stage>.frame{outline-color:rgba(255,255,255,.08)}
+
 /* HOOLA CHAT KIT in the Web Studio (chatkit.css + chatkit.js): the site thread (#wsHist), the plan chat (#wsPlanHist,
    #wsRevBar) and the React app chat (#aeHist, #aeBar) are drawn by the kit - her bubble, the reply, the working row,
    the action row, the box. Below: this page's tokens for the kit, and the Studio's own things hung on kit blocks.
@@ -801,3 +849,30 @@ body:has(#wsYW .ptb) .ws-toast{bottom:84px}
 .pbar{margin:8px 16px 14px;display:flex;flex-direction:column;gap:8px}
 .pbar>p{margin:0;text-align:center}
 
+
+/* v0.999.76 D7 EDIT FOREVER: the side panel for a React website (words, layout, background, design) */
+.stage{position:relative}
+.rxpanel{position:absolute;top:12px;right:12px;bottom:12px;width:min(320px,calc(100% - 24px));overflow:auto;z-index:5;
+  background:var(--surface,#fff);color:var(--ink,#111);border:1px solid var(--line,rgba(0,0,0,.12));border-radius:12px;
+  box-shadow:0 12px 32px rgba(0,0,0,.14);padding:14px;display:flex;flex-direction:column;gap:10px}
+.rxpanel[hidden]{display:none}
+.rxpanel .rxh{display:flex;align-items:center;gap:8px}
+.rxpanel .fld{display:flex;flex-direction:column;gap:4px;font-size:13px}
+.rxpanel textarea.in{resize:vertical;min-height:56px}
+/* v0.999.130 D7 pictures: her website's photos to choose from */
+.rxpanel .rxpic{display:flex;flex-direction:column;gap:10px}
+.rxpanel .rxphotos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.rxpanel .rxph{display:flex;flex-direction:column;gap:3px;padding:3px;border:1px solid var(--line);border-radius:8px;background:var(--bg);cursor:pointer;font:inherit;color:inherit;min-width:0}
+.rxpanel .rxph img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:5px;background:var(--sunk)}
+.rxpanel .rxph span{font-size:11px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rxpanel .rxph.on{border-color:var(--pri);box-shadow:0 0 0 1px var(--pri)}
+.rxpanel .rxph:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+.rxpanel form.inl{flex-wrap:wrap}
+.rxpanel input[type=file].in{flex:1 1 100%;min-width:0;font-size:12px}
+@media (max-width:720px){.rxpanel{top:auto;left:12px;right:12px;width:auto;max-height:60%}}
+
+/* v0.999.203 EVERY CHAT LIKE CLAUDE: the main chat's v0.999.197-199 numbers here too - the home greeting Literata 38 / 330
+   (dark 290) / 1.2 at opsz 48, the box text 16 / 430 (dark 400), her message 16 / 430 / 1.4, the reply 16 / 1.5 at 400
+   (dark 360). The weights come from chatkit.css (--hck0-*), so dark mode follows the page. */
+.hero h1{font-family:'Literata',Georgia,serif;font-size:clamp(28px,5.4vw,38px);font-weight:var(--hck0-gw,330);line-height:1.2;letter-spacing:normal;font-variation-settings:"opsz" 48}
+.ask textarea,.ask textarea::placeholder,.comp textarea,.comp textarea::placeholder{font-size:16px;font-weight:var(--hck0-hw,430)}

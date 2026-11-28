@@ -1,0 +1,408 @@
+{
+ "key": "finance",
+ "name": "Bank / fintech / insurance",
+ "kind": "isp",
+ "sla": {
+  "urgent": [
+   1,
+   8
+  ],
+  "high": [
+   4,
+   24
+  ],
+  "normal": [
+   24,
+   72
+  ],
+  "low": [
+   48,
+   168
+  ]
+ },
+ "categories": {
+  "transaction": {
+   "label": "Transaction problem",
+   "words": [
+    "failed",
+    "deducted",
+    "not received",
+    "pending",
+    "reversal",
+    "chargeback"
+   ]
+  },
+  "fraud": {
+   "label": "Fraud / unknown transaction",
+   "words": [
+    "fraud",
+    "unauthorised",
+    "scam",
+    "not me",
+    "stolen"
+   ]
+  },
+  "card": {
+   "label": "Card",
+   "words": [
+    "card blocked",
+    "lost card",
+    "card",
+    "atm"
+   ]
+  },
+  "loan": {
+   "label": "Loan / EMI",
+   "words": [
+    "loan",
+    "emi",
+    "interest",
+    "foreclosure"
+   ]
+  },
+  "claim": {
+   "label": "Insurance claim",
+   "words": [
+    "claim",
+    "policy",
+    "premium",
+    "cashless"
+   ]
+  },
+  "account": {
+   "label": "Account / KYC",
+   "words": [
+    "kyc",
+    "account",
+    "statement",
+    "address change"
+   ]
+  }
+ },
+ "urgent_words": [
+  "fraud",
+  "unauthorised",
+  "stolen",
+  "hacked",
+  "lost card",
+  "scam",
+  "police",
+  "ombudsman"
+ ],
+ "flows": [
+  {
+   "key": "dispute",
+   "name": "Transaction dispute",
+   "stages": [
+    {
+     "key": "new",
+     "name": "New",
+     "owner": "hoola",
+     "hours": 1,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "verified",
+     "name": "Customer identity checked",
+     "owner": "team",
+     "hours": 4,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "investigating",
+     "name": "Being checked",
+     "owner": "team",
+     "hours": 120,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "decided",
+     "name": "Decision made",
+     "owner": "supervisor",
+     "hours": 24,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "credited",
+     "name": "Money credited (a person)",
+     "owner": "finance",
+     "hours": 48,
+     "customer_told": true,
+     "needs": [
+      "payment_ref"
+     ],
+     "waiting": false
+    },
+    {
+     "key": "closed",
+     "name": "Closed",
+     "owner": "team",
+     "hours": 0,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    }
+   ],
+   "arrows": {
+    "new": [
+     "verified"
+    ],
+    "verified": [
+     "investigating"
+    ],
+    "investigating": [
+     "decided"
+    ],
+    "decided": [
+     "credited",
+     "closed"
+    ],
+    "credited": [
+     "closed"
+    ],
+    "closed": []
+   }
+  },
+  {
+   "key": "claim",
+   "name": "Insurance claim",
+   "stages": [
+    {
+     "key": "filed",
+     "name": "Filed",
+     "owner": "hoola",
+     "hours": 4,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "documents",
+     "name": "Documents received",
+     "owner": "team",
+     "hours": 72,
+     "customer_told": true,
+     "needs": [
+      "documents"
+     ],
+     "waiting": true
+    },
+    {
+     "key": "assessed",
+     "name": "Assessed",
+     "owner": "team",
+     "hours": 168,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "decided",
+     "name": "Decision",
+     "owner": "supervisor",
+     "hours": 72,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "paid",
+     "name": "Paid (a person)",
+     "owner": "finance",
+     "hours": 72,
+     "customer_told": true,
+     "needs": [
+      "payment_ref"
+     ],
+     "waiting": false
+    },
+    {
+     "key": "closed",
+     "name": "Closed",
+     "owner": "team",
+     "hours": 0,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    }
+   ],
+   "arrows": {
+    "filed": [
+     "documents"
+    ],
+    "documents": [
+     "assessed"
+    ],
+    "assessed": [
+     "decided"
+    ],
+    "decided": [
+     "paid"
+    ],
+    "paid": [
+     "closed"
+    ],
+    "closed": []
+   }
+  },
+  {
+   "key": "refund",
+   "name": "Refund",
+   "stages": [
+    {
+     "key": "requested",
+     "name": "Requested",
+     "owner": "hoola",
+     "hours": 4,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "checked",
+     "name": "Checked against your rules",
+     "owner": "team",
+     "hours": 24,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "approval",
+     "name": "Waiting for approval",
+     "owner": "approver",
+     "hours": 24,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "paid",
+     "name": "Paid by a person",
+     "owner": "finance",
+     "hours": 72,
+     "customer_told": true,
+     "needs": [
+      "payment_ref"
+     ],
+     "waiting": false
+    },
+    {
+     "key": "closed",
+     "name": "Closed",
+     "owner": "team",
+     "hours": 0,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    }
+   ],
+   "arrows": {
+    "requested": [
+     "checked"
+    ],
+    "checked": [
+     "approval",
+     "closed"
+    ],
+    "approval": [
+     "paid",
+     "closed"
+    ],
+    "paid": [
+     "closed"
+    ],
+    "closed": []
+   }
+  }
+ ],
+ "policy": {},
+ "knowledge_questions": [
+  "How should a customer block a lost card right now?",
+  "What are your dispute timelines?",
+  "Which documents does a claim need?",
+  "Who is your grievance / complaints officer and the ombudsman?"
+ ],
+ "saved_replies": [
+  {
+   "name": "Block card",
+   "text": "Please block your card now: [how]. Never share your PIN, OTP or password with anyone, including us."
+  }
+ ],
+ "law": [
+  {
+   "region": "EU",
+   "text": "Tell people they are talking to an AI (EU AI Act transparency duty).",
+   "source": "Regulation (EU) 2024/1689, Art. 50",
+   "id": "ai",
+   "status": "check"
+  },
+  {
+   "region": "US-CA",
+   "text": "Do not hide that a bot is talking when it sells or sways a vote.",
+   "source": "California Business and Professions Code 17940-17943",
+   "id": "ai_ca",
+   "status": "check"
+  },
+  {
+   "region": "EU/UK",
+   "text": "Answer a person's request about their own data within one month.",
+   "source": "GDPR / UK GDPR Art. 12(3)",
+   "id": "gdpr",
+   "status": "check"
+  },
+  {
+   "region": "US-CA",
+   "text": "Answer a consumer's data request within 45 days.",
+   "source": "California Civil Code 1798.130",
+   "id": "ccpa",
+   "status": "check"
+  },
+  {
+   "region": "IN",
+   "text": "Settle a grievance about personal data within 90 days.",
+   "source": "Digital Personal Data Protection Rules 2025",
+   "id": "dpdp",
+   "status": "check"
+  },
+  {
+   "region": "EU",
+   "text": "Consumer chat and websites must be usable with assistive technology.",
+   "source": "European Accessibility Act, Directive (EU) 2019/882",
+   "id": "eaa",
+   "status": "check"
+  },
+  {
+   "region": "EU",
+   "text": "Payment complaints: a reply within 15 business days (35 in exceptional cases).",
+   "source": "Directive (EU) 2015/2366, Art. 101",
+   "id": "psd2",
+   "status": "check"
+  },
+  {
+   "region": "UK",
+   "text": "Financial complaints: a final answer within 8 weeks, with the Financial Ombudsman details.",
+   "source": "FCA Handbook DISP 1.6",
+   "id": "fca",
+   "status": "check"
+  },
+  {
+   "region": "US",
+   "text": "Electronic transfer errors: look into it within 10 business days.",
+   "source": "Regulation E, 12 CFR 1005.11",
+   "id": "rege",
+   "status": "check"
+  }
+ ],
+ "lookup": "accounts",
+ "version": 1,
+ "checked": "2026-11-21"
+}

@@ -28,6 +28,8 @@ const P = {
   monitor: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
   keyboard: '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>',
   library: '<path d="M4 4h16v5H4zM4 11h7v9H4zM13 11h7v9h-7z"/>',
+  brush: '<path d="M18.4 2.6a2 2 0 0 1 2.9 2.9L12 14.8 9.2 12z"/><path d="M9 12.2c-2.3 0-4 1.6-4 3.8 0 1.4-.6 2.4-2 3 1 .9 2.4 1.4 4 1.4 3 0 5-2 5-4.6"/>',   // v0.999.217 Customize
+  skills: '<path d="M12 3 4 7v6c0 4 3.4 7.4 8 8 4.6-.6 8-4 8-8V7l-8-4Z"/><path d="m9 12 2 2 4-4"/>',   // v0.999.215 Skills had no icon
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   clip: '<path d="M21 12.5l-8.5 8.5a5 5 0 0 1-7-7L14 5.5a3.3 3.3 0 0 1 4.7 4.7L10.2 18.7a1.7 1.7 0 0 1-2.4-2.4L15.5 8.6"/>',   // v0.973 the console's + menu
@@ -39,6 +41,12 @@ const P = {
   branch: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 8v8M18 10c0 4-6 3-12 6"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   pr: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><path d="M6 8v8M18 16V9a3 3 0 0 0-3-3h-4"/>',
+  // v0.999.228 the quality sheet: a mark for Hoola's own pick, a gem for Ultra, signal bars for High / Medium / Low
+  qauto: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M18.5 16.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
+  qultra: '<path d="M6.5 4h11L21 9l-9 11L3 9z"/><path d="M3 9h18M9.5 4 8 9l4 11 4-11-1.5-5"/>',
+  qhigh: '<path d="M5 19v-4M10 19v-8M15 19V7M20 19V3"/>',
+  qmed: '<path d="M5 19v-4M10 19v-8M15 19V7"/><path d="M20 19V3" opacity=".25"/>',
+  qlow: '<path d="M5 19v-4M10 19v-8"/><path d="M15 19V7M20 19V3" opacity=".25"/>',
 };
 const icon = k => P[k] ? `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[k]}</svg>` : '';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));

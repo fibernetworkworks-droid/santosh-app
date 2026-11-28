@@ -274,7 +274,7 @@ def test_live_build_in_a_browser(arena_server, arch_env, monkeypatch):
     assert grew, lengths
     assert max(code) > 40, code
     assert page.locator("#wsLPages button").count() >= 3
-    assert canvas.locator(".hb-tag").count() >= 1 or page.locator("#ws .lbar b").count()
+    assert canvas.locator(".hb-tag").count() >= 1 or page.locator("#ws .lstat b").count()   # v0.999.41 the status is in the header
     # no script of a half-written section ran in the canvas, and the canvas never reached the Studio
     assert page.evaluate("typeof window.__hb_ran") == "undefined"
     page.wait_for_selector("#ws #wsPane .url", timeout=180000)                     # built: the normal preview

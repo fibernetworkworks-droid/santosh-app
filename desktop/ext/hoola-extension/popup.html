@@ -36,6 +36,17 @@
   </div>
   <div id="state"></div>
   <div id="replies"></div>
+  <div id="credsec" style="margin-top:10px; border-top:1px solid #E4E0F5; padding-top:8px;">
+    <div style="font-size:12px; font-weight:600;">Hoola Cred</div>
+    <div id="credlock" hidden>
+      <div class="row" style="margin-top:6px"><input id="credpw" type="password" autocomplete="off" placeholder="Master password"
+        style="flex:1; border:1px solid #E4E0F5; border-radius:8px; padding:8px; font:12px 'Segoe UI', sans-serif;">
+        <button id="credunlock" style="flex:0 0 auto">Unlock</button></div>
+    </div>
+    <div id="credstate" style="font-size:11px; margin-top:6px; min-height:15px; color:#5B5675;">Your sign-ins for this site.</div>
+    <div id="credlist"></div>
+    <div style="margin-top:6px; font-size:11px;"><a href="#" id="credlockbtn" style="color:#5B5675">Lock Hoola Cred</a></div>
+  </div>
   <div id="capsec" style="margin-top:10px; border-top:1px solid #E4E0F5; padding-top:8px;">
     <div class="row" style="margin-top:0">
       <button id="capstart">Live captions</button>
@@ -49,5 +60,6 @@
   <a href="#" id="console">Open the conversation</a> · <a href="#" id="opts">Options / pairing</a>
 </footer>
 <script src="popup.js"></script>
+<script src="cred.js"></script>
 </body>
 </html>

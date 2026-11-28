@@ -150,7 +150,9 @@ def test_pick_then_send_to_phone_and_email(ph):
          "mediaFile": {"baseUrl": "https://lh3.googleusercontent.com/a2", "mimeType": "image/jpeg", "filename": "board.jpg"}},
     ]
     assert ps.poll_tick() == 1
-    assert ph.sessions[sid].get("deleted")                       # finished sessions are cleaned up
+    # v0.999.191 the session stays open while its download links are needed (it was deleted at once, which ended
+    # them); poll_tick cleans it up once the pick has ended (see test_v0999_191_photos_complete)
+    assert not ph.sessions[sid].get("deleted")
     assert any("2 photos picked" in (n or "") for n in _notices(ctx.conversation_id))
     st = run("photos_picked", ctx, pick_id=pick)
     assert st["status"] == "ready" and [i["filename"] for i in st["items"]] == ["shop.jpg", "board.jpg"]
@@ -208,5 +210,5 @@ def test_big_upload_needs_the_tap(ph):
 
 
 def test_not_connected(env):
-    with pytest.raises(ToolError, match="Profile > Google Photos"):
+    with pytest.raises(ToolError, match="Connectors > Google"):
         run("photos_pick", Ctx("someone", "c"))

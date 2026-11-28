@@ -8,7 +8,7 @@ from ..packs.registry import Pack
 from .base import Ctx, NeedsApproval, ToolError, ToolSpec
 
 TITLES = {"share": "Share form?", "delete_questions": "Delete questions that have answers?",
-          "delete_form": "Delete form?"}   # v0.213 grew 2 -> 3 confirm-card actions
+          "delete_form": "Delete form?", "unshare": "Remove access to the form?"}   # v0.999.187: + unshare
 
 
 class FormsExecutor:

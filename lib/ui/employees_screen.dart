@@ -47,6 +47,54 @@ const _cols = [['planned', 'Planned'], ['doing', 'Doing'], ['waiting_her', 'Wait
 // ------------------------------------------------------------------ the hub
 /// v0.898 the phone's own desk for an employee, or null when its desk lives on the web console only (the AI
 /// Employees tab then opens the console's desk). The old screen below falls back to the SEO Desk instead.
+/// v0.999.43 ACCOUNTS DESK: call the GST & Accounts employee on its own Accounts chat (its call knows the desk).
+Future<void> callAccountsDesk(BuildContext context, Santosh app) async {
+  final messenger = ScaffoldMessenger.of(context);
+  void say(String t) => messenger.showSnackBar(SnackBar(content: Text(t)));
+  if (!app.realtimeVoice) {
+    say('Live calls are off on this phone. Turn on live voice calls in Settings first.');
+    return;
+  }
+  if (app.voiceCall.inCall) {
+    say('You are already on a call.');
+    return;
+  }
+  try {
+    final r = await app.api!.accountsChat();
+    if (!context.mounted) return;
+    app.voiceCall.convFor = '${r['id'] ?? ''}';
+    app.autoCall = true;
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => HoolaTheme(appearance: app.appearance, child: HoolaTalk(app: app))));
+  } catch (e) {
+    say('$e');
+  }
+}
+
+/// v0.999.52 LEAD DESK: call the Lead Generation employee on its own chat (its call knows the desk).
+Future<void> callLeadsDesk(BuildContext context, Santosh app) async {
+  final messenger = ScaffoldMessenger.of(context);
+  void say(String t) => messenger.showSnackBar(SnackBar(content: Text(t)));
+  if (!app.realtimeVoice) {
+    say('Live calls are off on this phone. Turn on live voice calls in Settings first.');
+    return;
+  }
+  if (app.voiceCall.inCall) {
+    say('You are already on a call.');
+    return;
+  }
+  try {
+    final r = await app.api!.leadsChat();
+    if (!context.mounted) return;
+    app.voiceCall.convFor = '${r['id'] ?? ''}';
+    app.autoCall = true;
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => HoolaTheme(appearance: app.appearance, child: HoolaTalk(app: app))));
+  } catch (e) {
+    say('$e');
+  }
+}
+
 Widget? employeeDeskNative(Santosh app, String key) {
   const game = {'game_dev', 'procgen_dev', 'physics_dev', 'audio_dev', 'haptics_dev', 'netcode_dev', 'xr_dev', 'sim_dev',
                 'twin_arch', 'vfx_td'};
@@ -818,6 +866,31 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
     super.dispose();
   }
 
+  /// v0.999.38 SOCIAL DESK: a voice call with the Social Media Manager. It runs on the Social chat, so what it changes
+  /// and says lands in the same conversation as the desk's chat on the web.
+  Future<void> _callSocial() async {
+    final app = widget.app;
+    if (!app.realtimeVoice) {
+      _snack(context, 'Live calls are off on this phone. Turn on live voice calls in Settings first.');
+      return;
+    }
+    if (app.voiceCall.inCall) {
+      _snack(context, 'You are already on a call.');
+      return;
+    }
+    try {
+      final r = await app.api!.socialChat();
+      if (!mounted) return;
+      app.voiceCall.convFor = _s(r['id']);
+      app.autoCall = true;
+      await Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => HoolaTheme(appearance: app.appearance, child: HoolaTalk(app: app))));
+    } catch (e) {
+      app.voiceCall.convFor = null;
+      if (mounted) _snack(context, '$e');
+    }
+  }
+
   Future<void> _load() async {
     _poll?.cancel();
     try {
@@ -1202,6 +1275,16 @@ class _SocialDeskScreenState extends State<SocialDeskScreen> {
           Expanded(child: Text(_s(prof['business']), style: display(17))),
           _Tag(accs.isEmpty ? 'Connect an account' : switch (_s(d['state'])) { 'ready' => 'Working', 'first_run' => 'Reading your posts', 'error' => 'Stopped', _ => 'Starting' },
               accs.isEmpty ? C.warn : (_s(d['state']) == 'ready' ? C.ok : C.warn)),
+        ]),
+        const SizedBox(height: 12),
+        // v0.999.38 SOCIAL DESK: call the Social Media Manager (the call runs on its own chat) or open its desk with the chat
+        Row(children: [
+          Expanded(child: FilledButton.icon(onPressed: _busy ? null : _callSocial,
+              icon: const Icon(Icons.call_rounded, size: 18), label: const Text('Call'))),
+          const SizedBox(width: 10),
+          Expanded(child: OutlinedButton.icon(
+              onPressed: () => hoolaOpenConsole(context, widget.app, '/console/social', 'Social Media Manager'),
+              icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18), label: const Text('Chat'))),
         ]),
         const SizedBox(height: 12),
         Glass(

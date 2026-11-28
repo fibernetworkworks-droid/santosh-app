@@ -1,4 +1,4 @@
-version: 0.999.39+1037
+version: 0.999.308+1303
 name: santosh
 description: Santosh, your AI coworker. Android app for the Santosh Core backend.
 publish_to: "none"
@@ -57,6 +57,7 @@ flutter:
     - assets/images/
     - assets/santosh3d/
     - assets/avatars/
+    - assets/google/         # v0.999.182 Google's own product logos for Settings > Google
     - assets/fonts/          # v0.859 R0: the app's fonts bundled (tool/fetch_fonts.py) - no download, works offline
   # v0.860 R1: the redesign's three families (lib/ui/hoola_theme.dart HoolaFont), from the bundled files
   fonts:
@@ -86,6 +87,17 @@ flutter:
         - asset: assets/fonts/LiterataDark-Italic.ttf
           style: italic
         - asset: assets/fonts/LiterataDark-SemiBold.ttf
+          weight: 600
+    # v0.999.206 Claude's greeting (Literata opsz 48 at 330 / dark 290) and page titles (opsz 28 at 530), static cuts
+    - family: Literata Greet
+      fonts:
+        - asset: assets/fonts/LiterataGreet-Regular.ttf
+    - family: Literata Greet Dark
+      fonts:
+        - asset: assets/fonts/LiterataGreetDark-Regular.ttf
+    - family: Literata Title
+      fonts:
+        - asset: assets/fonts/LiterataTitle-SemiBold.ttf
           weight: 600
     # v0.892 the Dyslexic-friendly chat font (OFL, assets/fonts/OpenDyslexic-OFL.txt)
     - family: OpenDyslexic

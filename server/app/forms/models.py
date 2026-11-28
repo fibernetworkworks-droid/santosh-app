@@ -52,6 +52,7 @@ class FormWatch(Base):
     last_seen: Mapped[str] = mapped_column(String(40), default="")     # RFC3339 lastSubmittedTime of the newest seen
     seen_count: Mapped[int] = mapped_column(Integer, default=0)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    job: Mapped[str | None] = mapped_column(Text, nullable=True)     # v0.999.187: a task to run on new answers
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 

@@ -681,3 +681,86 @@ def stack_snippet(code: str, stack: str) -> dict[str, str] | None:
 
 def score(risks: list[dict[str, Any]]) -> int:
     return max(0, 100 - sum(SEV_WEIGHT.get(r["sev"], 0) for r in risks if r.get("status") != "ignored"))
+
+
+# ---------------------------------------------------------------- GLOBAL: privacy / children / payment law by her country
+# Only India is checked (DPDP + RBI, sources above). For every other country the law is NAMED as a starting point and said as
+# "check this": Hoola has not checked those rules, so they are never stated as fact and never change the score beyond the same
+# weight the Indian rule has. Keys = ISO 3166-1 alpha-2.
+_EU = ("AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL",
+       "PT", "RO", "SK", "SI", "ES", "SE", "IS", "LI", "NO")
+LAWS: dict[str, dict[str, str]] = {
+    "IN": {"privacy": "DPDP Act 2023 + DPDP Rules 2025", "children": "DPDP verifiable parental consent (under 18)",
+           "payments": "RBI payment aggregator rules + card tokenisation", "checked": "2026-10-23"},
+    "EU": {"privacy": "GDPR (Regulation (EU) 2016/679)", "children": "GDPR Article 8 (consent age 13-16, set by each country)",
+           "payments": "PSD2 strong customer authentication + PCI DSS for card data"},
+    "GB": {"privacy": "UK GDPR + Data Protection Act 2018", "children": "ICO Age Appropriate Design Code (Children's code)",
+           "payments": "FCA-authorised payment firm + PCI DSS for card data"},
+    "US": {"privacy": "state privacy laws (for example CCPA / CPRA in California)", "children": "COPPA (children under 13)",
+           "payments": "PCI DSS for card data"},
+    "CA": {"privacy": "PIPEDA (and Quebec Law 25)", "children": "parental consent for children (check the province's rule)",
+           "payments": "PCI DSS for card data"},
+    "BR": {"privacy": "LGPD (Lei 13.709/2018)", "children": "LGPD Article 14 (consent of a parent)", "payments": "Central Bank of Brazil rules + PCI DSS"},
+    "AU": {"privacy": "Privacy Act 1988 (Australian Privacy Principles)", "children": "Children's Online Privacy Code (check its start date)",
+           "payments": "PCI DSS for card data"},
+    "SG": {"privacy": "PDPA 2012", "children": "PDPC advisory guidelines for children's data", "payments": "MAS Payment Services Act + PCI DSS"},
+    "AE": {"privacy": "Federal Decree-Law 45 of 2021 (PDPL)", "children": "Child Digital Safety Law (check the rules)", "payments": "Central Bank of the UAE rules + PCI DSS"},
+    "SA": {"privacy": "Personal Data Protection Law (PDPL)", "children": "parental consent for minors (check SDAIA's rules)", "payments": "SAMA rules + PCI DSS"},
+    "ZA": {"privacy": "POPIA", "children": "POPIA section 35 (a competent person's consent)", "payments": "PCI DSS for card data"},
+    "NG": {"privacy": "Nigeria Data Protection Act 2023", "children": "parental consent for children (NDPA section 31)", "payments": "CBN rules + PCI DSS"},
+    "KE": {"privacy": "Data Protection Act 2019", "children": "parental consent for children (section 33)", "payments": "CBK rules + PCI DSS"},
+    "JP": {"privacy": "APPI (Act on the Protection of Personal Information)", "children": "consent of a parent for young children (check PPC guidance)",
+           "payments": "PCI DSS for card data"},
+    "ID": {"privacy": "Personal Data Protection Law 27 of 2022", "children": "parental consent for children (Article 25)", "payments": "Bank Indonesia rules + PCI DSS"},
+}
+_ANY = {"privacy": "your country's data protection law", "children": "your country's rule for children's data",
+        "payments": "your payment regulator's rules + PCI DSS for card data"}
+
+
+def law(country: str) -> dict[str, Any]:
+    c = (country or "IN").upper()
+    pack = LAWS.get("EU" if c in _EU else c)
+    out = dict(pack or _ANY)
+    out["country"] = c
+    out["checked"] = bool(pack and pack.get("checked"))
+    out["say"] = ("Checked: " if out["checked"] else "Check this (Hoola has not checked it): ") + out["privacy"]
+    return out
+
+
+_GLOBAL_OF = {"dpdp_notice": ("privacy", "privacy", "medium"), "dpdp_children": ("children", "privacy", "high"),
+              "rbi_payment": ("payments", "security", "info"), "rbi_card_fields": ("payments", "security", "high")}
+
+
+def localise(risk: dict[str, Any], country: str) -> dict[str, Any]:
+    """An India-only rule found for an app of another country: named as that country's law, marked 'check this'."""
+    c = (country or "IN").upper()
+    if c == "IN" or risk.get("code") not in _GLOBAL_OF:
+        return risk
+    part, area, sev = _GLOBAL_OF[risk["code"]]
+    lw = law(c)
+    name = lw[part]
+    detail = ""
+    m = re.search(r"personal data \(([^)]*)\)", risk.get("explain") or "") if risk["code"] == "dpdp_notice" else None
+    if m:
+        detail = m.group(1)
+    if risk["code"] == "rbi_card_fields":
+        title, explain = ("The app takes the card number / CVV itself",
+                          "Taking and keeping card details on your own screen goes against PCI DSS (worldwide) and usually your payment "
+                          f"regulator's rules ({name}).")
+        fix = "Cards only inside the payment gateway's SDK / hosted checkout; keep only the token yourself."
+    elif risk["code"] == "rbi_payment":
+        title, explain = ("Payment SDK found: check your payment rules",
+                          (risk.get("explain") or "").split(". ")[0] + f". Check {name}: use an authorised payment provider, never "
+                          "keep a card number / CVV, and check the payment on your server.")
+        fix = "Use the provider's hosted checkout or SDK, verify every payment on your server, keep only tokens."
+    elif risk["code"] == "dpdp_children":
+        title, explain = ("Children's data: check your country's rule",
+                          f"You said the app is for children. Check {name}: a parent's consent and no tracking / ads SDKs are the usual rule.")
+        fix = "An age gate + a parent's consent; remove tracking / ads SDKs; check the rule for your country."
+    else:
+        title, explain = ("Personal data: notice and consent",
+                          "The app takes personal data" + (f" ({detail})" if detail else "") + f". Check {name}: a clear notice (what, "
+                          "why, how to get it removed), consent where it is needed, a way to withdraw it, and a contact for complaints.")
+        fix = "A privacy notice inside the app + on the website, consent before collecting, a delete-my-data option and a contact."
+    return {**risk, "title": title, "area": area, "area_label": AREAS[area], "sev": sev if risk.get("sev") != "critical" else "critical",
+            "explain": explain, "fix": fix, "sources": [], "check": True, "law": name}

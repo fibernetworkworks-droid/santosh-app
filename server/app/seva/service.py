@@ -73,6 +73,9 @@ class SevaSettings(Base):
     auto_ack: Mapped[bool] = mapped_column(Boolean, default=True)
     morning_time: Mapped[str] = mapped_column(String(5), default="09:00")
     last_morning: Mapped[str] = mapped_column(String(10), default="")
+    profile: Mapped[str] = mapped_column(Text, default="")                     # G0 setup answers + profile (seva/profile.py)
+    watch: Mapped[str] = mapped_column(Text, default="")                       # G9 working hours + reminder rules (seva/watch.py)
+    handover: Mapped[str] = mapped_column(Text, default="")                    # G7 hand-over rules (seva/handover.py)
 
 
 class SevaEntry(Base):
@@ -90,6 +93,10 @@ class SevaEntry(Base):
     hits: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    owner: Mapped[str] = mapped_column(String(120), default="")                # G1: who keeps this answer right
+    review_by: Mapped[str] = mapped_column(String(10), default="")             # YYYY-MM-DD; after it Hoola stops using it
+    stale: Mapped[bool] = mapped_column(Boolean, default=False)                # its web page changed; not used until checked
+    version: Mapped[int] = mapped_column(Integer, default=0)                   # seva_entry_versions (seva/brain.py)
 
 
 class SevaMacro(Base):
@@ -101,6 +108,7 @@ class SevaMacro(Base):
     status: Mapped[str] = mapped_column(String(10), default="draft")          # draft | approved
     uses: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    actions: Mapped[str | None] = mapped_column(Text, nullable=True, default="")        # G10 {label, stage, status, assign}
 
 
 class SevaTicket(Base):
@@ -134,6 +142,20 @@ class SevaTicket(Base):
     csat_note: Mapped[str] = mapped_column(Text, default="")
     csat_asked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    flow: Mapped[str] = mapped_column(String(30), default="")                  # G8: her workflow (seva/flow.py)
+    stage: Mapped[str] = mapped_column(String(30), default="")
+    stage_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    stage_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    fields: Mapped[str] = mapped_column(Text, default="")                      # values the stages ask for {name: value}
+    pauses: Mapped[str] = mapped_column(Text, default="")                      # G9: [[start, end]] of finished pauses
+    awaiting_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)   # the customer wrote; a reply is owed
+    told_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)          # the customer was last told something
+    cust_update_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)   # last "still on it" update
+    confirm_asked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True) # "did this fix it?" sent
+    reopens: Mapped[int] = mapped_column(Integer, default=0)
+    queue: Mapped[str | None] = mapped_column(String(30), nullable=True, default="")      # G10 her queue
+    labels: Mapped[str | None] = mapped_column(Text, nullable=True, default="")          # G10 ["vip", ...]
+    custom: Mapped[str | None] = mapped_column(Text, nullable=True, default="")          # G10 her custom fields {key: value}
 
 
 class SevaException(Base):
@@ -251,7 +273,9 @@ def _secret(text: str) -> str:
 def _ai(system: str, prompt: str, max_tokens: int = 1200) -> str:
     try:
         from ..net.ai import llm
-        return llm(system, prompt, max_tokens, timeout=60) or ""
+        from .. import usage
+        with usage.scope(None, "support"):         # G13: support's own AI cost, per ticket in the reports
+            return llm(system, prompt, max_tokens, timeout=60) or ""
     except Exception as e:
         log.info("seva model unavailable: %s", e)
         return ""
@@ -404,11 +428,12 @@ def save_settings(tenant: str, **kw: Any) -> dict:
 # ---------------------------------------------------------------- knowledge base
 def _entry_view(e: SevaEntry) -> dict:
     return {"id": e.id, "kind": e.kind, "question": e.question, "answer": e.answer, "aliases": _j(e.aliases, []), "lang": e.lang,
-            "source": e.source, "status": e.status, "hits": e.hits, "updated": _utc(e.updated_at).isoformat()}
+            "source": e.source, "status": e.status, "hits": e.hits, "updated": _utc(e.updated_at).isoformat(),
+            "owner": e.owner or "", "review_by": e.review_by or "", "stale": bool(e.stale), "version": e.version or 0}
 
 
 def kb_add(tenant: str, question: str, answer: str, kind: str = "faq", aliases: list | None = None, lang: str = "",
-           source: str = "your words", status: str = "live") -> dict:
+           source: str = "your words", status: str = "live", by: str = "owner") -> dict:
     q, a = _clean(question, 500), _clean(answer, 3000)
     if not q or not a:
         raise SevaError("Both a question and an answer are needed.")
@@ -422,12 +447,21 @@ def kb_add(tenant: str, question: str, answer: str, kind: str = "faq", aliases: 
             if R.norm(e.question) == R.norm(q) and e.status == status:
                 e.answer, e.aliases, e.updated_at = a, _dump(sorted(set(_j(e.aliases, []) + al))), now()
                 e.source = source or e.source
+                e.stale = False
+                _version(s, e, by, "edited" if source == "your words" else "read again")
                 return _entry_view(e) | {"updated": True, "say": "The earlier answer was updated."}
         e = SevaEntry(tenant_id=tenant, kind=kind, question=q, answer=a, aliases=_dump(al), lang=lang or R.lang_of(q + " " + a),
                       source=_clean(source, 300) or "your words", status=status)
         s.add(e)
         s.flush()
+        _version(s, e, by, "added")
         return _entry_view(e) | {"say": ("Added to Knowledge." if status == "live" else "Draft made; it goes to customers only after your approval.")}
+
+
+def _version(s, e, by: str, why: str) -> None:
+    from . import brain
+    brain._ensure()
+    brain.record(s, e, by, why)
 
 
 def kb_list(tenant: str, status: str = "", q: str = "", kind: str = "") -> list[dict]:
@@ -459,6 +493,9 @@ def kb_edit(tenant: str, entry_id: str, **kw: Any) -> dict:
         if kw.get("kind") in ("faq", "policy"):
             e.kind = kw["kind"]
         e.updated_at = now()
+        if kw.get("question") or kw.get("answer"):
+            e.stale = False
+            _version(s, e, str(kw.get("by") or "owner"), "edited")
         return _entry_view(e) | {"say": "Updated."}
 
 
@@ -470,6 +507,7 @@ def kb_approve(tenant: str, entry_ids: list[str] | str) -> dict:
             e = s.get(SevaEntry, i)
             if e is not None and e.tenant_id == tenant and e.status == "draft":
                 e.status, e.updated_at = "live", now()
+                _version(s, e, "owner", "approved")
                 n += 1
     return {"approved": n, "say": f"{n} answers are now ready for customers."}
 
@@ -544,6 +582,9 @@ def _source_text(tenant: str, file_id: str = "", data: bytes | None = None, name
 
 def kb_import(tenant: str, file_id: str = "", data: bytes | None = None, name: str = "", url: str = "", text: str = "") -> dict:
     body, source = _source_text(tenant, file_id, data, name, url, text)
+    if url and not text:
+        from . import brain
+        brain.watch(tenant, url, body)          # a later change of this page marks its answers stale
     got = _ai_json(EXTRACT_SYSTEM, body[:24000], 4000).get("items")
     items = got if isinstance(got, list) and got else _fallback_extract(body)
     made = []
@@ -565,7 +606,9 @@ def kb_import(tenant: str, file_id: str = "", data: bytes | None = None, name: s
 
 
 def _rank(tenant: str, question: str, limit: int = 3) -> list[tuple[dict, float]]:
-    rows = kb_list(tenant, status="live")
+    today = _local(tenant).date().isoformat()
+    rows = [r for r in kb_list(tenant, status="live")          # G1: stale or past its review date = not used
+            if not r["stale"] and (not r["review_by"] or r["review_by"] >= today)]
     if not rows:
         return []
     scored = []
@@ -625,6 +668,9 @@ def answer(tenant: str, question: str, channel: str = "", customer: str = "", la
         res.update(status="clarify", reply="", candidates=[{"id": r["id"], "question": r["question"]} for r, c in ranked if c >= MEDIUM],
                    say="No sure match: ask the customer one short question about which of these they mean, or hand it to the owner.")
         _log_q(tenant, channel, customer, q, best["id"], conf, "clarify")
+    elif (shared := _shared_answer(tenant, q, customer)) is not None:
+        res.update(shared)
+        _log_q(tenant, channel, customer, q, "", float(shared.get("confidence") or 0), "answered" if shared["status"] != "lookup_failed" else "unknown")
     else:
         res.update(status="unknown", reply="", say="Knowledge has no answer for this. Do not guess: hand it to the owner / team (biz_handover) "
                    "or, if it is a complaint, open a ticket.")
@@ -635,7 +681,26 @@ def answer(tenant: str, question: str, channel: str = "", customer: str = "", la
     return res
 
 
+SHARED_MIN = 0.5      # a Telecaller fact this sure answers a customer when Support's own answers have none
+
+
+def _shared_answer(tenant: str, q: str, customer: str) -> dict | None:
+    """G1 one brain: the Telecaller's approved facts, then a live lookup with THIS customer's own number."""
+    from . import brain
+    facts = brain.support_facts(tenant, q)
+    if facts and facts[0]["score"] >= SHARED_MIN and brain.covers(q, facts[0]["title"] + " " + facts[0]["text"]):
+        f = facts[0]
+        return {"status": "answered", "reply": f["text"], "kind": "policy" if f["kind"] == "policy" else "faq",
+                "confidence": f["score"], "source": f"Business knowledge (Telecaller): {f['title'][:80]}"}
+    if customer:
+        return brain.customer_lookup(tenant, q, customer)
+    return None
+
+
 def _log_q(tenant: str, channel: str, customer: str, text: str, entry_id: str, conf: float, outcome: str) -> None:
+    from .quality import DRY
+    if DRY.get():                 # G11: a simulated customer leaves nothing behind
+        return
     with session() as s:
         s.add(SevaQuestion(tenant_id=tenant, at=clock(), channel=channel[:12], customer=customer[:200], text=mask(text)[:600],
                            entry_id=entry_id, confidence=round(conf, 3), outcome=outcome))
@@ -670,7 +735,7 @@ PLACEHOLDERS = ("name", "ticket", "status", "business")
 
 
 def _macro_view(m: SevaMacro) -> dict:
-    return {"id": m.id, "name": m.name, "texts": _j(m.texts, {}), "status": m.status, "uses": m.uses}
+    return {"id": m.id, "name": m.name, "texts": _j(m.texts, {}), "status": m.status, "uses": m.uses, "actions": _j(m.actions or "", {})}
 
 
 def macro_add(tenant: str, name: str, text: str, lang: str = "") -> dict:
@@ -774,16 +839,26 @@ def _active_seconds(t: SevaTicket, at: datetime | None = None) -> float:
     return max(0.0, total)
 
 
+def _clock_s(t: SevaTicket, at: datetime | None = None) -> float:
+    """The ticket's clock in HER working hours when she set them (seva/watch.py), else plain hours."""
+    try:
+        from . import watch as W
+        return W.active_seconds(t, at)
+    except Exception:   # noqa: BLE001 - the clock never breaks a ticket
+        log.exception("seva clock")
+        return _active_seconds(t, at)
+
+
 def _mark_first(t: SevaTicket) -> None:
     if not t.first_response_at:
         t.first_response_at = clock()
-        t.fr_active_s = _active_seconds(t, t.first_response_at)
+        t.fr_active_s = _clock_s(t, t.first_response_at)
         t.ack_at = t.ack_at or t.first_response_at
 
 
 def _sla_state(t: SevaTicket, st: SevaSettings, at: datetime | None = None) -> dict:
     fr_h, rs_h = R.sla_hours(_sla_of(st), t.priority, t.category, st.ecommerce)
-    act = _active_seconds(t, at) / 3600
+    act = _clock_s(t, at) / 3600
     out = {"first_response_h": fr_h, "resolve_h": rs_h, "active_h": round(act, 2), "paused": bool(t.paused_since)}
     if t.first_response_at:
         frs = (t.fr_active_s if t.fr_active_s is not None else (_utc(t.first_response_at) - _utc(t.created_at)).total_seconds()) / 3600
@@ -801,18 +876,39 @@ def _sla_state(t: SevaTicket, st: SevaSettings, at: datetime | None = None) -> d
     return out
 
 
+def _pack_label(tenant: str, cat: str) -> str:
+    try:
+        from . import profile as PF
+        return (PF.categories(tenant).get(cat) or {}).get("label") or cat
+    except Exception:
+        return cat
+
+
 def _ticket_view(t: SevaTicket, st: SevaSettings | None = None, internal: bool = True) -> dict:
     v = {"id": t.id, "number": t.number, "channel": t.channel, "customer": t.customer_label or t.customer, "category": t.category,
-         "category_label": R.CATEGORY_LABEL.get(t.category, t.category), "priority": t.priority, "status": t.status,
+         "category_label": R.CATEGORY_LABEL.get(t.category) or _pack_label(t.tenant_id, t.category), "priority": t.priority, "status": t.status,
          "text": t.text, "assignee": t.assignee, "lang": t.lang, "customer_line": t.customer_line,
+         "queue": t.queue or "", "labels": _j(t.labels or "", []), "custom": _j(t.custom or "", {}),
          "status_line": R.status_line(t.status, t.number, t.lang, t.merged_into) + (f" {t.customer_line}" if t.customer_line else ""),
          "merged_into": t.merged_into, "csat": t.csat, "created": _utc(t.created_at).isoformat(),
          "updated": _utc(t.updated_at).isoformat(), "resolved": _utc(t.resolved_at).isoformat() if t.resolved_at else ""}
+    try:
+        from . import flow as FL
+        sv = FL.view(t)
+    except Exception:   # noqa: BLE001 - a broken workflow never hides the ticket
+        sv = None
+    if sv:
+        v["stage"] = sv
     if internal:
         v["notes"] = _j(t.notes, [])
         v["legal"] = R.legal_notes(t.category, t.text)
     if st is not None:
         v["sla"] = _sla_state(t, st)
+        try:
+            from . import watch as W
+            v["clocks"] = W.clocks(t, st)
+        except Exception:   # noqa: BLE001
+            log.exception("seva clocks")
     return v
 
 
@@ -850,10 +946,17 @@ def _contact_for(tenant: str, key: str) -> str:
         return ""
 
 
-def _add_note(t: SevaTicket, by: str, text: str, public: bool = False) -> None:
+def _add_note(t: SevaTicket, by: str, text: str, public: bool = False, sender: str = "") -> None:
     notes = _j(t.notes, [])
-    notes.append({"at": clock().isoformat(), "by": by, "text": _clean(text, 1500), "public": public})
+    n = {"at": clock().isoformat(), "by": by, "text": _clean(text, 1500), "public": public}
+    if sender:
+        n["from"] = sender[:60]            # G1: the person of her team who wrote this reply (solved-ticket suggestions)
+    notes.append(n)
     t.notes = _dump(notes[-80:])
+
+
+TICKET_CHANNELS = ("whatsapp", "hoola", "phone", "walkin", "email", "other", "telegram", "messenger", "instagram", "sms", "line",
+                   "viber", "slack", "x", "zalo", "kakao", "wechat", "web", "app")
 
 
 def new_ticket(tenant: str, text: str, channel: str = "phone", customer: str = "", name: str = "", phone: str = "",
@@ -863,13 +966,26 @@ def new_ticket(tenant: str, text: str, channel: str = "phone", customer: str = "
         raise SevaError("Write what the complaint is.")
     if _secret(text):
         raise SevaError("This holds details like an OTP / PIN / password / card: remove them.")
-    if channel not in ("whatsapp", "hoola", "phone", "walkin", "email", "other"):
-        raise SevaError("channel: whatsapp | hoola | phone | walkin | email | other")
+    if channel not in TICKET_CHANNELS:
+        raise SevaError("channel: " + " | ".join(TICKET_CHANNELS))
     key = _customer_key(channel, customer, phone, name)
-    cat = category if category in R.CATEGORY_LABEL else R.guess_category(text)
-    pri = priority if priority in R.PRIORITIES else R.guess_priority(text, cat)
+    from . import profile as PF
+    extra = PF.categories(tenant)
+    cat = category if (category in R.CATEGORY_LABEL or category in extra) else R.guess_category(text, extra)
+    pri = priority if priority in R.PRIORITIES else R.guess_priority(text, cat, PF.urgent_words(tenant))
     lang = lang if lang in R.LANGS else R.lang_of(text)
     at = clock()
+    if key:
+        try:
+            from . import watch as W
+            again = W.reopen_match(tenant, key, text)
+        except Exception:   # noqa: BLE001
+            log.exception("seva reopen check")
+            again = ""
+        if again:
+            v = W.reopen(tenant, again, text)
+            return {"ticket": v, "number": v["number"], "duplicate": True, "reopened": True, "status_line": v["status_line"],
+                    "say": v["say"]}
     with _LOCK, session() as s:
         st = _st(s, tenant)
         if key:
@@ -878,6 +994,7 @@ def new_ticket(tenant: str, text: str, channel: str = "phone", customer: str = "
                                                         SevaTicket.status.in_(R.OPEN))).all():
                 if _utc(o.created_at) >= since and R.similarity(text, o.text) >= DUP_SIM:
                     _add_note(o, by, f"The customer wrote again: {mask(text)}")
+                    o.awaiting_since = o.awaiting_since or at
                     if R.PRIORITIES.index(pri) < R.PRIORITIES.index(o.priority):
                         o.priority = pri
                     o.updated_at = at
@@ -909,6 +1026,17 @@ def new_ticket(tenant: str, text: str, channel: str = "phone", customer: str = "
         with session() as s:
             t = s.get(SevaTicket, tid)
             t.number, t.hoola_ticket_id = number, hid or t.hoola_ticket_id
+    try:
+        from . import flow as FL
+        FL.start(tenant, tid, by or "hoola")
+    except Exception:   # noqa: BLE001 - a workflow problem never loses the ticket
+        log.exception("seva workflow start failed")
+    try:        # G10: her routing (queue + the person on shift with room), then her rules for a new ticket
+        from . import teams as TM
+        TM.route(tenant, tid, by or "hoola")
+        TM.fire(tenant, "created", tid)
+    except Exception:   # noqa: BLE001
+        log.exception("seva routing / rules")
     with session() as s:
         t = s.get(SevaTicket, tid)
         st = _st(s, tenant)
@@ -973,6 +1101,15 @@ def tickets(tenant: str, status: str = "", q: str = "", limit: int = 200) -> lis
 def ticket(tenant: str, ref: str) -> dict:
     with session() as s:
         t = _find_ticket(s, tenant, ref)
+        old = (t.id, t.status in R.OPEN and not t.flow)
+    if old[1]:                                   # a ticket from before workflows joins one at its first stage
+        try:
+            from . import flow as FL
+            FL.start(tenant, old[0], "hoola")
+        except Exception:   # noqa: BLE001
+            log.exception("seva workflow adopt failed")
+    with session() as s:
+        t = _find_ticket(s, tenant, ref)
         v = _ticket_view(t, _st(s, tenant))
         tid = t.id
         ex = [_exc_view(e) for e in s.scalars(select(SevaException).where(SevaException.ticket_id == tid)).all()]
@@ -983,13 +1120,22 @@ _HOOLA_STATUS = {"new": "open", "open": "in_progress", "pending": "in_progress",
                  "closed": "closed", "merged": "closed"}
 
 
-def _tell(tenant: str, ticket_id: str, text: str, ack: bool = False, first: bool = False) -> dict:
+def _tell(tenant: str, ticket_id: str, text: str, ack: bool = False, first: bool = False, sender: str = "") -> dict:
     """Customer-visible message about a ticket: business WhatsApp (inside Meta's window), the Hoola Network, or a draft."""
     with session() as s:
         t = s.get(SevaTicket, ticket_id)
         key, channel, number, hid, status = t.customer, t.channel, t.number, t.hoola_ticket_id, t.status
     sent = ""
-    if key.startswith(("wa:", "phone:")):
+    pre = key.split(":", 1)[0]
+    from . import channels as CH
+    if pre in CH.PREFIX_KIND and ":" in key:      # G4: back on the messaging app the customer wrote from
+        try:
+            sent = CH.send_to(tenant, key, text, "hoola")["sent"]
+        except CH.ChannelError as e:
+            log.info("seva channel notice not sent: %s", e)
+        except Exception:   # noqa: BLE001
+            log.exception("seva channel notice")
+    elif key.startswith(("wa:", "phone:")):
         try:
             from ..employee import inbox
             if inbox.notice_by_phone(tenant, key.split(":", 1)[1], text):
@@ -1009,8 +1155,11 @@ def _tell(tenant: str, ticket_id: str, text: str, ack: bool = False, first: bool
         draft = f"https://wa.me/{ph}?text={quote(text)}" if ph else ""
     with session() as s:
         t = s.get(SevaTicket, ticket_id)
-        _add_note(t, "hoola", f"To the customer: {text}" + ("" if sent else " (draft: you send it)"), public=True)
+        _add_note(t, "hoola", f"To the customer: {text}" + ("" if sent else " (draft: you send it)"), public=True, sender=sender)
         if sent:
+            t.told_at = clock()
+            if first:
+                t.awaiting_since = None
             if ack and not t.ack_at:
                 t.ack_at = clock()
             if first:
@@ -1038,6 +1187,8 @@ def update(tenant: str, ref: str, status: str = "", priority: str = "", public: 
         if status and status != old:
             if old in R.PAUSED and t.paused_since:
                 t.paused_s = (t.paused_s or 0) + (at - _utc(t.paused_since)).total_seconds()
+                from . import watch as W
+                W.log_pause(t, t.paused_since, at)
                 t.paused_since = None
             if status in R.PAUSED:
                 t.paused_since = at
@@ -1047,6 +1198,7 @@ def update(tenant: str, ref: str, status: str = "", priority: str = "", public: 
                 t.closed_at = at
             if status in R.OPEN and old in ("resolved", "closed"):
                 t.resolved_at, t.closed_at = None, None
+                t.confirm_asked_at = None
                 _add_note(t, by, "Reopened.")
             t.status = status
             _add_note(t, by, f"Status: {old} -> {status}")
@@ -1076,12 +1228,26 @@ def update(tenant: str, ref: str, status: str = "", priority: str = "", public: 
     if tell and changed:
         line = R.status_line(new_status, number, lang) + (f" {_clean(public, 600)}" if public else "")
         told = _tell(tenant, tid, line, ack=True, first=by != "system")
+    confirm = False
+    if status == "resolved" and status != old:
+        try:
+            from . import watch as W
+            confirm = W.rules(tenant).get("confirm_on") and bool(W.entered(tenant, tid, by))
+        except Exception:   # noqa: BLE001
+            log.exception("seva confirm check")
+    if tell and changed and not confirm:
         if new_status in ("resolved", "closed") and csat_on and told.get("sent"):
             _tell(tenant, tid, R.CSAT_ASK.get(lang, R.CSAT_ASK["english"]).format(n=number))
             with session() as s:
                 s.get(SevaTicket, tid).csat_asked_at = clock()
     out = ticket(tenant, tid)
     _publish(tenant, "seva_ticket", out | {"event": "update"})
+    if status and status != old and by != "rule":
+        try:
+            from . import teams as TM
+            TM.fire(tenant, "status", tid, status)
+        except Exception:   # noqa: BLE001
+            log.exception("seva rules on status")
     return {"ticket": out, "told": told, "say": f"{number}: {out['status']}" + (" · customer told" if told.get("sent") else
                                                                             " · draft ready for the customer" if told.get("draft") else "")}
 
@@ -1099,12 +1265,13 @@ def reply(tenant: str, ref: str, text: str = "", macro: str = "", by: str = "own
         raise SevaError("What should be sent?")
     if _secret(text):
         raise SevaError("This holds details that are not allowed.")
-    told = _tell(tenant, tid, text, ack=True, first=True)
+    told = _tell(tenant, tid, text, ack=True, first=True, sender=by if not macro else "")
     with session() as s:
         t = s.get(SevaTicket, tid)
         if t.status == "new":
             t.status = "open"
         t.updated_at = clock()
+        t.awaiting_since = None
         if not told.get("sent") and by == "owner":
             _mark_first(t)                       # she sends the draft herself
     return {"told": told, "say": "Sent to the customer." if told.get("sent") else "Draft ready: open WhatsApp and send it."}
@@ -1174,9 +1341,15 @@ def customer_status(tenant: str, customer: str, number: str = "") -> dict:
             if number and number.upper() not in (t.number.upper(), t.merged_into.upper()):
                 continue
             state = _sla_state(t, st)
-            out.append({"number": t.number, "status": t.status, "line": R.status_line(t.status, t.number, t.lang, t.merged_into)
-                        + (f" {t.customer_line}" if t.customer_line else ""), "updated": _utc(t.updated_at).isoformat(),
-                        "late": state.get("late", False)})
+            line = R.status_line(t.status, t.number, t.lang, t.merged_into) + (f" {t.customer_line}" if t.customer_line else "")
+            if t.flow and t.status not in ("merged",):
+                try:
+                    from . import flow as FL
+                    line = FL.customer_line(tenant, t.number) or line     # G8: the real stage, owner and deadline
+                except Exception:   # noqa: BLE001
+                    pass
+            out.append({"number": t.number, "status": t.status, "line": line, "updated": _utc(t.updated_at).isoformat(),
+                        "late": state.get("late", False), "stage": t.stage})
     if number and not out:
         return {"tickets": [], "say": "This ticket was not found for this number (you only see your own tickets)."}
     return {"tickets": out[:5]}
@@ -1265,6 +1438,11 @@ def exception_request(tenant: str, kind: str, reason: str, amount=0, ticket: str
         if tid:
             _add_note(s.get(SevaTicket, tid), by, f"Request {number}: {R.EXC_KINDS[kind]} {_rs(amt) if amt else ''} - waiting for your approval.")
     _publish(tenant, "seva_exception", v | {"say": _exc_say(v)}, conv)
+    try:        # G10: her amount bands -> the people who say yes, in order (none = her tap, as before)
+        from . import teams as TM
+        v["chain"] = TM.start_chain(tenant, v["id"])
+    except Exception:   # noqa: BLE001
+        log.exception("seva approval chain")
     return {"exception": v, "say": f"Request {number} sent for the owner's approval. " + ("It is within the rules, but the decision is still the owner's."
                                                                                     if chk["within"] else "Outside the rules: " + " ".join(chk["reasons"])),
             "customer_say": "Your request has reached the owner; they will look at it and reply. We cannot promise anything yet."}
@@ -1281,7 +1459,14 @@ def exceptions(tenant: str, status: str = "") -> list[dict]:
         sel = select(SevaException).where(SevaException.tenant_id == tenant)
         if status:
             sel = sel.where(SevaException.status == status)
-        return [_exc_view(e) for e in s.scalars(sel.order_by(SevaException.created_at.desc()).limit(200)).all()]
+        out = [_exc_view(e) for e in s.scalars(sel.order_by(SevaException.created_at.desc()).limit(200)).all()]
+    try:        # G10: the approval chain of each request (who says yes, in order)
+        from . import teams as TM
+        for v in out:
+            v["chain"] = TM.chain(tenant, v["id"])
+    except Exception:   # noqa: BLE001
+        log.exception("seva chain view")
+    return out
 
 
 def approval_card(tenant: str, exc_id: str) -> dict | None:
@@ -1357,8 +1542,21 @@ def decide(tenant: str, exc_id: str, yes: bool, digest: str = "", proof: dict | 
         _fp_verify(tenant, exc_id, proof)
     if note and _secret(note):
         raise SevaError("The note holds details that are not allowed.")
+    try:        # G10: her own tap decides the whole request; waiting chain steps close
+        from . import teams as TM
+        TM.owner_decided(tenant, exc_id)
+    except Exception:   # noqa: BLE001
+        log.exception("seva chain close")
+    return _settle(tenant, exc_id, yes, note=note, amount=amount, by="owner")
+
+
+def _settle(tenant: str, exc_id: str, yes: bool, note: str = "", amount=None, by: str = "owner") -> dict:
+    """The decision itself (her tap, or the last yes of her approval chain). Money still moves only by her."""
     with session() as s:
         e = s.get(SevaException, exc_id)
+        if e is None or e.status != "pending":
+            raise SevaError("This request has already been decided.")
+        amt = e.amount
         e.status, e.decided_at, e.note = ("approved" if yes else "rejected"), clock(), mask(_clean(note, 600))
         if yes:
             a = _num(amount) if amount not in (None, "") else amt
@@ -1371,7 +1569,7 @@ def decide(tenant: str, exc_id: str, yes: bool, digest: str = "", proof: dict | 
         if tid:
             t = s.get(SevaTicket, tid)
             lang = t.lang
-            _add_note(t, "owner", f"Request {e.number}: {'YES' if yes else 'NO'}" + (f" ({note[:200]})" if note else ""))
+            _add_note(t, by, f"Request {e.number}: {'YES' if yes else 'NO'}" + (f" ({note[:200]})" if note else ""))
     words = _decision_words(kind, yes, v["approved_amount"], pol.get("refund_mode", ""), note, lang)
     told = _tell(tenant, tid, words, first=True) if tid else {}
     _publish(tenant, "seva_exception", v | {"say": f"{v['number']}: {'approved' if yes else 'declined'}"}, v.get("conv", ""))
@@ -1563,8 +1761,16 @@ def send_morning(tenant: str) -> dict:
     rep = report(tenant, 1)
     text = "Service desk: " + d["say"] + (f" Yesterday: {rep['tickets']} new tickets" + (f", CSAT {rep['csat_pct']}%" if rep["csat_pct"] is not None else "") + "."
                                   if rep["tickets"] else "")
+    try:
+        from . import watch as W
+        people = W.digest(tenant)
+    except Exception:   # noqa: BLE001
+        log.exception("seva digest")
+        people = []
+    if people:
+        text += " By person: " + "; ".join(x["line"] for x in people[:8]) + "."
     _note_chat(tenant, text)
-    _publish(tenant, "seva_day", {"text": text, "parts": d["parts"], "late": d["late"]})
+    _publish(tenant, "seva_day", {"text": text, "parts": d["parts"], "late": d["late"], "people": people})
     return {"text": text}
 
 
@@ -1610,8 +1816,35 @@ def tick(at: datetime | None = None) -> dict:
         try:
             adopt(t)
             n_alerts += len(sla_sweep(t, at))
+            from . import watch as W
+            n_alerts += W.sweep(t, at)["reminders"]
         except Exception:
             log.exception("seva tick %s", t)
+    try:
+        from . import supportmail as SM            # G6: her support mailbox, read every two minutes
+        SM.poll_all()
+    except Exception:
+        log.exception("seva support mail")
+    try:
+        from . import reports as RP                # G13: the month before as a PDF on the 1st
+        RP.monthly_all()
+    except Exception:
+        log.exception("seva monthly report")
+    try:
+        from . import layer as LY                  # G12: her own helpdesk, read every few minutes
+        LY.run_all()
+    except Exception:
+        log.exception("seva helpdesk layer")
+    try:
+        from . import quality as QL                # G11: retention per channel + numbers left unmasked
+        QL.sweep_all()
+    except Exception:
+        log.exception("seva quality sweep")
+    try:
+        from . import teams as TM                  # G10: her delayed rules ("still open after 2 h -> supervisor")
+        TM.sweep_all()
+    except Exception:
+        log.exception("seva rules sweep")
     mornings = 0
     for t in due_mornings(at):
         try:

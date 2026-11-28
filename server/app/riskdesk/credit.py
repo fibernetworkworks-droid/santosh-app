@@ -57,8 +57,8 @@ def _n(v: Any) -> float:
 
 
 def kfs(lender: str, borrower: str, product: str, amount: Any, rate: Any, months: Any, fee_pct: Any = 0, fee_fixed: Any = 0, insurance: Any = 0,
-        other_upfront: Any = 0, cooling_off_days: Any = None, grievance: str = "") -> dict[str, Any]:
-    tc = LN.true_cost(amount, rate, months, fee_pct=fee_pct, fee_fixed=fee_fixed, insurance=insurance, other_upfront=other_upfront)
+        other_upfront: Any = 0, cooling_off_days: Any = None, grievance: str = "", fee_gst_pct: Any = None) -> dict[str, Any]:
+    tc = LN.true_cost(amount, rate, months, fee_pct=fee_pct, fee_fixed=fee_fixed, fee_gst_pct=fee_gst_pct, insurance=insurance, other_upfront=other_upfront)
     md = ["# Key Fact Statement (DRAFT)", f"**Lender:** {lender or '[lender]'}  **Borrower:** {borrower or '[borrower]'}  **Product:** {product or '[product]'}",
           "| Item | Value |", "|---|---|", f"| Loan amount | {_n(amount):,.2f} |", f"| Interest rate (annual, reducing) | {_n(rate)}% |",
           f"| Tenure | {int(_n(months))} months |", f"| EMI | {tc.get('emi')} |", f"| Total interest | {tc.get('total_interest')} |",

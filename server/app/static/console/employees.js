@@ -15,8 +15,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
   const when = iso => { if (!iso) return '–'; const d = new Date(iso); return isNaN(d) ? '–' : d.toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}); };
   const num = v => (v === null || v === undefined || v === '') ? '–' : (typeof v === 'number' ? v.toLocaleString('en-IN', {maximumFractionDigits: 1}) : esc(String(v)));
   const visible = el => el && el.isConnected && !el.closest('.view')?.hidden;
-  const DESKS = {film: 'filmdesk', game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', audio_dev: 'gamedesk', haptics_dev: 'gamedesk', netcode_dev: 'gamedesk', xr_dev: 'gamedesk', sim_dev: 'gamedesk', twin_arch: 'gamedesk', vfx_td: 'gamedesk', architect: 'archdesk', tutor: 'edudesk', school_office: 'edudesk', curriculum: 'edudesk', research: 'edudesk', school_register: 'edudesk', lab: 'edudesk', erp: 'systems', crm_arch: 'systems', tpm: 'systems', bpa: 'systems', ecom_arch: 'systems', health_int: 'systems', bank_int: 'systems', supply_opt: 'systems', plm: 'systems', regtech: 'systems', leads: 'leadsdesk', kaan: 'flow',
-    paisa_sahayak: 'deptdesk', vitt_sahayak: 'deptdesk', risk_desk: 'deptdesk', dukaan_desk: 'deptdesk', retail_growth: 'deptdesk', retail_trust: 'deptdesk',
+  const DESKS = {film: 'filmdesk', game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', audio_dev: 'gamedesk', haptics_dev: 'gamedesk', netcode_dev: 'gamedesk', xr_dev: 'gamedesk', sim_dev: 'gamedesk', twin_arch: 'gamedesk', vfx_td: 'gamedesk', architect: 'archdesk', tutor: 'edudesk', school_office: 'edudesk', curriculum: 'edudesk', research: 'edudesk', school_register: 'edudesk', lab: 'edudesk', erp: 'systems', crm_arch: 'systems', tpm: 'systems', bpa: 'systems', ecom_arch: 'systems', health_int: 'systems', bank_int: 'systems', supply_opt: 'systems', plm: 'systems', regtech: 'systems', leads: 'leadsdesk', telecaller: 'telecallerdesk', support: 'supportdesk', kaan: 'flow',
+    paisa_sahayak: 'moneydesk', household_money: 'deptdesk', books_accounts: 'booksdesk', tax_worldwide: 'taxdesk', payroll_worldwide: 'payrolldesk', cash_treasury: 'cashdesk', credit_lending: 'creditdesk', firm_practice: 'firmdesk', payments_desk: 'paydesk', institution_desk: 'instdesk', investments_desk: 'invdesk', markets_desk: 'mktdesk', community_finance: 'cmdesk', digital_assets: 'dgdesk', public_finance: 'pbdesk', vitt_sahayak: 'fodesk', risk_desk: 'rkdesk', insurance_agent: 'insdesk', qa: 'qadesk', devops: 'dvdesk', cyber: 'cydesk', it_admin: 'itdesk', product: 'prdesk', app_review: 'ardesk', docs_writer: 'dwdesk', noc: 'ncdesk', blender_3d: 'b3desk', compiler_eng: 'lcdesk', kernel_dev: 'kddesk', graphics_eng: 'gxdesk', dbengine_dev: 'dbdesk', distsys_eng: 'dsdesk', sre: 'srdesk', hypervisor_eng: 'hvdesk', lowlatency_eng: 'lldesk', mainframe_arch: 'mfdesk', embedded_eng: 'emdesk', robotics_eng: 'rbdesk', cv_eng: 'cvdesk', ml_eng: 'mldesk', data_eng: 'dedesk', platform_eng: 'pfdesk', dukaan_desk: 'deptdesk', retail_growth: 'deptdesk', retail_trust: 'deptdesk',
     bima_desk: 'deptdesk', bima_assist: 'deptdesk', bima_risk: 'deptdesk', accounts: 'accountsdesk'};   // v0.807 BAHI   // v0.799 DESK ROOM (built as 0.796): these opened a view that did not exist; Kaan's desk is Hoola Flow
   for (const k of ['const_store', 'const_labour', 'const_customer', 'const_quality', 'const_meet', 'const_approvals', 'const_qs', 'const_rera', 'const_contracts', 'const_tender', 'const_drawqa',
                    'const_bim', 'const_predesign', 'const_survey', 'const_delay', 'const_green', 'const_land', 'const_plan', 'const_ehs', 'const_studio', 'const_learn']) DESKS[k] = 'deptdesk';   // v0.799 the 21 Construction seats   // v0.420 the Game Desk roles share it   // v0.686.0 the Lead Generation employee's desk
@@ -35,19 +35,31 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     {g: 'Research, CAD, Hardware & Industrial Tech', id: 'eng', name: 'Engineering & Hardware', art: 'eng',
      desc: '3D parts, simulation and code drafts for engineering teams. Every number measured, never certified on its own.'},
     {g: 'Software Architecture, Engineering & Core Systems', id: 'soft', name: 'Software & Systems', art: 'soft',
-     desc: 'Architecture, systems and code work on your own repositories. Reads first, changes only on your tap.'},
+     desc: 'Websites, apps, code, testing, IT admin, networks, security, builds and manuals. Reads first, changes only on your tap.'},
     {g: 'Education, Research & Lab', id: 'edu', name: 'Education, Research & Lab', art: 'edu',   // v0.453
      desc: 'A tutor, a school office, a paper setter, a research assistant, the register and a 3D science lab. Children only with guardian consent.'},
     {g: 'Finance & Banking', id: 'fin', name: 'Finance & Banking', art: 'biz',   // v0.585
-     desc: 'Money safety for people: a loan\'s real cost, hidden charges, scam warnings, complaint letters. It explains and calculates; it never moves money or asks for a PIN or OTP.'},
+     desc: 'Money safety, the finance desk, audit, payroll, GST for clients and insurance agents. It explains, calculates and prepares; it never moves money or asks for a PIN or OTP.'},
     {g: 'Retail & E-commerce', id: 'retail', name: 'Retail & E-commerce', art: 'biz',   // v0.604
      desc: 'A shop and online-seller copilot: sales, reorder, dead stock, margin and MRP checks, oversell and return risk, settlements. It prepares and checks; you set prices and place orders.'},
     {g: 'Health Insurance', id: 'healthins', name: 'Health Insurance', art: 'biz',   // v0.609
      desc: 'Claims and servicing help: documents needed, a payable worksheet, why a settlement was cut, appeal outlines, renewals and grievance clocks. It prepares; the insurer or TPA decides.'},
     {g: 'Film, Media & Entertainment', id: 'film', name: 'Film, Media & Entertainment', art: 'biz',   // v0.565
-     desc: 'A producer\'s coworker: script facts, shot checks, schedule, budget from your rate card, festivals, windows, deliverables, royalties. Nothing is sent or paid without your tap.'},
+     desc: 'A film producer, video and motion editors, graphics, photo shoots, journalism, books, podcasts, artists and creators. Nothing is sent or paid without your tap.'},
     {g: 'Enterprise Systems & ERP', id: 'ent', name: 'Enterprise Systems & ERP', art: 'ent',     // v0.453
-     desc: 'ERP, CRM, PLM, supply chain and compliance work on your own systems. Every write is planned, dry-run and waits for your tap.'}];
+     desc: 'ERP, CRM, PLM, supply chain and compliance work on your own systems. Every write is planned, dry-run and waits for your tap.'},
+    {g: 'Construction & Real Estate', id: 'const', name: 'Construction & Real Estate', art: 'eng',
+     desc: 'Site records, money, approvals, quality papers, contractors, property, rent and societies. It prepares; your engineer, CA or architect signs.'},
+    {g: 'Voice, Meetings & Transcription', id: 'voice', name: 'Voice, Meetings & Transcription', art: 'other',
+     desc: 'Transcripts of your recordings and meetings, in your words. Nothing is recorded while the audio switch is off.'},
+    {g: 'Customer Service', id: 'care', name: 'Customer Service', art: 'biz',   // v0.999.114 the phone's AI team desks
+     desc: 'Complaints, returns, service visits, feedback, the IT helpdesk and your community. Refunds and promises wait for your tap.'},
+    {g: 'Logistics, Travel & Trade', id: 'move', name: 'Logistics, Travel & Trade', art: 'biz',
+     desc: 'Shipments, fleet, warehouse, courier, drivers, travel, import and export papers. Bookings and filings wait for your yes.'},
+    {g: 'Legal & Compliance', id: 'legal', name: 'Legal & Compliance', art: 'ent',
+     desc: 'Court diary, legal research, contracts, company secretary work, notary drafts, compliance dates and data protection. It drafts; a lawyer or officer signs.'},
+    {g: 'Hospitality & Events', id: 'hosp', name: 'Hospitality & Events', art: 'biz',
+     desc: 'Hotel front office, homestays, banquets, events, weddings and tours. Confirmed bookings and money wait for your yes.'}];
   const ART = {   // line drawings; every path is drawn on once (pathLength 1 + .ae-draw)
     game: '<path d="M140 80h120a40 40 0 0 1 40 40v12a26 26 0 0 1-26 26c-10 0-17-5-22-12l-10-14h-84l-10 14c-5 7-12 12-22 12a26 26 0 0 1-26-26v-12a40 40 0 0 1 40-40z" stroke-width="2.6"/><path d="M152 116h26M165 103v26" stroke-width="2.6" style="animation-delay:.45s"/><path d="M60 56l16 9v18l-16 9-16-9V65zM340 140l16 9v18l-16 9-16-9v-18z" stroke-width="1.6" opacity=".5" style="animation-delay:.2s"/><path d="M70 186c26-18 52-18 78 0" stroke-width="1.5" opacity=".45" style="animation-delay:.55s"/><circle class="ae-fadein" cx="236" cy="110" r="5" fill="currentColor"/><circle class="ae-fadein" cx="252" cy="124" r="5" fill="currentColor"/>',
     biz: '<path d="M50 176h300" stroke-width="1.5" opacity=".35"/><rect x="84" y="128" width="38" height="48" rx="7" stroke-width="2" opacity=".55" style="animation-delay:.1s"/><rect x="142" y="100" width="38" height="76" rx="7" stroke-width="2" opacity=".75" style="animation-delay:.22s"/><rect x="200" y="70" width="38" height="106" rx="7" stroke-width="2.2" style="animation-delay:.34s"/><path d="M262 140l32-30 28 18 44-50" stroke-width="2.6" style="animation-delay:.55s"/><path d="M350 78h16v16" stroke-width="2.6" style="animation-delay:.9s"/>',
@@ -251,7 +263,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
   }
 
   async function act(what, key) {
-    if (what === 'open') { location.hash = ''; const v = DESKS[key] || key + 'desk';
+    if (what === 'open') { location.hash = ''; const v = DESKS[key] || ((DATA && DATA.employees || []).find(x => x.key === key) || {}).desk || key + 'desk';   // v0.999.114 a desk the server names
       if (openView) openView(v, v === 'systems' || v === 'deptdesk' ? key : ''); else document.querySelector(`[data-v="${v}"]`)?.click(); return; }   // v0.453 Systems opens on that role   // seodesk / socialdesk / caddesk / gamedesk
     if (what === 'leave' && !confirm('Let go of this employee? Its jobs stop at once. Its history stays, read-only.')) return;
     try {
@@ -567,6 +579,9 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
   const DONE = {publishing: ['v', 'Posting…'], published: ['ok', 'Posted'], failed: ['bad', 'Not posted'], missed: ['', 'Missed']};   // v0.355
   async function social(el) {
     SOC = el; clearTimeout(TIMER);
+    // v0.999.38 SOCIAL DESK: the Social Media Manager has its own section (its chat beside its screens). The full ad
+    // editor (every field of a Meta / Google ad draft) still lives here: /console/?v=socialdesk&full=1
+    if (!window.HOOLA_FULL_DESK) { location.assign('/console/social'); return; }
     if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Social Desk</h2></div><div class="empty">Loading…</div>';
     let d;
     try { d = await api('GET', '/api/social/desk'); }

@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 IMAGE = "hoola-appengine:base"
-IMAGE_REV = "1"                       # bump with any change below; status compares it with the built image
+IMAGE_REV = "2"                       # bump with any change below; status compares it with the built image
 HERE = Path(__file__).resolve().parent
 LOCK = HERE / "image" / "package-lock.json"
 
@@ -26,6 +26,18 @@ CORE = {
     "sonner": "2.0.8", "recharts": "3.10.1", "date-fns": "4.4.0", "clsx": "2.1.1",
     "class-variance-authority": "0.7.1", "tailwind-merge": "3.7.0", "@radix-ui/react-slot": "1.5.0",
     "@radix-ui/react-dialog": "1.3.1", "@radix-ui/react-tabs": "1.2.1", "@radix-ui/react-label": "2.1.17",
+    # v0.999.51 D1 THE KIT (docs/WEB_DESIGN_ENGINE_PLAN.md): the full shadcn-style kit in src/components/ui + the 39
+    # section blocks use these, so every new app carries them (unused ones are not in the bundle).
+    "@radix-ui/react-select": "2.4.1", "@radix-ui/react-popover": "1.3.1", "@radix-ui/react-switch": "1.4.1",
+    "@radix-ui/react-checkbox": "1.4.1", "@radix-ui/react-tooltip": "1.4.1", "@radix-ui/react-accordion": "1.3.1",
+    "@radix-ui/react-dropdown-menu": "2.2.1", "embla-carousel-react": "8.6.0",
+    "@radix-ui/react-avatar": "1.3.1", "@radix-ui/react-separator": "1.2.0", "@radix-ui/react-scroll-area": "1.4.0",
+    "@radix-ui/react-toggle": "1.2.1", "@radix-ui/react-toggle-group": "1.2.1", "@radix-ui/react-radio-group": "1.5.1",
+    "@radix-ui/react-slider": "1.6.1", "@radix-ui/react-progress": "1.2.1", "@radix-ui/react-hover-card": "1.2.1",
+    "@radix-ui/react-navigation-menu": "1.4.1", "@radix-ui/react-collapsible": "1.2.1",
+    "@radix-ui/react-alert-dialog": "1.2.1", "@radix-ui/react-aspect-ratio": "1.2.0",
+    "@radix-ui/react-context-menu": "2.4.1", "@radix-ui/react-menubar": "1.2.1",
+    "cmdk": "1.1.1", "vaul": "1.1.2", "input-otp": "1.5.0", "react-day-picker": "9.14.0",
 }
 DEV = {
     "vite": "7.3.7", "@vitejs/plugin-react": "5.2.0", "tailwindcss": "4.3.3", "@tailwindcss/vite": "4.3.3",
@@ -33,22 +45,14 @@ DEV = {
 }
 # Vetted extras: in the image, added to a project only by add_dependency (one word = one reason).
 EXTRA = {
-    "@radix-ui/react-select": ("2.4.1", "a select menu"),
-    "@radix-ui/react-popover": ("1.3.1", "a popover"),
-    "@radix-ui/react-switch": ("1.4.1", "an on / off switch"),
-    "@radix-ui/react-checkbox": ("1.4.1", "a checkbox"),
-    "@radix-ui/react-tooltip": ("1.4.1", "a tooltip"),
-    "@radix-ui/react-accordion": ("1.3.1", "an accordion / FAQ"),
-    "@radix-ui/react-dropdown-menu": ("2.2.1", "a dropdown menu"),
-    "embla-carousel-react": ("8.6.0", "a carousel / slider"),
-    "motion": ("12.43.0", "animation"),
+    "motion": ("12.43.0", "animation (the kit itself animates with CSS only)"),
 }
 VETTED = {**CORE, **{k: v[0] for k, v in EXTRA.items()}}
 
-DOCKERFILE_TEXT = r"""# v0.814 Hoola App Engine - the build image. Built once per server by `python -m app.appengine setup`.
+DOCKERFILE_TEXT = r"""# v0.999.51 Hoola App Engine - the build image (rev 2: the full kit). Built once per server by `python -m app.appengine setup`.
 # Every vetted package is installed here from the committed lock file; a project build runs with --network none.
 FROM node:22-bookworm-slim
-LABEL hoola.appengine.rev="1"
+LABEL hoola.appengine.rev="2"
 ENV NODE_ENV=development NPM_CONFIG_FUND=false NPM_CONFIG_AUDIT=false NPM_CONFIG_UPDATE_NOTIFIER=false
 WORKDIR /opt/tpl
 COPY package.json package-lock.json ./

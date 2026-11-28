@@ -12,6 +12,9 @@ import '../../state.dart';
 import '../bazar_screen.dart';
 import '../code/code_home.dart';
 import '../create/create_home.dart';
+import '../cred/hoola_cred.dart';
+import '../wallet/hoola_wallet.dart';
+import '../vocal/vocal_home.dart';
 import '../hoola_theme.dart';
 import 'hoola_console_page.dart';
 import 'hoola_settings.dart' show hoolaOpenNew, hoolaOpenOld;
@@ -36,12 +39,24 @@ const List<HoolaTool> hoolaStudios = [
 const List<HoolaTool> hoolaMoreTools = [
   // v0.931 Hoola Code moved to the side panel (the Code button beside the title)
   (title: 'Game Dev', sub: 'Make, test and ship games', glyph: ToolGlyph.game, path: '/console/games'),
+  // v0.999.57 Hoola Cred: her password manager, the app's own screen (the master password stays on the phone)
+  (title: 'Hoola Cred', sub: 'Your passwords, locked with one master password', glyph: ToolGlyph.cred, path: '/console/?v=cred'),
+  // v0.999.60 Hoola Wallet: Hoola gets the order ready, her fingerprint pays (the app's own screen)
+  (title: 'Hoola Wallet', sub: 'Hoola pays for everyday things, after your fingerprint', glyph: ToolGlyph.wallet, path: '/console/?v=wallet'),
+  // v0.999.306 Hoola DOD: her coworker (its console page, signed in)
+  (title: 'Hoola DOD', sub: 'Your coworker does real work for you', glyph: ToolGlyph.coworker, path: '/console/dod'),
 ];
 
-/// Opens one studio: Create (v0.912 CREATE NATIVE) and Hoola Code (v0.921 HOOLA CODE NATIVE) are the app's own native
-/// screens; the rest are their console pages.
+/// Opens one studio: Create (v0.912 CREATE NATIVE), Hoola Vocal (v0.999.90) and Hoola Code (v0.921 HOOLA CODE NATIVE) are
+/// the app's own native screens; the rest are their console pages.
 Future<void> hoolaOpenStudio(BuildContext context, Santosh app, HoolaTool t) => t.title == 'Create'
     ? hoolaOpenNew(context, app, HoolaCreate(app: app))
+    : t.title == 'Hoola Cred'
+        ? hoolaOpenNew(context, app, HoolaCredScreen(app: app))   // v0.999.57 native
+    : t.title == 'Hoola Wallet'
+        ? hoolaOpenNew(context, app, HoolaWalletScreen(app: app))   // v0.999.60 native
+    : t.title == 'Hoola Vocal'
+        ? hoolaOpenNew(context, app, HoolaVocal(app: app))   // v0.999.90 native (the Vocal chat, voices, sounds)
     : t.title == 'Hoola Code'
         ? hoolaOpenNew(context, app, HoolaCode(app: app))
         : hoolaOpenConsole(context, app, t.path, t.title);
@@ -138,7 +153,7 @@ class _HoolaToolsState extends State<HoolaTools> with TickerProviderStateMixin {
         HoolaGroup(children: [
           for (var i = 0; i < hoolaMoreTools.length; i++)
             row(hoolaMoreTools[i], 8 + i, () => hoolaOpenStudio(context, app, hoolaMoreTools[i])),
-          row((title: 'Connectors', sub: 'Your apps and accounts linked to ${app.aName}', glyph: ToolGlyph.connectors, path: ''), 10,
+          row((title: 'Connectors', sub: 'Your apps and accounts linked to ${app.aName}', glyph: ToolGlyph.connectors, path: ''), 8 + hoolaMoreTools.length,
               () => hoolaOpenNew(context, app, HoolaConnectorsPage(app: app))),
         ]),
       ]);

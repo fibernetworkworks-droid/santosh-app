@@ -285,15 +285,56 @@ def _google_refused(ctx: Ctx, e: BaseException) -> str:
         msg = reconnect_message("", str(e))
     else:
         return ""
-    import time as _t
-    if _t.time() - _reconnect_told.get(ctx.tenant_id, 0) > 1800 and ctx.conversation_id:
-        _reconnect_told[ctx.tenant_id] = _t.time()
-        try:
-            from ..events import bus
-            bus.publish(ctx.conversation_id, "google_reconnect", {"text": msg})
-        except Exception:
-            pass
-    return msg
+    return msg   # v0.999.181 the card (with the app and the button) is sent by _google_card
+
+
+_GOOGLE_PREFIX = (("email_", "gmail"), ("calendar", "calendar"), ("cal_", "calendar"), ("drive_", "drive"), ("doc_", "docs"), ("gdoc_", "docs"),
+                  ("sheet", "sheets"), ("form", "forms"), ("slides", "slides"), ("photos_", "photos"), ("youtube", "youtube"),
+                  ("gbp_", "business"))
+_card_told: dict[str, float] = {}
+
+
+def _google_app_of(name: str) -> str:
+    for pre, app in _GOOGLE_PREFIX:
+        if name.startswith(pre):
+            return app
+    return ""
+
+
+def _google_card(ctx, name: str, e: Exception, refused: str) -> None:
+    """v0.999.181 a Google tool that is not connected (or whose account Google refused) puts ONE card in the chat with
+    the button that fixes it, at most once every 30 minutes per app. Before, she got words pointing to a screen that
+    did not exist on the console."""
+    try:
+        app = _google_app_of(name)
+        text = str(e)
+        if not app or not getattr(ctx, "conversation_id", "") or not (refused or "Connectors > Google" in text):
+            return
+        re_ = bool(refused) or "Reconnect" in text or "expired" in text.lower()
+        import time as _t
+        key = f"{ctx.tenant_id}|{app}|{re_}"
+        if _t.time() - _card_told.get(key, 0) < 1800:
+            return
+        if refused:      # the "Google ended access" notice has just put a reconnect card in her chat (mid-turn: this one)
+            from .. import google_auth
+            d = google_auth._DEAD.get(ctx.tenant_id) or {}
+            if _t.time() - d.get("told", 0) < 120:
+                _card_told[key] = _t.time()
+                return
+        _card_told[key] = _t.time()
+        from .. import googlehub
+        from ..events import bus
+        email = ""
+        if re_:
+            st = googlehub.status(ctx.tenant_id)
+            a = next((x for x in st["apps"] if x["key"] == app), None)
+            email = (a["expired"][0] if a and a["expired"] else "") or next((x["email"] for x in st["accounts"] if x["state"] == "expired"), "")
+        bus.publish(ctx.conversation_id, "google_reconnect" if re_ else "google_connect",
+                    {"app": app, "app_name": googlehub.BY_KEY[app]["name"], "email": email,
+                     "say": ("One tap brings this Google account back. Nothing else changes." if re_
+                             else "Google asks once. After that Hoola carries on.")})
+    except Exception:          # noqa: BLE001 - a card must never break the tool's own answer
+        pass
 
 
 _PC_HANDOFF = ("pc_do", "hoola_pc_do", "pc_team")
@@ -363,6 +404,7 @@ async def dispatch(name: str, args: dict, ctx: Ctx):
     except Exception as e:
         employee.after(ctx, name, args or {}, False, str(e)[:200])
         msg = _google_refused(ctx, e)
+        _google_card(ctx, name, e, msg)   # v0.999.181 one button in the chat: Connect / Reconnect that Google app
         if msg:        # v0.70: an expired Google sign-in used to surface as a raw "invalid_grant" crash
             raise ToolError(msg + " (Tell her this plainly in one or two lines and don't retry this tool now.)") from None
         if place_now == "pc" and name in ("pc_do", "pc_task_result") and isinstance(e, ToolError):
@@ -474,6 +516,12 @@ TOOLS.extend(CRAWL_TOOLS)
 TOOL_LABELS.update(CRAWL_LABELS)
 HANDLERS.update(CRAWL_HANDLERS)
 
+from .spider_tools import SPIDER_HANDLERS, SPIDER_LABELS, SPIDER_TOOLS  # noqa: E402  v0.999.59 HOOLA SPIDER (Scrapy's way)
+
+TOOLS.extend(SPIDER_TOOLS)
+TOOL_LABELS.update(SPIDER_LABELS)
+HANDLERS.update(SPIDER_HANDLERS)
+
 from .aiapp_tools import AIAPP_HANDLERS, AIAPP_LABELS, AIAPP_TOOLS  # noqa: E402  v0.785 HOOLA AI APPS (customer-facing AI apps)
 TOOLS.extend(AIAPP_TOOLS)
 TOOL_LABELS.update(AIAPP_LABELS)
@@ -489,6 +537,62 @@ from .finguard_tools import FINGUARD_HANDLERS, FINGUARD_LABELS, FINGUARD_TOOLS  
 TOOLS.extend(FINGUARD_TOOLS)
 TOOL_LABELS.update(FINGUARD_LABELS)
 HANDLERS.update(FINGUARD_HANDLERS)
+from .household_tools import HOUSEHOLD_HANDLERS, HOUSEHOLD_LABELS, HOUSEHOLD_TOOLS  # noqa: E402  v0.999.129 F2 Household Money
+TOOLS.extend(HOUSEHOLD_TOOLS)
+TOOL_LABELS.update(HOUSEHOLD_LABELS)
+HANDLERS.update(HOUSEHOLD_HANDLERS)
+from .books_tools import BOOKS_HANDLERS, BOOKS_LABELS, BOOKS_TOOLS  # noqa: E402  v0.999.134 F3 Books & Accounts
+TOOLS.extend(BOOKS_TOOLS)
+TOOL_LABELS.update(BOOKS_LABELS)
+HANDLERS.update(BOOKS_HANDLERS)
+from .taxwide_tools import TAXWIDE_HANDLERS, TAXWIDE_LABELS, TAXWIDE_TOOLS  # noqa: E402  v0.999.135 F4 Tax worldwide
+TOOLS.extend(TAXWIDE_TOOLS)
+TOOL_LABELS.update(TAXWIDE_LABELS)
+HANDLERS.update(TAXWIDE_HANDLERS)
+from .payrollwide_tools import PAYROLLWIDE_HANDLERS, PAYROLLWIDE_LABELS, PAYROLLWIDE_TOOLS  # noqa: E402  v0.999.137 F5 Payroll worldwide
+TOOLS.extend(PAYROLLWIDE_TOOLS)
+TOOL_LABELS.update(PAYROLLWIDE_LABELS)
+HANDLERS.update(PAYROLLWIDE_HANDLERS)
+from .treasury_tools import TREASURY_HANDLERS, TREASURY_LABELS, TREASURY_TOOLS  # noqa: E402  v0.999.137 F5 Cash & Treasury
+TOOLS.extend(TREASURY_TOOLS)
+TOOL_LABELS.update(TREASURY_LABELS)
+HANDLERS.update(TREASURY_HANDLERS)
+from .lending_tools import LENDING_HANDLERS, LENDING_LABELS, LENDING_TOOLS  # noqa: E402  v0.999.138 F6 Credit & Lending
+TOOLS.extend(LENDING_TOOLS)
+TOOL_LABELS.update(LENDING_LABELS)
+HANDLERS.update(LENDING_HANDLERS)
+from .firmmode_tools import FIRMMODE_HANDLERS, FIRMMODE_LABELS, FIRMMODE_TOOLS  # noqa: E402  v0.999.143 F7 Firm mode
+TOOLS.extend(FIRMMODE_TOOLS)
+TOOL_LABELS.update(FIRMMODE_LABELS)
+HANDLERS.update(FIRMMODE_HANDLERS)
+from .paydesk_tools import PAYDESK_HANDLERS, PAYDESK_LABELS, PAYDESK_TOOLS  # noqa: E402  v0.999.145 F8 Payments
+TOOLS.extend(PAYDESK_TOOLS)
+TOOL_LABELS.update(PAYDESK_LABELS)
+HANDLERS.update(PAYDESK_HANDLERS)
+from .institution_tools import INSTITUTION_HANDLERS, INSTITUTION_LABELS, INSTITUTION_TOOLS  # noqa: E402  v0.999.149 F9 Institution mode
+TOOLS.extend(INSTITUTION_TOOLS)
+TOOL_LABELS.update(INSTITUTION_LABELS)
+HANDLERS.update(INSTITUTION_HANDLERS)
+from .investdesk_tools import INVESTDESK_HANDLERS, INVESTDESK_LABELS, INVESTDESK_TOOLS  # noqa: E402  v0.999.151 F10 Investments
+TOOLS.extend(INVESTDESK_TOOLS)
+TOOL_LABELS.update(INVESTDESK_LABELS)
+HANDLERS.update(INVESTDESK_HANDLERS)
+from .mktdesk_tools import MKTDESK_HANDLERS, MKTDESK_LABELS, MKTDESK_TOOLS  # noqa: E402  v0.999.151 F10 Markets & post-trade
+TOOLS.extend(MKTDESK_TOOLS)
+TOOL_LABELS.update(MKTDESK_LABELS)
+HANDLERS.update(MKTDESK_HANDLERS)
+from .commfin_tools import COMMFIN_HANDLERS, COMMFIN_LABELS, COMMFIN_TOOLS  # noqa: E402  v0.999.152 F11 Community & inclusive finance
+TOOLS.extend(COMMFIN_TOOLS)
+TOOL_LABELS.update(COMMFIN_LABELS)
+HANDLERS.update(COMMFIN_HANDLERS)
+from .digiasset_tools import DIGIASSET_HANDLERS, DIGIASSET_LABELS, DIGIASSET_TOOLS  # noqa: E402  v0.999.152 F11 Digital assets
+TOOLS.extend(DIGIASSET_TOOLS)
+TOOL_LABELS.update(DIGIASSET_LABELS)
+HANDLERS.update(DIGIASSET_HANDLERS)
+from .pubfin_tools import PUBFIN_HANDLERS, PUBFIN_LABELS, PUBFIN_TOOLS  # noqa: E402  v0.999.153 F12 Public sector
+TOOLS.extend(PUBFIN_TOOLS)
+TOOL_LABELS.update(PUBFIN_LABELS)
+HANDLERS.update(PUBFIN_HANDLERS)
 
 from .finops_tools import FINOPS_HANDLERS, FINOPS_LABELS, FINOPS_TOOLS  # noqa: E402  v0.602 Vitt Sahayak (finance desk assists, Wave 2)
 
@@ -588,6 +692,7 @@ from .drive_tools import DRIVE_HANDLERS, DRIVE_LABELS, DRIVE_TOOLS  # noqa: E402
 from .forms_tools import FORMS_HANDLERS, FORMS_LABELS, FORMS_TOOLS  # noqa: E402
 from .slides_tools import SLIDES_HANDLERS, SLIDES_LABELS, SLIDES_TOOLS  # noqa: E402
 from .photos_tools import PHOTOS_HANDLERS, PHOTOS_LABELS, PHOTOS_TOOLS  # noqa: E402
+from .gdocs_tools import GDOCS_HANDLERS, GDOCS_LABELS, GDOCS_TOOLS  # noqa: E402
 from .notebook_tools import NOTEBOOK_HANDLERS, NOTEBOOK_LABELS, NOTEBOOK_TOOLS  # noqa: E402
 from .youtube_tools import YOUTUBE_HANDLERS, YOUTUBE_LABELS, YOUTUBE_TOOLS  # noqa: E402
 from .photo_tools import PHOTO_HANDLERS, PHOTO_LABELS, PHOTO_TOOLS  # noqa: E402
@@ -606,7 +711,7 @@ TOOL_LABELS.update({k: v for k, v in GDRIVE_LABELS.items() if k not in _new})
 HANDLERS.update({k: v for k, v in GDRIVE_HANDLERS.items() if k not in _new})
 for _t, _l, _h in ((SHEETS_TOOLS, SHEETS_LABELS, SHEETS_HANDLERS), (DRIVE_TOOLS, DRIVE_LABELS, DRIVE_HANDLERS),
                    (FORMS_TOOLS, FORMS_LABELS, FORMS_HANDLERS), (SLIDES_TOOLS, SLIDES_LABELS, SLIDES_HANDLERS),
-                   (PHOTOS_TOOLS, PHOTOS_LABELS, PHOTOS_HANDLERS), (NOTEBOOK_TOOLS, NOTEBOOK_LABELS, NOTEBOOK_HANDLERS),
+                   (PHOTOS_TOOLS, PHOTOS_LABELS, PHOTOS_HANDLERS), (GDOCS_TOOLS, GDOCS_LABELS, GDOCS_HANDLERS), (NOTEBOOK_TOOLS, NOTEBOOK_LABELS, NOTEBOOK_HANDLERS),
                    (YOUTUBE_TOOLS, YOUTUBE_LABELS, YOUTUBE_HANDLERS), (PHOTO_TOOLS, PHOTO_LABELS, PHOTO_HANDLERS), (CREATE_TOOLS, CREATE_LABELS, CREATE_HANDLERS), (APPCHECK_TOOLS, APPCHECK_LABELS, APPCHECK_HANDLERS),
                    (REA_TOOLS, REA_LABELS, REA_HANDLERS), (FRAMES_TOOLS, FRAMES_LABELS, FRAMES_HANDLERS), (HOOLA_TOOLS, HOOLA_LABELS, HOOLA_HANDLERS), (WEBCLONE_TOOLS, WEBCLONE_LABELS, WEBCLONE_HANDLERS)):
     TOOLS.extend(_t)
@@ -915,6 +1020,29 @@ TOOLS.extend(SEO_TOOLS)
 TOOL_LABELS.update(SEO_LABELS)
 HANDLERS.update(SEO_HANDLERS)
 
+# v0.999.38 SOCIAL DESK: the Social Media Manager's own tool (reads the desk, edits drafts; never posts / sends / starts ads)
+from .socialdesk_tools import SOCIALDESK_HANDLERS, SOCIALDESK_LABELS, SOCIALDESK_TOOLS  # noqa: E402
+
+TOOLS.extend(SOCIALDESK_TOOLS)
+TOOL_LABELS.update(SOCIALDESK_LABELS)
+HANDLERS.update(SOCIALDESK_HANDLERS)
+
+# v0.999.43 ACCOUNTS DESK: the GST & Accounts employee's own tool (reads the desk, reads attached bills into drafts, edits
+# drafts; never adds to the register, sends to the GST portal, files, records TDS, closes a month or pays)
+from .accountsdesk_tools import ACCOUNTSDESK_HANDLERS, ACCOUNTSDESK_LABELS, ACCOUNTSDESK_TOOLS  # noqa: E402
+
+TOOLS.extend(ACCOUNTSDESK_TOOLS)
+TOOL_LABELS.update(ACCOUNTSDESK_LABELS)
+HANDLERS.update(ACCOUNTSDESK_HANDLERS)
+
+# v0.999.52 LEAD DESK: the Lead Generation employee's desk tool (stages, follow-ups, notes, drafts, saved searches,
+# her attached list into the store; never sends, hands a list over, opts out or forgets - those are her taps)
+from .leadsdesk_tools import LEADSDESK_HANDLERS, LEADSDESK_LABELS, LEADSDESK_TOOLS  # noqa: E402
+
+TOOLS.extend(LEADSDESK_TOOLS)
+TOOL_LABELS.update(LEADSDESK_LABELS)
+HANDLERS.update(LEADSDESK_HANDLERS)
+
 # v0.107 Thok Sahayak (wholesale: orders -> GST bills, credit, collections, cheques, purchases, reorder, margins)
 from .thok_tools import THOK_HANDLERS, THOK_LABELS, THOK_TOOLS  # noqa: E402
 
@@ -1108,6 +1236,70 @@ from .pgdb_tools import PGDB_HANDLERS, PGDB_LABELS, PGDB_TOOLS  # noqa: E402
 TOOLS.extend(BLENDER_TOOLS)
 TOOL_LABELS.update(BLENDER_LABELS)
 HANDLERS.update(BLENDER_HANDLERS)
+# v0.999.272 the Compiler Construction Engineer (lang_lab)
+from .langlab_tools import LANGLAB_HANDLERS, LANGLAB_LABELS, LANGLAB_TOOLS  # noqa: E402
+
+TOOLS.extend(LANGLAB_TOOLS)
+TOOL_LABELS.update(LANGLAB_LABELS)
+HANDLERS.update(LANGLAB_HANDLERS)
+# v0.999.274 the Kernel / OS Developer (kernel_desk)
+from .kernel_tools import KERNEL_HANDLERS, KERNEL_LABELS, KERNEL_TOOLS  # noqa: E402
+
+TOOLS.extend(KERNEL_TOOLS)
+TOOL_LABELS.update(KERNEL_LABELS)
+HANDLERS.update(KERNEL_HANDLERS)
+from .gfx_tools import GFX_HANDLERS, GFX_LABELS, GFX_TOOLS  # noqa: E402
+TOOLS.extend(GFX_TOOLS)
+TOOL_LABELS.update(GFX_LABELS)
+HANDLERS.update(GFX_HANDLERS)
+from .dbeng_tools import DBENG_HANDLERS, DBENG_LABELS, DBENG_TOOLS  # noqa: E402
+TOOLS.extend(DBENG_TOOLS)
+TOOL_LABELS.update(DBENG_LABELS)
+HANDLERS.update(DBENG_HANDLERS)
+from .dist_tools import DIST_HANDLERS, DIST_LABELS, DIST_TOOLS  # noqa: E402
+TOOLS.extend(DIST_TOOLS)
+TOOL_LABELS.update(DIST_LABELS)
+HANDLERS.update(DIST_HANDLERS)
+from .sre_tools import SRE_HANDLERS, SRE_LABELS, SRE_TOOLS  # noqa: E402
+TOOLS.extend(SRE_TOOLS)
+TOOL_LABELS.update(SRE_LABELS)
+HANDLERS.update(SRE_HANDLERS)
+from .virt_tools import VIRT_HANDLERS, VIRT_LABELS, VIRT_TOOLS  # noqa: E402
+TOOLS.extend(VIRT_TOOLS)
+TOOL_LABELS.update(VIRT_LABELS)
+HANDLERS.update(VIRT_HANDLERS)
+from .lowlat_tools import LOWLAT_HANDLERS, LOWLAT_LABELS, LOWLAT_TOOLS  # noqa: E402
+TOOLS.extend(LOWLAT_TOOLS)
+TOOL_LABELS.update(LOWLAT_LABELS)
+HANDLERS.update(LOWLAT_HANDLERS)
+from .mainframe_tools import MAINFRAME_HANDLERS, MAINFRAME_LABELS, MAINFRAME_TOOLS  # noqa: E402
+TOOLS.extend(MAINFRAME_TOOLS)
+TOOL_LABELS.update(MAINFRAME_LABELS)
+HANDLERS.update(MAINFRAME_HANDLERS)
+from .embedded_tools import EMBEDDED_HANDLERS, EMBEDDED_LABELS, EMBEDDED_TOOLS  # noqa: E402
+TOOLS.extend(EMBEDDED_TOOLS)
+TOOL_LABELS.update(EMBEDDED_LABELS)
+HANDLERS.update(EMBEDDED_HANDLERS)
+from .robotics_tools import ROBOTICS_HANDLERS, ROBOTICS_LABELS, ROBOTICS_TOOLS  # noqa: E402
+TOOLS.extend(ROBOTICS_TOOLS)
+TOOL_LABELS.update(ROBOTICS_LABELS)
+HANDLERS.update(ROBOTICS_HANDLERS)
+from .vision_tools import VISION_HANDLERS, VISION_LABELS, VISION_TOOLS  # noqa: E402
+TOOLS.extend(VISION_TOOLS)
+TOOL_LABELS.update(VISION_LABELS)
+HANDLERS.update(VISION_HANDLERS)
+from .ml_tools import ML_HANDLERS, ML_LABELS, ML_TOOLS  # noqa: E402
+TOOLS.extend(ML_TOOLS)
+TOOL_LABELS.update(ML_LABELS)
+HANDLERS.update(ML_HANDLERS)
+from .dataeng_tools import DATAENG_HANDLERS, DATAENG_LABELS, DATAENG_TOOLS  # noqa: E402
+TOOLS.extend(DATAENG_TOOLS)
+TOOL_LABELS.update(DATAENG_LABELS)
+HANDLERS.update(DATAENG_HANDLERS)
+from .platform_tools import PLATFORM_HANDLERS, PLATFORM_LABELS, PLATFORM_TOOLS  # noqa: E402
+TOOLS.extend(PLATFORM_TOOLS)
+TOOL_LABELS.update(PLATFORM_LABELS)
+HANDLERS.update(PLATFORM_HANDLERS)
 # v0.357 Engineering Desk: the hired CAD Engineer (cad_part)
 from .eng_tools import ENG_HANDLERS, ENG_LABELS, ENG_TOOLS  # noqa: E402
 
@@ -1486,6 +1678,12 @@ TOOL_LABELS.update(LEADS_LABELS)
 HANDLERS.update(LEADS_HANDLERS)
 del _seen
 
+# v0.999.60 HOOLA WALLET: Hoola asks to pay, only her fingerprint on her unlocked phone approves.
+from .wallet_tools import WALLET_HANDLERS, WALLET_LABELS, WALLET_TOOLS  # noqa: E402
+TOOLS.extend(WALLET_TOOLS)
+TOOL_LABELS.update(WALLET_LABELS)
+HANDLERS.update(WALLET_HANDLERS)
+
 _RAW_SPECS: list[dict] = [dict(t) for t in TOOLS]     # kept for tests / size stats only (never sent anywhere)
 DIET_STATS: dict[str, int] = {"raw_chars": 0, "diet_chars": 0, "kept_full": 0}
 
@@ -1678,6 +1876,14 @@ for _n, _v in list(globals().items()):
         for _t in _v:
             if isinstance(_t, dict) and _t.get("name"):
                 FAMILY_OF.setdefault(_t["name"], _fam)
+
+# v0.999.181 the old service-account module (GDRIVE_TOOLS, imported first) claimed five names its newer twins handle:
+# "read my sheet" / "add a row" lost sheet_read / sheet_append from view. The handlers already belong to the new modules,
+# so the family does too.
+for _t in SHEETS_TOOLS:
+    FAMILY_OF[_t["name"]] = "sheets"
+for _t in DRIVE_TOOLS:
+    FAMILY_OF[_t["name"]] = "drive"
 
 # v0.559 SAHI GINTI: two modules both export CONTRACTS_TOOLS, so the construction pair (const_contracts /
 # const_contracts_dekho) lost its family to the later import and rode on EVERY turn, "namaste" included.

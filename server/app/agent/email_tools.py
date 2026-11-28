@@ -197,7 +197,8 @@ EMAIL_TOOLS = [
         "mails') — running one only lists what matches now, it changes nothing. action='list' shows rules with "
         "hit counts, 'searches' shows the saved searches, 'run' with rule_id runs one saved search now, 'pause'/'resume' "
         "with rule_id, 'delete' with rule_id (rules and searches), 'test' dry-runs a rule against the newest inbox mail "
-        "(nothing changes)."),
+        "(nothing changes). actions.run = a JOB that starts by itself when a matching mail arrives (her Gmail / Outlook or "
+        "Hoola's own address): 'when the electricity bill mail comes, pay-check it and add it to my sheet'."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["create", "list", "searches", "run", "pause", "resume", "delete", "test"]},
          "kind": {"type": "string", "enum": ["rule", "search"], "description": "create: 'rule' (default) or 'search'"},
@@ -209,7 +210,10 @@ EMAIL_TOOLS = [
          "actions": {"type": "object", "properties": {
              "label": {"type": "string"}, "archive": {"type": "boolean"}, "star": {"type": "boolean"},
              "mark_read": {"type": "boolean"}, "important": {"type": "boolean"}, "mute": {"type": "boolean"},
-             "notify": {"type": "boolean"}, "forward_to": {"type": "string"}}},
+             "notify": {"type": "boolean"}, "forward_to": {"type": "string"},
+             "run": {"type": "string", "description": "A JOB Hoola does by itself each time such a mail arrives, in her "
+                                                     "words ('download the invoice and add it to my GST sheet'). Only when "
+                                                     "she asked for a job to start on a mail; sends / payments still ask her."}}},
          "rule_id": {"type": "string"}, "account": {"type": "string"}}, "required": ["action"]}},
     {"name": "email_snooze", "description": (
         "Snooze an email: it leaves the inbox now and comes back unread at the chosen time with a reminder card "
@@ -273,8 +277,8 @@ EMAIL_TOOLS = [
         "signature_push=true also pushes it INTO Gmail itself, behind a confirm card), make_default (address), "
         "daily_summary ('09:00' local time for a daily inbox summary, 'weekly 09:00' for a weekly digest every "
         "weekday of the first run, or 'off'), undo_seconds (0-60: after Send the email waits this many seconds and "
-        "can still be cancelled; 0 = send at once), watch_mode ('off' = no new-mail announcements, 'vip' = important "
-        "mail + people she mails herself [default], 'all' = every new mail; for one account or all), mute (sender "
+        "can still be cancelled; 0 = send at once), watch_mode ('off' = no new-mail announcements [default: "
+        "set it only when SHE asks for new-mail news], 'vip' = important mail + people she mails herself, 'all' = every new mail; for one account or all), mute (sender "
         "emails, comma-separated, to never announce; 'clear' empties the list), send_as=true lists the Gmail send-as "
         "aliases plus the current auto-forwarding (read-only), auto_forward=('off', or an email address to forward "
         "new mail to — always behind a confirm card). Call with no arguments to just list everything. If nothing is "
@@ -292,7 +296,7 @@ EMAIL_TOOLS = [
                              "description": "what Gmail does with mail fetched via POP (with pop)"},
          "language": {"type": "string", "description": "'get', or a Gmail display language code (hi / en / en-GB / mr / ta)"},
          "watch_mode": {"type": "string", "enum": ["off", "vip", "all"],
-                        "description": "New-mail announcements: off / vip (default) / all"},
+                        "description": "New-mail announcements: off (default) / vip / all - only when she asks"},
          "mute": {"type": "string", "description": "Sender emails to never announce (comma-separated), or 'clear'"}}}},
 ]
 

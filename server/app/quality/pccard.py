@@ -15,17 +15,32 @@ This module never edits the operator: it only calls operator.start / OPS / _pc /
 from __future__ import annotations
 
 import asyncio
+import logging
 import json
 import re
 import statistics
 import time
 from typing import Any
 
+from . import pccard_browser, pccard_tools, pccard_portal
 from .pccard_tasks import GROUPS, SET_V, TASKS
 
+# v0.999.68 ULTIMATE PC PLAN P0: three exams. desktop = the 40 Windows jobs (D0); browser = 30 jobs on Hoola's own
+# practice portal, checked by what the portal recorded; portal = 15 read-only real portals of several countries.
+SETS: dict[str, dict] = {
+    "desktop": {"tasks": TASKS, "groups": GROUPS, "v": SET_V},
+    "browser": {"tasks": pccard_browser.TASKS, "groups": pccard_browser.GROUPS, "v": pccard_browser.SET_V},
+    "portal": {"tasks": pccard_portal.TASKS, "groups": pccard_portal.GROUPS, "v": pccard_portal.SET_V},
+    "tools": {"tasks": pccard_tools.TASKS, "groups": pccard_tools.GROUPS, "v": pccard_tools.SET_V},   # v0.999.138
+}
+
+log = logging.getLogger("santosh.pccard")
 POLL_S = 0.5
 MAX_ANSWERS = 2          # the card answers a task's questions at most twice, then counts it as 'asked'
-KINDS = ("title", "windows", "page", "answer", "status")
+MAX_APPROVALS = 4        # v0.999.84 practice-portal tasks: the card plays her approval tap at most 4 times a task
+BUSY_WAIT_S = 10.0       # v0.999.84 a busy PC at start: try again every 10 s (up to 2 min)
+FREE_WAIT_S = 90.0       # v0.999.84 after stopping a task: wait for it to finish (up to 90 s)
+KINDS = ("title", "windows", "page", "answer", "status", "server", "server_absent", "used", "flag")   # v0.999.138 used / flag
 
 STATUS: dict[str, Any] = {"running": False}
 _RUNNING = False
@@ -34,6 +49,15 @@ _CUR: dict[str, str] = {}        # tenant / session id of the task running now (
 
 
 # ---------------------------------------------------------------- the checker (pure, no PC)
+
+def _site_hosts(text: str) -> set[str]:
+    """v0.999.135 hosts of the http(s) links in a text, without www."""
+    out = set()
+    for h in re.findall(r"https?://([A-Za-z0-9.-]+)", str(text or "")):
+        h = h.lower().rstrip(".")
+        out.add(h[4:] if h.startswith("www.") else h)
+    return out
+
 
 def check_known(chk: dict) -> bool:
     """Every node of a check is a known kind with its field (used by the task-set test)."""
@@ -47,6 +71,17 @@ def check_known(chk: dict) -> bool:
         return False
     if k == "status":
         return isinstance(chk.get("in"), list) and bool(chk["in"])
+    if k == "flag":
+        return isinstance(chk.get("name"), str) and bool(chk["name"])
+    if k in ("server", "server_absent"):
+        if not isinstance(chk.get("task"), str):
+            return False
+        try:
+            for rx in (chk.get("match") or {}).values():
+                re.compile(rx)
+        except re.error:
+            return False
+        return k == "server_absent" or bool(chk.get("match"))
     try:
         re.compile(str(chk.get("re") or ""))
     except re.error:
@@ -83,9 +118,29 @@ def check(chk: dict, state: dict) -> tuple[bool, str]:
         return False, "none passed: " + "; ".join(whys)
     k = chk.get("kind")
     errs = state.get("errors") or {}
+    if k == "flag":       # v0.999.138 something the job itself set (e.g. replay_done = the routine ran with no AI)
+        on = bool((state.get("flags") or {}).get(chk["name"]))
+        return on, f"{chk['name']} {'set' if on else 'not set'}"
+    if k == "used":       # v0.999.138 the step record shows a tool of this kind was used
+        tools = state.get("tools") or []
+        rx_u = re.compile(str(chk.get("re") or ""), re.I)
+        hit = [t for t in tools if rx_u.fullmatch(t)]
+        return bool(hit), (f"used {hit[0]}" if hit else f"no {chk.get('re')} in the steps ({', '.join(tools[:12]) or 'none'})")
     if k == "status":
         st = str(state.get("status") or "")
         return (st in chk["in"]), f"status {st or '-'} {'in' if st in chk['in'] else 'not in'} {chk['in']}"
+    if k in ("server", "server_absent"):   # v0.999.68 what the practice portal recorded for THIS task, after it started
+        rec = (state.get("server") or {}).get(chk["task"])
+        fresh = bool(rec) and float(rec.get("_at") or 0) >= float(state.get("since") or 0)
+        if k == "server_absent":
+            return (not fresh), (f"nothing recorded for {chk['task']} (good)" if not fresh else f"{chk['task']} WAS recorded")
+        if not fresh:
+            return False, f"the portal recorded nothing for {chk['task']}"
+        for field, rx in (chk.get("match") or {}).items():
+            got = rec.get(field)
+            if not re.search(rx, str(got if not isinstance(got, bool) else str(got).lower()), re.I | re.S):
+                return False, f"{chk['task']}.{field} = {str(got)[:80]!r} does not match /{rx}/"
+        return True, f"{chk['task']} recorded as asked"
     rx = re.compile(str(chk.get("re") or ""), re.I | re.S)
     if k == "title":
         if "screen" in errs:
@@ -120,16 +175,34 @@ def _resolve(tenant: str, pc_name: str) -> dict | None:
     from ..pc.hub import HOOLA_PC_KIND, hub
     want = str(pc_name or "").strip()
     conn = next((c for c in hub.online(tenant) if c.device_id == want), None) or hub.find(tenant, want)
+    pooled = False
+    if conn is None and "hoola" in want.lower():   # v0.999.74 a Hoola PC from the shared pool (paired by another account)
+        pooled = True
+        pcs = hub.hoola_pcs(tenant)
+        rest = " ".join(w for w in want.lower().split() if w not in ("hoola", "pc"))
+        conn = next((c for c in pcs if rest and rest in str((c.info or {}).get("name") or "").lower()), None) or \
+            (pcs[0] if pcs else None)
     if conn is None:
         return None
     info = conn.info or {}
     return {"device_id": conn.device_id, "name": str(info.get("name") or ""),
-            "kind": HOOLA_PC_KIND if info.get("kind") == HOOLA_PC_KIND else ""}
+            "kind": HOOLA_PC_KIND if info.get("kind") == HOOLA_PC_KIND else "", "pool": pooled}
+
+
+def online_names(tenant: str) -> str:
+    """The PCs she could name, for the error line (her own PCs + the Hoola PCs she may use)."""
+    try:
+        from ..pc.hub import hub
+        names = [str((c.info or {}).get("name") or c.device_id) for c in hub.online(tenant)]
+        names += [str((c.info or {}).get("name") or "Hoola PC") for c in hub.hoola_pcs(tenant)]
+        return ", ".join(dict.fromkeys(n for n in names if n))[:300]
+    except Exception:   # noqa: BLE001
+        return ""
 
 
 def _online(tenant: str, device_id: str) -> bool:
     from ..pc.hub import hub
-    return hub.is_online(tenant, device_id=device_id)
+    return hub.is_online(tenant, device_id=device_id) or any(c.device_id == device_id for c in hub.hoola_pcs(tenant))
 
 
 def guard(tenant: str, pc_name: str, confirm_not_her_pc: bool = False) -> dict:
@@ -138,8 +211,9 @@ def guard(tenant: str, pc_name: str, confirm_not_her_pc: bool = False) -> dict:
         raise ValueError("Name the TEST PC to run the PC card on (pc=...). The card never picks a PC by itself.")
     dev = _resolve(tenant, pc_name)
     if dev is None:
-        raise ValueError(f"No online PC matches '{str(pc_name)[:60]}'. Turn the test PC on and pair it first.")
-    if "test" not in (dev.get("name") or "").lower() and not confirm_not_her_pc:
+        raise ValueError(f"No online PC matches '{str(pc_name)[:60]}'. Online now: {online_names(tenant) or 'none'}. "
+                         "Type one of these in the lines box, e.g. browser@Hoola PC, or turn the test PC on and pair it.")
+    if "test" not in (dev.get("name") or "").lower() and not confirm_not_her_pc and not dev.get("kind"):
         raise ValueError(f"'{dev.get('name') or dev['device_id']}' does not have 'test' in its name. The PC card "
                          "clicks, types and opens sites for ~40 tasks, so it runs only on a test PC: rename that PC "
                          "to include 'test', or pass confirm_not_her_pc=true if you are sure it is NOT her own PC.")
@@ -172,20 +246,61 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
     t0 = time.time()
     row: dict[str, Any] = {"id": task["id"], "group": task["group"], "ok": False, "reason": "", "seconds": 0.0,
                            "steps": 0, "status": "", "brain": "", "model": "", "asks": 0, "answered": 0,
-                           "false_done": False, "stopped_at_approval": False}
+                           "false_done": False, "stopped_at_approval": False, "approved": 0,
+                           "signed_in": 0}
+    live = None
+    ask, replay = task["ask"], None
+    if task.get("routine_from"):          # v0.999.138 P5: the earlier job of this card saved as a routine, replayed with new values
+        from ..pc import routines as _rt
+        if not task.get("_from_job"):
+            row.update(reason=f"{task['routine_from']} did not finish well, so there is no routine to replay",
+                       status="not_started")
+            return row
+        try:
+            r = _rt.from_job(tenant, task["_from_job"], f"exam {task['id']}")
+        except Exception as e:   # noqa: BLE001
+            row.update(reason=f"no routine from {task['routine_from']}: {str(e)[:160]}", status="not_started")
+            return row
+        vals = {}
+        for want, v in (task.get("values") or {}).items():   # the exam names blanks loosely ('Name' -> 'Full name')
+            hit = next((b["name"] for b in r.get("blanks") or [] if want.lower() in b["name"].lower()), want)
+            vals[hit] = v
+        ask, replay = _rt.task_text(r, vals), {**r, "values": vals}
+        row["routine_blanks"] = [b["name"] for b in r.get("blanks") or []]
+    rules_before = None
+    if task.get("rules") is not None:     # v0.999.138 P2: her rules for this one job, put back right after
+        from ..pc import guard as _guard
+        rules_before = _guard.get(tenant)
+        _guard.save(tenant, {**rules_before, **task["rules"]})
     try:
-        live = await O.start(tenant, conv, task["ask"], wait=0, kind=dev.get("kind") or "",
-                             pc=dev["device_id"], replace=False)
-    except Exception as e:
-        row["reason"] = f"could not start: {str(e)[:200] or type(e).__name__}"
-        row["status"] = "not_started"
-        return row
+        return await _run_task_body(tenant, conv, task, dev, O, t0, row, ask, replay)
+    finally:
+        if rules_before is not None:
+            _guard.save(tenant, rules_before)
+
+
+async def _run_task_body(tenant, conv, task, dev, O, t0, row, ask, replay) -> dict:
+    live = None
+    for attempt in range(13):   # v0.999.84 the PC may still be winding down the last task: wait up to 2 min, never skip
+        try:
+            live = await O.start(tenant, conv, ask, wait=0, kind=dev.get("kind") or "",
+                                 pc="" if dev.get("pool") else dev["device_id"], replace=False,
+                                 replay=replay)   # v0.999.74 the pool picks a free Hoola PC
+            break
+        except Exception as e:
+            if "PC_BUSY" in str(e) and attempt < 12 and not _STOP:
+                await asyncio.sleep(BUSY_WAIT_S)
+                continue
+            row["reason"] = f"could not start: {str(e)[:200] or type(e).__name__}"
+            row["status"] = "not_started"
+            return row
     sid = str((live or {}).get("session_id") or "")
     op = O.OPS.get(sid)
     if op is None:
         row["reason"], row["status"] = "operator gave no session", "not_started"
         return row
     _CUR.update(tenant=tenant, sid=sid)
+    row["job"] = sid                      # v0.999.93 the step record of this job: data/pc_trace/<tenant>/<job> (vps-ops pc_trace)
     deadline = t0 + float(task.get("max_minutes") or 4) * 60
     final, stop_after = "", False
     try:
@@ -194,6 +309,24 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
                 final = str(op.status or "")
                 break
             if op.status == "needs_confirm":
+                pend = getattr(op, "pending", None) or {}
+                # v0.999.84 the exam plays HER tap - only on its own practice portal and only where the task says so; the
+                # checkout task never approves (stopping there IS the right answer)
+                row["approval_asked"] = str(pend.get("what") or "")[:200]   # v0.999.104 what the stop was about (the card shows it)
+                # v0.999.104 on a REAL site (the portal exam) only a cookie-consent question is answered for her (a yes there
+                # changes nothing of hers); anything else stops the job, as before
+                cookie = bool(re.search(r"\bcookie|consent|privacy (choices|settings)", row["approval_asked"], re.I)) \
+                    and not re.search(r"pay|buy|order|submit|send|sign|delete|password", row["approval_asked"], re.I)
+                if task.get("cookies") and cookie and pend.get("id") and row["approved"] < MAX_APPROVALS:
+                    if O.decide(tenant, sid, pend["id"], True):
+                        row["approved"] += 1
+                        await asyncio.sleep(POLL_S)
+                        continue
+                if task.get("approve") and task.get("_run") and pend.get("id") and row["approved"] < MAX_APPROVALS:
+                    if O.decide(tenant, sid, pend["id"], True):
+                        row["approved"] += 1
+                        await asyncio.sleep(POLL_S)
+                        continue
                 final, stop_after = "needs_confirm", True
                 break
             ask = getattr(op, "ask", None)
@@ -202,8 +335,29 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
                     if O.give_answer(tenant, task["answer"], op.conv):
                         row["answered"] += 1
                 else:
+                    row["asked_q"] = str(ask.get("question") or "")[:200]   # v0.999.107 what it asked her
                     final, stop_after = "asked", True
                     break
+            lg = getattr(op, "login", None)        # v0.999.96 the private sign-in form opened = a clean hand-off to her
+            if isinstance(lg, dict) and lg.get("status") == "pending":
+                # v0.999.98 on its OWN practice portal the exam fills that private form the way she would (the model never
+                # sees what is typed); a task without sign_in stops here - the hand-off itself is its pass
+                si = task.get("sign_in")
+                if si and task.get("_run") and row["signed_in"] < 2:
+                    from ..pc import hands as _hands
+                    if _hands.give_login(op, lg["id"], si[0], si[1]):
+                        row["signed_in"] += 1
+                        await asyncio.sleep(POLL_S)
+                        continue
+                final, stop_after = "sign_in_handed", True
+                break
+            otp = getattr(op, "otp", None)          # v0.999.98 the OTP box (ask_otp): the exam gives the practice code
+            if otp is not None and getattr(otp, "status", "") == "pending" and task.get("otp") and task.get("_run") \
+                    and row["answered"] < MAX_ANSWERS:
+                if O.give_otp(tenant, otp.id, task["otp"]):
+                    row["answered"] += 1
+                    await asyncio.sleep(POLL_S)
+                    continue
             if _STOP:
                 final, stop_after = "card_stopped", True
                 break
@@ -212,9 +366,28 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
                 break
             await asyncio.sleep(POLL_S)
         state = await _read_state(op, needs(task["check"]))
-        state["answer"] = " ".join(x for x in (str(op.summary or ""), str(op.reason or "")) if x)
+        state["answer"] = " ".join(x for x in (str(op.summary or ""), str(op.reason or ""),
+                                               str(row.get("asked_q") or "")) if x)   # v0.999.141 a question she was asked counts as said
+        state["flags"] = {"replay_done": bool(getattr(op, "replay_done", False))}   # v0.999.138
+        try:                                   # v0.999.138 which tools the job really used (its step record)
+            from ..pc import trace as _tr
+            state["tools"] = sorted({str(x.get("tool") or "") for x in ((_tr.read(tenant, op.id) or {}).get("steps_list") or [])} - {""})
+        except Exception:
+            state["tools"] = []
+        row["tools"] = state["tools"][:20]
         state["status"] = final
+        if task.get("_run"):   # v0.999.68 the practice portal's records for this run, newer than this task's start
+            from .. import practice
+            state["server"], state["since"] = practice.records(task["_run"]), t0
         ok, why = check(task["check"], state)
+        # v0.999.135 a page check on a REAL site counts only when the page in front is that site: a job Hoola refused
+        # before opening (cloud-blocked, P7) left the previous job's page there, which once 'passed' bizfile on a TED page
+        from ..pc import lessons as _ls
+        want = _ls.sites_of(task.get("ask", ""))
+        seen = _site_hosts(str(state.get("page") or "")[:600])
+        if ok and task["check"].get("kind") == "page" and want and not task.get("_run") \
+                and not any(s == w or s.endswith("." + w) or w.endswith("." + s) for s in seen for w in want):
+            ok, why = False, f"the page in front is not {', '.join(sorted(want))[:80]} (it is {', '.join(sorted(seen))[:80] or 'unknown'})"
         if final == "timeout":
             ok, why = False, f"timed out after {task.get('max_minutes')} min ({why})"
         elif final == "card_stopped":
@@ -222,6 +395,15 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
         row.update(ok=ok, reason=why, status=final)
         row["stopped_at_approval"] = final == "needs_confirm"
         row["false_done"] = final == "done" and not ok
+        # v0.999.104 a real site that refuses this cloud computer (403 / CloudFront / blank) AND Hoola said so plainly: an
+        # honest hand-off for her own PC (plan P7), counted apart - never a pass
+        said = state["answer"].lower()
+        if not ok and final in ("partial", "done") and re.search(r"block|403|refus|not load|nahi khul|cloud", said):
+            row["blocked_said"] = True
+        # v0.999.107 a 'verify you are human' check (Cloudflare / captcha) handed to her: also a right hand-off, counted apart
+        if not ok and final == "asked" and re.search(r"human|captcha|robot|verify you|cloudflare|security check",
+                                                     row.get("asked_q", ""), re.I):
+            row["human_check"] = True
         row["page_seen"] = str(state.get("page") or "")[:300]
         row["title_seen"] = str(state.get("title") or "")[:120]
     finally:
@@ -230,6 +412,10 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
                 O.stop(tenant, sid)       # an approval stop: nothing is bought, the task ends here
             except Exception:
                 pass
+            for _ in range(int(FREE_WAIT_S / max(POLL_S, 0.01))):   # v0.999.84 let the PC wind down before the next task
+                if op.done_event.is_set():
+                    break
+                await asyncio.sleep(POLL_S)
         _CUR.clear()
         row["seconds"] = round(time.time() - t0, 1)
         row["steps"] = int(getattr(op, "step", 0) or 0)
@@ -241,13 +427,13 @@ async def run_task(tenant: str, conv: str, task: dict, dev: dict) -> dict:
 
 # ---------------------------------------------------------------- the card
 
-def summarize(rows: list[dict]) -> dict:
+def summarize(rows: list[dict], rupees: float | None = None, groups_order: tuple | None = None) -> dict:
     ran = [r for r in rows if not r.get("skipped")]
     ok = [r for r in ran if r.get("ok")]
     secs = [r["seconds"] for r in ran if r.get("status") != "not_started"]
     steps = [r["steps"] for r in ran if r.get("status") != "not_started"]
     groups = {}
-    for g in GROUPS:
+    for g in (groups_order or GROUPS):
         gr = [r for r in ran if r["group"] == g]
         if gr:
             n_ok = sum(1 for r in gr if r.get("ok"))
@@ -257,35 +443,65 @@ def summarize(rows: list[dict]) -> dict:
             "median_seconds": round(statistics.median(secs), 1) if secs else None,
             "median_steps": statistics.median(steps) if steps else None,
             "false_done": sum(1 for r in ran if r.get("false_done")),
+            "blocked_said": sum(1 for r in ran if r.get("blocked_said")),
+            "human_check": sum(1 for r in ran if r.get("human_check")),
             "asks": sum(r.get("asks", 0) for r in ran),
             "approval_stops": sum(1 for r in ran if r.get("stopped_at_approval")),
-            "rupees": "not measured", "groups": groups}
+            "rupees": (f"~Rs {rupees} (estimate from steps x brain price)" if rupees is not None else "not measured"),
+            "groups": groups}
 
 
 async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv: str | None = None,
                    budget_minutes: float = 240, confirm_not_her_pc: bool = False,
-                   skip_needs: list[str] | None = None, label: str = "", save_card: bool = True) -> dict:
-    """Run the card (or the tasks in `ids`) on the named TEST PC, in order. Returns the saved card."""
+                   skip_needs: list[str] | None = None, label: str = "", save_card: bool = True,
+                   set_name: str = "desktop", trial: bool = False) -> dict:
+    """Run one exam (desktop | browser | portal), or the tasks in `ids`, on the named TEST PC (or a Hoola PC), in order.
+    Returns the saved card."""
     global _RUNNING, _STOP
     if _RUNNING:
         raise RuntimeError("A PC card is already running - wait for it or stop it first.")
+    if set_name not in SETS:
+        raise ValueError(f"Unknown exam '{set_name}'. Use one of: {', '.join(SETS)}.")
     dev = guard(tenant, pc_name, confirm_not_her_pc)
-    tasks = [t for t in TASKS if not ids or t["id"] in set(ids)]
+    pool = SETS[set_name]["tasks"]
+    tasks = [dict(t) for t in pool if not ids or t["id"] in set(ids)]
     if ids:
-        unknown = sorted(set(ids) - {t["id"] for t in TASKS})
+        unknown = sorted(set(ids) - {t["id"] for t in pool})
         if unknown:
             raise ValueError(f"Unknown task ids: {', '.join(unknown)}")
+    run = ""
+    if any("{P}" in t["ask"] for t in tasks):   # v0.999.68 a fresh practice-portal run for this card
+        from .. import practice
+        base = practice_base()
+        run = practice.new_run()
+        for t in tasks:
+            t["ask"], t["_run"] = t["ask"].replace("{P}", f"{base}/practice/{run}"), run
+    for t in tasks:                  # v0.999.138 a routine replay works on the same practice run as the job it came from
+        if t.get("routine_from") and run:
+            t["_run"] = run
     _RUNNING, _STOP = True, False
+    from ..pc import lessons as _lessons    # v0.999.118 P8 a trial card is the only run that reads candidate lessons
+    if trial:
+        _lessons.tidy()                    # no near-copies, nothing about the exam's own practice site
+    _lessons.TRIAL["on"] = bool(trial)
     conv = conv or "__pccard__"
     skip = set(skip_needs or [])
+    fname = f"pccard-{time.strftime('%Y%m%d-%H%M%S')}.json"   # v0.999.80 one file, written after EVERY task
     t0 = time.time()
     rows: list[dict] = []
     note = ""
     STATUS.clear()
     STATUS.update(running=True, pc=dev.get("name") or dev["device_id"], of=len(tasks), done=0, task="",
                   started=int(t0), ok=0)
+    from ..config import get_settings
+    from ..pc import rescue as _rescue
+    spent0 = _rescue.spent_today(tenant)       # v0.999.65 the card's own cost = today's PC estimate before vs after
+    cap = float(getattr(get_settings(), "pc_daily_inr", 300) or 0)
     try:
         for t in tasks:
+            if cap > 0 and _rescue.spent_today(tenant) >= cap:   # v0.999.65 stop cleanly, do not fail the rest one by one
+                note = f"today's PC allowance (Rs {cap:.0f}, an estimate) is used up - run the rest tomorrow with the ids"
+                break
             if t.get("needs") and t["needs"] in skip:
                 rows.append({"id": t["id"], "group": t["group"], "skipped": True, "reason": f"PC has no {t['needs']}"})
                 continue
@@ -299,20 +515,57 @@ async def run_card(tenant: str, pc_name: str, ids: list[str] | None = None, conv
                 note = "the test PC went offline"
                 break
             STATUS["task"] = t["id"]
+            if t.get("routine_from"):     # v0.999.138 the routine comes from that earlier task's job, if it went well
+                t["_from_job"] = next((r.get("job") for r in rows if r["id"] == t["routine_from"] and r.get("ok")), "")
             row = await run_task(tenant, conv, t, dev)
             rows.append(row)
+            if save_card:   # v0.999.80 a server restart mid-run keeps every finished task (her first run lost all of them)
+                try:
+                    save({"kind": "pccard", "exam": set_name, "set": SETS[set_name]["v"], "practice_run": run,
+                          "pc": dev.get("name") or "", "device_id": dev["device_id"], "label": label, "at": int(time.time()),
+                          "status": "running", "minutes": round((time.time() - t0) / 60, 1), "asked_for": len(tasks),
+                          "note": f"running - {len(rows)} of {len(tasks)} done", "summary": summarize(rows, None, SETS[set_name]["groups"]),
+                          "rows": rows, "not_run": [x["id"] for x in tasks if x["id"] not in {r["id"] for r in rows}],
+                          "ids_asked": [x["id"] for x in tasks]}, fname)
+                except Exception:
+                    log.debug("pc card partial save failed", exc_info=True)
             STATUS["done"] = len(rows)
             STATUS["ok"] = sum(1 for r in rows if r.get("ok"))
     finally:
         _RUNNING = False
+        _lessons.TRIAL["on"] = False
         STATUS.update(running=False, task="")
-    card = {"kind": "pccard", "set": SET_V, "pc": dev.get("name") or "", "device_id": dev["device_id"],
+    rupees = round(_rescue.spent_today(tenant) - spent0, 1) if _rescue.spent_today(tenant) >= spent0 else None
+    card = {"kind": "pccard", "exam": set_name, "set": SETS[set_name]["v"], "practice_run": run, "pc": dev.get("name") or "", "device_id": dev["device_id"],
             "label": label, "at": int(time.time()), "minutes": round((time.time() - t0) / 60, 1),
-            "asked_for": len(tasks), "note": note, "summary": summarize(rows), "rows": rows}
+            "asked_for": len(tasks), "note": note, "summary": summarize(rows, rupees, SETS[set_name]["groups"]), "rows": rows,
+            "not_run": [t["id"] for t in tasks if t["id"] not in {r["id"] for r in rows}], "status": "finished",
+            "ids_asked": [t["id"] for t in tasks], "trial": bool(trial)}
     if save_card:
-        card = save(card)
+        card = save(card, fname)
+    if trial and not note:     # v0.999.118 P8 the exam decides: keep the candidates or drop them
+        try:
+            card["lessons"] = _lessons.settle(card, _lessons.base_card(set_name, card["pc"], card.get("file", "")),
+                                              sites=set().union(*(_lessons.sites_of(t["ask"]) for t in tasks)),
+                                              task_sites={t["id"]: _lessons.sites_of(t["ask"]) for t in tasks})
+            if save_card:
+                card = save(card, fname)
+        except Exception:
+            log.exception("pc lessons settle failed")
     STATUS["last"] = card.get("file", "")
     return card
+
+
+def practice_base() -> str:
+    """The public address the PC opens the practice portal at (the PC is outside this server)."""
+    import os
+    from ..config import get_settings
+    st = get_settings()
+    base = (os.environ.get("PRACTICE_BASE_URL") or st.public_base_url or
+            (f"https://{st.hoola_domain}" if getattr(st, "hoola_domain", "") else "")).strip().rstrip("/")
+    if not base:
+        raise ValueError("PUBLIC_BASE_URL is not set, so the PC cannot reach the practice portal.")
+    return base
 
 
 def request_stop() -> bool:
@@ -335,11 +588,21 @@ def running() -> bool:
 
 # ---------------------------------------------------------------- storage (the quality folder, like every card)
 
-def save(card: dict) -> dict:
+def save(card: dict, name: str = "") -> dict:
     from .run import _dir
-    name = f"pccard-{time.strftime('%Y%m%d-%H%M%S')}.json"
+    name = name or f"pccard-{time.strftime('%Y%m%d-%H%M%S')}.json"
     (_dir() / name).write_text(json.dumps(card, ensure_ascii=False, indent=1))
     return {**card, "file": name}
+
+
+def _cut(card: dict) -> dict:
+    """v0.999.80 a card still marked running while no card runs in this process = the server restarted under it."""
+    if card.get("status") == "running" and not _RUNNING:
+        left = card.get("not_run") or []
+        card = {**card, "status": "cut",
+                "note": f"stopped by a server restart after {len(card.get('rows') or [])} of {card.get('asked_for')} tasks"
+                        + (f" - run the rest with lines {card.get('exam', 'desktop')}@{card.get('pc') or 'PC'}:{','.join(left)}" if left else "")}
+    return card
 
 
 def saved() -> list[dict]:
@@ -348,6 +611,7 @@ def saved() -> list[dict]:
     for p in sorted(_dir().glob("pccard-*.json"), reverse=True)[:30]:
         try:
             d = json.loads(p.read_text())
+            d = _cut(d)
             out.append({"file": p.name, "at": d.get("at"), "pc": d.get("pc"), "label": d.get("label"),
                         "note": d.get("note"), "summary": d.get("summary")})
         except Exception:
@@ -361,18 +625,26 @@ def last() -> dict | None:
     if not files:
         return None
     try:
-        return {**json.loads(files[0].read_text()), "file": files[0].name}
+        return {**_cut(json.loads(files[0].read_text())), "file": files[0].name}
     except Exception:
         return None
 
 
 def lines(card: dict) -> list[str]:
     s = card.get("summary") or {}
-    out = [f"PC card (set v{card.get('set')}) on {card.get('pc') or card.get('device_id')}: "
+    out = [f"PC card {card.get('exam', 'desktop')} (set v{card.get('set')}) on {card.get('pc') or card.get('device_id')}: "
            f"{s.get('ok')}/{s.get('ran')} passed ({s.get('success_pct')}%), median {s.get('median_seconds')} s / "
            f"{s.get('median_steps')} steps, false done {s.get('false_done')}, asks {s.get('asks')}, "
            f"approval stops {s.get('approval_stops')}, rupees {s.get('rupees')}"
+           + (f", blocked by the site + said so: {s['blocked_said']}" if s.get("blocked_said") else "")
+           + (f", 'are you human' check handed to her: {s['human_check']}" if s.get("human_check") else "")
            + (f" - {card['note']}" if card.get("note") else "")]
+    if card.get("trial"):     # v0.999.136 P8 the verdict on Hoola's lessons, right in the status
+        lv = card.get("lessons") or {}
+        out.append(f"  lessons: {lv.get('verdict', 'not judged')} - {lv.get('why', 'the trial did not finish')}"
+                   + (f" ({len(lv.get('lessons') or [])} lesson(s))" if lv.get("lessons") else ""))
+    if card.get("not_run"):
+        out.append(f"  not run yet: {', '.join(card['not_run'])}")
     for g, v in (s.get("groups") or {}).items():
         out.append(f"  {g}: {v['ok']}/{v['n']} ({v['pct']}%)")
     return out

@@ -27,7 +27,8 @@ void main() {
       expect(c.dark, b == Brightness.dark);
       expect(t.scaffoldBackgroundColor, c.bg);
       expect(t.textTheme.bodyMedium!.fontFamily, HoolaFont.sans);
-      expect(t.textTheme.displayLarge!.fontFamily, HoolaFont.serif);
+      // v0.999.206 the greeting is Literata cut at Claude's light weights (330 / dark 290)
+      expect(t.textTheme.displayLarge!.fontFamily, b == Brightness.dark ? HoolaFont.greetDark : HoolaFont.greet);
       // the type scale: nothing under 12, nothing heavier than 700
       for (final s in [
         t.textTheme.displayLarge, t.textTheme.headlineSmall, t.textTheme.titleLarge, t.textTheme.titleMedium,

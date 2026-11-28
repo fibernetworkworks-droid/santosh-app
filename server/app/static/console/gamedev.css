@@ -612,3 +612,8 @@ html.calm.gdv-engine *,html.calm.gdv-engine *::before,html.calm.gdv-engine *::af
 .gdv-engine :is(.hck,.hck-bar,.hck-jump){--hck-violet:var(--pri);--hck-soft:var(--pri-soft);--hck-softink:var(--pri-ink);--hck-term:#FF9E9E;--hck-info:#8AB4F8;
   --hck-pill:#2A2F42;--hck-onpill:var(--ink);--hck-code:var(--code-bg);--hck-sh:var(--sh)}
 
+/* v0.999.204 TITLES LIKE CLAUDE (owner: "ALSO DO GAME DEV AND HOOLA COMPUTER TITLES"): the home greeting in Claude's
+   greeting - Literata 38 / 1.2 at opsz 48, at the dark weight 290 (the engine look is always dark); the page titles
+   (All games, The crew ...) in the same serif at 28 / 1.25, at Claude's dark title weight 530. */
+.gdv-hero h1{font-family:'Literata',Georgia,serif;font-size:clamp(28px,5.4vw,38px);line-height:1.2;letter-spacing:normal;font-variation-settings:"opsz" 48;font-weight:290}
+.gdv-pageh h1{font-family:'Literata',Georgia,serif;font-size:28px;line-height:1.25;font-weight:530;letter-spacing:normal;font-variation-settings:"opsz" 28}

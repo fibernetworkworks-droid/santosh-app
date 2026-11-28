@@ -3339,3 +3339,776 @@ Ask: "GO P12"
 Built: promptproof.py (Hoola's own brief as a third arm, free + live with a ceiling, uncovered sections listed, ten users first vs second half), owner route + Results box, vps-ops prompt_proof / prompt_proof_try, 5 tests
 Found: code-only brief adds little (web 6% -> 16%, script 9% -> 9% of must items vs 99% / 98% for a perfect brief)
 Not verified: no live run; no users with enough results
+
+
+Task ID: v0.999.40 SOCIAL DESK
+Ask: "NOW LETS MOVE TO NEXT AI EMPLOYEE SECTION" -> design (claude.ai/artifact/MkKK3knH9dzYJJWh7kyAfT) -> "GO BUILD"
+Built: /console/social (Social chat beside Today / Calendar / Inbox / Growth / Ads / Reports & settings), socialchat.py (kind 'social'), new tool social_desk (drafts only), phone Call + Chat
+Found: the Social Media Manager had no chat tool at all; the tool first let any post status through (fixed: draft / skipped only)
+Left red: frozen test_v0836_desktop_team.py pins 630 tools (now 631) and its version line - editing it was blocked; needs her OK
+Not verified: her server, a real model turn, a real Instagram account, the phone
+
+---
+Task ID: v0.999.41 ONE ROW WHILE IT BUILDS
+Ask: too many rows above the page while it builds (header, LIVE row, page tabs, browser bar) - fix
+Built: one header row in liveView (status, page picker menu, device, Follow / Code icons, close); no browser bar, no second Pause
+Not verified: her server or phone
+
+---
+Task ID: v0.999.44 ACCOUNTS DESK (built as 0.999.43)
+Ask: "NOW LETS MOVE TO NEXT EMPLOYEE" -> design (claude.ai/artifact/SEsautNMYTn6DTx6S1DZH8) -> "GO BUILD... USE CAN EVEN ATTACH THE FILES, PHOTOS, DOC IN CHAT"
+Built: /console/accounts (Accounts chat with file attach beside bahi.js screens in 6 pages), accountschat.py (kind 'accounts'), tool accounts_desk (632), intake.fix_draft, phone Call button
+Found: the GST & Accounts employee had no chat tool; a bill attached in any chat never reached the desk
+Left red: frozen test_v0836_desktop_team.py pins (632 tools, version)
+Not verified: her server, OCR on bill photos there, a real model turn, the phone
+
+---
+Task ID: v0.999.45 A PROFESSIONAL PREVIEW PANEL
+Ask: still need polish and professionalism in the website preview panel
+Built: address bar with site name + draft badge, page fills the stage, device fitted whole, narrow header, Code file list
+Not verified: her server
+
+---
+Task ID: v0.999.46 CA DOCUMENT DESK
+Ask: GST & Accounts employee that collects every CA client's documents (doc, photo, PDF, ZIP) from WhatsApp, Telegram, Slack, email, LinkedIn, the CA's PC and arranges them in a folder per client, on the CA's PC or in the cloud
+Built: bahi/practice.py (+ practice_api), channel intake for WhatsApp / Telegram / Slack / email / PC drop / upload, Drive + PC mirrors, desktop save_into + ca_drop (freeze exception, her yes), accounts_desk practice actions, console CA practice pages, phone screens
+Found: LinkedIn gives no app access to messages - shown as not possible
+Not verified: her server, live channels, Drive, a real PC, the phone
+
+---
+Task ID: v0.999.48 OPEN TO EVERYTHING
+Ask: same as Lovable and Emergent, not only for business (GO O1)
+Built: purpose + interactive kind in the architect, prompts not business-only, 16k working sections, starters and home across kinds
+Not verified: her server with a real model
+
+---
+Task ID: v0.999.50 DESIGN CARD
+Ask: GO D0 (measure today's Web Studio design: 40 briefs, critic + checks + speed + her verdict)
+Built: the design card, critic, owner verdict page, vps-ops jobs (try 4 / full 40)
+Not verified: no live run - no baseline numbers yet
+Task ID: v0.999.52 LEAD DESK (built as 0.999.47)
+Ask: next employee = Lead Generation; check how it is now; design first; then build
+Built: /console/leads (chat beside Today / Find / Leads / one lead / Lists / Quality), leads/pipeline.py (stages, follow-ups, notes, timeline, saved searches, quality, two-tap hand-offs, WhatsApp-link drafts), leadschat.py, tool leads_desk, phone Call Lead Generation
+Left red: frozen test_v0836_desktop_team.py pins
+Not verified: her server, live searches from the new page, the phone
+
+---
+Task ID: v0.999.55 THE KIT
+Ask: GO to the next work -> D1 (her answers: React, writer by tier, Magic UI + React Bits, own references)
+Built: image rev 2, 48 ui parts, effects, 39 React blocks, taste rules, contrast floor, kit render check (PASS 3 genomes x 2 widths)
+Not verified: her server (needs appengine_setup rev 2); websites still on the HTML engine
+
+Task ID: v0.999.56 LEAD SCAN
+Ask: the Google Maps scraper already exists - check it; then feed it to the Lead Generation employee.
+Built: desk Start / Save for the scan, weekly saved scans, chat action=scan, background run.
+Deploy:
+
+---
+Task ID: v0.999.58 THE DESIGN GENOME
+Ask: GO D2
+Built: genome.py (palette from a hue, fonts by rule, genes, DESIGN.md import / export), app engine + tool wiring, 100-genome proof
+Not verified: her server; websites still on the HTML engine
+
+Task ID: v0.999.59 HOOLA SPIDER
+Ask: github.com/scrapy/scrapy in Hoola, same clone.
+Built: app/spider.py engine + spider tool + worker slot + exports.
+Deploy:
+
+Task ID: v0.999.61 SPIDER FAST + SITEMAP + BROWSER
+Ask: GO 1 2 3 (parallel, sitemap spider, browser for JS pages).
+Built: batch fetch with per-site gaps, sitemap seeding, render auto/always behind the owner switch.
+Deploy:
+
+Task ID: v0.999.63 APIFY LANE
+Ask: GO APIFY, change the rule for Instagram / Facebook / LinkedIn / TikTok profiles.
+Built: APIFY lane on her token, business-only, no logins, cost ceiling; CLAUDE.md rule amended.
+Deploy: needs APIFY_TOKEN + APIFY_TERMS_ACK=apify in the VPS .env, then her opt-in.
+
+---
+Task ID: v0.999.64 PRE-RENDER + ISLANDS
+Ask: GO D3
+Built: pre-render step + islands + site pages served sealed, NODE_ENV fix, stand-in fonts, speed lab (PASS in 3 designs here)
+Not verified: her server (deploy + appengine_speed); real visitors' phones; websites still on the HTML engine
+
+---
+Task ID: v0.999.65 THE WRITER + AUTOFIX
+Ask: GO D4
+Built: AutoFix on every App Engine write, the prototype -> React writer (kit blocks + her words + her facts), Studio wiring behind studio_react_sites (off), the 40-brief writer card (40 of 40 briefs built, 0 refused writes left, 40 TypeScript-clean, 222 pages pre-rendered, no kit sample text, 96 AutoFix repairs, 4 refused once then right)
+Not verified: her server (deploy + site_writer_card); a live model writing the words / custom sections; the switch is off
+
+---
+Task ID: v0.999.67 THE CRITIC LOOP
+Ask: GO D5
+Built: appengine/critic.py (photos with numbered sections, code measures, a separate critic, fixes from a fixed list checked by code, max 3 rounds, best kept, 3 hero directions), writer design choices + hidden pages, Build the real website wiring, Studio review line, the critic card (40 of 40 built, 0 refused writes left, every site photographed + reviewed (scripted critic), 222 pages, 0 sample text, median 81 s)
+Not verified: her server; a live critic (the D0-beaten done-line needs site_critic_card_try + a live D0 card); the switch is off
+
+Task ID: v0.999.73 TELECALLER GLOBAL
+Telecaller global: world.py (242 countries), safe floor, phonenumbers, all-zones hours, language abroad, every-script knowledge search, desk country search. Tests 7 new + the telecaller suites.
+
+---
+Task ID: v0.999.75 THE REFERENCE LIBRARY
+Ask: GO D6
+Built: appengine/refs.py (ae_refs: learned design choices, kept, links she likes with a guarded capture), the writer's starting choices + custom examples + likes, the critic sees her liked sites, the loop learns from every reviewed site, publish marks kept, /api/appengine-refs routes, Studio Settings "Sites you like", card fields + against_d5 (40 of 40 built, 0 refused writes left, 148 starting choices from Hoola's references on 36 sites (scripted critic), 222 pages, 0 sample text)
+Not verified: her server; a live critic (score up vs D5 needs site_critic_card_try then site_refs_card_try); the switch is off
+
+---
+Task ID: v0.999.76 EDIT FOREVER
+Ask: GO D7
+Built: appengine/edits.py (her words + section choices as data, undo), the writer + critic loop keep them, site/rxedit.py (sections, words, section, undo, design panel) + /api/sites/{ref}/rx/* routes, preview.js site mode, Web Studio edit switch + panels, chat website action=rx_edit / rx_undo
+Not verified: her server and her clicks; pictures not changed by clicking yet; studio_react_sites off
+
+Task ID: v0.999.78 GET THE NUMBER
+Get the number: numberguide.py, settings guide per provider, console dialog + table, phone sheet, 6 tests incl. browser walk.
+
+Task ID: v0.999.81 CUSTOMER SUPPORT DESK
+Customer Support employee made live with its own desk (/console/support) and Support chat on the existing Seva engine; 4 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.85 SUPPORT SETUP
+G0 of the global Customer Support plan: setup questions, profile and 15 industry packs; 9 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.86 SUPPORT BRAIN
+G1 of the global Customer Support plan: one business brain shared with the Telecaller, versions, owners, review dates, stale pages, help-center import, solved-ticket suggestions, customer-bound lookups; 9 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.87 SUPPORT ENGINE
+G2 of the global Customer Support plan: the answer engine, trust levels, drafts and the check before every WhatsApp reply; 8 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+---
+Task ID: v0.999.88 FEATURES WAVES 1-7
+Ask: GO D8, GO D8 WAVE 2, GO D8 WAVE 3, GO D8 WAVE 4, GO D8 WAVE 5, GO D8 WAVE 6
+Built: wave 7 = visitor sign-in + real rows (src/lib/member.ts locked, islands/MemberSignIn.tsx + MemberRows.tsx, writer.member_el / MEMBER_SCREENS / list_for, prototype.site_link app lists, rxhost.allowed site-app); wave 6 = the catalogue filter bar island (islands/CatalogFilter.tsx over public/catalog/<list>.json) + Add to cart on items her shop sells (islands/AddToCart.tsx); wave 5 = site/rxhost.py (React website live unsealed on its own address), hosting launch / publish / headers, the visitor-address pass-through in main, locked src/lib/keep.ts (cart + ticks); wave 4 = her photos on React websites (prototype.sync_photos) + her catalogue (prototype.catalog_link, writer.catalog_files, blocks/catalog.tsx, pre-render 6,000); wave 3 = 13 non-business blocks (about me, resume, case studies, schedule, RSVP, venue, members, discussions, lessons, quiz, progress, tool panel, game area) + writer.kit_block / kit_ok + prototype item shapes; wave 2 = blog post pages (article block, data files, refresh on every post change, React-only sites can post), second languages (appengine/langs.py, /<code>/ pages, switch, hreflang, Update translations), pre-render follows block links; wave 1 = forms / booking / shop + payments on her website's own addresses (contact-block, booking-slots, products-grid, the ShopCart island), site_link + shop change refresh, writer.sync_kit, page-wide islands wake at load, appengine/parity.py (python -m app.appengine parity)
+Not verified: her server; still to build: live chat, push, AI on the website, visitors posting to each other; studio_react_sites still OFF
+
+Task ID: v0.999.89 SUPPORT WORKFLOW
+G8 of the global Customer Support plan: her ticket workflow, stages, moves and 'where is my request' from the real stage; 8 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+---
+Task ID: v0.999.91 LIVE CHAT + QUEUE
+Ask: GO D8 WAVE 8
+Built: liveStream in src/lib/member.ts (locked), islands/LiveChat.tsx (visitor + staff), islands/QueueBoard.tsx (board / take a token / staff call next), writer places them (layout + home + first signed-in page), site.prototype.site_link carries her queue switch, appengine/parity.py live = works; fixed the chat effect cleanup (scrollIntoView Promise)
+Not verified: her server; browser push and AI inside her site still to build; studio_react_sites still OFF
+
+Task ID: v0.999.92 HOOLA ROUTE (built as 0.999.87)
+The automation page /console/route on the DHARA engine: router, filters, per-step error handling, incomplete runs, errors-in-a-row stop, error route, a global scheduler (time zones, weekdays, month days, quiet hours, holidays), page API, Tools card; 20 tests incl. a browser walk. Deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.94 SUPPORT WATCH
+G9 of the global Customer Support plan: working hours, solved only when the customer confirms, reopening, the reminder ladder, customer updates, list per person, stuck reasons; 11 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.95 SUPPORT HANDOVER
+G7 of the global Customer Support plan: hand-over rules, packet, honest wait times, out of hours, urgent paging, take / hand back, corrections lowering trust; 7 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.97 SUPPORT CHANNELS
+G4 of the global Customer Support plan: 12 messaging apps joined on her own accounts with signature checks, sealed keys, replies and ticket updates on the same app; 9 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.99 SUPPORT WEB CHAT
+G5 of the global Customer Support plan: website chat widget, hosted chat page, contact form, her app's API + signed webhook; 7 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.100 SUPPORT EMAIL
+G6 of the global Customer Support plan: support email over IMAP / SMTP or forwarding, threads, ticket replies, loop guard, attachments; 9 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+---
+Task ID: v0.999.102 BROWSER PUSH
+Ask: GO D8 WAVE 9
+Built: public/hoola-push-sw.js (locked worker), pushState / pushOn / pushOff in src/lib/member.ts (locked), signOut stops this browser's notifications, Notify part on My account (MemberRows), appengine/parity.py push = works
+Not verified: a real notification through Google / Mozilla / Apple; her server; AI inside her site still to build; studio_react_sites still OFF
+
+Task ID: v0.999.103 SUPPORT CALLS
+G3 of the global Customer Support plan: phone calls in the support desk - calls on the desk, warm transfer, machine / menu check, learned reply wait, idle + fillers, WhatsApp calls; 15 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.105 SUPPORT TEAMS
+G10 of the global Customer Support plan: people + shifts, queues, routing, rule engine, roles, money approval chains, macros with actions, custom fields, saved views; 10 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+---
+Task ID: v0.999.106 HER AI ASSISTANT
+Ask: GO D8 WAVE 10
+Built: src/islands/AiChat.tsx (notice + I agree, chat, suggested questions, form fields), aiApp / aiAgree / aiSealed in src/lib/member.ts (locked), site/rxhost.ai_allowed (only her own app on her address), site/prototype.her_ai_app, writer places it on the home page, appengine/parity.py ai = partial
+Not verified: a real model answer on her server; a picture maker for visitors not built; studio_react_sites still OFF
+
+Task ID: v0.999.108 SUPPORT QUALITY
+G11 of the global Customer Support plan: answer sample + auto draft, pretend customers + replay, law packs, AI disclosure, data export / erase / retention, masking sweep, audit log; 10 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.110 SUPPORT LAYER
+G12 of the global Customer Support plan: layer mode on Chatwoot, Zendesk, Freshdesk, ServiceNow, Jira SM - sort, suggest, summarise, close by rule, remind, where-is-my-ticket; 8 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+Task ID: v0.999.113 SUPPORT REPORTS
+G13 of the global Customer Support plan (its last phase): reports with breakdowns, trends, CSV / PDF and a monthly PDF; 7 tests incl. a browser walk pass. Pushed to main; deploy needed (VPS ops > deploy).
+
+---
+Task ID: v0.999.119 UPGRADE THIS SITE
+Ask: GO D9
+Built: site/upgrade.py (her words read out of her pages, the new design beside the old, keep / go back / throw away), prototype.write_react shared, routes /api/sites/<site>/upgrade*, Studio Upgrade bar + side-by-side compare, website action=upgrade (read only)
+Not verified: her own site moved and approved (the D9 done-line); a real model; studio_react_sites still OFF
+
+Task ID: v0.999.122 THE WHOLE AI TEAM
+Counted the phone's AI team (81 desks, 9 already Hub employees) and added the other 72 to the console Hub by department, opening on the desk room or their studio; 4 new departments.
+
+---
+Task ID: v0.999.123 OLD OR NEW ENGINE
+Ask: GO D10
+Built: quality/proofcard.py (old vs new on the same briefs, one photographer / scorer / critic / speed lab, her picks, Arena duels, the recommendation), site/enginedefault.py (her tap bound to the evidence makes the new engine the default for new websites; back at once), /console/proofcard, vps-ops proof_card_*
+Not verified: no live proof card has run; she has not decided; studio_react_sites still OFF
+
+Task ID: v0.999.125 FINANCE CORE F0
+F0 of docs/FINANCE_GLOBAL_PLAN.md: server/app/fin/ (profile, pack + GB/US/IN packs, laws, calc, models, spine, evidence, core, api); the three finance tools routed through the core; tests/test_fin_f0.py 10 pass. Pre-existing red not mine: test_english_guard::test_no_new_hinglish_in_server_text (red on the clean tree too).
+
+---
+Task ID: v0.999.126 EVERY ROW WORKS
+Ask: GO FIX THE 3 PARTIAL FEATURES
+Built: custom sections translated per language (langs.custom_texts / translate_custom, writer.custom_variants), her members' board (site/board.py + island MemberBoard + Studio routes), pictures for visitors from her AI App (aiapps/pictures.py + AiChat Make a picture + editor switch); parity 18 of 18
+Not verified: a real picture engine call, real visitors posting, a live translation, on her server
+
+Task ID: v0.999.127 MONEY SAFETY WORLDWIDE F1
+F1 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/safety.py, fin/review.py, fin/card_f1.py, 7 new country packs + GB/US/IN money-safety sections, paisa_sahayak actions, /api/fin/safety + pack review routes. tests/test_fin_f1.py 8 + test_fin_f0.py 10 pass; card 60/60 + 10/10. Pre-existing reds not mine: test_english_guard::test_no_new_hinglish_in_server_text, test_v0728_sab_english::test_every_tool_label_has_english, test_v0799_desk_room::test_css_is_crisp_and_on_one_scale.
+
+Task ID: v0.999.129 HOUSEHOLD MONEY F2
+F2 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/household.py, agent/household_tools.py (tool 636), fin/card_f2.py, household pack sections, /api/fin/household. tests/test_fin_f2.py 7 + F1 8 + F0 10 pass; card 40/40. Pre-existing reds not mine: test_english_guard::test_no_new_hinglish_in_server_text, test_v0728_sab_english::test_every_tool_label_has_english, test_v0799_desk_room::test_css_is_crisp_and_on_one_scale.
+
+---
+Task ID: v0.999.130 PICTURES
+Ask: GO BUILD PICTURE EDITING. TILL I RUN CARD
+Built: picture editing on React websites - edits.put_picture, writer pictures_of / set_picture, rxedit.picture / upload_picture, routes rx/picture(+/upload), preview names the clicked picture, Studio picture panel, chat rx_edit picture=
+Not verified: in her own browser, on her server
+
+Task ID: v0.999.134 BOOKS AND ACCOUNTS F3
+F3 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/books.py, 6 ledger tables, agent/books_tools.py (tool 637), fin/card_f3.py, /api/fin/books. tests/test_fin_f3.py 6 + F0-F2 pass; card 20/20. Pre-existing reds not mine: test_english_guard::test_no_new_hinglish_in_server_text, test_v0728_sab_english::test_every_tool_label_has_english, test_v0799_desk_room::test_css_is_crisp_and_on_one_scale, test_v0664_jharokha_manch (browser), several old version pins.
+
+Task ID: v0.999.136 TAX WORLDWIDE F4
+F4 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/tax.py, fin_invoice.supply, agent/taxwide_tools.py (tool 638), fin/card_f4.py, /api/fin/tax. tests/test_fin_f4.py 6 pass; card 12/12 in 6 countries.
+
+Task ID: v0.999.137 PAYROLL AND CASH F5
+F5 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/payroll.py + cash.py, agent/payrollwide_tools.py + treasury_tools.py (tools 640), fin/card_f5.py, /api/fin/payroll + /api/fin/cash. tests/test_fin_f5.py 6 pass; card 15/15.
+
+Task ID: v0.999.139 CREDIT AND LENDING F6
+F6 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/credit.py, agent/lending_tools.py (tool 641), fin/card_f6.py, /api/fin/credit. tests/test_fin_f6.py 6 pass; card 14/14.
+
+Task ID: v0.999.143 FIRM MODE F7
+F7 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/firm.py, FinDraft.meta, agent/firmmode_tools.py (tool 642), fin/card_f7.py, /api/fin/firm. tests/test_fin_f7.py 6 pass; card 50 clients 0 leaks.
+---
+Task ID: v0.999.144 ROUTE CHECK (built as 0.999.128)
+Every Hoola Route page walked in Chromium at 1440 / 390 px, light + dark; backend read against the DHARA engine. Fixed: failed code
+steps and 4xx/5xx web requests counted as done, Runs filter after the limit, success shown for refused run actions, wrong approval
+question, stale failures in Needs you, never-run routes 'Working'; added webhook address + delete route; phone cards / top bar /
+vertical flow, if-else + loop drawn, plain step rows, in-page Change it, header On / Off, search. 6 tests incl. a browser walk.
+
+Task ID: v0.999.145 PAYMENTS F8
+F8 of docs/FINANCE_GLOBAL_PLAN.md: fin/desks/payments.py, agent/paydesk_tools.py (tool 643), fin/card_f8.py, /api/fin/payments. tests/test_fin_f8.py 5 pass; card 6/6.
+
+---
+Task ID: v0.999.148 ONE ENGINE
+Ask: GO ONE ENGINE
+Built: appengine/boxcare.py - check before every build + every 10 min, the image rebuilt by itself, owner told, no switch to a box that cannot build, builder health on /console/proofcard
+Not verified: a real rebuild on her server
+
+Task ID: v0.999.149 INSTITUTION MODE F9
+F9 of docs/FINANCE_GLOBAL_PLAN.md: fin/makerchecker.py, fin/desks/institution.py, agent/institution_tools.py (tool 644), fin/card_f9.py, /api/fin/institution. tests/test_fin_f9.py 5 pass; card PASS on 1,003,160 transactions.
+
+---
+Task ID: v0.999.177 SIGN UP LIKE CLAUDE
+Ask: MAKE IT SAME AS OTHER DOES LIKE CLAUDE AND CHAT GPT (two ways to sign up: email and Google)
+Built: emailauth.py + /auth/email/start|verify|name, console + phone Log in or sign up screen, Google sign-in name + email only on new phones, one-time code to the phone, callback error escaped
+Not verified: SITE_MAIL_* not set on her server yet; phone screen compiles first on CI
+
+---
+Task ID: v0.999.178 LOGIN, PREMIUM
+Ask: login page more professional and premium, design first -> A -- GO
+Built: console #login direction A (v2.html / v2.css / v2.js), phone setup_screen.dart in the same design
+Not verified: phone screen compiles first on CI
+
+---
+Task ID: v0.999.179 LOGIN CENTRED
+Ask: the details gone very left fix this
+Built: v2.css .lg-side children in one centred 520 px column; browser walk checks the gap
+Not verified: on her server until deploy
+
+---
+Task ID: v0.999.180 GOOGLE SIGN UP
+Ask: work on Google sign up on the sign up page first
+Built: welcome step after Google (console + phone), login_hint, email_verified check, her name kept
+Not verified: a real Google account on her server; phone compiles first on CI
+
+---
+Task ID: v0.999.181 GOOGLE CONNECTIONS
+Ask: check and fix the Gmail / Sheets / Forms / Drive connection across all surfaces, design first
+Built: googlehub.py + Connectors > Google (console) + Settings > Google (phone) + chat cards + the audit fixes
+Not verified: a real Google account on her server; phone compiles first on CI
+
+---
+Task ID: v0.999.182 GOOGLE LOGOS
+Ask: use real Google logos; explain the unverified app screen
+Built: Google's own product logos on the Google tiles (console + phone)
+Not verified: phone compiles first on CI
+
+---
+Task ID: v0.999.183 CONNECTORS PAGE
+Ask: Connectors as a separate premium page (design approved)
+Built: /console/connectors page, activity log, Pause switch, phone Your apps top
+Not verified: phone compiles first on CI
+
+---
+Task ID: v0.999.184 SHEETS FULL
+Ask: Hoola can do 100% of Google Sheets; fix the 5,000-row bug + the 14 gaps
+Built: paged big-sheet reads, 7 new Sheets tools, read formulas, tick boxes, borders, access, locks, condition-name fixes
+Not verified: real Google sheet; Drive-side actions need Drive connected
+
+---
+Task ID: v0.999.185 SHEETS COMPLETE
+Ask: complete the last 10 Google Sheets gaps
+Built: copy/cut cells, file copy, settings, chart/pivot changes, look, groups, slicers, tables, versions, Apps Script, BigQuery, retry, parts
+Not verified: real Google sheet; Apps Script / BigQuery need connecting
+
+---
+Task ID: v0.999.186 DRIVE COMPLETE
+Ask: check Google Drive, then 100% Drive work for Hoola
+Built: paging, long reads, shortcuts, retry, resumable upload, ownership for Gmail, replace, versions, bulk, zip, convert, new files, folder tools, lock, shared drives, access requests, watch, activity, labels, sharing options
+Not verified: real Google Drive; Drive Activity needs connecting; Workspace-only parts
+
+---
+Task ID: v0.999.187 FORMS COMPLETE
+Ask: check Google Forms, then 100% Forms work for Hoola
+Built: real grid / email / upload / feedback shapes, all answers, fill-in link lookup, retry, pages by answer, links + QR, any-field edits, editors, answer jobs, export into a sheet, since / search
+Not verified: real Google form; pre-filled entry numbers
+
+---
+Task ID: v0.999.188 SLIDES COMPLETE
+Ask: check Google Slides, then 100% Slides work for Hoola
+Built: groups read, deck layouts + templates, Drive fallback, retry, design / table / fill / look / import / deck / comments tools, share list / remove / link
+Not verified: real Google deck; comments API new; charts need reconnect
+
+---
+Task ID: v0.999.189 CALENDAR COMPLETE
+Ask: check Google Calendar, then 100% Calendar work for Hoola
+Built: paging, retry, honest free/busy, calendars / share / status / series / meeting_time / ics / watch tools, more event options
+Not verified: real Google Calendar; holiday ids pattern; Workspace-only event kinds
+
+---
+Task ID: v0.999.190 CALENDAR, THE LAST 8
+Ask: complete the 8 remaining Calendar gaps
+Built: default reminders, notifications, event time zones, rooms, working hours, birthdays, transfer, chat files, Google Tasks
+Not verified: real Google Calendar / Tasks; Tasks needs reconnect
+
+---
+Task ID: v0.999.191 GOOGLE PHOTOS COMPLETE
+Ask: Google Photos the same way as the other Google apps
+Built: picked-photo fix, retries, paging, resumable uploads, photos_look, photos_library, album rename / cover / add / remove / notes / places / maps
+Not verified: real Google Photos account
+
+---
+Task ID: v0.999.192 GOOGLE DOCS COMPLETE
+Ask: Google Docs the same way as the other Google apps
+Built: gdocs package + 8 tools (read, write, edit, table, layout, tabs, comments, fill), Drive cards for docs, fake Docs engine tests
+Not verified: real Google Doc; chips on real accounts
+
+---
+Task ID: v0.999.193 GOOGLE DOCS, THE LAST 9
+Ask: the 9 Google Docs pieces still missing
+Built: table delete / row height / cell style, link_inside, move, section layout, first/even headers, dropdown edit/remove, reply edit/delete, withdraw, named range / picture removal, suggestion details
+Not verified: real Google Doc
+
+---
+Task ID: v0.999.194 APPS WIRING
+Ask: check all apps wiring to Hoola
+Built: connected apps in the prompt, admission by name, tool_search by name, pick user-id fix, call line, Add key text
+Not verified: a real Composio app
+
+---
+Task ID: v0.999.195 APPS WIRING 2
+Ask: check all apps are wired properly
+Built: connector names open bazar_find / bazar_run, tool_search finds them, prompt line
+Not verified: a real connector run
+
+---
+Task ID: v0.999.196 SIDE PANEL LIKE CLAUDE
+Ask: side panel like Claude (Anthropic Sans)
+Built: side panel 14/430 rows, 12/430 labels, dark 400, open chat not bold
+Not verified: on her server
+
+---
+Task ID: v0.999.197 REPLY + MESSAGE LIKE CLAUDE
+Ask: reply and message fonts like Claude
+Built: reply title 28/1.3, her message 16/430/1.4, code in JetBrains Mono
+Not verified: on her server
+
+---
+Task ID: v0.999.198 HOME LIKE CLAUDE
+Ask: home screen fonts like Claude
+Built: greeting 38/330/1.2, box 16/430, row under the box 14/430
+Not verified: on her server
+
+---
+Task ID: v0.999.199 SMOOTH LANDING
+Ask: smooth landing of a sent message like Claude
+Built: console + phone top landing, kept room, held view
+Not verified: on her server
+---
+Task ID: v0.999.200 AVATARS, REDESIGNED
+Ask: Avatars page advanced and premium like the other Interactive pages
+Built: face cards + side panel, photo face with whose-face consent and size checks, AI-made face priced first, video twin explained, rename route
+Not verified: on her server, real picture engine
+---
+Task ID: v0.999.201 VOICES, REDESIGNED
+Ask: Voices page advanced and premium like the other Interactive pages
+Built: describe-a-voice search, samples in her language, favourites shared with Vocal, voice panel, put a voice in several videos (new route)
+Not verified: on her server with real voices
+---
+Task ID: v0.999.202 LIVE AGENTS, REDESIGNED
+Ask: Live agents page advanced and premium like the other Interactive pages
+Built: question log with known / not known, learn + dismiss routes, list page with this week + misses, four-step builder beside Try it and Questions, website window
+Not verified: on her server with a real model; counts start from the deploy
+
+---
+Task ID: v0.999.203 EVERY CHAT LIKE CLAUDE
+Ask: the last 3 chat updates in every chat panel
+Built: chat kit type + landing for every desk and studio, Interactive / Vocal / Create / Hoola Code / Studio homes, phone thread kit + Hoola Code
+Not verified: on her server
+
+---
+Task ID: v0.999.204 TITLES LIKE CLAUDE
+Ask: Game Dev and Hoola Computer titles like Claude
+Built: gamedev.css + computer.css title blocks
+Not verified: on her server
+---
+Task ID: v0.999.205 PROJECTS, REDESIGNED
+Ask: Projects page advanced and premium like the other Interactive pages
+Built: folders, bulk changes, this month incl. credits, trash with days left + delete one now
+Not verified: on her server
+
+---
+Task ID: v0.999.206 PHONE LIKE CLAUDE
+Ask: the last updates on every phone section
+Built: greeting + title font cuts, HoolaType.hero / pageTitle on every home, landing in Vocal / Music / Notebook
+Not verified: on her phone
+---
+Task ID: v0.999.207 BRAND, REDESIGNED
+Ask: Brand page advanced and premium like the other Interactive pages
+Built: name on screen switch, colour contrast check, shared logo, closing card with logo / QR in the real video, preview, words to keep with languages, Use my Brand kit
+Not verified: on her server
+
+---
+Task ID: v0.999.208
+Agent: Claude Code (session hopeful-carson)
+Task: ENGINES, REDESIGNED - design canvas claude.ai/artifact/QzR1tQ2n8v4zyjxdiTU7yG, then GO BUILD.
+Work Log:
+- engines.need_of / prices / ladder + routes /x/engines/prices and /x/engines/one; Engines page rebuilt (defaults, price for a length, cards, one-engine dialog, B-roll maker priced first).
+- Tests test_v0999_208 (4) green; Interactive suites green except the pre-existing v0747 browser test.
+Stage Summary: shipped as v0.999.208; NOT VERIFIED on her server.
+
+---
+Task ID: v0.999.209
+Agent: Claude Code (session hopeful-carson)
+Task: DEVELOPERS, REDESIGNED - design canvas claude.ai/artifact/GEoE5TiJyZoAVeijrfxBVo, then GO BUILD.
+Work Log:
+- apps.key_rename / count_video, calls this hour + this month per key, last 10 deliveries per webhook, base address; PATCH /x/apps/keys.
+- Developers page rebuilt (counts, four steps, key + webhook cards, key / secret shown once, the API with real requests).
+- Tests test_v0999_209 (4) green with v0999_208 + v0999_169.
+Stage Summary: shipped as v0.999.209; NOT VERIFIED on her server.
+
+---
+Task ID: v0.999.210 SETTINGS, REDESIGNED
+What: Interactive Settings redesigned to the approved canvas (claude.ai/artifact/LZBJ9AF2Y9LgcZq6sJBywR): starting choices saved to her account, usage, kept & trash, this server.
+Tests: test_v0999_210_interactive_settings.py 4 passed (browser at 1440 + 390).
+Not verified: on her server.
+
+---
+Task ID: v0.999.211 NO SESSIONS IN THE SIDEBAR
+Agent: Claude (Claude Code session)
+Task: remove the Sessions part from the console sidebar (her screenshot).
+Work Log:
+- chatlist.js SIDE_SECS (no session groups in the app design, session chats in Recents, no Add to session menu item); appdesign.css hides #projects.
+- test_v0999_211_no_sessions_sidebar.py: shape + browser walk; version ritual 0.999.211.
+Stage Summary: shipped to main; not verified on her server.
+
+---
+Task ID: v0.999.212 NO LIVE PILL
+Agent: Claude (Claude Code session)
+Task: remove the Live pill at the bottom of the console sidebar.
+Work Log:
+- appdesign.css hides the Live / Studio strip and the connection line in the app design; test extended; version ritual 0.999.212.
+Stage Summary: shipped to main; not verified on her server.
+
+---
+Task ID: v0.999.213 MAIL NEWS ONLY WHEN ASKED
+Ask: unwanted email cards in Hoola updates without her asking
+Built: watcher off until she picks a mode, own-access security alerts skipped, one card per mail across mailboxes
+Not verified: on her server
+
+---
+Task ID: v0.999.214 COLLAPSED SIDEBAR IN ONE LINE (built as 0.999.213; their MAIL NEWS ONLY WHEN ASKED took 0.999.213, both kept)
+Agent: Claude (Claude Code session)
+Task: the folded console sidebar had icons at three left edges and Pinned / Recents words spilling out - align it.
+Work Log:
+- Measured in Chromium: icons at 16 / 22 / 25 px of a 72 px rail (centre 31 vs 36, the scrollbar strip), uneven steps (42-48 px), "Recents" / "Pinned" text visible.
+- appdesign.css end block: folded = no scrollbar strip, every button 40x40 on the middle, one 44 px step, headers / words / counts hidden (a dot for a count); v2.js + v2.html give each icon a title + aria-label.
+- test_v0999_214_collapsed_sidebar.py: shape + browser walk (light + dark shots); version ritual 0.999.214 on main's 0.999.213.
+Stage Summary: shipped to main; not verified on her server.
+
+---
+Task ID: v0.999.215 CUSTOMIZE = PROFILE MENU
+Ask: Customize row = the profile menu
+Built: acctItems shared by the account button and the Customize row, Skills icon
+Not verified: on her server
+
+---
+Task ID: v0.999.217 CUSTOMIZE IN THE PROFILE MENU
+Ask: undo v0.999.215, move Customize into the profile menu
+Built: Customize row removed from the sidebar, Customize item in acctItems, brush icon
+Not verified: on her server
+
+---
+Task ID: v0.999.220 NO THEME IN THE PROFILE MENU
+Ask: remove Light / Dark / System from the profile menu
+Built: theme items removed from acctItems, test_v0285 reads acctItems
+Not verified: on her server
+
+---
+Task ID: v0.999.221 THE + CARD AND ITS CHIP
+Agent: Claude (Claude Code session)
+Task: make the console + menu a premium card and line the chosen option up beside the +, in plain ink (no violet).
+Work Log:
+- Measured in Chromium: the chosen chip floated mid-bar (both #attach and .qchips had margin-right:auto, splitting the free space); it was violet pri-soft.
+- appdesign.css end block: .hmenu.plusm card (border, layered shadow, soft tile per choice, one line under each, chosen tile in ink + a visible tick, arrow on the last row); chip beside the + (8 px), centred on its line, ink on paper with an x, chat row order + chip; v2.js gives the + menu cls plusm, width 320.
+- test_v0999_221_plus_card.py: shape + browser walk (home + chat, tick colour, tap removes); version ritual 0.999.221 on main's 0.999.220.
+Stage Summary: shipped to main; not verified on her server.
+
+---
+Task ID: v0.999.224 THE CHAT BOX MICROPHONE
+Agent: Claude (cloud session)
+Task: Console mic not working properly - find the bugs, redesign premium to match the chat panel.
+Work Log:
+- Read the v0.173 mic block + HoolaFlowMic; found 7 bugs (forced hi-IN, sent words written back, silent end after a pause, typing overwritten, silent errors, Firefox to the call page, Ctrl + Space Flow-only).
+- New dictate.js recording bar (cancel, waveform, state, language, clock, Done in ink), wired in v2.js, styles in v2.css.
+- Browser walk with a stand-in speech service; renumbered 223 -> 224 (Payments desk took 223).
+Stage Summary:
+- Pushed to main as v0.999.224; deploy with Actions > VPS ops > deploy. Not tried with a real microphone.
+
+---
+Task ID: v0.999.225 NO FLASH ON LOAD
+Agent: Claude (cloud session)
+Task: Console home showed a bare, unstyled typing box with huge icons on every load.
+Work Log:
+- Found the composer sits outside #app until v2.js moves it in; its styles are scoped under #app.
+- Hid body>#composer in v2.css; browser test fails without the fix, passes with it.
+Stage Summary:
+- Pushed to main as v0.999.225; deploy with Actions > VPS ops > deploy.
+
+---
+Task ID: v0.999.226 CUSTOMIZE, PREMIUM
+Ask: make the Customize page premium (design ENS4Mk3mkFsgEJaA8hxSD2)
+Built: drawMain + appearanceHTML rebuilt, cz- styles at the end of v2.css
+Not verified: on her server
+
+---
+Task ID: v0.999.228 THE QUALITY SHEET
+Agent: Claude (cloud session)
+Task: Quality-tier menu looked stale and misaligned; make it like the + (attachment) card.
+Work Log:
+- Tier rows get icons + one-line descriptions, plusm card style, header, ink tick, note at the foot, opens below.
+- Removed the native tooltip on the Quality button; browser test with screenshots. Renumbered 226 -> 228 (main moved).
+Stage Summary:
+- Pushed to main as v0.999.228; deploy with Actions > VPS ops > deploy.
+
+---
+Task ID: route-editor-r1
+Agent: main
+Task: Hoola Route - check n8n features, design canvas, then build R1 (owner: "GO BUILD")
+
+Work Log:
+- Checked n8n's feature list against dhara_tools.py / route/api.py / route.js: 15 work, 14 partly, 37 missing, 3 not for Hoola.
+- Design canvas claude.ai/artifact/AfdPogRtMSqNY4ztAZ9dxq (check + home, editor, step, add, runs, connections, phone, plan R1-R8).
+- Built R1: home + canvas editor + add-a-step + step / trigger panels + Save (409 on stale) + Test route + Ask Hoola route chat.
+- Renumbered 231 -> 232 (main moved to the Community Finance desk).
+
+Stage Summary:
+- v0.999.232; deploy with Actions > VPS ops > deploy. R2-R8 next on her word.
+
+---
+Task ID: route-stepdata-r2
+Agent: main
+Task: Hoola Route R2 - steps you can test (owner: "GO R2")
+
+Work Log:
+- Large step view (in | settings | out), drag / click a field into a box, Test step, pins used only by test runs, whole outputs on the run page.
+- Found and fixed: the browser's dblclick never reached a step (the first click redraws); phone grid squeezed the three parts over each other.
+- Renumbered 233 -> 234 (main moved to Computer V2).
+
+Stage Summary:
+- v0.999.234; deploy with Actions > VPS ops > deploy. R3 next on her word.
+
+---
+Task ID: route-data-r3
+Agent: main
+Task: Hoola Route R3 - data steps + expressions (owner: "GO R3")
+
+Work Log:
+- agent/dhara_data.py: safe expression walker + the data step (13 ops); engine resolve / validate / exec wired; editor forms + live result.
+- Renumbered 235 -> 237 (main moved to Digital Assets desk + Computer top bar).
+
+Stage Summary:
+- v0.999.237; deploy with Actions > VPS ops > deploy. R4 (flow steps) next on her word.
+
+---
+Task ID: route-flow-r4
+Agent: main
+Task: Hoola Route R4 - flow steps (owner: "GO R4")
+
+Work Log:
+- Fixed nested pauses (approval / wait inside branches and loops) with scoped done marks + remembered decisions.
+- merge, subroute, stop, respond, 30-day waits, wait for a call (resume link), 1,000-item loops, nesting 3; editor forms.
+- Renumbered 238 -> 239 (main moved to the Public Finance desk).
+
+Stage Summary:
+- v0.999.239; deploy with Actions > VPS ops > deploy. R5 (triggers) next on her word.
+
+---
+Task ID: route-triggers-r5
+Agent: main
+Task: Hoola Route R5 - new triggers (owner: "GO R5")
+
+Work Log:
+- route/triggers.py: app events (polling, first look notes), form + chat pages, error / route / tool kinds, MCP endpoint.
+- Engine wiring (validation everywhere, tick polls, error watchers, start_and_wait); editor trigger panel.
+
+Stage Summary:
+- v0.999.242 (renumbered from 240: main moved to Finance Desk Assistant + Desktop wiring); deploy with Actions > VPS ops > deploy. R6 (AI steps) next on her word.
+
+---
+Task ID: route-ai-r6
+Agent: main
+Task: Hoola Route R6 - AI steps (owner: "GO R6")
+
+Work Log:
+- route/aistep.py: write / summarise / classify / extract / sentiment / answer / agent + AI-picked Switch; one model seam; masking.
+- Engine + editor wiring (AI group, forms, Let AI pick the way).
+
+Stage Summary:
+- v0.999.243; deploy with Actions > VPS ops > deploy. R7 (accounts, variables, settings, versions, sharing) next on her word.
+
+---
+Task ID: route-workspace-r7
+Agent: main
+Task: Hoola Route R7 - accounts, variables, settings, versions, sharing (owner: "GO R7")
+
+Work Log:
+- route/workspace.py: variables, sealed sign-ins (site-bound), accounts, versions + restore, share links, team runs.
+- Engine hooks (versions on save, env, http auth, staff guards), API, page (Settings / Versions tabs, Variables, Sign-ins).
+- Renumbered 244 -> 246 (main moved to the Risk Desk and the Hoola Code fix pass).
+
+Stage Summary:
+- v0.999.246; deploy with Actions > VPS ops > deploy. R8 (runs, insights, n8n import) next on her word.
+
+---
+Task ID: route-r8 (v0.999.248)
+Agent: Claude Code (cloud session)
+Task: Hoola Route R8 (owner: "GO R8") - past runs as working material, insights, n8n import; the last phase of the Route plan.
+Work Log:
+- route/runs.py: search by value (escaped LIKE, where found, masked), start data + rerun, pin from a run, per-route keeping, tally + insights
+- route/n8n.py: n8n export -> Hoola route (starts, steps, joins, loops, ways, AI nodes, expressions), placeholders + report, saved OFF
+- dhara_tools: create_run keeps _start, forget_old_runs per route, _after_run tally, settings keep_runs_days / keep_runs / minutes_saved
+- stepdata + api: run_id for data / step test / live result; runs ?q=, rerun, pins/from-run, insights, import/n8n
+- route.js/.css/.html: Runs search, run page Run again + Debug, debug bar in the editor, Insights page, Bring in from n8n page
+Stage Summary:
+- 11 new tests (tests/test_v0999_248_route_runs.py + tests/data/n8n_*.json) green; route + DHARA suites 175 green before the ritual,
+  the phone-fit walks fixed (All routes header wraps); remaining reds = the 3 pre-existing 0.999.169 pins
+- NOT VERIFIED on her server or with workflows exported by a real n8n
+
+---
+Task ID: route-check-v0999-253 (built as 0.999.251 / 0.999.252)
+Agent: Claude (cloud session)
+Task: "NOW CHECK THE ENTIRE ROUTE END TO END" - Hoola Route after R1-R8
+Work Log:
+- browser walk of 28 Route pages (every route / run / past-run debug view) at 1440 light + dark and 390, seeded with every kind of route
+- an independent reviewer read the whole engine (dhara_tools, dhara_data, route/*): 10 bugs, each re-checked in the code before fixing
+- fixed: Stop undone mid-step, stuck 'running' runs, bad every_hours stopping all schedules, redirect guard + sign-in leak, lost app items,
+  unclaimed starts, non-English search, n8n expression numbers, self-starting / ping-pong routes, reply link GET + race, branch/loop steps in
+  the log, {{vars.a}} in Needs you, on/off 409, replace/join size; page: phone debug bar, failing step on canvas, step name once, start icons
+Stage Summary:
+- 17 new tests (tests/test_v0999_253_route_check.py) incl. a browser walk; the 3 old 0.999.169 pins now accept newer versions
+- NOT VERIFIED on her server
+
+---
+Task ID: make-parity-v0999-258 (built as 0.999.254)
+Agent: Claude (cloud session)
+Task: "GET EXTREEM DEEP FIND ALL HOOLA ROUTE TOOL IS FUCTIONATING PERFECTLY SAME AS MAKE OR NOT --- WE WANT ALL MAKE FUCTION IN IT"
+Work Log:
+- read Make's own help pages (functions, date tokens, scenario settings, error handling, HTTP v4, pricing) and mapped every Make feature
+  to Route: docs/research/make/00_MAKE_PARITY.md (Had / Built / Not with the reason)
+- built: Make functions + keywords + {{run.*}}, data stores (route/store.py, rollback undo), var step, repeater + collect aggregators,
+  error handler routes, HTTP v4 (route/http.py), text parser / XML / table / markdown / ZIP, scenario settings, webhook queue / kept while
+  off / IP allow-list / caller headers, schedule start_date, event start now|all|since, operations, Make blueprint import
+  (route/makeimport.py), the Grid (route/grid.py); page: Data stores, Grid, Make import, new steps + panels, error handler lane, settings
+- found + fixed: "{{a}}|{{b}}" read as one expression (old bug); the import report's '.ck' class clash; phone title squeeze on rhead
+Stage Summary:
+- tests/test_v0999_258_make_parity.py (47, incl. a browser walk); route suites 248 green; test_v0999_248 browser walk flaky in a long
+  run, green alone (as before)
+- NOT VERIFIED on her server / with her own Make export / real app accounts
+
+---
+Task ID: route-wiring-v0999-263 (built as 0.999.259 / 0.999.261)
+Agent: Claude (cloud session)
+Task: "NOW GO EXTREED DEEP WIRE ALL BACKED PROPERLY WITH FRONTEND PERFECTLY THUS ALL THIS TOOL CAN FUCTION SMOTHLY"
+Work Log:
+- mapped every route.js api() call to a server route; walked the page in Chromium building and running a Make-style route by clicks only
+- fixed: hidden step groups, adding inside 'If it fails', handler steps skipped by 7 walkers (server + page), Test step item / error,
+  JSON body sent as a string, field picker refs, queued-call words, the last browser prompt, a null panel host after redraw
+Stage Summary:
+- tests/test_v0999_263_route_wiring.py (8, incl. 4 browser walks); Route suites green
+- NOT VERIFIED on her server
+
+---
+Task ID: workflow-library-v0999-269 (built as 0.999.264 / 0.999.268)
+Agent: Claude (cloud session)
+Task: n8n-workflows repo -> "make it fully fuctional for hoola route -- make a workflow section in sidebar in route tool"
+Work Log:
+- read the repo: HEAD's 'workflow fixer' (74bdcdc) dropped every connection; pinned to f8639776; MIT since Nov 2025
+- measured every file through Hoola's importer, added the missing node types, built the index + fetch with sha256 + key scrub
+- Workflows sidebar section: search, filters, preview, Bring it in (off)
+Stage Summary:
+- clean imports 221 -> 408 of 2,057; 1,904 in the library; tests/test_v0999_264_workflow_library.py (11, incl. a browser walk)
+- NOT VERIFIED on her server
+
+---
+Task ID: route-sending-v0999-278 (built as 0.999.275 - 0.999.277)
+Agent: Claude Code (cloud session)
+Task: make the Route's mails and Telegram / Slack / Discord / Mattermost posts really send (owner: "MAKE THIS FUCTIONAL FOR HOOLA ROUTE")
+Work: route/send.py (Send step, Allow sending bound to destinations, limits, record, Telegram bot start), chat-app sign-in kinds,
+importer + library rebuild (1,920), editor Send group / bar / bot box, 14 tests.
+Not verified: a real bot / workspace / mailbox on her server.
+
+---
+Task ID: route-aligned-v0999282
+Agent: Claude Code (cloud session)
+Task: align and fix every Hoola Route page (owner: "NOW GO DEEP ON EVERY PAGE OF ROUTE AND ALINE AND MAKE EVERY SECTION PERFCTLY FIXED")
+Work: 144 page views walked + measured + looked at (1440 / 1024 / 390, light + dark), 74 with findings -> 0; route.css end block, route.js fixes;
+test_v0999_282_route_aligned.py.
+Not verified: on her server.
+
+---
+Task ID: 0.999.297
+Agent: Claude Code
+Task: ROUTE HOME REDESIGN - build the approved home design
+Work Log:
+- route.js viewHome rebuilt; routes table tiles / steps / dot; sidebar groups + hourly foot; route.css end block
+- api.py summary: runs_prev_7d, week_days, hours12, failed_30d
+- walked in Chromium, light + dark, 1440 / 1024 / 390: no findings
+Stage Summary:
+- test_v0999_297_route_home.py; NOT VERIFIED on her server
+
+---
+Task ID: 0.999.299
+Agent: Claude Code
+Task: EVERY ROUTE PAGE IN THE HOME DESIGN
+Work Log:
+- route.css end block: centred column, titles, status lines, number bands, dots, Needs you cards, cards, chart colours
+- route.js: status lines on All routes / Needs you / Runs, Needs you = home cards, workflow status dot
+- 144 views walked: no findings
+Stage Summary:
+- NOT VERIFIED on her server
+
+---
+Task ID: 0.999.301
+Agent: Claude Code
+Task: EDITOR AND ROUTE TABS IN THE HOME DESIGN
+Work Log:
+- route.css end block: top bar, pill tabs, Saved dot, sending card, nodes, tools; tab pages in the home frame
+- route.js: tabHead / routeCard on Runs, Versions, Settings; sending bar tag
+- 48 views walked: no findings
+Stage Summary:
+- NOT VERIFIED on her server

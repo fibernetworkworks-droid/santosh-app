@@ -35,7 +35,7 @@ def _token(account_id: str, force: bool) -> str:
             return acc.decrypt(a.access_token_enc) or ""
         refresh = acc.decrypt(a.refresh_token_enc)
     if not refresh:
-        raise YTError("The YouTube sign-in has expired. Link it again from Profile > YouTube.")
+        raise YTError("The YouTube sign-in has expired. On the web console open Connectors > Google, or in the phone app open Settings > Google, and press Reconnect.")
     try:
         tok = mail_acc._post(mail_acc.GOOGLE_TOKEN, {"client_id": st.google_oauth_client_id,
                                                      "client_secret": st.google_oauth_client_secret,
@@ -75,7 +75,8 @@ def clients(tenant: str) -> list[YouTubeClient]:
         c = _signin_conn(s, tenant)
         if c and c.account_email.lower() not in {b.address for b in out}:
             out.append(YouTubeClient("google", c.account_email, mail_acc._signin_token(tenant), st.youtube_api_key, mail_acc._http))
-    return out
+    from ..googlehub import arrange   # v0.999.181 her first choice first, refused accounts last
+    return arrange(tenant, "youtube", out)
 
 
 def public_client(tenant: str) -> YouTubeClient:
@@ -87,7 +88,7 @@ def public_client(tenant: str) -> YouTubeClient:
     if cs:
         return cs[0]
     raise NotConnected("Searching YouTube needs YOUTUBE_API_KEY on the server, or link your "
-                       "Google account from Profile > YouTube.")
+                       "Google account: Connectors > Google on the web console, Settings > Google in the phone app.")
 
 
 def has_youtube(tenant: str) -> bool:
@@ -100,8 +101,7 @@ def has_youtube(tenant: str) -> bool:
 def get_client(tenant: str, which: str | None = None) -> YouTubeClient:
     cs = clients(tenant)
     if not cs:
-        raise NotConnected("Your YouTube channel is not connected to Hoola yet. In the app, go to Profile > YouTube and "
-                           "press 'Link your YouTube channel'.")
+        raise NotConnected("Your YouTube channel is not connected to Hoola yet. On the web console open Connectors > Google, or in the phone app open Settings > Google, and press Connect.")
     if not which:
         return cs[0]
     w = which.strip().lower()

@@ -1,0 +1,51 @@
+/* RISK DESK - the Risk Desk employee's own section. Everything shared comes from the earlier desks (seodesk ... fodesk); the
+   page-scoped rules are repeated here for #rkPage. Only this desk's own parts are new: the colours of its rings, an order ticket and its
+   flags, and the valuation's sensitivity grid. */
+#rkPage{display:flex;flex-direction:column;gap:20px;padding-top:4px}
+#rkPage table.tb .num{font-variant-numeric:normal}
+#rkPage .r{text-align:right}
+#rkPage table.tb,#rkPage .md-kpi .v,#rkPage .cs-hero .v{font-variant-numeric:normal}
+#rkPage td.r,#rkPage th.r{text-align:right;font-variant-numeric:normal}
+#rkPage table.tb td{vertical-align:middle}
+#rkPage form[data-form=prices]+.ins-drop,#rkPage .md-acts+.ins-drop{margin-top:14px}
+#rkPage .cr-grid{align-items:end}
+#rkPage .cr-grid>.in:not(textarea),#rkPage .cr-grid .ins-lab .in:not(textarea),#rkPage .cr-grid>.btn{height:42px;min-height:0;box-sizing:border-box}
+#rkPage .iv-add{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+#rkPage .iv-add>*{flex:1 1 130px;min-width:0}
+#rkPage .iv-add>.btn{flex:0 0 auto;padding:0 18px}
+#rkPage .iv-add>.btn.wide{flex:1 1 100%}
+#rkPage .iv-add>.ins-lab{flex:1 1 130px}
+#rkPage .cr-grid .wide{grid-column:1/-1}
+#rkPage .iv-grid .in{height:42px;min-height:0;box-sizing:border-box;width:100%}
+#rkPage .md-kpi .v.warn{color:var(--warn)}
+#rkPage .mk-list td,#rkPage .mk-list th{padding-top:7px;padding-bottom:7px}
+#rkPage .mk-add .in{height:40px;min-height:0;box-sizing:border-box;width:100%}
+#rkPage .cs-pos{color:var(--okt,var(--ok))}
+#rkPage .cm-grid5 .in{height:42px;min-height:0;box-sizing:border-box;width:100%}
+#rkPage table.cm-meet td{padding-top:5px;padding-bottom:5px}
+#rkPage table.cm-meet .in{height:36px;min-height:0;width:100%;min-width:64px;box-sizing:border-box}
+#rkPage .dg-check .in{height:42px;min-height:0;box-sizing:border-box;width:100%}
+@media (max-width:600px){#rkPage .iv-kpis.mk-k2{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+#rkPage .pb-tests code.bad{font-family:inherit;font-size:13px}
+
+/* ring colours: groups, stages, value parts */
+.iv-seg.rk-c0{stroke:var(--acc)}.iv-seg.rk-c1{stroke:var(--bad)}.iv-seg.rk-c2{stroke:var(--ok)}.iv-seg.rk-c3{stroke:var(--warn)}
+.iv-seg.rk-c4{stroke:color-mix(in srgb,var(--acc) 55%,var(--ok))}.iv-seg.rk-c5{stroke:color-mix(in srgb,var(--ink) 45%,var(--page))}
+.iv-dleg i.rk-c0{background:var(--acc)}.iv-dleg i.rk-c1{background:var(--bad)}.iv-dleg i.rk-c2{background:var(--ok)}.iv-dleg i.rk-c3{background:var(--warn)}
+.iv-dleg i.rk-c4{background:color-mix(in srgb,var(--acc) 55%,var(--ok))}.iv-dleg i.rk-c5{background:color-mix(in srgb,var(--ink) 45%,var(--page))}
+
+/* an order ticket: its flags and its figures */
+.pb-res.warn{border-color:color-mix(in srgb,var(--warn) 55%,var(--line))}
+.rk-flag{display:flex;gap:10px;align-items:baseline;font-size:14px;margin:6px 0 0;line-height:1.45}
+.rk-flag span{flex:0 0 auto;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--soft)}
+.rk-flag.stop span{background:color-mix(in srgb,var(--bad) 16%,transparent);color:var(--bad)}
+.rk-flag.check span,.rk-flag.caution span{background:color-mix(in srgb,var(--warn) 18%,transparent);color:color-mix(in srgb,var(--warn) 70%,var(--ink))}
+.rk-tkf{display:flex;flex-wrap:wrap;gap:6px 20px;margin-top:8px;font-size:13.5px}.rk-tkf b{font-weight:600}
+
+/* the valuation's sensitivity grid */
+#rkPage table.rk-sens th,#rkPage table.rk-sens td{padding:7px 10px;font-size:13.5px}
+#rkPage table.rk-sens td.base{font-weight:700;outline:2px solid var(--ink);outline-offset:-2px}
+#rkPage table.rk-sens td.up1{background:color-mix(in srgb,var(--ok) 10%,transparent)}#rkPage table.rk-sens td.up2{background:color-mix(in srgb,var(--ok) 20%,transparent)}
+#rkPage table.rk-sens td.up3{background:color-mix(in srgb,var(--ok) 32%,transparent)}#rkPage table.rk-sens td.dn1{background:color-mix(in srgb,var(--bad) 9%,transparent)}
+#rkPage table.rk-sens td.dn2{background:color-mix(in srgb,var(--bad) 17%,transparent)}#rkPage table.rk-sens td.dn3{background:color-mix(in srgb,var(--bad) 27%,transparent)}
+#rkPage table.rk-sens td.na{color:var(--mut)}

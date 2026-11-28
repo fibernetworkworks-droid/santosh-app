@@ -305,6 +305,16 @@ def set_logo(tenant: str, data: bytes | None = None, file_id: str = "", name: st
     return {"kit": v, "palette": pal, "size": px, "say": say}
 
 
+def clear_logo(tenant: str) -> None:
+    """v0.999.207 take the logo out of the Brand kit (posters and videos). Her colours stay."""
+    for old in _dir(tenant).glob("logo.*"):
+        old.unlink(missing_ok=True)
+    with session() as s:
+        r = _kit_row(s, tenant)
+        r.logo_path, r.logo_hash = "", ""
+        r.updated_at = now()
+
+
 def logo_file(tenant: str) -> tuple[Path, str]:
     with session() as s:
         r = _kit_row(s, tenant)

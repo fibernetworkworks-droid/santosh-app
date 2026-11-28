@@ -1,0 +1,46 @@
+/* v0.999.176 TAX DESK - the Tax employee's own section. Frame, chat, cards and buttons come from seodesk.css; small shared parts
+   (kpis, alerts, bars, files, letter) from moneydesk.css; only the Tax desk's own parts are here. */
+#txPage{display:flex;flex-direction:column;gap:20px;padding-top:4px}
+.tx-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1100px){.tx-4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:600px){.tx-4{grid-template-columns:minmax(0,1fr)}}
+.md-kpi .v.sm{font-size:18px}
+.tx-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.tx-head .sd-h{margin:0}
+.tx-row{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.tx-row:last-child{border-bottom:0}
+.tx-dot{width:8px;height:8px;border-radius:50%;background:var(--warn);flex:none}
+.tx-split{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:start}
+@media (max-width:1000px){.tx-split{grid-template-columns:minmax(0,1fr)}}
+.tx-side{display:flex;flex-direction:column;gap:16px}
+.tx-bx{display:inline-flex;min-width:28px;height:24px;padding:0 4px;border-radius:6px;background:var(--soft);align-items:center;justify-content:center;font-size:12px;font-weight:600}
+table.tb .num,table.tb th.num{text-align:right;white-space:nowrap}
+.tx-big{font-size:30px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:4px}
+.tx-ck{display:flex;gap:10px;font-size:14px;line-height:1.4;padding:4px 0}
+.tx-ck .ok{color:var(--okt)}.tx-ck .wa{color:var(--warn);font-weight:600}
+.tx-acts{display:flex;flex-direction:column;gap:10px}
+.tx-filed{display:flex;flex-direction:column;gap:6px}
+.tx-st{display:grid;grid-template-columns:60px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.tx-st .md-bar{margin:0;height:8px}
+.tx-letters{display:grid;grid-template-columns:300px minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:1000px){.tx-letters{grid-template-columns:minmax(0,1fr)}}
+.tx-list{display:flex;flex-direction:column;gap:8px}
+.tx-li{display:flex;flex-direction:column;gap:4px;align-items:flex-start;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;font:inherit;color:var(--ink)}
+.tx-li .mut{font-size:13px}
+.tx-li.on,.tx-li:hover{background:var(--soft)}
+.tx-view{display:flex;flex-direction:column;gap:16px;min-width:0}
+.tx-view .sd-h{margin:0}
+.tx-confirm{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--warns)}
+.tx-confirm input{max-width:170px}
+.tx-draft{background:var(--soft);border-radius:10px;margin-top:10px}
+.tx-cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-top:12px}
+.tx-cal .dh{font-size:11px;color:var(--mut);text-align:center;padding:4px 0}
+.tx-cal .d{min-height:44px;border-radius:8px;font-size:13px;padding:4px 6px;box-sizing:border-box;color:var(--ink2);display:flex;flex-direction:column;gap:2px}
+.tx-cal .d span{font-size:10.5px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tx-cal .d.due{background:var(--warns);color:var(--warn);font-weight:600}
+.tx-cal .d.done{background:var(--oks);color:var(--okt)}
+.tx-adddate,.tx-addrate{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.tx-adddate .in,.tx-addrate .in{flex:1;min-width:110px}
+.tx-rt{display:grid;grid-template-columns:minmax(0,1fr) 90px 150px 34px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.tx-foot{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--mut);margin:28px 0 8px}
+.tx-foot .i{width:16px;height:16px;flex:none}

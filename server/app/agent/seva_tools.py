@@ -29,11 +29,35 @@ SEVA_TOOLS = [
         "action=sent: exception_id, ref (she paid from her own app; Hoola tells the customer). action=csat: ticket, score 1-5. "
         "action=settings (owner only): kind shop|isp|ecommerce|clinic (SLA preset), sla {priority: [first_response_h, resolve_h]}, "
         "ecommerce, officer, officer_contact (grievance officer), refund_days, refund_max, replace_days, goodwill_max, cancel_hours, "
-        "refund_mode, lang, csat_on, auto_ack, morning_time."),
+        "refund_mode, lang, csat_on, auto_ack, morning_time. "
+        "ONE BUSINESS BRAIN (shared with the Telecaller): action=kb_history: entry_id (every version). action=kb_restore: entry_id + "
+        "version (owner only). action=kb_meta: entry_id + owner and / or review_by YYYY-MM-DD, or checked=true after a changed page / "
+        "passed review date (owner only). action=kb_helpcenter: url of her PUBLIC Zendesk help center -> DRAFTS (an export file comes "
+        "through the Knowledge page). action=suggestion_ok / suggestion_no: suggestion_id (+ question / answer if she changed the "
+        "words) - an answer her team gave again and again on solved tickets (owner only). "
+        "ANSWER ENGINE: action=try: text + channel -> what Hoola would do with that customer message and why (nothing sent). "
+        "action=trust (owner only): level answer|draft|person + topic (a category or *) + channel (whatsapp|sms|email|web|app|"
+        "phone|... or *) - may Hoola answer alone, draft for a person, or always hand over. action=draft_send / draft_sent / "
+        "draft_discard: draft_id (+ text) for a reply that waits for a person. "
+        "WORKFLOW (hers): action=move: ticket + stage (a next stage of its workflow; fields {name: value} the stage asks for; "
+        "note = why) - only along her arrows, and you move a ticket only out of a stage owned by Hoola unless she asks. "
+        "action=flow_save (owner only, when she asks): flow {key, name, stages [{name, owner hoola|team|supervisor|approver|"
+        "finance|field|engineering|person:<name>|queue:<name>, hours, customer_told, waiting, needs [field names]}], arrows "
+        "{stage: [next stages]}, categories [ticket categories that use it]}. "
+        "WATCHING UNTIL SOLVED: action=confirm: ticket + yes true|false (the customer's answer to \"did this fix it?\" given to "
+        "you in words; a YES closes it, a NO sends it back). action=watch_save (owner only, when she asks): rules {hours_on, "
+        "week {mon..sun: [\"09:00\", \"18:00\"] or []}, holidays [YYYY-MM-DD], ladder_on, before_h, boss_after_h, repeat_h, "
+        "max_day, quiet [\"21:00\", \"08:00\"], supervisor, update_h, confirm_on, confirm_days, reopen_days}. "
+        "HAND-OVER: action=handover: ticket + reason (+ rule asked|angry|safety|money|vip|topic|failed|unknown) -> the packet for a "
+        "person and the honest line for the customer. action=hand_back: handover_id + note (the person gives the chat back to Hoola with "
+        "an instruction). action=handover_rules (owner only, when she asks): rules {on {rule: true|false}, vip [numbers], words [extra "
+        "words that always go to a person], page_urgent, callback_h} - safety and money rules cannot be turned off."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["kb_add", "kb_import", "kb_approve", "kb_edit", "kb_remove", "ask", "macro_add",
                                                "macro_approve", "ticket", "update", "reply", "note", "merge", "exception", "sent",
-                                               "csat", "settings"]},
+                                               "csat", "settings", "kb_history", "kb_restore", "kb_meta", "kb_helpcenter",
+                                               "suggestion_ok", "suggestion_no", "try", "trust", "draft_send", "draft_sent",
+                                               "draft_discard", "move", "flow_save", "confirm", "watch_save", "handover", "hand_back", "handover_rules"]},
          "question": {"type": "string"}, "answer": {"type": "string"}, "kind": {"type": "string"},
          "aliases": {"type": "array", "items": {"type": "string"}}, "file_id": {"type": "string"}, "url": {"type": "string"},
          "text": {"type": "string"}, "ids": {"type": "array", "items": {"type": "string"}}, "entry_id": {"type": "string"},
@@ -45,16 +69,24 @@ SEVA_TOOLS = [
          "sla": {"type": "object"}, "ecommerce": {"type": "boolean"}, "officer": {"type": "string"}, "officer_contact": {"type": "string"},
          "refund_days": {"type": "number"}, "refund_max": {"type": "number"}, "replace_days": {"type": "number"},
          "goodwill_max": {"type": "number"}, "cancel_hours": {"type": "number"}, "refund_mode": {"type": "string"},
-         "lang": {"type": "string"}, "csat_on": {"type": "boolean"}, "auto_ack": {"type": "boolean"}, "morning_time": {"type": "string"}},
+         "lang": {"type": "string"}, "csat_on": {"type": "boolean"}, "auto_ack": {"type": "boolean"}, "morning_time": {"type": "string"},
+         "version": {"type": "integer"}, "owner": {"type": "string"}, "review_by": {"type": "string"}, "checked": {"type": "boolean"},
+         "suggestion_id": {"type": "string"}, "level": {"type": "string"}, "topic": {"type": "string"},
+         "draft_id": {"type": "string"}, "stage": {"type": "string"}, "fields": {"type": "object"}, "flow": {"type": "object"},
+         "yes": {"type": "boolean"}, "rules": {"type": "object"}, "handover_id": {"type": "string"}, "rule": {"type": "string"}},
          "required": ["action"]}},
     {"name": "seva_dekho", "description": (
         "Read the support desk (nothing changes). what=day (open / late / waiting exceptions / gaps) | tickets (status: open | "
         "resolved | ..., q) | ticket (ticket: notes, SLA, exceptions) | kb (status live|draft, q) | gaps (questions the knowledge "
         "base could not answer) | macros | exceptions (status) | report (days: first response / resolution time, SLA %, deflection, "
-        "CSAT, top questions) | duplicates | settings | rules."),
+        "CSAT, top questions) | duplicates | settings | rules | brain (stale answers, answers past their review date, the "
+        "Telecaller's sources both employees share, suggestions from solved tickets, watched pages) | trust (levels per topic and "
+        "channel) | drafts (replies waiting for a person) | flows (her workflows + how many open tickets wait at each stage, "
+        "late ones) | stuck (open tickets past their stage's time; stage, days)."),
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["day", "tickets", "ticket", "kb", "gaps", "macros", "exceptions", "report", "duplicates",
-                                             "settings", "rules"]},
+                                             "settings", "rules", "brain", "trust", "drafts", "flows", "stuck",
+                                             "watch", "reminders", "digest", "handovers", "chats", "calls", "team", "quality", "helpdesk", "reports"]},
          "status": {"type": "string"}, "q": {"type": "string"}, "ticket": {"type": "string"}, "days": {"type": "integer"}},
          "required": ["what"]}},
 ]
@@ -160,8 +192,68 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             if not _owner(ctx):
                 raise ToolError("Only the owner changes Seva rules.")
             return S.save_settings(t, **{k: a[k] for k in _SETTINGS_KEYS if k in a})
+        from ..seva import brain as B
+        if action == "kb_history":
+            return B.history(t, _s(a.get("entry_id")))
+        if action in ("kb_restore", "kb_meta", "suggestion_ok", "suggestion_no") and not _owner(ctx):
+            raise ToolError("Owner only.")
+        if action == "kb_restore":
+            return B.restore(t, _s(a.get("entry_id")), int(a.get("version") or 0), _by(ctx))
+        if action == "kb_meta":
+            return B.meta(t, _s(a.get("entry_id")), a.get("owner"), a.get("review_by"), bool(a.get("checked")), _by(ctx))
+        if action == "kb_helpcenter":
+            return B.import_helpcenter(t, _s(a.get("url")), by=_by(ctx))
+        from ..seva import engine as E
+        if action == "try":
+            out = E.reply(t, _s(a.get("text") or a.get("question")), _s(a.get("channel")) or "whatsapp", "", "test")
+            if out.get("draft_id"):
+                E.draft_decide(t, out["draft_id"], "discard")
+            return out
+        if action == "trust":
+            if not _owner(ctx):
+                raise ToolError("Only the owner sets how much Hoola may do.")
+            return E.set_trust(t, _s(a.get("level")), _s(a.get("topic")) or "*", _s(a.get("channel")) or "*")
+        from ..seva import flow as FL
+        if action == "move":
+            return FL.move(t, tk, _s(a.get("stage")), _by(ctx), _s(a.get("note") or a.get("reason")),
+                           a.get("fields") if isinstance(a.get("fields"), dict) else {})
+        if action == "flow_save":
+            if not _owner(ctx):
+                raise ToolError("Only the owner changes the workflow.")
+            return FL.save(t, a.get("flow") if isinstance(a.get("flow"), dict) else {}, _by(ctx))
+        from ..seva import watch as W
+        if action == "confirm":
+            return W.confirm(t, tk, bool(a.get("yes")), _by(ctx))
+        if action == "watch_save":
+            if not _owner(ctx):
+                raise ToolError("Only the owner sets working hours and reminders.")
+            return W.save(t, a.get("rules") if isinstance(a.get("rules"), dict) else {})
+        from ..seva import handover as H
+        if action == "handover":
+            return H.start(t, "", _s(a.get("channel")) or "other", _s(a.get("reason") or a.get("note")), _s(a.get("rule")) or "asked",
+                           "", "", "", tk, _by(ctx))
+        if action == "hand_back":
+            return H.hand_back(t, _s(a.get("handover_id")), _s(a.get("note") or a.get("text")), _by(ctx))
+        if action == "handover_rules":
+            if not _owner(ctx):
+                raise ToolError("Only the owner sets the hand-over rules.")
+            return H.save(t, a.get("rules") if isinstance(a.get("rules"), dict) else {})
+        if action in ("draft_send", "draft_sent", "draft_discard"):
+            return E.draft_decide(t, _s(a.get("draft_id")), action.split("_", 1)[1], _s(a.get("text")))
+        if action in ("suggestion_ok", "suggestion_no"):
+            return B.suggestion_decide(t, _s(a.get("suggestion_id")), action == "suggestion_ok", _s(a.get("question")),
+                                       _s(a.get("answer")), _by(ctx))
     except S.SevaError as ex:
         raise ToolError(str(ex))
+    except Exception as ex:   # noqa: BLE001
+        from ..seva import brain as B
+        from ..seva import engine as E
+        from ..seva import flow as FL
+        from ..seva import watch as W
+        from ..seva import handover as H
+        if isinstance(ex, (B.BrainError, E.EngineError, FL.FlowError, W.WatchError, H.HandoverError)):
+            raise ToolError(str(ex))
+        raise
     raise ToolError("invalid action")
 
 
@@ -190,6 +282,50 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"duplicates": S.duplicates(t)}
         if what == "settings":
             return S.settings(t)
+        if what == "brain":
+            from ..seva import brain as B
+            return B.overview(t)
+        if what in ("flows", "stuck"):
+            from ..seva import flow as FL
+            if what == "flows":
+                return {"flows": FL.flows(t), "board": FL.board(t)}
+            if _s(a.get("q")) or a.get("days"):
+                return {"stuck": FL.stuck(t, _s(a.get("q")), float(a.get("days") or 0) * 24)}
+            from ..seva import watch as W
+            return {"stuck": W.stuck_all(t)}
+        if what == "chats":
+            from ..seva import channels as CH
+            return CH.overview(t)
+        if what == "reports":
+            from ..seva import reports as RP
+            return RP.build(t, int(a.get("days") or 30))
+        if what == "helpdesk":
+            from ..seva import layer as LY
+            return LY.view(t)
+        if what == "quality":
+            from ..seva import quality as QL
+            v = QL.overview(t)
+            v.pop("sample", None)
+            return v
+        if what == "team":
+            from ..seva import teams as TM
+            return TM.overview(t)
+        if what == "calls":
+            from ..seva import calls as SC
+            return SC.phone_view(t)
+        if what == "handovers":
+            from ..seva import handover as H
+            return H.overview(t)
+        if what in ("watch", "reminders", "digest"):
+            from ..seva import watch as W
+            if what == "watch":
+                return W.watching(t)
+            if what == "digest":
+                return {"people": W.digest(t)}
+            return {"reminders": W.reminders(t, "", 60)}
+        if what in ("trust", "drafts"):
+            from ..seva import engine as E
+            return E.trust(t) if what == "trust" else {"drafts": E.drafts(t)}
         if what == "rules":
             return {"never": list(R.NEVER), "sla_default": R.SLA_DEFAULT, "presets": R.SLA_PRESETS,
                     "law": {"ecommerce": "Grievance officer: acknowledgement in 48 hours, resolution in 1 month (E-Commerce Rules 2020)",
@@ -218,12 +354,17 @@ def _customer(ctx: Ctx):
 
 async def biz_seva_answer(ctx: Ctx, question: str = "", **_):
     from ..seva import service as S
+    from ..seva import engine as E
     _c, key, _label = _customer(ctx)
     try:
-        out = await asyncio.to_thread(S.answer, ctx.tenant_id, str(question or ""), "whatsapp", key)
-    except S.SevaError as ex:
+        out = await asyncio.to_thread(E.reply, ctx.tenant_id, str(question or ""), "whatsapp", key, f"customer:{_c.id}")
+    except (S.SevaError, E.EngineError) as ex:
         raise ToolError(str(ex))
-    out.pop("entry_id", None)
+    # G2: the decision is made in code; `status` kept for the old reading of this tool
+    out["status"] = {"answer": "answered", "clarify": "clarify", "draft": "draft", "status": "answered",
+                     "lookup": "looked_up", "request": "unknown", "person": "unknown", "refuse": "refuse"}.get(out["decision"], "unknown")
+    if out["decision"] == "answer" and out.get("reply"):
+        out["say"] = "Send `reply` (you may add one friendly word, nothing else, no new facts)."
     return out
 
 

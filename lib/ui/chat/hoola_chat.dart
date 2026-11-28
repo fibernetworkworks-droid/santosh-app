@@ -16,6 +16,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderSliverToBoxAdapter, SliverGeometry;
 import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
@@ -56,6 +57,13 @@ class _HoolaChatState extends State<HoolaChat> {
   bool _away = false;
   int _unseen = 0;
   FeedItem? _selecting;
+  // v0.999.199 SMOOTH LANDING like Claude: the message she sends rises to the top of the chat (16 under it) and the
+  // newest turn (her message + what follows) is one block at least a screen tall, so the reply grows into the room
+  // under it and her message stays put. Past the screen the view still holds still (the block asks the list to move
+  // by what it grew, in the same layout pass - no frame where it jumps) until SHE scrolls.
+  static const double landTop = 16;
+  FeedItem? _anchor;
+  bool _hold = false;
 
   Santosh get app => widget.app;
 
@@ -83,6 +91,12 @@ class _HoolaChatState extends State<HoolaChat> {
     _lastLen = app.feed.length;
     if (added <= 0) return;
     if (app.replaying || added > 2) _old.addAll(app.feed.sublist(app.feed.length - added));   // history: shown at once
+    if (!app.replaying && added <= 2) {
+      for (final f in app.feed.sublist(app.feed.length - added)) {
+        if (f.kind == 'message' && '${f.data['role']}' == 'user' && !_old.contains(f)) { _land(f); return; }
+      }
+    }
+    if (_hold) return;   // landed: the view stays where her message is until she scrolls
     if (_away) {
       if (mounted) setState(() => _unseen += added);
       return;
@@ -106,11 +120,24 @@ class _HoolaChatState extends State<HoolaChat> {
     }
   }
 
+  /// Her new message: it becomes the anchor of the newest-turn block; the block's room then opens under it.
+  void _land(FeedItem f) {
+    if (!mounted) return;
+    setState(() { _anchor = f; _hold = true; _away = false; _unseen = 0; });
+    if (_scroll.hasClients && _scroll.offset > 0) _scroll.jumpTo(0);
+  }
+
+  /// She moved the list herself: the hold ends; at the newest end the page follows the reply again.
+  bool _onUserScroll(ScrollNotification n) {
+    if (n is ScrollStartNotification && n.dragDetails != null && _hold) setState(() => _hold = false);
+    return false;
+  }
+
   void _toNewest() {
     if (!_scroll.hasClients) return;
     if (_scroll.offset > 4000) _scroll.jumpTo(900);
     _scroll.animateTo(0, duration: HoolaMotion.of(context, HoolaMotion.page), curve: HoolaMotion.ease);
-    setState(() => _unseen = 0);
+    setState(() { _unseen = 0; _hold = false; });
   }
 
   void _toast(String t) =>
@@ -224,32 +251,83 @@ class _HoolaChatState extends State<HoolaChat> {
       if (prev == null || t.day != prev.day || t.month != prev.month || t.year != prev.year) dayStart.add(i);
       prev = t;
     }
-    return ListView.builder(
-      controller: _scroll,
-      reverse: true,
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      // v0.902 room under the newest reply for the pages pill when this chat made pages
-      padding: EdgeInsets.fromLTRB(HoolaSpace.gutter + 4, 8, HoolaSpace.gutter + 4, chatPages(app).isEmpty ? 16 : 60),
-      itemCount: working + feed.length + older,
-      itemBuilder: (context, i) {
-        if (working == 1 && i == 0) {
-          return _WorkingMark(key: const ValueKey('working'), name: app.aName, step: app.currentStep, since: _sentAt(feed));
-        }
-        final k = i - working;
-        if (k == feed.length) return _OlderButton(loading: app.loadingOlder, onTap: app.loadOlder);
-        final fi = feed.length - 1 - k;
-        final it = feed[fi];
-        // a reply that arrived while the chat is open appears at reading speed (the same widget keeps its place
-        // across rebuilds, so the reveal is never cut short) - unless it already streamed in word by word
-        final fresh = it.kind == 'message' && !_old.contains(it) && !_streamed.contains('${it.data['turn'] ?? '-'}');
-        Widget node = _item(it, c, fresh: fresh, actions: identical(it, last) && !app.typing);
-        if (dayStart.contains(fi)) {
-          node = Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min,
-              children: [_DayHead(day: _time(it)!), node]);
-        }
-        return KeyedSubtree(key: ObjectKey(it), child: node);
-      },
-    );
+    final bottomPad = chatPages(app).isEmpty ? 16.0 : 60.0;   // v0.902 room under the newest reply for the pages pill
+    final gutter = HoolaSpace.gutter + 4;
+    Widget nodeAt(int fi) {
+      final it = feed[fi];
+      // a reply that arrived while the chat is open appears at reading speed (the same widget keeps its place
+      // across rebuilds, so the reveal is never cut short) - unless it already streamed in word by word
+      final fresh = it.kind == 'message' && !_old.contains(it) && !_streamed.contains('${it.data['turn'] ?? '-'}');
+      Widget node = _item(it, c, fresh: fresh, actions: identical(it, last) && !app.typing);
+      if (dayStart.contains(fi)) {
+        node = Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min,
+            children: [_DayHead(day: _time(it)!), node]);
+      }
+      if (identical(it, _anchor)) node = _LandIn(child: node);
+      return KeyedSubtree(key: ObjectKey(it), child: node);
+    }
+    Widget workingRow() => _WorkingMark(key: const ValueKey('working'), name: app.aName, step: app.currentStep, since: _sentAt(feed));
+    final ai = _anchor == null ? -1 : feed.indexWhere((f) => identical(f, _anchor));
+    if (ai < 0) {
+      return NotificationListener<ScrollNotification>(
+        onNotification: _onUserScroll,
+        child: ListView.builder(
+          controller: _scroll,
+          reverse: true,
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: EdgeInsets.fromLTRB(gutter, 8, gutter, bottomPad),
+          itemCount: working + feed.length + older,
+          itemBuilder: (context, i) {
+            if (working == 1 && i == 0) return workingRow();
+            final k = i - working;
+            if (k == feed.length) return _OlderButton(loading: app.loadingOlder, onTap: app.loadOlder);
+            return nodeAt(feed.length - 1 - k);
+          },
+        ),
+      );
+    }
+    // v0.999.199 landed: the newest turn is one block (her message on top), everything older is the list above it
+    return LayoutBuilder(builder: (context, box) {
+      final room = (box.maxHeight - landTop - bottomPad).clamp(0, double.infinity).toDouble();
+      return NotificationListener<ScrollNotification>(
+        onNotification: _onUserScroll,
+        child: CustomScrollView(
+          controller: _scroll,
+          reverse: true,
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          slivers: [
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(gutter, landTop, gutter, bottomPad),
+              sliver: TweenAnimationBuilder<double>(
+                key: ObjectKey(_anchor),
+                tween: Tween(begin: 0, end: room),
+                duration: HoolaMotion.of(context, HoolaMotion.page),
+                curve: HoolaMotion.ease,
+                builder: (context, m, child) => _HoldTurn(
+                  key: const ValueKey('landturn'),
+                  hold: _hold,
+                  room: m,
+                  child: ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: m),
+                      child: Align(alignment: Alignment.topCenter, child: child)),
+                ),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+                  for (var fi = ai; fi < feed.length; fi++) nodeAt(fi),
+                  if (working == 1) workingRow(),
+                ]),
+              ),
+            ),
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(gutter, 8, gutter, 0),
+              sliver: SliverList(delegate: SliverChildBuilderDelegate(
+                (context, k) => k == ai ? _OlderButton(loading: app.loadingOlder, onTap: app.loadOlder) : nodeAt(ai - 1 - k),
+                childCount: ai + older,
+              )),
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   DateTime? _time(FeedItem it) {
@@ -452,7 +530,7 @@ class _Mine extends StatelessWidget {
     final hasFiles = files.any((f) => f is Map);
     final onlyFiles = hasFiles &&
         (RegExp(r'^here (is a file|are \d+ files)$', caseSensitive: false).hasMatch(text.trim()) || filesOnlyText(text, files));
-    final style = HoolaType.bodyLarge(c).copyWith(height: 1.5);   // v0.991 the console's 16 / 1.5 for her message
+    final style = HoolaType.bodyLarge(c).copyWith(height: 1.4);   // v0.999.203 Claude.s 16 / 1.4 for her message (was 1.5, v0.991)
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
       child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
@@ -1116,4 +1194,55 @@ class _Fade extends StatelessWidget {
           ),
         ),
       );
+}
+
+
+/// v0.999.199 her sent message comes in like Claude's: a short soft fade with a 6 px rise (instant under less motion).
+class _LandIn extends StatelessWidget {
+  const _LandIn({required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) {
+    if (HoolaMotion.reduced(context)) return child;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: HoolaMotion.fade,
+      curve: Curves.easeOut,
+      builder: (context, t, child) => Opacity(opacity: t, child: Transform.translate(offset: Offset(0, 6 * (1 - t)), child: child)),
+      child: child,
+    );
+  }
+}
+
+/// v0.999.199 the newest-turn block. The list is reversed (it starts at the bottom), so when the block grows past
+/// its room everything on screen would be pushed up; while the view is held - or she is reading higher up - the
+/// block asks the list to move by exactly what it grew, in the same layout pass, so nothing on screen moves.
+/// The room growing (the landing slide) is not corrected: that is the slide.
+class _HoldTurn extends SingleChildRenderObjectWidget {
+  const _HoldTurn({super.key, required this.hold, required this.room, super.child});
+  final bool hold;
+  final double room;   // the room kept under her message (it grows during the landing slide)
+  @override
+  _RenderHoldTurn createRenderObject(BuildContext context) => _RenderHoldTurn(hold, room);
+  @override
+  void updateRenderObject(BuildContext context, _RenderHoldTurn r) => r..hold = hold..room = room;
+}
+
+class _RenderHoldTurn extends RenderSliverToBoxAdapter {
+  _RenderHoldTurn(this.hold, this.room);
+  bool hold;
+  double room;
+  double? _was;   // the block's height last time
+  @override
+  void performLayout() {
+    super.performLayout();
+    final c = child;
+    if (c == null) return;
+    final h = c.size.height, was = _was;
+    _was = h;
+    if (was == null) return;
+    final over = h > room ? h - room : 0.0, overWas = was > room ? was - room : 0.0;
+    final grew = over - overWas;   // only what ran past the room pushes the screen; the room itself is the slide
+    if (grew > 0.5 && (hold || constraints.scrollOffset > 0.5)) geometry = SliverGeometry(scrollOffsetCorrection: grew);
+  }
 }

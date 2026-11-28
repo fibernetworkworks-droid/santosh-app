@@ -222,19 +222,42 @@ def quarter_of(on: date) -> str:
     return f"R-{on.year}-Q{(on.month - 1) // 3 + 1}"
 
 
-def practices_list() -> list[dict]:
-    return [
-        {"id": "mfa_admins", "text": "2-step verification on every admin account", "why": "ISO 27001 A.8.5 / A.8.2"},
-        {"id": "no_shared", "text": "As few shared logins as possible; a separate account for each person", "why": "ISO 27001 A.5.16"},
-        {"id": "leaver_same_day", "text": "Close a leaver's access on the last day itself", "why": "ISO 27001 A.5.18 / A.6.5"},
-        {"id": "review_quarterly", "text": "Access review every 3 months", "why": "ISO 27001 A.5.18"},
+EU_EEA = {"AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT",
+          "RO", "SK", "SI", "ES", "SE", "IS", "LI", "NO"}
+COMMON_PRACTICES = [
+    {"id": "mfa_admins", "text": "2-step verification on every admin account", "why": "ISO 27001 A.8.5 / A.8.2", "checked": True},
+    {"id": "no_shared", "text": "As few shared logins as possible; a separate account for each person", "why": "ISO 27001 A.5.16", "checked": True},
+    {"id": "leaver_same_day", "text": "Close a leaver's access on the last day itself", "why": "ISO 27001 A.5.18 / A.6.5", "checked": True},
+    {"id": "review_quarterly", "text": "Access review every 3 months", "why": "ISO 27001 A.5.18", "checked": True},
+    {"id": "assets_back", "text": "Laptops, phones and keys collected from leavers", "why": "ISO 27001 A.5.11", "checked": True},
+    {"id": "backups", "text": "Mail and shared drives backed up, and a restore tried", "why": "ISO 27001 A.8.13", "checked": True},
+]
+COUNTRY_PRACTICES: dict[str, list[dict]] = {
+    "EU": [{"id": "gdpr_staff", "text": "Staff data kept only as long as needed, protected (GDPR Art. 5 and 32); a record of processing",
+            "why": "GDPR (EU / EEA) - check this", "checked": False},
+           {"id": "gdpr_logs", "text": "How long login logs are kept is written down (data minimisation) - check with your DPO", "why": "GDPR Art. 5(1)(e) - check this", "checked": False}],
+    "GB": [{"id": "ukgdpr_staff", "text": "Staff data kept only as long as needed and protected (UK GDPR); ICO guidance on monitoring staff",
+            "why": "UK GDPR / Data Protection Act 2018 - check this", "checked": False}],
+    "US": [{"id": "us_state", "text": "State privacy and breach laws for staff data (California CCPA covers employees) - check your states",
+            "why": "State laws - check this", "checked": False}],
+}
+
+
+def practices_list(country: str = "IN") -> list[dict]:
+    c = (country or "IN").upper()
+    if c != "IN":
+        extra = COUNTRY_PRACTICES.get("EU" if c in EU_EEA else c) or [
+            {"id": "local_law", "text": "Your country's rules on keeping logs and staff data - check this with a local adviser",
+             "why": "Not kept by Hoola for " + c, "checked": False}]
+        return COMMON_PRACTICES + extra
+    return COMMON_PRACTICES + [
         {"id": "logs_180", "text": "Login / system logs for 180 days, inside India (check the M365 / Workspace audit log setting)",
-         "why": "CERT-In Directions 28 Apr 2022 (body corporate)"},
+         "why": "CERT-In Directions 28 Apr 2022 (body corporate)", "checked": True},
         {"id": "ntp", "text": "PC / server / router clocks from NIC or NPL NTP (time.nplindia.org / samay1.nic.in)",
-         "why": "CERT-In Directions 28 Apr 2022"},
-        {"id": "poc", "text": "One Point of Contact named for CERT-In (name, email, phone)", "why": "CERT-In Directions 28 Apr 2022"},
+         "why": "CERT-In Directions 28 Apr 2022", "checked": True},
+        {"id": "poc", "text": "One Point of Contact named for CERT-In (name, email, phone)", "why": "CERT-In Directions 28 Apr 2022", "checked": True},
         {"id": "dpdp_staff", "text": "Staff data only for employment purposes; after they leave, erase it once it is no longer needed",
-         "why": "DPDP Act 2023 s.7(i), s.8(7)"},
+         "why": "DPDP Act 2023 s.7(i), s.8(7)", "checked": True},
     ]
 
 

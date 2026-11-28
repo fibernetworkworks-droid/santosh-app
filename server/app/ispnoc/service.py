@@ -108,16 +108,37 @@ def _dur(a: datetime | None, b: datetime | None) -> str:
 
 
 def _phone(v: str) -> str:
-    d = re.sub(r"\D", "", str(v or ""))
+    """An Indian mobile stays 10 digits (as before); any other number is kept in international form +<country code><number>."""
+    raw = str(v or "").strip()
+    d = re.sub(r"\D", "", raw)
+    if raw.startswith("+") and not d.startswith("91"):
+        return "+" + d if 8 <= len(d) <= 15 else ""
     if len(d) == 12 and d.startswith("91"):
         d = d[2:]
     if len(d) == 11 and d.startswith("0"):
         d = d[1:]
-    return d if re.fullmatch(r"[6-9]\d{9}", d) else ""
+    if re.fullmatch(r"[6-9]\d{9}", d):
+        return d
+    return "+" + d if raw.startswith("00") and 10 <= len(d) <= 17 and (d := d[2:]) else ""
 
 
 def _mask_phone(p: str) -> str:
-    return f"{p[:2]}XXXX{p[-4:]}" if len(p) == 10 else ""
+    if len(p) == 10:
+        return f"{p[:2]}XXXX{p[-4:]}"
+    return f"{p[:4]}XXXX{p[-3:]}" if p.startswith("+") and len(p) >= 9 else ""
+
+
+def _tel(p: str) -> str:
+    return "" if not p else ("tel:" + p if p.startswith("+") else "tel:+91" + p)
+
+
+def india(st) -> bool:
+    """India's rules (TRAI, Telecom Cyber Security Rules, BSNL franchise) apply only when her country is India ("" = India, as before)."""
+    return ((getattr(st, "country", None) if not isinstance(st, dict) else st.get("country")) or "IN").upper() == "IN"
+
+
+OTHER_OUTAGE = ("check this: your telecom regulator may have its own rule for reporting a large outage and for refunds - Hoola has "
+                "only checked India's")
 
 
 def _publish(tenant: str, kind: str, payload: dict, conv: str = "") -> None:
@@ -168,7 +189,7 @@ def _no_secret_keys(kw: dict) -> None:
 
 
 # ---------------------------------------------------------------- settings
-_SET_KEYS = ("isp_name", "model", "upstream", "optics", "bsnl_penalty_note", "morning_time", "rules", "window_min")
+_SET_KEYS = ("isp_name", "model", "upstream", "optics", "bsnl_penalty_note", "morning_time", "rules", "window_min", "country")
 
 
 def settings(tenant: str) -> dict:
@@ -179,6 +200,8 @@ def settings(tenant: str) -> dict:
         out["sla"] = {k: R.sla_for(k, _j(r.sla, {})) for k in R.SLA_DEFAULT}
         out["bsnl_sla_hours"] = r.bsnl_sla_hours
         out["optics_label"] = R.optics_of(r.optics)["label"]
+        out["country"] = (r.country or "").upper()
+        out["india"] = india(r)
         return out
 
 
@@ -192,13 +215,18 @@ def save_settings(tenant: str, **kw: Any) -> dict:
         if kw.get("model") is not None:
             m = str(kw["model"]).lower().strip()
             if m not in ("isp", "franchise", "lco"):
-                raise NocError("model = isp (own licence) | franchise (BSNL / TIP) | lco")
+                raise NocError("model = isp (own licence) | franchise (of a bigger ISP, e.g. BSNL / TIP) | lco")
             r.model = m
         if kw.get("optics") is not None:
             o = str(kw["optics"]).lower().strip()
             if o not in R.OPTICS:
                 raise NocError("optics = " + " | ".join(R.OPTICS))
             r.optics = o
+        if "country" in kw:
+            c = str(kw["country"] or "").strip().upper()
+            if c and not re.fullmatch(r"[A-Z]{2}", c):
+                raise NocError("country: a two-letter code, for example IN, US, GB, NG")
+            r.country = c
         if kw.get("window_min") is not None:
             w = int(_num(kw["window_min"]) or 15)
             r.window_min = max(2, min(120, w))
@@ -227,7 +255,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
                         continue
                     ph = str(p.get("phone") or "")
                     if ph and not _phone(ph):
-                        raise NocError(f"{p.get('name')}: the mobile number must have 10 digits.")
+                        raise NocError(f"{p.get('name')}: this is not a phone number (an Indian mobile, or +country code and number).")
                     rows.append({"name": str(p["name"]).strip()[:80], "phone": _phone(ph), "email": str(p.get("email") or "").strip()[:120],
                                  "area": str(p.get("area") or "").strip()[:120]})
                 teams[team] = rows
@@ -915,7 +943,11 @@ def fault_view(tenant: str, ref: str, full_phone: bool = False) -> dict:
         mins = int((end - _aware(f.started_at)).total_seconds() // 60)
         total_subs = sum(1 for o in onts.values() if o.active)
         notes = []
-        if f.status in ("open", "ticketed"):
+        if f.status in ("open", "ticketed") and not india(st):
+            share = (f.n_affected / total_subs) if total_subs else 0
+            if mins >= 240 and share >= 0.10:
+                notes.append(f"{f.n_affected} / {total_subs} customers ({share:.0%}) down for more than 4 hours: a major outage - " + OTHER_OUTAGE + ".")
+        elif f.status in ("open", "ticketed"):
             share = (f.n_affected / total_subs) if total_subs else 0
             if mins >= 240 and share >= 0.10:
                 notes.append(f"{f.n_affected} / {total_subs} customers ({share:.0%}) down for more than 4 hours: under TRAI's draft (Aug 2026) this would be a "
@@ -924,7 +956,7 @@ def fault_view(tenant: str, ref: str, full_phone: bool = False) -> dict:
             if mins >= 24 * 60:
                 notes.append("Down for more than 24 hours: the TRAI draft talks of a rent rebate / extended validity for such customers; "
                              "tell the customers as per your own policy.")
-        if f.kind in ("bng", "rogue_onu") and st.model == "franchise":
+        if f.kind in ("bng", "rogue_onu") and st.model == "franchise" and india(st):
             notes.append("Network security / login problem: BSNL (the licensee) may have to be told (Telecom Cyber Security Rules 2024: "
                          "a security incident within 6 hours).")
         loc = {}
@@ -1037,8 +1069,8 @@ def _ticket_view(tenant: str, t: IspnocTicket, f: IspnocFault | None = None) -> 
             "team_label": R.TEAMS.get(t.team, t.team), "assignee": t.assignee, "phone": _mask_phone(t.phone), "status": t.status,
             "eta": _local(tenant, t.eta), "due": _local(tenant, due), "late": late, "sla_hours": t.sla_hours, "created": _local(tenant, t.created_at),
             "fixed": _local(tenant, fixed), "mttr_hours": mttr, "ext_ref": t.ext_ref, "text": t.text, "log": _j(t.log, [])[-12:],
-            "wa_link": f"https://wa.me/91{t.phone}?text={quote(t.text)}" if t.phone else f"https://wa.me/?text={quote(t.text)}",
-            "tel": f"tel:+91{t.phone}" if t.phone else ""}
+            "wa_link": f"https://wa.me/{t.phone.lstrip('+') if t.phone.startswith('+') else '91' + t.phone}?text={quote(t.text)}" if t.phone else f"https://wa.me/?text={quote(t.text)}",
+            "tel": _tel(t.phone)}
 
 
 def _ticket_text(tenant: str, v: dict, team: str, eta: str, note: str, isp: str) -> str:
@@ -1081,7 +1113,7 @@ def open_ticket(tenant: str, ref: str, team: str = "", assignee: str = "", phone
     if not assignee and people:
         assignee, phone = people[0]["name"], people[0]["phone"]
     if phone and not _phone(phone):
-        raise NocError("The mobile number must have 10 digits.")
+        raise NocError("This is not a phone number (an Indian mobile, or +country code and number).")
     eta_dt = R.parse_when(eta, clock(), tz(tenant)) if eta else None
     eta_dt = eta_dt.astimezone(timezone.utc) if eta_dt else None
     if eta and eta_dt is None:
@@ -1141,7 +1173,7 @@ def update_ticket(tenant: str, ref: str, status: str = "", eta: str = "", note: 
                 tk.status = "assigned"
         if phone:
             if not _phone(phone):
-                raise NocError("The mobile number must have 10 digits.")
+                raise NocError("This is not a phone number (an Indian mobile, or +country code and number).")
             tk.phone = _phone(phone)
         if ext_ref:
             tk.ext_ref = R.scrub(ext_ref)[:80]
@@ -1277,7 +1309,7 @@ def request_change(tenant: str, action: str, olt: str, pon: str = "", onu: str =
         col = s.get(IspnocCollector, o.collector_id) if o.collector_id else None
         out = _change_view(tenant, c, o, col)
     say = (f"{out['number']}: {out['action_label']} ({out['olt']}" + (f" PON {out['pon']}" if out["pon"] else "") + (f" ONU {out['onu']}" if out["onu"] else "")
-           + f"). Affected: {out['n_affected']} customers. A card has been sent for your approval; nothing changes on the equipment without your approval.")
+           + f"). Affects {out['n_affected']} customer{'' if out['n_affected'] == 1 else 's'}. A card has been sent for your approval; nothing changes on the equipment without your approval.")
     _publish(tenant, "ispnoc_change", {"change": out, "say": say}, conv)
     return {"change": out, "needs_tap": True, "say": say}
 
@@ -1650,7 +1682,8 @@ def report(tenant: str, days: int = 30) -> dict:
     if top and top[0][1] >= 3:
         tips.append(f"{top[0][0]}: {top[0][1]} faults: get that route / splitter checked fully once.")
     if mttr is not None and mttr > 10:
-        tips.append(f"Average time to fix is {mttr:g} h: the TRAI draft says 10 hours; keep spare patch cords / a splicer with the team.")
+        tips.append(f"Average time to fix is {mttr:g} h" + (": the TRAI draft says 10 hours" if india(settings(tenant)) else "")
+                    + "; keep spare patch cords / a splicer with the team.")
     availability = None
     if subs:
         availability = round(100 - 100 * cust_min / (subs * days * 24 * 60), 3)
@@ -1719,8 +1752,9 @@ def tick(when: datetime | None = None) -> dict:
                         continue
                     if subs and mins >= 240 and f.n_affected / subs >= 0.10 and not _told(f, "sno"):
                         alerts.append(f"{f.number}: {f.n_affected} / {subs} customers down for 4 hours. Major outage: "
-                                      + ("tell BSNL at once; " if st.model == "franchise" else "")
-                                      + "the TRAI draft (Aug 2026) talks of reporting such an outage within 24 hours.")
+                                      + (("tell BSNL at once; " if st.model == "franchise" else "")
+                                         + "the TRAI draft (Aug 2026) talks of reporting such an outage within 24 hours." if india(st)
+                                         else ("tell the ISP you are a franchise of at once; " if st.model == "franchise" else "") + OTHER_OUTAGE + "."))
                         out["sno"] += 1
                     if mins >= 24 * 60 and f.n_affected and not _told(f, "day"):
                         alerts.append(f"{f.number}: down for more than 24 hours ({f.n_affected} customers). Tell the customers and check your own rebate policy.")

@@ -451,6 +451,9 @@ class Santosh extends ChangeNotifier {
   bool _replaying = true;
   /// True while the chat history is replaying after a (re)connect: those items show at once, without animation.
   bool get replaying => _replaying;
+  /// Tests only: the history replay has finished, so new items count as live (v0.999.199 landing test).
+  @visibleForTesting
+  void endReplayForTest() => _replaying = false;
   DateTime _connectedAt = DateTime.now().toUtc();
 
   Future<void> saveSettings({String? server, String? key, String? lang, bool? speak}) async {
@@ -637,8 +640,30 @@ class Santosh extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// GOOGLE SIGN UP: a person new to Hoola who came in with Google - her Google name, for the welcome step.
+  String? googleWelcome;
+
+  /// The welcome name once (the setup screen shows the name step with it), then it is gone.
+  String? takeGoogleWelcome() {
+    final n = googleWelcome;
+    googleWelcome = null;
+    return n;
+  }
+
   /// Save the session token that came back from Sign in with Google (used as the bearer).
   Future<void> applySession(String token, {String? server}) async {
+    if (token.startsWith('hc_')) {   // SIGN UP: the Google page sends a one-time code; swap it for the session here
+      try {
+        final r = await Api(serverUrl, '').exchangeCode(token.substring(3));
+        token = '${r['session_token'] ?? ''}';
+        googleWelcome = r['new'] == true ? '${r['name'] ?? ''}' : null;
+      } catch (e) {
+        error = 'Google sign-in did not finish: $e';
+        notifyListeners();
+        return;
+      }
+      if (token.isEmpty) return;
+    }
     await _prefs.setString('key', token);
     await connect(fresh: true);
   }
@@ -820,6 +845,19 @@ class Santosh extends ChangeNotifier {
   int slidesLinkedTick = 0;
   int photosLinkedTick = 0;
   int youtubeLinkedTick = 0;
+  /// v0.999.181 GOOGLE CONNECTIONS: what Google's page just granted (the Google screen shows it, then clears it).
+  Map<String, String>? googleResult;
+  int googleTick = 0;
+  void onGoogleHub(String query) {
+    googleResult = Uri.splitQueryString(query);
+    googleTick++;
+    final ok = googleResult!['ok'] == '1';
+    if (!ok) {
+      feed.add(FeedItem('note', {'text': 'Google was not connected. ${googleResult!['why'] ?? ''}'.trim()}));
+    }
+    notifyListeners();
+  }
+
   void onGoogleLinked(String what, bool ok) {
     if (what == 'youtube') youtubeLinkedTick++;
     if (what == 'slides') slidesLinkedTick++;
@@ -1996,7 +2034,8 @@ class Santosh extends ChangeNotifier {
         studioTick++;
         break;
       case 'google_reconnect':
-        feed.add(FeedItem('google_reconnect', Map<String, dynamic>.from(p)));
+      case 'google_connect':   // v0.999.181 a Google app to connect / reconnect, with its button
+        feed.add(FeedItem(ev.kind, Map<String, dynamic>.from(p)));
         if (inBackground && !_replaying && !pushOn) Device.instance.showNow('Reconnect Google', '${p['text'] ?? ''}');
         break;
       case 'studio_approval':

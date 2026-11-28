@@ -21,8 +21,8 @@ MENU = (CON / "menu.js").read_text(encoding="utf-8")
 
 
 def test_the_shell_is_claudes_shape():
-    assert "return [['hire', 'AI Employees'], ['kaam', 'Tools'], ['computer', 'Computer'], ...more, ['more', 'More'], ['main', 'Customize']];" in JS   # v0.976
-    assert "['main', 'Customize']" in JS
+    assert "return [['hire', 'AI Employees'], ['kaam', 'Tools'], ['computer', 'Computer'], ['dod', 'Hoola DOD'], ...more, ['more', 'More']];" in JS   # v0.976; v0.999.217 Customize moved to the profile menu; v0.999.306 Hoola DOD row
+    assert "{label: 'Customize', icon: 'brush', run: () => go('main')}" in JS   # v0.999.217 in the profile menu
     assert "How can ${AV} help you today?" in JS
     assert "function plusMenu(" in JS and "label: 'Deep research'" in JS and "label: 'Use Hoola PC'" in JS
     assert "function sessMenu(" in JS and "id=\"sessBtn\"" not in JS and "incogBtn" not in JS   # v0.974 no ghost; v0.999.23 no Session row
@@ -62,7 +62,7 @@ def test_claude_chat_in_a_real_browser(arena_server):  # noqa: F811
             plusLeft:r('#attach').left < r('#micBtn').left, field:r('#msg').bottom <= r('#attach').top + 2,
             boxIn:r('#composer').right <= r('.landing').right}}""")
         assert m["rows"][:3] == ["AI Employees", "Tools", "Computer"], m   # v0.976
-        assert m["rows"][-1] == "Customize", m
+        assert m["rows"][-1] == "More", m   # v0.999.217 Customize moved to the profile menu
         assert re.match(r"Good (morning|afternoon|evening)", m["greet"]), m
         assert "Literata" in m["gfont"] and m["mark"] and m["row"], m
         assert m["pills"] == "none" and m["ph"] == "How can Santosh help you today?", m
@@ -99,4 +99,4 @@ def test_claude_chat_in_a_real_browser(arena_server):  # noqa: F811
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.999.39")
+    assert APP_VERSION.startswith("0.999.169")

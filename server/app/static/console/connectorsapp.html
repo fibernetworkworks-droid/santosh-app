@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Hoola Connectors</title>
+<script src="/static/console/theme.js?v=0.999.308"></script>
+<link rel="icon" href="/static/favicon-32.png" sizes="32x32">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400..700&family=Literata:ital,opsz,wght@0,7..72,300..700;1,7..72,300..700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/static/console/v2.css?v=0.999.308">
+<link rel="stylesheet" href="/static/console/connectorsapp.css?v=0.999.308">
+</head>
+<body class="kx">
+<div class="k-app">
+  <nav class="k-side" id="kside" aria-label="Connectors">
+    <a class="k-back" href="/console/"><svg class="k-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Back to Hoola chat</a>
+    <div class="k-brand"><span class="k-tile" id="kmark" aria-hidden="true"></span><b>Connectors</b></div>
+    <button type="button" class="k-find" id="kfind"><svg class="k-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4"/></svg><span>Find an app</span><kbd>Ctrl K</kbd></button>
+    <div class="k-navs" id="knav"></div>
+    <div class="k-grow"></div>
+    <div class="k-need" id="kneed" hidden></div>
+  </nav>
+  <main class="k-main" id="kmain" tabindex="-1"><div class="k-loading">Opening Connectors…</div></main>
+</div>
+<div id="ktoast" class="k-toast" role="status" aria-live="polite" hidden></div>
+<script src="/static/console/mark.js?v=0.999.308"></script>
+<script src="/static/console/connectors.js?v=0.999.308"></script>
+<script src="/static/console/connectorsapp.js?v=0.999.308"></script>
+</body>
+</html>

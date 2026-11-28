@@ -39,7 +39,7 @@ def _token(account_id: str, force: bool) -> str:
             return acc.decrypt(a.access_token_enc) or ""
         refresh = acc.decrypt(a.refresh_token_enc)
     if not refresh:
-        raise FormError("The Google Forms sign-in has expired. Connect again from Profile > Google Forms.")
+        raise FormError("The Google Forms sign-in has expired. On the web console open Connectors > Google, or in the phone app open Settings > Google, and press Reconnect.")
     try:
         tok = mail_acc._post(mail_acc.GOOGLE_TOKEN, {"client_id": st.google_oauth_client_id,
                                                      "client_secret": st.google_oauth_client_secret,
@@ -79,7 +79,8 @@ def clients(tenant: str) -> list[FormsClient]:
             scopes = set((c.scopes or "").split())
             out.append(FormsClient("google", c.account_email, mail_acc._signin_token(tenant), mail_acc._http,
                                    can_search=bool(scopes & set(SEARCH_SCOPES))))
-    return out
+    from ..googlehub import arrange   # v0.999.181 her first choice first, refused accounts last
+    return arrange(tenant, "forms", out)
 
 
 def has_forms(tenant: str) -> bool:
@@ -92,8 +93,7 @@ def has_forms(tenant: str) -> bool:
 def get_client(tenant: str, which: str | None = None) -> FormsClient:
     cs = clients(tenant)
     if not cs:
-        raise NotConnected("Your Google Forms are not connected to Hoola yet. In the app, go to Profile > Google Forms and tap "
-                           "'Connect Google Forms'.")
+        raise NotConnected("Your Google Forms are not connected to Hoola yet. On the web console open Connectors > Google, or in the phone app open Settings > Google, and press Connect.")
     if not which:
         return cs[0]
     w = which.strip().lower()

@@ -264,8 +264,14 @@ def card_digest(kind: str, target: str, tenant: str) -> tuple[str, dict[str, Any
         if card is None:
             raise ApproveError("This card is no longer pending.")
         show = {"title": card["title"], "payee": card["payee"], "amount": card["amount"], "hash": card["hash"]}
+    elif kind == "wallet":                        # v0.999.60 HOOLA WALLET: a payment Hoola asked for
+        from . import wallet as wl
+        card = wl.approval_card(tenant, target)
+        if card is None:
+            raise ApproveError("This card is no longer pending.")
+        show = card
     else:
-        raise ApproveError("kind = bazar | studio | deal | ads | mandate | domain | wapsi | wapsi_send | courier")
+        raise ApproveError("kind = bazar | studio | deal | ads | mandate | domain | wapsi | wapsi_send | courier | wallet")
     return hashlib.sha256(json.dumps(show, sort_keys=True, ensure_ascii=False).encode()).hexdigest(), show
 
 
@@ -273,7 +279,7 @@ def needed(tenant: str, kind: str, target: str) -> bool:
     """A fingerprint is needed for this approval: an active phone exists and the card moves / spends money."""
     if not active_on(tenant):
         return False
-    if kind in ("studio", "deal", "mandate", "domain", "wapsi", "wapsi_send", "courier"):
+    if kind in ("studio", "deal", "mandate", "domain", "wapsi", "wapsi_send", "courier", "wallet"):
         return True
     if kind == "ads":                             # v0.108 only a change that spends more ad money
         from .ads import service as ads
@@ -286,7 +292,7 @@ def needed(tenant: str, kind: str, target: str) -> bool:
 
 
 def challenge(tenant: str, kind: str, target: str) -> dict[str, Any]:
-    if kind in ("bazar", "studio", "deal", "ads", "mandate", "domain", "wapsi", "wapsi_send", "courier"):
+    if kind in ("bazar", "studio", "deal", "ads", "mandate", "domain", "wapsi", "wapsi_send", "courier", "wallet"):
         digest, show = card_digest(kind, target, tenant)
     elif kind == "remove":
         digest, show = hashlib.sha256(f"remove|{target}".encode()).hexdigest(), {"title": "Remove phone"}

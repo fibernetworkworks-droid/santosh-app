@@ -337,7 +337,7 @@ def test_daily_summary_routine_and_signature(box):
 
 
 def test_no_mailbox_tells_user_where_to_connect(env):
-    with pytest.raises(ToolError, match="Profile > Email"):
+    with pytest.raises(ToolError, match="Connectors > Google"):
         run("email_check", {}, Ctx("someone", "c1"))
 
 

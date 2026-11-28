@@ -34,7 +34,7 @@ def _token(account_id: str, force: bool) -> str:
             return acc.decrypt(a.access_token_enc) or ""
         refresh = acc.decrypt(a.refresh_token_enc)
     if not refresh:
-        raise DriveError("The Google Drive login has expired. Connect it again in Profile > Google Drive.")
+        raise DriveError("The Google Drive login has expired. On the web console open Connectors > Google, or in the phone app open Settings > Google, and press Reconnect.")
     try:
         tok = mail_acc._post(mail_acc.GOOGLE_TOKEN, {"client_id": st.google_oauth_client_id,
                                                      "client_secret": st.google_oauth_client_secret,
@@ -104,7 +104,8 @@ def clients(tenant: str) -> list[DriveClient]:
     if tenant == st.tenant_id and gdrive.configured(None):
         out.append(DriveClient("service", _service_email(), _service_token, "service", mail_acc._http,
                                root=st.google_drive_folder_id.strip() or "root"))
-    return out
+    from ..googlehub import arrange   # v0.999.181 her first choice first, refused accounts last
+    return arrange(tenant, "drive", out)
 
 
 def why_not(tenant: str) -> str:
@@ -116,14 +117,14 @@ def why_not(tenant: str) -> str:
             return reconnect_message(c.account_email, c.last_error)
         if c is not None and DRIVE_SCOPE not in (c.scopes or "").split():
             return (f"You signed in with Google ({c.account_email}), but the Google Drive permission (checkbox) was not ticked "
-                    "then, so Hoola cannot see your Drive. In the app, go to Profile > Google Drive, press 'Link Google "
-                    "Drive', and on Google's page tick the box 'See, edit, create and delete all of your Google Drive files'.")
+                    "then, so Hoola cannot see your Drive. On the web console open Connectors > Google, or in the phone app open "
+                    "Settings > Google, press Connect, and on Google's page tick Drive.")
         if c is not None and not c.refresh_token_enc:
             return reconnect_message(c.account_email, "no refresh token")
     if not oauth_ready():
         return ("Google sign-in is not set up on this server (GOOGLE_OAUTH_CLIENT_ID / SECRET, PUBLIC_BASE_URL, SECRET_KEY), "
-                "so Drive cannot be connected. Once the server is set up, go to Profile > Google Drive > 'Link Google Drive' in the app.")
-    return ("Your Google Drive is not connected to Hoola yet. In the app, go to Profile > Google Drive and press 'Link Google Drive'.")
+                "so Drive cannot be connected. Once the server is set up, connect it from Connectors > Google or Settings > Google.")
+    return ("Your Google Drive is not connected to Hoola yet. On the web console open Connectors > Google, or in the phone app open Settings > Google, and press Connect.")
 
 
 def has_drive(tenant: str) -> bool:

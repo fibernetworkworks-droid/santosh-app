@@ -11,6 +11,11 @@
 //   waiting   - after the sign-in page opens the row says "Waiting"; when she comes back and the app is connected a
 //               "<App> is connected" note shows on top.
 //
+// Connections board (top of the page): "Your apps" + "<N> connected · <M> actions this month" (GET /api/google +
+// GET /api/connectors/summary), a paused note, amber "Needs you" banners (an ended Google sign-in, a Composio app to
+// sign in again), the Google card (six logos with a status dot each, opens Settings > Google), her other apps as rows,
+// and "+ Find an app", which scrolls to the search + categories below (the browse part, unchanged).
+//
 // Every colour / size / movement comes from hoola_theme.dart. Labels are English; the server's Hinglish `say` is
 // never shown.
 import 'dart:async';
@@ -21,12 +26,41 @@ import 'package:flutter/services.dart';
 import '../../native.dart';
 import '../../state.dart';
 import '../hoola_theme.dart';
+import 'hoola_google.dart' show hoolaOpenGoogle;
 import 'hoola_tabs.dart' show HoolaSearch, HoolaChips, HoolaEmpty, HoolaGroup, HoolaRow, HoolaSection;
 
 /// Data the screenshot tests hand the page (they run without a server). Never set in the app.
 class HoolaConnectDebug {
   static Map<String, dynamic>? home;
   static Map<String, dynamic>? apps;
+  /// GET /api/google and GET /api/connectors/summary for the "Your apps" top of the page.
+  static Map<String, dynamic>? google;
+  static Map<String, dynamic>? summary;
+}
+
+/// The six everyday Google apps drawn on the Google card, in this order.
+const connectGoogleApps = ['gmail', 'calendar', 'drive', 'sheets', 'docs', 'forms'];
+
+const Map<String, String> _googleNames = {
+  'gmail': 'Gmail', 'calendar': 'Calendar', 'drive': 'Drive', 'sheets': 'Sheets', 'docs': 'Docs', 'forms': 'Forms',
+  'slides': 'Slides', 'photos': 'Photos', 'youtube': 'YouTube', 'business': 'Business Profile',
+  'searchconsole': 'Search Console',
+  'appsscript': 'Apps Script',
+  'bigquery': 'BigQuery',
+  'driveactivity': 'Drive Activity',
+};
+
+/// Pure: the line under the Google card's logos (tested). `google` is GET /api/google, or null when it failed.
+String connectGoogleLine(Map<String, dynamic>? google, {bool failed = false}) {
+  if (google == null) return failed ? 'Google could not be checked right now' : 'Checking Google…';
+  final apps = [for (final a in (google['apps'] as List? ?? const [])) if (a is Map) a];
+  final ok = apps.where((a) => a['state'] == 'ok').length;
+  final bad = [for (final a in apps) if (a['state'] == 'expired') _googleNames[_s(a['key'])] ?? _s(a['name'])];
+  if (ok == 0 && bad.isEmpty) return 'Not connected yet - tap to connect';
+  final parts = <String>[if (ok > 0) '$ok working'];
+  if (bad.length == 1) parts.add('${bad.first} needs you');
+  if (bad.length > 1) parts.add('${bad.length} apps need you');
+  return parts.join(' · ');
 }
 
 String _s(Object? v) => v == null ? '' : '$v';
@@ -458,7 +492,7 @@ class _BigTitle extends StatelessWidget {
     final c = HoolaColors.of(context);
     return Semantics(
       header: true,
-      child: Text(text, style: HoolaType.hero(c).copyWith(fontSize: 30, fontWeight: FontWeight.w500, letterSpacing: -.2)),
+      child: Text(text, style: HoolaType.pageTitle(c)),
     );
   }
 }
@@ -497,6 +531,13 @@ class _HoolaConnectState extends State<HoolaConnect> with WidgetsBindingObserver
   int _linkTick = 0;
   final _busy = <String>{};
   final _justConnected = <String>[];
+  // the "Your apps" top: her Google apps (GET /api/google) and this month's numbers (GET /api/connectors/summary)
+  Map<String, dynamic>? _google;
+  bool _googleFailed = false;
+  Map<String, dynamic>? _summary;
+  int _googleTick = 0;
+  final _scroll = ScrollController();
+  final _browseKey = GlobalKey();
 
   Santosh get app => widget.app;
 
@@ -505,8 +546,10 @@ class _HoolaConnectState extends State<HoolaConnect> with WidgetsBindingObserver
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _linkTick = app.bazarLinkedTick;
+    _googleTick = app.googleTick;
     app.addListener(_onApp);
     _load();
+    _loadSide();
   }
 
   @override
@@ -515,13 +558,16 @@ class _HoolaConnectState extends State<HoolaConnect> with WidgetsBindingObserver
     app.removeListener(_onApp);
     _debounce?.cancel();
     _search.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
     // back from an app's sign-in page: read her apps again
-    if (state == AppLifecycleState.resumed && ConnectFlow.waiting.isNotEmpty) _load(quiet: true);
+    if (ConnectFlow.waiting.isNotEmpty) _load(quiet: true);
+    _loadSide();
   }
 
   void _onApp() {
@@ -529,6 +575,60 @@ class _HoolaConnectState extends State<HoolaConnect> with WidgetsBindingObserver
       _linkTick = app.bazarLinkedTick;
       _load(quiet: true);
     }
+    if (app.googleTick != _googleTick) {
+      _googleTick = app.googleTick;
+      _loadSide();
+    }
+  }
+
+  Future<Map<String, dynamic>?> _quietly(Future<Map<String, dynamic>> Function() call) async {
+    try {
+      return await call();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// The Google card and the month's numbers. A failed call keeps what was shown before and never shows an error.
+  Future<void> _loadSide() async {
+    final api = app.api;
+    Map<String, dynamic>? g, sum;
+    if (api == null) {
+      g = HoolaConnectDebug.google ?? const <String, dynamic>{};
+      sum = HoolaConnectDebug.summary;
+    } else {
+      final r = await Future.wait([_quietly(api.googleHub), _quietly(api.connectorsSummary)]);
+      g = r[0];
+      sum = r[1];
+    }
+    if (!mounted) return;
+    setState(() {
+      if (g != null) _google = g;
+      _googleFailed = g == null && _google == null;
+      if (sum != null) _summary = sum;
+    });
+  }
+
+  Future<void> _refresh() async {
+    await Future.wait([_load(), _loadSide()]);
+  }
+
+  void _openGoogle() => hoolaOpenGoogle(context, app).then((_) => _loadSide());
+
+  /// "+ Find an app": bring the search and the categories into view (built lazily, so step down until it exists).
+  Future<void> _findApp() async {
+    final dur = HoolaMotion.of(context, HoolaMotion.page);
+    for (var i = 0; i < 12 && _browseKey.currentContext == null && _scroll.hasClients; i++) {
+      final p = _scroll.position;
+      if (p.pixels >= p.maxScrollExtent) break;
+      final next = p.pixels + p.viewportDimension * .8;
+      _scroll.jumpTo(next > p.maxScrollExtent ? p.maxScrollExtent : next);
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+    }
+    final ctx = _browseKey.currentContext;
+    if (ctx == null || !ctx.mounted) return;
+    await Scrollable.ensureVisible(ctx, duration: dur, curve: HoolaMotion.ease, alignment: 0);
   }
 
   Future<void> _load({bool quiet = false}) async {
@@ -621,15 +721,14 @@ class _HoolaConnectState extends State<HoolaConnect> with WidgetsBindingObserver
     final mineN = parts?.mine.where((a) => a.connected).length ?? 0;
     return RefreshIndicator(
       color: c.accent,
-      onRefresh: _load,
+      onRefresh: _refresh,
       child: ListView(
+        controller: _scroll,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: HoolaSpace.s32),
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(HoolaSpace.gutter + 2, HoolaSpace.s12, HoolaSpace.gutter, 4),
-            child: const _BigTitle('Connect'),
-          ),
+          ..._yourApps(c, parts?.mine ?? const []),
+          KeyedSubtree(key: _browseKey, child: _sectionHead(c, 'Find an app', top: 32)),
           Padding(
             padding: const EdgeInsets.fromLTRB(HoolaSpace.gutter + 2, 0, HoolaSpace.gutter, HoolaSpace.s12),
             child: Text(
@@ -661,6 +760,244 @@ class _HoolaConnectState extends State<HoolaConnect> with WidgetsBindingObserver
     );
   }
 
+  // ---------------------------------------------------------------- the "Your apps" top (the Connections board)
+  List<Map<String, dynamic>> _gList(String field) => [
+        for (final e in (_google?[field] as List? ?? const []))
+          if (e is Map) Map<String, dynamic>.from(e)
+      ];
+
+  /// Title + counts, the paused note, what needs her, the Google card, her other apps and "+ Find an app".
+  List<Widget> _yourApps(HoolaColors c, List<ConnectApp> mine) {
+    final gApps = _gList('apps'), gAccounts = _gList('accounts');
+    final gOk = gApps.where((a) => a['state'] == 'ok').length;
+    final n = gOk + mine.where((a) => a.connected).length;
+    final month = _summary?['month'];
+    final actions = month is Map ? (month['total'] as num?)?.toInt() : null;
+    final loaded = _home != null || _google != null || _googleFailed;
+    final line = !loaded
+        ? 'Apps Hoola can work in for you.'
+        : actions == null
+            ? '$n connected'
+            : '$n connected · ${_count(actions)} action${actions == 1 ? '' : 's'} this month';
+    final expiredAccounts = gAccounts.where((a) => a['state'] == 'expired').toList();
+    final stuck = [
+      for (final a in mine)
+        if ((a.status == 'pending' || a.status == 'expired') && !ConnectFlow.waiting.contains(a.toolkit)) a
+    ];
+    return [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(HoolaSpace.gutter + 2, HoolaSpace.s12, HoolaSpace.gutter, 4),
+        child: const _BigTitle('Your apps'),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(HoolaSpace.gutter + 2, 0, HoolaSpace.gutter, HoolaSpace.s4),
+        child: Text(line, style: HoolaType.body(c).copyWith(color: c.ink2, fontSize: 14)),
+      ),
+      if (_summary?['paused'] == true)
+        _notice(c, icon: Icons.pause_circle_outline_rounded, title: 'Every app is paused', sub: 'Hoola is not using your apps.'),
+      for (final a in expiredAccounts)
+        _notice(c,
+            icon: Icons.error_outline_rounded,
+            title: '${_s(a['email'])} needs you',
+            sub: 'Google sign-in ended',
+            action: 'Fix',
+            semantics: 'Fix ${_s(a['email'])}',
+            onAction: _openGoogle),
+      for (final a in stuck)
+        _notice(c,
+            icon: Icons.error_outline_rounded,
+            title: '${a.name} needs you',
+            sub: 'Sign in again',
+            action: 'Fix',
+            semantics: 'Fix ${a.name}',
+            onAction: () => _openSheet(a)),
+      _googleCard(c, gApps, gAccounts.length),
+      if (mine.isNotEmpty) ...[
+        _sectionHead(c, 'Other apps', action: 'Manage', onAction: () => _openGroup('', 'Your apps', sort: 'connected')),
+        HoolaGroup(children: [for (final a in mine) _otherRow(c, a)]),
+      ],
+      if (!_off)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(HoolaSpace.gutter, HoolaSpace.s20, HoolaSpace.gutter, 0),
+          child: FilledButton.icon(
+            onPressed: _findApp,
+            icon: const Icon(Icons.add_rounded, size: 20),
+            label: const Text('Find an app'),
+            style: FilledButton.styleFrom(
+              backgroundColor: c.pill,
+              foregroundColor: c.onPill,
+              shape: const StadiumBorder(),
+              minimumSize: const Size.fromHeight(HoolaSpace.touchMain),
+              textStyle: HoolaType.button(c),
+            ),
+          ),
+        ),
+    ];
+  }
+
+  /// An amber "Needs you" (or paused) banner; `action` adds the dark pill button on the right.
+  Widget _notice(HoolaColors c,
+          {required IconData icon,
+          required String title,
+          required String sub,
+          String? action,
+          String semantics = '',
+          VoidCallback? onAction}) =>
+      Padding(
+        padding: const EdgeInsets.fromLTRB(HoolaSpace.gutter, HoolaSpace.s12, HoolaSpace.gutter, 0),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(14, 12, action == null ? 14 : 10, 12),
+          decoration: BoxDecoration(
+            color: c.warnSoft,
+            borderRadius: BorderRadius.circular(HoolaRadius.cardLg),
+            border: Border.all(color: c.warn.withOpacity(.35)),
+          ),
+          child: Row(children: [
+            Icon(icon, size: 22, color: c.warn),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title, maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text(sub, style: HoolaType.small(c).copyWith(color: c.ink2)),
+              ]),
+            ),
+            if (action != null) ...[
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: onAction,
+                style: FilledButton.styleFrom(
+                  backgroundColor: c.pill,
+                  foregroundColor: c.onPill,
+                  shape: const StadiumBorder(),
+                  minimumSize: const Size(64, 40),
+                  tapTargetSize: MaterialTapTargetSize.padded,
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                ),
+                child: Text(action, semanticsLabel: semantics.isEmpty ? null : semantics),
+              ),
+            ],
+          ]),
+        ),
+      );
+
+  /// One Google product logo on a white tile (Google's own artwork, assets/google/<key>.png).
+  Widget _googleLogo(HoolaColors c, String key, double size) => Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(size * .28),
+          border: Border.all(color: c.line),
+        ),
+        child: Image.asset('assets/google/$key.png',
+            width: size * .6, height: size * .6, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+      );
+
+  Widget _googleCard(HoolaColors c, List<Map<String, dynamic>> apps, int accounts) {
+    final state = {for (final a in apps) _s(a['key']): _s(a['state'])};
+    final line = connectGoogleLine(_google, failed: _googleFailed);
+    final acct = '$accounts account${accounts == 1 ? '' : 's'}';
+    Color dot(String k) => switch (state[k]) {
+          'ok' => c.ok,
+          'expired' => c.warn,
+          _ => c.ink3,
+        };
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(HoolaSpace.gutter, HoolaSpace.s16, HoolaSpace.gutter, 0),
+      child: Semantics(
+        button: true,
+        label: 'Google, $acct. $line',
+        child: Material(
+          color: c.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(HoolaRadius.cardLg), side: BorderSide(color: c.line)),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: _openGoogle,
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: ExcludeSemantics(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    _googleLogo(c, 'google', 36),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text('Google', style: HoolaType.title(c))),
+                    if (accounts > 0) Text(acct, style: HoolaType.small(c).copyWith(color: c.ink2)),
+                    Icon(Icons.chevron_right_rounded, color: c.ink3),
+                  ]),
+                  const SizedBox(height: 14),
+                  LayoutBuilder(builder: (context, box) {
+                    const gap = 8.0;
+                    final w = (box.maxWidth - gap * (connectGoogleApps.length - 1)) / connectGoogleApps.length;
+                    final size = w > 52 ? 52.0 : w;
+                    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                      for (final k in connectGoogleApps)
+                        SizedBox(
+                          width: size,
+                          height: size,
+                          child: Stack(clipBehavior: Clip.none, children: [
+                            _googleLogo(c, k, size),
+                            Positioned(
+                              right: -2,
+                              bottom: -2,
+                              child: Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                    color: dot(k), shape: BoxShape.circle, border: Border.all(color: c.surface, width: 2)),
+                              ),
+                            ),
+                          ]),
+                        ),
+                    ]);
+                  }),
+                  const SizedBox(height: 12),
+                  Text(line, style: HoolaType.small(c).copyWith(color: c.ink2)),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// One of her Composio apps: logo, name, what it does, a chevron; tap opens its sheet.
+  Widget _otherRow(HoolaColors c, ConnectApp a) => Semantics(
+        button: true,
+        label: '${a.name}, ${a.connected ? 'connected' : 'not connected yet'}',
+        child: InkWell(
+          onTap: () => _openSheet(a),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 60),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: HoolaSpace.s12, vertical: 10),
+              child: ExcludeSemantics(
+                child: Row(children: [
+                  ConnectLogo(app: app, a: a, size: 40),
+                  const SizedBox(width: HoolaSpace.s12),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      Text(a.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: HoolaType.body(c).copyWith(fontWeight: FontWeight.w500)),
+                      if (a.line.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(a.line, maxLines: 2, overflow: TextOverflow.ellipsis, style: HoolaType.small(c)),
+                        ),
+                    ]),
+                  ),
+                  const SizedBox(width: HoolaSpace.s8),
+                  Icon(Icons.chevron_right_rounded, color: c.ink3),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      );
+
   List<Widget> _homeBody(HoolaColors c,
       ({List<ConnectApp> mine, List<ConnectApp> featured, List<ConnectGroup> cards, List<ConnectGroup> tiles, int total}) p) {
     final groups = [...p.cards, ...p.tiles];
@@ -679,39 +1016,6 @@ class _HoolaConnectState extends State<HoolaConnect> with WidgetsBindingObserver
           ),
         ),
       for (final name in _justConnected) _connectedNote(c, name),
-      if (p.mine.isNotEmpty) ...[
-        _sectionHead(c, 'Your apps', action: 'Manage', onAction: () => _openGroup('', 'Your apps', sort: 'connected')),
-        SizedBox(
-          height: 92,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: HoolaSpace.gutter),
-            children: [
-              for (final a in p.mine)
-                Semantics(
-                  button: true,
-                  label: '${a.name}, ${a.connected ? 'connected' : 'not connected yet'}',
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(HoolaRadius.card),
-                    onTap: () => _openSheet(a),
-                    child: SizedBox(
-                      width: 72,
-                      child: Column(children: [
-                        const SizedBox(height: 4),
-                        ConnectLogo(app: app, a: a, size: 56, tick: a.connected),
-                        const SizedBox(height: 6),
-                        ExcludeSemantics(
-                          child: Text(a.name, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                              style: HoolaType.label(c)),
-                        ),
-                      ]),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
       if (p.featured.isNotEmpty) ...[
         _sectionHead(c, 'Most used by Indian businesses'),
         Padding(

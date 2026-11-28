@@ -1,0 +1,39 @@
+/* INSURANCE AGENT DESK - the Insurance Agent Assistant's own section. Everything shared comes from the earlier desks (seodesk ... rkdesk);
+   the page-scoped rules are repeated here for #inPage. Only this desk's own parts are new: the best quote's row and the claim steps. */
+#inPage{display:flex;flex-direction:column;gap:20px;padding-top:4px}
+#inPage .r{text-align:right}
+#inPage table.tb,#inPage .md-kpi .v,#inPage .cs-hero .v{font-variant-numeric:normal}
+#inPage td.r,#inPage th.r{text-align:right;font-variant-numeric:normal}
+#inPage table.tb td{vertical-align:middle}
+#inPage .md-acts+.ins-drop{margin-top:14px}
+#inPage .cr-grid{align-items:end}
+#inPage .cr-grid>.in:not(textarea),#inPage .cr-grid .ins-lab .in:not(textarea),#inPage .cr-grid>.btn{height:42px;min-height:0;box-sizing:border-box}
+#inPage .iv-add{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:end}
+#inPage .iv-add>*{flex:1 1 130px;min-width:0}
+#inPage .iv-add>.btn{flex:0 0 auto;padding:0 18px}
+#inPage .iv-add>.ins-lab{flex:1 1 150px}
+#inPage .iv-add .in{height:42px;min-height:0;box-sizing:border-box;width:100%}
+#inPage .cr-grid .wide{grid-column:1/-1}
+#inPage .md-kpi .v.warn{color:var(--warn)}
+#inPage .mk-list td,#inPage .mk-list th{padding-top:7px;padding-bottom:7px}
+#inPage .cs-pos{color:var(--okt,var(--ok))}
+#inPage td.nw{white-space:nowrap}
+#inPage td a{color:inherit;text-decoration:none}#inPage td a:hover b{text-decoration:underline}
+@media (max-width:600px){#inPage .iv-kpis.mk-k2{grid-template-columns:repeat(2,minmax(0,1fr))!important}#inPage td.nw{white-space:normal}}
+#inPage tr.best td{background:color-mix(in srgb,var(--ok) 8%,transparent)}
+#inPage .fm-step{flex:0 0 auto;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:600;background:var(--soft)}
+#inPage .pb-res+.pb-res{margin-top:12px}
+#inPage .in-col{fill:var(--acc)}#inPage .in-col.z{fill:transparent}#inPage .cs-chart svg{width:100%;height:auto;display:block}
+#inPage .in-qrow{display:grid;grid-template-columns:1.2fr 1.1fr 1fr .9fr .9fr .7fr 1.4fr;gap:8px;margin-top:8px}
+#inPage .in-qrow .in{height:42px;min-height:0;box-sizing:border-box;width:100%;min-width:0}
+@media (max-width:900px){#inPage .in-qrow{grid-template-columns:repeat(2,minmax(0,1fr))}#inPage .in-qrow>:last-child{grid-column:1/-1}}
+#inPage form[data-form=claimup]>select{flex:1 1 220px}
+@media (max-width:600px){
+#inPage table.in-cards thead{display:none}
+#inPage table.in-cards,#inPage table.in-cards tbody{display:block;width:100%}
+#inPage table.in-cards tr{display:flex;flex-wrap:wrap;gap:4px 12px;padding:12px 0;border-bottom:1px solid var(--line)}
+#inPage table.in-cards td{display:block;border:0;padding:0!important;text-align:left!important}
+#inPage table.in-cards td:first-child{flex:1 1 100%}
+#inPage table.in-cards td.nw{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+#inPage table.in-cards td .mut{font-size:12.5px}
+}

@@ -1,0 +1,20 @@
+/* v0.999.123 D10 PROOF CARD page: the old engine and the new one side by side (on top of designcard.css) */
+.pc-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
+.pc-pair>div{min-width:0;border:1px solid var(--line,#e5e5e5);border-radius:12px;padding:10px}
+.pc-pair h3{font-size:14px;font-weight:600;margin:0 0 6px;display:flex;gap:8px;align-items:baseline}
+.pc-pair h3 b{font-family:"JetBrains Mono",monospace;font-weight:500}
+.pc-decide{border:1px solid var(--line,#e5e5e5);border-radius:14px;padding:16px 18px;margin:16px 0;display:flex;flex-direction:column;gap:10px}
+.pc-decide .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.pc-decide button{font:inherit;font-size:14px;font-weight:600;padding:8px 14px;border-radius:999px;border:1px solid var(--line,#ccc);background:transparent;color:inherit;cursor:pointer}
+.pc-decide button.pri{background:var(--ink,#111);color:var(--paper,#fff);border-color:transparent}
+.pc-decide button[disabled]{opacity:.5;cursor:not-allowed}
+.pc-rec{font-size:14px}
+.pc-rec ul{margin:4px 0 0 18px;padding:0}
+.pc-duel{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.pc-duel input{font:inherit;font-size:13px;padding:6px 10px;border-radius:8px;border:1px solid var(--line,#ccc);background:transparent;color:inherit;min-width:0}
+.pc-duel input[type=url]{flex:1 1 220px}
+@media (max-width:760px){.pc-pair{grid-template-columns:1fr}}
+
+/* ONE ENGINE: the builder box's health */
+.pc-box{margin:10px 0 2px;padding:8px 12px;border-radius:8px;font-size:13px;line-height:1.45;background:var(--sunk,#f4f4f2);color:var(--ink,#1a1a1a)}
+.pc-box[data-box="bad"]{background:#fdecea;color:#8a1c12}

@@ -151,17 +151,26 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
               "vendor se leads", "licensed vendor", "vendor lane",
               # v0.545.0: the outreach handoff's words (the confirm card is the right first answer)
               "outreach", "campaign list banao", "leads ki list campaign", "outreach hisaab"),
+    # v0.999.59 HOOLA SPIDER: Scrapy-style saved crawls (many items over many pages of a public site)
+    "spider": ("spider", "scrapy", "web crawler", "web scraper", "whole catalogue", "all products",
+               "every product", "all listings", "every page", "pagination", "export to excel", "export as csv"),
     # v0.245 generic verbs (bhej / send / reply / draft / label) removed: they loaded 23 mail tools for every send
     "email": ("mail", "email", "gmail", "inbox", "khat", "newsletter", "unsubscribe", "attachment",
               "fwd", "snooze", "vacation", "spam", "ईमेल", "मेल", "इनबॉक्स"),
     "gcal": ("calendar", "kalandar", "meeting", "meeeting", "event", "agenda", "slot", "schedule", "invite",
              "invitation", "rsvp", "appointment", "madh", "free busy", "milne", "मीटिंग", "कैलेंडर", "अपॉइंटमेंट",
-             "बैठक"),
-    "sheets": ("sheet", "excel", "spreadsheet", "csv", "row", "column"),
+             "बैठक", "out of office", "ooo", "focus time", "working location", "holidays calendar", ".ics", "ics file",
+             "recurring", "series", "meeting room", "conference room", "google tasks"),   # v0.999.189-190 CALENDAR
+    "sheets": ("sheet", "excel", "spreadsheet", "csv", "row", "column", "pivot"),
     "gdrive": ("google doc", "gdoc", "drive", "google sheet"),      # v0.245 'document' / 'docx' = doc_studio now
-    "drive": ("drive", "folder", "storage"),
-    "slides": ("slide", "ppt", "presentation", "deck"),
-    "forms": ("form", "survey", "respons"),
+    "gdocs": ("google doc", "gdoc", "docs.google.com/document", "in the doc", "in my doc", "this doc",
+              "suggest changes", "track changes", "suggestion mode", "footnote", "{{"),   # v0.999.192
+    "drive": ("drive", "folder", "storage", "share the file", "share this file", "share it with", "file share",   # v0.999.181
+              "shared drive", "team drive", "zip", "unzip", "old version", "access request", "asked for access",
+              "who edited", "who changed", "duplicate files"),   # v0.999.186 DRIVE COMPLETE
+    "slides": ("slide", "slides", "ppt", "pptx", "powerpoint", "presentation", "deck", "speaker notes"),
+    "forms": ("form", "survey", "respons", "quiz", "questionnaire", "prefill", "pre-fill",   # v0.999.187
+              "answer key", "go to section", "go to page"),
     "photos": ("google photos", "album", "gallery"),
     "photo": ("photo", "tasveer", "image", "picture", "wish", "greeting", "फोटो", "तस्वीर"),
     "audio_edit": ("audio edit", "edit audio", "edit this audio", "trim audio", "cut audio", "audio trim", "audio cut",
@@ -207,6 +216,86 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "create": ("song", "gaana", "gaane", "jingle", "lyrics", "music studio", "voice-over", "voiceover", "voice over",
                "dub", "dubbing", "create studio", "गाना", "डब"),
     "blender": ("blender", "3d", "three d"),
+    # v0.999.272 the Compiler Construction Engineer: her own language (grammar, parser, interpreter, compiler)
+    # v0.999.274 the Kernel / OS Developer: her kernel words
+    # v0.999.285 the Site Reliability Engineer: her SRE words
+    "sre": ("error budget", "burn rate", "burn-rate", "site reliability", "postmortem", "post-mortem", "post mortem", "alert fatigue",
+            "noisy alert", "alertmanager", "alert rules", "prometheus rule", "recording rule", "on-call", "oncall", "pagerduty",
+            "opsgenie", "mttr", "mttd", "apdex", "histogram_quantile", "capacity plan", "capacity forecast", "service level objective",
+            "slo target", "our slo", "the slo", "availability target", "nines of availability", "incident timeline", "toil"),
+    # v0.999.286 the Virtualization / Hypervisor Engineer: her container / VM words
+    "virt": ("hypervisor", "virtualization", "virtualisation", "libvirt", "virsh", "dumpxml", "qemu", "kvm guest", "kvm host", "domain xml",
+             "seccomp", "pod security", "podsecurity", "securitycontext", "security context", "runasnonroot", "privileged container",
+             "container hardening", "harden the container", "harden my container", "docker run", "docker-compose", "docker compose", "dockerfile",
+             "oci runtime", "runc", "crun", "gvisor", "kata containers", "firecracker", "cap_sys_admin", "capabilities drop",
+             "cap-drop", "live migration", "host-passthrough", "vcpu", "overcommit", "numa node", "hugepages", "virtio", "proc/cpuinfo",
+             "x86-64-v3", "x86-64-v4", "ovmf", "secure boot vm", "vm placement"),
+    # v0.999.288 the Backend Systems Engineer (Low Latency): her latency words
+    "lowlat": ("low latency", "low-latency", "tail latency", "p99 latency", "p99.9", "p999", "hdrhistogram", "hdr histogram", "wrk2",
+               "coordinated omission", "latency budget", "latency percentile", "latency spike", "jitter", "false sharing", "cache line",
+               "cache-line", "struct layout", "struct padding", "lock-free", "lock free", "wait-free", "spsc", "ring buffer", "busy poll",
+               "busy-poll", "isolcpus", "nohz_full", "kernel bypass", "dpdk", "io_uring", "perf report", "perf stat", "flame graph",
+               "flamegraph", "hot path", "hot loop", "microbenchmark", "micro-benchmark", "c-state", "cstate", "interrupt coalescing"),
+    # v0.999.291 the Mainframe Modernization Architect: her mainframe words
+    "mainframe": ("mainframe", "cobol", "copybook", "jcl", "z/os", "zos", "cics", "db2", "vsam", "ims db", "ebcdic", "packed decimal",
+                  "comp-3", "picture clause", "pic x", "pic 9", "procedure division", "working-storage", "ikjeft01", "iefbr14", "dfsort",
+                  "gdg", "legacy modernization", "modernise the mainframe", "modernize the mainframe", "mainframe migration", "rehost",
+                  "migration wave", "golden file", "side by side proof"),
+    # v0.999.294 the Embedded Systems Engineer: her embedded words
+    "embedded": ("embedded system", "embedded c", "embedded firmware", "embedded engineer", "microcontroller", "mcu", "stm32", "esp32", "esp-idf", "nrf52", "rp2040", "avr", "atmega", "arduino", "cortex-m",
+                 "freertos", "zephyr", "rtos", "interrupt handler", "irqhandler", "isr", "linker map", "map file", ".map file", "arm-none-eabi",
+                 "flash usage", "ram usage", "bss", "firmware size", "stack overflow on", "wcet", "response time analysis", "schedulab",
+                 "rate monotonic", "deadline monotonic", "battery life", "sleep current", "deep sleep", "coin cell", "cr2032", "baud rate",
+                 "prescaler", "systick", "brr", "ubrr", "pwm frequency", "watchdog", "bare metal", "bare-metal", "hal_delay", "fromisr"),
+    # v0.999.295 the Robotics Software Engineer: her robotics words
+    "robotics": ("robotics", "robot software", "ros2", "ros 2", "rclcpp", "rclpy", "colcon", "ros2 node", "ros2 topic", "node info", "topic info",
+                 "qos profile", "best_effort", "transient_local", "tf tree", "tf2", "view_frames", "base_link", "odom frame", "urdf", "xacro",
+                 "check_urdf", "denavit", "dh table", "dh parameters", "forward kinematics", "inverse kinematics", "jacobian", "singularity",
+                 "end effector", "end-effector", "joint torque", "payload", "manipulator", "robot arm", "cobot", "moveit", "ros2_control",
+                 "pid tuning", "tune the pid", "pid gains", "step response", "overshoot", "settling time", "ziegler", "simc", "dead time",
+                 "trapezoidal profile", "s-curve", "jerk limit", "motion profile", "gazebo", "nav2"),
+    # v0.999.298 the Computer Vision Engineer: her vision words
+    "vision": ("computer vision", "object detection", "detector", "yolo", "yolov", "ultralytics", "detectron", "mmdetection", "coco json", "coco format",
+               "map50", "map@0.5", "mean average precision", "bounding box", "bbox", "annotation", "labelled images", "labeled images", "label files",
+               "roboflow", "cvat", "label studio", "image classifier", "image classification", "confusion matrix", "segmentation", "opencv",
+               "camera calibration", "camera_info", "intrinsics", "field of view", "focal length", "pixels per", "lens for", "motion blur",
+               "depth of field", "stereo camera", "disparity", "tensorrt", "onnx", "openvino", "jetson", "inference fps", "frames per second", "nms"),
+    # v0.999.304 the Platform Engineer: her platform words
+    "platform": ("platform engineer", "platform engineering", "terraform", "opentofu", "terraform plan", "tf plan", "tfplan", "infrastructure as code",
+                 "iac", "prevent_destroy", "forces replacement", "must be replaced", "rightsizing", "right-size", "rightsize", "requests and limits",
+                 "resource requests", "cpu request", "memory request", "memory limit", "oomkilled", "oom killed", "cpu throttling", "throttled",
+                 "node pool", "nodepool", "cluster capacity", "bin packing", "daemonset", "cluster autoscaler", "karpenter", "backstage",
+                 "catalog-info", "service catalog", "golden path", "scorecard", "developer portal", "kubernetes upgrade", "k8s upgrade",
+                 "deprecated api", "removed api", "apiversion", "eks upgrade", "gke upgrade", "aks upgrade", "helm template", "pluto"),
+    # v0.999.303 the Data Engineer: her data pipeline words
+    "dataeng": ("data engineer", "data engineering", "data pipeline", "etl", "elt", "airflow", "dag", "dbt", "dagster", "prefect", "spark job",
+                "critical path", "schema change", "breaking change", "data contract", "schema drift", "reconcile", "reconciliation",
+                "row count", "row counts", "missing rows", "duplicate rows", "freshness", "stale data", "job failed", "pipeline failed",
+                "late data", "sla miss", "small files", "compaction", "partition", "partitioning", "parquet", "data lake", "lakehouse",
+                "delta lake", "iceberg", "s3 ls", "gsutil", "hdfs", "bytes scanned", "warehouse cost", "snowflake", "bigquery", "redshift",
+                "databricks", "backfill", "idempotent", "upsert", "merge into", "cdc", "kafka", "great expectations"),
+    # v0.999.299 the Machine Learning Engineer: her ML words
+    "ml": ("machine learning", "ml model", "ml engineer", "mlops", "training log", "training loss", "val_loss", "validation loss", "overfitting", "overfit",
+              "underfitting", "early stopping", "learning rate", "epochs", "fine-tune", "fine tune", "finetune", "lora", "qlora", "feature engineering",
+              "data leakage", "target leakage", "data drift", "concept drift", "population stability", "psi", "kolmogorov", "feature drift",
+              "rmse", "mae", "mape", "wape", "mase", "r squared", "forecast accuracy", "regression model", "xgboost", "lightgbm", "scikit",
+              "sklearn", "pytorch", "tensorflow", "keras", "hugging face", "vram", "gpu memory", "kv cache", "how many gpus", "gpu hours", "mlflow"),
+    # v0.999.283 the Distributed Systems Engineer: her distributed-systems words
+    "dist": ("distributed system", "linearizab", "linearisab", "jepsen", "quorum", "consensus", "raft", "paxos", "split brain", "split-brain",
+             "exponential backoff", "retry policy", "retry storm", "thundering herd", "idempotency", "idempotent", "failover", "fencing token",
+             "two-phase commit", "2pc", "tla+", "tlc model", "model checking", "network partition", "eventual consistency", "vector clock"),
+    # v0.999.280 the Database Engine Developer: her database words
+    "dbeng": ("explain analyze", "query plan", "explain plan", "seq scan", "sequential scan", "index scan", "slow query", "missing index",
+              "postgres", "postgresql", "mysql", "mariadb", "sqlite", "pgbench", "sysbench", "ycsb", "work_mem", "vacuum", "create index",
+              "query optimizer", "query planner", "database index", "full table scan", "filesort"),
+    # v0.999.277 the Graphics Engine Programmer: her rendering words
+    "gfx": ("shader", "glsl", "hlsl", "wgsl", "vulkan", "direct3d", "d3d12", "metal api", "opengl", "webgpu", "spir-v", "vuid",
+            "validation layer", "renderer", "rendering", "ray tracing", "path tracing", "frame time", "presentmon", "fps drop", "gpu pass",
+            "psnr", "ssim", "render pass"),
+    "kernel": ("kernel", "oops", "kasan", "lockdep", "dmesg", "kernel panic", "call trace", "device driver", "kernel module",
+               "defconfig", ".config", "checkpatch", "device tree", "qemu", "insmod", "hung task", "soft lockup", "kconfig"),
+    "langlab": ("grammar", "parser", "compiler", "interpreter", "dsl", "domain-specific language", "domain specific language",
+                "programming language", "my own language", "own language", "lexer", "tokenizer", "syntax tree", "language lab"),
     # v0.589 KAAN PACK: her words for a transcript job (sunwai stays OUT - it is the vakil desk's court-hearing word;
     # bare "kaan" stays OUT too - "makaan" contains it, the rentdesk lane does not need our family)
     "kaan": ("transcript", "transcribe", "transcription", "kaan se", "kaan tool", "kaan pack", "audio sun",
@@ -365,6 +454,56 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "devops": ("devops", "deploy", "server", "uptime"),
     "dev": ("dev", "developer", "code", "bug", "software"),
     # v0.585 Paisa Sahayak (consumer money safety): loan / fee / scam / complaint words. Tight keys.
+    "books": ("bookkeeping", "my books", "ledger", "journal entry", "trial balance", "balance sheet", "profit and loss", "p&l",
+              "invoice", "bill from supplier", "receivables", "payables", "ageing", "aging report", "bank reconciliation", "reconcile",
+              "month end close", "close the month", "depreciation", "fixed asset", "inventory cost", "fifo", "revaluation",
+              "chart of accounts", "books_accounts", "export to xero", "export to quickbooks", "tally export"),
+    "taxwide": ("vat return", "gst return", "my vat", "sales tax", "nexus", "reverse charge", "one stop shop", "oss return", "withholding tax",
+                "e-invoice", "einvoice", "peppol", "xrechnung", "tax return", "self assessment", "tax organiser", "quarterly update",
+                "making tax digital", "tax notice", "tax letter", "letter from hmrc", "letter from the irs", "tax calendar", "business activity statement",
+                "ustva", "gst f5", "tax_worldwide"),
+    "payrollwide": ("payroll for", "run payroll", "run the payroll", "payslips for", "employer contributions", "national insurance",
+                    "social security tax", "cpf contribution", "superannuation", "payroll filing", "1099", "contractor payments",
+                    "payroll_worldwide"),
+    "lending": ("the apr", "an apr", "my apr", "apr of", "annual percentage rate", "comparison rate", "loan offers", "compare loans",
+                "business loan", "loan readiness", "invoice finance", "invoice discounting", "factoring", "credit memo", "statement analysis", "key fact statement",
+                "collections call", "debt collection", "days past due", "early warning", "expected credit loss", "credit_lending"),
+    "firmmode": ("my clients", "client portal", "engagement letter", "review queue", "client book", "our firm", "my firm",
+                 "practice manager", "fact find", "fact-find", "suitability report", "rebalancing", "fractional cfo", "firm_practice"),
+    "paydesk": ("chargeback", "charge back", "dispute reason code", "representment", "compelling evidence", "payment gateway",
+                "gateway payout", "settlement report", "reconcile payouts", "payment fees", "dunning", "failed payment", "seller payouts",
+                "export proceeds", "kyb", "beneficial owner", "merchant risk", "safeguarding", "iso 20022", "pain.001", "pacs.008",
+                "payments_desk"),
+    "institution": ("aml alert", "suspicious activity", "sar draft", "str draft", "transaction monitoring", "maker checker", "maker-checker",
+                    "four eyes", "kyc review", "obligation register", "financial promotion", "complaints mi", "rcsa", "risk register",
+                    "operational risk", "incident report", "third party register", "dora", "model inventory", "pbc list", "audit sample",
+                    "control test", "journal entry testing", "board pack", "cap table", "related party", "whistleblowing", "institution_desk"),
+    "investdesk": ("capital gains", "tax lot", "tax lots", "cost basis", "wash sale", "superficial loss", "section 104", "share pooling",
+                   "my portfolio", "portfolio statement", "fund fees", "ongoing charges", "tax loss harvest", "loss harvesting",
+                   "option break even", "futures margin", "investment scam", "is this investment a scam", "drawdown", "retirement pot",
+                   "nav check", "nav per unit", "investments_desk"),
+    "mktdesk": ("position reconciliation", "custodian file", "custodian statement", "reconciliation break", "recon break",
+                "trade confirmation", "unconfirmed trades", "settlement fail", "failed settlement", "corporate action", "stock split",
+                "record date", "withholding reclaim", "treaty rate", "margin call", "haircut", "best execution", "slippage",
+                "trading comps", "comparable companies", "ev/ebitda", "settlement instructions", "ssi", "disclosure calendar",
+                "markets_desk"),
+    "commfin": ("savings group", "vsla", "self help group", "shg", "chama", "susu", "tanda", "paluwagan", "esusu", "chit fund", "chit",
+                "rosca", "committee money", "share-out", "share out", "microfinance", "mfi loan", "collection sheet", "par30",
+                "crop insurance", "crop claim", "send money home", "remittance", "mobile money", "m-pesa", "mpesa", "cash book",
+                "zakat", "nisab", "murabaha", "ijara", "musharaka", "mudaraba", "islamic finance", "community_finance"),
+    "digiasset": ("crypto", "bitcoin", "ethereum", "usdt", "usdc", "stablecoin", "wallet address", "seed phrase", "crypto token",
+                  "airdrop", "staking", "defi", "travel rule", "vasp", "casp", "custody reconciliation", "proof of reserves",
+                  "wash trading", "digital_assets"),
+    "pubfin": ("benefit eligibility", "benefits caseworker", "welfare scheme", "overpayment", "g2p", "dbt payment", "beneficiary list",
+               "payment run", "deposit insurance", "deposit cover", "failed bank", "single customer view", "capital adequacy",
+               "supervisory return", "lcr", "npl ratio", "inspection findings", "development project", "tranche", "donor funds",
+               "public_finance"),
+    "treasury": ("13 week", "13-week", "cash forecast", "cash runway", "runway", "will i have enough cash", "bank charges",
+                 "bank fees", "fx exposure", "currency exposure", "covenant", "treasury", "idle cash", "spare cash", "cash_treasury"),
+    "household": ("budget", "my bills", "monthly bills", "subscriptions", "net worth", "savings goal", "save for", "forecast my money",
+                  "cash flow", "where does my money go", "spending by category", "retirement", "pension pot", "forgotten money",
+                  "unclaimed money", "lost account", "benefits check", "will and nominee", "nominee", "bereavement", "someone died",
+                  "household_money", "household money", "renter", "expat money", "gig income"),
     "finguard": ("bank statement", "statement check", "passbook", "paise kat", "paisa kat", "kat gaya", "double debit",
                  "extra charge", "hidden charge", "credit card bill",   # wave 12: her statement went to the B2B bank integrator
                  "emi", "loan", "karz", "qarz", "processing fee", "apr", "prepay", "foreclos", "snowball", "avalanche", "scam", "fraud", "dhokha",
@@ -474,6 +613,10 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
              "maps ka", "maps par", "maps pe", "delivery kis kram"),
     "team": ("agents", "agent lagao", "agent banao", "team banao", "team bana", "agent team", "team laga", "crew", "deploy",
              "parallel", "kai agents", "multiple agents", "agents lagao", "madadgar dal", "team se karo"),
+    # v0.999.60 HOOLA WALLET: buying / bills / food orders she wants paid (her fingerprint approves)
+    "wallet": ("hoola wallet", "wallet", "groceries", "grocery", "zepto", "blinkit", "instamart", "bigbasket", "swiggy",
+               "zomato", "food order", "order food", "pay the bill", "pay my bill", "electricity bill", "recharge",
+               "daily needs", "pay for", "approve payment", "spending limit"),
     # v0.479 HOOLA SMART HOME: ghar ke devices (Home Assistant). Fridge / geyser words bhi yahin
     # admit hote hain TAAKI Hoola politely refuse kar sake (read-only guard app/home.py mein).
     "home": ("home assistant", "smart home", "smart bulb", "smart light", "smart plug", "smart speaker",
@@ -713,10 +856,62 @@ def search_spec() -> dict:
 _LABEL = "Finding tools"
 
 
+_CONNECTOR_WORDS: frozenset[str] | None = None
+_CONNECTOR_KEYS = ("connector", "connectors", "plugin", "plugins", "cab", "taxi")
+# connector names that are everyday words ("udhar" = credit / over there, "slice", "pop", "kiwi"): never alone - "slice
+# card", "pop upi", "udhar reminder" still open it
+_CONNECTOR_EVERYDAY = frozenset({"pop", "slice", "udhar", "kiwi", "jupiter", "navi", "cams", "simpl"})
+
+
+def connector_words() -> frozenset[str]:
+    """v0.999.195 APPS WIRING 2: the names of the built-in connectors a user can see in Connectors (UPI apps, cabs,
+    banks, food apps, home devices, her helper plugins). Naming one opens the bazar family, so bazar_find / bazar_run
+    are in view - before this, none of the ~160 shown connectors reached a chat turn by name. Built once, from the
+    pack registry; bill packs only while bills are live, shop templates never (a shop is reached by its own name)."""
+    global _CONNECTOR_WORDS
+    if _CONNECTOR_WORDS is not None:
+        return _CONNECTOR_WORDS
+    out: set[str] = set()
+    try:
+        from ..bazar.config import get_settings as _bz
+        from ..bazar.service import CORE_EQUIVALENT, HIDDEN_EXECUTORS, registry
+        bills = bool(_bz().bills_live)
+        for p in registry().all():
+            if p.executor in HIDDEN_EXECUTORS or p.executor == "shop" or (p.executor == "bbps" and not bills):
+                continue
+            if p.executor == "native" and p.config.get("skill") in CORE_EQUIVALENT:
+                continue
+            name = (p.name or "").lower()
+            for v in {name, re.sub(r"\s*\(.*?\)\s*", " ", name).strip(), name.split(" (")[0].strip()}:
+                v = re.sub(r"\s+", " ", v).strip()
+                for tail in (" india", " upi"):
+                    if v.endswith(tail) and len(v) > len(tail) + 2:
+                        out.add(v[: -len(tail)])
+                out.add(v)
+    except Exception:
+        log.debug("connector words failed", exc_info=True)
+    _CONNECTOR_WORDS = frozenset(v for v in out if len(v) >= 3 and v not in _GENERIC and v not in _TIGHT_GENERIC
+                                 and v not in _STOP and v not in _CONNECTOR_EVERYDAY)
+    return _CONNECTOR_WORDS
+
+
+def _names_connector(text: str) -> bool:
+    if any(_hit_tight(k, text) for k in _CONNECTOR_KEYS):
+        return True
+    if any(re.search(r"\b" + re.escape(w) + r"\b", text) for w in connector_words()):
+        return True
+    # an everyday-word connector name counts only when the words around it make it the app ("use slice", "slice card")
+    names = "|".join(sorted(_CONNECTOR_EVERYDAY))
+    return re.search(r"\b(?:use|via|on|open|from|with|through)\s+(?:my\s+)?(?:" + names + r")\b|\b(?:" + names
+                     + r")\s+(?:app|card|upi|pay|credit|loan|account|bank|wallet|se|par|pe)\b", text) is not None
+
+
 def _match(text: str, tight: bool = False) -> set[str]:
     """Families whose keys (auto or hand-written) appear in the text. Lowercase in, family tags out.
     tight (Parity Phase 3, chat_core_tools): whole-word keys only and no everyday auto-keys."""
     hits: set[str] = set()
+    if "bazar" in set(FAMILY_OF.values()) and _names_connector(text):
+        hits.add("bazar")
     hit = _hit_tight if tight else _hit
     for fam, keys in _AUTO.items():
         for k in keys:
@@ -1006,6 +1201,13 @@ async def tool_search(ctx, need: str = "", **_):
         fam = FAMILY_OF.get(nm)
         if fam:
             hits.add(fam)
+    if not hits and getattr(ctx, "tenant_id", ""):   # v0.999.194 an app she connected through Composio, by name
+        try:
+            from ..bazar import composio as _cmp
+            if _cmp.named_apps(need, _cmp.her_apps(ctx.tenant_id)):
+                hits.add("bazar")
+        except Exception:
+            log.debug("connected app lookup failed", exc_info=True)
     if not hits:   # try the words as family tags / tool names directly
         low = need.lower()
         words = set(_WORD_RE.findall(low)) | {low}

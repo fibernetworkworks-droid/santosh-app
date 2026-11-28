@@ -12,8 +12,8 @@ def _read(name):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.39"
-    assert "0.999.39+1037" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.169"
+    assert "0.999.169+1164" in (ROOT / "pubspec.yaml").read_text()
     assert _read("v2.html").count(f"?v={APP_VERSION}") == 35   # v0.312 + arena.js, v0.317 + employees.js, v0.5xx + one more (v0.370: follows APP_VERSION, never a typed number)
 
 
@@ -64,7 +64,7 @@ def test_switch_in_sidebar_and_appearance_in_account():
     for k in ("light", "dark", "system"):
         assert f'data-theme-set="{k}"' in side
     js = _read("v2.js")
-    assert "box.innerHTML = appearanceHTML() +" in js
+    assert "${appearanceHTML()}" in js and "box.innerHTML = `<div class=\"cz\">" in js   # v0.999.223 the page wraps it
     for k in ('data-size-set="sm"', 'id="calmSw"', 'id="glowSw"', "TH.setTheme(b.dataset.themeSet, e)"):
         assert k in js, k
     for cmd in ("['appearance', 'Appearance'", "['light', 'Light theme'", "['dark', 'Dark theme'", "['system', 'System theme'"):

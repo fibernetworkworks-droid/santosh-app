@@ -56,19 +56,29 @@ def revival_years(ptype: str) -> int:
     return 3 if ptype == "ulip" else 5
 
 
-def premium_state(due: date | None, mode: str, ptype: str, on: date) -> dict:
-    """due / grace / lapsed / revival-over for a premium due date."""
+def premium_state(due: date | None, mode: str, ptype: str, on: date, grace: int | None = -1, rev_years: float | None = -1) -> dict:
+    """due / grace / lapsed / revival-over for a premium due date. grace / rev_years = the desk's country rule (-1 = India's);
+    None = not known for her country yet: past the due date the state is 'overdue' and nothing is assumed."""
     if not due:
         return {"state": "paid_up", "label": "Single premium / paid-up"}
-    g = grace_days(mode)
-    grace_end = due + timedelta(days=g)
-    rev_end = add_months(due, 12 * revival_years(ptype))
     days = (due - on).days
+    if grace is None:
+        if days >= 0:
+            return {"state": "due", "days": days, "due": due.isoformat(), "grace_end": "", "label": f"due in {days} days"}
+        return {"state": "overdue", "days_over": -days, "due": due.isoformat(),
+                "label": f"Past due by {-days} days: set the grace period for your country (check this)"}
+    g = grace_days(mode) if grace == -1 else int(grace)
+    grace_end = due + timedelta(days=g)
+    ry = revival_years(ptype) if rev_years == -1 else rev_years
+    rev_end = add_months(due, int(round(12 * ry))) if ry is not None else None
     if days >= 0:
         return {"state": "due", "days": days, "due": due.isoformat(), "grace_end": grace_end.isoformat(), "label": f"due in {days} days"}
     if on <= grace_end:
         return {"state": "grace", "days_left": (grace_end - on).days, "due": due.isoformat(), "grace_end": grace_end.isoformat(),
                 "label": f"Grace period: {(grace_end - on).days} days left"}
+    if rev_end is None:
+        return {"state": "lapsed", "due": due.isoformat(), "revive_by": "",
+                "label": "Lapsed: the revival period for your country is not set (check the policy document)"}
     if on <= rev_end:
         return {"state": "lapsed", "due": due.isoformat(), "revive_by": rev_end.isoformat(),
                 "label": f"Lapsed: can be revived until {rev_end.isoformat()}"}

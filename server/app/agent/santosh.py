@@ -1402,7 +1402,16 @@ async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict |
         _pack_why = _cw.tool_gate(getattr(ctx, "tenant_id", ""), name)
     except Exception:   # noqa: BLE001
         _pack_why = ""
-    if not _tmode.allowed(name):          # v0.782 TEEN MODE: Plan / Chat never change anything - refused on the server
+    try:   # v0.999.183 CONNECTORS PAGE: her one switch that pauses every connected app
+        from .. import connhub as _ch
+        _paused_why = _ch.gate(getattr(ctx, "tenant_id", ""), name, args or {})
+    except Exception:   # noqa: BLE001
+        _paused_why = ""
+    if _paused_why:
+        async def _paused(_w=_paused_why):
+            raise ToolError(_w)
+        work = _paused()
+    elif not _tmode.allowed(name):          # v0.782 TEEN MODE: Plan / Chat never change anything - refused on the server
         async def _refused(_n=name):
             raise ToolError(_tmode.refusal(_n))
         work = _refused()
@@ -1436,6 +1445,13 @@ async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict |
         _evlog.log_event(_ev_t, _ev_c, "tool_result", {"tool": name, "ok": False,
                                                          "line": f"{type(e).__name__}: {str(e)[:160]}"},
                          _meta.get("turn_id", ""), _meta.get("actor", ""))
+        if not isinstance(e, asyncio.CancelledError):
+            try:   # v0.999.183 the Connectors page's Activity (no content kept)
+                from .. import connhub as _ch
+                _ch.record(_ev_t, _ev_c, name, args or {}, None, False, _meta.get("actor", ""),
+                           "paused" if _paused_why else "")
+            except Exception:   # noqa: BLE001
+                pass
         raise
     from ..scrub import scrub          # v0.91 a service that echoes one of our keys back never shows it to the model
     out = scrub(out)
@@ -1456,6 +1472,12 @@ async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict |
                              int((time.time() - _t0) * 1000), _meta.get("turn_id", ""),
                              _meta.get("actor", ""))
     except Exception:
+        pass
+    try:   # v0.999.183 the Connectors page's Activity (no content kept)
+        from .. import connhub as _ch
+        _ch.record(_ev_t, _ev_c, name, args or {}, out, not (isinstance(out, dict) and out.get("error")),
+                   _meta.get("actor", ""))
+    except Exception:   # noqa: BLE001
         pass
     try:   # v0.963 HOOLA PIPELINE P2: a Box turn keeps every tool result for its facts list (no-op otherwise)
         from ..pipeline import turnbox as _tbox
@@ -1556,6 +1578,318 @@ async def _steps_begin(conversation_id: str, ctx: Ctx, history: list[dict], sett
             state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_seoc.block, tenant_id)
     except Exception:
         log.exception("seo desk block failed")
+    try:   # v0.999.38 SOCIAL DESK: a turn in the Social desk's own chat (or a call started from it) knows the desk
+        from .. import socialchat as _socc
+        if _socc.is_social(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_socc.block, tenant_id)
+    except Exception:
+        log.exception("social desk block failed")
+    try:   # v0.999.43 VIDEO CHAT: a turn in the Video page's chat knows its rules + the clips made in it
+        from .. import videochat as _vidc
+        if _vidc.is_video(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_vidc.block, tenant_id, conversation_id)
+    except Exception:
+        log.exception("video chat block failed")
+    try:   # v0.999.53 IMAGE CHAT: a turn in the Image page's chat knows its rules + the picture sets made in it
+        from .. import imagechat as _imgc
+        if _imgc.is_image(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_imgc.block, tenant_id, conversation_id)
+    except Exception:
+        log.exception("image chat block failed")
+    try:   # v0.999.79 HOOLA MUSIC: a turn in the Music page's chat knows its rules + the songs made in it
+        from .. import musicchat as _musc
+        if _musc.is_music(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_musc.block, tenant_id, conversation_id)
+    except Exception:
+        log.exception("music chat block failed")
+    try:   # v0.999.90 HOOLA VOCAL GLOBAL: a turn in the Vocal page's chat knows its rules, voices + the takes made in it
+        from .. import vocalchat as _vocc
+        if _vocc.is_vocal(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_vocc.block, tenant_id, conversation_id)
+    except Exception:
+        log.exception("vocal chat block failed")
+    try:   # v0.999.170 HOOLA INTERACTIVE REBUILD: a turn in the Interactive page's chat knows its rules, faces, engines + drafts
+        from .. import interactivechat as _ixc
+        if _ixc.is_interactive(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_ixc.block, tenant_id, conversation_id)
+    except Exception:
+        log.exception("interactive chat block failed")
+    try:   # v0.999.43 ACCOUNTS DESK: a turn in the Accounts desk's own chat (or a call started from it) knows the desk
+        from .. import accountschat as _accc
+        if _accc.is_accounts(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_accc.block, tenant_id)
+    except Exception:
+        log.exception("accounts desk block failed")
+    try:   # v0.999.52 LEAD DESK: a turn in the Lead Generation chat (or a call started from it) knows the desk
+        from .. import leadschat as _ldc
+        if _ldc.is_leads(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_ldc.block, tenant_id)
+    except Exception:
+        log.exception("leads desk block failed")
+    try:   # v0.999.67 AI TELECALLER DESK: a turn in the Telecaller chat (or a call started from it) knows the desk
+        from .. import telecallerchat as _tlc
+        if _tlc.is_tele(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_tlc.block, tenant_id)
+    except Exception:
+        log.exception("telecaller desk block failed")
+    try:   # v0.999.81 CUSTOMER SUPPORT DESK: a turn in the Support chat (or a call started from it) knows the desk
+        from .. import supportchat as _spc
+        if _spc.is_support(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_spc.block, tenant_id)
+    except Exception:
+        log.exception("support desk block failed")
+    try:   # v0.999.156 MONEY SAFETY DESK: a turn in the Money Safety chat (or a call started from it) knows the desk
+        from .. import moneychat as _mnc
+        if _mnc.is_money(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_mnc.block, tenant_id)
+    except Exception:
+        log.exception("money desk block failed")
+    try:   # v0.999.158 BOOKS DESK: a turn in the Books & Accounts chat (or a call started from it) knows the desk
+        from .. import bookschat as _bkc
+        if _bkc.is_books(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_bkc.block, tenant_id)
+    except Exception:
+        log.exception("books desk block failed")
+    try:   # v0.999.169 PAYROLL DESK: a turn in the Payroll chat (or a call started from it) knows the desk
+        from .. import payrollchat as _prc
+        if _prc.is_payroll(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_prc.block, tenant_id)
+    except Exception:
+        log.exception("payroll desk block failed")
+    try:   # v0.999.176 TAX DESK: a turn in the Tax chat (or a call started from it) knows the desk
+        from .. import taxchat as _txc
+        if _txc.is_tax(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_txc.block, tenant_id)
+    except Exception:
+        log.exception("tax desk block failed")
+    try:   # CASH & TREASURY DESK: a turn in the Cash chat (or a call started from it) knows the desk
+        from .. import cashchat as _csc
+        if _csc.is_cash(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_csc.block, tenant_id)
+    except Exception:
+        log.exception("cash desk block failed")
+    try:   # CREDIT & LENDING DESK: a turn in the Credit chat (or a call started from it) knows the desk
+        from .. import creditchat as _crc
+        if _crc.is_credit(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_crc.block, tenant_id)
+    except Exception:
+        log.exception("credit desk block failed")
+    try:   # FIRM PRACTICE DESK: a turn in the Firm chat (or a call started from it) knows the desk
+        from .. import firmchat as _fmc
+        if _fmc.is_firm(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_fmc.block, tenant_id)
+    except Exception:
+        log.exception("firm desk block failed")
+    try:   # PAYMENTS DESK: a turn in the Payments chat (or a call started from it) knows the desk
+        from .. import paychat as _pyc
+        if _pyc.is_payments(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_pyc.block, tenant_id)
+    except Exception:
+        log.exception("payments desk block failed")
+    try:   # INSTITUTION DESK: a turn in the Institution chat (or a call started from it) knows the desk
+        from .. import instchat as _inc
+        if _inc.is_institution(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_inc.block, tenant_id)
+    except Exception:
+        log.exception("institution desk block failed")
+    try:   # INVESTMENTS DESK: a turn in the Investments chat (or a call started from it) knows the desk
+        from .. import invchat as _ivc
+        if _ivc.is_investments(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_ivc.block, tenant_id)
+    except Exception:
+        log.exception("investments desk block failed")
+    try:   # INVESTMENTS DESK: a turn in the Investments chat (or a call started from it) knows the desk
+        from .. import mktchat as _mkc
+        if _mkc.is_markets(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_mkc.block, tenant_id)
+    except Exception:
+        log.exception("markets desk block failed")
+    try:   # COMMUNITY FINANCE DESK: a turn in the Community chat (or a call started from it) knows the desk
+        from .. import cmchat as _cmc
+        if _cmc.is_community(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_cmc.block, tenant_id)
+    except Exception:
+        log.exception("community desk block failed")
+    try:   # v0.999.232 ROUTE EDITOR: a turn in a route's Ask Hoola chat knows that route
+        from ..route import chat as _rtc
+        if _rtc.is_route(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_rtc.block, tenant_id, conversation_id)
+    except Exception:
+        log.exception("route editor block failed")
+    try:   # DIGITAL ASSETS DESK: a turn in the Digital Assets chat (or a call started from it) knows the desk
+        from .. import dgchat as _dgc
+        if _dgc.is_digital(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_dgc.block, tenant_id)
+    except Exception:
+        log.exception("digital desk block failed")
+    try:   # PUBLIC FINANCE DESK: a turn in the Public Finance chat (or a call started from it) knows the desk
+        from .. import pbchat as _pbc
+        if _pbc.is_public(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_pbc.block, tenant_id)
+    except Exception:
+        log.exception("public desk block failed")
+    try:   # FINANCE DESK ASSISTANT: a turn in the Finance Desk chat (or a call started from it) knows the desk
+        from .. import fochat as _foc
+        if _foc.is_finops(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_foc.block, tenant_id)
+    except Exception:
+        log.exception("finance desk block failed")
+    try:   # RISK DESK: a turn in the Risk Desk chat (or a call started from it) knows the desk
+        from .. import rkchat as _rkc
+        if _rkc.is_risk(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_rkc.block, tenant_id)
+    except Exception:
+        log.exception("risk desk block failed")
+    try:   # INSURANCE AGENT DESK: a turn in the Insurance chat (or a call started from it) knows the desk
+        from .. import inschat as _insc
+        if _insc.is_insurance(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_insc.block, tenant_id)
+    except Exception:
+        log.exception("insurance desk block failed")
+    try:   # QA DESK: a turn in the QA chat (or a call started from it) knows the desk
+        from .. import qachat as _qac
+        if _qac.is_qa(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_qac.block, tenant_id)
+    except Exception:
+        log.exception("qa desk block failed")
+    try:   # DEVOPS DESK: a turn in the DevOps chat (or a call started from it) knows the desk
+        from .. import dvchat as _dvc
+        if _dvc.is_devops(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_dvc.block, tenant_id)
+    except Exception:
+        log.exception("devops desk block failed")
+    try:   # CYBER DESK: a turn in the Cyber chat (or a call started from it) knows the desk
+        from .. import cychat as _cyc
+        if _cyc.is_cyber(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_cyc.block, tenant_id)
+    except Exception:
+        log.exception("cyber desk block failed")
+    try:   # IT ADMIN DESK: a turn in the IT Admin chat (or a call started from it) knows the desk
+        from .. import itchat as _itc
+        if _itc.is_itadmin(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_itc.block, tenant_id)
+    except Exception:
+        log.exception("it admin desk block failed")
+    try:   # PRODUCT DESK: a turn in the Product chat (or a call started from it) knows the desk
+        from .. import prchat as _prc
+        if _prc.is_product(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_prc.block, tenant_id)
+    except Exception:
+        log.exception("product desk block failed")
+    try:   # APP REVIEWER DESK: a turn in the App review chat (or a call started from it) knows the desk
+        from .. import archat as _arc
+        if _arc.is_appreview(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_arc.block, tenant_id)
+    except Exception:
+        log.exception("app review desk block failed")
+    try:   # TECHNICAL WRITER DESK: a turn in the Docs chat (or a call started from it) knows the desk
+        from .. import dwchat as _dwc
+        if _dwc.is_docs(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_dwc.block, tenant_id)
+    except Exception:
+        log.exception("docs desk block failed")
+    try:   # NOC DESK: a turn in the NOC chat (or a call started from it) knows the desk
+        from .. import ncchat as _ncc
+        if _ncc.is_noc(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_ncc.block, tenant_id)
+    except Exception:
+        log.exception("noc desk block failed")
+    try:   # 3D STUDIO DESK: a turn in the 3D chat (or a call started from it) knows the desk
+        from .. import b3chat as _b3c
+        if _b3c.is_3d(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_b3c.block, tenant_id)
+    except Exception:
+        log.exception("3d desk block failed")
+    try:   # COMPILER DESK: a turn in the Compiler chat (or a call started from it) knows the desk
+        from .. import lcchat as _lcc
+        if _lcc.is_lang(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_lcc.block, tenant_id)
+    except Exception:
+        log.exception("compiler desk block failed")
+    try:   # KERNEL DESK: a turn in the Kernel chat (or a call started from it) knows the desk
+        from .. import kdchat as _kdc
+        if _kdc.is_kernel(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_kdc.block, tenant_id)
+    except Exception:
+        log.exception("kernel desk block failed")
+    try:   # GRAPHICS DESK: a turn in the Graphics chat (or a call started from it) knows the desk
+        from .. import gfxchat as _gxc
+        if _gxc.is_graphics(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_gxc.block, tenant_id)
+    except Exception:
+        log.exception("graphics desk block failed")
+    try:   # DATABASE DESK: a turn in the Database chat (or a call started from it) knows the desk
+        from .. import dbchat as _dbc
+        if _dbc.is_dbengine(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_dbc.block, tenant_id)
+    except Exception:
+        log.exception("database desk block failed")
+    try:   # DISTRIBUTED DESK: a turn in the Distributed chat (or a call started from it) knows the desk
+        from .. import distchat as _dsc
+        if _dsc.is_distsys(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_dsc.block, tenant_id)
+    except Exception:
+        log.exception("distributed desk block failed")
+    try:   # SRE DESK: a turn in the SRE chat (or a call started from it) knows the desk
+        from .. import srechat as _src
+        if _src.is_sre(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_src.block, tenant_id)
+    except Exception:
+        log.exception("sre desk block failed")
+    try:   # VIRTUALIZATION DESK: a turn in the Virtualization chat (or a call started from it) knows the desk
+        from .. import virtchat as _vtc
+        if _vtc.is_virt(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_vtc.block, tenant_id)
+    except Exception:
+        log.exception("virt desk block failed")
+    try:   # LOW LATENCY DESK: a turn in the Low Latency chat (or a call started from it) knows the desk
+        from .. import lowlatchat as _llc
+        if _llc.is_lowlat(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_llc.block, tenant_id)
+    except Exception:
+        log.exception("low latency desk block failed")
+    try:   # MAINFRAME DESK: a turn in the Mainframe chat (or a call started from it) knows the desk
+        from .. import mainframechat as _mfc
+        if _mfc.is_mainframe(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_mfc.block, tenant_id)
+    except Exception:
+        log.exception("mainframe desk block failed")
+    try:   # EMBEDDED DESK: a turn in the Embedded chat (or a call started from it) knows the desk
+        from .. import embeddedchat as _emc
+        if _emc.is_embedded(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_emc.block, tenant_id)
+    except Exception:
+        log.exception("embedded desk block failed")
+    try:   # ROBOTICS DESK: a turn in the Robotics chat (or a call started from it) knows the desk
+        from .. import robochat as _rbc
+        if _rbc.is_robotics(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_rbc.block, tenant_id)
+    except Exception:
+        log.exception("robotics desk block failed")
+    try:   # VISION DESK: a turn in the Vision chat (or a call started from it) knows the desk
+        from .. import cvchat as _cvc
+        if _cvc.is_vision(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_cvc.block, tenant_id)
+    except Exception:
+        log.exception("vision desk block failed")
+    try:   # PLATFORM ENGINEER DESK: a turn in the Platform chat (or a call started from it) knows the desk
+        from .. import pfchat as _pfc
+        if _pfc.is_platform(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_pfc.block, tenant_id)
+    except Exception:
+        log.exception("platform desk block failed")
+    try:   # DATA ENGINEER DESK: a turn in the Data chat (or a call started from it) knows the desk
+        from .. import dechat as _dec
+        if _dec.is_dataeng(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_dec.block, tenant_id)
+    except Exception:
+        log.exception("data desk block failed")
+    try:   # ML DESK: a turn in the ML chat (or a call started from it) knows the desk
+        from .. import mlchat as _mlc
+        if _mlc.is_mleng(conversation_id):
+            state["hint"] = (state.get("hint") or "") + await asyncio.to_thread(_mlc.block, tenant_id)
+    except Exception:
+        log.exception("ml desk block failed")
     _mark("hint")
     return state
 
@@ -2153,6 +2487,14 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
     _mark("mcp")
     mcp_defs, mcp_route = mcp_live.tool_defs(mcp_snap, settings.mcp_native_tools, _last_user_text(history))
     tail += "\n\n" + mcp_live.prompt_block(mcp_snap, mcp_route)
+    _her_apps: list = []
+    try:   # v0.999.194 her connected Composio apps: the brain is told which ones and how to use them
+        from ..bazar import composio as _cmp
+        _her_apps = await asyncio.to_thread(_cmp.her_apps, tenant_id)
+        if _her_apps:
+            tail += "\n\n" + _cmp.prompt_line(tenant_id, _her_apps)
+    except Exception:
+        log.exception("connected apps line failed")
     tail += state.get("hint") or ""
     if state.get("hard") and getattr(settings, "hard_recipe", True):
         # v0.433 SOCH KE JAWAB step 4: a hard question gets the reasoning recipe (ordinary chat never pays for it)
@@ -2189,6 +2531,15 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
             if _sticky - adm.families:
                 adm.admit_families(_sticky)
                 adm.why.update({f: "chat" for f in _sticky})
+    if adm is not None and _her_apps:   # v0.999.194 naming a connected app opens composio_apps / bazar_run
+        try:
+            from ..bazar import composio as _cmp
+            _named = _cmp.named_apps(state.get("request", "") or "", _her_apps)
+            if _named and "bazar" not in adm.families:
+                adm.admit_families(["bazar"])
+                adm.why = {**adm.why, "bazar": "her app " + _named[0][1]}
+        except Exception:
+            log.exception("connected app admission failed")
     if adm is not None and state.get("hard"):
         adm.extra.add("pylab")      # v0.430 a hard ask the judge (not the rules) found also gets the sandbox
     if adm is not None:             # v0.494 a LEARNED SKILL matched this ask: skill_manage must be callable to read it
@@ -2222,6 +2573,422 @@ async def _turn_prepare(conversation_id: str, ctx: Ctx, gender: str, history: li
                 adm.why[f] = "seo chat"
     except Exception:
         log.exception("seo chat admission failed")
+    try:   # v0.999.38 SOCIAL DESK: the social desk + writer + ads tools in view in the Social chat
+        from .. import socialchat as _socc
+        if adm is not None and _socc.is_social(conversation_id):
+            adm.admit_families(_socc.FAMILIES)
+            for f in _socc.FAMILIES:
+                adm.why[f] = "social chat"
+    except Exception:
+        log.exception("social chat admission failed")
+    try:   # v0.999.43 VIDEO CHAT: the video tools in view in the Video page's chat
+        from .. import videochat as _vidc
+        if adm is not None and _vidc.is_video(conversation_id):
+            adm.admit_families(_vidc.FAMILIES)
+            for f in _vidc.FAMILIES:
+                adm.why[f] = "video chat"
+    except Exception:
+        log.exception("video chat admission failed")
+    try:   # v0.999.53 IMAGE CHAT: the create + file tools in view in the Image page's chat
+        from .. import imagechat as _imgc
+        if adm is not None and _imgc.is_image(conversation_id):
+            adm.admit_families(_imgc.FAMILIES)
+            for f in _imgc.FAMILIES:
+                adm.why[f] = "image chat"
+    except Exception:
+        log.exception("image chat admission failed")
+    try:   # v0.999.79 HOOLA MUSIC: the create + file tools in view in the Music page's chat
+        from .. import musicchat as _musc
+        if adm is not None and _musc.is_music(conversation_id):
+            adm.admit_families(_musc.FAMILIES)
+            for f in _musc.FAMILIES:
+                adm.why[f] = "music chat"
+    except Exception:
+        log.exception("music chat admission failed")
+    try:   # v0.999.90 HOOLA VOCAL GLOBAL: the create + file tools in view in the Vocal page's chat
+        from .. import vocalchat as _vocc
+        if adm is not None and _vocc.is_vocal(conversation_id):
+            adm.admit_families(_vocc.FAMILIES)
+            for f in _vocc.FAMILIES:
+                adm.why[f] = "vocal chat"
+    except Exception:
+        log.exception("vocal chat admission failed")
+    try:   # v0.999.170 HOOLA INTERACTIVE REBUILD: the create + file tools in view in the Interactive page's chat
+        from .. import interactivechat as _ixc
+        if adm is not None and _ixc.is_interactive(conversation_id):
+            adm.admit_families(_ixc.FAMILIES)
+            for f in _ixc.FAMILIES:
+                adm.why[f] = "interactive chat"
+    except Exception:
+        log.exception("interactive chat admission failed")
+    try:   # v0.999.43 ACCOUNTS DESK: the accounts desk tool in view in the Accounts chat
+        from .. import accountschat as _accc
+        if adm is not None and _accc.is_accounts(conversation_id):
+            adm.admit_families(_accc.FAMILIES)
+            for f in _accc.FAMILIES:
+                adm.why[f] = "accounts chat"
+    except Exception:
+        log.exception("accounts chat admission failed")
+    try:   # v0.999.52 LEAD DESK: the lead tools in view in the Lead Generation chat
+        from .. import leadschat as _ldc
+        if adm is not None and _ldc.is_leads(conversation_id):
+            adm.admit_families(_ldc.FAMILIES)
+            for f in _ldc.FAMILIES:
+                adm.why[f] = "leads chat"
+    except Exception:
+        log.exception("leads chat admission failed")
+    try:   # v0.999.67 AI TELECALLER DESK: the call-centre + telecall tools in view in the Telecaller chat
+        from .. import telecallerchat as _tlc
+        if adm is not None and _tlc.is_tele(conversation_id):
+            adm.admit_families(_tlc.FAMILIES)
+            for f in _tlc.FAMILIES:
+                adm.why[f] = "telecaller chat"
+    except Exception:
+        log.exception("telecaller chat admission failed")
+    try:   # v0.999.81 CUSTOMER SUPPORT DESK: the seva tools in view in the Support chat
+        from .. import supportchat as _spc
+        if adm is not None and _spc.is_support(conversation_id):
+            adm.admit_families(_spc.FAMILIES)
+            for f in _spc.FAMILIES:
+                adm.why[f] = "support chat"
+    except Exception:
+        log.exception("support chat admission failed")
+    try:   # v0.999.156 MONEY SAFETY DESK: the money-safety tool in view in the Money Safety chat
+        from .. import moneychat as _mnc
+        if adm is not None and _mnc.is_money(conversation_id):
+            adm.admit_families(_mnc.FAMILIES)
+            for f in _mnc.FAMILIES:
+                adm.why[f] = "money safety chat"
+    except Exception:
+        log.exception("money chat admission failed")
+    try:   # v0.999.158 BOOKS DESK: the books tool in view in the Books & Accounts chat
+        from .. import bookschat as _bkc
+        if adm is not None and _bkc.is_books(conversation_id):
+            adm.admit_families(_bkc.FAMILIES)
+            for f in _bkc.FAMILIES:
+                adm.why[f] = "books chat"
+    except Exception:
+        log.exception("books chat admission failed")
+    try:   # v0.999.169 PAYROLL DESK: the payroll tool in view in the Payroll chat
+        from .. import payrollchat as _prc
+        if adm is not None and _prc.is_payroll(conversation_id):
+            adm.admit_families(_prc.FAMILIES)
+            for f in _prc.FAMILIES:
+                adm.why[f] = "payroll chat"
+    except Exception:
+        log.exception("payroll chat admission failed")
+    try:   # v0.999.176 TAX DESK: the tax tool in view in the Tax chat
+        from .. import taxchat as _txc
+        if adm is not None and _txc.is_tax(conversation_id):
+            adm.admit_families(_txc.FAMILIES)
+            for f in _txc.FAMILIES:
+                adm.why[f] = "tax chat"
+    except Exception:
+        log.exception("tax chat admission failed")
+    try:   # CASH & TREASURY DESK: the cash tool in view in the Cash chat
+        from .. import cashchat as _csc
+        if adm is not None and _csc.is_cash(conversation_id):
+            adm.admit_families(_csc.FAMILIES)
+            for f in _csc.FAMILIES:
+                adm.why[f] = "cash chat"
+    except Exception:
+        log.exception("cash chat admission failed")
+    try:   # CREDIT & LENDING DESK: the credit tool in view in the Credit chat
+        from .. import creditchat as _crc
+        if adm is not None and _crc.is_credit(conversation_id):
+            adm.admit_families(_crc.FAMILIES)
+            for f in _crc.FAMILIES:
+                adm.why[f] = "credit chat"
+    except Exception:
+        log.exception("credit chat admission failed")
+    try:   # FIRM PRACTICE DESK: the firm tool in view in the Firm chat
+        from .. import firmchat as _fmc
+        if adm is not None and _fmc.is_firm(conversation_id):
+            adm.admit_families(_fmc.FAMILIES)
+            for f in _fmc.FAMILIES:
+                adm.why[f] = "firm chat"
+    except Exception:
+        log.exception("firm chat admission failed")
+    try:   # PAYMENTS DESK: the payments tool in view in the Payments chat
+        from .. import paychat as _pyc
+        if adm is not None and _pyc.is_payments(conversation_id):
+            adm.admit_families(_pyc.FAMILIES)
+            for f in _pyc.FAMILIES:
+                adm.why[f] = "payments chat"
+    except Exception:
+        log.exception("payments chat admission failed")
+    try:   # INSTITUTION DESK: the institution tool in view in the Institution chat
+        from .. import instchat as _inc
+        if adm is not None and _inc.is_institution(conversation_id):
+            adm.admit_families(_inc.FAMILIES)
+            for f in _inc.FAMILIES:
+                adm.why[f] = "institution chat"
+    except Exception:
+        log.exception("institution chat admission failed")
+    try:   # INVESTMENTS DESK: the investments tool in view in the Investments chat
+        from .. import invchat as _ivc
+        if adm is not None and _ivc.is_investments(conversation_id):
+            adm.admit_families(_ivc.FAMILIES)
+            for f in _ivc.FAMILIES:
+                adm.why[f] = "investments chat"
+    except Exception:
+        log.exception("investments chat admission failed")
+    try:   # MARKETS DESK: the markets tool in view in the Markets chat
+        from .. import mktchat as _mkc
+        if adm is not None and _mkc.is_markets(conversation_id):
+            adm.admit_families(_mkc.FAMILIES)
+            for f in _mkc.FAMILIES:
+                adm.why[f] = "markets chat"
+    except Exception:
+        log.exception("markets chat admission failed")
+    try:   # COMMUNITY FINANCE DESK: the community tool in view in the Community chat
+        from .. import cmchat as _cmc
+        if adm is not None and _cmc.is_community(conversation_id):
+            adm.admit_families(_cmc.FAMILIES)
+            for f in _cmc.FAMILIES:
+                adm.why[f] = "community chat"
+    except Exception:
+        log.exception("community chat admission failed")
+    try:   # v0.999.232 ROUTE EDITOR: the workflow tools in view in a route's Ask Hoola chat
+        from ..route import chat as _rtc
+        if adm is not None and _rtc.is_route(conversation_id):
+            adm.admit_families(_rtc.FAMILIES)
+            for f in _rtc.FAMILIES:
+                adm.why[f] = "route editor chat"
+    except Exception:
+        log.exception("route chat admission failed")
+    try:   # DIGITAL ASSETS DESK: the digital-assets tool in view in the Digital Assets chat
+        from .. import dgchat as _dgc
+        if adm is not None and _dgc.is_digital(conversation_id):
+            adm.admit_families(_dgc.FAMILIES)
+            for f in _dgc.FAMILIES:
+                adm.why[f] = "digital assets chat"
+    except Exception:
+        log.exception("digital chat admission failed")
+    try:   # PUBLIC FINANCE DESK: the public-sector tool in view in the Public Finance chat
+        from .. import pbchat as _pbc
+        if adm is not None and _pbc.is_public(conversation_id):
+            adm.admit_families(_pbc.FAMILIES)
+            for f in _pbc.FAMILIES:
+                adm.why[f] = "public finance chat"
+    except Exception:
+        log.exception("public chat admission failed")
+    try:   # FINANCE DESK ASSISTANT: the finance desk tool in view in the Finance Desk chat
+        from .. import fochat as _foc
+        if adm is not None and _foc.is_finops(conversation_id):
+            adm.admit_families(_foc.FAMILIES)
+            for f in _foc.FAMILIES:
+                adm.why[f] = "finance desk chat"
+    except Exception:
+        log.exception("finance desk chat admission failed")
+    try:   # RISK DESK: the risk desk tool in view in the Risk Desk chat
+        from .. import rkchat as _rkc
+        if adm is not None and _rkc.is_risk(conversation_id):
+            adm.admit_families(_rkc.FAMILIES)
+            for f in _rkc.FAMILIES:
+                adm.why[f] = "risk desk chat"
+    except Exception:
+        log.exception("risk desk chat admission failed")
+    try:   # INSURANCE AGENT DESK: the insurance tools in view in the Insurance chat
+        from .. import inschat as _insc
+        if adm is not None and _insc.is_insurance(conversation_id):
+            adm.admit_families(_insc.FAMILIES)
+            for f in _insc.FAMILIES:
+                adm.why[f] = "insurance desk chat"
+    except Exception:
+        log.exception("insurance desk chat admission failed")
+    try:   # QA DESK: the QA tools in view in the QA chat
+        from .. import qachat as _qac
+        if adm is not None and _qac.is_qa(conversation_id):
+            adm.admit_families(_qac.FAMILIES)
+            for f in _qac.FAMILIES:
+                adm.why[f] = "qa desk chat"
+    except Exception:
+        log.exception("qa desk chat admission failed")
+    try:   # DEVOPS DESK: the DevOps tools in view in the DevOps chat
+        from .. import dvchat as _dvc
+        if adm is not None and _dvc.is_devops(conversation_id):
+            adm.admit_families(_dvc.FAMILIES)
+            for f in _dvc.FAMILIES:
+                adm.why[f] = "devops desk chat"
+    except Exception:
+        log.exception("devops desk chat admission failed")
+    try:   # CYBER DESK: the cyber tools in view in the Cyber chat
+        from .. import cychat as _cyc
+        if adm is not None and _cyc.is_cyber(conversation_id):
+            adm.admit_families(_cyc.FAMILIES)
+            for f in _cyc.FAMILIES:
+                adm.why[f] = "cyber desk chat"
+    except Exception:
+        log.exception("cyber desk chat admission failed")
+    try:   # IT ADMIN DESK: the IT admin + helpdesk tools in view in the IT Admin chat
+        from .. import itchat as _itc
+        if adm is not None and _itc.is_itadmin(conversation_id):
+            adm.admit_families(_itc.FAMILIES)
+            for f in _itc.FAMILIES:
+                adm.why[f] = "it admin desk chat"
+    except Exception:
+        log.exception("it admin desk chat admission failed")
+    try:   # PRODUCT DESK: the product tools in view in the Product chat
+        from .. import prchat as _prc
+        if adm is not None and _prc.is_product(conversation_id):
+            adm.admit_families(_prc.FAMILIES)
+            for f in _prc.FAMILIES:
+                adm.why[f] = "product desk chat"
+    except Exception:
+        log.exception("product desk chat admission failed")
+    try:   # APP REVIEWER DESK: the review tools in view in the App review chat
+        from .. import archat as _arc
+        if adm is not None and _arc.is_appreview(conversation_id):
+            adm.admit_families(_arc.FAMILIES)
+            for f in _arc.FAMILIES:
+                adm.why[f] = "app review desk chat"
+    except Exception:
+        log.exception("app review desk chat admission failed")
+    try:   # TECHNICAL WRITER DESK: the docs tools in view in the Docs chat
+        from .. import dwchat as _dwc
+        if adm is not None and _dwc.is_docs(conversation_id):
+            adm.admit_families(_dwc.FAMILIES)
+            for f in _dwc.FAMILIES:
+                adm.why[f] = "docs desk chat"
+    except Exception:
+        log.exception("docs desk chat admission failed")
+    try:   # NOC DESK: the NOC tools in view in the NOC chat
+        from .. import ncchat as _ncc
+        if adm is not None and _ncc.is_noc(conversation_id):
+            adm.admit_families(_ncc.FAMILIES)
+            for f in _ncc.FAMILIES:
+                adm.why[f] = "noc desk chat"
+    except Exception:
+        log.exception("noc desk chat admission failed")
+    try:   # 3D STUDIO DESK: the 3D tool in view in the 3D chat
+        from .. import b3chat as _b3c
+        if adm is not None and _b3c.is_3d(conversation_id):
+            adm.admit_families(_b3c.FAMILIES)
+            for f in _b3c.FAMILIES:
+                adm.why[f] = "3d desk chat"
+    except Exception:
+        log.exception("3d desk chat admission failed")
+    try:   # COMPILER DESK: the language tool in view in the Compiler chat
+        from .. import lcchat as _lcc
+        if adm is not None and _lcc.is_lang(conversation_id):
+            adm.admit_families(_lcc.FAMILIES)
+            for f in _lcc.FAMILIES:
+                adm.why[f] = "compiler desk chat"
+    except Exception:
+        log.exception("compiler desk chat admission failed")
+    try:   # KERNEL DESK: the kernel tool in view in the Kernel chat
+        from .. import kdchat as _kdc
+        if adm is not None and _kdc.is_kernel(conversation_id):
+            adm.admit_families(_kdc.FAMILIES)
+            for f in _kdc.FAMILIES:
+                adm.why[f] = "kernel desk chat"
+    except Exception:
+        log.exception("kernel desk chat admission failed")
+    try:   # GRAPHICS DESK: the graphics tool in view in the Graphics chat
+        from .. import gfxchat as _gxc
+        if adm is not None and _gxc.is_graphics(conversation_id):
+            adm.admit_families(_gxc.FAMILIES)
+            for f in _gxc.FAMILIES:
+                adm.why[f] = "graphics desk chat"
+    except Exception:
+        log.exception("graphics desk chat admission failed")
+    try:   # DATABASE DESK: the database tool in view in the Database chat
+        from .. import dbchat as _dbc
+        if adm is not None and _dbc.is_dbengine(conversation_id):
+            adm.admit_families(_dbc.FAMILIES)
+            for f in _dbc.FAMILIES:
+                adm.why[f] = "database desk chat"
+    except Exception:
+        log.exception("database desk chat admission failed")
+    try:   # DISTRIBUTED DESK: the distributed tool in view in the Distributed chat
+        from .. import distchat as _dsc
+        if adm is not None and _dsc.is_distsys(conversation_id):
+            adm.admit_families(_dsc.FAMILIES)
+            for f in _dsc.FAMILIES:
+                adm.why[f] = "distributed desk chat"
+    except Exception:
+        log.exception("distributed desk chat admission failed")
+    try:   # SRE DESK: the SRE tool in view in the SRE chat
+        from .. import srechat as _src
+        if adm is not None and _src.is_sre(conversation_id):
+            adm.admit_families(_src.FAMILIES)
+            for f in _src.FAMILIES:
+                adm.why[f] = "sre desk chat"
+    except Exception:
+        log.exception("sre desk chat admission failed")
+    try:   # VIRTUALIZATION DESK: the virtualization tool in view in the Virtualization chat
+        from .. import virtchat as _vtc
+        if adm is not None and _vtc.is_virt(conversation_id):
+            adm.admit_families(_vtc.FAMILIES)
+            for f in _vtc.FAMILIES:
+                adm.why[f] = "virtualization desk chat"
+    except Exception:
+        log.exception("virt desk chat admission failed")
+    try:   # LOW LATENCY DESK: the latency tool in view in the Low Latency chat
+        from .. import lowlatchat as _llc
+        if adm is not None and _llc.is_lowlat(conversation_id):
+            adm.admit_families(_llc.FAMILIES)
+            for f in _llc.FAMILIES:
+                adm.why[f] = "low latency desk chat"
+    except Exception:
+        log.exception("low latency desk chat admission failed")
+    try:   # MAINFRAME DESK: the mainframe tool in view in the Mainframe chat
+        from .. import mainframechat as _mfc
+        if adm is not None and _mfc.is_mainframe(conversation_id):
+            adm.admit_families(_mfc.FAMILIES)
+            for f in _mfc.FAMILIES:
+                adm.why[f] = "mainframe desk chat"
+    except Exception:
+        log.exception("mainframe desk chat admission failed")
+    try:   # EMBEDDED DESK: the embedded tool in view in the Embedded chat
+        from .. import embeddedchat as _emc
+        if adm is not None and _emc.is_embedded(conversation_id):
+            adm.admit_families(_emc.FAMILIES)
+            for f in _emc.FAMILIES:
+                adm.why[f] = "embedded desk chat"
+    except Exception:
+        log.exception("embedded desk chat admission failed")
+    try:   # ROBOTICS DESK: the robotics tool in view in the Robotics chat
+        from .. import robochat as _rbc
+        if adm is not None and _rbc.is_robotics(conversation_id):
+            adm.admit_families(_rbc.FAMILIES)
+            for f in _rbc.FAMILIES:
+                adm.why[f] = "robotics desk chat"
+    except Exception:
+        log.exception("robotics desk chat admission failed")
+    try:   # VISION DESK: the vision tool in view in the Vision chat
+        from .. import cvchat as _cvc
+        if adm is not None and _cvc.is_vision(conversation_id):
+            adm.admit_families(_cvc.FAMILIES)
+            for f in _cvc.FAMILIES:
+                adm.why[f] = "vision desk chat"
+    except Exception:
+        log.exception("vision desk chat admission failed")
+    try:   # PLATFORM ENGINEER DESK: the platform tool in view in the Platform chat
+        from .. import pfchat as _pfc
+        if adm is not None and _pfc.is_platform(conversation_id):
+            adm.admit_families(_pfc.FAMILIES)
+            for f in _pfc.FAMILIES:
+                adm.why[f] = "platform desk chat"
+    except Exception:
+        log.exception("platform desk chat admission failed")
+    try:   # DATA ENGINEER DESK: the data tool in view in the Data chat
+        from .. import dechat as _dec
+        if adm is not None and _dec.is_dataeng(conversation_id):
+            adm.admit_families(_dec.FAMILIES)
+            for f in _dec.FAMILIES:
+                adm.why[f] = "data desk chat"
+    except Exception:
+        log.exception("data desk chat admission failed")
+    try:   # ML DESK: the ML tool in view in the ML chat
+        from .. import mlchat as _mlc
+        if adm is not None and _mlc.is_mleng(conversation_id):
+            adm.admit_families(_mlc.FAMILIES)
+            for f in _mlc.FAMILIES:
+                adm.why[f] = "ml desk chat"
+    except Exception:
+        log.exception("ml desk chat admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,

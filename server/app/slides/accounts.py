@@ -21,7 +21,8 @@ from .models import SlidesAccount
 SLIDES_SCOPE = "https://www.googleapis.com/auth/presentations"
 SCOPES = ["openid", "email", "profile", SLIDES_SCOPE,
           "https://www.googleapis.com/auth/drive.metadata.readonly",   # find decks by name
-          "https://www.googleapis.com/auth/drive.file"]                # export / share the decks Santosh creates
+          "https://www.googleapis.com/auth/drive.file",                # export / share / import the decks Hoola makes
+          "https://www.googleapis.com/auth/spreadsheets.readonly"]     # v0.999.188 put her Sheets charts on slides
 SEARCH_SCOPES = ("https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/drive.readonly",
                  "https://www.googleapis.com/auth/drive.metadata.readonly", "https://www.googleapis.com/auth/drive.metadata")
 
@@ -37,7 +38,7 @@ def _token(account_id: str, force: bool) -> str:
             return acc.decrypt(a.access_token_enc) or ""
         refresh = acc.decrypt(a.refresh_token_enc)
     if not refresh:
-        raise SlidesError("Your Google Slides sign-in has expired. Reconnect it under Profile > Google Slides.")
+        raise SlidesError("Your Google Slides sign-in has expired. On the web console open Connectors > Google, or in the phone app open Settings > Google, and press Reconnect.")
     try:
         tok = mail_acc._post(mail_acc.GOOGLE_TOKEN, {"client_id": st.google_oauth_client_id,
                                                      "client_secret": st.google_oauth_client_secret,
@@ -77,7 +78,8 @@ def clients(tenant: str) -> list[SlidesClient]:
             scopes = set((c.scopes or "").split())
             out.append(SlidesClient("google", c.account_email, mail_acc._signin_token(tenant), mail_acc._http,
                                     can_search=bool(scopes & set(SEARCH_SCOPES))))
-    return out
+    from ..googlehub import arrange   # v0.999.181 her first choice first, refused accounts last
+    return arrange(tenant, "slides", out)
 
 
 def has_slides(tenant: str) -> bool:
@@ -90,8 +92,7 @@ def has_slides(tenant: str) -> bool:
 def get_client(tenant: str, which: str | None = None) -> SlidesClient:
     cs = clients(tenant)
     if not cs:
-        raise NotConnected("Your Google Slides is not connected yet. In the app, go to Profile > Google Slides > "
-                           "'Connect Google Slides'.")
+        raise NotConnected("Your Google Slides is not connected to Hoola yet. On the web console open Connectors > Google, or in the phone app open Settings > Google, and press Connect.")
     if not which:
         return cs[0]
     w = which.strip().lower()

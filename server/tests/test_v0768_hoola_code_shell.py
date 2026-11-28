@@ -185,13 +185,13 @@ def _shot(pg, name):
 def test_typing_survives_a_refresh_and_steps_fold(arena_server):  # noqa: F811
     ctx, pg, errs, calls, state = _console(arena_server)
     home = pg.locator(".hcd").text_content()
-    assert "Ready when you are" in home and "<b>Orders to Postgres</b>" in home       # her title is text, never HTML
+    assert "What should we build today?" in home and "<b>Orders to Postgres</b>" in home       # her title is text, never HTML
     assert pg.locator(".hcd-lbl").all_text_contents()[:1] == ["Recents"]                            # v0.914 one Recents list, like the design (group by repo is in the sort menu)
     _shot(pg, "1-home")
     pg.locator("[data-tid='dt1']").click()
     pg.wait_for_selector(".hcd-fold")
     feed = pg.locator("#hcdCol")
-    assert "Small fix." in feed.text_content() and "Read the repo's rules, read 2 files, searched 1 time" in feed.text_content()
+    assert "Small fix." in feed.text_content() and "Read the repo's rules, read 2 files, searched for 1 pattern" in feed.text_content()
     assert pg.locator("#hcdCol .hcd-fin").first.is_hidden()                                       # folded by default
     assert "Ran your tests" in feed.text_content() and "1 failed, 46 passed" in feed.text_content()   # a failure is never folded away
     pg.locator("#hcdCol .hcd-fold").first.click()
@@ -209,7 +209,7 @@ def test_typing_survives_a_refresh_and_steps_fold(arena_server):  # noqa: F811
     assert pg.locator("#hcdCol .hcd-fin").first.is_visible()                                      # the fold she opened stays open
     # no rotating ring anywhere (CRISP TEXT)
     assert pg.locator(".hcd-spin").count() == 0
-    assert pg.evaluate("getComputedStyle(document.querySelector('.hcd-pulse')).animationName") == "hcdpulse"
+    assert pg.evaluate("getComputedStyle(document.querySelector('.hcd-rs.now .hcd-rsd')).animationName") == "hcdring"   # v0.999 the run's working stage pulses (the design's ring)
     _shot(pg, "2-session")
     # a queued note comes back into the box, in front of what she typed
     assert "use Decimal" in pg.locator("#hcdQueue").text_content()
@@ -228,7 +228,7 @@ def test_layout_rail_sidebar_menus(arena_server):  # noqa: F811
     box = lambda sel: pg.locator(sel).bounding_box()                                              # noqa: E731
     assert box("#hcdRail")["width"] == 320 and box("#hcdCol")["width"] >= 600                 # the chat is never squeezed
     rail = pg.locator("#hcdRail").text_content()
-    assert "Changes" in rail and "Progress" in rail and "Run your tests" in rail and "app/auth/views.py" in rail
+    assert "Changes" in rail and "The run" in rail and "Run your tests" in rail and "app/auth/views.py" in rail
     for sel in ("#hcdSteer", "#hcdStop", "#hcdTop"):                                              # nothing pushed out of view
         b = box(sel)
         assert b["x"] >= 0 and b["x"] + b["width"] <= 1280 and b["y"] + b["height"] <= 900, sel
@@ -271,7 +271,7 @@ def test_layout_rail_sidebar_menus(arena_server):  # noqa: F811
     pg.locator("[data-tid='dt3']").click()
     pg.wait_for_selector(".hcd-recap")
     done = pg.locator("#hcdCol").text_content()
-    assert "Worked for" in done and "Two links pointed at old pages." in done and "CI passed. Merging is your tap." in done
+    assert "Read 2 files" in done and "Worked for" not in done and "Two links pointed at old pages." in done   # v0.999 the fold names what was done and "CI passed. Merging is your tap." in done
     assert pg.locator(".hcd-recap [data-act='mergereq']").is_visible()                            # reachable with the rail hidden too
     assert pg.locator("#hcdRail [data-act='mergereq']").count() == 1 and pg.locator("#hcdRail a[href='https://github.com/meghana/site/pull/7']").count() == 1
     assert "Ask for a change" in pg.locator("#hcdNote").get_attribute("placeholder")

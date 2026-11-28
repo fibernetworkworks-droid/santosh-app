@@ -36,9 +36,9 @@ def _desks():
 def test_every_live_employee_opens_a_real_desk():
     """The bug: a live employee whose desk view does not exist (Open desk did nothing)."""
     from app.employee import hire
-    views = set(re.findall(r'id="v-(\w+)"', HTML)) | {"flow"}           # flow = its own page (/console/flow)
+    views = set(re.findall(r'id="v-(\w+)"', HTML)) | {"flow", "webdev", "appdev", "code", "telecallerdesk", "supportdesk"}   # their own pages (/console/flow, /web, /apps, /code, /telecaller, /support)
     desks = _desks()
-    missing = [k for k, c in hire.CATALOG.items() if c.get("live") and desks.get(k, k + "desk") not in views]
+    missing = [k for k, c in hire.CATALOG.items() if c.get("live") and (desks.get(k) or c.get("desk") or k + "desk") not in views]   # v0.999.114 the server may name it
     assert not missing, missing
     assert desks["kaan"] == "flow"
     assert "if (v === 'flow') { location.assign('/console/flow'" in V2
@@ -50,7 +50,7 @@ def test_desk_room_covers_the_four_departments():
     for g in (H.FIN_GROUP, H.RETAIL_GROUP, H.HEALTHINS_GROUP, H.CONST_GROUP):
         live = {k for k, c in H.CATALOG.items() if c.get("group") == g and c.get("live")}
         assert groups[g] == live, (g, live ^ groups[g])                 # every live seat, none twice
-    assert len(D.keys()) == len(set(D.keys())) == 30
+    assert len(D.keys()) == len(set(D.keys())) == 113   # + tax_worldwide (F4); v0.999.114: 30 + the phone's 69 AI team desks; + household_money (F2) + books_accounts (F3)
     for k in D.keys():
         assert D.tools_of(k) and D.tools_of(k)[0] == k, k                # its own tool first
 
@@ -89,7 +89,7 @@ def test_routes_hire_gate_and_real_runs(env):
     from app.main import app
     c = TestClient(app)
     ov = c.get("/api/deskroom").json()
-    assert [d["id"] for d in ov["depts"]] == ["fin", "retail", "healthins", "const"]
+    assert [d["id"] for d in ov["depts"]] == ["fin", "retail", "healthins", "const", "biz", "care", "soft", "move", "legal", "hosp", "media"]   # v0.999.114
     assert ov["where"]["const_bim"] == "const" and ov["elsewhere"] == {"kaan": "flow"}
     assert c.get("/api/deskroom/nope").status_code == 404
     run = lambda k, t, a, args=None: c.post(f"/api/deskroom/{k}/run", json={"tool": t, "action": a, "args": args or {}})
@@ -167,7 +167,7 @@ def _walk(browser, base, key, width, height, scheme):
     pg.locator("[data-ae=open][data-key=paisa_sahayak]").first.click()
     pg.wait_for_selector(".ddk-hero")
     assert pg.locator(".ddk-h1").text_content() == "Finance & Banking"
-    assert pg.locator(".ddk-emp").count() == 3 and pg.locator(".ddk-dept").count() == 4
+    assert pg.locator(".ddk-emp").count() == 8 and pg.locator(".ddk-dept").count() == 11   # v0.999.114: + 7 departments of the phone's team desks
     assert pg.locator(".ddk-emp[aria-current=true] .ddk-empname").text_content().startswith("Money Safety Assistant")
     pg.locator(".ddk-act[data-a=loan]").click()
     pg.fill("#ddkf-amount", "500000")
@@ -186,7 +186,7 @@ def _walk(browser, base, key, width, height, scheme):
     # Construction: five lanes, the not-hired desk explains itself and offers Hire
     pg.locator(".ddk-dept[data-id=const]").click()
     pg.wait_for_selector(".ddk-lane")
-    assert pg.locator(".ddk-lane").count() == 5 and pg.locator(".ddk-emp").count() == 21
+    assert pg.locator(".ddk-lane").count() == 6 and pg.locator(".ddk-emp").count() == 28   # v0.999.114: + contractor, property & site
     if shots:
         pg.screenshot(path=f"{shots}/ddk-const-{width}-{scheme}.png", full_page=True)
     assert pg.locator("[data-dd=hire]").count() == 1 and "It will never" in pg.locator(".ddk-main").text_content()

@@ -41,13 +41,8 @@ def reconnect_message(email: str, err: str) -> str:
     e = (err or "").lower()
     why = ("Google revoked / expired the sign-in" if "invalid_grant" in e or "expired" in e or "revoked" in e
            else "Google did not refresh the sign-in")
-    msg = (f"The sign-in of your Google account ({email or 'Google'}) no longer works for Hoola ({why}). So Google Drive, "
-           "Gmail, Calendar and Sheets cannot be opened right now. To fix it: in the app go to Profile > Google Drive > "
-           "tap 'Connect Google Drive' and tick every box (Drive too) on Google's page.")
-    if "invalid_grant" in e:
-        msg += (" If this happens every 7 days: in Google Cloud Console > OAuth consent screen the app is still in 'Testing'; "
-                "choose 'Publish app' (In production), then the sign-in will not expire every 7 days.")
-    return msg
+    return (f"Your Google account ({email or 'Google'}) no longer works for Hoola ({why}). So Gmail, Calendar, Drive and "
+            "the other Google apps on it cannot be opened right now. To fix it: On the web console open Connectors > Google, or in the phone app open Settings > Google, and press Reconnect.")
 
 
 def mark_error(tenant_id: str, err: str | None) -> None:
@@ -71,7 +66,7 @@ def _tok_key(creds) -> str:
     return hashlib.sha256(str(getattr(creds, "refresh_token", "") or "").encode()).hexdigest()[:16]
 
 
-def _note_dead(tenant_id: str, tok: str, msg: str) -> None:
+def _note_dead(tenant_id: str, tok: str, msg: str, email: str = "") -> None:
     """v0.662 remember the refusal (backoff grows) and TELL her - once a day, in her chat - that mail alerts and meeting
     nudges have stopped. Before, only a chat tool that happened to touch Google said anything; the watchers failed
     in silence."""
@@ -89,7 +84,7 @@ def _note_dead(tenant_id: str, tok: str, msg: str) -> None:
         conv = convs.notice_chat(tenant_id)   # v0.714
         if conv:
             notify(conv, msg + " Until then, news of new mail and meetings cannot come through.")
-            bus.publish(conv, "google_reconnect", {"text": msg})
+            bus.publish(conv, "google_reconnect", {"text": msg, "say": msg, "email": email})
     except Exception:
         log.exception("google reconnect notice failed")
 
@@ -114,7 +109,7 @@ def refresh(creds, tenant_id: str, email: str = "") -> None:
                 c = _google_conn(s, tenant_id)
                 email = c.account_email if c else ""
         msg = reconnect_message(email, str(e))
-        _note_dead(tenant_id, tok, msg)
+        _note_dead(tenant_id, tok, msg, email)
         raise GoogleReconnect(msg) from None
     _DEAD.pop(tenant_id, None)
 
@@ -122,6 +117,14 @@ def refresh(creds, tenant_id: str, email: str = "") -> None:
 def has_google(tenant_id: str) -> bool:
     with session() as s:
         return _google_conn(s, tenant_id) is not None
+
+
+def _naive_utc(dt):
+    """google-auth compares expiry with a naive UTC clock."""
+    if dt is None:
+        return None
+    from datetime import timezone
+    return dt.astimezone(timezone.utc).replace(tzinfo=None) if dt.tzinfo else dt
 
 
 def credentials_for(tenant_id: str, scopes=None):
@@ -139,6 +142,7 @@ def credentials_for(tenant_id: str, scopes=None):
             client_id=st.google_oauth_client_id,
             client_secret=st.google_oauth_client_secret,
             scopes=scopes or conn.scopes.split(),
+            expiry=_naive_utc(conn.expiry),   # v0.999.181 without it creds.valid was always True
         )
         email = conn.account_email
     if not creds.valid:

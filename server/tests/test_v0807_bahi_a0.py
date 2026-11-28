@@ -350,6 +350,8 @@ def test_the_desk_in_a_real_browser(arena_server):  # noqa: F811
             pg.locator("[data-ae=hire][data-key=accounts]").first.click()
         pg.wait_for_selector("[data-ae=open][data-key=accounts]")
         pg.locator("[data-ae=open][data-key=accounts]").first.click()
+        pg.wait_for_url("**/console/accounts**")                         # v0.999.44 Open desk = its own section (chat + desk)
+        pg.goto(base + "/console/?v=accountsdesk&full=1")                # the whole old page still opens with ?full=1
         pg.wait_for_selector(".acd .ddk-hero")
         assert pg.locator(".ddk-h1").text_content() == "GST & Accounts"
         assert pg.locator(".acd-dues li").count() >= 3

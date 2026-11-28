@@ -48,6 +48,7 @@ BUILTIN: list[dict[str, Any]] = [
                 {"say": "{item} is now only {price}.", "look": {"kind": "price", "new": "{price}", "label": "{item}"}},
                 {"say": "The offer runs until {last_date}. Come in today.", "look": {"kind": "lower_third", "title": "{shop}", "sub": "Offer until {last_date}"}}]},
     {"id": "tp_rate", "name": "Rate update", "group": "Updates", "shape": "talking_head", "aspect": "16:9", "closing": "{shop}",
+     "labels": {"item": ("What the rate is for", "e.g. Gold, per ounce"), "rate": ("Today's rate", "with its unit, e.g. $2,341")},
      "scenes": [{"say": "Here is today's rate for {item}.", "look": {"kind": "title", "text": "{item} rate"}},
                 {"say": "The rate for {item} is {rate}.", "look": {"kind": "big_number", "value": "{rate}", "label": "{item}"}}]},
     {"id": "tp_batch", "name": "New batch opening", "group": "Lessons", "shape": "talking_head", "aspect": "16:9", "closing": "{institute}",
@@ -57,14 +58,62 @@ BUILTIN: list[dict[str, Any]] = [
     {"id": "tp_timing", "name": "Timing change", "group": "Updates", "shape": "talking_head", "aspect": "16:9", "closing": "{place}",
      "scenes": [{"say": "The timings of {place} have changed.", "look": {"kind": "title", "text": "New timings"}},
                 {"say": "We are now open {hours}, {days}.", "look": {"kind": "lower_third", "title": "{hours}", "sub": "{days}"}}]},
-    {"id": "tp_thanks", "name": "Thank-you to a customer", "group": "Greetings", "shape": "talking_head", "aspect": "16:9", "closing": "{shop}",
+    {"id": "tp_thanks", "name": "Thank you", "group": "Greetings", "shape": "talking_head", "aspect": "16:9", "closing": "{shop}",
      "scenes": [{"say": "{name}, thank you for trusting {shop}.", "look": {"kind": "title", "text": "Thank you, {name}"}},
                 {"say": "We are always here to serve you.", "look": {"kind": "none"}}]},
-    {"id": "tp_reel", "name": "Quick reel", "group": "Offers", "shape": "reel", "aspect": "9:16", "closing": "{shop}",
+    {"id": "tp_reel", "name": "Quick reel", "group": "Reels", "shape": "reel", "aspect": "9:16", "closing": "{shop}",
      "scenes": [{"say": "{hook}", "look": {"kind": "none"}}, {"say": "{point}", "look": {"kind": "none"}},
                 {"say": "Visit {shop} today.", "look": {"kind": "none"}}]},
 ]
 # The same starters as they are spoken when the video's language is Hindi (Hindi words in Latin script). Same variables.
+BUILTIN += [
+    {"id": "tp_remind", "name": "Appointment reminder", "group": "Reminders", "shape": "talking_head", "aspect": "16:9", "closing": "{place}",
+     "scenes": [{"say": "Hello {name}, this is a reminder of your appointment at {place}.", "look": {"kind": "title", "text": "See you {date}"}},
+                {"say": "We will see you on {date} at {time}.", "look": {"kind": "lower_third", "title": "{date}, {time}", "sub": "{place}"}},
+                {"say": "If you need to change the time, reply to this message.", "look": {"kind": "none"}}]},
+    {"id": "tp_event", "name": "Event invitation", "group": "Events", "shape": "talking_head", "aspect": "16:9", "closing": "{host}",
+     "scenes": [{"say": "You are invited to {event}.", "look": {"kind": "title", "text": "{event}"}},
+                {"say": "Join us on {date} at {place}.", "look": {"kind": "lower_third", "title": "{date}", "sub": "{place}"}},
+                {"say": "{host} would love to see you there.", "look": {"kind": "none"}},
+                {"say": "Let us know if you are coming.", "look": {"kind": "none"}}]},
+]
+# v0.999.174: what each ready-made one is for, and a plain label + a worldwide example for every blank
+TPL_LINES = {
+    "tp_offer": "A special price for a festival or holiday, and the last day of the offer.",
+    "tp_rate": "Today's rate or price for one thing, said clearly with the number on screen.",
+    "tp_batch": "A new class or course starting, with the date and how to book a seat.",
+    "tp_timing": "Tell customers your new hours or days, so nobody arrives to a closed door.",
+    "tp_thanks": "A personal thank-you to one customer by name. Make one for many names at once.",
+    "tp_reel": "A vertical reel: a hook, one point and where to find you. Made for social feeds.",
+    "tp_remind": "A friendly reminder of a booking, with the time, the place and how to change it.",
+    "tp_event": "Invite people to an event: what it is, when, where, and how to say they are coming.",
+}
+BLANK_LABELS: dict[str, tuple[str, str]] = {
+    "festival": ("Festival or holiday", "e.g. Christmas, Eid, Diwali, Lunar New Year"),
+    "shop": ("Your business name", "e.g. Bloom Florist"),
+    "item": ("What it is about", "e.g. Pastel de nata box"),
+    "price": ("Price", "with its currency, e.g. $12, €9, ¥980"),
+    "last_date": ("Last day of the offer", "e.g. 31 December"),
+    "rate": ("The rate", "with its unit, e.g. $2,341 an ounce"),
+    "course": ("Course or class", "e.g. Spanish for beginners"),
+    "institute": ("Your school or institute", "e.g. Lingua House"),
+    "start_date": ("Start date", "e.g. 6 January"),
+    "place": ("The place", "e.g. Riverside Clinic"),
+    "hours": ("Opening hours", "e.g. 9 am to 7 pm"),
+    "days": ("Days", "e.g. Monday to Saturday"),
+    "name": ("Their name", "e.g. Amara"),
+    "hook": ("The first line, to stop the scroll", "e.g. Three things nobody tells you about coffee"),
+    "point": ("The one point", "e.g. Fresh beans taste better for two weeks"),
+    "date": ("Date", "e.g. Thursday 14 March"),
+    "time": ("Time", "e.g. 3:30 pm"),
+    "event": ("The event", "e.g. our open house"),
+    "host": ("Who invites", "e.g. Studio Nord"),
+}
+MAX_BLANKS = 12
+MAX_ROWS = 50
+KEY_RE = re.compile(r"^[a-z][a-z0-9_]{0,23}$")
+
+
 BUILTIN_HI: dict[str, list[dict[str, Any]]] = {
     "tp_offer": [{"say": "Is {festival} par {shop} mein khaas offer.", "look": {"kind": "title", "text": "{festival} offer"}},
                  {"say": "{item} ab sirf {price} mein.", "look": {"kind": "price", "new": "{price}", "label": "{item}"}},
@@ -90,7 +139,7 @@ def _clip(v: Any, n: int) -> str:
 def _d(tenant: str) -> dict[str, Any]:
     d = S._load(tenant)
     d.setdefault("brand", {})
-    for k in ("glossary", "templates", "trash", "brains"):
+    for k in ("glossary", "templates", "trash", "brains", "folders"):
         d.setdefault(k, [])
     return d
 
@@ -137,7 +186,7 @@ def _new_project(tenant: str, d: dict[str, Any], *, title: str, scenes: list[dic
     if avatar_id and not any(a["id"] == avatar_id for a in d["avatars"]):
         avatar_id = ""
     p = {"id": "iv_" + uuid.uuid4().hex[:10], "title": _clip(title, 80) or "Untitled", "ask": "", "facts": facts,
-         "shape": shape, "lang": lang if lang in S.LANGS else "en",
+         "shape": shape, "lang": S.lang_of(lang),
          "aspect": "9:16" if shape == "reel" else (aspect if aspect in ("16:9", "1:1") else "16:9"),
          "avatar_id": avatar_id, "brand": _clip(d["brand"].get("name"), 40),
          "scenes": [S.clean_scene(s, her, trust_numbers=True) for s in scenes[:S.MAX_SCENES]],
@@ -152,15 +201,172 @@ def _new_project(tenant: str, d: dict[str, Any], *, title: str, scenes: list[dic
 
 
 # ------------------------------------------------------------------ brand + glossary ---
+CARDS = ("logo", "qr", "both", "none")       # v0.999.207 what the closing card carries beside the line
+_URL = re.compile(r"^https?://[^\s<>\"']{3,300}$")
+
+
+def _brand(b: dict[str, Any] | None) -> dict[str, Any]:
+    """Her brand with the v0.999.207 keys filled in (old rows only had name / closing / colour)."""
+    b = dict(b or {})
+    b.setdefault("name", ""); b.setdefault("closing", ""); b.setdefault("color", "")
+    b["show_name"] = b.get("show_name") is not False
+    b["card"] = b.get("card") if b.get("card") in CARDS else "logo"
+    b.setdefault("qr_url", "")
+    return b
+
+
 def brand_set(tenant: str, body: dict[str, Any]) -> dict[str, Any]:
     color = str(body.get("color") or "").strip()
     if color and not HEX.match(color):
         raise S.StudioError("The colour must look like #5B45E0.")
+    card = str(body.get("card") or "").strip()
+    if card and card not in CARDS:
+        raise S.StudioError("The closing card shows: logo, qr, both or none.")
+    qr = str(body.get("qr_url") or "").strip()
+    if qr and not _URL.match(qr):
+        raise S.StudioError("The QR code needs a full web address, starting with https://")
     with S._LOCK:
         d = _d(tenant)
-        d["brand"] = {"name": _clip(body.get("name"), 40), "closing": _clip(body.get("closing"), 80), "color": color.upper()}
+        prev = _brand(d["brand"])
+        d["brand"] = {"name": _clip(body.get("name"), 40), "closing": _clip(body.get("closing"), 80), "color": color.upper(),
+                      "show_name": prev["show_name"] if body.get("show_name") is None else bool(body.get("show_name")),
+                      "card": card or prev["card"], "qr_url": qr if "qr_url" in body else prev["qr_url"]}
+        if d["brand"]["card"] in ("qr", "both") and not d["brand"]["qr_url"]:
+            raise S.StudioError("Write the web address the QR code opens, or choose another closing card.")
         S._store(tenant, d)
-        return d["brand"]
+        return _brand(d["brand"])
+
+
+def _kit(tenant: str) -> dict[str, Any]:
+    """The poster Brand kit (brand/service.py), the parts a video can use. Empty when there is none."""
+    try:
+        from ..brand import service as BS
+        k = BS.kit(tenant)
+    except Exception:
+        return {}
+    site = str((k.get("contact") or {}).get("website") or "").strip()
+    if site and not site.startswith(("http://", "https://")):
+        site = "https://" + site
+    pal = [c.upper() for c in (k.get("palette") or []) if HEX.match(str(c))][:4]
+    col = str((k.get("colors") or {}).get("primary") or "").upper()
+    return {"name": str(k.get("name") or ""), "tagline": str(k.get("tagline") or "")[:80],
+            "color": col if HEX.match(col) and (k.get("colors_set") or k.get("logo")) else "",
+            "palette": pal, "logo": bool(k.get("logo")), "website": site if _URL.match(site) else ""}
+
+
+def logo_px(tenant: str) -> list[int]:
+    try:
+        from PIL import Image
+        from ..brand import service as BS
+        p, _m = BS.logo_file(tenant)
+        with Image.open(p) as im:
+            return [im.width, im.height]
+    except Exception:
+        return []
+
+
+def brand_info(tenant: str) -> dict[str, Any]:
+    with S._LOCK:
+        d = _d(tenant)
+        b = _brand(d["brand"])
+        n = len(d["glossary"])
+    k = _kit(tenant)
+    return {"brand": b, "kit": k, "logo": {"on": k.get("logo", False), "px": logo_px(tenant) if k.get("logo") else []},
+            "glossary_count": n, "glossary_max": MAX_GLOSSARY, "cards": list(CARDS)}
+
+
+def logo_set(tenant: str, file_id: str) -> dict[str, Any]:
+    from ..brand import service as BS
+    try:
+        BS.set_logo(tenant, file_id=file_id)
+    except BS.BrandError as e:
+        raise S.StudioError(str(e))
+    return brand_info(tenant)
+
+
+def logo_clear(tenant: str) -> dict[str, Any]:
+    from ..brand import service as BS
+    BS.clear_logo(tenant)
+    with S._LOCK:
+        d = _d(tenant)
+        b = _brand(d["brand"])
+        if b["card"] in ("logo", "both"):
+            b["card"] = "qr" if b["card"] == "both" else "none"
+            d["brand"] = b
+            S._store(tenant, d)
+    return brand_info(tenant)
+
+
+KIT_FIELDS = ("name", "color", "logo", "qr", "closing")
+
+
+def kit_apply(tenant: str, fields: list[str]) -> dict[str, Any]:
+    """Use my Brand kit: only the parts she ticked come in; nothing else changes."""
+    fields = [f for f in (fields or []) if f in KIT_FIELDS]
+    if not fields:
+        raise S.StudioError("Tick at least one thing to bring in.")
+    k = _kit(tenant)
+    if not k:
+        raise S.StudioError("Your Brand kit is empty.")
+    with S._LOCK:
+        d = _d(tenant)
+        b = _brand(d["brand"])
+        if "name" in fields and k["name"]:
+            b["name"] = k["name"][:40]
+        if "color" in fields and k["color"]:
+            b["color"] = k["color"]
+        if "closing" in fields and k["tagline"]:
+            b["closing"] = k["tagline"][:80]
+        if "qr" in fields and k["website"]:
+            b["qr_url"] = k["website"]
+        logo = k["logo"] and ("logo" in fields or b["card"] in ("logo", "both"))
+        qr = bool(b["qr_url"]) and ("qr" in fields or b["card"] in ("qr", "both"))
+        if "logo" in fields or "qr" in fields:
+            b["card"] = "both" if logo and qr else "logo" if logo else "qr" if qr else "none"
+        d["brand"] = b
+        S._store(tenant, d)
+    return brand_info(tenant)
+
+
+def card_image(tenant: str, card: str | None = None, qr_url: str | None = None) -> bytes | None:
+    """The picture on the closing card: her logo and / or a QR code, on a white tile so the code scans.
+    None when the card carries only the line. The same picture goes into the video and the page's preview."""
+    b = _brand(S._load(tenant).get("brand"))
+    card = card if card in CARDS else b["card"]
+    url = b["qr_url"] if qr_url is None else str(qr_url or "").strip()
+    parts = []
+    from PIL import Image, ImageDraw
+    import io
+    if card in ("logo", "both"):
+        try:
+            from ..brand import service as BS
+            p, _m = BS.logo_file(tenant)
+            im = Image.open(p).convert("RGBA")
+            im.thumbnail((360, 360))
+            parts.append(im)
+        except Exception:
+            pass
+    if card in ("qr", "both") and _URL.match(url):
+        import segno
+        buf = io.BytesIO()
+        segno.make(url, error="m").save(buf, kind="png", scale=10, border=0)
+        q = Image.open(io.BytesIO(buf.getvalue())).convert("RGBA")
+        q = q.resize((360, 360), Image.NEAREST)
+        parts.append(q)
+    if not parts:
+        return None
+    pad, gap = 28, 28
+    w = pad * 2 + sum(x.width for x in parts) + gap * (len(parts) - 1)
+    h = pad * 2 + max(x.height for x in parts)
+    tile = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    ImageDraw.Draw(tile).rounded_rectangle((0, 0, w - 1, h - 1), radius=28, fill=(255, 255, 255, 255))
+    x = pad
+    for im in parts:
+        tile.alpha_composite(im, (x, pad + (h - pad * 2 - im.height) // 2))
+        x += im.width + gap
+    out = io.BytesIO()
+    tile.save(out, format="PNG")
+    return out.getvalue()
 
 
 def glossary_add(tenant: str, term: str, mode: str = "keep", to: str = "", lang: str = "") -> list[dict[str, Any]]:
@@ -169,7 +375,7 @@ def glossary_add(tenant: str, term: str, mode: str = "keep", to: str = "", lang:
         raise S.StudioError("Type the word.")
     if mode not in ("keep", "as"):
         raise S.StudioError("Choose: keep as written, or always translate as.")
-    if mode == "as" and (not to or lang not in S.LANGS):
+    if mode == "as" and (not to or S.lang_of(lang) != lang):
         raise S.StudioError("Say what it becomes, and in which language.")
     with S._LOCK:
         d = _d(tenant)
@@ -191,23 +397,142 @@ def glossary_remove(tenant: str, gid: str) -> list[dict[str, Any]]:
 
 
 # ------------------------------------------------------------------ templates ---
-def _tpl_view(t: dict[str, Any], mine: bool) -> dict[str, Any]:
-    return {**t, "mine": mine, "variables": variables(t["scenes"], t.get("closing", "")), "count": len(t["scenes"])}
+def _seconds(t: dict[str, Any]) -> float:
+    """About how long it plays: 2.6 spoken words a second per scene (a blank counts as two words), plus the closing card."""
+    n = 0.0
+    for s in t["scenes"]:
+        words = len(VAR.sub("w w", str(s.get("say") or "")).split())
+        n += max(2.0, words / 2.6) + .35
+    return round(n + (2.2 if t.get("closing") else 1.2), 1)
+
+
+def _blanks(t: dict[str, Any]) -> list[dict[str, Any]]:
+    labels = t.get("labels") or {}
+    out = []
+    order = variables(t["scenes"]) + [v for v in variables([], t.get("closing", "")) if v not in variables(t["scenes"])]
+    for v in order:
+        where = [i + 1 for i, sc in enumerate(t["scenes"]) if any(v in VAR.findall(x) for x in _strings([sc]))]
+        lab, ex = labels.get(v) or BLANK_LABELS.get(v) or (v.replace("_", " ").capitalize(), "")
+        out.append({"key": v, "label": lab, "example": ex, "where": where, "closing": v in VAR.findall(t.get("closing", ""))})
+    return out
+
+
+def _tpl_view(t: dict[str, Any], mine: bool, used: int = 0) -> dict[str, Any]:
+    return {**t, "mine": mine, "variables": variables(t["scenes"], t.get("closing", "")), "count": len(t["scenes"]),
+            "blanks": _blanks(t), "seconds": _seconds(t), "line": t.get("line") or TPL_LINES.get(t["id"], ""),
+            "lang": t.get("lang") or "en", "used": used}
 
 
 def templates(tenant: str) -> list[dict[str, Any]]:
-    return [_tpl_view(t, True) for t in _d(tenant)["templates"]] + [_tpl_view(t, False) for t in BUILTIN]
+    d = _d(tenant)
+    used: dict[str, int] = {}
+    for p in d["projects"]:
+        if p.get("template"):
+            used[p["template"]] = used.get(p["template"], 0) + 1
+    return ([_tpl_view(t, True, used.get(t["id"], 0)) for t in d["templates"]]
+            + [_tpl_view(t, False, used.get(t["id"], 0)) for t in BUILTIN])
 
 
-def template_save(tenant: str, pid: str, name: str = "") -> dict[str, Any]:
+# ---- a word she marks as a blank: found by code in her video's own words
+_MON = "jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec"
+_SUGGEST = [
+    ("price", re.compile(r"(?:[$\u20ac\u00a3\u00a5\u20b9\u20a9\u20ba\u20a6\u20b1]|R\$|AED|SAR|USD|EUR|GBP|INR|Rs\.?)\s?\d[\d,.]*|\d[\d,.]*\s?(?:[$\u20ac\u00a3\u00a5\u20b9]|USD|EUR|GBP|INR|AED|SAR|yen|euros?|dollars?|rupees?)\b", re.I)),
+    ("percent", re.compile(r"\d[\d.,]*\s?%")),
+    ("time", re.compile(r"\b\d{1,2}(?::\d{2})?\s?(?:am|pm)\b|\b\d{1,2}:\d{2}\b", re.I)),
+    ("date", re.compile(rf"\b\d{{1,2}}(?:st|nd|rd|th)?\s(?:{_MON})[a-z]*\b|\b(?:{_MON})[a-z]*\s\d{{1,2}}(?:st|nd|rd|th)?\b|\b\d{{1,2}}/\d{{1,2}}(?:/\d{{2,4}})?\b", re.I)),
+    ("day", re.compile(r"\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b", re.I)),
+    ("number", re.compile(r"\b\d[\d,.]{1,}\b")),
+]
+
+
+def blank_suggestions(tenant: str, pid: str) -> list[dict[str, Any]]:
+    """Words in HER video that look like they change: prices, percents, times, dates, days, numbers, her business name.
+    Code only - nothing is sent anywhere; she picks which become blanks."""
+    with S._LOCK:
+        d = _d(tenant)
+        p = copy.deepcopy(S._find(d, pid))
+    texts = _strings(p["scenes"], p.get("closing", ""))
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def add(text: str, kind: str) -> None:
+        text = text.strip(" .,;:")
+        if not text or text.lower() in seen or len(out) >= 10:
+            return
+        if any(text.lower() in x["text"].lower() for x in out):
+            return
+        seen.add(text.lower())
+        key = kind if kind not in [x["key"] for x in out] else f"{kind}_{sum(1 for x in out if x['kind'] == kind) + 1}"
+        out.append({"text": text, "key": key, "kind": kind})
+    for name in (p.get("brand"), d["brand"].get("name")):
+        if name and any(name in t for t in texts):
+            add(str(name), "shop")
+    for kind, rx in _SUGGEST:
+        for t in texts:
+            for m in rx.finditer(t):
+                if kind == "number" and any(m.group(0) in x["text"] for x in out):
+                    continue
+                add(m.group(0), kind)
+    return out
+
+
+def _key(v: Any) -> str:
+    k = re.sub(r"[^a-z0-9_]+", "_", str(v or "").strip().lower()).strip("_")[:24]
+    return k if KEY_RE.match(k) else ""
+
+
+def _blank_out(scenes: list[dict[str, Any]], closing: str, blanks: list[Any]) -> tuple[list[dict[str, Any]], str, dict[str, Any]]:
+    """Each {text, key, label} she marked becomes {key} wherever that exact text is in the words. A text that is not there refuses."""
+    scenes = copy.deepcopy(scenes)
+    labels: dict[str, tuple[str, str]] = {}
+    if len(blanks) > MAX_BLANKS:
+        raise S.StudioError(f"A template can have up to {MAX_BLANKS} blanks.")
+    for b in sorted([x for x in blanks if isinstance(x, dict)], key=lambda x: -len(str(x.get("text") or ""))):
+        text, key = _clip(b.get("text"), 60), _key(b.get("key") or b.get("label") or b.get("text"))
+        if not text:
+            continue
+        if not key:
+            raise S.StudioError(f"Give \u201c{text}\u201d a short name, like price or date.")
+        tag = "{" + key + "}"
+        hits = 0
+
+        def sub(v: Any) -> str:
+            nonlocal hits
+            v = str(v or "")
+            hits += v.count(text)
+            return v.replace(text, tag)
+        for sc in scenes:
+            sc["say"] = sub(sc.get("say"))
+            lk = sc.get("look") or {}
+            for k in ALL_KEYS:
+                if lk.get(k):
+                    lk[k] = sub(lk[k])
+            for bar in lk.get("bars") or []:
+                for k in ("label", "value"):
+                    if bar.get(k):
+                        bar[k] = sub(bar[k])
+        if text in closing:
+            hits += 1
+            closing = closing.replace(text, tag)
+        if not hits:
+            raise S.StudioError(f"\u201c{text}\u201d is not in this video's words.")
+        labels[key] = (_clip(b.get("label"), 40) or key.replace("_", " ").capitalize(), _clip(b.get("example"), 60) or f"e.g. {text}")
+    return scenes, closing, labels
+
+
+def template_save(tenant: str, pid: str, name: str = "", blanks: list[Any] | None = None) -> dict[str, Any]:
+    """Her video as a template. The words she marked become blanks; the video itself is not changed."""
     with S._LOCK:
         d = _d(tenant)
         p = S._find(d, pid)
         if len(d["templates"]) >= MAX_TEMPLATES:
             raise S.StudioError(f"You have {MAX_TEMPLATES} templates - remove one first.")
+        scenes, closing, labels = _blank_out([{"say": s["say"], "look": copy.deepcopy(s["look"])} for s in p["scenes"]],
+                                             p.get("closing", ""), list(blanks or []))
         t = {"id": "tp_" + uuid.uuid4().hex[:10], "name": _clip(name, 60) or p["title"], "group": "Mine",
-             "shape": p["shape"], "aspect": p["aspect"], "closing": p.get("closing", ""),
-             "scenes": [{"say": s["say"], "look": copy.deepcopy(s["look"])} for s in p["scenes"]], "created": S._now_iso()}
+             "shape": p["shape"], "aspect": p["aspect"], "closing": closing, "lang": p.get("lang") or "en",
+             "labels": labels, "from": p["title"], "line": f"From \u201c{_clip(p['title'], 60)}\u201d",
+             "scenes": scenes, "created": S._now_iso()}
         d["templates"].insert(0, t)
         S._store(tenant, d)
         return _tpl_view(t, True)
@@ -233,22 +558,84 @@ def _template(d: dict[str, Any], tid: str, lang: str = "") -> dict[str, Any]:
     raise S.StudioError("That template was not found.")
 
 
+def _use_one(tenant: str, d: dict[str, Any], t: dict[str, Any], vals: dict[str, str], lang: str, avatar_id: str,
+             title: str) -> dict[str, Any]:
+    missing = [v for v in variables(t["scenes"], t.get("closing", "")) if not vals.get(v)]
+    if missing:
+        names = {b["key"]: b["label"] for b in _blanks(t)}
+        raise S.StudioError("Fill in: " + ", ".join(names.get(m, m.replace("_", " ")).lower() for m in missing) + ".")
+    closing = VAR.sub(lambda m: vals.get(m.group(1), ""), t.get("closing", ""))
+    return _new_project(tenant, d, title=title or t["name"], scenes=_fill(t["scenes"], vals), shape=t["shape"], lang=lang,
+                        aspect=t["aspect"], closing=closing or d["brand"].get("closing", ""), avatar_id=avatar_id,
+                        facts=list(vals.values()), extra={"template": t["id"]})
+
+
+def _settle(tenant: str, p: dict[str, Any], opts: dict[str, Any]) -> dict[str, Any]:
+    """Her picks on the Use page - frame, voice, engine, where the face sits - through the Studio's own save."""
+    body = {k: opts[k] for k in ("aspect", "voice", "engine", "face_layout") if opts.get(k) not in (None, "")}
+    if opts.get("aspect") == "9:16" and p["shape"] != "reel":
+        body = {**body, "shape": "reel"}
+        body.pop("aspect", None)
+    return S.save(tenant, p["id"], body) if body else p
+
+
 def template_use(tenant: str, tid: str, values: dict[str, Any], lang: str = "en", avatar_id: str = "",
-                 title: str = "") -> dict[str, Any]:
-    """Fill a template from HER values. A variable she left empty refuses by name - nothing is ever filled in for her."""
+                 title: str = "", opts: dict[str, Any] | None = None,
+                 think: Callable[[str, str], dict[str, Any]] | None = None) -> dict[str, Any]:
+    """Fill a template from HER values. A blank she left empty refuses by name - nothing is ever filled in for her.
+    In a language the template is not written in, the filled words are translated (names, prices and dates checked)."""
+    vals = {str(k): _clip(v, 60) for k, v in (values or {}).items()}
     with S._LOCK:
         d = _d(tenant)
-        t = _template(d, tid, lang)
-        vals = {str(k): _clip(v, 60) for k, v in (values or {}).items()}
-        missing = [v for v in variables(t["scenes"], t.get("closing", "")) if not vals.get(v)]
-        if missing:
-            raise S.StudioError("Fill in: " + ", ".join(m.replace("_", " ") for m in missing) + ".")
-        closing = VAR.sub(lambda m: vals.get(m.group(1), ""), t.get("closing", ""))
-        p = _new_project(tenant, d, title=title or t["name"], scenes=_fill(t["scenes"], vals), shape=t["shape"], lang=lang,
-                         aspect=t["aspect"], closing=closing or d["brand"].get("closing", ""), avatar_id=avatar_id,
-                         facts=list(vals.values()), extra={"template": tid})
+        base = next((x for x in d["templates"] + BUILTIN if x["id"] == tid), None)
+        if base is None:
+            raise S.StudioError("That template was not found.")
+        src = base.get("lang") or "en"
+        lang = src if lang in ("", "auto") else lang
+        direct = lang == src or (lang == "hi" and tid in BUILTIN_HI and base in BUILTIN)
+        t = _template(d, tid, lang if direct else src)
+        p = _use_one(tenant, d, t, vals, lang if direct else src, avatar_id, title)
         S._store(tenant, d)
-        return p
+    note = ""
+    if not direct:
+        try:
+            tr = translate(tenant, p["id"], lang, think=think)
+            with S._LOCK:
+                d = _d(tenant)
+                d["projects"] = [x for x in d["projects"] if x["id"] != p["id"]]
+                for x in d["projects"]:
+                    if x["id"] == tr["id"]:
+                        x["template"], x["title"] = tid, _clip(title, 80) or t["name"]
+                        tr = x
+                S._store(tenant, d)
+            p = tr
+        except S.StudioError:
+            note = f"Hoola could not translate it just now, so the draft is in {S.lang_label(src)}. Use Translate in the Studio."
+    p = _settle(tenant, p, opts or {})
+    return {**p, "notice": note} if note else p
+
+
+def template_many(tenant: str, tid: str, rows: list[Any], lang: str = "en", avatar_id: str = "",
+                  opts: dict[str, Any] | None = None, think: Callable[[str, str], dict[str, Any]] | None = None) -> dict[str, Any]:
+    """One draft per row of her sheet. A row with an empty blank is skipped and named, never filled in."""
+    rows = [r for r in (rows or []) if isinstance(r, dict)]
+    if not rows:
+        raise S.StudioError("The sheet has no rows.")
+    if len(rows) > MAX_ROWS:
+        raise S.StudioError(f"Up to {MAX_ROWS} rows at a time.")
+    made: list[str] = []
+    skipped: list[dict[str, Any]] = []
+    for n, row in enumerate(rows, start=1):
+        vals = {_key(k): v for k, v in row.items() if _key(k)}
+        title = str(row.get("title") or "")
+        try:
+            p = template_use(tenant, tid, vals, lang=lang, avatar_id=avatar_id, title=title, opts=opts, think=think)
+            made.append(p["id"])
+        except S.StudioError as e:
+            if "not found" in str(e):
+                raise
+            skipped.append({"row": n, "why": str(e)})
+    return {"made": made, "skipped": skipped}
 
 
 # ------------------------------------------------------------------ batch + names ---
@@ -369,6 +756,106 @@ def restore(tenant: str, pid: str) -> dict[str, Any]:
         return p
 
 
+def purge_one(tenant: str, pid: str) -> bool:
+    """v0.999.204 one video out of the trash for good (its made file too)."""
+    with S._LOCK:
+        d = _d(tenant)
+        if not any(x["id"] == pid for x in d["trash"]):
+            raise S.StudioError("That video is not in the trash.")
+        S.video_path(tenant, pid).unlink(missing_ok=True)
+        d["trash"] = [x for x in d["trash"] if x["id"] != pid]
+        S._store(tenant, d)
+        return True
+
+
+# ------------------------------------------------------------------ folders + many at once (v0.999.204) ---
+MAX_FOLDERS = 30
+FOLDER_COLORS = ("#B07A3A", "#2E4F8A", "#2F6B48", "#8A2F4E", "#4A36C9", "#57564F")
+
+
+def folder_save(tenant: str, name: Any, color: Any = "", fid: Any = "") -> dict[str, Any]:
+    name = _clip(name, 40)
+    if not name:
+        raise S.StudioError("Give the folder a name.")
+    with S._LOCK:
+        d = _d(tenant)
+        fs = d["folders"]
+        if any(f["name"].lower() == name.lower() and f["id"] != fid for f in fs):
+            raise S.StudioError("You already have a folder with that name.")
+        row = next((f for f in fs if f["id"] == fid), None) if fid else None
+        if fid and row is None:
+            raise S.StudioError("That folder was not found.")
+        if row is None:
+            if len(fs) >= MAX_FOLDERS:
+                raise S.StudioError(f"You have {MAX_FOLDERS} folders - remove one first.")
+            row = {"id": "fd_" + uuid.uuid4().hex[:8], "created": S._now_iso(), "color": FOLDER_COLORS[len(fs) % len(FOLDER_COLORS)]}
+            fs.append(row)
+        row["name"] = name
+        if str(color or "") in FOLDER_COLORS:
+            row["color"] = str(color)
+        S._store(tenant, d)
+        return row
+
+
+def folder_delete(tenant: str, fid: str) -> dict[str, Any]:
+    """The folder goes; its videos stay, out of any folder."""
+    with S._LOCK:
+        d = _d(tenant)
+        if not any(f["id"] == fid for f in d["folders"]):
+            raise S.StudioError("That folder was not found.")
+        d["folders"] = [f for f in d["folders"] if f["id"] != fid]
+        n = 0
+        for p in d["projects"] + d["trash"]:
+            if p.get("folder") == fid:
+                p["folder"] = ""
+                n += 1
+        S._store(tenant, d)
+        return {"freed": n}
+
+
+def bulk(tenant: str, ids: list[Any], action: str, value: Any = "") -> dict[str, Any]:
+    """Many videos at once: move to a folder, change the voice or the face (drafts take it; a made video keeps its file until
+    it is made again), duplicate, or move to the trash. A video being made is left out and named."""
+    ids = list(dict.fromkeys(str(x) for x in (ids or [])))[:100]
+    if not ids:
+        raise S.StudioError("Choose at least one video.")
+    if action not in ("move", "voice", "face", "duplicate", "trash"):
+        raise S.StudioError("Choose what to do with them.")
+    value = str(value or "")
+    d = _d(tenant)
+    if action == "move" and value and not any(f["id"] == value for f in d["folders"]):
+        raise S.StudioError("That folder was not found.")
+    if action == "face" and value and not any(a["id"] == value for a in d["avatars"]):
+        raise S.StudioError("That face was not found.")
+    if action == "voice" and value:
+        from . import voice as VO
+        try:
+            VO.voice_info(tenant, value)
+        except VO.VoiceError:
+            raise S.StudioError("That voice was not found.") from None
+    done, skipped = [], []
+    for pid in ids:
+        try:
+            if action == "move":
+                with S._LOCK:
+                    dd = _d(tenant)
+                    p = S._find(dd, pid)
+                    p["folder"] = value
+                    S._store(tenant, dd)
+            elif action == "voice":
+                S.save(tenant, pid, {"voice": value})
+            elif action == "face":
+                S.save(tenant, pid, {"avatar_id": value})
+            elif action == "duplicate":
+                duplicate(tenant, pid)
+            else:
+                trash(tenant, pid)
+            done.append(pid)
+        except S.StudioError as e:
+            skipped.append({"id": pid, "why": str(e)})
+    return {"done": done, "skipped": skipped}
+
+
 def empty_trash(tenant: str) -> int:
     with S._LOCK:
         d = _d(tenant)
@@ -378,7 +865,7 @@ def empty_trash(tenant: str) -> int:
 
 
 # ------------------------------------------------------------------ translate ---
-_TR_SYSTEM = """You translate the lines of a short business video for an Indian small-business owner. Translate each
+_TR_SYSTEM = """You translate the lines of a short business video for a business or person anywhere in the world. Translate each
 line into the target language the way a local shopkeeper would say it aloud (Roman script unless the source line is in
 another script). Keep every number, price, percentage, date, phone number and proper name EXACTLY as written. Follow
 the glossary: a KEEP word stays exactly as written; an AS word must be written the given way. Return ONLY JSON:
@@ -403,14 +890,14 @@ def _line_flag(src: str, out: str, rules: list[dict[str, Any]], lang: str) -> st
 
 def translate(tenant: str, pid: str, lang: str, think: Callable[[str, str], dict[str, Any]] | None = None) -> dict[str, Any]:
     """A NEW draft of the same video in `lang`. Words by one model call; numbers and glossary rules checked by code."""
-    if lang not in S.LANGS:
+    if not lang or S.lang_of(lang) != lang:
         raise S.StudioError("Choose a language.")
     with S._LOCK:
         d = _d(tenant)
         src = copy.deepcopy(S._find(d, pid))
         rules = [g for g in d["glossary"] if g["mode"] == "keep" or g.get("lang") == lang]
     if src["lang"] == lang:
-        raise S.StudioError(f"This video is already in {S.LANGS[lang]}.")
+        raise S.StudioError(f"This video is already in {S.lang_label(lang)}.")
     slots: list[tuple[int, str]] = []                      # (scene index, key) for every string that is words
     lines: list[str] = []
     for i, s in enumerate(src["scenes"]):
@@ -421,7 +908,7 @@ def translate(tenant: str, pid: str, lang: str, think: Callable[[str, str], dict
                 slots.append((i, k))
                 lines.append(str(s["look"][k]))
     gl = "\n".join(f"KEEP {g['term']}" if g["mode"] == "keep" else f"AS {g['term']} => {g['to']}" for g in rules) or "(none)"
-    prompt = (f"Source language: {S.LANGS.get(src['lang'], src['lang'])}\nTarget language: {S.LANGS[lang]}\nGlossary:\n{gl}\n"
+    prompt = (f"Source language: {S.lang_label(src['lang'])}\nTarget language: {S.lang_label(lang)}\nGlossary:\n{gl}\n"
               "Lines:\n" + "\n".join(f"{n + 1}. {t}" for n, t in enumerate(lines)))
     out = (think or _think)(_TR_SYSTEM, prompt)
     got = out.get("lines") if isinstance(out, dict) else None
@@ -440,7 +927,7 @@ def translate(tenant: str, pid: str, lang: str, think: Callable[[str, str], dict
             notes[i]["flag"] = flag
     with S._LOCK:
         d = _d(tenant)
-        p = _new_project(tenant, d, title=f"{src['title']} ({S.LANGS[lang]})", scenes=scenes, shape=src["shape"], lang=lang,
+        p = _new_project(tenant, d, title=f"{src['title']} ({S.lang_label(lang)})", scenes=scenes, shape=src["shape"], lang=lang,
                          aspect=src["aspect"], closing=src.get("closing", ""), avatar_id=src.get("avatar_id", ""),
                          facts=src.get("facts", []) + [src.get("ask", "")] + _strings(src["scenes"]),
                          extra={"from": pid, "from_lang": src["lang"], "tr": notes, "items": src.get("items", [])})
@@ -466,7 +953,7 @@ def brain_save(tenant: str, body: dict[str, Any]) -> dict[str, Any]:
             row = {"id": "br_" + uuid.uuid4().hex[:8], "created": S._now_iso()}
             d["brains"].insert(0, row)
         row.update(name=name, knows=knows, opening=_clip(body.get("opening"), 160), links=links,
-                   lang=body.get("lang") if body.get("lang") in S.LANGS else "hi", updated=S._now_iso())
+                   lang=body.get("lang") if body.get("lang") and S.lang_of(body.get("lang")) == body.get("lang") else "hi", updated=S._now_iso())
         S._store(tenant, d)
         return row
 
@@ -479,6 +966,153 @@ def brain_remove(tenant: str, bid: str) -> bool:
         return True
 
 
+# ------------------------------------------------------------------ settings (v0.999.210) ---
+PREF_KINDS = ("presenter", "explainer", "reel", "product", "lesson")
+PREF_LENS = (15, 30, 45, 60, 90)
+PREF_DEFAULT: dict[str, Any] = {"lang": "auto", "voice": "", "face": "", "kind": "presenter", "len": 30, "folder": ""}
+
+
+def prefs(tenant: str, d: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Her starting choices for every new video, kept on her account (the computer and the phone start the same way)."""
+    d = d or _d(tenant)
+    raw = d.get("prefs") if isinstance(d.get("prefs"), dict) else {}
+    out = {**PREF_DEFAULT, **{k: raw[k] for k in PREF_DEFAULT if k in raw}}
+    if out["face"] and not any(a.get("id") == out["face"] for a in d.get("avatars") or []):
+        out["face"] = ""                                    # a removed face is never a default
+    if out["folder"] and not any(f.get("id") == out["folder"] for f in d.get("folders") or []):
+        out["folder"] = ""
+    return {**out, "updated": str(raw.get("updated") or ""), "saved": bool(raw)}
+
+
+def _pref_value(tenant: str, d: dict[str, Any], k: str, v: Any) -> Any:
+    """One starting choice checked, or StudioError with the reason in plain words."""
+    if k == "lang":
+        v = str(v or "").strip()
+        if v in ("", "auto"):
+            return "auto"
+        from . import voice as VO
+        c = VO.lang_ok(v)
+        if not c:
+            raise S.StudioError("Hoola does not know that language.")
+        return c
+    if k == "voice":
+        v = str(v or "").strip()[:60]
+        if v:
+            from . import voice as VO
+            try:
+                VO.voice_info(tenant, v)
+            except Exception as e:  # noqa: BLE001
+                raise S.StudioError(str(e) or "That voice is not in your list.")
+        return v
+    if k == "face":
+        v = str(v or "").strip()
+        if v and not any(a.get("id") == v for a in d.get("avatars") or []):
+            raise S.StudioError("That face is not in your Avatars.")
+        return v
+    if k == "kind":
+        if v not in PREF_KINDS:
+            raise S.StudioError("Pick a kind of video.")
+        return v
+    if k == "len":
+        try:
+            n = int(v)
+        except (TypeError, ValueError):
+            n = 0
+        if n not in PREF_LENS:
+            raise S.StudioError("Pick 15, 30, 45, 60 or 90 seconds.")
+        return n
+    if k == "folder":
+        v = str(v or "").strip()
+        if v and not any(f.get("id") == v for f in d.get("folders") or []):
+            raise S.StudioError("That folder is not in Projects.")
+        return v
+    raise S.StudioError("Unknown setting.")
+
+
+def prefs_save(tenant: str, body: dict[str, Any]) -> dict[str, Any]:
+    """Saves each choice that checks out; the others come back in `refused` with the reason (nothing half-saved silently)."""
+    with S._LOCK:
+        d = _d(tenant)
+        cur = {**PREF_DEFAULT, **{k: v for k, v in (d.get("prefs") or {}).items() if k in PREF_DEFAULT}}
+        refused = []
+        for k in PREF_DEFAULT:
+            if k in (body or {}):
+                try:
+                    cur[k] = _pref_value(tenant, d, k, body[k])
+                except S.StudioError as e:
+                    refused.append({"key": k, "why": str(e)})
+        cur["updated"] = S._now_iso()
+        d["prefs"] = cur
+        S._store(tenant, d)
+        return {"prefs": prefs(tenant, d), "refused": refused}
+
+
+def prefs_reset(tenant: str) -> dict[str, Any]:
+    with S._LOCK:
+        d = _d(tenant)
+        d["prefs"] = {**PREF_DEFAULT, "updated": S._now_iso()}
+        S._store(tenant, d)
+        return prefs(tenant, d)
+
+
+def _month_before(month: str) -> str:
+    y, m = (int(x) for x in month.split("-"))
+    return f"{y - 1}-12" if m == 1 else f"{y}-{m - 1:02d}"
+
+
+def settings_view(tenant: str) -> dict[str, Any]:
+    """Everything the Settings page shows, from her real data and this server's real state."""
+    from . import apps as AP
+    from . import engines as EN
+    from . import live as LV
+    with S._LOCK:
+        d = _d(tenant)
+        if _purge(tenant, d):
+            S._store(tenant, d)
+        d = copy.deepcopy(d)
+    u = usage(tenant, d)
+    before = _month_before(u["month"])
+    u["videos_before"] = len([p for p in d["projects"] + d["trash"] if p.get("video") and str(p["video"].get("made") or "").startswith(before)])
+    try:
+        u["apps_videos"] = int(AP.view(tenant).get("month", {}).get("videos") or 0)
+    except Exception:   # noqa: BLE001
+        u["apps_videos"] = 0
+    now = time.time()
+    trash_rows = [{"id": p["id"], "title": p.get("title") or "Untitled",
+                   "days_left": max(0, int(-(-(TRASH_DAYS * 86400 - (now - float(p.get("trashed_ts") or now))) // 86400)))}
+                  for p in d["trash"]]
+    try:
+        agents = len(LV.agents(tenant).get("agents") or [])
+    except Exception:   # noqa: BLE001
+        agents = 0
+    ev = EN.view(tenant)
+    faces = [e for e in ev["engines"] if e["job"] == "video" and e.get("face")]
+    ready_faces = [e for e in faces if e["ready"]]
+    st = status()
+    caps = [
+        {"id": "draw", "title": "Drawing the video", "what": "Scenes, words on screen and pictures are drawn into an MP4.",
+         "ok": bool(st["draw"]), "state": "Ready" if st["draw"] else "Not installed"},
+        {"id": "voice", "title": "Hoola voices", "what": "Speech in 140 languages for every video.",
+         "ok": bool(st["vocal"]), "state": "Ready" if st["vocal"] else "Not connected"},
+        {"id": "faces", "title": "Talking faces", "what": f"A face engine makes a face speak: {len(ready_faces)} of {len(faces)} engines connected.",
+         "ok": bool(ready_faces), "state": f"{len(ready_faces)} engine{'' if len(ready_faces) == 1 else 's'}" if ready_faces else "None yet"},
+        {"id": "captions", "title": "Captions from speech", "what": "Words timed to the voice, for subtitles.",
+         "ok": bool(st["whisper"]), "state": "Ready" if st["whisper"] else "Not installed"},
+        {"id": "lab", "title": "Own GPU lab", "what": "Hoola's own voice and face models on its own GPU.",
+         "ok": bool(st["lab"]), "state": "Connected" if st["lab"] else "Off"},
+        {"id": "busy", "title": "A video being made now", "what": "Videos are made one at a time on this server.",
+         "ok": not st["busy"], "state": "Busy" if st["busy"] else "Free"},
+    ]
+    limits = [{"k": "Finished videos kept", "v": S.MAX_VIDEOS}, {"k": "Days in Trash", "v": TRASH_DAYS},
+              {"k": "Names in one batch", "v": MAX_BATCH}, {"k": "App keys", "v": AP.MAX_KEYS},
+              {"k": "Calls an hour per app key", "v": AP.RATE_HOUR}, {"k": "Webhooks", "v": AP.MAX_HOOKS}]
+    return {"prefs": prefs(tenant, d), "usage": u, "checked": S._now_iso(),
+            "kept": {"stored": u["stored"], "max": S.MAX_VIDEOS, "trash": trash_rows, "trash_days": TRASH_DAYS,
+                     "things": [{"k": "Faces", "v": len(d.get("avatars") or [])}, {"k": "Your templates", "v": len(d.get("templates") or [])},
+                                {"k": "Folders", "v": len(d.get("folders") or [])}, {"k": "Live agents", "v": agents}]},
+            "server": {"caps": caps, "limits": limits}}
+
+
 # ------------------------------------------------------------------ usage + status ---
 def usage(tenant: str, d: dict[str, Any] | None = None) -> dict[str, Any]:
     d = d or _d(tenant)
@@ -489,8 +1123,10 @@ def usage(tenant: str, d: dict[str, Any] | None = None) -> dict[str, Any]:
     for p in rows:
         by[p["lang"]] = by.get(p["lang"], 0.0) + float(p["video"].get("duration") or 0)
     return {"month": month, "videos": len(rows), "minutes": round(secs / 60, 1),
-            "by_language": [{"lang": S.LANGS.get(k, k), "minutes": round(v / 60, 1)} for k, v in sorted(by.items(), key=lambda kv: -kv[1])],
-            "recent": [{"title": p["title"], "made": p["video"].get("made"), "seconds": round(float(p["video"].get("duration") or 0))}
+            "credits": sum(int((p.get("video") or {}).get("credits") or 0) for p in rows),
+            "by_language": [{"lang": S.lang_label(k), "minutes": round(v / 60, 1)} for k, v in sorted(by.items(), key=lambda kv: -kv[1])],
+            "recent": [{"title": p["title"], "made": p["video"].get("made"), "seconds": round(float(p["video"].get("duration") or 0)),
+                        "credits": int(p["video"].get("credits") or 0), "lang": S.lang_label(p.get("lang") or "")}
                        for p in sorted(rows, key=lambda p: str(p["video"].get("made")), reverse=True)[:8]],
             "stored": len([p for p in d["projects"] if p.get("video")]), "kept_max": S.MAX_VIDEOS}
 
@@ -510,9 +1146,83 @@ def overview(tenant: str) -> dict[str, Any]:
         d = _d(tenant)
         if _purge(tenant, d):
             S._store(tenant, d)
-    return {"projects": d["projects"], "avatars": d["avatars"], "running": S.running_for(tenant), "brand": d["brand"],
-            "glossary": d["glossary"], "templates": templates(tenant), "trash": d["trash"], "brains": d["brains"],
-            "usage": usage(tenant, d), "status": status(), "limits": {"batch": MAX_BATCH, "trash_days": TRASH_DAYS}}
+    return {"projects": d["projects"], "avatars": d["avatars"], "running": S.running_for(tenant), "brand": _brand(d["brand"]),
+            "glossary": d["glossary"], "templates": templates(tenant), "trash": d["trash"], "brains": d["brains"], "folders": d["folders"],
+            "usage": usage(tenant, d), "status": status(), "prefs": prefs(tenant, d), "limits": {"batch": MAX_BATCH, "trash_days": TRASH_DAYS}}
+
+
+# ------------------------------------------------------------------ apps (v0.999.175) ---
+APPS: list[dict[str, Any]] = [
+    {"id": "podcast", "group": "voice", "name": "Podcast with two hosts", "where": "vocal", "page": "dialogue", "cost": "priced",
+     "line": "A script from your document or notes, two voices talking, music under it.", "needs": "the voice engine"},
+    {"id": "cleanup", "group": "voice", "name": "Clean up a recording", "where": "vocal", "page": "cleanup", "cost": "free",
+     "line": "Background noise out, loud words softened, long pauses shortened.", "needs": "the sound tools on the server"},
+    {"id": "ownvoice", "group": "voice", "name": "Your own voice", "where": "vocal", "page": "mine", "cost": "priced",
+     "line": "Your voice, copied with your spoken consent, or a new one designed from words.", "needs": "a voice engine that can copy or design voices"},
+    {"id": "music", "group": "voice", "name": "Music under a video", "where": "create", "page": "music", "cost": "priced",
+     "line": "A short jingle or a song in any language, for your video.", "needs": "the music engine"},
+    {"id": "broll", "group": "shots", "name": "A B-roll shot", "where": "here", "page": "broll", "cost": "priced",
+     "line": "A few seconds of the shop, the product or the street. No person in it.", "needs": "the B-roll engine"},
+    {"id": "translate", "group": "shots", "name": "Translate a video", "where": "here", "page": "translate", "cost": "free_draft",
+     "line": "A new draft of any video in another language. Names, prices and dates kept.", "needs": ""},
+    {"id": "dub", "group": "shots", "name": "Dub a video", "where": "vocal", "page": "dub", "cost": "priced",
+     "line": "A video you have, spoken in another language by matched voices.", "needs": "the dubbing engine"},
+    {"id": "lipsync", "group": "shots", "name": "Lip sync a video", "where": "create", "page": "cinema", "cost": "priced",
+     "line": "A video of you, its lips moved to new words. Your consent is asked first.", "needs": "the lip-sync engine"},
+    {"id": "batch", "group": "many", "name": "A batch of videos", "where": "here", "page": "batch", "cost": "free_drafts",
+     "line": "Paste several scripts; each becomes its own draft with your face and voice.", "needs": ""},
+    {"id": "names", "group": "many", "name": "One video, many names", "where": "here", "page": "names", "cost": "free_drafts",
+     "line": "The same video, said to each person by name.", "needs": ""},
+    {"id": "sheet", "group": "many", "name": "From a sheet", "where": "here", "page": "sheet", "cost": "free_drafts",
+     "line": "A template filled from each row of your spreadsheet: names, prices, dates.", "needs": ""},
+    {"id": "aiface", "group": "many", "name": "An AI-made face", "where": "create", "page": "image", "cost": "priced",
+     "line": "A presenter who is no real person, marked as AI wherever it is used.", "needs": "the picture engine"},
+]
+
+
+def _app_ready() -> dict[str, bool]:
+    """Each app's real state on THIS server, read from the engines it uses - never a guess."""
+    from . import engines as EN
+    out: dict[str, bool] = {a["id"]: True for a in APPS}
+    try:
+        from ..vocal import service as VS
+        c = VS.connected()
+        out.update(podcast=bool(c["dialogue"]), cleanup=bool(c["cleanup"]), ownvoice=bool(c["clone"] or c["design"]), dub=bool(c["dub"]))
+    except Exception:   # noqa: BLE001
+        out.update(podcast=False, cleanup=False, ownvoice=False, dub=False)
+    try:
+        from ..create import service as CS
+        r = CS.ready()
+        out.update(music=bool(r.get("song")), aiface=bool(r.get("image")))
+    except Exception:   # noqa: BLE001
+        out.update(music=False, aiface=False)
+    try:
+        from ..cinema import kie
+        out["lipsync"] = bool(kie.configured())
+    except Exception:   # noqa: BLE001
+        out["lipsync"] = False
+    try:
+        out["broll"] = bool(EN.connected("gemini_broll"))
+    except Exception:   # noqa: BLE001
+        out["broll"] = False
+    return out
+
+
+def apps(tenant: str) -> dict[str, Any]:
+    ready = _app_ready()
+    used = dict(_d(tenant).get("apps_used") or {})
+    rows = [{**a, "ready": ready.get(a["id"], False), "used": used.get(a["id"], "")} for a in APPS]
+    return {"apps": rows, "recent": [a for a in sorted(rows, key=lambda x: x["used"], reverse=True) if a["used"]][:3]}
+
+
+def app_used(tenant: str, aid: str) -> dict[str, Any]:
+    if aid not in {a["id"] for a in APPS}:
+        raise S.StudioError("That app was not found.")
+    with S._LOCK:
+        d = _d(tenant)
+        d.setdefault("apps_used", {})[aid] = S._now_iso()
+        S._store(tenant, d)
+    return {"ok": True}
 
 
 def voice_sample(lang: str) -> bytes:
@@ -520,4 +1230,4 @@ def voice_sample(lang: str) -> bytes:
     from . import lab
     line = {"hi": "Namaste, aapke video mein meri awaaz aisi sunai degi.", "mr": "Namaskar, tumchya video madhe mi asa bolto."}.get(
         lang, "Hello, this is how I sound in your videos.")
-    return lab.voice(line, lang=lang if lang in S.LANGS else "en")
+    return lab.voice(line, lang=S.lang_of(lang))

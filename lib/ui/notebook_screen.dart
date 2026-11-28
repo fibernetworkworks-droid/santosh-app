@@ -13,7 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state.dart';
 import '../voice_recorder.dart';
-import 'chat/hoola_thread.dart' show HoolaHerBubble, HoolaLanding, HoolaOnDark, HoolaReplyActions, HoolaWorkingRow;
+import 'chat/hoola_thread.dart' show HoolaHerBubble, HoolaLanding, HoolaOnDark, HoolaReplyActions, HoolaRiseIn, HoolaWorkingRow, ThreadLander;
 import 'glass.dart';
 import 'desk/desk_kit.dart';
 import 'hoola_theme.dart' show HoolaColors, HoolaRadius, HoolaType;
@@ -1243,6 +1243,10 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
   bool _stick = true;
   final _t = TextEditingController();
   final _sc = ScrollController();
+  // v0.999.206 her question lands at the top like the main chat (ThreadLander)
+  late final ThreadLander _lander = ThreadLander(_sc)..addListener(() {
+      if (mounted) setState(() {});
+    });
   final SpeechToText _stt = SpeechToText();
   bool _listening = false;
 
@@ -1284,7 +1288,7 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
           }
         }
       });
-      _down();
+      if (!_lander.anchored) _down();
     } catch (_) {}
   }
 
@@ -1306,7 +1310,10 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
 
   /// While an answer lands, the list keeps its end in view (unless she has scrolled up to read).
   void _follow() => WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _stick && _landing != null && _sc.hasClients) _sc.jumpTo(_sc.position.maxScrollExtent);
+        if (mounted && _stick && _landing != null && _sc.hasClients && !_lander.held) {
+          final end = _sc.position.maxScrollExtent - _lander.room;
+          if (end > _sc.position.pixels) _sc.jumpTo(end);
+        }
       });
 
   /// The words of an answer without its marks and without the [n] source marks (for Copy / Read aloud / Share).
@@ -1328,7 +1335,7 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
       _asked = DateTime.now();
       _stick = true;   // her own question always brings the end into view
     });
-    _down();
+    _lander.land();
     try {
       await widget.app.api!.notebookAsk(widget.id, q);
       await _loadChat(arrivedFrom: had);
@@ -1552,7 +1559,9 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
   Widget _bubble(Map<String, dynamic> m, int i) {
     final text = m['text'] as String? ?? '';
     if (m['role'] == 'user') {
+      final newest = _lander.anchored && !_thinking && !_msgs.skip(i + 1).any((x) => x['role'] == 'user');
       return Padding(
+        key: newest ? _lander.key : null,
         padding: const EdgeInsets.symmetric(horizontal: 6),
         child: HoolaOnDark(child: HoolaHerBubble(text)),
       );
@@ -1641,22 +1650,24 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
               }
               return false;
             },
-            child: ListView(controller: _sc, padding: const EdgeInsets.fromLTRB(14, 10, 14, 16), children: [
+            child: _lander.listen(ListView(controller: _sc, padding: const EdgeInsets.fromLTRB(14, 10, 14, 16), children: [
               _overview(),
               const SizedBox(height: 14),
               for (var i = 0; i < _msgs.length; i++) _bubble(_msgs[i], i),
               if (_thinking) ...[
                 // her question shows the moment she sends; one working row with the clock from then
                 Padding(
+                  key: _lander.anchored ? _lander.key : null,
                   padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: HoolaOnDark(child: HoolaHerBubble(_pending, pending: true)),
+                  child: HoolaRiseIn(child: HoolaOnDark(child: HoolaHerBubble(_pending, pending: true))),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   child: HoolaOnDark(child: HoolaWorkingRow(label: 'Reading your sources', since: _asked)),
                 ),
               ],
-            ]),
+              if (_lander.anchored) SizedBox(key: const ValueKey('landroom'), height: _lander.room),
+            ])),
           ),
         ),
       ),

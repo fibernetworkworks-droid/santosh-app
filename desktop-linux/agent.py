@@ -7,7 +7,7 @@ Speaks the SAME wire protocol as the Windows Santosh Desktop (server/app/pc/hub.
 
 The difference is what this PC IS: an Ubuntu container Hoola owns (Xvfb + openbox + Chromium).
 So it gets extra actions the user's PC never offers:
-  install    - apt-get / pip install packages (this is Hoola's own VM; no approval needed)
+  install    - apt-get / pip install packages, or a downloaded .deb file (v0.999.62; Hoola's own VM; no approval needed)
   run        - run a shell command inside the VM (the Claude-harness bash tool, same trust model)
   send_file  - v0.202 upload one of MY files to the server tagged direction "to_pc", so the USER'S
                personal PC can fetch it into her Santosh Inbox (the PC-to-PC file bridge; the server
@@ -38,12 +38,17 @@ from typing import Any
 
 import httpx
 
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+import pagekit as PK  # noqa: E402
+import datakit as DK  # noqa: E402  # v1.9.2 data without clicking (xlsx / docx / pdf as data)  # v1.9.0 page engine 2 (frames, components, honest clicks, dates, page diff)
+
 DATA = Path(os.environ.get("HOOLA_DATA", "/data"))
 SERVER = os.environ.get("HOOLA_SERVER", "http://127.0.0.1:8077").strip().rstrip("/")
 NAME = os.environ.get("HOOLA_PC_NAME", "Hoola PC")
 DISPLAY = os.environ.get("DISPLAY", ":1")
 CDP = "http://127.0.0.1:9222"
-VERSION = "1.6.0"   # v0.885 HOOLA PC POOL: a locked folder per user, files to chat, background commands, installs that survive; v0.884.1 a blank tab at the deadline = no_page; v0.884 CHROME SAAF: India clock + language, portal-friendly Chrome, open_url says what went wrong
+VERSION = "1.9.2"   # v0.999.114 data_read / sheet_write / doc_fill / page_tables (datakit.py); v1.9.1 v0.999.96 a password box is never typed into, a hidden ref is never used; v1.9.0 v0.999.93 ULTIMATE PC PLAN P1: page engine 2 (pagekit.py: frames, web components, honest clicks, hover, drag, date boxes, page diff) + the PC follows her time zone / language; v0.999.62 DEB INSTALL: install a downloaded .deb (checked: her folder, real Debian package, this PC's architecture, size), kept so a rebuild puts it back; v0.999.47 TAB LANES: a second job of the same user works in its own background browser window (same Chrome = same logins) through CDP only; v0.885 HOOLA PC POOL: a locked folder per user, files to chat, background commands, installs that survive; v0.884.1 a blank tab at the deadline = no_page; v0.884 CHROME SAAF: India clock + language, portal-friendly Chrome, open_url says what went wrong
 MAX_SEND = 50 * 1024 * 1024   # same upload cap as the Windows Santosh Desktop
 DOWNLOADS = DATA / "Downloads"
 PROFILE = DATA / "chrome"
@@ -56,6 +61,73 @@ SHOT_DIR = Path("/tmp")
 TZ_NAME = os.environ.get("TZ") or "Asia/Kolkata"
 LANG = "en-IN"
 ACCEPT_LANG = "en-IN,en-US;q=0.9,en;q=0.8,hi;q=0.7"
+PW_REFUSED = ("PASSWORD box: Hoola never types a password itself (not even one written on the page). Call ask_login - "
+              "she types it into a private form and the system enters it - or finish with done(success=false) saying the "
+              "sign-in is hers.")
+DAY_FIRST = True                  # 03/04/2026 = 3 April (most of the world); the US writes the month first
+# v1.9.0 (ULTIMATE PC PLAN P1, "FOR GLOBAL AUDIENCE NOT ONLY FOR INDIAN"): Hoola PC follows the user it works for -
+# her time zone (from her Hoola profile) decides the browser's clock, language and how dates are read. The server sends
+# tz with every profile switch; a time zone that is not here keeps English (en-US) with her clock.
+LOCALES = {   # time-zone prefix / name -> (browser language, accept-language, day first)
+    "Asia/Kolkata": ("en-IN", "en-IN,en-US;q=0.9,en;q=0.8,hi;q=0.7", True),
+    "Asia/Calcutta": ("en-IN", "en-IN,en-US;q=0.9,en;q=0.8,hi;q=0.7", True),
+    "Asia/Dubai": ("en-AE", "en-AE,en;q=0.9,ar;q=0.8", True),
+    "Asia/Riyadh": ("en-SA", "en-SA,en;q=0.9,ar;q=0.8", True),
+    "Asia/Qatar": ("en-QA", "en-QA,en;q=0.9,ar;q=0.8", True),
+    "Asia/Singapore": ("en-SG", "en-SG,en;q=0.9,zh;q=0.7,ms;q=0.6", True),
+    "Asia/Kuala_Lumpur": ("en-MY", "en-MY,en;q=0.9,ms;q=0.8", True),
+    "Asia/Manila": ("en-PH", "en-PH,en;q=0.9,fil;q=0.8", False),
+    "Asia/Karachi": ("en-PK", "en-PK,en;q=0.9,ur;q=0.8", True),
+    "Asia/Dhaka": ("en-BD", "en-BD,en;q=0.9,bn;q=0.8", True),
+    "Asia/Kathmandu": ("en-NP", "en-NP,en;q=0.9,ne;q=0.8", True),
+    "Asia/Colombo": ("en-LK", "en-LK,en;q=0.9,si;q=0.8", True),
+    "Asia/Tokyo": ("ja-JP", "ja-JP,ja;q=0.9,en;q=0.8", False),
+    "Asia/Hong_Kong": ("en-HK", "en-HK,en;q=0.9,zh-HK;q=0.8", True),
+    "Europe/London": ("en-GB", "en-GB,en;q=0.9", True),
+    "Europe/Dublin": ("en-IE", "en-IE,en;q=0.9", True),
+    "Europe/Berlin": ("de-DE", "de-DE,de;q=0.9,en;q=0.8", True),
+    "Europe/Paris": ("fr-FR", "fr-FR,fr;q=0.9,en;q=0.8", True),
+    "Europe/Madrid": ("es-ES", "es-ES,es;q=0.9,en;q=0.8", True),
+    "Europe/Rome": ("it-IT", "it-IT,it;q=0.9,en;q=0.8", True),
+    "Europe/Amsterdam": ("nl-NL", "nl-NL,nl;q=0.9,en;q=0.8", True),
+    "Europe/": ("en-GB", "en-GB,en;q=0.9", True),
+    "America/": ("en-US", "en-US,en;q=0.9,es;q=0.6", False),
+    "America/Toronto": ("en-CA", "en-CA,en;q=0.9,fr-CA;q=0.7", True),
+    "America/Vancouver": ("en-CA", "en-CA,en;q=0.9,fr-CA;q=0.7", True),
+    "America/Sao_Paulo": ("pt-BR", "pt-BR,pt;q=0.9,en;q=0.8", True),
+    "America/Mexico_City": ("es-MX", "es-MX,es;q=0.9,en;q=0.8", True),
+    "Australia/": ("en-AU", "en-AU,en;q=0.9", True),
+    "Pacific/Auckland": ("en-NZ", "en-NZ,en;q=0.9", True),
+    "Africa/Lagos": ("en-NG", "en-NG,en;q=0.9", True),
+    "Africa/Nairobi": ("en-KE", "en-KE,en;q=0.9,sw;q=0.8", True),
+    "Africa/Johannesburg": ("en-ZA", "en-ZA,en;q=0.9,af;q=0.7", False),
+    "Africa/Accra": ("en-GH", "en-GH,en;q=0.9", True),
+    "Africa/Cairo": ("en-EG", "en-EG,en;q=0.9,ar;q=0.8", True),
+}
+
+
+def locale_for(tz: str) -> tuple[str, str, bool]:
+    tz = str(tz or "")
+    if tz in LOCALES:
+        return LOCALES[tz]
+    best = max((k for k in LOCALES if k.endswith("/") and tz.startswith(k)), key=len, default="")
+    return LOCALES[best] if best else ("en-US", "en-US,en;q=0.9", False)
+
+
+def set_locale(tz: str) -> bool:
+    """Point the browser + commands at her time zone. True = it changed (Chrome must restart to take it)."""
+    global TZ_NAME, LANG, ACCEPT_LANG, DAY_FIRST
+    tz = str(tz or "").strip()
+    try:
+        from zoneinfo import ZoneInfo
+        ZoneInfo(tz)
+    except Exception:
+        return False                     # unknown / empty zone: keep what the PC has
+    if tz == TZ_NAME:
+        return False
+    TZ_NAME = tz
+    LANG, ACCEPT_LANG, DAY_FIRST = locale_for(tz)
+    return True
 TAB_CAP = 6                       # open tabs kept; older ones are closed (memory)
 OPEN_WAIT = 30                    # seconds a page gets by default (max 60)
 POLICY = {   # Chrome enterprise policy (Hoola's own VM): what portals need, nothing that reaches her
@@ -202,7 +274,7 @@ def _chrome_up() -> None:
         # stderr to a file, not DEVNULL (v1.3.0 lesson: a chrome that will not boot was INVISIBLE -
         # the selftest could only say 'CDP ready nahi hua'; now the real error is in /tmp/chrome_err.log)
         _chrome = subprocess.Popen([exe, *flags], env={**os.environ, "DISPLAY": DISPLAY, "TZ": TZ_NAME,
-                                                         "LANGUAGE": "en_IN:en"},
+                                                         "LANGUAGE": LANG.replace("-", "_") + ":en"},
                                    stdout=subprocess.DEVNULL,
                                    stderr=open("/tmp/chrome_err.log", "ab"))
     for _ in range(90):          # up to ~45s for first paint (real Chrome on a big profile is slower
@@ -214,12 +286,64 @@ def _chrome_up() -> None:
     raise ActionError("Chrome did not open (CDP was not ready) - see /tmp/chrome_err.log")
 
 
+# ---------------- v0.999.47 TAB LANES ----------------
+# A lane = one background Chrome window of the SAME Chrome (so the same signed-in sites) that a second job of the same
+# user drives through CDP only: its own screenshot, clicks, typing and keys, never the shared mouse / keyboard / screen.
+# Lane windows are hidden from the main job's tab list and its tab clean-up; each lane keeps its own page refs.
+LANES: set[str] = set()
+_LANE = threading.local()
+
+
+def _lane() -> str:
+    return str(getattr(_LANE, "id", "") or "")
+
+
+def _browser_ws() -> str:
+    return str(httpx.get(CDP + "/json/version", timeout=5).json().get("webSocketDebuggerUrl") or "")
+
+
 def _targets() -> list[dict[str, Any]]:
     r = httpx.get(CDP + "/json", timeout=5)
-    return [t for t in r.json() if t.get("type") == "page"]
+    lane = _lane()
+    return [t for t in r.json() if t.get("type") == "page" and (t.get("id") == lane or t.get("id") not in LANES)]
+
+
+def _lane_target() -> dict[str, Any]:
+    lane = _lane()
+    for t in httpx.get(CDP + "/json", timeout=5).json():
+        if t.get("id") == lane:
+            return t
+    raise ActionError("This job's browser window was closed")
+
+
+_LANE_KEYS = {"enter": ("Enter", 13), "return": ("Enter", 13), "tab": ("Tab", 9), "escape": ("Escape", 27),
+              "esc": ("Escape", 27), "backspace": ("Backspace", 8), "delete": ("Delete", 46), "del": ("Delete", 46),
+              "home": ("Home", 36), "end": ("End", 35), "pageup": ("PageUp", 33), "pagedown": ("PageDown", 34),
+              "up": ("ArrowUp", 38), "down": ("ArrowDown", 40), "left": ("ArrowLeft", 37), "right": ("ArrowRight", 39),
+              "space": (" ", 32)}
+
+
+def _lane_key(ws: str, keys: str) -> None:
+    parts = [p for p in re.split(r"[+ ]+", str(keys or "").strip().lower()) if p]
+    if not parts:
+        return
+    *mods, last = parts
+    flag = sum({"alt": 1, "ctrl": 2, "control": 2, "meta": 4, "shift": 8}.get(m, 0) for m in mods)
+    key, vk = _LANE_KEYS.get(last, (last if len(last) == 1 else last.title(), ord(last.upper()) if len(last) == 1 else 0))
+    code = {" ": "Space"}.get(key, ("Key" + key.upper()) if len(key) == 1 and key.isalpha() else
+                              ("Digit" + key) if len(key) == 1 and key.isdigit() else key)
+    base = {"key": key, "code": code, "windowsVirtualKeyCode": vk, "nativeVirtualKeyCode": vk, "modifiers": flag}
+    text = "\r" if key == "Enter" else (key if len(key) == 1 else "")
+    if text and not (flag & 6):          # a key that types (Enter = "\r" presses the focused button / submits)
+        _cdp_call(ws, "Input.dispatchKeyEvent", {**base, "type": "keyDown", "text": text, "unmodifiedText": text})
+    else:
+        _cdp_call(ws, "Input.dispatchKeyEvent", {**base, "type": "rawKeyDown"})
+    _cdp_call(ws, "Input.dispatchKeyEvent", {**base, "type": "keyUp"})
 
 
 def _active_target() -> dict[str, Any]:
+    if _lane():
+        return _lane_target()
     ts = _targets()
     if not ts:
         raise ActionError("No page is open")
@@ -367,7 +491,7 @@ def _trim_tabs(keep: str) -> int:
         ts = _targets()
     except Exception:
         return 0
-    extra = [t for t in ts if t.get("id") != keep]
+    extra = [t for t in ts if t.get("id") != keep and t.get("id") not in LANES]   # v0.999.47 never a lane's window
     while len(extra) + 1 > TAB_CAP:
         t = extra.pop()                                   # /json lists the newest first: close from the end
         try:
@@ -692,9 +816,12 @@ def _seed_prefs(profile: Path) -> None:
         pass
 
 
-def use_profile(key: str, secret: str = "", home: bool = False) -> dict[str, Any]:
-    """Switch this PC to one user's folder. Same user again = nothing happens (fast)."""
+def use_profile(key: str, secret: str = "", home: bool = False, tz: str = "") -> dict[str, Any]:
+    """Switch this PC to one user's folder. Same user again = nothing happens (fast).
+    v1.9.0 tz = her time zone: the browser's clock / language / date order follow it (Chrome restarts to take it)."""
     global PROFILE
+    if set_locale(tz):
+        _stop_chrome()                   # the next page opens with her clock + language
     key = str(key or "").strip().lower()
     if key and not _KEY_RE.match(key):
         raise ActionError("bad profile key")
@@ -752,8 +879,24 @@ def _as_worker() -> dict[str, Any]:
 class Actions:
     def __init__(self) -> None:
         self.log = print
-        self._els: dict[int, str] = {}          # v1.3.0 semantic refs: ref -> CSS selector of the element
-        self._els_src: str = ""                 # title+url the refs were taken from (staleness check)
+        self._els_by: dict[str, dict[int, Any]] = {}   # v0.999.47 refs per lane ('' = the main job)
+        self._src_by: dict[str, str] = {}
+
+    @property
+    def _els(self) -> dict[int, Any]:            # v1.3.0 semantic refs; v1.9.0 ref -> {path, role, name, ty}
+        return self._els_by.setdefault(_lane(), {})
+
+    @_els.setter
+    def _els(self, v: dict[int, Any]) -> None:
+        self._els_by[_lane()] = v
+
+    @property
+    def _els_src(self) -> str:                   # title+url the refs were taken from (staleness check)
+        return self._src_by.get(_lane(), "")
+
+    @_els_src.setter
+    def _els_src(self, v: str) -> None:
+        self._src_by[_lane()] = v
 
     def info(self) -> dict[str, Any]:
         return {"type": "info", "name": NAME, "os": f"Linux {platform.release()} (Hoola PC)",
@@ -761,20 +904,129 @@ class Actions:
                 "folders": [{"path": str(DATA), "label": "Hoola PC"}],
                 "tally": {}, "indexed": 0, "inbox": str(DOWNLOADS), "paused": False, "control": True}
 
+    LANE_ACTIONS = {"screen", "control", "open_url", "page_text", "page_elements", "page_click", "page_type",
+                    "page_select", "page_fill_form", "wait_for", "lane_close"}
+
     def handle(self, action: str, args: dict[str, Any]) -> dict[str, Any]:
-        if action in AX_ACTIONS:                  # v0.842 exact mode: the same ax_* the Windows PC answers
-            return _ax_handle(action, args or {})
-        fn = getattr(self, "do_" + action, None)
-        if fn is None:
-            raise ActionError(f"Unknown action {action}")
+        args = dict(args or {})
+        lane = str(args.pop("lane", "") or "")
+        if lane:                                  # v0.999.47 a lane job: browser actions in its own window only
+            if lane not in LANES:
+                raise ActionError("This job's browser window is gone (the Hoola PC restarted). Start the job again.")
+            if action not in self.LANE_ACTIONS:
+                raise ActionError(f"'{action}' is not available in a side job (it shares the Hoola PC with another job): "
+                                  "only the browser works here - pages, clicks, typing.")
+        _LANE.id = lane
         try:
-            return fn(**(args or {}))
-        except ActionError:
-            raise
-        except TypeError as e:
-            raise ActionError(f"Bad request: {e}")
-        except Exception as e:
-            raise ActionError(f"{type(e).__name__}: {e}"[:300])
+            if action in AX_ACTIONS:              # v0.842 exact mode: the same ax_* the Windows PC answers
+                return _ax_handle(action, args)
+            if lane and action in ("screen", "control", "open_url"):
+                fn = getattr(self, "lane_" + action)
+            else:
+                fn = getattr(self, "do_" + action, None)
+            if fn is None:
+                raise ActionError(f"Unknown action {action}")
+            try:
+                return fn(**args)
+            except ActionError:
+                raise
+            except TypeError as e:
+                raise ActionError(f"Bad request: {e}")
+            except Exception as e:
+                raise ActionError(f"{type(e).__name__}: {e}"[:300])
+        finally:
+            _LANE.id = ""
+
+    # ---- v0.999.47 tab lanes ----
+    def do_lane_open(self, url: str = "about:blank", **_) -> dict[str, Any]:
+        _chrome_up()
+        u = str(url or "about:blank")
+        if not re.match(r"^(https?://|about:blank$)", u):
+            u = "https://" + u
+        r = _cdp_call(_browser_ws(), "Target.createTarget",
+                      {"url": u, "newWindow": True, "background": True, "width": 1280, "height": 760})
+        tid = str((r or {}).get("targetId") or "")
+        if not tid:
+            raise ActionError("Could not open a window for this job")
+        LANES.add(tid)
+        return {"lane": tid, "lanes": len(LANES)}
+
+    def do_lane_close(self, **_) -> dict[str, Any]:
+        lane = _lane()
+        if lane:
+            try:
+                _cdp_call(_browser_ws(), "Target.closeTarget", {"targetId": lane})
+            except Exception:
+                pass
+            LANES.discard(lane)
+            self._els_by.pop(lane, None)
+            self._src_by.pop(lane, None)
+        return {"closed": bool(lane), "lanes": len(LANES)}
+
+    def lane_screen(self, max_width: int = 1280, **_) -> dict[str, Any]:
+        t = _lane_target()
+        r = _cdp_call(t["webSocketDebuggerUrl"], "Page.captureScreenshot",
+                      {"format": "jpeg", "quality": 72, "fromSurface": True}, timeout=25)
+        data = str((r or {}).get("data") or "")
+        w = h = 0
+        try:            # never scaled: a lane's clicks are in the page's own pixels
+            from PIL import Image
+            w, h = Image.open(io.BytesIO(base64.b64decode(data))).size
+        except Exception:
+            pass
+        return {"image_b64": data, "width": w, "height": h, "monitor": "lane",
+                "active_window": t.get("title", "") or t.get("url", ""), "windows": [t.get("title", "")]}
+
+    def lane_control(self, op: str = "", x: Any = None, y: Any = None, text: str = "", keys: str = "",
+                     amount: int = 0, **_) -> dict[str, Any]:
+        ws = _lane_target()["webSocketDebuggerUrl"]
+        op = str(op or "")
+        if op in ("click", "right_click", "double_click"):
+            xi, yi = int(float(x or 0)), int(float(y or 0))
+            btn = "right" if op == "right_click" else "left"
+            for n in ((1, 2) if op == "double_click" else (1,)):
+                for kind in ("mousePressed", "mouseReleased"):
+                    _cdp_call(ws, "Input.dispatchMouseEvent", {"type": kind, "x": xi, "y": yi, "button": btn,
+                                                               "clickCount": n})
+            return {"ok": True}
+        if op == "type":
+            t = str(text or "")[:4000]
+            if t:
+                _cdp_call(ws, "Input.insertText", {"text": t}, timeout=60)
+            return {"ok": True}
+        if op == "key":
+            _lane_key(ws, keys)
+            return {"ok": True}
+        if op == "scroll":
+            xi, yi = int(float(x or 640)), int(float(y or 400))
+            dy = -120 * int(amount or -5)
+            _cdp_call(ws, "Input.dispatchMouseEvent", {"type": "mouseWheel", "x": xi, "y": yi, "deltaX": 0, "deltaY": dy})
+            return {"ok": True}
+        raise ActionError(f"'{op}' is not available in a side job")
+
+    def lane_open_url(self, url: str = "", wait: int = 30, **_) -> dict[str, Any]:
+        u = str(url or "").strip()
+        if not u:
+            raise ActionError("No address")
+        if not re.match(r"^https?://", u):
+            u = "https://" + u
+        t = _lane_target()
+        _cdp_call(t["webSocketDebuggerUrl"], "Page.navigate", {"url": u}, timeout=30)
+        end = time.time() + max(5, min(int(wait or 30), 60))
+        st: dict[str, Any] = {}
+        while time.time() < end:
+            try:
+                st = _cdp_eval(_lane_target(), STATE_JS, timeout=10) or {}
+            except Exception:
+                st = {}
+            if st.get("ready") == "complete":
+                break
+            time.sleep(0.5)
+        problem = classify(st) if st else "slow"
+        out = {"ok": not problem, "url": st.get("href", u), "title": st.get("title", "")}
+        if problem:
+            out.update(problem=problem, hint=hint_for(problem))
+        return out
 
     # ---- screen + control (xdotool) ----
     def do_screen(self, max_width: int = 1280, monitor: str = "primary", **_) -> dict[str, Any]:
@@ -996,7 +1248,7 @@ class Actions:
         _chrome_up()
         t = _active_target()
         n = max(500, min(int(max_chars or 6000), 20000))
-        text = _cdp_eval(t, "document.body ? document.body.innerText : ''", timeout=20) or ""
+        text = _cdp_eval(t, PK.JS_TEXT, timeout=20) or ""     # v1.9.0 + frames and web components
         return {"title": t.get("title", ""), "url": t.get("url", ""), "text": str(text)[:n]}
 
     # ---- v1.3.0 SEMANTIC BROWSER (CDP): act on elements by ref, never by guessed pixels ----
@@ -1004,169 +1256,185 @@ class Actions:
     # guesses X,Y -> xdotool clicks. Every step was a vision round trip and a miss on layout shift / DPI.
     # Here the PAGE tells us its real elements (one cheap exact step) and the browser itself clicks/types
     # the element the model named - the click cannot miss, and page_fill_form does a whole form in ONE step.
+    # v1.9.0 (v0.999.93 ULTIMATE PC PLAN P1) page engine 2 = pagekit.py: elements inside web components (shadow DOM)
+    # and frames, refs checked by what they are (a re-drawn page never sends a click to another element), the HONEST
+    # click (the real mouse at the element's centre; something lying on top = not clicked, named), hover, drag, date
+    # boxes, and the page diff after every action.
 
-    _JS_ELEMENTS = r"""
-(() => {
-  const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
-    return r.width > 1 && r.height > 1 && s.visibility !== 'hidden' && s.display !== 'none'; };
-  const nm = el => { let t = el.getAttribute('aria-label') || el.getAttribute('title') || el.placeholder || '';
-    if (!t && el.value && ['INPUT','SELECT','TEXTAREA','BUTTON'].includes(el.tagName) && el.type !== 'password') t = String(el.value);
-    if (!t && el.labels && el.labels[0]) t = el.labels[0].textContent;
-    if (!t && el.tagName === 'IMG') t = el.alt || '';
-    if (!t) t = (el.textContent || '').trim().replace(/\s+/g, ' ');
-    return (t || '').trim().slice(0, 90); };
-  const path = el => { if (el.id) return '#' + CSS.escape(el.id);
-    const parts = []; let e = el;
-    while (e && e.nodeType === 1 && parts.length < 7) {
-      if (e.id) { parts.unshift('#' + CSS.escape(e.id)); break; }
-      let s = e.tagName.toLowerCase(); const p = e.parentElement;
-      if (p) { const sib = Array.from(p.children).filter(c => c.tagName === e.tagName);
-        if (sib.length > 1) s += ':nth-of-type(' + (sib.indexOf(e) + 1) + ')'; }
-      parts.unshift(s); e = p; }
-    return parts.join(' > '); };
-  const nodes = document.querySelectorAll('a[href], button, input, select, textarea, summary, [role="button"], [role="link"], [role="tab"], [role="checkbox"], [role="radio"], [role="combobox"], [role="menuitem"], [onclick]');
-  const seen = new Set(); const out = [];
-  for (const el of nodes) {
-    if (out.length >= 300) break;
-    if (!vis(el)) continue;
-    const tag = el.tagName.toLowerCase(); const ty = (el.getAttribute('type') || '').toLowerCase();
-    if (tag === 'input' && ['hidden','file'].includes(ty)) continue;
-    const role = tag === 'input' ? ({checkbox:'checkbox', radio:'radio', button:'button', submit:'button', reset:'button'}[ty] || 'input')
-                                 : (el.getAttribute('role') || (tag === 'a' ? 'link' : tag));
-    const name = nm(el);
-    const key = role + '|' + name + '|' + (el.disabled ? 'd' : 'e');
-    if (seen.has(key) && !['input','textarea','select'].includes(role)) continue;
-    seen.add(key);
-    out.push({role, name, path: path(el), disabled: !!el.disabled,
-              ph: (el.placeholder || '').slice(0, 60), ty: ty || undefined});
-  }
-  return {title: document.title, url: location.href, elements: out};
-})()
-"""
+    def _snap(self, t: dict[str, Any] | None = None) -> dict[str, Any] | None:
+        try:
+            return _cdp_eval(t or _active_target(), PK.JS_SNAP, timeout=15)
+        except Exception:
+            return None
+
+    def _changed(self, before: dict[str, Any] | None, wait: float = 0.6) -> str:
+        time.sleep(wait)
+        return PK.diff_line(PK.diff(before, self._snap()))
 
     def do_page_elements(self, max_items: int = 60, **_) -> dict[str, Any]:
         _chrome_up()
         t = _active_target()
-        r = _cdp_eval(t, self._JS_ELEMENTS, timeout=25) or {}
+        r = _cdp_eval(t, PK.JS_ELEMENTS, timeout=25) or {}
         els = list(r.get("elements") or [])[:max(1, min(int(max_items or 60), 200))]
         out = []
         self._els = {}
         for i, e in enumerate(els, 1):
-            self._els[i] = e.get("path") or ""
+            self._els[i] = {"path": e.get("path") or [], "role": e.get("role") or "", "name": e.get("name") or "",
+                            "ty": e.get("ty") or "", "drag": bool(e.get("drag"))}
             item = {"ref": i, "role": e.get("role"), "name": e.get("name")}
             if e.get("ph"): item["placeholder"] = e["ph"]
             if e.get("ty"): item["type"] = e["ty"]
             if e.get("disabled"): item["disabled"] = True
+            if e.get("where"): item["where"] = e["where"]
+            if e.get("drag"): item["draggable"] = True
             out.append(item)
         self._els_src = f"{r.get('title', '')}|{r.get('url', '')}"
-        return {"title": r.get("title", ""), "url": r.get("url", ""), "count": len(out), "elements": out}
+        return {"title": r.get("title", ""), "url": r.get("url", ""), "count": len(out), "elements": out,
+                "in_components": r.get("in_shadow", 0), "in_frames": r.get("in_frames", 0),
+                "blocked_frames": r.get("blocked_frames", 0)}
 
-    def _ref_sel(self, ref: int) -> str:
-        sel = self._els.get(int(ref or 0))
-        if not sel:
+    def _ref(self, ref: int) -> dict[str, Any]:
+        it = self._els.get(int(ref or 0))
+        if not it:
             raise ActionError(f"ref {ref} is gone - run page_elements again first (the page changed or this is a new session)")
-        return sel
+        return it
 
-    def _js_on_ref(self, sel: str, body: str) -> Any:
-        """Run body(el) inside a IIFE after resolving sel; body returns a plain object."""
-        t = _active_target()
-        js = ("(() => { const el = document.querySelector(" + json.dumps(sel) + ");"
-              " if (!el) return {ok:false, err:'gone'};" + body + "})()")
-        return _cdp_eval(t, js, timeout=25) or {"ok": False, "err": "no-answer"}
+    def _on(self, it: dict[str, Any], body: str, timeout: float = 25) -> dict[str, Any]:
+        r = _cdp_eval(_active_target(), PK.js_on(it["path"], it["role"], it["name"], body), timeout=timeout) or {
+            "ok": False, "err": "no-answer"}
+        if r.get("newpath"):
+            it["path"] = r["newpath"]            # it moved on the page: the ref follows it
+        return r
+
+    def _mouse(self, x: int, y: int, press: bool = True) -> None:
+        """The real mouse (CDP Input), exactly where a person's would go - hover menus open, overlays are respected."""
+        ws = _active_target()["webSocketDebuggerUrl"]
+        _cdp_call(ws, "Input.dispatchMouseEvent", {"type": "mouseMoved", "x": x, "y": y, "button": "none"})
+        if press:
+            _cdp_call(ws, "Input.dispatchMouseEvent", {"type": "mousePressed", "x": x, "y": y, "button": "left", "clickCount": 1})
+            _cdp_call(ws, "Input.dispatchMouseEvent", {"type": "mouseReleased", "x": x, "y": y, "button": "left", "clickCount": 1})
+
+    def _aim(self, ref: int) -> tuple[dict[str, Any], dict[str, Any]]:
+        it = self._ref(ref)
+        p = self._on(it, PK.POINT_BODY)
+        if not p.get("ok"):
+            raise ActionError(f"ref {ref} is gone from the page ({it.get('role')} '{it.get('name', '')[:40]}') - "
+                              "run page_elements again")
+        return it, p
 
     def do_page_click(self, ref: int, **_) -> dict[str, Any]:
         _chrome_up()
-        sel = self._ref_sel(ref)
-        r = self._js_on_ref(sel, """ el.scrollIntoView({block:'center'}); el.focus();
-            const before = location.href; el.click();
-            return {ok:true, was: before, now: location.href, title: document.title}; """)
-        if not r.get("ok"):
-            raise ActionError(f"click failed ({r.get('err', '?')}) - run page_elements again")
+        before = self._snap()
+        it, p = self._aim(ref)
+        if p.get("disabled"):
+            raise ActionError(f"element {ref} is disabled (greyed out) - something else must be done first")
+        if p.get("covered"):
+            return {"clicked": False, "covered_by": p.get("cover") or "something", "moved": bool(p.get("moved"))}
+        if p.get("x") is None:
+            self._on(it, PK.CLICK_FALLBACK)
+        else:
+            self._mouse(int(p["x"]), int(p["y"]))
         t = _active_target()
-        return {"clicked": True, "title": t.get("title", ""), "url": t.get("url", ""),
-                "navigated": r.get("was") != r.get("now")}
+        return {"clicked": True, "title": t.get("title", ""), "url": t.get("url", ""), "moved": bool(p.get("moved")),
+                "navigated": bool(before) and before.get("url") != t.get("url"), "change": self._changed(before)}
 
-    _JS_TYPE = r""" el.scrollIntoView({block:'center'}); el.focus();
-        if (el.disabled || el.readOnly) return {ok:false, err:'disabled'};
-        if (CLR) { if (el.select) try { el.select(); } catch(e) {}
-          let okDel = false; try { okDel = document.execCommand('delete'); } catch(e) {}
-          if (!okDel && el.value !== undefined) { try { el.value = ''; } catch(e) {} } }
-        let ok = false; try { ok = document.execCommand('insertText', false, TXT); } catch(e) {}
-        if (!ok || (el.value || '') === '') {
-          const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
-          const d = Object.getOwnPropertyDescriptor(proto, 'value');
-          if (d && d.set) { d.set.call(el, (el.value || '') + TXT);
-            el.dispatchEvent(new Event('input', {bubbles:true})); el.dispatchEvent(new Event('change', {bubbles:true})); }
-        }
-        const v = el.value || '';
-        return {ok:true, length:v.length, matches: v === TXT || v.endsWith(TXT)};"""
+    def do_page_hover(self, ref: int, **_) -> dict[str, Any]:
+        _chrome_up()
+        before = self._snap()
+        _it, p = self._aim(ref)
+        if p.get("x") is None:
+            raise ActionError(f"element {ref} has no size on screen - it cannot be pointed at")
+        self._mouse(int(p["x"]), int(p["y"]), press=False)
+        return {"hovered": True, "covered_by": p.get("cover") if p.get("covered") else "", "change": self._changed(before)}
+
+    def do_page_drag(self, ref: int, to_ref: int, **_) -> dict[str, Any]:
+        _chrome_up()
+        before = self._snap()
+        src, dst = self._ref(ref), self._ref(to_ref)
+        if src.get("drag"):                      # an HTML drag-and-drop element: the browser's own drag events
+            js = ("(() => {" + PK.JS_PRE + "const F = _find(" + json.dumps(src["path"]) + ", " + json.dumps(src["role"])
+                  + ", " + json.dumps(src["name"]) + "); const T = _find(" + json.dumps(dst["path"]) + ", "
+                  + json.dumps(dst["role"]) + ", " + json.dumps(dst["name"]) + ") || {};"
+                  " if (!F) return {ok:false, err:'gone'}; const el = F.el;" + PK.DRAG_BODY + "})()")
+            r = _cdp_eval(_active_target(), js, timeout=25) or {}
+            if not r.get("ok"):
+                raise ActionError(f"drag failed ({r.get('err', '?')}) - run page_elements again")
+            how = "drag events"
+        else:                                    # a mouse-driven list / slider: press, move in steps, release
+            _a, p1 = self._aim(ref)
+            _b, p2 = self._aim(to_ref)
+            if p1.get("x") is None or p2.get("x") is None:
+                raise ActionError("one of the two elements has no size on screen")
+            ws = _active_target()["webSocketDebuggerUrl"]
+            x1, y1, x2, y2 = int(p1["x"]), int(p1["y"]), int(p2["x"]), int(p2["y"])
+            _cdp_call(ws, "Input.dispatchMouseEvent", {"type": "mouseMoved", "x": x1, "y": y1, "button": "none"})
+            _cdp_call(ws, "Input.dispatchMouseEvent", {"type": "mousePressed", "x": x1, "y": y1, "button": "left", "clickCount": 1})
+            for i in range(1, 9):
+                _cdp_call(ws, "Input.dispatchMouseEvent", {"type": "mouseMoved", "x": x1 + (x2 - x1) * i // 8,
+                                                           "y": y1 + (y2 - y1) * i // 8, "button": "left", "buttons": 1})
+            _cdp_call(ws, "Input.dispatchMouseEvent", {"type": "mouseReleased", "x": x2, "y": y2, "button": "left", "clickCount": 1})
+            how = "mouse"
+        return {"dragged": True, "how": how, "change": self._changed(before),
+                "note": "refs may have changed - run page_elements again before the next step"}
+
+    # the field's value itself never comes back: length + matches only (the privacy contract since v0.208)
+    _JS_TYPE = PK.TYPE_BODY   # v1.9.2 shared with the Hoola extension (pagekit.extension_js)
+
+    def _type(self, it: dict[str, Any], text: str, clear: bool = True) -> dict[str, Any]:
+        txt = str(text or "")[:4000]
+        iso = PK.field_value(txt, it.get("ty") or "", DAY_FIRST) if (it.get("ty") or "") in PK.DATE_TYPES else ""
+        if (it.get("ty") or "") in PK.DATE_TYPES and not iso:
+            return {"ok": False, "err": f"'{txt[:30]}' is not a date / time this {it.get('ty')} box can take"}
+        body = ("const TXT = " + json.dumps(txt) + "; const CLR = " + json.dumps(bool(clear)) + "; const ISO = "
+                + json.dumps(iso) + ";" + self._JS_TYPE)
+        return self._on(it, body)
 
     def do_page_type(self, ref: int, text: str = "", clear: bool = True, **_) -> dict[str, Any]:
         _chrome_up()
-        sel = self._ref_sel(ref)
-        txt = str(text or "")[:4000]
-        js = ("(() => { const el = document.querySelector(" + json.dumps(sel) + ");"
-              " if (!el) return {ok:false, err:'gone'};"
-              " const TXT = " + json.dumps(txt) + "; const CLR = " + json.dumps(bool(clear)) + ";"
-              + self._JS_TYPE + "})()")
-        t = _active_target()
-        r = _cdp_eval(t, js, timeout=25) or {"ok": False, "err": "no-answer"}
+        before = self._snap()
+        r = self._type(self._ref(ref), text, clear)
+        if r.get("err") == "password":
+            raise ActionError(PW_REFUSED)
         if not r.get("ok"):
             raise ActionError(f"type failed ({r.get('err', '?')}) - run page_elements again")
-        return {"typed": True, "length": r.get("length"), "matches": r.get("matches"),
-                "note": "the value is never returned (only length + match)"}
+        return {"typed": True, "length": r.get("length"), "matches": r.get("matches"), "as_date": bool(r.get("as_date")),
+                "change": self._changed(before, 0.3), "note": "the value is never returned (only length + match)"}
 
     def do_page_select(self, ref: int, value: str = "", **_) -> dict[str, Any]:
         _chrome_up()
-        sel = self._ref_sel(ref)
-        js = ("(() => { const el = document.querySelector(" + json.dumps(sel) + ");"
-              " if (!el) return {ok:false, err:'gone'};"
-              " const VAL = " + json.dumps(str(value or "")) + ";"
-              r""" if (el.tagName === 'SELECT') { el.focus();
-                for (const o of el.options) { if (o.value === VAL || o.text.trim() === VAL ||
-                    o.text.trim().toLowerCase() === VAL.toLowerCase()) { el.value = o.value;
-                    el.dispatchEvent(new Event('input', {bubbles:true}));
-                    el.dispatchEvent(new Event('change', {bubbles:true}));
-                    return {ok:true, picked:o.text.trim()}; } }
-                return {ok:false, err:'option', options: Array.from(el.options).slice(0,30).map(o=>o.text.trim())}; }
-              el.focus();
-              const d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
-              if (d && d.set) { d.set.call(el, VAL); el.dispatchEvent(new Event('input', {bubbles:true}));
-                el.dispatchEvent(new Event('change', {bubbles:true})); }
-              return {ok:true, picked:VAL}; })()""")
-        t = _active_target()
-        r = _cdp_eval(t, js, timeout=25) or {"ok": False, "err": "no-answer"}
+        before = self._snap()
+        r = self._on(self._ref(ref), " const VAL = " + json.dumps(str(value or "")) + ";" + PK.SELECT_BODY)
         if not r.get("ok"):
             raise ActionError(f"select failed ({r.get('err', '?')})"
                               + (f" - options: {', '.join((r.get('options') or [])[:12])}" if r.get("options") else ""))
-        return {"selected": r.get("picked")}
+        return {"selected": r.get("picked"), "change": self._changed(before, 0.3)}
 
     def do_page_fill_form(self, entries: list | dict | None = None, **_) -> dict[str, Any]:
         """Many fields in ONE step: entries = [{'ref': 2, 'text': '...'}, ...]. Each field types with the
-        same execCommand + events path as page_type; results come back per entry (text never echoed)."""
+        same path as page_type (dates understood); results come back per entry (text never echoed)."""
         _chrome_up()
         items = entries.get("entries") if isinstance(entries, dict) else entries
         if not isinstance(items, list) or not items:
             raise ActionError("entries chahiye: [{'ref': 2, 'text': '...'}, ...]")
+        before = self._snap()
         out = []
         for it in items[:20]:
             try:
                 ref = int(it.get("ref") or 0)
-                sel = self._ref_sel(ref)
+                el = self._ref(ref)
             except (ActionError, TypeError, ValueError) as e:
                 out.append({"ref": it.get("ref"), "ok": False, "err": str(e)[:120]})
                 continue
-            txt = str(it.get("text") or "")[:4000]
-            js = ("(() => { const el = document.querySelector(" + json.dumps(sel) + ");"
-                  " if (!el) return {ok:false, err:'gone'};"
-                  " const TXT = " + json.dumps(txt) + "; const CLR = true;" + self._JS_TYPE + "})()")
             try:
-                r = _cdp_eval(_active_target(), js, timeout=25) or {"ok": False}
+                r = self._type(el, str(it.get("text") or ""))
             except Exception as e:
                 r = {"ok": False, "err": str(e)[:120]}
+            if r.get("err") == "password":
+                r["err"] = PW_REFUSED
             out.append({"ref": ref, "ok": bool(r.get("ok")), "length": r.get("length"),
                         "matches": r.get("matches"), **({"err": r["err"]} if r.get("err") else {})})
-        return {"filled": sum(1 for x in out if x.get("ok")), "total": len(out), "results": out}
+        return {"filled": sum(1 for x in out if x.get("ok")), "total": len(out), "results": out,
+                "change": self._changed(before, 0.3)}
 
     def do_wait_for(self, text: str = "", seconds: int = 15, **_) -> dict[str, Any]:
         """Wait until a text really appears on the page (polls innerText over CDP; max 20s)."""
@@ -1244,6 +1512,47 @@ class Actions:
                             "modified": time.strftime("%Y-%m-%d %H:%M", time.localtime(st.st_mtime))})
         return {"path": str(p), "entries": entries}
 
+    # ---- v1.9.2 (v0.999.114 ULTIMATE PC PLAN P3) data without clicking: her files and page tables as data ----
+    def _her_file(self, path: str) -> Path:
+        p = Path(str(path or ""))
+        if not p.is_absolute():
+            p = DOWNLOADS / p                      # a bare name = in her Downloads
+        _guard(p)
+        return p
+
+    def do_data_read(self, path: str = "", max_chars: int = 20000, sheet: str = "", **_) -> dict[str, Any]:
+        p = self._her_file(path)
+        if not p.is_file():
+            raise ActionError(f"No such file: {p}")
+        try:
+            return {"path": str(p), "name": p.name, **DK.read(p, max(1000, min(int(max_chars or 20000), 60000)), str(sheet or ""))}
+        except DK.DataError as e:
+            raise ActionError(str(e))
+        except Exception as e:
+            raise ActionError(f"Could not read {p.name} as data: {type(e).__name__}: {str(e)[:160]}")
+
+    def do_sheet_write(self, path: str = "", rows: list | None = None, cells: dict | None = None, sheet: str = "",
+                       start: str = "A1", new: bool = False, **_) -> dict[str, Any]:
+        p = self._her_file(path)
+        try:
+            return DK.sheet_write(p, rows=rows, cells=cells, sheet=str(sheet or ""), start=str(start or "A1"), new=bool(new))
+        except DK.DataError as e:
+            raise ActionError(str(e))
+
+    def do_doc_fill(self, template: str = "", out: str = "", values: dict | None = None, **_) -> dict[str, Any]:
+        t = self._her_file(template)
+        o = self._her_file(out or (t.stem + "-filled.docx"))
+        if not t.is_file():
+            raise ActionError(f"No such file: {t}")
+        try:
+            return DK.doc_fill(t, o, dict(values or {}))
+        except DK.DataError as e:
+            raise ActionError(str(e))
+
+    def do_page_tables(self, **_) -> dict[str, Any]:
+        _chrome_up()
+        return _cdp_eval(_active_target(), PK.JS_TABLES, timeout=25) or {"tables": []}
+
     def do_read(self, path: str = "", max_chars: int = 12000, **_) -> dict[str, Any]:
         p = Path(path)
         _guard(p)
@@ -1297,7 +1606,9 @@ class Actions:
         return r.json()
 
     # ---- THE COWORKER SURFACE: install software + run commands (Hoola's own VM) ----
-    def do_install(self, packages: str = "", pip: bool = False, **_) -> dict[str, Any]:
+    def do_install(self, packages: str = "", pip: bool = False, file: str = "", check_only: bool = False, **_) -> dict[str, Any]:
+        if str(file or "").strip():                       # v0.999.62 a downloaded .deb: checked first, installed on her yes
+            return check_deb(str(file).strip()) if check_only else install_deb(str(file).strip())
         pkgs = str(packages or "").strip()
         if not pkgs:
             raise ActionError("Say what to install")
@@ -1390,9 +1701,9 @@ class Actions:
         return {"job": job, "stopped": True}
 
     # ---- v0.885 the pool ----
-    def do_profile(self, key: str = "", secret: str = "", home: bool = False, **_) -> dict[str, Any]:
+    def do_profile(self, key: str = "", secret: str = "", home: bool = False, tz: str = "", **_) -> dict[str, Any]:
         """The server tells this PC whose folder to use before every task (one user at a time)."""
-        return use_profile(key, secret, bool(home))
+        return {**use_profile(key, secret, bool(home), tz), "tz": TZ_NAME, "lang": LANG}
 
 
 # ---------------- the bridge (same protocol as the Windows desktop) ----------------
@@ -1486,6 +1797,81 @@ class Bridge:
             pass
 
 
+DEB_KEEP = DATA / "installed-debs"     # v0.999.62 a kept copy of every .deb installed, so a rebuilt image gets it back
+DEB_MAX = 1024 * 1024 * 1024          # 1 GB
+
+
+def _deb_roots() -> list[Path]:
+    return [_real(DOWNLOADS), _real(DATA / "work")]
+
+
+def check_deb(file: str) -> dict[str, str]:
+    """A downloaded file Hoola may install: inside this user's Downloads / work folder, ends in .deb, really a Debian
+    package (ar archive whose first member is debian-binary), for this PC's architecture, at most 1 GB.
+    Returns its Package / Version / Architecture; anything else raises ActionError with the plain reason."""
+    p = Path(file)
+    if not p.is_absolute():
+        p = DOWNLOADS / p
+    _guard(p)
+    r = _real(p)
+    if not any(r == root or root in r.parents for root in _deb_roots()):
+        raise ActionError("Only a file in your Downloads or work folder on the Hoola PC can be installed.")
+    if r.suffix.lower() != ".deb":
+        raise ActionError("Only a .deb file can be installed this way (Hoola PC is Linux; .exe / .msi do not run here).")
+    if not r.is_file():
+        raise ActionError(f"No such file: {r.name}. Check the Downloads folder (the download may not have finished).")
+    if r.stat().st_size > DEB_MAX:
+        raise ActionError("The file is over 1 GB; it was not installed.")
+    with r.open("rb") as fh:
+        head = fh.read(8 + 16)
+    if head[:8] != b"!<arch>\n" or not head[8:24].startswith(b"debian-binary"):
+        raise ActionError(f"{r.name} is not a real Debian package (the download may be a web page or broken).")
+    q = subprocess.run(["dpkg-deb", "-f", str(r), "Package", "Version", "Architecture"], capture_output=True, text=True, timeout=60)
+    if q.returncode != 0:
+        raise ActionError(f"{r.name} could not be read as a package: {(q.stderr or '').strip()[-200:]}")
+    f = dict(re.findall(r"^(\w+):\s*(.+)$", q.stdout, re.M))
+    name, arch = f.get("Package", ""), f.get("Architecture", "")
+    if not re.match(r"^[a-z0-9][a-z0-9.+-]+$", name):
+        raise ActionError(f"{r.name} has no valid package name.")
+    try:
+        mine = subprocess.run(["dpkg", "--print-architecture"], capture_output=True, text=True, timeout=10).stdout.strip() or "amd64"
+    except (OSError, subprocess.SubprocessError):
+        mine = "amd64"
+    if arch not in ("all", mine):
+        raise ActionError(f"{r.name} is built for {arch or 'an unknown machine'}; this Hoola PC is {mine}. Download the {mine} version.")
+    return {"path": str(r), "package": name, "version": f.get("Version", ""), "arch": arch}
+
+
+def install_deb(file: str) -> dict[str, Any]:
+    """v0.999.62 install a checked .deb with apt (its dependencies come from the normal package list) and keep a copy."""
+    import hashlib
+    import shutil
+    d = check_deb(file)
+    src = Path(d["path"])
+    h = hashlib.sha256(src.read_bytes()).hexdigest()[:12]
+    DEB_KEEP.mkdir(parents=True, exist_ok=True)
+    kept = DEB_KEEP / f"{d['package']}_{h}.deb"
+    if not kept.exists():
+        shutil.copyfile(src, kept)
+    try:
+        os.chmod(DEB_KEEP, 0o700)
+        os.chmod(kept, 0o600)
+    except OSError:
+        pass
+    env = {**os.environ, "DEBIAN_FRONTEND": "noninteractive"}
+    subprocess.run(["apt-get", "update", "-qq"], capture_output=True, timeout=240)
+    try:
+        p = subprocess.run(["apt-get", "install", "-y", str(kept)], capture_output=True, text=True, timeout=600, env=env)
+    except subprocess.TimeoutExpired:
+        raise ActionError("The install did not finish within 10 minutes. Try again.")
+    tail = ((p.stdout or "") + (p.stderr or ""))[-1500:]
+    with (DATA / "installed.log").open("a") as fh:
+        fh.write(f"{time.strftime('%m-%d %H:%M')} deb {d['package']} {kept} rc={p.returncode}\n")
+    if p.returncode != 0:
+        raise ActionError(f"Install fail (rc={p.returncode}): {tail[-400:]}")
+    return {"installed": [d["package"]], "version": d["version"], "file": src.name, "note": tail[-400:] or "installed"}
+
+
 def replay_installs(log_path: Path | None = None, dry: bool = False) -> list[str]:
     """v0.885 software Hoola installed before lives in installed.log; a rebuilt image does not have it any more.
     Missing apt / pip packages from SUCCESSFUL installs are put back once at boot (in the background)."""
@@ -1496,7 +1882,12 @@ def replay_installs(log_path: Path | None = None, dry: bool = False) -> list[str
         lines = f.read_text().splitlines()
     except OSError:
         return []
+    debs: list[tuple[str, str]] = []
     for line in lines:
+        d = re.match(r"^\S+ \S+ deb ([a-z0-9][a-z0-9.+-]+) (\S+\.deb) rc=0$", line.strip())   # v0.999.62 a kept .deb
+        if d:
+            debs.append((d.group(1), d.group(2)))
+            continue
         m = re.match(r"^\S+ \S+ (apt|pip) (.+) rc=0$", line.strip())
         if not m:
             continue
@@ -1505,8 +1896,9 @@ def replay_installs(log_path: Path | None = None, dry: bool = False) -> list[str
                 (apt if m.group(1) == "apt" else pipn).append(n)
     apt = list(dict.fromkeys(apt))
     pipn = list(dict.fromkeys(pipn))
+    debs = list(dict.fromkeys(debs))
     if dry:
-        return apt + ["pip:" + n for n in pipn]
+        return apt + ["pip:" + n for n in pipn] + ["deb:" + n for n, _ in debs]
     miss_apt = [n for n in apt if subprocess.run(["dpkg", "-s", n], capture_output=True).returncode != 0]
     miss_pip = [n for n in pipn if subprocess.run(["pip", "show", re.split(r"[=<>~]", n)[0]],
                                                   capture_output=True).returncode != 0]
@@ -1516,9 +1908,13 @@ def replay_installs(log_path: Path | None = None, dry: bool = False) -> list[str
         subprocess.run(["apt-get", "install", "-y", *miss_apt], capture_output=True, timeout=1800, env=env)
     if miss_pip:
         subprocess.run(["pip", "install", "--quiet", "--no-input", *miss_pip], capture_output=True, timeout=1800)
-    if miss_apt or miss_pip:
-        print(f"reinstalled after rebuild: {' '.join(miss_apt + miss_pip)}", flush=True)
-    return miss_apt + miss_pip
+    miss_deb = [(n, k) for n, k in debs if Path(k).is_file() and subprocess.run(["dpkg", "-s", n], capture_output=True).returncode != 0]
+    for _n, k in miss_deb:
+        subprocess.run(["apt-get", "install", "-y", k], capture_output=True, timeout=1800, env=env)
+    back = miss_apt + miss_pip + [n for n, _ in miss_deb]
+    if back:
+        print(f"reinstalled after rebuild: {' '.join(back)}", flush=True)
+    return back
 
 
 def main() -> None:

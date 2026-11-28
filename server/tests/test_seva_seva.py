@@ -208,7 +208,10 @@ def test_whatsapp_customer_sees_only_own_tickets(sv):
         run("biz_seva_ticket", Ctx(T, conv, actor="owner"), text="x")                       # customer tools are for customers
     S.update(T, t["ticket"], status="resolved", public="Line theek ho gayi.")
     q = _queued()
-    assert any("theek ho gayi" in x for x in q) and any("1 se 5" in x for x in q)          # status line + CSAT ask
+    assert any("theek ho gayi" in x for x in q) and any("Did this fix it?" in x for x in q)  # status line + G9 check
+    from app.seva import watch as W
+    assert W.confirm(T, t["ticket"], True, "customer")["decision"] == "confirmed"           # the customer's YES closes it
+    assert any("1 se 5" in x for x in _queued())                                           # the rating is asked after closing
     assert run("biz_seva_rate", cr, score=4)["csat"] == 4
     with pytest.raises(ToolError):
         run("biz_seva_rate", cm, score=1, ticket=t["ticket"])

@@ -11,7 +11,7 @@ S = (CODE / "code_session.dart").read_text()
 
 
 def test_the_words_render_like_a_chat_reply():
-    assert "HoolaMd(text, streaming: streaming, selectable: selecting, sans: true, fade: true)" in W                 # headings, lists, tables, code blocks with Copy
+    assert "HoolaMd(text, streaming: streaming, selectable: selecting, fade: true" in W                 # headings, lists, tables, code blocks with Copy
     assert "final actions = si == lastSay && !running;" in S and ": _reply(text, 'say$sn', actions: actions));" in S   # v0.935 a new one lands first
     assert ": _reply(ex, 'explain', actions: true));" in S   # v0.937 a new closing answer lands first
     assert "HoolaMd(cs(t['question']))" in S
@@ -41,5 +41,5 @@ def test_design_rules():
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.39"' in main
-    assert "version: 0.999.39+1037" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.169"' in main
+    assert "version: 0.999.169+1164" in (ROOT / "pubspec.yaml").read_text()

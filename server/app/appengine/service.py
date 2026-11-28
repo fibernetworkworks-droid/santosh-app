@@ -35,7 +35,12 @@ from . import image as IMG
 from . import rules as RL
 from . import runner as RN
 from . import tokens as TK
+from . import genome as GN
 from .models import AppProject, ensure_table
+
+import logging
+
+log = logging.getLogger("santosh.appengine")
 
 TEMPLATE = Path(__file__).resolve().parent / "template"
 KEEP_VERSIONS = 30
@@ -54,7 +59,55 @@ GATE_POLL = 1.5
 GATE_MAX = 1800.0
 # the template files Hoola owns: refreshed into every app before each build (an older app gets today's tooling)
 TOOLING = ("vite.config.ts", "tsconfig.json", "hoola.plugin.mjs", "src/main.tsx", "src/index.css", "src/lib/utils.ts",
-           "src/lib/hoola.ts")
+           "src/lib/hoola.ts",
+           # v0.999.64 D3: pre-rendering + islands
+           "hoola.prerender.mjs", "src/entry-server.tsx", "src/islands-entry.tsx", "src/islands-wake.tsx", "src/lib/island.tsx",
+           "src/lib/seo.tsx", "src/lib/keep.ts", "src/lib/member.ts", "public/hoola-push-sw.js")
+
+# v0.999.64 D3 (docs/WEB_DESIGN_ENGINE_PLAN.md P6): how the pages go out. "site" = every page pre-rendered to plain HTML
+# that loads JavaScript only for its islands (fast, read by Google); a page with <AppPage> or an app screen stays the
+# full app. "app" = every page pre-rendered, then the whole app takes over in the browser (an app made before D3).
+RENDER_MODES = ("site", "app")
+_HOOKS = re.compile(r"\bReact\.use(?:State|Reducer|Effect|Ref)\s*\(|\buse(?:State|Reducer|Effect)\s*\(|\bon[A-Z]\w+=\{")
+_USE_CLIENT = re.compile(r"^(?:\s*(?://[^\n]*\n|/\*[\s\S]*?\*/))*\s*[\"']use client[\"'];?")
+
+
+def site_dead_code(d: Path) -> list[str]:
+    """v0.999.64 D3: on a SITE app, code that needs JavaScript but is not inside a "use client" component (under
+    src/components or src/islands) renders as plain HTML that does nothing - name those files so they get fixed."""
+    out = []
+    src = d / "src"
+    for f in sorted(src.rglob("*.tsx")):
+        rel = f.relative_to(d).as_posix()
+        if rel in RL.LOCKED or rel.startswith(("src/components/ui/", "src/components/effects/", "src/components/blocks/screen-")):
+            continue                                  # the kit's parts + app screens (a page with one runs as the app)
+        try:
+            code = f.read_text("utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        tpl = TEMPLATE / rel
+        if tpl.is_file() and tpl.read_text("utf-8") == code:
+            continue                                  # a kit file as Hoola made it
+        island = rel.startswith(("src/components/", "src/islands/")) and _USE_CLIENT.match(code)
+        if not island and "<AppPage" not in code and _HOOKS.search(code):
+            out.append(rel)
+    return out
+
+
+def render_mode(r: AppProject) -> str:
+    try:
+        m = json.loads(r.look or "{}").get("render")
+    except (ValueError, AttributeError):
+        m = None
+    return m if m in RENDER_MODES else "app"
+
+
+def _prep_snap(r: AppProject, snap: Path) -> None:
+    """what a build copy gets beyond her files: the genome's fonts (D2) and how the pages go out (D3)"""
+    g = _genome(r)
+    if g:
+        GN.write_fonts(g, snap / "src" / "styles" / "fonts")
+    (snap / "hoola.render.json").write_text(json.dumps({"mode": render_mode(r)}) + "\n", "utf-8")
 
 
 class AppEngineError(Exception):
@@ -154,17 +207,19 @@ def view(r: AppProject, full: bool = True) -> dict[str, Any]:
            "live_url": f"/apps/{r.slug}/" if r.live_version else "", "conversation_id": r.conversation_id or "",
            "created_at": r.created_at.isoformat() if r.created_at else "", "updated_at": r.updated_at.isoformat() if r.updated_at else "",
            "published_at": r.published_at.isoformat() if r.published_at else "",
-           "held": held(r.id),
+           "held": held(r.id), "render": render_mode(r),
            "branch_of": r.branch_of or "", "branch_name": r.branch_name or "", "branch_base": int(r.branch_base or 0),
-           "last_build": {k: lb.get(k) for k in ("ok", "seconds", "version", "types_ok", "types", "build_problems", "at", "why", "queued", "runner")}}
+           "last_build": {k: lb.get(k) for k in ("ok", "seconds", "version", "types_ok", "types", "build_problems", "at", "why", "queued", "runner", "prerender")}}
     if full:
         try:
             look = json.loads(r.look or "{}")
         except ValueError:
             look = {}
-        t = TK.resolve(look.get("values") or {}, look.get("palette") or "")
+        t = _theme(r)
         out["theme"] = TK.theme_json(t)
         out["palette"] = look.get("palette") or TK.DEFAULT
+        if look.get("genome"):                       # v0.999.58 D2: the app's own design
+            out["design"] = GN.summary(look["genome"])
         out["files"] = files_list(r)
         out["versions"] = versions(r)
         out["engine"] = RN.available()
@@ -174,7 +229,10 @@ def view(r: AppProject, full: bool = True) -> dict[str, Any]:
 # ------------------------------------------------------------------ create / list
 
 def create(tenant: str, name: str = "", brief: str = "", palette: str = "", values: dict | None = None,
-           site_look: dict | None = None, conversation_id: str = "") -> dict[str, Any]:
+           site_look: dict | None = None, conversation_id: str = "", genome: dict | None = None,
+           design_md: str = "", render: str = "") -> dict[str, Any]:
+    """v0.999.58 D2: an app with no palette / colours / Web Studio look named gets its OWN design genome from her
+    name + words (or the one / the DESIGN.md given); a named palette keeps the classic tokens."""
     ensure_table()
     name = " ".join(str(name or "").split())[:80] or "My app"
     vals = dict(values or {})
@@ -182,8 +240,18 @@ def create(tenant: str, name: str = "", brief: str = "", palette: str = "", valu
         vals = {**TK.from_site_look(site_look), **vals}
     if palette and palette not in TK.PALETTES:
         raise AppEngineError(f"Palette '{palette}' does not exist (one of: {', '.join(TK.PALETTES)}).")
+    if render and render not in RENDER_MODES:
+        raise AppEngineError("render is 'site' (a website: pre-rendered pages + islands) or 'app' (a full app).")
+    mode = render or "app"                           # v0.999.64 D3: a site only when asked (its pages run no code but islands)
+    gen = None
     try:
-        t = TK.resolve(vals, palette)
+        if design_md:
+            gen = GN.from_design_md(design_md)
+        elif genome:
+            gen = GN.clean(genome)
+        elif not palette and not vals:
+            gen = GN.for_brief(name, brief)
+        t = GN.tokens(gen) if gen else TK.resolve(vals, palette)
     except ValueError as e:
         raise AppEngineError(str(e))
     with session() as s:
@@ -192,7 +260,7 @@ def create(tenant: str, name: str = "", brief: str = "", palette: str = "", valu
         while s.scalars(select(AppProject).where(AppProject.slug == slug)).first() is not None:
             slug = f"{_slugify(name)[:32]}-{secrets.token_hex(2)}"
         r = AppProject(tenant_id=tenant, number=n, name=name, slug=slug, brief=str(brief or "")[:4000], status="new",
-                       look=json.dumps({"palette": palette or TK.DEFAULT, "values": vals}),
+                       look=json.dumps({"palette": palette or TK.DEFAULT, "values": vals, "render": mode, **({"genome": gen} if gen else {})}),
                        preview_token=secrets.token_urlsafe(24), conversation_id=str(conversation_id or "")[:64])
         s.add(r)
         s.flush()
@@ -200,7 +268,7 @@ def create(tenant: str, name: str = "", brief: str = "", palette: str = "", valu
     d = src_dir(r)
     shutil.copytree(TEMPLATE, d)
     (d / "src" / "styles").mkdir(parents=True, exist_ok=True)
-    (d / "src" / "styles" / "tokens.css").write_text(TK.css(t), "utf-8")
+    _write_design(d, gen, t)
     (d / "package.json").write_text(json.dumps(IMG.project_package(r.slug), indent=2) + "\n", "utf-8")
     html = (d / "index.html").read_text().replace("<title>My app</title>", f"<title>{_esc(name)}</title>")
     (d / "index.html").write_text(html, "utf-8")
@@ -342,6 +410,19 @@ def _check(r: AppProject, rel: str, code: str) -> None:
         raise AppEngineError(f"Not written - {rel} has a problem: " + RL.say(probs), 422, probs)
 
 
+def _autofix(r: AppProject, rel: str, code: str) -> tuple[str, list[dict[str, Any]]]:
+    """v0.999.65 D4: the code repaired onto the app's own tokens before the rules read it (switch app_engine_autofix)."""
+    from ..config import get_settings
+    if not getattr(get_settings(), "app_engine_autofix", True):
+        return code, []
+    from . import autofix as AF
+    try:
+        return AF.fix(rel, code, _theme(r))
+    except Exception:                                # noqa: BLE001 - a fixer never blocks a write; the rules judge
+        log.warning("autofix failed on %s", rel, exc_info=True)
+        return code, []
+
+
 def _write(r: AppProject, rel: str, code: str) -> dict[str, Any]:
     p = _path_in(r, rel)
     old = p.read_text("utf-8", "replace") if p.exists() else None
@@ -370,8 +451,18 @@ def write(tenant: str, ref: str, path: str, code: str) -> dict[str, Any]:
     if not code.endswith("\n"):
         code += "\n"
     with _lock(r.id):
+        code, fixed = _autofix(r, rel, code)
         _check(r, rel, code)
-        return _write(r, rel, code)
+        res = _write(r, rel, code)
+        return _fixed(res, fixed)
+
+
+def _fixed(res: dict[str, Any], fixed: list[dict[str, Any]]) -> dict[str, Any]:
+    if fixed:
+        from . import autofix as AF
+        res["fixed"] = fixed
+        res["say"] = res["say"] + AF.say(fixed)
+    return res
 
 
 def _apply_one(text: str, lines: list[str], ed: dict[str, Any], i: int) -> tuple[int, int, str]:
@@ -447,10 +538,11 @@ def edit_lines(tenant: str, ref: str, path: str, edits: list[dict[str, Any]]) ->
         new = "".join(out)
         if new == text:
             raise AppEngineError("The edits change nothing.")
+        new, fixed = _autofix(r, rel, new)
         _check(r, rel, new)
         res = _write(r, rel, new)
         res["edits"] = len(spans)
-        return res
+        return _fixed(res, fixed)
 
 
 def rename(tenant: str, ref: str, path: str, to: str) -> dict[str, Any]:
@@ -530,7 +622,7 @@ def set_tokens(tenant: str, ref: str, values: dict | None = None, palette: str =
     except ValueError as e:
         raise AppEngineError(str(e))
     with _lock(r.id):
-        (src_dir(r) / "src" / "styles" / "tokens.css").write_text(TK.css(t), "utf-8")
+        _write_design(src_dir(r), None, t)         # her named colours / palette: the classic tokens (no genome)
         _write_theme_json(r, t)
         _save(r.id, look=json.dumps({"palette": pal, "values": vals}), dirty=True)
         schedule_build(r.tenant_id, r.id)
@@ -538,6 +630,7 @@ def set_tokens(tenant: str, ref: str, values: dict | None = None, palette: str =
     warn = []
     if th["contrast_ink_on_bg"] < 4.5:
         warn.append(f"text on the background is hard to read (contrast {th['contrast_ink_on_bg']}, needs 4.5)")
+    warn += [w for w in TK.audit(t) if not w.startswith("ink on bg")]        # v0.999.51 the contrast floor
     return {"theme": th, "warnings": warn, "say": "The design tokens changed; every screen follows them." +
             (" Warning: " + "; ".join(warn) + "." if warn else "")}
 
@@ -634,6 +727,7 @@ def build(tenant: str, ref: str) -> dict[str, Any]:
         snap = Path(pdir(r.tenant_id, r.id) / "_snap")
         shutil.rmtree(snap, ignore_errors=True)
         shutil.copytree(src_dir(r), snap, ignore=shutil.ignore_patterns("node_modules", "dist"))
+        _prep_snap(r, snap)                       # v0.999.58 D2 fonts + v0.999.64 D3 render mode, in the build copy only
     try:
         res = RN.build(snap)
     except RuntimeError as e:
@@ -644,7 +738,7 @@ def build(tenant: str, ref: str) -> dict[str, Any]:
         ev.set()
         return {**view(_load(tenant, r.id), False), "queued": True, "say": res["why"]}
     stamp = now().isoformat()
-    lb = {k: res.get(k) for k in ("ok", "seconds", "types_ok", "types", "build_problems", "why", "runner", "log", "types_log")}
+    lb = {k: res.get(k) for k in ("ok", "seconds", "types_ok", "types", "build_problems", "why", "runner", "log", "types_log", "prerender")}
     lb["at"] = stamp
     with _lock(r.id):
         r = _load(tenant, r.id)
@@ -666,7 +760,13 @@ def build(tenant: str, ref: str) -> dict[str, Any]:
     ev.set()
     r = _load(tenant, r.id)
     if res.get("ok"):
-        say = f"Built version {r.version} in {res.get('seconds')} s; the preview shows it."
+        say = f"Built version {r.version} in {res.get('seconds')} s; the preview shows it." + prerender_line(res.get("prerender") or {})
+        if render_mode(r) == "site":
+            dead = site_dead_code(src_dir(r))
+            if dead:
+                say += (" On a site page these files' buttons, forms and state do NOTHING (no script runs there): "
+                        + ", ".join(dead[:6]) + ". Move the interactive part into a component in src/components or "
+                        "src/islands that starts with \"use client\";, or wrap the page in <AppPage>.")
         if not res.get("types_ok"):
             say += " TypeScript found problems (it still built; fix them before going live): " + \
                    "; ".join(f"{x['file']}:{x['line']} {x['message']}" for x in res.get("types", [])[:5])
@@ -675,6 +775,20 @@ def build(tenant: str, ref: str) -> dict[str, Any]:
                ("; ".join(f"{x.get('file') or '?'}:{x.get('line') or ''} {x['message']}" for x in res.get("build_problems", [])[:6])
                 or (res.get("why") or "see action=logs")))
     return {**view(r, False), "built": bool(res.get("ok")), "say": say}
+
+
+def prerender_line(p: dict) -> str:
+    """v0.999.64 D3: what the pre-render did, in one plain sentence (nothing when the build had no pre-render step)"""
+    if not p:
+        return ""
+    if not p.get("ok"):
+        return " The pages could not be pre-rendered, so they draw in the browser: " + (p.get("why") or "see action=logs")[:300]
+    out = f" Pre-rendered {p.get('pages')} page(s) as finished HTML ({p.get('mode')})."
+    bad = p.get("failed") or []
+    if bad:
+        out += " Could not render (they draw in the browser; fix them): " + "; ".join(
+            f"{x.get('path')}: {x.get('why')}" for x in bad[:4])
+    return out
 
 
 def _refresh_template(r: AppProject) -> None:
@@ -690,19 +804,107 @@ def _refresh_template(r: AppProject) -> None:
     from . import cloud as CL
     CL.write_types(r, quiet=True)                       # v0.827 the typed lists of its Hoola Cloud
     t = _theme(r)
-    css = TK.css(t)
-    tf = d / "src" / "styles" / "tokens.css"
-    if not tf.exists() or tf.read_text() != css:
-        tf.write_text(css, "utf-8")
+    _write_design(d, _genome(r), t)
     _write_theme_json(r, t)
 
 
+def _genome(r: AppProject) -> dict | None:
+    try:
+        g = json.loads(r.look or "{}").get("genome")
+    except (ValueError, AttributeError):
+        return None
+    return g if isinstance(g, dict) else None
+
+
 def _theme(r: AppProject) -> dict[str, Any]:
+    g = _genome(r)
+    if g:
+        return GN.tokens(g)
     try:
         look = json.loads(r.look or "{}")
     except ValueError:
         look = {}
     return TK.resolve(look.get("values") or {}, look.get("palette") or "")
+
+
+def _write_design(d: Path, gen: dict | None, t: dict[str, Any]) -> None:
+    """tokens.css (+ DESIGN.md for a genome) - only what changed is written. The fonts are not her files: build() puts
+    them in the build copy, so branches / GitHub sync / file lists only ever see text."""
+    styles = d / "src" / "styles"
+    styles.mkdir(parents=True, exist_ok=True)
+    shutil.rmtree(styles / "fonts", ignore_errors=True)      # fonts ride the BUILD copy only (her files stay text)
+    if gen:
+        css = GN.css(gen)
+        md = GN.design_md(gen)
+        if not (d / "DESIGN.md").exists() or (d / "DESIGN.md").read_text() != md:
+            (d / "DESIGN.md").write_text(md, "utf-8")
+    else:
+        css = TK.css(t)
+        (d / "DESIGN.md").unlink(missing_ok=True)
+    tf = styles / "tokens.css"
+    if not tf.exists() or tf.read_text() != css:
+        tf.write_text(css, "utf-8")
+
+
+# ------------------------------------------------------------------ v0.999.58 D2 the design genome
+
+def set_render(tenant: str, ref: str, mode: str) -> dict[str, Any]:
+    """v0.999.64 D3: 'site' = pre-rendered pages with islands; 'app' = the whole app in the browser. The next build uses it."""
+    if mode not in RENDER_MODES:
+        raise AppEngineError("render is 'site' (a website: pre-rendered pages + islands) or 'app' (a full app).")
+    r = _load(tenant, ref)
+    with _lock(r.id):
+        look = json.loads(_load(tenant, r.id).look or "{}")
+        look["render"] = mode
+        _save(r.id, look=json.dumps(look), dirty=True)
+    schedule_build(r.tenant_id, r.id)
+    say = ("Every page will be plain HTML that opens at once and is read by Google; only forms, booking, menus and "
+           "other islands load code." if mode == "site" else "The whole app will run in the browser (pages are still pre-rendered first).")
+    return {**view(_load(tenant, r.id), False), "say": say + " It applies from the next build."}
+
+
+def get_design(tenant: str, ref: str) -> dict[str, Any]:
+    r = _load(tenant, ref)
+    g = _genome(r)
+    if not g:
+        return {"design": None, "say": "This app uses a named palette (classic tokens), not its own design genome yet: "
+                                       "action=design_new makes one."}
+    return {"design": GN.summary(g), "design_md": GN.design_md(g), "genome": g}
+
+
+def set_design(tenant: str, ref: str, *, hue: float | None = None, direction: str = "", mode: str = "", pin: str = "",
+               seed: str = "", words: str = "", fonts: dict | None = None, genes: dict | None = None,
+               design_md: str = "") -> dict[str, Any]:
+    """A new design genome for the app (or her DESIGN.md imported) - every colour pair checked before it is used."""
+    r = _load(tenant, ref)
+    try:
+        if design_md:
+            g = GN.from_design_md(design_md)
+        else:
+            old = _genome(r) or {}
+            if genes:
+                g = GN.clean({**old, **genes})
+            else:
+                g = GN.generate(seed=seed or f"{r.id}:{secrets.token_hex(3)}", hue=hue, direction=direction,
+                                mode=mode, pin=pin, words=words or r.brief or "", name=r.name, fonts=fonts)
+    except ValueError as e:
+        raise AppEngineError(str(e))
+    with _lock(r.id):
+        try:
+            look = json.loads(r.look or "{}")
+        except ValueError:
+            look = {}
+        look["genome"] = g
+        t = GN.tokens(g)
+        _write_design(src_dir(r), g, t)
+        _write_theme_json(r, t)
+        _save(r.id, look=json.dumps(look), dirty=True)
+        schedule_build(r.tenant_id, r.id)
+    sm = GN.summary(g)
+    return {"design": sm, "say": f"New design: {sm['direction']} ({sm['mode']}), brand colour {sm['primary']}, "
+                                 f"{sm['fonts']['display']} headings on {sm['fonts']['text']} text, corners {sm['radius']}px, "
+                                 f"{sm['density']} spacing, {sm['motion']} motion; every colour pair checked. Every screen "
+                                 "follows it; DESIGN.md holds it."}
 
 
 def _write_theme_json(r: AppProject, t: dict[str, Any]) -> None:
@@ -795,10 +997,27 @@ def publish_check(r: AppProject, v: int) -> list[str]:
                 continue
     if probs:
         bl.append("the code check found: " + RL.say(probs, 4))
+    blanks = publish_blanks(d / "src")                # v0.999.65 D4: a fact she has not given yet, marked "(add yours)"
+    if blanks:
+        bl.append("still to fill in (marked \"(add yours)\" on the pages): " + ", ".join(blanks[:8]))
     if getattr(RN._settings(), "app_engine_publish_checks", True):      # v0.832 SABOOT: the scans + rule tests + browser check must not FAIL
         from . import saboot as SB
         bl += SB.blockers(r, v)
     return bl
+
+
+def publish_blanks(src: Path) -> list[str]:
+    """The blanks the writer left (src/.hoola/blanks.json) that are still on a page."""
+    try:
+        bj = json.loads((src / ".hoola" / "blanks.json").read_text("utf-8"))
+    except (OSError, ValueError):
+        return []
+    mark = str(bj.get("mark") or "(add yours)")
+    pages = [p for p in (src / "src").rglob("*.tsx") if "components/ui" not in p.as_posix()] if (src / "src").is_dir() else []
+    text = "".join(p.read_text("utf-8", "replace") for p in pages)
+    if mark not in text:
+        return []
+    return [b for b in (bj.get("blanks") or []) if f"Your {b} {mark}" in text] or ["the marked facts"]
 
 
 def publish(tenant: str, ref: str, version: int, confirm: bool = False) -> dict[str, Any]:
@@ -818,6 +1037,7 @@ def publish(tenant: str, ref: str, version: int, confirm: bool = False) -> dict[
     snap = pdir(r.tenant_id, r.id) / "_pub"
     shutil.rmtree(snap, ignore_errors=True)
     shutil.copytree(ver_dir(r, v) / "src", snap)
+    _prep_snap(r, snap)                           # v0.999.64: fonts + render mode reach the live build too
     try:
         res = RN.build(snap, source=False)
     except RuntimeError as e:
@@ -845,6 +1065,11 @@ def publish(tenant: str, ref: str, version: int, confirm: bool = False) -> dict[
         tmp.rename(live_dir(r))
         shutil.rmtree(old, ignore_errors=True)
         _save(r.id, live_version=v, published_at=now())
+    try:                                             # v0.999.75 D6: a site she put live = references she KEPT
+        from . import refs as RF
+        RF.keep(tenant, r.id)
+    except Exception:                                # noqa: BLE001
+        log.debug("references not marked kept", exc_info=True)
     return {**view(_load(tenant, r.id), False), "say": f"Version {v} is live at /apps/{r.slug}/."}
 
 
@@ -889,8 +1114,48 @@ def _shell(r, prefix: str, ds: str) -> tuple[bytes, str, dict[str, str]]:
     return html.encode("utf-8"), "text/html; charset=utf-8", hdr
 
 
+# v0.999.64 D3: a pre-rendered SITE page goes out at the app's own address with no frame around it, so Google reads
+# it and it opens at once. The browser still seals it: `sandbox` in its CSP gives the page its own blank origin (as
+# the frame did), so it cannot read any sign-in or other app on this address. Scripts run only for its islands.
+SITE_CSP = ("sandbox allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads; " + CSP)
+
+
+def pages_of(root_: Path) -> dict[str, Any]:
+    """what the build's pre-render wrote (dist/__pages.json); {} for a build made before D3"""
+    try:
+        return json.loads((root_ / "__pages.json").read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def _page_file(root_: Path, rel: str) -> Path | None:
+    """the pre-rendered page for an address of the app ("" = home), if the build wrote one"""
+    parts = [x for x in rel.strip("/").split("/") if x]
+    if any(x in ("..", ".") or x.startswith("__") for x in parts):
+        return None
+    f = root_.joinpath(*parts, "index.html") if parts else root_ / "index.html"
+    return f if f.is_file() and not f.is_symlink() else None
+
+
+def _is_site_page(root_: Path, rel: str) -> bool:
+    pg = pages_of(root_)
+    if pg.get("mode") != "site":
+        return False
+    want = "/" + rel.strip("/")
+    return any(p.get("path") == want and p.get("kind") == "site" for p in pg.get("pages") or [])
+
+
+def _origin() -> str:
+    try:
+        from ..config import get_settings
+        return str(get_settings().public_base_url or "").rstrip("/")
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def _route(r, root_: Path, rel: str, prefix: str, ds: str) -> tuple[bytes, str, dict[str, str]]:
-    """shell page / its script / the sealed app under __app/ (v0.827: every app runs in a sealed frame)."""
+    """shell page / its script / the sealed app under __app/ (v0.827: every app runs in a sealed frame); v0.999.64 D3:
+    on a LIVE site app its pre-rendered site pages (and their files, sitemap.xml, robots.txt) are served directly."""
     here = Path(__file__).resolve().parent
     if rel == "__app/__hoola/preview.js":            # the app page asks for its helper relative to its own base
         rel = "__hoola/preview.js"
@@ -903,20 +1168,39 @@ def _route(r, root_: Path, rel: str, prefix: str, ds: str) -> tuple[bytes, str, 
     if rel == "__app" or rel.startswith("__app/"):
         return _serve(root_, rel[len("__app/"):] if rel.startswith("__app/") else "", prefix + "__app/", ds == "preview")
     last = rel.rsplit("/", 1)[-1]
+    if ds == "live" and pages_of(root_).get("mode") == "site":
+        if rel and "." in last:                      # the site page's own files (assets, fonts, sitemap, robots)
+            return _serve(root_, rel, prefix, False, site=True)
+        if _is_site_page(root_, rel):
+            from . import cloud as CL
+            return _serve(root_, rel, prefix, False, site=True, cloud=f"/api/cloud/{CL.key_of(r, 'live')}")
     if rel and "." in last:
         raise AppEngineError("not found", 404)
     return _shell(r, prefix, ds)
 
 
-def _serve(root_: Path, path: str, prefix: str, preview: bool) -> tuple[bytes, str, dict[str, str]]:
+def _fill(txt: str, prefix: str, preview: bool = False) -> str:
+    """the build writes /__hoola_base__ and __hoola_origin__ where the app's own address goes (D3). Links follow the
+    page's own place; the canonical link, sitemap and robots always name the app's PUBLIC page (never the frame's
+    __app/ copy), and a preview (never indexed) carries no canonical link at all."""
+    if preview:
+        txt = re.sub(r'\n?\s*<link rel="canonical"[^>]*>', "", txt)
+    public = prefix[:-len("__app/")] if prefix.endswith("__app/") else prefix
+    txt = txt.replace("__hoola_origin__/__hoola_base__", _origin() + public.rstrip("/"))
+    return txt.replace("__hoola_origin__", _origin()).replace("/__hoola_base__", prefix.rstrip("/"))
+
+
+def _serve(root_: Path, path: str, prefix: str, preview: bool, site: bool = False,
+           cloud: str = "") -> tuple[bytes, str, dict[str, str]]:
     rel = (path or "").lstrip("/")
-    if ".." in rel.split("/") or "\0" in rel:
-        raise AppEngineError("not found", 404)
+    if ".." in rel.split("/") or "\0" in rel or any(x.startswith("__") for x in rel.split("/")):
+        raise AppEngineError("not found", 404)       # __pages.json / __spa.html are the build's own
     f = (root_ / rel) if rel else root_ / "index.html"
     if rel and (not f.is_file() or f.is_symlink()):
         if "." in rel.rsplit("/", 1)[-1]:
             raise AppEngineError("not found", 404)
-        f = root_ / "index.html"                             # a route of the app (React Router) -> the app
+        # v0.999.64 D3: the page the build pre-rendered for this address; else the plain app page (React Router)
+        f = _page_file(root_, rel) or (root_ / "__spa.html" if (root_ / "__spa.html").is_file() else root_ / "index.html")
     rp, rr = f.resolve(), root_.resolve()
     if rr not in rp.parents or not f.is_file():
         raise AppEngineError("not found", 404)
@@ -925,22 +1209,32 @@ def _serve(root_: Path, path: str, prefix: str, preview: bool) -> tuple[bytes, s
     # v0.827 in the Studio the shell itself runs in a sealed (blank-origin) frame, so the preview app cannot demand a
     # same-origin parent; a LIVE app keeps frame-ancestors 'self' (its shell is the top page)
     # (no frame-ancestors at all: '*' does not match a blank-origin parent; the preview is reached only by its secret link)
-    csp = CSP.replace(" frame-ancestors 'self';", "") if preview else CSP
+    csp = CSP.replace(" frame-ancestors 'self';", "") if preview else (SITE_CSP if site else CSP)
     hdr = {"Content-Security-Policy": csp, "X-Content-Type-Options": "nosniff", "Referrer-Policy": "strict-origin-when-cross-origin",
            "Permissions-Policy": "camera=(), microphone=(), geolocation=()"}
     if ext == ".html":
-        txt = data.decode("utf-8", "replace")
+        txt = _fill(data.decode("utf-8", "replace"), prefix, preview)
         txt = re.sub(r"<head>", f'<head>\n    <base href="{prefix}">', txt, count=1)
+        if cloud:                                     # a site page reaches the PUBLIC Cloud calls itself (lib/hoola.ts)
+            txt = txt.replace("</head>", f'    <meta name="hoola-cloud" content="{_esc(cloud)}">\n  </head>', 1)
         if preview:                                   # v0.825 the preview helper: errors, select, live style (never live)
             txt = txt.replace("</head>", '    <script src="__hoola/preview.js"></script>\n  </head>', 1)
         data = txt.encode("utf-8")
-        hdr["Cache-Control"] = "no-store"
+        hdr["Cache-Control"] = "no-store" if preview else ("public, max-age=60" if site else "no-store")
+    elif ext in (".xml", ".txt"):
+        data = _fill(data.decode("utf-8", "replace"), prefix, preview).encode("utf-8")
+        hdr["Cache-Control"] = "no-store" if preview else "public, max-age=300"
+        if ext == ".xml":
+            hdr["Content-Type"] = "application/xml"
     else:
-        hdr["Cache-Control"] = "no-store" if preview else ("public, max-age=31536000, immutable" if "/assets/" in f"/{rel}" else "public, max-age=300")
+        hashed = "/assets/" in f"/{rel}" or f"/{rel}".startswith("/isl/")      # file names carry their content hash
+        hdr["Cache-Control"] = "no-store" if preview else ("public, max-age=31536000, immutable" if hashed else "public, max-age=300")
     if preview:
         hdr["X-Robots-Tag"] = "noindex, nofollow"
     hdr["Access-Control-Allow-Origin"] = "*"        # the app runs in a sealed frame (a blank origin): its files load with CORS
-    return data, TYPES.get(ext, "application/octet-stream"), hdr
+    ctype = "application/xml" if ext == ".xml" else TYPES.get(ext, "application/octet-stream")
+    hdr.pop("Content-Type", None)
+    return data, ctype, hdr
 
 
 def preview_file(token: str, path: str) -> tuple[bytes, str, dict[str, str]]:
@@ -985,8 +1279,24 @@ def prompt_block(tenant: str) -> str:
         r = _load(tenant, ref)
     except AppEngineError:
         return ""
+    # v0.999.51 the kit's ~100 files stay as the template made them: named once (kit line), not file by file, so
+    # her app's own files always fit the list; a kit file she changed is listed like any other
+    kit_dirs = ("src/components/ui/", "src/components/effects/", "src/components/blocks/")
+
+    def _as_template(path: str) -> bool:
+        t = TEMPLATE / path
+        try:
+            return t.exists() and (src_dir(r) / path).read_bytes() == t.read_bytes()
+        except OSError:
+            return False
     files = [f["path"] + (" (locked)" if f["locked"] else "") for f in files_list(r)
-             if f["path"] != "package-lock.json" and not f["path"].startswith(".hoola/")][:80]
+             if f["path"] != "package-lock.json" and not f["path"].startswith(".hoola/")
+             and not (f["path"].startswith(kit_dirs) and _as_template(f["path"]))][:80]
+    try:
+        from . import kit as KIT
+        kit_line = KIT.prompt_line() + "\n"
+    except Exception:                                # noqa: BLE001
+        kit_line = ""
     try:
         agents = (src_dir(r) / "AGENTS.md").read_text()[:3000]
     except OSError:
@@ -1021,7 +1331,7 @@ def prompt_block(tenant: str) -> str:
             "src/components/ui; packages only from the vetted list; no outside address (data comes through "
             "src/lib/hoola.ts, which is not connected yet - keep data on the page and say so). After changes, call "
             "action=build and read the result before you say it is done. Going live is HER tap in the Studio.\n"
-            f"Packages: {', '.join(deps)}\nFiles: {', '.join(files)}\nAGENTS.md:\n{agents}\n</app_engine_project>")
+            f"Packages: {', '.join(deps)}\nFiles: {', '.join(files)}\n{kit_line}AGENTS.md:\n{agents}\n</app_engine_project>")
 
 
 def status() -> dict[str, Any]:

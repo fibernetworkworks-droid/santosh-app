@@ -33,7 +33,7 @@ from .service import OTP_RE, classify, draft_view, split_ref
 log = logging.getLogger("santosh.mailbox.sync")
 
 MODES = ("off", "vip", "all")
-ACTION_KEYS = ("label", "archive", "star", "important", "mark_read", "mute", "notify", "forward_to")
+ACTION_KEYS = ("label", "archive", "star", "important", "mark_read", "mute", "notify", "forward_to", "run")   # v0.999.47 run = start a Hoola job
 MATCH_KEYS = ("from", "subject", "has_attachment", "bulk", "unread")
 SEARCH_KEYS = ("from", "subject", "has_attachment", "bulk", "unread", "query")   # v0.184.0 saved searches
 RECENT_KEEP = 60
@@ -53,6 +53,19 @@ def _state_row(s, tenant: str, account: str) -> MailSyncState:
     return row
 
 
+def _default_mode() -> str:
+    """v0.999.213 the mode of a mailbox she never set herself: off unless the server says otherwise."""
+    from ..config import get_settings
+    m = (get_settings().mail_watch_default or "off").strip().lower()
+    return m if m in MODES else "off"
+
+
+def _mode_of(row: MailSyncState | None) -> str:
+    if row is not None and row.chosen:
+        return row.mode or "off"
+    return _default_mode()
+
+
 def _boxes(tenant: str) -> list[Box]:
     """Call-time lookup: tests (and hot config) may swap the boxes list."""
     from . import accounts as ma
@@ -66,7 +79,7 @@ def watch_views(tenant: str) -> list[dict[str, Any]]:
     for b in _boxes(tenant):
         r = rows.get(b.key)
         out.append({"key": b.key, "address": b.address, "kind": b.kind,
-                    "mode": (r.mode if r else "vip"),
+                    "mode": _mode_of(r), "chosen": bool(r and r.chosen),
                     "last_sync": as_utc(r.last_sync_at).isoformat() if r and r.last_sync_at else None,
                     "error": (r.last_error or "") if r else ""})
     return out
@@ -76,15 +89,16 @@ def set_watch_mode(tenant: str, mode: str, account: str | None = None) -> list[d
     mode = (mode or "").strip().lower()
     if mode not in MODES:
         raise MailError(f"watch_mode: one of {' / '.join(MODES)} "
-                        f"(off = no news, vip = important + your own people [default], all = everything)")
+                        f"(off = no news [default], vip = important + your own people, all = everything)")
     with session() as s:
         if account:
             targets = [_state_row(s, tenant, get_box(tenant, account).key)]
         else:
             targets = [_state_row(s, tenant, b.key) for b in _boxes(tenant)]
         for st in targets:
-            was_off = st.mode == "off"
+            was_off = _mode_of(st) == "off"
             st.mode = mode
+            st.chosen = True          # v0.999.213 her own choice from now on
             if was_off and mode != "off":
                 # off ke dour ki mail par toofan nahi: ab se khabar milegi (Gmail jaisa)
                 st.last_ts = now()
@@ -150,7 +164,7 @@ def rule_create(tenant: str, name: str, match: dict, actions: dict) -> dict[str,
         raise MailError("The rule has no condition. Give at least one of from / subject / has_attachment / bulk / unread.")
     if not actions:
         raise MailError("The rule has no action. Give at least one of label / archive / star / mark_read / important / mute / "
-                        "notify / forward_to.")
+                        "notify / forward_to / run.")
     m = {"from": _clean(match.get("from")), "subject": _clean(match.get("subject")),
          "has_attachment": bool(match.get("has_attachment")), "bulk": bool(match.get("bulk")),
          "unread": bool(match.get("unread"))}
@@ -165,6 +179,8 @@ def rule_create(tenant: str, name: str, match: dict, actions: dict) -> dict[str,
         a["important"] = bool(actions["important"])
     if actions.get("forward_to"):
         a["forward_to"] = _clean(actions["forward_to"], 320)
+    if actions.get("run"):              # v0.999.47 the job Hoola does when such a mail arrives (her words)
+        a["run"] = _clean(actions["run"], 1000)
     if a.get("mute") and (a.get("notify") or a.get("forward_to")):
         raise MailError("A rule cannot mute and notify / forward at the same time.")
     with session() as s:
@@ -472,10 +488,52 @@ def _vip_senders(tenant: str) -> set[str]:
 
 
 def _important(item: dict[str, Any], known: set[str]) -> bool:
-    if item.get("important"):
-        return True
+    if item.get("important") and not mime.is_automated(item.get("from_email", ""), bool(item.get("bulk"))):
+        return True           # v0.999.213 Gmail's 'important' counts for a person, not for a company's no-reply notice
     cat, _why = classify(item, known)
     return cat in ("needs_reply", "bills_payments")
+
+
+_ACCESS_RE = re.compile(r"(granted access|signed in to|access to your google account|connected to your google account|"
+                        r"new sign-in|third-party|allowed .{0,40} access)", re.I)
+
+
+def _own_access_alert(item: dict[str, Any]) -> bool:
+    """v0.999.213 Google's 'Security alert' sent because she connected Hoola (or another app) to her account:
+    every Connect / Reconnect makes one, and Hoola must not then announce its own connection back to her."""
+    sender = (item.get("from_email") or "").lower()
+    if not (sender.endswith("accounts.google.com") or sender.endswith("@google.com")):
+        return False
+    text = f"{item.get('subject', '')} {item.get('snippet', '')}"
+    return bool(re.search(r"security alert", text, re.I) and (_ACCESS_RE.search(text) or "hoola" in text.lower()))
+
+
+TOLD_ROW = "_told"           # v0.999.213 a pseudo mailbox row holding the mails already announced (hashes only)
+
+
+def _told_key(item: dict[str, Any]) -> str:
+    import hashlib
+    mid = (item.get("message_id") or "").strip().lower()
+    raw = mid or f"{(item.get('from_email') or '').lower()}|{(item.get('subject') or '').strip().lower()}"
+    return hashlib.sha1(raw.encode("utf-8", "ignore")).hexdigest()[:16]
+
+
+def _already_told(tenant: str, item: dict[str, Any]) -> bool:
+    """v0.999.213 the same mail in two of her mailboxes (or sent to both) is announced once."""
+    with session() as s:
+        row = s.get(MailSyncState, (tenant, TOLD_ROW))
+        return bool(row and _told_key(item) in (row.recent or []))
+
+
+def _remember_told(tenant: str, item: dict[str, Any]) -> None:
+    key = _told_key(item)
+    with session() as s:
+        row = s.get(MailSyncState, (tenant, TOLD_ROW))
+        if row is None:
+            row = MailSyncState(tenant_id=tenant, account=TOLD_ROW, mode="off", chosen=True)
+            s.add(row)
+        keep = [k for k in (row.recent or []) if k != key] + [key]
+        row.recent = keep[-300:]
 
 
 def _masked(text: str) -> str:
@@ -497,6 +555,8 @@ def _announce(tenant: str, conv: str, item: dict[str, Any], ref: str, account: s
 def _wants_announce(rule_notify: bool, item: dict[str, Any], known: set[str], mode: str) -> bool:
     if rule_notify:
         return True
+    if mode == "off":          # v0.999.213 she has not asked for new-mail news
+        return False
     if item.get("bulk"):
         return False
     if OTP_RE.search(f"{item.get('subject', '')} {item.get('snippet', '')}"):
@@ -566,12 +626,13 @@ def sync_account(tenant: str, box: Box) -> int:
     """One mailbox's check: new mail -> rules -> (maybe) announce. Returns how many mails were announced."""
     with session() as s:
         st = _state_row(s, tenant, box.key)
-        mode, wm, last_ts = st.mode, st.history_id, as_utc(st.last_ts)
+        mode, chosen, wm, last_ts = _mode_of(st), bool(st.chosen), st.history_id, as_utc(st.last_ts)
         recent = [str(x) for x in (st.recent or [])]
         calibrated = bool(wm or last_ts)
-    if mode == "off":
+    if mode == "off" and chosen:   # she turned it off herself: nothing runs (unchanged)
         _mark(tenant, box.key)
         return 0
+    # v0.999.213 never set by her = off for news, but the rules she made still run (a notify rule still tells her)
     items_map: dict[str, dict[str, Any]] = {}
     new_wm: str | None = None
     try:
@@ -624,6 +685,13 @@ def sync_account(tenant: str, box: Box) -> int:
                 _apply_rule_actions(tenant, box, native, dict(r.actions or {}), item, conv)
             except MailError as e:
                 log.warning("rule %s actions failed: %s", r.id, e)
+            if (r.actions or {}).get("run"):    # v0.999.47 a job started by this mail (once per mail, capped a day)
+                try:
+                    from .. import agentmail
+                    agentmail.start_job(tenant, r.id, r.name, str(r.actions["run"]),
+                                        {**item, "id": f"{box.key}~{native}"}, source=box.address)
+                except Exception:
+                    log.exception("email rule job")
             with session() as s:
                 row = s.get(MailRule, r.id)
                 if row:
@@ -635,9 +703,12 @@ def sync_account(tenant: str, box: Box) -> int:
                 break
         if rule_mute or item.get("from_email", "").lower() in mute:
             continue
+        if not rule_notify and (_own_access_alert(item) or _already_told(tenant, item)):
+            continue
         # a rule works quietly; only its notify action (or a rule-less mail her watch mode wants) makes a card
         if rule_notify or (not rule_acted and _wants_announce(False, item, known, mode)):
             _announce(tenant, conv, item, f"{box.key}~{native}", box.address)
+            _remember_told(tenant, item)
             announced += 1
     if mode == "all" and conv:
         bulk_n = sum(1 for _, it in ordered if it.get("bulk"))
@@ -658,21 +729,37 @@ def watcher_tenants() -> list[str]:
         out |= set(s.scalars(select(MailAccount.tenant_id).distinct().where(MailAccount.kind != "_sig")).all())
         out |= set(s.scalars(select(MailSyncState.tenant_id).distinct()).all())
         from ..db import OAuthConnection
-        try:
-            out |= set(s.scalars(select(OAuthConnection.tenant_id).distinct()
-                                 .where(OAuthConnection.scopes.contains("gmail.modify"))).all())
+        try:      # v0.999.181 the connection belongs to a user; her tenant comes from the user (there is no tenant_id column)
+            from ..accounts import tenant_of_user
+            for uid in set(s.scalars(select(OAuthConnection.user_id).where(OAuthConnection.scopes.contains("gmail.modify"),
+                                                                          OAuthConnection.refresh_token_enc.is_not(None))).all()):
+                out.add(tenant_of_user(uid))
         except Exception:
-            pass
+            log.exception("mail watcher tenants from Google connections")
     return sorted(t for t in out if t)
+
+
+def _dead_boxes() -> set[str]:
+    """Mailboxes whose login Google (or Microsoft) ended: asking every minute changes nothing until she reconnects."""
+    from ..db import MailAccount
+    from .accounts import RECONNECT
+    try:
+        with session() as s:
+            return set(s.scalars(select(MailAccount.id).where(MailAccount.status == "error",
+                                                              MailAccount.last_error.startswith(RECONNECT[:40]))).all())
+    except Exception:
+        return set()
 
 
 def sync_tick(max_accounts: int = 60) -> int:
     """Every mailbox once per tick (60s). At scale the start rotates each minute so no mailbox starves."""
     pairs: list[tuple[str, Box]] = []
+    dead = _dead_boxes()
     for tenant in watcher_tenants():
         try:
             for b in _boxes(tenant):
-                pairs.append((tenant, b))
+                if b.key not in dead:          # v0.999.181 a mailbox Google refused waits for her Reconnect
+                    pairs.append((tenant, b))
         except Exception:
             continue
     if not pairs:

@@ -488,7 +488,7 @@
 #app .hcd-lab{display:block;margin-top:14px;font:500 12.5px/1.4 var(--fd);color:var(--lit)}
 #app .hcd-lab small{font-weight:400;color:var(--mut);margin-left:6px}
 #app .hcd-dlg textarea{width:100%;min-height:64px;margin-top:4px;padding:8px 12px;border:1px solid var(--hair2);border-radius:var(--rc);background:var(--surface);
-  font:400 12.5px/1.5 var(--fm, ui-monospace, monospace);color:var(--ink);resize:vertical;display:block}
+  font:400 12.5px/1.5 var(--mono, ui-monospace, monospace);color:var(--ink);resize:vertical;display:block}
 #app .hcd-dlg textarea:focus{outline:none;border-color:var(--pri);box-shadow:var(--focus)}
 #app .hcd-envnet{margin:0;padding:0;border:0}
 #app .hcd-envnet legend{padding:0}
@@ -1105,7 +1105,6 @@ html,body{background:var(--bg)}
 #app .hck-me>.hca-heard{margin-top:0}
 #app .hck-ho>.hca-gots{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
 #app .hck-bar [data-b="mic"][aria-pressed="true"]{background:var(--pri);color:var(--on-acc,#fff);box-shadow:0 0 0 4px var(--pri-soft)}   /* she is being heard */
-=======
 /* ==== v1.000 SAME AS HOOLA CHAT + CLAUDE CODE ===================================================================
    Owner (her Hoola Code screenshot beside Claude Code's): "IT LOOKS STALE AND DIFFERENT FROM APP SIDE DESIGN ... MAKE IT
    SAME AS CLAUDE CODE AND HOOLA CHAT". The warm-paper palette is gone (the tokens above now come from v2.css: white
@@ -1160,3 +1159,158 @@ html,body{background:var(--bg)}
 #app .hcd-askrow .hcd-tierbtn{padding:0 6px 0 10px}
 #app .hcd-askrow .hcd-envchip[aria-expanded="true"]{background:var(--hov)}
 @media (max-width:640px){#app .hcd-askrow .hcd-credits span{display:none}}
+
+/* v0.999.203 EVERY CHAT LIKE CLAUDE: the main chat's v0.999.197-199 numbers here too - the home greeting Literata 38 / 330
+   (dark 290) / 1.2 at opsz 48, the box text 16 / 430 (dark 400), her message 16 / 430 / 1.4, the reply 16 / 1.5 at 400
+   (dark 360). The weights come from chatkit.css (--hck0-*), so dark mode follows the page. */
+#app .hcd-home h1{font-family:'Literata',Georgia,serif;font-size:clamp(28px,5.4vw,38px);font-weight:var(--hck0-gw,330);line-height:1.2;letter-spacing:normal;font-variation-settings:"opsz" 48}
+#app .hcd .hck-bar textarea,#app .hcd .hck-bar textarea:focus,#app .hcd .hck-bar textarea::placeholder{font-size:16px;font-weight:var(--hck0-hw,430)}
+#app .hcd textarea::placeholder{font-weight:var(--hck0-hw,430)}
+
+/* ---- v0.999.245 HOOLA CODE FIX PASS: the mode / quality line under a session's box lines up with the box (it ran past
+   its right edge at every width) */
+#app .hcd-cpmeta{width:calc(100% - 48px);max-width:760px;margin:-12px auto 14px;padding:0 6px;box-sizing:border-box}
+/* a phone-width window: the slim bar keeps only named buttons (the bare status dots of sessions meant nothing without
+   their titles - Search opens the list), the session's top bar wraps onto two rows instead of running off the right
+   edge, and the home's settings chips wrap */
+@media (max-width:760px){
+  #app .hcd[data-side="min"] .hcd-side [data-tid]{display:none}
+  #app .hcd-top{height:auto;min-height:52px;flex-wrap:wrap;row-gap:6px;padding:8px 10px 8px 14px}
+  #app .hcd-top .hcd-title{max-width:calc(100% - 44px)}
+  #app .hcd-top>.hcd-flex{flex-basis:100%;height:0}
+  #app .hcd-top .hcd-prpill{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  #app .hcd-askrow{flex-wrap:wrap;row-gap:4px}
+  #app .hcd-askrow>.hcd-flex{display:none}
+}
+
+/* v0.999 THE CLAUDE CODE FEED: the real change with line numbers, the running command's live lines, "Thought for" */
+#app .hcd-diff.num{padding:4px 0;max-height:520px;overflow:auto}
+#app .hcd-diff.num span{display:grid;grid-template-columns:3.2em 3.2em 1.4em minmax(0,1fr);padding:0 12px 0 0;white-space:pre}
+#app .hcd-diff.num b,#app .hcd-diff.num i{font-weight:400;font-style:normal;text-align:right;padding-right:8px;color:var(--dim);user-select:none}
+#app .hcd-diff.num i{text-align:center;padding-right:0}
+#app .hcd-diff.num span.add i{color:var(--ok)}
+#app .hcd-diff.num span.del i{color:var(--bad)}
+#app .hcd-diff.num span.gap{display:block;padding:0 12px 0 calc(6.4em + 1.4em);color:var(--dim);background:transparent}
+#app .hcd-out{margin:6px 0 10px 26px;max-height:180px;font-size:12px;line-height:1.55;color:var(--mut)}
+#app .hcd-term .hcd-cmd{color:var(--ink)}
+#app .hcd-fold.think{color:var(--mut)}
+#app .hcd-fold.think+.hcd-fin .hcd-think{margin-left:26px}
+
+/* v0.999 CLAUDE CODE, THE REST + THE APPROVED DESIGN: "The run" timeline, one status pill per state, the ask card,
+   dark terminal cards, the Terminal pane, Edit on her messages, the mode chip. Colours from the approved prototype. */
+#app .hcd-hero h1{font:400 40px/1.15 var(--fr);letter-spacing:-.01em}
+#app .hcd-pill.need{background:#FFF3E0;color:#8A4300;font-weight:600}
+#app .hcd-pill.need .hcd-ic{width:8px;height:8px;color:#C46A00}
+#app .hcd-pill.need .hcd-ic circle{r:9}
+#app .hcd-prpill.ok,#app .hcd-pill.ok{background:#E5F4EB;color:#155C38}
+#app .hcd-live{font-weight:600}
+#app .hcd-runrc h2 .hcd-stat{font-weight:400}
+#app .hcd-run{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column}
+#app .hcd-rs{position:relative;display:grid;grid-template-columns:22px minmax(0,1fr);column-gap:12px;padding-bottom:14px;min-height:22px}
+#app .hcd-rs:last-child{padding-bottom:0}
+#app .hcd-rsd{grid-row:1;width:22px;height:22px;border-radius:50%;box-sizing:border-box;display:grid;place-items:center;font-size:12px;font-weight:600;background:var(--surface,#FFF);border:2px solid #DEDEE3;color:#FFF;z-index:1}
+#app .hcd-rsl{position:absolute;left:10px;top:22px;bottom:0;width:2px;background:#E4E4EA}
+#app .hcd-rs.done .hcd-rsd{background:#1C7C4A;border-color:#1C7C4A}
+#app .hcd-rs.done .hcd-rsl{background:#1C7C4A}
+#app .hcd-rs.now .hcd-rsd{background:#EEEBFD;border-color:#5B45E0;animation:hcdring 1.6s ease-out infinite}
+#app .hcd-rs.bad .hcd-rsd{background:var(--bad);border-color:var(--bad)}
+#app .hcd-rs.off .hcd-rsd{border-style:dashed}
+#app .hcd-rst{display:flex;flex-direction:column;gap:2px;min-width:0;padding-top:1px}
+#app .hcd-rst b{font-size:14px;font-weight:600;color:var(--ink);line-height:20px}
+#app .hcd-rs.todo .hcd-rst b,#app .hcd-rs.off .hcd-rst b{font-weight:400;color:#8A8A94}
+#app .hcd-rst small{font-size:12.5px;line-height:1.4;color:var(--mut);overflow:hidden;text-overflow:ellipsis}
+@keyframes hcdring{0%{box-shadow:0 0 0 0 rgba(91,69,224,.45)}100%{box-shadow:0 0 0 10px rgba(91,69,224,0)}}
+/* commands: the dark terminal of the design */
+#app .hcd-term{background:#17171C;border-color:#17171C;color:#E8E8EE}
+#app .hcd-term .hcd-cmd{color:#9C9CA8}
+#app .hcd-term .hcd-dim{color:#8F80FF}
+#app .hcd-out{background:#17171C;color:#C9C9D1}
+#app .hcd-dlg pre.hcd-term{background:#17171C;color:#E8E8EE}
+/* the ask card ('Ask each step') */
+#app .hcd-perm{border:2px solid #5B45E0;background:#FBFAFF;align-items:stretch}
+#app .hcd-perm .hcd-term,#app .hcd-perm .hcd-diff{margin:4px 0;max-height:260px}
+#app .hcd-perm code{font-family:var(--mono);font-size:12.5px}
+/* the Terminal pane */
+#app .hcd-termwrap{display:flex;flex-direction:column;gap:14px;padding:12px 16px 20px;overflow:auto}
+#app .hcd-shellh{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13.5px}
+#app .hcd-shellout{margin:0;max-height:none;min-height:60px}
+/* Edit on her own messages (shown on hover / focus, always on touch) */
+#app .hck-me{position:relative}
+#app .hcd-editmsg{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:0;border-radius:8px;background:transparent;color:var(--mut);font:500 12.5px var(--fd);cursor:pointer;opacity:0;transition:opacity var(--t,.15s)}
+#app .hcd-editmsg .hcd-ic{width:14px;height:14px}
+#app .hck-me:hover .hcd-editmsg,#app .hcd-editmsg:focus-visible{opacity:1}
+#app .hcd-editmsg:hover{background:var(--sunk);color:var(--ink)}
+@media (hover:none){#app .hcd-editmsg{opacity:1}}
+/* the mode chip under the box: tap to change how Hoola works */
+#app .hcd-modechip{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border:0;border-radius:999px;background:transparent;color:var(--mut);font:500 12px var(--fd);cursor:pointer}
+#app .hcd-modechip:hover{background:var(--sunk);color:var(--ink)}
+#app .hcd-modechip .hcd-ic{width:12px;height:12px}
+@media (prefers-reduced-motion:reduce){#app .hcd-rs.now .hcd-rsd{animation:none}}
+
+/* v0.999 the last gaps: the context meter, the @ / slash picker, the question card */
+#app .hcd-ctx{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 8px;border:0;border-radius:999px;background:transparent;color:var(--mut);font:500 12px var(--fd);cursor:pointer;font-variant-numeric:tabular-nums;margin-right:auto}
+#app .hcd-ctx:hover{background:var(--sunk);color:var(--ink)}
+#app .hcd-ctx i{width:12px;height:12px;border-radius:50%;background:conic-gradient(var(--pri) calc(var(--p) * 1%),var(--hair2,#E4E4EA) 0)}
+#app .hcd-ctx.hi{color:var(--warn)}
+#app .hcd-ctx.hi i{background:conic-gradient(var(--warn) calc(var(--p) * 1%),var(--hair2,#E4E4EA) 0)}
+#app .hcd-cp{position:relative}
+#app .hcd-pick{position:absolute;left:0;right:0;bottom:calc(100% + 6px);z-index:30;display:flex;flex-direction:column;max-height:320px;overflow:auto;padding:6px;border:1px solid var(--line);border-radius:12px;background:var(--surface,#FFF);box-shadow:0 12px 30px -18px rgba(23,23,28,.45)}
+#app .hcd-pickr{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr) auto;align-items:center;gap:10px;min-height:36px;padding:0 10px;border:0;border-radius:8px;background:transparent;text-align:left;font:400 13.5px var(--fd);color:var(--ink);cursor:pointer}
+#app .hcd-pickr:first-child,#app .hcd-pickr:hover,#app .hcd-pickr:focus-visible{background:var(--sunk)}
+#app .hcd-pickr b{font-weight:600}
+#app .hcd-pickr code{font-family:var(--mono);font-size:12.5px}
+#app .hcd-pickr small{color:var(--mut);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#app .hcd-pickr em{font-style:normal;font-size:12px;color:var(--pri-ink);background:var(--pri-soft);padding:1px 7px;border-radius:999px}
+#app .hcd-qrow{display:flex;gap:8px;align-items:center;width:100%}
+#app .hcd-qrow input{flex:1;min-width:0;height:36px;padding:0 12px;border:1px solid var(--line);border-radius:10px;font:400 14px var(--fd);background:var(--surface,#FFF);color:var(--ink)}
+/* v0.999 CLAUDE CODE, THE LAST TEN: the .claude file editor, plugins, the wider dialog while editing */
+#app .hcd-dlg:has(.hcd-cfed){width:min(720px,calc(100vw - 32px))}
+#app .hcd-cflist{display:flex;flex-direction:column;gap:2px;max-height:260px;overflow:auto;margin:6px 0 4px}
+#app .hcd-cfrow{width:100%;border:0;background:transparent;color:var(--ink);padding:8px 10px;border-radius:8px;cursor:pointer;text-align:left;font:inherit}
+#app .hcd-cfrow:hover,#app .hcd-cfrow:focus-visible{background:var(--hover,rgb(0 0 0 / .05))}
+#app .hcd-cfrow svg{width:14px;height:14px;opacity:.6}
+#app .hcd-cfed{width:100%;min-height:320px;font-family:var(--mono);font-size:13px;line-height:1.5;tab-size:2;resize:vertical;white-space:pre;overflow:auto}
+#app .hcd-plug{align-items:flex-start;gap:8px}
+#app .hcd-plug p{margin:2px 0 0;font-size:13px}
+#app .hcd-dlg h3{font-size:14px;font-weight:600;margin:14px 0 6px}
+#app .hcd-hookmsg{margin:0 0 6px;font-size:13px;color:var(--ink)}
+/* v0.999 rewind choices (Claude Code's /rewind) */
+#app .hcd-rwopts{display:flex;flex-direction:column;gap:8px;margin:12px 0 4px}
+#app .hcd-rwopt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:left;padding:10px 12px;border:1px solid var(--hair2);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer}
+#app .hcd-rwopt:hover,#app .hcd-rwopt:focus-visible{background:var(--hov)}
+#app .hcd-rwopt b{font-weight:600;font-size:14px}
+#app .hcd-rwopt span{font-size:13px;color:var(--mut)}
+#app .hcd-cmdlist{max-height:46vh;overflow:auto;margin:6px 0}
+#app .hcd-cmdlist code{white-space:nowrap}
+#app .hcd-bgtag{display:inline-block;margin-left:6px;padding:0 7px;border-radius:999px;background:var(--hov);font-size:12px;font-weight:500}
+
+/* v0.999 an agent's own copy: its buttons sit under the line */
+.hcd-wtb{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+
+/* v0.999 THE FEED LIKE CLAUDE CODE: a fold names what was done, screenshots at the end of its line, the files card under
+   the answer, and Hoola Code's words in the plain sans Claude Code uses (the main chat keeps its serif) */
+#app .hcd .hck,#app .hcd{--hck-fr:var(--hck-fb)}
+#app .hcd-fh .hcd-link{border:0;background:transparent;padding:2px 4px;font:500 13px/1.4 var(--fd);color:var(--mut);text-decoration:none;cursor:pointer}
+#app .hcd-fh .hcd-link:hover,#app .hcd-fh .hcd-link:focus-visible{color:var(--ink)}
+#app .hcd-say,#app .hcd-col>.hcd-say{font-family:var(--fd)}
+#app .hcd .hcd-wgrp>.hck-fold>summary{display:flex;width:100%;box-sizing:border-box}
+#app .hcd .hcd-wstat{font:500 12px/1 var(--mono);font-variant-numeric:tabular-nums}
+#app .hcd .hcd-wstat em{font-style:normal}
+#app .hcd-thumbs{display:inline-flex;align-items:center;gap:4px;margin-left:auto;padding-left:12px}
+#app .hcd-thumbs img{width:22px;height:22px;object-fit:cover;object-position:top;border:1px solid var(--line);border-radius:4px;background:var(--sunk)}
+#app .hcd-thumbs em{font-style:normal;font-size:12px;color:var(--mut);margin-right:2px}
+#app .hcd-files{margin:14px 0 6px;max-width:680px;border:1px solid var(--line);border-radius:12px;background:var(--bg);overflow:hidden}
+#app .hcd-fh{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13.5px}
+#app .hcd-fh b{font-weight:600}
+#app .hcd-files ul{list-style:none;margin:0;padding:4px 0}
+#app .hcd-files li{display:flex;align-items:center;gap:10px;padding:6px 14px;font-size:13.5px}
+#app .hcd-fic{width:18px;color:var(--mut);font:500 12px/1 var(--mono);text-align:center}
+#app .hcd-fnm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono);font-size:12.5px}
+#app .hcd-files em{font:500 12px/1 var(--mono);font-style:normal;font-variant-numeric:tabular-nums}
+#app .hcd-fall{display:flex;align-items:center;gap:8px;width:100%;padding:9px 14px;border:0;border-top:1px solid var(--line);background:transparent;font:500 13px/1.4 var(--fd);color:var(--ink);cursor:pointer;text-align:left}
+#app .hcd-fall span{flex:1}
+#app .hcd-fall:hover,#app .hcd-fall:focus-visible{background:var(--sunk)}
+/* v0.999 ECC epic card: the planned GitHub issues */
+#app .hcd .hcd-epic ol{margin:6px 0 0;padding-left:20px;font-size:13px;line-height:1.5}
+#app .hcd .hcd-epic li.done{color:var(--mut);text-decoration:line-through}
+#app .hcd .hcd-epic a{color:inherit;text-decoration:underline}

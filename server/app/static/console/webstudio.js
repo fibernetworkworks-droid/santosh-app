@@ -70,7 +70,7 @@
     pic: '<rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 15l5-5 4 4 3-3 6 6"/>', sheet: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/>',
     pc: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>', tab: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M11 18h2"/>',
     phone: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>', reload: '<path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/>',
-    ext: '<path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5"/>', lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    ext: '<path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5"/>', aim: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>', lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
     hist: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/>', sel: '<path d="M4 4l7 17 2-7 7-2z"/>', check: '<path d="M5 12l5 5 9-10"/>',
     stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>', code: '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>', chev: '<path d="M6 9l6 6 6-6"/>', arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>', pause: '<path d="M9 5v14M15 5v14"/>',
@@ -140,6 +140,7 @@
     tickClocks();
   }
   function panelHead(title, sub, opts = {}) {
+    if (opts.live) return `<div class="ptop phd wk lv"><span class="pttl ell">${esc(S(title))}</span>${opts.extra || ''}${paneX()}</div>`;
     return `<div class="ptop phd wk"><span class="pttl ell">${esc(S(title))}</span><span class="psub"><span class="psm"${opts.mark ? '' : ' hidden'}>${hmThink(16)}</span><span class="ell${opts.mark ? '' : ' shim'}">${esc(S(sub))}</span></span>${opts.extra || ''}<span class="sp"></span>${paneX()}</div>`;
   }
   function workPane(pane, o) {
@@ -361,10 +362,10 @@
     } else {
       main = `<div class="aura" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
       <section class="hero"><span class="eyebrow"><b>New</b>Watch your website being built, live${ico('arrow', 14)}</span><h1 id="wsGreet">${esc(greetLine(''))}</h1>
-        <p class="mut">Describe your business in one line. Hoola writes every page, shows you three complete designs, and builds the one you pick, right in front of you. Nothing goes live until you tap.</p>
+        <p class="mut">Describe what you want to make in one line: for a business, for yourself, an event, a class, or just for fun. Hoola plans every page, shows it to you first, and builds it right in front of you. Nothing goes live until you tap.</p>
         <form class="ask" data-form="ask">
           <label for="wsAsk" class="sr">Describe your website</label>
-          <textarea id="wsAsk" rows="3" maxlength="2000" placeholder="Ask Hoola to build a website for my clinic..." data-type-ph>${esc(PREFILL)}</textarea>
+          <textarea id="wsAsk" rows="3" maxlength="2000" placeholder="Ask Hoola to build a portfolio, a store, a wedding page, a game..." data-type-ph>${esc(PREFILL)}</textarea>
           <div class="bar">
             <button class="b ghost" type="button" data-src="old">${ico('globe', 15)}Use my old site</button>
             <button class="b ghost" type="button" data-src="shot">${ico('pic', 15)}From a screenshot</button>
@@ -401,9 +402,9 @@
 
 
   /* ================= v0.835 GHAR + SHURUAAT (L12): greeting, typewriter, chips, real starters ================= */
-  const CHIPS = ['Website', 'Online store', 'Dashboard', 'Booking site', 'Portal', 'Landing page', 'Blog', 'Internal tool'];
-  const ENDS = ['a website for my clinic...', 'a dashboard to track my sales...', 'an online store that takes UPI...', 'a portal where parents see marks...',
-    'a booking page for my salon...', 'a landing page for my new course...', 'a tool my staff use to log visits...'];
+  const CHIPS = ['Website', 'Online store', 'Web app', 'Portfolio', 'Event', 'Community', 'Course', 'Tool or game'];
+  const ENDS = ['a website for my clinic...', 'a portfolio for my photography...', 'a wedding website with RSVP...', 'an online store that takes UPI...',
+    'a quiz game for my class...', 'an EMI calculator...', 'a page for our running club...', 'a dashboard to track my sales...', 'a course with lessons and quizzes...'];
   const GREETS = {
     morning: ['Good morning{n}. What should we build?', 'Morning{n}. Got an idea to start the day?', 'Good morning{n}. What are we making today?'],
     afternoon: ['Good afternoon{n}. What should we build?', 'Afternoon{n}. Got an idea?', 'Hello{n}. What are we making today?'],
@@ -986,18 +987,114 @@
   }
 
   const MORE_VIEWS = VIEWS.filter(([k]) => k !== 'preview' && k !== 'code');
-  function viewsBar(extra = '') {
+  function viewsBar(extra = '', live = false) {
     const looks = S(CUR.status) === 'looks' && L(CUR.looks).length, proto = S(CUR.status) === 'prototype';
-    if (!hasVersion(CUR) && (WORKING(CUR) || PMAKING(CUR))) return panelHead(name(CUR), PMAKING(CUR) ? 'Making the prototype' : 'Building', {mark: true, extra});
+    if (!hasVersion(CUR) && (WORKING(CUR) || PMAKING(CUR))) return panelHead(name(CUR), PMAKING(CUR) ? 'Making the prototype' : 'Building', {mark: true, extra, live});
     const pv = proto ? 'Prototype' : looks ? '3 looks' : 'Preview';
     const seg = `<div class="pvseg" role="group" aria-label="View">${[['preview', pv, 'eye'], ['code', 'Code', 'code']].map(([k, n, ic]) => `<button type="button" data-view="${k}" aria-pressed="${VIEW === k}"${VIEW === k ? ' aria-current="page"' : ''} aria-label="${n}" title="${n}">${ico(ic, 15)}</button>`).join('')}</div>`;
     const mv = MORE_VIEWS.find(([k]) => k === VIEW);
     const ttl = VIEW === 'preview' ? pv + (proto && M(CUR.prototype).v ? ` · v${M(CUR.prototype).v}` : hasVersion(CUR) ? ` · v${CUR.version}` : '') : VIEW === 'code' ? 'Code' : mv ? mv[1] : '';
     const more = `<span class="vmw"><button class="b sm ghost vmore${mv ? ' on' : ''}" type="button" data-act="views-more" aria-haspopup="menu" aria-expanded="false">${esc(mv ? mv[1] : 'More')}${ico('chev', 13)}</button></span>`;
-    return `<div class="ptop phd">${seg}<span class="pttl ell">${esc(ttl)}</span>${extra}${extra.includes('class="sp"') ? '' : '<span class="sp"></span>'}${more}${paneX()}</div>`;
+    return `<div class="ptop phd${live ? ' lv' : ''}">${seg}<span class="pttl ell">${esc(ttl)}</span>${extra}${extra.includes('class="sp"') ? '' : '<span class="sp"></span>'}${more}${paneX()}</div>`;
   }
   const devSeg = () => `<div class="seg" role="group" aria-label="Device">${Object.entries(DEV).map(([k, d]) => `<button type="button" data-dev="${k}" aria-pressed="${DEVICE === k}" aria-label="${d[2]}" title="${d[2]}">${ico(k === 'pc' ? 'pc' : k === 'tablet' ? 'tab' : 'phone', 16)}</button>`).join('')}</div>`;
   const frame = (src, title) => `<div class="frame ${DEVICE}" data-w="${DEV[DEVICE][0]}" data-h="${DEV[DEVICE][1]}"><iframe title="${esc(title)}" sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" src="${esc(src)}"></iframe></div>`;
+
+  /* ================= v0.999.76 D7 EDIT FOREVER: a React website changed by clicking it, at Rs 0 ================= */
+  const RXE = {on: false, site: '', secs: null, pick: null, panel: '', design: null, busy: false};
+  const rxFrame = () => APP.querySelector('.frame iframe');
+  const rxSay = (m) => { const f = rxFrame(); try { f && f.contentWindow.postMessage(Object.assign({hoola: 'ae-cmd'}, m), '*'); } catch (e) { /* not ready */ } };
+  async function rxLoad(force) {
+    if (!CUR) return null;
+    if (RXE.site !== CUR.id) { RXE.site = CUR.id; RXE.secs = null; RXE.pick = null; RXE.design = null; }
+    if (!RXE.secs || force) { try { RXE.secs = await api('GET', `/api/sites/${enc(CUR.id)}/rx/sections`); } catch (e) { toast(e.message, true); RXE.secs = null; } }
+    return RXE.secs;
+  }
+  const rxSec = sec => L(RXE.secs?.sections).find(x => S(x.sec) === S(sec));
+  const NICE = {plain: 'Plain', surface: 'Soft', ink: 'Dark', primary: 'Brand colour'};
+  function rxDraw() {
+    const box = $('#wsRx'); if (!box) return;
+    if (RXE.panel === 'design' && RXE.design) {
+      const d = M(RXE.design.design), fs = L(RXE.design.fonts);
+      const opt = (list, cur, lab) => list.map(x => `<option value="${esc(S(x.key ?? x))}"${S(x.key ?? x) === S(cur) ? ' selected' : ''}>${esc(lab ? lab(x) : S(x.label ?? x))}</option>`).join('');
+      box.hidden = false;
+      box.innerHTML = `<div class="rxh"><b>Design</b><span class="sp"></span><button class="ib" type="button" data-act="rx-close" aria-label="Close">×</button></div>
+        <p class="mut sm">One change and every page follows. Every colour pair is checked before it is used. Free.</p>
+        <label class="fld">Brand colour<input class="in" type="color" data-rxd="colour" value="${esc(S(d.primary) || '#4f46e5')}"></label>
+        <label class="fld">Look<select class="in" data-rxd="direction">${opt(L(RXE.design.directions), d.seed_direction)}</select></label>
+        <label class="fld">Light or dark<select class="in" data-rxd="mode">${opt(L(RXE.design.modes), d.mode)}</select></label>
+        <label class="fld">Corners: <span data-rxr>${esc(S(d.radius))}</span> px<input type="range" min="0" max="32" step="1" data-rxd="radius" value="${esc(S(d.radius))}"></label>
+        <label class="fld">Spacing<select class="in" data-rxd="density">${opt(L(RXE.design.densities), d.density)}</select></label>
+        <label class="fld">Motion<select class="in" data-rxd="motion">${opt(L(RXE.design.motions), d.motion)}</select></label>
+        <label class="fld">Headings font<select class="in" data-rxd="display">${opt(fs.filter(f => L(f.role).includes('display')).map(f => S(f.name)), M(d.fonts).display)}</select></label>
+        <label class="fld">Text font<select class="in" data-rxd="text">${opt(fs.filter(f => L(f.role).includes('text')).map(f => S(f.name)), M(d.fonts).text)}</select></label>
+        <p class="mut sm" data-rxmsg>${esc(S(d.checks) === 'every colour pair readable' ? 'Every colour pair is readable.' : S(d.checks))}</p>`;
+      return;
+    }
+    const p = RXE.pick, sx = p ? rxSec(p.sec) : null;
+    const wait = L(RXE.secs?.languages).filter(x => Number(x.waiting) > 0);   // v0.999.77 D8: her other languages
+    const tr = wait.length ? `<div class="inl rxlang"><span class="mut sm">${esc(wait.map(x => `${S(x.label)}: ${S(x.waiting)} part${Number(x.waiting) === 1 ? '' : 's'} to translate`).join(' · '))}</span><span class="sp"></span><button class="b sm" type="button" data-act="rx-translate">Update translations</button></div>` : '';
+    if (!RXE.on || !p || !sx) { box.hidden = !RXE.on; if (RXE.on) box.innerHTML = `<div class="rxh"><b>Edit on the page</b><span class="sp"></span><button class="ib" type="button" data-act="rx-edit" aria-label="Stop editing">×</button></div><p class="mut sm">Click any words or section in the preview. Words, layouts and backgrounds change at no cost; your phone, address and hours are in Settings.</p>${tr}${wait.length ? '<p class="mut sm">Changed words show in your language until they are translated (a small AI cost, on your tap).</p>' : ''}`; return; }
+    const canWords = S(sx.block) !== 'custom' && S(p.text);
+    box.hidden = false;
+    if (p.pic && S(sx.block) !== 'custom' && L(sx.pictures).length) {
+      box.innerHTML = `<div class="rxh"><b>${esc(S(sx.page))} · section ${esc(S(sx.n))} · picture</b><span class="sp"></span><button class="ib" type="button" data-act="rx-close" aria-label="Close">×</button></div>${rxPicPanel(sx)}${tr}`;
+      return;
+    }
+    const picsHere = S(sx.block) !== 'custom' ? L(sx.pictures).length : 0;
+    box.innerHTML = `<div class="rxh"><b>${esc(S(sx.page))} · section ${esc(S(sx.n))}</b><span class="mut sm">${esc(S(sx.block).replace(/_/g, ' '))}</span><span class="sp"></span><button class="ib" type="button" data-act="rx-close" aria-label="Close">×</button></div>
+      ${canWords ? `<form data-form="rx-words"><label class="fld">Words<textarea class="in" name="new" rows="${Math.min(6, Math.max(2, Math.ceil(S(p.text).length / 38)))}" maxlength="600">${esc(S(p.text))}</textarea></label>
+        <div class="inl"><span class="mut sm">Free</span><span class="sp"></span><button class="b sm pri" type="submit">Save words</button></div></form>`
+        : `<p class="mut sm">${S(sx.block) === 'custom' ? 'This section was written specially for your site: ask in the chat to change its words.' : 'Click on words to change them.'}</p>`}
+      ${L(sx.alts).length ? `<label class="fld">Layout<select class="in" data-rxs="variant"><option value="">${esc(S(sx.variant) || 'as it is')} (now)</option>${L(sx.alts).map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('')}</select></label>` : ''}
+      ${L(sx.tones).length ? `<label class="fld">Background<select class="in" data-rxs="tone"><option value="">${esc(NICE[S(sx.tone) || 'plain'] || S(sx.tone))} (now)</option>${L(sx.tones).map(t => `<option value="${esc(t)}">${esc(NICE[t] || t)}</option>`).join('')}</select></label>` : ''}
+      ${picsHere ? `<div class="inl"><span class="mut sm">${picsHere} picture${picsHere === 1 ? '' : 's'} in this section</span><span class="sp"></span><button class="b sm" type="button" data-act="rx-pics">Change a picture</button></div>` : ''}
+      <div class="inl"><button class="b sm ghost bad" type="button" data-act="rx-drop">Leave this section out</button></div>${tr}`;
+  }
+  /* v0.999.130 D7 pictures: she clicked a picture of her React website -> one of her website's photos, none, or what it shows */
+  const rxBase = s2 => { const f = rxFrame(); try { return new URL(S(s2), f ? f.src : location.href).href; } catch { return ''; } };
+  const picName = src => S(src).split('/').pop().replace(/\.webp$/, '');
+  function rxSlot(p) {                                  // which place of the section she clicked: by its photo, else its words, else its order
+    const sx = p ? rxSec(p.sec) : null, ps = L(sx?.pictures); if (!p || !p.pic || !ps.length) return 0;
+    const nm = picName(p.pic.src), alt = S(p.pic.alt).trim();
+    let i = nm ? ps.findIndex(x => picName(x.src) === nm) : -1;
+    if (i < 0 && alt) i = ps.findIndex(x => S(x.alt).trim() === alt || S(x.label).trim() === alt);
+    if (i < 0) i = Math.min(Math.max(0, Number(p.pic.n) || 0), ps.length - 1);
+    return i;
+  }
+  function rxPicPanel(sx) {
+    const ps = L(sx.pictures), i = Math.min(RXE.slot || 0, ps.length - 1), cur = ps[i], mine = L(RXE.secs?.photos);
+    if (!cur) return '<p class="mut sm">This section shows no picture.</p>';
+    const now = picName(cur.src);
+    return `<div class="rxpic">
+      ${ps.length > 1 ? `<label class="fld">Picture<select class="in" data-rxpic="slot">${ps.map((x, k) => `<option value="${k}"${k === i ? ' selected' : ''}>${esc(S(x.label) || 'Picture ' + (k + 1))}${x.src ? '' : ' (no photo yet)'}</option>`).join('')}</select></label>` : `<p class="sm"><b>${esc(S(cur.label) || 'Picture')}</b>${cur.src ? '' : ' <span class="mut">(no photo yet)</span>'}</p>`}
+      ${mine.length ? `<div class="rxphotos" role="group" aria-label="Your website's photos">${mine.map(m => `<button type="button" class="rxph${S(m.name) === now ? ' on' : ''}" data-act="rx-pic-use" data-photo="${esc(S(m.name))}" aria-pressed="${S(m.name) === now}" title="${esc(S(m.alt) || S(m.name))}"><img src="${esc(rxBase(m.src))}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span>${esc(S(m.name))}</span></button>`).join('')}</div>`
+        : '<p class="mut sm">Your website has no photos yet. Upload one here.</p>'}
+      <form data-form="rx-pic-up" class="inl"><input class="in" type="file" name="file" accept="image/jpeg,image/png,image/webp" aria-label="Upload a new photo for this place"><button class="b sm" type="submit">Upload and use</button></form>
+      ${cur.alt_ok ? `<form data-form="rx-pic-alt"><label class="fld">What the picture shows<input class="in" name="alt" maxlength="200" value="${esc(S(cur.alt))}" placeholder="e.g. Our shop in Pune at night"></label>
+        <div class="inl"><span class="mut sm">Read out to blind visitors and by Google. Free.</span><span class="sp"></span><button class="b sm" type="submit">Save</button></div></form>` : ''}
+      ${cur.src ? '<div class="inl"><button class="b sm ghost" type="button" data-act="rx-pic-none">No photo here</button><span class="mut sm">The design\'s own picture shows instead.</span></div>' : ''}
+      <p class="mut sm">Free. The page is built again in about 30 seconds.</p></div>`;
+  }
+  const rxPicBody = extra => { const sx = rxSec(RXE.pick?.sec), ps = L(sx?.pictures), cur = ps[Math.min(RXE.slot || 0, ps.length - 1)];
+    return cur ? {sec: RXE.pick.sec, path: cur.path, ...extra} : null; };
+  async function rxDo(path, body, after) {
+    if (RXE.busy) return; RXE.busy = true;
+    try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/rx/${path}`, body || {}); toast(S(r.say).slice(0, 160)); if (after) after(r); await rxLoad(true); rxDraw(); rxWatch(); }
+    catch (er) { toast(er.message, true); }
+    finally { RXE.busy = false; }
+  }
+  let RXT = 0;
+  function rxWatch() {                                   // the debounced build lands -> the preview reloads by itself
+    clearTimeout(RXT); const site = CUR?.id, v0 = Number(RXE.secs?.version) || 0; let n = 0;
+    const tick = async () => {
+      if (!CUR || CUR.id !== site || ++n > 40) return;
+      try { const x = await api('GET', `/api/sites/${enc(site)}/rx/sections`); RXE.secs = x;
+        if (Number(x.version) > v0 && !x.building) { const f = rxFrame(); if (f) f.src = f.src; toast('The new version is in the preview.'); return; } } catch { /* try again */ }
+      RXT = setTimeout(tick, 3000);
+    };
+    RXT = setTimeout(tick, 3000);
+  }
 
   function drawPane() {
     const pane = $('#wsPane'); if (!pane || !CUR) return;
@@ -1005,19 +1102,30 @@
     const fn = {preview, code, cloud, integrations, health, settings, history: historyView, drafts: draftsView, publish, details: detailsView, plans: planView}[VIEW] || preview;
     if (fn !== preview) delete pane.dataset.live;
     fn(pane, CUR);
-    if (WORKING(CUR)) startPoll();
+    if (WORKING(CUR) || M(CUR.upgrade).status === 'building') startPoll();
   }
 
   function fit() {
     const fs = [...APP.querySelectorAll('.frame')]; if (!fs.length) return;
     const doit = () => fs.forEach(f => {
       const fr = f.querySelector('iframe'); if (!fr) return;
-      const w = Number(f.dataset.w), h = Number(f.dataset.h), k = Math.min(1, (f.clientWidth || w) / w);
+      const w = Number(f.dataset.w); let h = Number(f.dataset.h), k = Math.min(1, (f.clientWidth || w) / w);
+      const st = f.parentElement?.classList.contains('stage') ? f.parentElement : null;   // v0.999.43 the frame fills the stage
+      if (st) {
+        const cs = getComputedStyle(st), aw = st.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight),
+          ah = st.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+        if (f.classList.contains('pc')) { if (ah > 0) h = Math.max(h, Math.floor(ah / k)); }
+        else if (aw > 0 && ah > 0) {                                     // tablet / phone: the whole device in view
+          const bd = (f.offsetWidth - f.clientWidth) || 20;
+          k = Math.min(1, (aw - bd) / w, (ah - bd) / h);
+          f.style.width = Math.round(w * k + bd) + 'px';
+        }
+      }
       fr.style.width = w + 'px'; fr.style.height = h + 'px'; fr.style.transform = `scale(${k})`;
-      f.style.height = Math.round(h * k) + 'px';
+      f.style.height = Math.round(h * k) + (f.classList.contains('pc') ? 0 : (f.offsetHeight - f.clientHeight)) + 'px';
     });
     doit();
-    if (window.ResizeObserver) { RO?.disconnect(); RO = new ResizeObserver(doit); fs.forEach(f => RO.observe(f)); }
+    if (window.ResizeObserver) { RO?.disconnect(); RO = new ResizeObserver(doit); fs.forEach(f => RO.observe(f.parentElement?.classList.contains('stage') ? f.parentElement : f)); }
   }
 
   function preview(pane, v) {
@@ -1043,21 +1151,31 @@
       workPane(pane, {title: name(v), sub: t, label: cur ? S(cur.label) : S(b.now) || t, t0: a.started ? Number(a.started) : 0, ups: actUps(a), foot: note});
       return;
     }
-    const src = S(v.preview) + (EDIT ? '__edit/' : '');
-    const top = `<div class="url">${ico('lock', 14)}<span>${EDIT ? 'Edit mode · ' : ''}preview</span></div>${devSeg()}
+    const rx = M(v.react), isRx = !!S(rx.id);             // v0.999.65 D4: written as a React website from the kit
+    const src = S(v.preview) + (EDIT && !isRx ? '__edit/' : '');
+    const top = `<div class="url" title="A private preview: nobody else can see it until you publish.">${ico('lock', 14)}<span class="un">${esc(name(v))}</span><span class="ubadge${EDIT ? ' ed' : ''}">${EDIT ? 'Editing' : 'Draft · not live'}</span></div>${devSeg()}
       <button class="ib" type="button" data-act="reload" aria-label="Reload preview">${ico('reload', 16)}</button>
       ${v.preview ? `<a class="ib" href="${esc(S(v.preview))}" target="_blank" rel="noopener" aria-label="Open in a new tab">${ico('ext', 16)}</a>` : ''}`;
     const jd = LIVE.justDone && LIVE.justDone.site === S(v.id) ? LIVE.justDone : null;
     if (jd && LIVE.compare) return compareView(pane, v, jd, top);
+    if (UPG.compare === S(v.id) && S(M(v.upgrade).after)) return upgradeView(pane, v, top);
     pane.innerHTML = viewsBar(top)
       + (jd ? `<div class="edbar okbar"><b>New version v${esc(S(jd.to))} is ready</b><span class="ell">You are looking at it now. Nothing is live until you publish.</span><span class="sp"></span>
           <button class="b sm" type="button" data-act="compare">Before / after</button><button class="ib" type="button" data-act="jd-close" aria-label="Close">×</button></div>` : '')
 
       + (st === 'failed' || st === 'stopped' ? `<div class="edbar"><b>${st === 'failed' ? 'The last build stopped on a problem' : 'Building is paused'}</b><span class="ell">${esc(S(v.error))}</span><span class="sp"></span><button class="b sm pri" type="button" data-act="resume">${st === 'failed' ? 'Try again' : 'Continue'}</button></div>` : '')
       + (WORKING(v) ? `<div class="edbar"><span class="spin" aria-hidden="true"></span><span class="ell">${esc(S(b.now) || 'Updating your website…')}</span></div>` : '')
+      + (isRx ? `<div class="edbar okbar"><b>Written in React from your prototype</b><span class="ell">${L(rx.blanks).length ? 'Fill in before going live: ' + esc(L(rx.blanks).join(', ')) : 'Every section is a kit block with your words; ' + esc(S(rx.fixed || 0)) + ' small fixes made by code.'}</span><span class="sp"></span>
+          <button class="b sm${RXE.on ? ' pri' : ''}" type="button" data-act="rx-edit" aria-pressed="${RXE.on ? 'true' : 'false'}">${RXE.on ? 'Done editing' : 'Edit on the page'}</button>
+          <button class="b sm" type="button" data-act="rx-design">Design</button>
+          <button class="b sm ghost" type="button" data-act="rx-undo">Undo</button>
+          <a class="b sm ghost" href="#/app/${esc(S(rx.id))}">Open the code</a></div>` : '')
+      + (isRx && M(rx.critic).say ? `<div class="edbar okbar" data-critic><b>Design review</b><span class="ell">${esc(S(M(rx.critic).say))}${L(M(rx.critic).problems).length && !M(rx.critic).passed ? ' · still: ' + esc(L(M(rx.critic).problems).slice(0, 2).join('; ')) : ''}</span></div>` : '')
+      + upgBar(v, isRx)
       + '<div class="perrbar" id="wsPerr" role="alert" hidden></div>'
-      + `<div class="stage">${v.preview ? frame(src, 'Website preview') : '<div class="empty">No preview yet.</div>'}</div>`
+      + `<div class="stage">${v.preview ? frame(src, 'Website preview') : '<div class="empty">No preview yet.</div>'}${isRx ? '<aside id="wsRx" class="rxpanel" hidden></aside>' : ''}</div>`
       + (EDIT ? '<div id="wsYW"></div>' : '');
+    if (isRx) rxDraw();
     fit();
     drawErrors();
     if (EDIT) ywDraw();                                  // v0.795 YEH WALA: the preview toolbar, style panel, draw layer
@@ -1435,7 +1553,6 @@
   function setLivePage(slug) {
     LIVE.page = slug || 'home';
     const fr = APP.querySelector('iframe[data-live]'); if (fr && CUR) { fr.dataset.page = LIVE.page; fr.src = liveSrc(CUR, LIVE.page, -1); }
-    const u = $('#wsLUrl'); if (u) u.textContent = 'preview · ' + LIVE.page;
     drawLiveBits();
   }
   function finalSoon(sl, tries = 0) {          // the finished section, as the real page shows it (photos, icons)
@@ -1476,20 +1593,21 @@
     if (pane.dataset.live === sig && pane.dataset.dev === DEVICE && pane.dataset.code === String(LIVE.code)) { drawLiveBits(); return; }
     if (!pane.dataset.live) LIVE.from = hasVersion(v) ? Number(v.version) : 0;     // a change to a built site: before / after later
     pane.dataset.live = sig; pane.dataset.dev = DEVICE; pane.dataset.code = String(LIVE.code);
-    const tools = `<span class="sp"></span>${mode === 'site' ? devSeg() : ''}
-      <button class="b sm" type="button" data-live="follow" aria-pressed="${LIVE.follow}" title="Keep the part being written in view">Follow</button>
-      <button class="b sm" type="button" data-live="code" aria-pressed="${LIVE.code}">${ico('code', 14)}<span>Code</span></button>`;
+    // v0.999.41 ONE ROW: the live status, the page picker, device, Follow and Code all sit in the panel header
+    const tools = `<span class="lstat" id="wsLBar" aria-live="polite"></span>`
+      + (mode === 'site' ? `<span class="lpw"><button class="b sm ghost lpbtn" type="button" data-act="lpages" aria-haspopup="menu" aria-expanded="false" aria-controls="wsLPages"><span class="ell" id="wsLPageName">${esc(S(LIVE.page))}</span>${ico('chev', 13)}</button><div class="lpmenu" id="wsLPages" role="menu" aria-label="Pages being built" hidden></div></span>` : '')
+      + `<span class="sp"></span>${mode === 'site' ? devSeg() : ''}
+      <button class="b sm ghost ib" type="button" data-live="follow" aria-pressed="${LIVE.follow}" aria-label="Follow the part being written" title="Follow the part being written">${ico('aim', 16)}</button>
+      <button class="b sm ghost ib" type="button" data-live="code" aria-pressed="${LIVE.code}" aria-label="Code" title="Show the code as it is written">${ico('code', 16)}</button>`;
     let stage;
     if (mode === 'looks') {
       const n = Math.max(3, LIVE.looks.length);
       stage = `<div class="lgrid">${Array.from({length: n}, (_, i) => `<div class="lcol"><div class="lhead"><b>Look ${i + 1}</b><span class="mut sm ell" data-lklabel="${i}">${esc(S(LIVE.looks[i]?.label))}</span><span class="sp"></span><span class="lstate" data-lkstate="${i}"></span></div>
         ${liveFrame(liveSrc(v, 'home', i), `Look ${i + 1} being made`, 'home', i, 'pc')}</div>`).join('')}</div>`;
     } else {
-      const fr = liveFrame(liveSrc(v, LIVE.page, -1), 'Your website being built', LIVE.page, -1);
-      stage = `<nav class="lpages" id="wsLPages" aria-label="Pages being built"></nav>
-        <div class="stage">${DEVICE === 'pc' ? `<div class="bwin"><div class="bchrome" aria-hidden="true"><i></i><i></i><i></i><span class="burl">${ico('lock', 12)}<span id="wsLUrl">preview · ${esc(S(LIVE.page))}</span></span></div>${fr}</div>` : fr}</div>`;
+      stage = `<div class="stage lstage">${liveFrame(liveSrc(v, LIVE.page, -1), 'Your website being built', LIVE.page, -1)}</div>`;
     }
-    pane.innerHTML = viewsBar(tools) + `<div class="lbar" id="wsLBar" aria-live="polite"></div>`
+    pane.innerHTML = viewsBar(tools, true)
       + `<div class="lwrap${LIVE.code ? ' withcode' : ''}"><div class="lmain">${stage}</div>${LIVE.code ? '<aside class="lcode" aria-label="Code being written"><nav class="ltabs" id="wsLTabs"></nav><pre id="wsLCode" tabindex="0"></pre></aside>' : ''}</div>`;
     fit(); drawLiveBits(); startTick();
   }
@@ -1501,10 +1619,11 @@
     const bar = $('#wsLBar');
     if (bar) {
       const lead = act.sort((x, y) => Number(y.at) - Number(x.at))[0];
-      bar.innerHTML = `<span class="livetag"><i aria-hidden="true"></i>LIVE</span><span class="ell sp">${lead ? `${esc(lead.kind === 'fix' ? '' : lead.state === 'think' ? 'Designing ' : 'Writing ')}<b>${esc(S(lead.label))}</b>${act.length > 1 ? ` <span class="mut">· ${act.length} parts at once</span>` : ''}`
-        : esc(S([...L(a.steps)].reverse().find(x => x.state === 'run')?.label) || S(b.now) || 'Working…')}</span>
-        ${Number(b.total) ? `<span class="mut sm">${esc(S(b.done || 0))}/${esc(S(b.total))} parts</span>` : ''}${a.started ? `<span class="tm" data-t0="${Number(a.started)}"></span>` : ''}
-        ${['building', 'checking'].includes(S(CUR.status)) ? '<button class="b sm" type="button" data-act="stop">Pause</button>' : ''}`;
+      const what = lead ? `${esc(lead.kind === 'fix' ? '' : lead.state === 'think' ? 'Designing ' : 'Writing ')}<b>${esc(S(lead.label))}</b>`
+        : esc(S([...L(a.steps)].reverse().find(x => x.state === 'run')?.label) || S(b.now) || (S(CUR.status) === 'checking' ? 'Checking every page' : 'Working…'));
+      const html = `<span class="livetag"><i aria-hidden="true"></i>LIVE</span><span class="lead ell">${what}${act.length > 1 ? ` <span class="mut lmore">· ${act.length} at once</span>` : ''}</span>`
+        + `${Number(b.total) ? `<span class="lparts">${esc(S(b.done || 0))}/${esc(S(b.total))} parts</span>` : ''}${a.started ? `<span class="tm" data-t0="${Number(a.started)}"></span>` : ''}`;
+      if (bar.dataset.h !== html) { bar.dataset.h = html; bar.innerHTML = html; tickClocks(); }
     }
     if (looksMode) {
       LIVE.looks.forEach((lk, i) => { const e = APP.querySelector(`[data-lklabel="${i}"]`); if (e) e.textContent = S(lk.label); });
@@ -1516,10 +1635,12 @@
     const pg = $('#wsLPages');
     if (pg) {
       const pages = L(M(CUR.plan).pages).filter(p => !p.template_of);
+      const cur = pages.find(p => S(p.slug) === LIVE.page), nm = $('#wsLPageName');
+      if (nm) nm.textContent = S(cur?.title) || S(LIVE.page);
       pg.innerHTML = pages.map(p => {
         const mine = all.filter(x => x.look < 0 && S(x.page) === S(p.slug)), w = mine.some(writing);
         const done = mine.length && !w && mine.every(x => x.state === 'done');
-        return `<button type="button" data-lpage="${esc(S(p.slug))}" aria-current="${S(p.slug) === LIVE.page ? 'page' : 'false'}">${w ? '<span class="dot v"></span>' : done ? tick : ''}<span class="ell">${esc(S(p.title) || S(p.slug))}</span></button>`;
+        return `<button type="button" role="menuitem" data-lpage="${esc(S(p.slug))}" aria-current="${S(p.slug) === LIVE.page ? 'page' : 'false'}">${w ? '<span class="dot v"></span>' : done ? tick : ''}<span class="ell">${esc(S(p.title) || S(p.slug))}</span></button>`;
       }).join('');
     }
     const tabs = $('#wsLTabs'), pre = $('#wsLCode');
@@ -1549,6 +1670,54 @@
     fit();
   }
 
+  /* ---------- v0.999.119 D9: Upgrade this site - the new design beside her website, her tap to keep it ---------- */
+  const UPG = {compare: '', busy: false};
+  function upgBar(v, isRx) {
+    const u = M(v.upgrade);
+    if (!Object.keys(u).length) return '';
+    if (isRx && u.kept) return `<div class="edbar" data-upgrade="kept"><b>On the new design</b><span class="ell">Your old design is kept unchanged; you can go back to it any time.</span><span class="sp"></span>
+        <button class="b sm ghost" type="button" data-act="upg-back">Go back to the old design</button></div>`;
+    if (isRx) return '';
+    if (u.status === 'building') return `<div class="edbar" data-upgrade="building"><span class="spin" aria-hidden="true"></span><b>Making the new design</b><span class="ell">With your pages, your words and your photos. Your website stays exactly as it is meanwhile.</span></div>`;
+    if (u.status === 'ready') {
+      const c = M(u.counts);
+      return `<div class="edbar okbar" data-upgrade="ready"><b>The new design is ready</b><span class="ell">${c.sections ? esc(S(c.with_her_words)) + ' of ' + esc(S(c.sections)) + ' sections carry your own words. ' : ''}${L(u.blanks).length ? 'Fill in before going live: ' + esc(L(u.blanks).join(', ')) + '. ' : ''}Compare it with your website before you decide.</span><span class="sp"></span>
+        <button class="b sm pri" type="button" data-act="upg-compare">Compare</button><button class="b sm ghost" type="button" data-act="upg-discard">Throw it away</button></div>`;
+    }
+    if (u.status === 'failed') return `<div class="edbar" data-upgrade="failed"><b>The new design did not work out</b><span class="ell">${esc(S(u.error))} Your website is unchanged.</span><span class="sp"></span>
+        <button class="b sm" type="button" data-act="upg-start">Try again</button><button class="b sm ghost" type="button" data-act="upg-discard">Throw it away</button></div>`;
+    if (u.can) return `<div class="edbar" data-upgrade="can"><b>A new design engine is here</b><span class="ell">Hoola rebuilds this website in the new design with your pages, words and photos. Your website does not change until you compare and keep it. It uses some credits.</span><span class="sp"></span>
+        <button class="b sm" type="button" data-act="upg-start">Upgrade this site</button></div>`;
+    return '';
+  }
+  function upgradeView(pane, v, top) {
+    delete pane.dataset.live;
+    const u = M(v.upgrade), page = pageRel(LIVE.page);
+    pane.innerHTML = viewsBar(top) + `<div class="edbar okbar" data-upgrade="compare"><b>Your website and its new design</b><span class="ell">Your website now on the left, the new design on the right. Nothing changes until you keep it; your live address changes only when you put the website live.</span><span class="sp"></span>
+        <button class="b sm pri" type="button" data-act="upg-keep" data-hash="${esc(S(u.hash))}">Keep the new design</button><button class="b sm" type="button" data-act="upg-close">Not now</button></div>
+      <div class="cmp"><div><div class="lhead"><b>Your website now</b></div>${frame(S(u.before) + page, 'Your website now')}</div>
+        <div><div class="lhead"><b>The new design</b></div>${frame(S(u.after) + page, 'The new design')}</div></div>`;
+    fit();
+  }
+  async function upgAct(act, d) {
+    if (UPG.busy || !CUR) return;
+    if (act === 'upg-compare') { UPG.compare = S(CUR.id); drawPane(); return; }
+    if (act === 'upg-close') { UPG.compare = ''; drawPane(); return; }
+    if (act === 'upg-discard' && !confirm('Throw the new design away? Your website stays as it is.')) return;
+    UPG.busy = true;
+    try {
+      const id = enc(CUR.id);
+      const out = act === 'upg-start' ? await api('POST', `/api/sites/${id}/upgrade`, {})
+        : act === 'upg-keep' ? await api('POST', `/api/sites/${id}/upgrade/keep`, {hash: S(d.hash)})
+        : act === 'upg-back' ? await api('POST', `/api/sites/${id}/upgrade/back`, {})
+        : await api('DELETE', `/api/sites/${id}/upgrade`);
+      UPG.compare = '';
+      if (out && out.say) toast(out.say);
+    } catch (e) { toast(e.message, true); }
+    finally { UPG.busy = false; }
+    await reload();
+  }
+
   const studioBtn = (label, ask, pri) => `<button class="b ${pri ? 'pri' : ''}" type="button" data-ask="${esc(ask)}">${esc(label)}</button>`;
 
   async function code(pane, v) {
@@ -1559,8 +1728,8 @@
     if (VIEW !== 'code' || CUR?.id !== v.id) return;
     const groups = L(t.files);
     pane.innerHTML = viewsBar(`<span class="sp"></span><button class="b" type="button" data-act="export" data-fmt="zip">Download ZIP</button><button class="b" type="button" data-act="export" data-fmt="react">React + Vite</button>`)
-      + `<div class="split"><nav class="subnav" aria-label="Files">${groups.map(g => `<div class="h">${esc(S(g.title))}</div>${L(g.files).map(f => `<button type="button" data-file="${esc(S(f.path))}"><span class="mono ell">${esc(S(f.label))}</span></button>`).join('')}`).join('') || '<div class="h">No files yet</div>'}</nav>
-        <div class="code" id="wsCode"><div class="empty">Choose a file on the left. Every save is checked for safety, becomes a version, and Undo brings it back.</div></div></div>`;
+      + `<div class="split"><nav class="subnav" aria-label="Files">${groups.map(g => `<div class="h">${esc(S(g.title))}</div>${L(g.files).map(f => { const [nm, ...ty] = S(f.label).split(' · '), t = ty.join(' · '); return `<button type="button" data-file="${esc(S(f.path))}" title="${esc(S(f.path))}"><span class="fty ${esc(t.toLowerCase().replace(/[^a-z]/g, ''))}">${esc(t || 'File')}</span><span class="ell">${esc(nm)}</span></button>`; }).join('')}`).join('') || '<div class="h">No files yet</div>'}</nav>
+        <div class="code" id="wsCode"><div class="cempty"><span class="cico" aria-hidden="true">${ico('code', 22)}</span><b>Pick a file to read or change</b><span>Every save is checked for safety and becomes a new version. Undo brings the last one back.</span></div></div></div>`;
   }
 
   async function openFile(path) {
@@ -1794,7 +1963,7 @@
         <p class="mut sm">A code works for 10 minutes and only once; the email never says whether an account exists. A new password signs that person out everywhere.</p>
         <h3 style="margin-top:12px">Receipts</h3><p class="mut sm">After a signed-in visitor adds an entry, one short email says it arrived. It repeats nothing they typed.</p>
         ${lists.length ? lists.map(c => `<label class="inl"><input type="checkbox" name="rc" value="${esc(S(c.key))}" ${rec.includes(S(c.key)) ? 'checked' : ''}> ${esc(S(c.label))}</label>`).join('') : '<p class="mut">No lists yet.</p>'}
-        <label class="fld">Replies go to<input class="in" name="reply_to" type="email" value="${esc(S(m.reply_to))}" placeholder="you@yourbusiness.in"></label>
+        <label class="fld">Replies go to<input class="in" name="reply_to" type="email" value="${esc(S(m.reply_to))}" placeholder="you@example.in"></label>
         <div class="inl" style="justify-content:flex-end"><button class="b pri" type="submit">Save</button></div></form>
       ${log.length ? `<h3>Sent lately</h3><div class="tbox"><table class="t"><thead><tr><th scope="col">When</th><th scope="col">What</th><th scope="col">To</th><th scope="col">Result</th></tr></thead>
         <tbody>${log.map(x => `<tr><td class="nw">${esc(when(x.at))}</td><td>${esc(S(x.kind).replace('_', ' '))}</td><td>${esc(S(x.to))}</td><td>${x.ok ? pill('Sent', 'ok') : pill(S(x.why) || 'Not sent', 'bad')}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
@@ -1847,18 +2016,36 @@
 
   function settings(pane, v) {
     const f = M(v.facts);
-    const fields = [['name', 'Business name'], ['phone', 'Phone'], ['whatsapp', 'WhatsApp'], ['email', 'Email'], ['hours', 'Opening hours'], ['address', 'Address'], ['city', 'City'], ['instagram', 'Instagram']];
+    /* O1: the details follow what the site is for - a business keeps "Business details", anything else speaks plainly. */
+    const purpose = S(M(M(v.plan).spec).purpose), biz = !purpose || purpose === 'business';
+    const fields = [['name', biz ? 'Business name' : 'Site name'], ['phone', 'Phone'], ['whatsapp', 'WhatsApp'], ['email', 'Email'],
+      ['hours', biz ? 'Opening hours' : 'Times (if any)'], ['address', biz ? 'Address' : 'Place (if any)'], ['city', 'City'], ['instagram', 'Instagram']];
     pane.innerHTML = viewsBar() + `<div class="main" style="max-width:900px">
-      <form class="cardp" data-form="facts"><h3>Business details</h3><p class="mut sm">Used on every page. A change here is used in the next version; ask in the chat to rebuild now.</p>
+      <form class="cardp" data-form="facts"><h3>${biz ? 'Business details' : 'Site details'}</h3><p class="mut sm">Used on every page. A change here is used in the next version; ask in the chat to rebuild now.</p>
         <div class="g2">${fields.map(([k, l]) => `<label class="fld">${esc(l)}<input class="in" name="${k}" value="${esc(S(f[k]))}" autocomplete="off"></label>`).join('')}</div>
         <div class="inl" style="justify-content:flex-end"><button class="b pri" type="submit">Save details</button></div></form>
       <form class="cardp" data-form="instr"><h3>Instructions for Hoola</h3><p class="mut sm">Your standing brief for this website: who it is for, tone, colours, words to use or avoid, what must never change. Hoola reads it on every message about this site, in every mode.</p>
         <textarea id="wsInstr" class="in" rows="7" maxlength="10000" placeholder="Example: For families in Nagpur. Warm and simple English. Never change the phone number or the Book now button."></textarea>
         <div class="inl"><span class="mut sm" id="wsInstrN">0 / 10,000</span><span class="sp"></span><button class="b pri" type="submit">Save instructions</button></div></form>
+      <section class="cardp" data-likes><h3>Sites you like</h3><p class="mut sm">Give Hoola up to 8 websites whose look you like. They are used as a pattern - the feel, the colours - when your React website is written and reviewed. Nothing is copied from them: no words, pictures or code.</p>
+        <div id="wsLikes"><p class="mut sm">Loading…</p></div>
+        <form class="inl" data-form="like-add" style="margin-top:10px"><input class="in" name="url" maxlength="400" placeholder="https://a-site-you-like.com" aria-label="Website address" required><input class="in" name="note" maxlength="300" placeholder="What you like about it (optional)" aria-label="What you like about it"><button class="b" type="submit">Add</button></form></section>
       <section class="cardp"><h3>SEO and Google</h3><p class="mut">Page titles, descriptions, sitemap and Search Console are set by Hoola on every build.</p><div class="inl">${studioBtn('Check SEO now', 'Check this website\'s SEO', false)}</div></section>
       <section class="cardp"><h3>Team</h3><p class="mut">Writers draft, editors review, publishers put live.</p><div class="inl">${studioBtn('Invite a team member', 'Add a team member to this website\'s CMS: ', false)}</div></section>
       <section class="cardp danger"><h3>Take the site down</h3><p class="mut">The site stops answering; your pages, data and versions are kept.</p><div class="inl"><button class="b bad" type="button" data-act="takedown">Take down…</button></div></section></div>`;
     loadInstr();
+    loadLikes();
+  }
+  /* v0.999.75 D6: the sites she likes (patterns for the writer and the critic, never copied) */
+  async function loadLikes() {
+    const box = $('#wsLikes'); if (!box) return;
+    let r; try { r = await api('GET', '/api/appengine-refs'); } catch (e) { box.innerHTML = `<p class="mut sm">${esc(e.message)}</p>`; return; }
+    if (!box.isConnected) return;
+    const ls = L(r.links);
+    box.innerHTML = ls.length ? ls.map(x => `<div class="kv" data-like="${esc(S(x.id))}"><span class="ell"><b>${esc(S(x.host))}</b>${S(x.note) ? ` <span class="mut sm">· ${esc(S(x.note))}</span>` : ''}</span>
+        <span class="sp"></span>${L(x.colours).slice(0, 5).map(c => `<span title="${esc(c)}" style="display:inline-block;width:14px;height:14px;border-radius:4px;border:1px solid rgba(0,0,0,.15);background:${esc(c)}"></span>`).join('')}
+        <button class="b sm ghost" type="button" data-act="like-del" data-like-id="${esc(S(x.id))}">Remove</button></div>`).join('')
+      : '<p class="mut sm">No sites yet.</p>';
   }
 
   /* ---------- v0.808 WAPAS (L7): any version back, bookmarks, what changed, undo per reply, revert and resend ---------- */
@@ -2012,7 +2199,7 @@
   }
 
   /* ---------- polling while the server works ---------- */
-  function sig(v) { return [v.status, v.version, M(v.board).pct, M(v.board).now, L(v.looks).length, L(v.looks).map(x => x.full).join(), v.error, M(v.prototype).v, M(v.prototype).status, L(M(v.prototype).made).length].join('|'); }
+  function sig(v) { return [v.status, v.version, M(v.board).pct, M(v.board).now, L(v.looks).length, L(v.looks).map(x => x.full).join(), v.error, M(v.prototype).v, M(v.prototype).status, L(M(v.prototype).made).length, M(v.upgrade).status, M(v.upgrade).hash, !!M(v.upgrade).kept].join('|'); }
   function startPoll() {
     stopPoll(); SIG = sig(CUR);
     const id = CUR.id;
@@ -2336,7 +2523,7 @@
     } else if (K.t.busy) { K.t.sync({key: st.key, messages: st.msgs, working: false}); K.liveOn = false; }
     adorn(st.items);
     const box = $('#wsMsgs');
-    if (THREAD.scrollTo && box) { const el = K.root.querySelector(`[data-id="${CSS.escape(THREAD.scrollTo)}"]`); THREAD.scrollTo = ''; if (el) box.scrollTop = Math.max(0, el.offsetTop - 12); }
+    if (THREAD.scrollTo && box) { const el = K.root.querySelector(`[data-id="${CSS.escape(THREAD.scrollTo)}"]`); THREAD.scrollTo = ''; if (el && !K.t.holding) box.scrollTop = Math.max(0, el.offsetTop - 12); }
     else keepPinned();
   }
   /* streamed words go to the kit as "the text so far": it lands only what is new, at the shared pace */
@@ -2618,7 +2805,7 @@
     q.innerHTML = THREAD.queue.map((r, i) => `<div class="me queued" data-mid="${esc(S(r.id))}">${esc(clean(r.text))}${fileChips(r.files)}
       ${i === 0 ? `<span class="qacts"><button class="b sm" type="button" data-act="stop-turn" title="Stop the current work so this runs next">Interrupt</button></span>` : ''}</div>`).join('');
   }
-  function keepPinned() { const box = $('#wsMsgs'); if (box && THREAD.pinned) box.scrollTop = box.scrollHeight; }
+  function keepPinned() { const box = $('#wsMsgs'); if (box && THREAD.pinned && !(KIT && KIT.t.holding)) box.scrollTop = box.scrollHeight; }
   /* Stop sits beside Send only while Hoola works (Send still queues her next message) */
   function drawStop() { const b = $('#wsStop'); if (b) b.hidden = !THREAD.waiting; }
   /* the ONE working row: the kit's mark + the real step words + the clock (kitDraw), and Stop in the composer */
@@ -2832,9 +3019,13 @@
       const ch = APP.querySelector('.wsp .chat'); if (!ch) return;
       setChatW(ch.getBoundingClientRect().width + (e.key === 'ArrowLeft' ? -24 : 24), true); e.preventDefault();
     }
+    if (e.key === 'Escape' && $('#wsLPages') && !$('#wsLPages').hidden) { $('#wsLPages').hidden = true; const t = APP.querySelector('[data-act="lpages"]'); t?.setAttribute('aria-expanded', 'false'); t?.focus(); }
     if (e.key === 'Escape' && APP.querySelector('.vmenu')) { APP.querySelectorAll('.vmenu').forEach(m => m.remove()); APP.querySelector('[data-act="views-more"]')?.focus(); }
   });
-  document.addEventListener('click', e => { if (!e.target.closest('.vmw')) APP.querySelectorAll('.vmenu').forEach(m => m.remove()); });
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.vmw')) APP.querySelectorAll('.vmenu').forEach(m => m.remove());
+    if (!e.target.closest('.lpw')) { const m = $('#wsLPages'); if (m && !m.hidden) { m.hidden = true; APP.querySelector('[data-act="lpages"]')?.setAttribute('aria-expanded', 'false'); } }
+  });
   APP.addEventListener('click', async e => {
     const b = e.target.closest('button, a'); if (!b || !APP.contains(b)) return;
     if (b.closest('.hck-acts, .hck-bar')) return;            // Copy / Read aloud / Good answer / the kit's box: the kit handles them
@@ -2863,7 +3054,7 @@
       else { LIVE.code = !LIVE.code; drawPane(); }
       return;
     }
-    if (d.lpage) { LIVE.follow = false; APP.querySelector('[data-live="follow"]')?.setAttribute('aria-pressed', 'false'); setLivePage(d.lpage); return; }
+    if (d.lpage) { const m = $('#wsLPages'); if (m) { m.hidden = true; APP.querySelector('[data-act="lpages"]')?.setAttribute('aria-expanded', 'false'); } LIVE.follow = false; APP.querySelector('[data-live="follow"]')?.setAttribute('aria-pressed', 'false'); setLivePage(d.lpage); return; }
     if (d.lcode) { LIVE.codeKey = d.lcode; LIVE.codePinned = true; drawLiveBits(); return; }
     if (d.act === 'details') { THREAD.detail = {a: Number(d.ta) || 0, b: Number(d.tb) || 0, tab: 'timeline'}; VIEW = 'details'; drawPane(); return; }
     if (d.dtab) { if (THREAD.detail) THREAD.detail.tab = d.dtab; drawPane(); return; }
@@ -2891,6 +3082,7 @@
     if (d.act === 'attach') { $('#wsFile')?.click(); return; }
     if (d.act === 'att-x') { THREAD.files.splice(Number(d.i), 1); drawTray(); return; }
     if (d.act === 'jump-latest') { const bx = $('#wsMsgs'); if (bx) { THREAD.pinned = true; bx.scrollTop = bx.scrollHeight; } b.hidden = true; return; }
+    if (S(d.act).startsWith('upg-')) { upgAct(d.act, d); return; }
     if (d.act === 'compare') { LIVE.compare = !LIVE.compare; drawPane(); return; }
     if (d.act === 'jd-close') { LIVE.justDone = null; LIVE.compare = false; drawPane(); return; }
     if (d.view) { VIEW = d.view; EDIT = false; history.replaceState(null, '', `#/site/${enc(CUR.id)}/${VIEW}`); drawPane(); return; }
@@ -2909,6 +3101,12 @@
       WROW_OPEN = !WROW_OPEN; const w = b.closest('.hck-work'); if (w) w.classList.toggle('open', WROW_OPEN);
       b.setAttribute('aria-expanded', String(WROW_OPEN)); return;
     }
+    if (act === 'lpages') {
+      const m = $('#wsLPages'); if (!m) return;
+      m.hidden = !m.hidden; b.setAttribute('aria-expanded', String(!m.hidden));
+      if (!m.hidden) (m.querySelector('[aria-current="page"]') || m.querySelector('button'))?.focus();
+      return;
+    }
     if (act === 'views-more') {
       const w = b.closest('.vmw'), open = w && w.querySelector('.vmenu');
       APP.querySelectorAll('.vmenu').forEach(m => m.remove());
@@ -2924,6 +3122,15 @@
       const m = $('#wsPendMe'), open = m && m.classList.toggle('open');
       b.textContent = open ? 'Show less' : 'Show all'; b.setAttribute('aria-expanded', open ? 'true' : 'false'); return;
     }
+    if (act === 'rx-edit') { RXE.on = !RXE.on; RXE.panel = ''; RXE.pick = null; if (RXE.on) await rxLoad(true); rxSay({t: 'mode', mode: RXE.on ? 'site' : 'off'}); drawPane(); return; }
+    if (act === 'rx-close') { RXE.pick = null; RXE.panel = ''; rxDraw(); return; }
+    if (act === 'rx-undo') return rxDo('undo');
+    if (act === 'rx-pics') { if (RXE.pick) { RXE.pick.pic = {src: '', alt: '', n: 0}; RXE.slot = 0; rxDraw(); } return; }
+    if (act === 'rx-pic-use') { const bd = rxPicBody({photo: S(d.photo)}); if (bd) return rxDo('picture', bd); return; }
+    if (act === 'rx-pic-none') { const bd = rxPicBody({photo: ''}); if (bd && confirm('Take this photo away? The design\'s own picture shows instead. Undo brings it back.')) return rxDo('picture', bd); return; }
+    if (act === 'rx-translate') { toast('Translating the changed parts…'); return rxDo('translate'); }
+    if (act === 'rx-drop') { if (RXE.pick && confirm('Leave this section out of the page? Undo brings it back.')) return rxDo('section', {sec: RXE.pick.sec, drop: true}, () => { RXE.pick = null; }); return; }
+    if (act === 'rx-design') { try { RXE.design = await api('GET', `/api/sites/${enc(CUR.id)}/rx/design`); RXE.panel = 'design'; rxDraw(); } catch (er) { toast(er.message, true); } return; }
     if (act === 'reload') { const fr = APP.querySelector('.frame iframe'); if (fr) fr.src = fr.src; return; }
     if (act === 'select') {
       if (!CUR || !hasVersion(CUR)) return toast('Selecting on the page opens once the first version is built.', true);
@@ -3021,6 +3228,8 @@
         const rows = L(r.checks);
         if (out) out.innerHTML = `<p class="li ${r.done ? 'ok' : ''}">${r.done ? 'Seen everywhere. HTTPS is set up next, by itself.' : `${rows.filter(x => x.all).length} of ${rows.length} records are seen everywhere so far. New records take 10 to 30 minutes, sometimes a day.`}</p>
           ${rows.map(x => `<div class="kv"><code class="ell">${esc(S(x.type))} ${esc(S(x.name))}</code>${pill(x.all ? 'Seen' : 'Not yet', x.all ? 'ok' : 'warn')}</div>`).join('')}`;
+      } else if (act === 'like-del') {
+        await api('DELETE', `/api/appengine-refs/links/${enc(S(b.dataset.likeId))}`); toast('Removed.'); await loadLikes();
       } else if (act === 'takedown') {
         if (!confirm(`Take ${name(CUR)} off the internet? Your pages, data and versions are kept.`)) return;
         const r = await api('POST', `/api/sites/${id}/takedown`, {}); toast(S(r.say) || 'Taken down.'); await reload();
@@ -3071,6 +3280,31 @@
       }
       THREAD.editing = ''; THREAD.sig = '';
       return ask(x);
+    }
+    if (kind === 'rx-pic-alt') {                          // v0.999.130 what the picture shows
+      const bd = rxPicBody({alt: S(f.querySelector('[name=alt]')?.value).trim()}); if (bd) return rxDo('picture', bd); return;
+    }
+    if (kind === 'rx-pic-up') {                           // her new photo for this place: kept with her photos, then put here
+      const file = f.querySelector('[name=file]')?.files?.[0], bd = rxPicBody({}); if (!file || !bd) return toast('Choose a photo first.', true);
+      if (file.size > 25 * 1024 * 1024) return toast('The photo is bigger than 25 MB.', true);
+      if (RXE.busy) return; RXE.busy = true;
+      const fd = new FormData(); fd.append('file', file); fd.append('sec', bd.sec); fd.append('path', JSON.stringify(bd.path));
+      try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/rx/picture/upload`, undefined, {form: fd}); toast(S(r.say).slice(0, 160)); await rxLoad(true); rxDraw(); rxWatch(); }
+      catch (er) { toast(er.message, true); }
+      finally { RXE.busy = false; }
+      return;
+    }
+    if (kind === 'rx-words') {                            // v0.999.76 D7 her words, shown at once, built by code
+      const p = RXE.pick, nw = S(f.querySelector('[name=new]')?.value).trim(); if (!p || !nw) return;
+      return rxDo('words', {sec: p.sec, old: p.text, new: nw}, () => { rxSay({t: 'sec-text', sec: p.sec, old: p.text, new: nw}); p.text = nw; });
+    }
+    if (kind === 'like-add') {                            // v0.999.75 D6 a site she likes (a picture of its first screen is taken)
+      const url = S(f.querySelector('[name=url]')?.value).trim(); if (!url) return;
+      const btn = f.querySelector('button'); if (btn) btn.disabled = true;
+      try { await api('POST', '/api/appengine-refs/links', {url, note: S(f.querySelector('[name=note]')?.value).trim()}); f.reset(); toast('Added. Hoola will use its feel as a pattern.'); await loadLikes(); }
+      catch (er) { toast(er.message, true); }
+      finally { if (btn) btn.disabled = false; }
+      return;
     }
     if (kind === 'dft-new') {                             // v0.837 L13 start a draft
       const nm = S(f.querySelector('[name=name]')?.value).trim(); if (!nm) return;
@@ -3137,6 +3371,24 @@
   });
   APP.addEventListener('input', e => { if (e.target.id === 'wsInstr') { e.target.dataset.touched = '1'; countInstr(); } });
   APP.addEventListener('paste', e => { if (e.target.id === 'wsTh') pasted(e); });          // v0.777 attachments
+  // v0.999.76 D7: the preview tells what she clicked; the panels change a section / the design (all free)
+  addEventListener('message', ev => {
+    const d = ev.data || {}; if (d.hoola !== 'ae' || !CUR) return;
+    const f = rxFrame(); if (!f || ev.source !== f.contentWindow) return;
+    if (d.t === 'ready' && RXE.on) rxSay({t: 'mode', mode: 'site'});
+    if (d.t === 'sec-pick' && RXE.on) { RXE.pick = {sec: S(d.sec), text: S(d.text), tag: S(d.tag), pic: d.pic ? M(d.pic) : null}; RXE.panel = ''; RXE.slot = rxSlot(RXE.pick); rxDraw(); }
+    if (d.t === 'mode' && d.mode === 'off' && RXE.on) { RXE.on = false; drawPane(); }
+  });
+  APP.addEventListener('change', e => {
+    const t = e.target;
+    if (t.dataset.rxs && RXE.pick && t.value) return rxDo('section', {sec: RXE.pick.sec, [t.dataset.rxs]: t.value});
+    if (t.dataset.rxpic === 'slot') { RXE.slot = Number(t.value) || 0; return rxDraw(); }
+    if (t.dataset.rxd && CUR) {
+      const k = t.dataset.rxd, body = {[k]: k === 'radius' ? Number(t.value) : t.value};
+      (async () => { try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/rx/design`, body); RXE.design.design = M(r.design); toast(S(r.say).slice(0, 140)); rxDraw(); rxWatch(); } catch (er) { toast(er.message, true); } })();
+    }
+  });
+  APP.addEventListener('input', e => { if (e.target.dataset.rxd === 'radius') { const o = APP.querySelector('[data-rxr]'); if (o) o.textContent = e.target.value; } });
   APP.addEventListener('change', e => { if (e.target.id === 'wsFile') { [...e.target.files].slice(0, 6).forEach(f => addFile(f)); e.target.value = ''; } });
   APP.addEventListener('dragover', e => { if (e.target.closest?.('.chat') && e.dataTransfer?.types?.includes('Files')) { e.preventDefault(); e.target.closest('.chat').classList.add('drop'); } });
   APP.addEventListener('dragleave', e => { e.target.closest?.('.chat')?.classList.remove('drop'); });

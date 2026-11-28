@@ -142,10 +142,22 @@ def shot_path(tenant: str, run_id: str, name: str) -> Path | None:
 
 
 # ---------------------------------------------------------------- settings
+_CC: dict[str, str] = {}
+
+
+def country(tenant: str) -> str:
+    """Her country for the accessibility law ('' = India, the first desks)."""
+    if tenant not in _CC:
+        with session() as s:
+            st = s.get(QaSettings, tenant)
+            _CC[tenant] = ((st.country if st else "") or "IN").upper()
+    return _CC[tenant]
+
+
 def settings(tenant: str) -> dict[str, Any]:
     with session() as s:
         st = _st(s, tenant)
-        return {"team_name": st.team_name, "rules": st.rules}
+        return {"team_name": st.team_name, "rules": st.rules, "country": (st.country or "IN").upper()}
 
 
 def save_settings(tenant: str, **kw) -> dict[str, Any]:
@@ -155,6 +167,12 @@ def save_settings(tenant: str, **kw) -> dict[str, Any]:
             st.team_name = str(kw["team_name"] or "")[:120]
         if "rules" in kw:
             st.rules = str(kw["rules"] or "")[:3000]
+        if kw.get("country"):
+            cc = str(kw["country"]).strip().upper()
+            if not re.fullmatch(r"[A-Z]{2}", cc):
+                raise QaError("Country: two letters, like GB.")
+            st.country = cc
+    _CC.pop(tenant, None)
     return {**settings(tenant), "say": "QA rules saved."}
 
 
@@ -172,7 +190,8 @@ def _tview(t: QaTarget, s=None) -> dict[str, Any]:
          "verified": t.verified, "verified_how": t.verified_how, "verified_at": _iso(t.verified_at), "allow_writes": t.allow_writes,
          "govt_facing": t.govt_facing, "sector": t.sector, "schedule": t.schedule, "status": t.status, "accounts": acc,
          "cases": cases, "pages": len(m.get("pages") or []), "screens": len(m.get("screens") or []),
-         "discovered_at": m.get("at", ""), "standard": R.STANDARDS.get(t.sector if not t.govt_facing else "govt", R.STANDARDS["general"])}
+         "discovered_at": m.get("at", ""), "standard": R.standard(country(t.tenant_id), t.sector, t.govt_facing)["text"],
+         "standard_source": R.standard(country(t.tenant_id), t.sector, t.govt_facing)["source"]}
     if t.kind == "url" and not t.verified:
         v["verify"] = verify_steps(t)
     return v
@@ -1223,7 +1242,7 @@ def readiness(tenant: str, ref: str, conv: str = "", publish: bool = False) -> d
     with session() as s:
         t = _get_target(s, tenant, ref)
         tv = _tview(t, s)
-    r = R.readiness(cases(tenant, tv["id"]), bugs(tenant, tv["id"]), tv["kind"], tv["govt_facing"])
+    r = R.readiness(cases(tenant, tv["id"]), bugs(tenant, tv["id"]), tv["kind"], tv["govt_facing"], country=country(tenant))
     r["standard"] = tv["standard"]
     if tv["kind"] == "apk":
         r["risks"].append("Also upload it to Play Console Internal testing and read the pre-launch report (crash / ANR / accessibility).")
@@ -1372,7 +1391,8 @@ def register_file(tenant: str, ref: str = "", conv: str = "") -> dict[str, Any]:
         ws.append([r["number"], r["target"], r["which"], r["status"], c.get("pass", 0), c.get("fail", 0), c.get("blocked", 0), r["started_at"]])
     bio = io.BytesIO()
     wb.save(bio)
-    day = datetime.now(IST).date().isoformat()
+    from ..life import tz_of
+    day = datetime.now(tz_of(tenant)).date().isoformat()
     f1 = chatfiles.store(tenant, f"QA_register_{day}.xlsx", bio.getvalue(),
                          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     sio = io.StringIO()
@@ -1389,12 +1409,16 @@ def register_file(tenant: str, ref: str = "", conv: str = "") -> dict[str, Any]:
 
 
 def tick(now_dt: datetime | None = None) -> int:
-    """Daily regression runs at the time she set per target (one a day, in the background)."""
-    n_ = (now_dt or datetime.now(timezone.utc)).astimezone(IST)
-    hm, day = n_.strftime("%H:%M"), n_.date().isoformat()
+    """Daily regression runs at the time she set per target (one a day, in the background), in HER time zone."""
+    from ..life import tz_of
+    base = now_dt or datetime.now(timezone.utc)
+    if base.tzinfo is None:
+        base = base.replace(tzinfo=timezone.utc)
     due = []
     with session() as s:
         for t in s.scalars(select(QaTarget).where(QaTarget.status == "active", QaTarget.schedule != "")).all():
+            n_ = base.astimezone(tz_of(t.tenant_id))
+            hm, day = n_.strftime("%H:%M"), n_.date().isoformat()
             if t.kind != "apk" and t.schedule <= hm and t.last_sched != day:
                 t.last_sched = day
                 due.append((t.tenant_id, t.id))

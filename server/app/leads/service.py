@@ -34,7 +34,8 @@ PARSER_INDIAMART = "v0.691.0-im1"       # the REGISTRY lane: IndiaMART's own MCP
 PARSER_PLACES = "v0.691.0-pl1"          # the OFFICIAL_API lane: the existing maps tools (nearby + details on tap)
 PARSER_ENRICH = "v0.691.0-en1"          # the P2 enrich pass reads the business's OWN website (enrich.py)
 PARSER_SCRAPE = "v0.691.0-gm1"          # the P3 SCRAPE lane: the Google Maps PUBLIC listing parser (gmaps_parse)
-PARSER_VENDOR = "v0.691.0-vd1"          # the P4 VENDOR lane: the licensed vendor's rows (leads/vendor.py contract)
+PARSER_VENDOR = "v0.691.0-vd1"
+PARSER_APIFY = "v0.999.62-ap1"           # the APIFY lane: Apify scrapers on her token (leads/apify.py)          # the P4 VENDOR lane: the licensed vendor's rows (leads/vendor.py contract)
 
 # mapsbill.MapsCapped arrives here re-raised as maps.MapsError (maps._bill's own law: "a cap hit becomes a
 # MapsError"), with this stable text inside - so the cap and an ordinary MapsError are told apart by MARK,
@@ -64,6 +65,9 @@ def identity_key(row: dict) -> tuple[str, str]:
         v = str(row.get(t) or "").strip()
         if v:
             return t, v
+    pu = str(row.get("profile_url") or "").strip().lower().rstrip("/")
+    if pu:                                    # v0.999.62 a social profile / page is its own identity
+        return "profile_url", hashlib.sha1(pu.encode("utf-8")).hexdigest()[:24]
     phone = normalize_phone(row.get("phone"))
     if phone:
         return "phone_e164", phone
@@ -108,6 +112,21 @@ def plan(tenant: str, ask: str, lanes: list[str] | None = None, place: str = "",
         card["opt_in"] = {"on": False, "default": "OFF",
                           "how": "leads_run action=scrape_optin on=true (or POST /api/leads/scrape-optin)"}
         return card
+    if "APIFY" in lanes:
+        from . import apify as AP
+        aok, awhy = AP.check(tenant)
+        if not aok:
+            card["ok"] = False
+            card["refused_lanes"] = list(dict.fromkeys((card.get("refused_lanes") or []) + ["APIFY"]))
+            card["why"] = (card.get("why") or []) + [awhy]
+            card["apify"] = AP.config_snapshot()
+            card["lanes"] = [l for l in lanes if l != "APIFY"] or []
+            return card
+        snap = AP.config_snapshot()
+        card["apify"] = {"max_usd_per_run": snap["max_usd_per_run"],
+                         "max_inr_per_run": round(snap["max_usd_per_run"] * snap["usd_inr"]),
+                         "priced": "the ceiling is sent to Apify itself and checked again on Apify's own usage",
+                         "walls": list(R.APIFY_WALLS)}
     if "VENDOR" in lanes:
         from . import vendor as V
         vok, vwhy, vkind = V.check(tenant, planned_rows)
@@ -161,6 +180,10 @@ def _clean_row(row: dict) -> dict:
             out[f] = row[f]
     phone = normalize_phone(out.get("phone"))
     out["phone"] = phone or ""
+    if isinstance(row.get("socials"), dict):
+        out["socials"] = row["socials"]
+    if row.get("profile_url"):
+        out["profile_url"] = str(row["profile_url"]).strip()[:300]
     return out
 
 
@@ -719,6 +742,176 @@ def set_scrape_optin(tenant: str, on: bool, actor: str = "owner") -> dict:
                     "provenance for every row, the engine never sends anything itself"}
 
 
+# ---------------------------------------------------------------- the APIFY lane (v0.999.62, the owner's ask)
+def _apify_key(tenant: str) -> str:
+    return f"{tenant}#apify"[:64]
+
+
+def apify_opted_in(tenant: str) -> bool:
+    ensure_tables()
+    from .models import LeadScrapeOptIn
+    with _s() as s:
+        row = s.get(LeadScrapeOptIn, _apify_key(tenant))
+        return bool(row.on) if row is not None else False
+
+
+def set_apify_optin(tenant: str, on: bool, actor: str = "owner") -> dict:
+    """HER act, recorded like the SCRAPE opt-in (its own slip, the Apify walls quoted)."""
+    ensure_tables()
+    from .models import LeadScrapeOptIn
+    with _s() as s:
+        row = s.get(LeadScrapeOptIn, _apify_key(tenant))
+        if row is None:
+            row = LeadScrapeOptIn(tenant_id=_apify_key(tenant))
+            s.add(row)
+            s.flush()
+        row.on = bool(on)
+        row.actor = str(actor or "owner")[:64]
+        row.note = " | ".join(R.APIFY_WALLS)[:2000]
+        row.at = datetime.now(timezone.utc)
+    return {"ok": True, "apify_optin": bool(on), "actor": str(actor or "owner"), "walls": R.APIFY_WALLS,
+            "note": "Each run spends YOUR Apify credit, capped per run; business profiles only, never a login."}
+
+
+async def run_apify(tenant: str, ask: str, platform: str, query: str = "", city: str = "",
+                    urls: list[str] | None = None, max_rows: int = 200, place: str = "",
+                    wait_s: int | None = None) -> dict:
+    """One Apify scraper run into the store. Plan card first (her opt-in, token, terms, the dollar ceiling),
+    ONE actor run never retried, every kept row with its profile / page link, personal profiles refused."""
+    ensure_tables()
+    from . import apify as AP
+    try:
+        p = AP.platform(platform)
+        raw_rows = max(1, int(max_rows or 200))
+        inp = AP.build_input(p, query, city, list(urls or []), min(raw_rows, leadscap.caps()["per_run"]))
+    except AP.ApifyError as e:
+        raise LeadsError(str(e))
+    where = place or str(city or "").strip() or (urls[0] if urls else "")
+    pc = plan(tenant, ask or f"{p['name']}: {query}", ["APIFY"], where, planned_rows=raw_rows)
+    if not pc["ok"]:
+        why = "; ".join(pc.get("why") or []) or pc.get("cap_refusal") or pc.get("need", "")
+        raise LeadsError(why)
+    max_rows = min(raw_rows, leadscap.caps()["per_run"])
+    run = _new_run(tenant, ask or f"{p['name']}: {query}", where, ["APIFY"], pc)
+    _status(run, "RUNNING")
+    snap = AP.config_snapshot()
+    try:
+        d = await AP.start(p["actor"], inp, max_rows, snap["max_usd_per_run"])
+    except AP.ApifyError as e:
+        _finish(run, "ABORTED", str(e))
+        return {"ok": False, "run": run_card(run.id), "error": str(e)}
+    meta = {"lane": "APIFY", "platform": p["name"], "actor": p["actor"], "apify_run": d.get("id"),
+            "dataset": d.get("defaultDatasetId"), "max_rows": max_rows, "max_usd": snap["max_usd_per_run"],
+            "usd_inr": snap["usd_inr"]}
+    _set_bill(run.id, meta)
+    return await _apify_finish(tenant, run.id, meta, int(wait_s if wait_s is not None else
+                                                          getattr(_settings(), "apify_wait_s", 240)))
+
+
+def _settings():
+    from ..config import get_settings
+    return get_settings()
+
+
+def _set_bill(run_id: str, bill: dict) -> None:
+    with _s() as s:
+        r = s.get(LeadRun, run_id)
+        if r:
+            r.bill = json.dumps(bill, ensure_ascii=False, default=str)[:4000]
+
+
+async def apify_collect(tenant: str, run_id: str, wait_s: int = 60) -> dict:
+    """Pick up an Apify run that was still working when its leads run paused."""
+    ensure_tables()
+    with _s() as s:
+        r = s.get(LeadRun, run_id)
+        if r is None or r.tenant_id != tenant:
+            raise LeadsError("run not found")
+        try:
+            meta = json.loads(r.bill or "{}")
+        except ValueError:
+            meta = {}
+        status = r.status
+    if meta.get("lane") != "APIFY" or not meta.get("apify_run"):
+        raise LeadsError("This is not an Apify run.")
+    if status == "DONE":
+        return {"ok": True, "run": run_card(run_id), "note": "already collected"}
+    _status_raw(run_id, "RUNNING")
+    return await _apify_finish(tenant, run_id, meta, wait_s)
+
+
+def _status_raw(run_id: str, status: str) -> None:
+    with _s() as s:
+        r = s.get(LeadRun, run_id)
+        if r:
+            r.status = status
+
+
+async def _apify_finish(tenant: str, run_id: str, meta: dict, wait_s: int) -> dict:
+    from . import apify as AP
+    with _s() as s:
+        run = s.get(LeadRun, run_id)
+        s.expunge(run)
+    try:
+        d = await AP.wait(meta["apify_run"], max(0, int(wait_s)))
+    except AP.ApifyError as e:
+        _finish(run, "ABORTED", str(e))
+        return {"ok": False, "run": run_card(run_id), "error": str(e)}
+    st = str(d.get("status") or "")
+    usd = d.get("usageTotalUsd")
+    meta["apify_status"] = st
+    if isinstance(usd, (int, float)):
+        meta["usd"] = round(float(usd), 4)
+        meta["inr"] = round(float(usd) * float(meta.get("usd_inr") or 88.0), 2)
+        meta["cost_reported_by_apify"] = True
+    if st in ("READY", "RUNNING", ""):
+        _set_bill(run_id, meta)
+        _status_raw(run_id, "PAUSED")
+        return {"ok": True, "still_running": True, "run": run_card(run_id),
+                "note": (f"Apify is still working on it. Ask later: leads_run action=apify_collect run_id={run_id}. "
+                         "It STARTED - do not say it finished.")}
+    if isinstance(usd, (int, float)) and float(usd) > float(meta.get("max_usd") or 0) * 1.05:
+        meta["over_ceiling"] = True          # said on the card; Apify's own maxTotalChargeUsd should stop this
+    p = AP.platform(meta["platform"])
+    found = kept = duped = refused = 0
+    reasons: dict[str, int] = {}
+    if st == "SUCCEEDED" or meta.get("dataset"):
+        try:
+            got = await AP.items(meta["dataset"], int(meta.get("max_rows") or 200))
+        except AP.ApifyError as e:
+            got = []
+            meta["items_error"] = str(e)
+        for it in got[: int(meta.get("max_rows") or 200)]:
+            found += 1
+            row, why = AP.to_row(p, it)
+            if row is None:
+                refused += 1
+                reasons[why] = reasons.get(why, 0) + 1
+                continue
+            row = _clean_row(row)
+            try:
+                _write_row(tenant, run, *_identity_of(row), row, source_lane="APIFY",
+                           source_url=why, parser_version=PARSER_APIFY)
+                kept += 1
+            except LeadsError as e:
+                if "already" in str(e):
+                    duped += 1
+                else:
+                    refused += 1
+                    reasons["no key (no phone / address / profile link)"] = reasons.get(
+                        "no key (no phone / address / profile link)", 0) + 1
+    meta["refused_because"] = reasons
+    leadscap.record(tenant, kept)
+    _counters(run, found, kept, duped, refused)
+    _set_bill(run_id, meta)
+    if st != "SUCCEEDED" and not kept:
+        _finish(run, "ABORTED", f"Apify run ended {st or 'unknown'} - nothing stored.")
+        return {"ok": False, "run": run_card(run_id), "error": f"Apify run ended {st}"}
+    _finish(run, "DONE")
+    return {"ok": True, "run": run_card(run_id), "platform": p["name"], "kept": kept, "refused": refused,
+            "refused_because": reasons, "cost": {k: meta.get(k) for k in ("usd", "inr", "max_usd")}}
+
+
 # ---------------------------------------------------------------- the SCRAPE lane (P3, the owner's explicit ask)
 def _checkpoint_scrape(run: LeadRun, plan_dict: dict) -> None:
     """The resume checkpoint: the plan JSON (cells WITH their statuses) written back after every cell - a
@@ -1156,6 +1349,8 @@ def _write_row(tenant: str, run: LeadRun | None, ktype: str, kval: str, row: dic
                             phone=row.get("phone", ""), website=row.get("website", "")[:300],
                             email=row.get("email", "")[:200], source_lane=source_lane, source_url=source_url,
                             parser_version=parser_version)
+            if isinstance(row.get("socials"), dict) and row["socials"]:
+                c.socials = row["socials"]
             if row.get("rating") not in (None, ""):
                 c.rating = float(row["rating"])
             if row.get("review_count") not in (None, ""):
@@ -1289,7 +1484,7 @@ def export_csv(tenant: str, q: str = "", city: str = "", category: str = "", lan
 
 # ---------------------------------------------------------------- outreach LEDGER + campaign hand-off
 def campaign_list(tenant: str, name: str, q: str = "", city: str = "", category: str = "", lane: str = "",
-                  has_phone: bool = True, run_id: str = "", confirm: bool = False) -> dict:
+                  has_phone: bool = True, run_id: str = "", confirm: bool = False, ids: list[str] | None = None) -> dict:
     """HER tap arrives here: copy selected rows into a LeadList the campaign desk consumes. Only rows WITH a
     phone can go (campaigns call phones), consent is pre-filled False for every copied row (the sending side
     still needs the desk's consent machinery), and the whole act lands in the LeadOutreach ledger.
@@ -1304,6 +1499,9 @@ def campaign_list(tenant: str, name: str, q: str = "", city: str = "", category:
     all_conds = _filters(tenant, q, city, category, lane, False, False, None)
     if run_id:
         all_conds.append(LeadContact.run_id == run_id)
+    if ids is not None:            # v0.999.52: the rows she ticked (or one stage) - never wider than what she chose
+        conds.append(LeadContact.id.in_(list(ids) or ["-"]))
+        all_conds.append(LeadContact.id.in_(list(ids) or ["-"]))
     from ..db import Lead, LeadList
     with _s() as s:
         got = s.query(LeadContact).filter(*conds).order_by(LeadContact.fetched_at.desc()).limit(20000).all()

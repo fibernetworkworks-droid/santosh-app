@@ -11,13 +11,16 @@
    on .hck,.hck-bar - never edit the rules below for one page. */
 :root{--hck0-ink:#1B1A17;--hck0-mut:#57554F;--hck0-dim:#6F6C65;--hck0-hair:#E5E3DD;--hck0-hair2:#D3D1CA;--hck0-bubble:#F4F4F2;--hck0-surface:#FFFFFF;--hck0-sunk:#F1F0EC;
   --hck0-violet:#5B45E0;--hck0-ok:#1F7A52;--hck0-info:#2B5DB8;--hck0-soft:#EEEBFD;--hck0-softink:#3E2CB5;--hck0-pill:#1B1A17;--hck0-onpill:#FFFFFF;--hck0-term:#8A2424;
-  --hck0-sh:0 1px 2px rgb(0 0 0 / .04),0 10px 24px -16px rgb(0 0 0 / .22)}
+  --hck0-sh:0 1px 2px rgb(0 0 0 / .04),0 10px 24px -16px rgb(0 0 0 / .22);
+  --hck0-rw:400;--hck0-rb:600;--hck0-hw:430;--hck0-gw:330}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--hck0-ink:#E6E5E1;--hck0-mut:#B2B0A9;--hck0-dim:#94928B;--hck0-hair:#2C2C2A;--hck0-hair2:#3C3B38;--hck0-bubble:#262624;--hck0-surface:#1E1E1C;--hck0-sunk:#262624;
   --hck0-violet:#9C88FF;--hck0-ok:#4CC38A;--hck0-info:#8AB4F8;--hck0-soft:#252140;--hck0-softink:#CFC4FF;--hck0-pill:#3A3936;--hck0-onpill:#ECEBE6;--hck0-term:#FE8181;
-  --hck0-sh:0 1px 2px rgb(0 0 0 / .3),0 10px 24px -16px rgb(0 0 0 / .6)}}
+  --hck0-sh:0 1px 2px rgb(0 0 0 / .3),0 10px 24px -16px rgb(0 0 0 / .6);
+  --hck0-rw:360;--hck0-rb:530;--hck0-hw:400;--hck0-gw:290}}
 :root[data-theme="dark"],.hck-dark{--hck0-ink:#E6E5E1;--hck0-mut:#B2B0A9;--hck0-dim:#94928B;--hck0-hair:#2C2C2A;--hck0-hair2:#3C3B38;--hck0-bubble:#262624;--hck0-surface:#1E1E1C;--hck0-sunk:#262624;
   --hck0-violet:#9C88FF;--hck0-ok:#4CC38A;--hck0-info:#8AB4F8;--hck0-soft:#252140;--hck0-softink:#CFC4FF;--hck0-pill:#3A3936;--hck0-onpill:#ECEBE6;--hck0-term:#FE8181;
-  --hck0-sh:0 1px 2px rgb(0 0 0 / .3),0 10px 24px -16px rgb(0 0 0 / .6)}
+  --hck0-sh:0 1px 2px rgb(0 0 0 / .3),0 10px 24px -16px rgb(0 0 0 / .6);
+  --hck0-rw:360;--hck0-rb:530;--hck0-hw:400;--hck0-gw:290}
 .hck,.hck-bar,.hck-jump{
   --hck-ink:var(--chat-ink,var(--ink,var(--hck0-ink)));--hck-mut:var(--mut,var(--hck0-mut));--hck-dim:var(--dim,var(--mut,var(--hck0-dim)));
   --hck-hair:var(--hair,var(--line,var(--hck0-hair)));--hck-hair2:var(--hair2,var(--hair,var(--line,var(--hck0-hair2))));
@@ -174,3 +177,18 @@
 @media (prefers-reduced-motion:reduce){.hm3 .hm3-tilt,.hm3 .hm3-floor{display:none}.hm3 .hm3-still{display:block}}
 /* v0.999.29 the row under a kit box: credits + the quality tier, at the right end */
 .hck-under{display:flex;justify-content:flex-end;align-items:center;padding:6px 2px 0;min-height:30px}
+
+/* v0.999.203 EVERY CHAT LIKE CLAUDE (owner: "DEPLOYE THIS LAST 3 UPDATES SAME TO FULL HOOLA ... EVERY CHAT PANEL"): the
+   main chat's v0.999.197-199 numbers for every panel on the kit - reply Literata 16 / 1.5 at 400 (dark 360), bold 600
+   (dark 530), the reply title (#) 28 / 1.3 at opsz 28, code in JetBrains Mono; her message sans 16 / 430 (dark 400) / 1.4
+   rising in over .2 s from 6 px; the box text + placeholder 16 / 430 (dark 400); the row under the box 14 / 430 / 1.4.
+   The landing (her message at the top, room kept for the reply) is in chatkit.js. */
+.hck-txt{font-weight:var(--hck0-rw,400)}
+.hck-txt b,.hck-txt strong,.hck-txt .mdh{font-weight:var(--hck0-rb,600)}
+.hck-txt h3.mdh{font-size:28px;line-height:1.3;font-variation-settings:"opsz" 28}
+.hck-txt code,.hck-txt pre{font-family:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace}
+.hck-bub{font-family:var(--hck-fb);font-size:16px;font-weight:var(--hck0-hw,430);line-height:1.4;animation:hckLand .2s ease-out both}
+@keyframes hckLand{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.hck-bar textarea,.hck-bar textarea::placeholder{font-size:16px;font-weight:var(--hck0-hw,430)}
+.hck-under,.hck-under *{font-size:14px;font-weight:var(--hck0-hw,430);line-height:1.4}
+@media (prefers-reduced-motion:reduce){.hck-bub{animation:none}}

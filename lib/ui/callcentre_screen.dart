@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../native.dart';
 import '../state.dart';
@@ -346,17 +347,94 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
   // ---------------------------------------------------------------- Niyam
   Future<void> _keys() async {
     final p = _s(_st['provider']);
-    final fields = switch (p) {
-      'plivo' => const [('auth_id', 'Plivo Auth ID'), ('auth_token', 'Plivo Auth Token')],
-      'exotel' => const [('api_key', 'Exotel API key'), ('api_token', 'Exotel API token'), ('sid', 'Account SID'), ('subdomain', 'Subdomain (api.in.exotel.com)')],
-      _ => const [('secret', 'Test line secret')],
-    };
-    final f = await _form(context, 'Provider keys (only here)', fields, secret: {'auth_token', 'api_token', 'secret'}, ok: 'Save');
+    // v0.999.68 every phone company: the server says which keys it needs
+    final spec = (_map(_map(_st['providers'])[p])['keys'] as List?) ?? const [];
+    final fields = <(String, String)>[
+      for (final k in spec) (_s(_map(k)['name']), _s(_map(k)['label'])),
+    ];
+    if (fields.isEmpty) fields.add(('secret', 'Test line secret'));
+    final f = await _form(context, 'Provider keys (only here)', fields,
+        secret: {for (final x in fields) if (!x.$1.contains('url') && x.$1 != 'space') x.$1}, ok: 'Save');
     if (f == null) return;
     await _run('PUT', '/api/callcentre/keys', {'provider': p, ...f});
   }
 
   Future<void> _settings(Map<String, dynamic> body) => _run('PUT', '/api/callcentre/settings', body);
+
+  // v0.999.78 GET THE NUMBER: one phone company's steps, with its own Hoola addresses to copy
+  Future<void> _guide(String p) async {
+    final prov = _map(_map(_st['providers'])[p]);
+    final g = _map(prov['guide']);
+    final steps = (g['steps'] as List?) ?? const [];
+    if (steps.isEmpty) {
+      _snack(context, 'No guide for this company yet.');
+      return;
+    }
+    Future<void> open(String u) async {
+      if (u.isEmpty) return;
+      await launchUrl(Uri.parse(u), mode: LaunchMode.externalApplication);
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: .85,
+        minChildSize: .4,
+        maxChildSize: .95,
+        builder: (ctx, sc) => ListView(controller: sc, padding: const EdgeInsets.fromLTRB(16, 0, 16, 24), children: [
+          Text('Get the number · ${_s(prov['name'])}', style: display(18)),
+          const SizedBox(height: 4),
+          Text('You get ${_s(g['number_word'])}. ${_s(prov['where'])}', style: const TextStyle(color: C.muted, fontSize: 13)),
+          const SizedBox(height: 10),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            if (_s(g['site']).isNotEmpty)
+              GlassButton(label: 'Open the website', icon: Icons.open_in_new_rounded, onTap: () => open(_s(g['site']))),
+            if (_s(g['console']).isNotEmpty)
+              GlassButton(label: 'Sign in to the console', icon: Icons.login_rounded, onTap: () => open(_s(g['console']))),
+          ]),
+          const SizedBox(height: 14),
+          for (final (i, x) in steps.indexed) ...[
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              CircleAvatar(radius: 13, child: Text('${i + 1}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(_s(_map(x)['title']), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text(_s(_map(x)['text']), style: const TextStyle(fontSize: 13, color: C.muted, height: 1.45)),
+                  for (final c in ((_map(x)['copy'] as List?) ?? const []))
+                    Row(children: [
+                      Expanded(
+                          child: Text('${_s(_map(c)['label'])}: ${_s(_map(c)['value']).isEmpty ? '(server address not set)' : _s(_map(c)['value'])}',
+                              style: const TextStyle(fontSize: 12))),
+                      if (_s(_map(c)['value']).isNotEmpty)
+                        IconButton(
+                            tooltip: 'Copy',
+                            icon: const Icon(Icons.copy_rounded, size: 16),
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: _s(_map(c)['value'])));
+                              _snack(context, 'Copied');
+                            }),
+                    ]),
+                  if (((_map(x)['keys'] as List?) ?? const []).isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text('Copy: ${((_map(x)['keys'] as List?) ?? const []).join(', ')}',
+                          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                    ),
+                ]),
+              ),
+            ]),
+            const SizedBox(height: 14),
+          ],
+          Text('${_s(g['note'])} Keys go only in Settings › Keys, never in the chat.',
+              style: const TextStyle(color: C.muted, fontSize: 12)),
+        ]),
+      ),
+    );
+  }
 
   Widget _rules() {
     final st = _st;
@@ -366,7 +444,7 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('Provider', style: display(15)),
       Wrap(spacing: 6, children: [
-        for (final p in const ['plivo', 'exotel', 'fake'])
+        for (final p in _map(st['providers']).keys)
           ChoiceChip(
               label: Text(_s(_map(_map(st['providers'])[p])['name']).isEmpty ? p : _s(_map(_map(st['providers'])[p])['name'])),
               selected: st['provider'] == p,
@@ -375,6 +453,7 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
       Text(_s(_map(_map(st['providers'])[st['provider']])['why']), style: const TextStyle(color: C.muted, fontSize: 12)),
       const SizedBox(height: 6),
       Wrap(spacing: 8, runSpacing: 8, children: [
+        GlassButton(label: 'Get the number', icon: Icons.add_call, onTap: () => _guide(_s(st['provider']))),
         GlassButton(
             label: st['creds_set'] == true ? 'Change keys' : 'Add keys',
             icon: Icons.key_rounded,
@@ -391,6 +470,18 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
       ]),
       for (final (i, step) in ((st['setup'] as List?) ?? const []).indexed)
         Text('${i + 1}. $step', style: const TextStyle(fontSize: 12.5)),
+      const SizedBox(height: 10),
+      Text('Get a phone number', style: display(15)),
+      for (final p in _map(st['providers']).keys)
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          leading: const Icon(Icons.add_call),
+          title: Text(_s(_map(_map(st['providers'])[p])['name'])),
+          subtitle: Text(_s(_map(_map(st['providers'])[p])['where'])),
+          trailing: TextButton(onPressed: () => _guide(p), child: const Text('Get the number')),
+          onTap: () => _guide(p),
+        ),
       for (final e in urls.entries)
         Row(children: [
           Expanded(child: Text('${e.key}: ${e.value}', style: const TextStyle(fontSize: 11.5, color: C.muted))),

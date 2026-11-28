@@ -1,0 +1,40 @@
+/* v0.999.67 AI TELECALLER DESK - the Telecaller employee's own section. Frame, chat, cards, tables and buttons come from
+   seodesk.css (the SEO / Accounts / Leads desks' twin); only the chat's file tray, the call cards and the test chat are
+   added here. */
+.ac-files{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 6px}
+.ac-file{display:inline-flex;align-items:center;gap:6px;max-width:220px;padding:4px 6px 4px 10px;border-radius:999px;background:var(--soft);font-size:12.5px}
+.ac-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ac-file.up{opacity:.6}
+.ac-file.bad{background:var(--bads);color:var(--badt)}
+.ac-file button{border:0;background:none;width:22px;height:22px;border-radius:50%;cursor:pointer;color:inherit;font-size:15px;line-height:1}
+.ac-file button:hover{background:var(--line)}
+.sd-chat.drop{outline:2px dashed var(--acc);outline-offset:-6px}
+#tcPage{display:flex;flex-direction:column;gap:18px}
+#tcPage a:not(.btn){color:inherit}
+#tcPage .bar{height:6px;border-radius:3px;background:var(--soft);overflow:hidden}
+#tcPage .bar>i{display:block;height:6px;background:var(--ink)}
+#tcPage .say{font-family:'Literata',serif;font-size:15.5px;line-height:1.55}
+#tcPage .tline{display:flex;flex-direction:column;gap:10px}
+#tcPage .tline .me{align-self:flex-end;max-width:80%;background:var(--soft);border-radius:14px;padding:9px 12px}
+#tcPage .tline .ai{max-width:85%;border:1px solid var(--line);border-radius:14px;padding:9px 12px}
+#tcPage .who{display:block;font-size:12px;font-weight:600;color:var(--mut);margin-bottom:2px}
+#tcPage label.f{display:flex;flex-direction:column;gap:6px}
+#tcPage label.f>span{font-size:12.5px;color:var(--mut)}
+/* v0.999.78 GET THE NUMBER - one phone company's steps in a window */
+.tcg{width:min(680px,calc(100vw - 32px));max-height:calc(100vh - 48px);border:1px solid var(--line);border-radius:16px;padding:0;background:var(--bg,#fff);color:var(--ink);box-shadow:0 18px 60px rgba(0,0,0,.18);overflow:auto}
+.tcg::backdrop{background:rgba(0,0,0,.35)}
+.tcg-head{display:flex;gap:12px;align-items:flex-start;padding:18px 18px 10px}
+.tcg-head h2{margin:0;font-size:17px;font-weight:600}
+.tcg-head p{margin:4px 0 0;font-size:13px}
+.tcg-links{display:flex;gap:8px;flex-wrap:wrap;padding:0 18px 6px}
+.tcg-steps{list-style:none;margin:0;padding:8px 18px 0;display:flex;flex-direction:column;gap:0}
+.tcg-st{display:flex;gap:12px;position:relative;padding-bottom:16px}
+.tcg-st:not(:last-child)::before{content:"";position:absolute;left:13px;top:30px;bottom:2px;width:2px;background:var(--line)}
+.tcg-n{flex:0 0 28px;height:28px;border-radius:50%;background:var(--ink);color:var(--bg,#fff);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600}
+.tcg-st b{font-size:14.5px}
+.tcg-st p{margin:4px 0 0;font-size:13.5px;line-height:1.5;color:var(--mut)}
+.tcg-copy{display:flex;align-items:center;gap:8px;margin-top:8px;padding:6px 6px 6px 10px;border:1px solid var(--line);border-radius:10px;font-size:12.5px;flex-wrap:wrap}
+.tcg-copy>span:first-child{flex:1 0 100%;font-size:12px}
+.tcg-copy code{flex:1;min-width:0;overflow-wrap:anywhere;font-family:'JetBrains Mono',monospace;font-size:12px}
+.tcg-keys{margin-top:8px;font-size:12.5px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tcg-note{font-size:12.5px;padding:0 18px 18px;margin:0}

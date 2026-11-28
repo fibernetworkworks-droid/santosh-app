@@ -145,8 +145,23 @@ def settings(tenant: str) -> dict:
         done = _j(r.practices, {})
         return {"org_name": r.org_name, "domain": r.domain, "admin_name": r.admin_name, "standard_systems": _j(r.standard_systems, []),
                 "windows": R.windows(_j(r.windows, [])), "review_months": r.review_months, "morning_time": r.morning_time,
-                "rules": r.rules, "last_review": r.last_review,
-                "practices": [{**p, "done": bool(done.get(p["id"]))} for p in R.practices_list()]}
+                "rules": r.rules, "last_review": r.last_review, "country": (r.country or ""), "currency": (r.currency or ""),
+                "practices": [{**p, "done": bool(done.get(p["id"]))} for p in R.practices_list(r.country or "IN")]}
+
+
+CUR_SYMBOL = {"INR": "₹", "USD": "$", "EUR": "€", "GBP": "£", "AED": "AED ", "SGD": "S$", "AUD": "A$", "CAD": "C$", "JPY": "¥", "ZAR": "R ",
+              "NGN": "₦", "KES": "KSh ", "BRL": "R$", "MYR": "RM ", "SAR": "SAR "}
+
+
+def money(tenant: str, v: float | int | None) -> str:
+    """Her number in her own money unit (she types every price; Hoola converts nothing)."""
+    if v is None:
+        return ""
+    with session() as s:
+        r = s.get(ItadminSettings, tenant)
+        cur = ((r.currency if r else "") or "INR").upper()
+    sym = CUR_SYMBOL.get(cur, cur + " ")
+    return f"{sym}{round(v):,}"
 
 
 def save_settings(tenant: str, **kw: Any) -> dict:
@@ -167,9 +182,19 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", str(kw["morning_time"])):
                 raise ItadminError("morning_time must be HH:MM.")
             r.morning_time = str(kw["morning_time"])
+        if "country" in kw:
+            c = str(kw["country"] or "").strip().upper()
+            if c and not re.fullmatch(r"[A-Z]{2}", c):
+                raise ItadminError("Country is two letters (IN, GB, US, DE ...).")
+            r.country = c
+        if "currency" in kw:
+            c = str(kw["currency"] or "").strip().upper()
+            if c and not re.fullmatch(r"[A-Z]{3}", c):
+                raise ItadminError("Currency is three letters (INR, USD, EUR ...).")
+            r.currency = c
         if isinstance(kw.get("practices"), dict):
             cur = _j(r.practices, {})
-            ids = {p["id"] for p in R.practices_list()}
+            ids = {p["id"] for p in R.practices_list(r.country or "IN")}
             cur.update({k: bool(v) for k, v in kw["practices"].items() if k in ids})
             r.practices = _dump(cur)
     return {**settings(tenant), "say": "IT admin rules saved."}
@@ -259,10 +284,10 @@ def save_licence(tenant: str, licence: str = "", **kw: Any) -> dict:
     if v["renews_on"]:
         say += f", renewal {v['renews_on']} ({v['days_left']} days)"
     if v["waste"]:
-        say += f". {v['waste']['free']} seats unused" + (f" (~₹{v['waste']['rupees_year']:,}/year)" if v["waste"]["rupees_year"] else "")
+        say += f". {v['waste']['free']} seats unused" + (f" (~{money(tenant, v['waste']['rupees_year'])}/year)" if v["waste"]["rupees_year"] else "")
     if v["auto_renew"] is None and v["renews_on"]:
         say += ". Is auto-renew on or off? Please tell me."
-    return {"licence": v, "say": say + "."}
+    return {"licence": v, "say": say if say.endswith((".", "?")) else say + "."}
 
 
 def licences(tenant: str, kind: str = "") -> list[dict]:
@@ -456,7 +481,8 @@ def forget_person(tenant: str, ref: str, actor: str = "owner") -> dict:
         p.status = "forgotten"
         for a in s.scalars(select(ItadminAccess).where(ItadminAccess.person_id == p.id)).all():
             a.account = "[removed]"
-    return {"say": f"{num}: personal data erased (DPDP: the purpose is over, so the data goes). The counts are kept."}
+    law = "DPDP" if (settings(tenant).get("country") or "IN") == "IN" else "your data protection law"
+    return {"say": f"{num}: personal data erased ({law}: the purpose is over, so the data goes). The counts are kept."}
 
 
 # ---------------------------------------------------------------- access register
@@ -1454,7 +1480,7 @@ def day(tenant: str) -> dict:
     for l in ren["licences"][:6]:
         lines.append(f"{l['name']}: renewal {l['renews_on']} ({l['days_left']} days)" + ("" if l["auto_renew"] is not False else ", auto-renew OFF"))
     if ren["save_year"]:
-        lines.append(f"Unused seats: ~₹{ren['save_year']:,}/year could be saved")
+        lines.append(f"Unused seats: ~{money(tenant, ren['save_year'])}/year could be saved")
     for c in due_cl[:5]:
         lines.append(f"{c['person']}: {c['kind']} checklist {c['done']}/{c['total']} (date {c['due']})")
     if waiting:
@@ -1565,7 +1591,7 @@ def register_file(tenant: str, conv: str = "") -> dict:
     wb.remove(wb.active)
     ws = wb.create_sheet("Licences")
     ws.append(["No", "Kind", "Name", "Vendor", "Seats bought", "Seats used", "Cost", "Per", "Per seat", "Renews on", "Days left",
-               "Auto-renew", "Owner", "Free seats", "Save/yr (Rs)"])
+               "Auto-renew", "Owner", "Free seats", "Save/yr (" + (settings(tenant).get("currency") or "INR") + ")"])
     for l in licences(tenant):
         w = l["waste"] or {}
         ws.append([l["number"], l["kind_label"], l["name"], l["vendor"], l["seats_bought"], l["seats_used"], l["cost"], l["cost_per"],

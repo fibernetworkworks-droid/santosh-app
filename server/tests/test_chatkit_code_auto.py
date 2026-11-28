@@ -57,7 +57,7 @@ def test_the_panels_mount_the_kit_and_the_old_waiting_marks_are_gone():
     css = (STATIC / "console/hoolacode.css").read_text()
     icss = (STATIC / "auto/intake.css").read_text()
     assert "HoolaChat.mount(col, o)" in code and "k.t.begin(nowLabel(k.task))" in code            # the session thread + its ONE working row
-    assert "k.task.run_at" in code and "t.now || nowDoing(t)" in code                             # the clock and the running step are the server's
+    assert "k.task.run_at" in code and "(t.now ? t.now + " in code and "nowDoing(t))" in code                             # the clock and the running step are the server's
     assert auto.count("HoolaChat.mount(") == 2 and "window.HoolaChat.bar(host, o)" in auto          # the agent chat + the intake talk, the kit's box
     assert "window.HoolaChat.mount(TK.root" in intake and "window.HoolaChat.bar(barHost" in intake
     # the old waiting markup: a pulsing dot row, a spinning ring line, italic "thinking" text, a tinted bubble
@@ -167,10 +167,10 @@ def test_the_session_thread_is_the_kit_and_a_refresh_only_adds(arena_server):  #
     t = pg.evaluate(THREAD)
     assert t["kit"] and t["bub"] == [HER] and t["txt"] == [SAY0] and t["landing"] == 0, t
     assert t["kids"] == ["her", "say", "rows", "work"] and t["old"] == 0 and t["acts"] == [], t          # no Copy mid-turn, no old dot row
-    assert t["label"] == "Reading app/cart.py", t
+    assert t["label"].startswith("Reading app/cart.py") and "Esc to stop" in t["label"], t   # v0.999 the step, its clock, Esc to stop
     pg.wait_for_function("() => /^1m \\d\\ds$/.test(document.querySelector('#hcdCol .hck-secs').textContent)")   # counts from run_at (65 s ago), not from now
     feed = pg.locator("#hcdCol").text_content()
-    assert "Read 2 files, searched 1 time" in feed                                                     # the page's own step rows are still there
+    assert "Read 2 files, searched for 1 pattern" in feed                                                     # the page's own step rows are still there
     pg.evaluate("() => { window.__bub = document.querySelector('#hcdCol .hck-bub'); }")
     _shot(pg, "ck-1-working")
     # 2. Hoola says something new: it LANDS word by word under the work that came before it, which folds into "Worked for"
@@ -185,7 +185,8 @@ def test_the_session_thread_is_the_kit_and_a_refresh_only_adds(arena_server):  #
     pg.wait_for_function("() => document.querySelector('#hcdCol .hck-work:not([hidden]) .hck-label')")
     t = pg.evaluate(THREAD)
     assert t["kids"] == ["her", "say", "fold", "say", "rows", "work"], t                                 # in the order it happened, one turn
-    assert t["folds"] and t["folds"][0].startswith("Worked for ") and t["label"] == "Editing tests/test_cart.py" and t["same"], t
+    # v0.999 the fold names what was done, like Claude Code ("Read 2 files, searched for total(") - no gap-measured time
+    assert t["folds"] and t["folds"][0] == "Read 2 files, searched for total(" and t["label"].startswith("Editing tests/test_cart.py") and t["same"], t
     assert pg.locator("#hcdCol .hck-txt strong, #hcdCol .hck-txt b").count() >= 1                        # the kit's markdown (was plain text)
     assert pg.locator("#hcdCol .hcd-wgrp .hcd-diff span.add").count() == 2                                # the edit keeps its diff
     _shot(pg, "ck-2-landed")
@@ -242,7 +243,8 @@ def test_a_finished_session_opens_whole_in_light_and_dark(arena_server):  # noqa
             gap: getComputedStyle(col).rowGap, inner: getComputedStyle(ho).rowGap, para: getComputedStyle(p.firstChild).marginBottom, em: getComputedStyle(p.querySelector('em')).fontStyle,
             code: getComputedStyle(p.querySelector('code')).paddingLeft, ink: cs('#hcdCol .hck-txt', 'color'), bubbg: cs('#hcdCol .hck-bub', 'backgroundColor')};
           p.remove(); return out; }""")
-        assert "Literata" in got["font"] and got["size"] == "16px" and got["lh"] == "24px" and got["bub"] == "16px", got
+        # v0.999 Hoola Code's words are in the plain sans Claude Code uses (the main chat keeps its serif)
+        assert "Literata" not in got["font"] and "Grotesk" in got["font"] and got["size"] == "16px" and got["lh"] == "24px" and got["bub"] == "16px", got
         assert got["gap"] == "44px" and got["inner"] == "12px" and got["para"] == "16px" and got["em"] == "italic" and got["code"] == "4px", got
         lum = lambda c: sum(int(x) for x in re.findall(r"\d+", c)[:3])                                  # noqa: E731
         assert (lum(got["ink"]) > 600) == dark and (lum(got["bubbg"]) < 200) == dark, got               # the page's own tokens, in both themes

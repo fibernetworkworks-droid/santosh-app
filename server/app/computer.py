@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import Boolean, DateTime, String, func, or_, select
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -41,6 +41,7 @@ class ComputerPref(Base):
     __tablename__ = "computer_prefs"
     tenant_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     mine_on: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    bg: Mapped[bool | None] = mapped_column(Boolean, nullable=True)   # v0.999.47 work in the background on her PC
     at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
@@ -116,6 +117,26 @@ def set_mine(tenant: str, on: bool) -> bool:
     return bool(on)
 
 
+def bg_on(tenant: str) -> bool:
+    """v0.999.47 'Work in the background' on her own PC (Claude Cowork background windows): Hoola acts through the
+    PC's accessibility (exact mode) and never takes her mouse or keyboard without her yes. Default off."""
+    ensure_table()
+    with session() as s:
+        row = s.get(ComputerPref, tenant)
+        return bool(row is not None and row.bg)
+
+
+def set_bg(tenant: str, on: bool) -> bool:
+    ensure_table()
+    with session() as s:
+        row = s.get(ComputerPref, tenant)
+        if row is None:
+            row = ComputerPref(tenant_id=tenant)
+            s.add(row)
+        row.bg, row.at = bool(on), now()
+    return bool(on)
+
+
 # ---------------------------------------------------------------- what runs on each computer now
 def _running(tenant: str, which: str) -> dict[str, Any] | None:
     """The task running on that computer for her right now (from ANY chat or call of hers)."""
@@ -148,10 +169,53 @@ def _running(tenant: str, which: str) -> dict[str, Any] | None:
             ("computer" if which_of(best.conv) else "chat"), "started": best.created,
             # v0.999.37 her hands: she has the screen / a sign-in waits on her private form / her other jobs at once
             "takeover": bool(getattr(best, "takeover", False)),
-            **({"login": {"id": best.login["id"], "site": best.login["site"], "fields": best.login["fields"]}}
+            # v0.999.233 COMPUTER V2: the step waiting for her yes, answered right on the job panel
+            **({"pending": {"id": str(best.pending.get("id") or ""), "what": str(best.pending.get("what") or "")[:300]}}
+               if best.status == "needs_confirm" and isinstance(getattr(best, "pending", None), dict) else {}),
+            **({"login": {k: v for k, v in (_hands_login(best) or {}).items() if k != "session_id"}}
                if getattr(best, "login", None) and best.login.get("status") == "pending" else {}),
             "others": [{"session_id": o.id, "task": o.task[:120], "status": o.status, "pc": o.device_name}
                        for o in sorted(live, key=lambda o: o.created) if o is not best]}
+
+
+def _agent_email(tenant: str) -> str:
+    try:   # v0.999.47 Hoola's own address (empty until the owner sets up the mail domain)
+        from . import agentmail
+        return agentmail.address(tenant) if agentmail.configured() else ""
+    except Exception:   # noqa: BLE001
+        return ""
+
+
+DOWNLOADS = {   # v0.999.145 the redesign's Connect page: one download per system (build-desktop.yml releases)
+    "windows": DOWNLOAD,
+    "mac": "https://github.com/fibernetworkworks-droid/santosh-app/releases/download/desktop-mac-latest/Hoola-Desktop-mac.zip",
+    "linux": "https://github.com/fibernetworkworks-droid/santosh-app/releases/download/desktop-linux-latest/Hoola-Desktop-linux.tar.gz"}
+
+
+def _chrome_ready(tenant: str) -> bool:
+    try:   # v0.999.145 her Chrome extension is connected (Hoola can work in her own Chrome tabs)
+        from .pc import extlink
+        return bool(extlink.ready(tenant))
+    except Exception:   # noqa: BLE001
+        return False
+
+
+def choose(tenant: str, text: str) -> dict[str, Any]:
+    """v0.999.145 'Let Hoola choose': her PC for a site that refuses cloud computers (when her PC is on), Hoola PC
+    otherwise. -> {which, why}."""
+    try:
+        from .pc import portals
+        from .pc.lessons import sites_of
+        blocked = next((h for h in sites_of(text) if portals.blocked_for_cloud(h)), "")
+    except Exception:   # noqa: BLE001
+        blocked = ""
+    devs = _paired(tenant)
+    mine_ok = mine_on(tenant) and any(d.get("online") for d in devs)
+    if blocked and mine_ok:
+        return {"which": "mine", "why": f"{blocked} refuses cloud computers, so it runs on your PC"}
+    if blocked:
+        return {"which": "hoola", "why": f"{blocked} refuses cloud computers and your PC is not on - Hoola PC will try and tell you"}
+    return {"which": "hoola", "why": "Hoola PC works even when your PC is off"}
 
 
 def status(tenant: str) -> dict[str, Any]:
@@ -163,8 +227,9 @@ def status(tenant: str) -> dict[str, Any]:
     devs = _paired(tenant)
     return {
         "hoola": {"online": bool(pcs), "count": len(pcs), "running": _running(tenant, "hoola"),
-                  "last": _last(tenant, "hoola")},
-        "mine": {"on": mine_on(tenant), "devices": devs, "online": any(d.get("online") for d in devs),
+                  "last": _last(tenant, "hoola"), "email": _agent_email(tenant)},
+        "mine": {"on": mine_on(tenant), "background": bg_on(tenant), "devices": devs, "online": any(d.get("online") for d in devs),
+                 "chrome": _chrome_ready(tenant), "downloads": DOWNLOADS,
                  "running": _running(tenant, "mine"), "last": _last(tenant, "mine"), "download": DOWNLOAD},
     }
 
@@ -256,11 +321,29 @@ class LoginIn(BaseModel):
     username: str = ""
     password: str = ""
     skip: bool = False
+    save: bool = False          # v0.999.47 'Save for next time' (her tick)
+    use_saved: bool = False     # v0.999.47 'Use saved sign-in' (her tap)
+    use_onepw: bool = False     # v0.999.51 'Use 1Password sign-in' (her tap)
 
     def __repr__(self) -> str:          # never printed with the password in it
         return f"LoginIn(id={self.id!r}, skip={self.skip})"
 
     __str__ = __repr__
+
+
+class OnePwIn(BaseModel):
+    token: str = ""
+    vault_id: str = ""
+
+    def __repr__(self) -> str:          # never printed with the token in it
+        return f"OnePwIn(vault_id={self.vault_id!r})"
+
+    __str__ = __repr__
+
+
+def _hands_login(op):
+    from .pc.hands import login_public
+    return login_public(op)
 
 
 def _op(tenant: str, sid: str):
@@ -273,6 +356,15 @@ def _op(tenant: str, sid: str):
 
 class MineIn(BaseModel):
     on: bool
+
+
+class DecideIn(BaseModel):
+    yes: bool
+    id: str = Field(default="", max_length=40)
+
+
+class ChooseIn(BaseModel):
+    text: str = Field(default="", max_length=4000)
 
 
 def _which(which: str) -> str:
@@ -298,9 +390,31 @@ def mount(app, current_tenant, require_key) -> None:
             raise HTTPException(409, "Turn on 'Use my PC' first")
         return new_chat(tenant, which)
 
+    @router.post("/api/computer/choose", dependencies=[Depends(require_key)])
+    def computer_choose(body: ChooseIn, tenant: str = Depends(current_tenant)):
+        return choose(tenant, body.text)
+
+    @router.post("/api/computer/task/{sid}/decide", dependencies=[Depends(require_key)])
+    def computer_decide(sid: str, body: DecideIn, tenant: str = Depends(current_tenant)):
+        """v0.999.233 her yes / no for the step a PC job is waiting on (same as the approval card)."""
+        from .pc import operator as pcop
+        op = pcop.get(tenant, sid)
+        if op is None:
+            raise HTTPException(404, "That job is not running")
+        pend = op.pending if isinstance(getattr(op, "pending", None), dict) else None
+        if not pend or (body.id and body.id != pend.get("id")):
+            raise HTTPException(409, "Nothing is waiting for your answer on that job now")
+        if not pcop.decide(tenant, sid, str(pend.get("id")), bool(body.yes)):
+            raise HTTPException(409, "That question was already answered")
+        return {"ok": True, "yes": bool(body.yes)}
+
     @router.put("/api/computer/mine", dependencies=[Depends(require_key)])
     def computer_mine(body: MineIn, tenant: str = Depends(current_tenant)):
         return {"on": set_mine(tenant, body.on)}
+
+    @router.put("/api/computer/mine/background", dependencies=[Depends(require_key)])
+    def computer_mine_bg(body: MineIn, tenant: str = Depends(current_tenant)):
+        return {"background": set_bg(tenant, body.on)}
 
     @router.post("/api/computer/mine/pair", dependencies=[Depends(require_key)])
     def computer_pair(tenant: str = Depends(current_tenant)):
@@ -332,10 +446,45 @@ def mount(app, current_tenant, require_key) -> None:
     @router.post("/api/computer/task/{sid}/login", dependencies=[Depends(require_key)])
     def computer_login(sid: str, body: LoginIn, tenant: str = Depends(current_tenant)):
         from .pc import hands
-        ok = hands.give_login(_op(tenant, sid), body.id, body.username, body.password, skip=body.skip)
+        ok = hands.give_login(_op(tenant, sid), body.id, body.username, body.password, skip=body.skip,
+                              save=body.save, use_saved=body.use_saved, use_onepw=body.use_onepw)
         body.password = body.username = ""
         if not ok:
             raise HTTPException(409, "That sign-in is no longer waiting")
+        return {"ok": True}
+
+    # v0.999.51 1Password (a service account for her Hoola vault): status, connect (token only from this form), disconnect
+    @router.get("/api/computer/1password", dependencies=[Depends(require_key)])
+    def computer_onepw(tenant: str = Depends(current_tenant)):
+        from .pc import onepw
+        return onepw.status(tenant)
+
+    @router.post("/api/computer/1password", dependencies=[Depends(require_key)])
+    async def computer_onepw_connect(body: OnePwIn, tenant: str = Depends(current_tenant)):
+        from .pc import onepw
+        try:
+            return await onepw.connect(tenant, body.token, body.vault_id)
+        except onepw.OnePwError as e:
+            raise HTTPException(400, str(e))
+        finally:
+            body.token = ""
+
+    @router.delete("/api/computer/1password", dependencies=[Depends(require_key)])
+    def computer_onepw_off(tenant: str = Depends(current_tenant)):
+        from .pc import onepw
+        return {"ok": onepw.disconnect(tenant)}
+
+    # v0.999.47 her saved sign-ins: the list (user names masked, never a password) and delete
+    @router.get("/api/computer/logins", dependencies=[Depends(require_key)])
+    def computer_logins(tenant: str = Depends(current_tenant)):
+        from .pc import vault
+        return {"logins": vault.list_(tenant)}
+
+    @router.delete("/api/computer/logins/{lid}", dependencies=[Depends(require_key)])
+    def computer_login_delete(lid: str, tenant: str = Depends(current_tenant)):
+        from .pc import vault
+        if not vault.delete(tenant, lid):
+            raise HTTPException(404, "Not found")
         return {"ok": True}
 
     app.include_router(router)

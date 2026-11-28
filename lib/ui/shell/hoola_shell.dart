@@ -1063,7 +1063,7 @@ class _HoolaDrawerState extends State<HoolaDrawer> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 18, 12, 8),
                 child: Row(children: [
-                  Expanded(child: Text('Hoola', style: HoolaType.hero(c))),
+                  Expanded(child: Text('Hoola', style: HoolaType.pageTitle(c))),
                   HoolaCodeButton(live: _codeLive, onTap: _openCode),
                 ]),
               ),

@@ -1,0 +1,464 @@
+{
+ "key": "online_store",
+ "name": "Online store",
+ "kind": "ecommerce",
+ "sla": {
+  "urgent": [
+   2,
+   24
+  ],
+  "high": [
+   8,
+   72
+  ],
+  "normal": [
+   24,
+   168
+  ],
+  "low": [
+   48,
+   336
+  ]
+ },
+ "categories": {
+  "delivery": {
+   "label": "Where is my order",
+   "words": [
+    "where is my order",
+    "not delivered",
+    "tracking",
+    "late",
+    "courier",
+    "shipping"
+   ]
+  },
+  "return": {
+   "label": "Return / exchange",
+   "words": [
+    "return",
+    "exchange",
+    "wrong size",
+    "wrong item"
+   ]
+  },
+  "refund": {
+   "label": "Refund",
+   "words": [
+    "refund",
+    "money back",
+    "not received refund"
+   ]
+  },
+  "payment": {
+   "label": "Payment problem",
+   "words": [
+    "payment failed",
+    "charged twice",
+    "double",
+    "deducted"
+   ]
+  },
+  "product": {
+   "label": "Damaged / wrong product",
+   "words": [
+    "damaged",
+    "broken",
+    "missing item",
+    "fake"
+   ]
+  },
+  "account": {
+   "label": "Account / login",
+   "words": [
+    "login",
+    "account",
+    "password",
+    "email change"
+   ]
+  },
+  "cancel": {
+   "label": "Cancel an order",
+   "words": [
+    "cancel",
+    "cancellation"
+   ]
+  }
+ },
+ "urgent_words": [
+  "fraud",
+  "charged twice",
+  "chargeback",
+  "legal",
+  "court",
+  "unsafe"
+ ],
+ "flows": [
+  {
+   "key": "delivery",
+   "name": "Delivery problem",
+   "stages": [
+    {
+     "key": "new",
+     "name": "New",
+     "owner": "hoola",
+     "hours": 1,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "traced",
+     "name": "Traced with the courier",
+     "owner": "hoola",
+     "hours": 24,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "courier",
+     "name": "Waiting on the courier",
+     "owner": "team",
+     "hours": 72,
+     "customer_told": true,
+     "needs": [],
+     "waiting": true
+    },
+    {
+     "key": "delivered",
+     "name": "Delivered or resolved",
+     "owner": "team",
+     "hours": 24,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "confirmed",
+     "name": "Customer confirmed",
+     "owner": "hoola",
+     "hours": 72,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "closed",
+     "name": "Closed",
+     "owner": "team",
+     "hours": 0,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    }
+   ],
+   "arrows": {
+    "new": [
+     "traced"
+    ],
+    "traced": [
+     "courier"
+    ],
+    "courier": [
+     "delivered"
+    ],
+    "delivered": [
+     "confirmed"
+    ],
+    "confirmed": [
+     "closed"
+    ],
+    "closed": []
+   }
+  },
+  {
+   "key": "return",
+   "name": "Return",
+   "stages": [
+    {
+     "key": "requested",
+     "name": "Requested",
+     "owner": "hoola",
+     "hours": 4,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "approved",
+     "name": "Return approved",
+     "owner": "team",
+     "hours": 24,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "pickup",
+     "name": "Pickup booked",
+     "owner": "team",
+     "hours": 72,
+     "customer_told": true,
+     "needs": [
+      "pickup_date"
+     ],
+     "waiting": false
+    },
+    {
+     "key": "received",
+     "name": "Item received and checked",
+     "owner": "team",
+     "hours": 72,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "refunded",
+     "name": "Refund or replacement sent",
+     "owner": "finance",
+     "hours": 72,
+     "customer_told": true,
+     "needs": [
+      "payment_ref"
+     ],
+     "waiting": false
+    },
+    {
+     "key": "closed",
+     "name": "Closed",
+     "owner": "team",
+     "hours": 0,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    }
+   ],
+   "arrows": {
+    "requested": [
+     "approved"
+    ],
+    "approved": [
+     "pickup"
+    ],
+    "pickup": [
+     "received"
+    ],
+    "received": [
+     "refunded"
+    ],
+    "refunded": [
+     "closed"
+    ],
+    "closed": []
+   }
+  },
+  {
+   "key": "refund",
+   "name": "Refund",
+   "stages": [
+    {
+     "key": "requested",
+     "name": "Requested",
+     "owner": "hoola",
+     "hours": 4,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "checked",
+     "name": "Checked against your rules",
+     "owner": "team",
+     "hours": 24,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "approval",
+     "name": "Waiting for approval",
+     "owner": "approver",
+     "hours": 24,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "paid",
+     "name": "Paid by a person",
+     "owner": "finance",
+     "hours": 72,
+     "customer_told": true,
+     "needs": [
+      "payment_ref"
+     ],
+     "waiting": false
+    },
+    {
+     "key": "closed",
+     "name": "Closed",
+     "owner": "team",
+     "hours": 0,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    }
+   ],
+   "arrows": {
+    "requested": [
+     "checked"
+    ],
+    "checked": [
+     "approval",
+     "closed"
+    ],
+    "approval": [
+     "paid",
+     "closed"
+    ],
+    "paid": [
+     "closed"
+    ],
+    "closed": []
+   }
+  },
+  {
+   "key": "question",
+   "name": "Question",
+   "stages": [
+    {
+     "key": "new",
+     "name": "New",
+     "owner": "hoola",
+     "hours": 1,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "answered",
+     "name": "Answered",
+     "owner": "hoola",
+     "hours": 24,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "confirmed",
+     "name": "Customer confirmed",
+     "owner": "hoola",
+     "hours": 72,
+     "customer_told": true,
+     "needs": [],
+     "waiting": false
+    },
+    {
+     "key": "closed",
+     "name": "Closed",
+     "owner": "team",
+     "hours": 0,
+     "customer_told": false,
+     "needs": [],
+     "waiting": false
+    }
+   ],
+   "arrows": {
+    "new": [
+     "answered"
+    ],
+    "answered": [
+     "confirmed",
+     "new"
+    ],
+    "confirmed": [
+     "closed"
+    ],
+    "closed": []
+   }
+  }
+ ],
+ "policy": {
+  "refund_days": 30,
+  "replace_days": 30,
+  "cancel_hours": 24
+ },
+ "knowledge_questions": [
+  "How long does delivery take, by area or country?",
+  "What is your return and refund policy?",
+  "How does a customer track an order?",
+  "Which countries do you ship to, and who pays duties?"
+ ],
+ "saved_replies": [
+  {
+   "name": "Tracking link",
+   "text": "Hi {name}, your order {ticket} is on its way. Track it here: [link]."
+  },
+  {
+   "name": "Return steps",
+   "text": "Hi {name}, to return it: [steps]. The refund goes back to the same payment method in [days] days after we receive it."
+  }
+ ],
+ "law": [
+  {
+   "region": "EU",
+   "text": "Tell people they are talking to an AI (EU AI Act transparency duty).",
+   "source": "Regulation (EU) 2024/1689, Art. 50",
+   "id": "ai",
+   "status": "check"
+  },
+  {
+   "region": "US-CA",
+   "text": "Do not hide that a bot is talking when it sells or sways a vote.",
+   "source": "California Business and Professions Code 17940-17943",
+   "id": "ai_ca",
+   "status": "check"
+  },
+  {
+   "region": "EU/UK",
+   "text": "Answer a person's request about their own data within one month.",
+   "source": "GDPR / UK GDPR Art. 12(3)",
+   "id": "gdpr",
+   "status": "check"
+  },
+  {
+   "region": "US-CA",
+   "text": "Answer a consumer's data request within 45 days.",
+   "source": "California Civil Code 1798.130",
+   "id": "ccpa",
+   "status": "check"
+  },
+  {
+   "region": "IN",
+   "text": "Settle a grievance about personal data within 90 days.",
+   "source": "Digital Personal Data Protection Rules 2025",
+   "id": "dpdp",
+   "status": "check"
+  },
+  {
+   "region": "EU",
+   "text": "Consumer chat and websites must be usable with assistive technology.",
+   "source": "European Accessibility Act, Directive (EU) 2019/882",
+   "id": "eaa",
+   "status": "check"
+  },
+  {
+   "region": "IN",
+   "text": "Online sellers: acknowledge a complaint within 48 hours and settle it within one month; show the grievance officer.",
+   "source": "Consumer Protection (E-Commerce) Rules 2020, Rule 4(5)",
+   "id": "ecom_in",
+   "status": "check"
+  },
+  {
+   "region": "EU",
+   "text": "Online traders: give customers the information about out-of-court dispute bodies their country requires.",
+   "source": "Directive 2013/11/EU (ADR)",
+   "id": "eu_odr",
+   "status": "check"
+  }
+ ],
+ "lookup": "orders",
+ "version": 1,
+ "checked": "2026-11-21"
+}

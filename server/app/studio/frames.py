@@ -68,7 +68,7 @@ def _root() -> Path:
     st = get_settings()
     r = Path((st.frames_root or "").strip() or (Path("data") / "frames")).expanduser()
     r.mkdir(parents=True, exist_ok=True)
-    return r
+    return r.resolve()          # v0.999.170: ffmpeg / ffprobe run with cwd = the file's folder, so a relative path broke them
 
 
 def _env() -> dict[str, str]:
@@ -404,13 +404,18 @@ def _concat_wavs(padded: list[Path], dest: Path) -> None:
 
 
 def do_avatar_film(tenant: str, spec: dict, files: list[dict[str, Any]] | None = None,
-                   out_name: str = "film", on_stage: Any = None, cancel: Any = None) -> dict[str, Any]:
+                   out_name: str = "film", on_stage: Any = None, cancel: Any = None,
+                   voicer: Any = None, voice_out: Any = None) -> dict[str, Any]:
     """AVATAR FILMS: spec -> lab voice -> word-timed composition -> the normal check->render gate.
 
     The slow parts (TTS, alignment) run BEFORE the render lock, so a busy queue never
     blocks them and a voice call is never stuck behind a render that is still scripting.
     `files` come from the tool layer owner-checked (name = the spec's asset name, e.g.
     assets/avatar.jpg; path = the stored file); the worker adds the voice track it made.
+
+    v0.999.170 HOOLA INTERACTIVE REBUILD: `voicer(sentence, lang) -> wav bytes` speaks each line (Hoola Interactive passes
+    a Vocal voice: Gemini / ElevenLabs / her own voices); without one the GPU lab speaks, as before. `voice_out` (a path)
+    receives a copy of the whole timed voice track, so a talking-face engine can be driven by exactly the same audio.
     """
     from . import avatar as av
     from ..videoedit import captions as cap
@@ -454,7 +459,7 @@ def do_avatar_film(tenant: str, spec: dict, files: list[dict[str, Any]] | None =
             words, voice_asset = None, None
         else:
             from ..interactive import lab
-            if not lab.configured():
+            if voicer is None and not lab.configured():
                 raise NotConfigured(
                     "An AVATAR FILM needs a voice: the Model Lab is not set up on this server "
                     "(AVATAR_ENGINE_URL / AVATAR_ENGINE_KEY). If you like, send silent:true in the spec "
@@ -464,7 +469,8 @@ def do_avatar_film(tenant: str, spec: dict, files: list[dict[str, Any]] | None =
                 stopped()
                 stage("voice", f"{i + 1} of {len(sentences)} lines")
                 try:
-                    data = lab.voice(s, lang=parts["lang"], model=parts["voice_model"])
+                    data = (voicer(s, parts["lang"]) if voicer is not None
+                            else lab.voice(s, lang=parts["lang"], model=parts["voice_model"]))
                 except Exception as e:
                     raise FramesError(f"the voice could not be made (sentence {i + 1}): {e}") from None
                 p = tmp / f"raw-{i:02d}.wav"
@@ -485,6 +491,8 @@ def do_avatar_film(tenant: str, spec: dict, files: list[dict[str, Any]] | None =
             stage("align", f"{sum(speech):.0f} s of speech")
             words = cap.whisper_words(str(voice), parts["lang"] if parts["lang"] not in ("hi", "en") else "hi")
             voice_asset = str(voice)
+            if voice_out:
+                shutil.copyfile(voice, str(voice_out))
 
         plan = av.timing_plan(sentences, spans, speech, words)
         all_files = ([{"name": "assets/voice.wav", "path": voice_asset}] if voice_asset else []) + provided

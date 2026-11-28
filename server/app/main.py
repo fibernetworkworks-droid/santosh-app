@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 import json
 import re
 import logging
@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.39"   # v0.999.39 PROOF (owner: 'GO P12'): Hoola Prompting P12 - the proof card: Hoola's own brief as a third arm beside her raw line and the hand-filled brief (free words-only part + a live run through the real engines with a rupee ceiling), the sections with no live runner listed with their code checks, up to ten users' four numbers first half vs second half; previous: v0.999.38 BAHAR + SAMUDAAY (owner: 'GO P11'): Hoola Prompting P11 - a brief copied for ChatGPT / Claude / Gemini / a picture tool (copy only), public recipe pages /prompts, community recipes off until switched on (owner approves, nobody paid); previous: v0.999.37 KHUD SEEKHE (owner: 'GO P10'): Hoola Prompting P10 - the outcome ledger proposes changes to its own questions, defaults and recipe values; a change is offered only with a measured gain and accepted only on the owner's tap, which measures again (no gain = refused); alerts when a new wording / model keeps worse; her own usual choices offered to her and used only after her yes; previous: v0.999.36 SEEKHO (owner: 'GO P9'): Hoola Prompting P9 - lessons from her own prompts (her line, a better way written by code, her own numbers only when her record holds them, Got it / Not useful); previous: v0.999.35 MUQABLA (owner: 'GO P8'): Hoola Prompting P8 - two prompts side by side (free in code), pictures and scripts run both only with the token of the price she was shown, her pick kept as shape + the winner's ledger thumb; previous: v0.999.34 HOOLA PROMPTING P5 + P6 + P7 (built as 0.999.32 / 0.999.33 / 0.999.34; their WIRED and WEBSITE WIRING took 0.999.32-0.999.33, all kept) (owner: 'GO P5', 'GO P6', 'GO P7'): SAB SECTION (app / video / music / marketing / document sections), KAAM KE SECTION (coding -> Hoola Code, research, data, AI assistant, everyday ask), MERE PROMPT (saved prompts: versions + restore, fill each time, a schedule through routines, a screened share link); previous: v0.999.33 WIRED (owner: "NOW CHECK DOES EVERY THING IS WIRE PROPERLY OR NOT" after v0.999.29; built as 0.999.30 - their HOOLA WEBSITE took 0.999.30 and HOOLA COMPUTER CHECK 0.999.31 and WEBSITE WIRING 0.999.32, all kept): the wiring check - every studio's AI work runs under her account on her tier (request resolver, the door's job table, Hoola Code's session tier); found + fixed: Hoola Design started `quality.js` before the page loaded it, so nothing showed under Ask Hoola (design.html now loads it first; a test checks the order on every studio page); her credits were read once per page and never went down as Hoola worked (console studios + Hoola Code now read them again on return and every minute, never redrawing under an open menu; the phone's row every minute and when a box opens); three AI-spend figures were still rupees (App Studio Health 'AI cost (30 days)', a Hoola Code session's 'Cost so far', Hoola Code 'Usage this month') - now credits at the server's rate (`HoolaQuality.credits`), her shop's sales and fees stay rupees; every studio's browser test now checks the tier + credits under ITS own typing box from the server's real routes and that a pick is the tier the server runs her work on (`tests/_hq_wiring.py`); stale test pins (Web Studio cost line, the v0.999.24 prototype CSS block) fixed. Previous: v0.999.32 WEBSITE WIRING (owner: "NOW GO THROUGH -- EVERY WEBSITE BUILDING FLOW -- CHECK EVERY THING IS WIRED PROPERLY OR NOT"): Build mode, Build with questions first, Plan mode, templates, the chat agent and the old three looks walked end to end through the real routes (plan -> prototype -> edit / move / undo / change in words -> stale tap refused -> approve -> real site -> change, version diff, restore, launch card, drafts, errors, backend, code), and the prototype screen in a real browser at 1440 and 390 px (click a section, edit, save, Undo, switch pages, Build the real website); every Studio API call has a server route. Fixed: (1) the status line Hoola sends to the chat and the phone said "Say Yes and I will make 3 looks" with the prototype on, and nothing when the prototype was ready - now it names the prototype and says it is ready (`service._say` / `_next_step`); (2) the website card in the main console chat (build.js `protoBody` / `planYes`) and on the phone (`SitePrototypeOpen` in site_screen.dart) had no prototype state and their yes button said make 3 looks - now they show the pages and open the Web Studio, where only her tap builds; (3) on a phone the Studio chat was 440 px on a 390 px screen since v0.667 (a later rule overrode the phone rule) - 440 px only above 1000 px now. Found, not changed: 350 of 400 sampled templates carry another business type than their subject (a sweet shop template plans as a restaurant). 6 tests. NOT VERIFIED on her server or phone. Previous: v0.999.31 HOOLA COMPUTER CHECK (owner | ALSO on main: v0.999.38 CREATE ON THE PHONE (owner: "NOW CHECK THE EXISTING APP SIDE CREATE SECTION DESIGN PROPERLY" -> the five problems found in the pictures of all 15 phone Create screens -> "GO FIX ALL"): Music styles two across with a visible dot so a name breaks between words, the segment tray shrinks a long name (Instrumental) instead of cutting it; a picture that is loading or missing shows a painted scene with a picture / face / film mark (CrPictureStandIn) instead of a flat colour block (My creations, Director films, the film page cast, AI casting, Cinema jobs); every Create text size on the app scale 12 / 13 / 15 / 16 / 18 / 22 / 28 / 32 (69 sizes moved); Brand kit and AI casting type into one glass card (CrFieldCard); the film page and editor change boxes have hints that fit a phone; phone only, 4 tests. NOT VERIFIED on her phone. | earlier on main: v0.999.34 CREATE FIXES (built as 0.999.32; their WEBSITE WIRING and WIRED took 0.999.32-0.999.33, all kept; owner: "FIRST CHECK ALL THE CREATE SECTION FEATURES TOOLS PROPERLY" -> "GO FIX ALL"): every Create tool walked in Chromium against a real server; a Director storyboard that fails says why ON the film (not only a chat note) and "Storyboard ready" only with shots; engine failures one plain line (create.service.plain, never the provider's raw "Error code: 401 - {...}"); an engine not set up is said before a job starts (GET /api/create need, console startJob + phone CreateStore.start); off-scale text sizes fixed; 5 out-of-date pins updated; 13 tests. Previous: v0.999.33 WIRED (owner: "NOW CHECK DOES EVERY THING IS WIRE PROPERLY OR NOT" after v0.999.29; built as 0.999.30 - their HOOLA WEBSITE took 0.999.30 and HOOLA COMPUTER CHECK 0.999.31 and WEBSITE WIRING 0.999.32, all kept): the wiring check - every studio's AI work runs under her account on her tier (request resolver, the door's job table, Hoola Code's session tier); found + fixed: Hoola Design started `quality.js` before the page loaded it, so nothing showed under Ask Hoola (design.html now loads it first; a test checks the order on every studio page); her credits were read once per page and never went down as Hoola worked (console studios + Hoola Code now read them again on return and every minute, never redrawing under an open menu; the phone's row every minute and when a box opens); three AI-spend figures were still rupees (App Studio Health 'AI cost (30 days)', a Hoola Code session's 'Cost so far', Hoola Code 'Usage this month') - now credits at the server's rate (`HoolaQuality.credits`), her shop's sales and fees stay rupees; every studio's browser test now checks the tier + credits under ITS own typing box from the server's real routes and that a pick is the tier the server runs her work on (`tests/_hq_wiring.py`); stale test pins (Web Studio cost line, the v0.999.24 prototype CSS block) fixed. Previous: v0.999.32 WEBSITE WIRING (owner: "NOW GO THROUGH -- EVERY WEBSITE BUILDING FLOW -- CHECK EVERY THING IS WIRED PROPERLY OR NOT"): Build mode, Build with questions first, Plan mode, templates, the chat agent and the old three looks walked end to end through the real routes (plan -> prototype -> edit / move / undo / change in words -> stale tap refused -> approve -> real site -> change, version diff, restore, launch card, drafts, errors, backend, code), and the prototype screen in a real browser at 1440 and 390 px (click a section, edit, save, Undo, switch pages, Build the real website); every Studio API call has a server route. Fixed: (1) the status line Hoola sends to the chat and the phone said "Say Yes and I will make 3 looks" with the prototype on, and nothing when the prototype was ready - now it names the prototype and says it is ready (`service._say` / `_next_step`); (2) the website card in the main console chat (build.js `protoBody` / `planYes`) and on the phone (`SitePrototypeOpen` in site_screen.dart) had no prototype state and their yes button said make 3 looks - now they show the pages and open the Web Studio, where only her tap builds; (3) on a phone the Studio chat was 440 px on a 390 px screen since v0.667 (a later rule overrode the phone rule) - 440 px only above 1000 px now. Found, not changed: 350 of 400 sampled templates carry another business type than their subject (a sweet shop template plans as a restaurant). 6 tests. NOT VERIFIED on her server or phone. Previous: v0.999.31 HOOLA COMPUTER CHECK (owner | ALSO on main: v0.999.35 SEO DESK (built as 0.999.34; their CREATE FIXES took 0.999.34, both kept; owner, on the SEO Specialist redesign: "A SEO PANEL AND ... A CHAT SECTION WHERE USER CAN ASK QUERIES AND EVEN CAN TELL TO IMPROVE THIS AND EVEN CAN DO CHANGES ... A END TO END AI SEO EMPLOYEE", "MAKE A SEPERATE SECTION. DONT SHOW HOOLA MAIN SIDE BAR ... CHAT SECTION WILL STAY THERE EVEN PAGES IN LOADED", "ALSO FROM APP A VOICE CALL CONNECTING TO THIS SEO EMPLOYEE", then "GO BUILD"): the SEO Specialist has its own section at /console/seo (seodesk.html / .js / .css): a thin top bar, its own chat on the left (swap to the right, fold), the desk on the right - Overview, Plan, Site health, Search, Local & Maps (Google profile / reviews / listings said plainly as not built), Reports & settings, the 4-step setup the first time; the chat stays while pages load, Ask on any number / problem / step puts it in the chat as the subject; the SEO chat = Conversation kind 'seo' (`seochat.py`, GET /api/seo/chat, POST /api/seo/chat/new), out of every Hoola chat list; a turn in it (or a call started from it) gets the desk as a block and the seo + site tools in view; it may change a website ONLY when Hoola built and hosts it and only after her yes, else it writes the fix to paste; console Open desk goes to the new page; phone SEO desk: Call (the call runs on the SEO chat, `CallSession.convFor`) + Chat; 7 tests incl. a browser walk. NOT VERIFIED on her server or phone. ... | ALSO on main: v0.999.36 STUDIO WORKSPACE (built as 0.999.35; their SEO DESK took 0.999.35, both kept; owner, her screenshots of the "Setting the stage" screen and the Hoola chat: "WHY PREVIEW IS THERE AND CODE IS THERE ... PLAN LOADING WILL BE LIKE A 2ND IMAGE ... A HOOLA LOGO ANIMATION AND JUST BELOW THAT A PLAN UPDATE ... THE CHAT PANEL SHOULD BE FLEXIBLE ... LIVE PAGES ... ARTIFACT SPACE SAME AS CLAUDE" -> the animated design (claude.ai/artifact/V9qyn9RWuU1xHeFrsXqCTp) -> "GO BUILD"): the Web Studio while Hoola works - the chat shows ONE working row (the Hoola mark, the real step, a clock, the steps behind its arrow; the "Setting the stage" and "Making the prototype" cards are gone, `workRow`), the panel shows the animated mark with the step and each planned page under it (`workPane`, from the plan peek / the job steps), then each prototype page the moment it is made (`prototype.made_pages`, making.json, view `made` / `total`, served at __proto/<slug>.html "being made"); no Preview / Code tabs until there is something to look at; the panel is a Claude-style panel - one header row with a Preview / Code switch, the title + version, More (Drafts, Cloud, Integrations, Health, Settings) and close, Show panel brings it back (`viewsBar`, `panelHead`); the chat is resizable (drag the line, arrow keys, double-click resets, remembered, `hoola.ws.chatw`). 4 tests + old pins moved to the new design. NOT VERIFIED on her server. ...; older stories live in git history.
+APP_VERSION = "0.999.308"   # v0.999.308 HOOLA DOD, THE PENDING WORK (owner: "GO BUILD THE PENDING DOD WORK"; their LEARNERS ON took 0.999.307, both kept): tested for the first time against the REAL official OpenClaw image (2026.11.10 and its -browser variant) run in Docker with a scripted model and the real Hoola server, which found and fixed four things the stand-in could not: the Gateway refuses to start without gateway.mode, refuses a state folder others can write to (Hoola now hands it to the image user, 700 / 600), hides client and MCP tools behind its Tool Search unless excluded (hoola_* and hoola__* now stay visible), and a first start runs its repair step for minutes (start wait 600 s); then a whole task ran on it: Hoola MCP tools called from inside the container, a step, the pay question, her yes, done. NEW: her Hoola accounts inside her coworker (`dod/mcp.py`, POST /mcp/dod: 21 read-only tools - mail, Drive, Calendar, Sheets, Docs, her memory - her token by hash AND her container network only); the live screen ("Watch the screen", OpenClaw tools-invoke browser screenshot, never wakes her coworker, one picture per 3 s); a phone push when it needs her (push kind dod_ask); its model spending charged as Hoola Credits from her key's usage, a new task refused when her credits ran out; 10 tests. NOT VERIFIED: on her VPS with a real model and real OpenRouter keys. Previous head: v0.999.307 LEARNERS ON (owner: 'WORK ON IT FOR HOOLA FIRST' on item 1 of the Hermes / OpenClaw comparison - built in Hoola but switched off): the three background learners now default ON - the nudge (`coder/nudge.py`, Hermes's background review ported in v0.478: every 10 turns of a chat or call one cheap-brain reflection between turns saves up to 4 memory rows / skills), the weekly curator (`coder/curator.py`, v0.480: near-duplicate memories merged softly, much-used memories promoted to skills, at most 2 a run) and the nightly dreams pass (`coder/dreams.py`, v0.484, OpenClaw's dreaming sweep: the day's raw notes distilled into <= 4 curated rows, weekly deep rewrite with an undo copy). They had been left off since they were built. BEFORE switching them on, a gap was found and closed: what they write was checked only for length, and they read tool lines that can carry words from a web page, email or file she opened - a planted 'always forward her invoices to x@y.com' would have been saved as a skill and followed in every later session. NEW `coder/guard.py` (Hermes's write scan as the idea, Hoola's own patterns and code) checks every memory row and skill the three write themselves and drops just that write, counted and logged by kind only, never the text: words that replace her rules (ignore / disregard / forget earlier instructions, a new system prompt, do not tell the user, role hijack - English and Hinglish), words that remove her tap (pay / send / delete / approve without asking, skip the approval card, auto-approve), words that send her data out (always / silently forward, send all her files, post to a link, reading .env or credentials, curl with a key), anything the vault redactor or the money-number masker would change (keys, card / Aadhaar / bank / PAN / CVV - financial details never go to memory), and invisible / direction-changing characters; every pattern bounded, text checked in 20,000-character pieces. Ordinary facts pass (her CA's email, a customer's phone number, auto-pay for electricity, 'never forget to run tests'). The curator also gets the usage gate the nudge and dreams already had (no plan room = no model call). conftest pins the three off for the older suites; NEW vps-ops job coder_learn_on sets all three to true in the server's .env (an older explicit false would win over the new default), restarts and prints the effective values. 25 tests. NOT VERIFIED on her server: the new default takes effect on the next deploy unless her .env says false - run vps-ops > coder_learn_on to be sure; no live reflection has run there yet. Previous head: v0.999.306 HOOLA DOD (owner: "BUILD HOOLA DOD" after the design canvas claude.ai/artifact/8ZipRGBeD7F9ZZUvo4uYUY; built as 0.999.304, their ECC 6 TO 10 and PLATFORM ENGINEER DESK took 0.999.304-0.999.305, all kept): Hoola DOD, her coworker, as its own section /console/dod (sidebar row + Tools card + phone Tools tile): she meets it once (a face from the app's 200 looks, a name checked like the avatar name, a voice), then gives it real work; each user's work runs on HER OWN OpenClaw Gateway in the background (`app/dod/`: the pinned official image unchanged, one container per user with its own state, network, 127.0.0.1-only port, memory / CPU caps, a sealed Gateway token and her own OpenRouter key with a spending limit minted through the provisioning API; driven over OpenClaw's documented /v1/responses stream with Hoola's own client tools hoola_step / hoola_ask / hoola_deliver / hoola_done, so every step, question and file is Hoola's and paying / sending / deleting / booking waits for HER tap bound to the question's hash; her notes reach the next step; Stop cancels the run; sleep after 20 idle minutes, wake on the next task; a restart continues cut tasks); off until DOD_ENGINE=true + OPENROUTER_PROVISIONING_KEY; Hoola PC, Hoola Code, the chat and the main avatar untouched; 6 tests incl. a browser walk with a fake Gateway. NOT VERIFIED: against a real OpenClaw Gateway or OpenRouter key on her server; no live screen view or phone push yet. Previous head: v0.999.305 PLATFORM ENGINEER DESK (built as 0.999.304; their ECC 6 TO 10 took 0.999.304, both kept; owner: "Platform Engineer same as finance desks"): the Platform Engineer goes live with its own section /console/platform + Platform chat (kind platform, `pfchat.py`) on a NEW engine `app/pfdesk/` (all code, no model): Terraform / OpenTofu plans read before apply (JSON or text: data stores destroyed or replaced and the attribute forcing it, rules open to 0.0.0.0/0, public databases and buckets, Action * on Resource *, encryption and deletion protection off, missing tags, her destroy limit); Kubernetes containers sized against their p95 use (over-provisioned, too tight, near memory or CPU limits, no requests, recommended requests, savings at her prices); clusters checked for fit (pods placed by requests the way the default scheduler spreads them, DaemonSets and the system reserve - GKE published rule or hers - losing a node or a zone, stranded capacity); the Backstage catalog scored against her golden path (owner, lifecycle, system, docs, on-call, repo, runbook; broken references, loops, deprecated dependencies); manifests checked for the APIs a Kubernetes upgrade removes (migration guide up to 1.32); a GitHub Actions plan guard that fails a pull request destroying a data store; NEW tool platform_desk (registry 717); 5 tests incl. a browser walk. NOT VERIFIED: on her server, with her own plans, clusters and catalog, or the workflow on GitHub. Previous head: v0.999.304 ECC 6 TO 10 (owner: 'GO 6 TO 10' after the ECC check - github.com/affaan-m/ECC, MIT, commit 4adeee67; ideas adapted, Hoola's own code): (6) REPO RULES IN PLAIN MARKDOWN (ECC's Hookify) - `devsahayak/hookify.py`: a repo writes 'never do X' as one Markdown file, .claude/hookify.<name>.md or .hoola/hookify.<name>.md (front matter name / enabled / event bash|file|prompt|stop|all / action block|warn / pattern, or conditions field + operator + pattern that must all match); enforced in code - a bash rule before the command runs, a file rule before the edit or a new file is written (matched on the lines it ADDS), a prompt rule on her message, a stop rule once at done; a block refuses with the rule's words as data, a warn lets the step run and tells the coder; a regular expression that could hang (nested repeats, back-references) is refused and the rule shown as broken (ECC's own safety check, ported); /hookify <what to prevent> has Hoola write the rule file (no words = from what she corrected in the session), /hookify-list shows them; switch dev_hookify. (7) TWO REVIEWERS MUST BOTH PASS (ECC's Santa method) - `devsahayak/santa.py`: /santa on|off per session (off by default); when on, after the reality check two independent reviewers (same 6-point rubric: complete, correct, scope, safe, proven, consistent; neither sees the other) read the real working copy at the same time; both PASS = it may finish; otherwise every critical issue from both goes back in one list, and both look again (round 2 checks round 1's issues), up to dev_santa_rounds 3; still failing = it finishes with the open issues written into its risk for her; the reviewer is Hoola's own spec, not in the agent catalogue (99 stays 99); switch dev_santa. (8) /test-coverage (ECC's command) - `devsahayak/testcover.py`: Hoola reads the session's diff in code and lists every changed code line by file (tests and docs left out), then the round runs the repo's own coverage tool in the box, names the changed lines no test runs, writes the missing tests (normal, errors, edges, each branch) toward 80%, runs them and reports before / after; never changes code to make a test pass or lowers a coverage setting; a missing coverage tool is said, never guessed; /test-coverage report changes nothing; switch dev_test_coverage. (9) A BIG JOB AS LINKED GITHUB ISSUES (ECC's epic-decompose / publish / sync) - `devsahayak/epic.py`: /epic <the job> (or /epic #123 for an issue that describes it) - the coder breaks it into 2-20 small tasks with the new `epic` tool (given only on that round), each with its done-check and what it waits for; NOTHING goes to GitHub: she sees a card with Create N issues on GitHub; her tap (= /epic-publish) and Hoola, in code with her own token, creates each task issue (Waits for #.., Part of #..) then the parent with a checklist, or adds the checklist to the #issue she named; numbers kept at once so a retry never creates twice; /epic-sync (Check progress) reads each issue's state, ticks the parent's checklist and says what is ready to start; switch dev_epic. (10) LEARNINGS TO ANOTHER REPO (ECC's instinct-export / instinct-import) - `devsahayak/learnshare.py` over Hoola Code's repo memory: GET /api/devsahayak/memory/export (format hoola-learnings/1) and /learnings-export (writes .hoola/learnings.json to commit and share); POST /api/devsahayak/memory/import (from_repo = her other repo, or a learnings file; dry_run) and /learnings-import owner/name (or the repo's .hoola/learnings.json); a title the repo already knows is skipped (its own memory wins), each new one kept as import:<source>, at most 300, anything with a key in it refused; imported lines are data. Web: the nine commands in the / list, a two-reviewers row and an epic card with Create the issues / Check progress, Export + Bring in from another repo under What Hoola remembers. Phone: the same commands, the two-reviewers row and the epic card with its button. 10 tests. NOT VERIFIED: no live round has used two reviewers, a rule file or a published epic on her server; coverage depends on the tool being installed in the box.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -192,6 +192,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Santosh Core", version=APP_VERSION, lifespan=lifespan)
 
 
+def _rx_visitor(m: dict, path: str) -> bool:
+    from .site import rxhost as RH
+    return RH.allowed(str(m.get("site") or ""), path, str(m.get("tenant") or ""))
+
+
 @app.middleware("http")
 async def _hosted_sites(request: Request, call_next):
     """v0.122 Websites Hoola launched are served from this server by their hostname (free Hoola address or her domain)."""
@@ -200,6 +205,8 @@ async def _hosted_sites(request: Request, call_next):
         from .site import hosting as _hosting
         hm = _hosting.host_map()
         if host in hm:
+            if hm[host].get("react") and _rx_visitor(hm[host], request.url.path):
+                return await call_next(request)  # v0.999.82 D8: a React website calls its OWN forms / booking / shop here
             if request.method in ("GET", "HEAD"):
                 res = await asyncio.to_thread(_hosting.serve, host, request.url.path,
                                               request.headers.get("user-agent") or "",
@@ -360,7 +367,7 @@ def healthz():
         + (["push"] if __import__("app.push", fromlist=["x"]).configured() else [])
     from . import accounts
     _wk = worker.health()          # wave 13: "ok" is false when the worker is stuck (it used to say ok regardless)
-    return {"ok": bool(_wk.get("ok", True)), "worker": _wk, "app": "Hoola", "version": app.version, "google_login": accounts.oauth_configured(),
+    return {"ok": bool(_wk.get("ok", True)), "worker": _wk, "app": "Hoola", "version": app.version, "google_login": accounts.oauth_configured(), "email_login": _email_login_ready(),
             "dry_run": st.wa_dry_run, "model": st.anthropic_model,
             "chat_brain": __import__("app.agent.llm", fromlist=["x"]).describe(),
             "chat_model_reads": _model_reads(),
@@ -1602,6 +1609,14 @@ async def receive_webhook(request: Request):
                         bahar.spawn(bahar.incoming(lid, wa, txt, mid))
                 except Exception:
                     logging.getLogger("santosh.webhook").exception("bahar whatsapp")
+                try:   # v0.999.46 CA document desk: files clients send to a CA's business number go to their folders
+                    from .bahi import practice as _pr
+                    from . import bahar as _bh
+                    _pn = str((value.get("metadata") or {}).get("phone_number_id") or "")
+                    for _t, _wa, _mid, _fn, _cap in _pr.whatsapp_wanted(value):
+                        _bh.spawn(_pr.whatsapp_fetch(_t, _pn, _wa, _mid, _fn, _cap))
+                except Exception:
+                    logging.getLogger("santosh.webhook").exception("practice whatsapp")
                 try:   # Hoola Employee: customers writing to a business number (never breaks campaign tracking)
                     biz_inbox.receive(value)
                     biz_inbox.statuses(value.get("statuses") or [])
@@ -1610,6 +1625,12 @@ async def receive_webhook(request: Request):
                 updates.extend(value.get("statuses") or [])
                 for m in value.get("messages") or []:
                     updates.append({"reply_from": m.get("from"), "text": (m.get("text") or {}).get("body")})
+            elif field == "calls":      # G3: a customer rang her WhatsApp number (WhatsApp Business Calling API)
+                try:
+                    from .seva import calls as _seva_calls
+                    _seva_calls.wa_calls(value)
+                except Exception:
+                    logging.getLogger("santosh.webhook").exception("whatsapp calls webhook")
             elif field == "message_template_status_update":
                 camp.apply_template_status(str(value.get("message_template_id")), value.get("event", ""), value.get("reason"))
     if updates:
@@ -1736,13 +1757,21 @@ def cancel_reminder_api(reminder_id: str, tenant: str = Depends(current_tenant))
 
 
 # ---------------- accounts (product: Sign in with Google) ----------------
+def _email_login_ready() -> bool:
+    try:
+        from . import emailauth
+        return emailauth.ready()
+    except Exception:          # noqa: BLE001 - health never fails on this
+        return False
+
+
 @app.get("/auth/google/start")
-def google_start(app_session: bool = True, web: bool = False, apps: bool = False):
+def google_start(app_session: bool = True, web: bool = False, apps: bool = False, phone: bool = False, hint: str = ""):
     """The app opens this; we redirect to Google's consent screen. web=1 = the Hoola Console (v0.142): sign-in with
     name + email only; web=1&apps=1 = the console's "Google apps jodiye" (Gmail, Drive, Calendar, Docs, Sheets)."""
     from . import accounts
     try:
-        return RedirectResponse(accounts.start_google(web=web, apps=apps))
+        return RedirectResponse(accounts.start_google(web=web, apps=apps, phone=phone, hint=hint[:254]))
     except accounts.AuthError as e:
         raise HTTPException(503, str(e))
 
@@ -1751,6 +1780,9 @@ def google_start(app_session: bool = True, web: bool = False, apps: bool = False
 async def google_callback(request: Request):
     """Google returns here. We store tokens and hand the app a session token via a deep link."""
     from . import accounts
+    from .googlehub import is_link_state as is_hub_state
+    if is_hub_state(request.query_params.get("state", "")):     # v0.999.181 Connectors > Google / Settings > Google
+        return await _finish_hub(request)
     from .mailbox.accounts import is_link_state
     if is_link_state(request.query_params.get("state", "")):   # "connect my Gmail" from the app, not a sign-in
         return await _finish_mail_link(request)
@@ -1809,7 +1841,8 @@ async def google_callback(request: Request):
         if web:   # she pressed Cancel on Google's screen: back to the console, not a bare error page
             msg = "Google sign-in was cancelled." if err == "access_denied" else f"Google sign-in did not work ({err[:40]})."
             return RedirectResponse("/console/?error=" + quote(msg), headers=_CONSOLE_NOREF)
-        return HTMLResponse(f"<h3>Sign-in cancelled</h3><p>{err}</p>", status_code=400)
+        import html as _h   # SIGN UP fix: Google's error text was put into the page as raw HTML
+        return HTMLResponse(f"<h3>Sign-in cancelled</h3><p>{_h.escape(err[:200])}</p>", status_code=400)
     if not code:
         raise HTTPException(400, "Missing code")
     try:
@@ -1817,19 +1850,75 @@ async def google_callback(request: Request):
     except accounts.AuthError as e:
         if web:
             return RedirectResponse("/console/?error=" + quote(str(e)[:160]), headers=_CONSOLE_NOREF)
-        return HTMLResponse(f"<h3>Sign-in did not work</h3><p>{e}</p>", status_code=400)
+        import html as _h
+        return HTMLResponse(f"<h3>Sign-in did not work</h3><p>{_h.escape(str(e)[:300])}</p>", status_code=400)
     if web:   # v0.142 Hoola Console: a one-time code, never the session token, goes into the URL
         apps = "&google=apps" if state.startswith(console.WEB_STATE + "g.") else ""
-        return RedirectResponse("/console/?code=" + console.issue_code(res["session_token"]) + apps, headers=_CONSOLE_NOREF)
+        return RedirectResponse("/console/?code=" + console.issue_code(res["session_token"], res) + apps,
+                                headers=_CONSOLE_NOREF)
     scheme = get_settings().app_redirect_scheme
-    deep = f"{scheme}://auth?session={res['session_token']}"
+    import html as _h
+    if state.startswith(accounts.APP_STATE):   # SIGN UP: the phone gets a one-time code, never the session itself
+        deep = f"{scheme}://auth?session=hc_{console.issue_code(res['session_token'], res)}"
+    else:
+        deep = f"{scheme}://auth?session={res['session_token']}"
     # the app registers this scheme; the page also shows the token in case the link doesn't auto-open
     html = f"""<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
 <body style="font-family:system-ui;text-align:center;padding:40px;background:#f3eefb">
-<h2>Connected to Hoola ✅</h2><p>{res['email']}</p>
+<h2>Connected to Hoola ✅</h2><p>{_h.escape(res['email'])}</p>
 <p><a href="{deep}" style="display:inline-block;background:#6d3fe0;color:#fff;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:700">Open the app</a></p>
 <script>location.href={deep!r};</script></body>"""
     return HTMLResponse(html)
+
+
+# ---------------- SIGN UP: log in or sign up with email (a 6-digit code, no password), like Claude and ChatGPT --------
+class EmailStartIn(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+
+
+class EmailVerifyIn(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    code: str = Field(min_length=4, max_length=20)
+
+
+class EmailNameIn(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+
+
+@app.post("/auth/email/start")
+async def email_start(body: EmailStartIn, request: Request):
+    """Send a 6-digit sign-in code. The same answer whether the email has an account or not."""
+    from . import emailauth as EA
+    try:
+        return await asyncio.to_thread(EA.start, body.email, _client_ip(request))
+    except EA.EmailAuthError as e:
+        raise HTTPException(e.status, str(e))
+
+
+@app.post("/auth/email/verify")
+async def email_verify(body: EmailVerifyIn, request: Request):
+    """The code is right -> her account (made now if new) and a session for this device."""
+    from . import accounts
+    from . import emailauth as EA
+    try:
+        return await asyncio.to_thread(EA.verify, body.email, body.code, _client_ip(request))
+    except EA.EmailAuthError as e:
+        raise HTTPException(e.status, str(e))
+    except accounts.SignupClosed as e:
+        raise HTTPException(403, str(e))
+
+
+@app.post("/auth/email/name", dependencies=[Depends(require_key)])
+def email_name(body: EmailNameIn, request: Request, tenant: str = Depends(current_tenant)):
+    """After signing up: 'What should we call you?'."""
+    from . import accounts
+    from . import emailauth as EA
+    tok = _bearer(request)
+    uid = accounts.tenant_for_session(tok) if tok else None
+    try:
+        return {"name": EA.save_name(tenant, uid, body.name)}
+    except EA.EmailAuthError as e:
+        raise HTTPException(e.status, str(e))
 
 
 class LocationIn(BaseModel):
@@ -1917,12 +2006,473 @@ def computer_page():
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
 
 
+@app.get("/console/pcjobs")
+@app.get("/console/pcjobs/")
+def pcjobs_page():
+    """v0.999.116 ULTIMATE PC PLAN P6: PC jobs step by step (the screen at each step, the click marked), Stop, save as a
+    routine, run routines, her PC rules. Same sign-in as the console, same strict CSP."""
+    return FileResponse(STATIC / "console" / "pcjobs.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
+
+
 @app.get("/console/seo")
 @app.get("/console/seo/")
 def seo_desk_page():
     """v0.999.35 SEO DESK: the SEO Specialist's own section - its chat on the left, the desk's screens on the right, no
     Hoola sidebar. Same sign-in as the console, same strict CSP."""
     return FileResponse(STATIC / "console" / "seodesk.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/social")
+@app.get("/console/social/")
+def social_desk_page():
+    """v0.999.38 SOCIAL DESK: the Social Media Manager's own section - its chat beside the desk's screens, no Hoola
+    sidebar. Same sign-in as the console, same strict CSP."""
+    return FileResponse(STATIC / "console" / "socialdesk.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/accounts")
+@app.get("/console/accounts/")
+def accounts_desk_page():
+    """v0.999.43 ACCOUNTS DESK: the GST & Accounts employee's own section - its chat (files, photos and documents can be
+    attached) beside the desk's screens, no Hoola sidebar. Same sign-in as the console, same strict CSP."""
+    return FileResponse(STATIC / "console" / "accountsdesk.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/leads")
+@app.get("/console/leads/")
+def leads_desk_page():
+    """v0.999.52 LEAD DESK: the Lead Generation employee's own section - its chat (a CSV / Excel can be attached) beside
+    the desk's screens, no Hoola sidebar. Same sign-in as the console, same strict CSP."""
+    return FileResponse(STATIC / "console" / "leadsdesk.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/telecaller")
+@app.get("/console/telecaller/")
+def telecaller_desk_page():
+    """v0.999.66 AI TELECALLER DESK: the Telecaller employee's own section - its chat beside the desk's screens (call
+    lists, calls, business knowledge, the script + Test chat, incoming, settings). Same sign-in + strict CSP."""
+    return FileResponse(STATIC / "console" / "telecallerdesk.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/connectors")
+@app.get("/console/connectors/")
+def connectors_page():
+    """v0.999.183 CONNECTORS PAGE: her connected apps as their own section - Overview, Google, All apps, Connected,
+    MCP servers, Built in, Public APIs, Activity, Limits & safety - with its own sidebar. Same sign-in + strict CSP."""
+    return FileResponse(STATIC / "console" / "connectorsapp.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
+
+
+@app.get("/console/route")
+@app.get("/console/route/")
+def route_page():
+    """v0.999.87 HOOLA ROUTE: her automations as a page - ask in words, her routes, every run, templates. The engine is
+    DHARA; the page relays her taps (on/off, run once, approve, stop, retry). Same sign-in + strict CSP."""
+    return FileResponse(STATIC / "console" / "route.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
+
+
+@app.get("/console/books")
+@app.get("/console/books/")
+def books_desk_page():
+    """v0.999.158 BOOKS DESK: the Books & Accounts employee's own section - its chat beside the desk's screens
+    (Today, Sales & bills, Bank & matching, Owed & owing, Reports & month-end, Settings & exports). Same sign-in + strict CSP."""
+    return FileResponse(STATIC / "console" / "booksdesk.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/payroll")
+@app.get("/console/payroll/")
+def payroll_desk_page():
+    """v0.999.169 PAYROLL DESK: the Payroll employee's own section - its chat beside the desk's screens (Today, People, Inputs,
+    Run payroll, Payslips & pay, Dates & filings, Settings). Same sign-in + strict CSP."""
+    return FileResponse(STATIC / "console" / "payrolldesk.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/tax")
+@app.get("/console/tax/")
+def tax_desk_page():
+    """v0.999.176 TAX DESK: the Tax employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "taxdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/cash")
+@app.get("/console/cash/")
+def cash_desk_page():
+    """CASH & TREASURY DESK: the Cash & Treasury employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "cashdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/credit")
+@app.get("/console/credit/")
+def credit_desk_page():
+    """CREDIT & LENDING DESK: the Credit & Lending employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "creditdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/firm")
+@app.get("/console/firm/")
+def firm_desk_page():
+    """FIRM PRACTICE DESK: the Firm Practice employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "firmdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/investments")
+@app.get("/console/investments/")
+def investments_desk_page():
+    """INVESTMENTS DESK: the Investments & Wealth employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "invdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/markets")
+@app.get("/console/markets/")
+def markets_desk_page():
+    """MARKETS DESK: the Markets & Post-Trade employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "mktdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/public")
+@app.get("/console/public/")
+def public_desk_page():
+    """PUBLIC FINANCE DESK: the Public Sector employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "pbdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/risk")
+@app.get("/console/risk/")
+def risk_desk_page():
+    """RISK DESK: the Risk Desk employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "rkdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/insurance")
+@app.get("/console/insurance/")
+def insurance_desk_page():
+    """INSURANCE AGENT DESK: the Insurance Agent Assistant's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "insdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/qa")
+@app.get("/console/qa/")
+def qa_desk_page():
+    """QA DESK: the App tester's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "qadesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/sre")
+@app.get("/console/sre/")
+def sre_desk_page():
+    """SRE DESK: the Site Reliability Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "srdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/mainframe")
+@app.get("/console/mainframe/")
+def mainframe_desk_page():
+    """MAINFRAME DESK: the Mainframe Modernization Architect's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "mfdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/dod")
+@app.get("/console/dod/")
+def dod_page():
+    """v0.999.306 HOOLA DOD: her coworker - meet it once (a face, a name, a voice), then give it real work."""
+    return FileResponse(STATIC / "console" / "dod.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/platform")
+@app.get("/console/platform/")
+def platform_desk_page():
+    """PLATFORM ENGINEER DESK: the Platform Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "pfdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/data")
+@app.get("/console/data/")
+def data_desk_page():
+    """DATA ENGINEER DESK: the Data Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "dedesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/ml")
+@app.get("/console/ml/")
+def ml_desk_page():
+    """ML DESK: the Machine Learning Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "mldesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/vision")
+@app.get("/console/vision/")
+def vision_desk_page():
+    """VISION DESK: the Computer Vision Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "cvdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/robotics")
+@app.get("/console/robotics/")
+def robotics_desk_page():
+    """ROBOTICS DESK: the Robotics Software Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "rbdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/embedded")
+@app.get("/console/embedded/")
+def embedded_desk_page():
+    """EMBEDDED DESK: the Embedded Systems Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "emdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/latency")
+@app.get("/console/latency/")
+def lowlat_desk_page():
+    """LOW LATENCY DESK: the Backend Systems Engineer (Low Latency)'s own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "lldesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/virtualization")
+@app.get("/console/virtualization/")
+def virt_desk_page():
+    """VIRTUALIZATION DESK: the Virtualization / Hypervisor Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "hvdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/distributed")
+@app.get("/console/distributed/")
+def distributed_desk_page():
+    """DISTRIBUTED DESK: the Distributed Systems Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "dsdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/database")
+@app.get("/console/database/")
+def database_desk_page():
+    """DATABASE DESK: the Database Engine Developer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "dbdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/graphics")
+@app.get("/console/graphics/")
+def graphics_desk_page():
+    """GRAPHICS DESK: the Graphics Engine Programmer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "gxdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/kernel")
+@app.get("/console/kernel/")
+def kernel_desk_page():
+    """KERNEL DESK: the Kernel / OS Developer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "kddesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/compiler")
+@app.get("/console/compiler/")
+def compiler_desk_page():
+    """COMPILER DESK: the Compiler Construction Engineer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "lcdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/3d")
+@app.get("/console/3d/")
+def studio3d_desk_page():
+    """3D STUDIO DESK: the 3D Studio artist's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "b3desk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/noc")
+@app.get("/console/noc/")
+def noc_desk_page():
+    """NOC DESK: the NOC employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "ncdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/docs")
+@app.get("/console/docs/")
+def docs_desk_page():
+    """TECHNICAL WRITER DESK: the Technical writer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "dwdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/appreview")
+@app.get("/console/appreview/")
+def appreview_desk_page():
+    """APP REVIEWER DESK: the App reviewer's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "ardesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/product")
+@app.get("/console/product/")
+def product_desk_page():
+    """PRODUCT DESK: the Product manager's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "prdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/itadmin")
+@app.get("/console/itadmin/")
+def itadmin_desk_page():
+    """IT ADMIN DESK: the IT Admin employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "itdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/cyber")
+@app.get("/console/cyber/")
+def cyber_desk_page():
+    """CYBER DESK: the Cyber security employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "cydesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/devops")
+@app.get("/console/devops/")
+def devops_desk_page():
+    """DEVOPS DESK: the DevOps employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "dvdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/finops")
+@app.get("/console/finops/")
+def finops_desk_page():
+    """FINANCE DESK ASSISTANT: the Finance Desk Assistant employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "fodesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/digital")
+@app.get("/console/digital/")
+def digital_desk_page():
+    """DIGITAL ASSETS DESK: the Digital Assets employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "dgdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/community")
+@app.get("/console/community/")
+def community_desk_page():
+    """COMMUNITY FINANCE DESK: the Community, Inclusive & Islamic Finance employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "cmdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/institution")
+@app.get("/console/institution/")
+def institution_desk_page():
+    """INSTITUTION DESK: the Institution employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "instdesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/payments")
+@app.get("/console/payments/")
+def payments_desk_page():
+    """PAYMENTS DESK: the Payments employee's own section (its chat beside its pages)."""
+    return FileResponse(STATIC / "console" / "paydesk.html", headers={**_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP,
+                        "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
+                        "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/money")
+@app.get("/console/money/")
+def money_desk_page():
+    """v0.999.156 MONEY SAFETY DESK: the Money Safety Assistant's own section - its chat beside the desk's screens
+    (Today, Check before paying, My cases + one case, Is my money safe, Settings). Same sign-in + strict CSP."""
+    return FileResponse(STATIC / "console" / "moneydesk.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
+
+
+@app.get("/console/support")
+@app.get("/console/support/")
+def support_desk_page():
+    """v0.999.81 CUSTOMER SUPPORT DESK: the Customer Support employee's own section - its chat beside the desk's screens
+    (Today, Inbox + one ticket, Knowledge, Approvals, Reports, Channels & settings). Same sign-in + strict CSP."""
+    return FileResponse(STATIC / "console" / "supportdesk.html", headers={
         **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
@@ -2032,6 +2582,7 @@ def console_config():
     from . import accounts
     st = get_settings()
     return {"app": "Hoola", "version": app.version, "google": accounts.oauth_configured(), "password": True,
+            "email": _email_login_ready(),
             "v2": bool(st.console_v2),
             "stream": bool(st.console_v2 or st.console_stream), "sessions": bool(st.console_v2 or st.chat_sessions),
             "panel": bool(st.console_v2 or st.side_panel), "projects": bool(st.console_v2 or st.chat_projects),
@@ -2128,7 +2679,7 @@ class ConsoleCodeIn(BaseModel):
 def console_exchange(body: ConsoleCodeIn):
     from .console import service as console
     try:
-        return {"session_token": console.exchange(body.code)}
+        return console.exchange_full(body.code)
     except console.ConsoleError as e:
         raise HTTPException(e.status, str(e))
 
@@ -2392,12 +2943,139 @@ async def pc_send(file: UploadFile = File(...), tenant: str = Depends(current_te
 # browser extension paired through the same /api/pc/pair flow) sends a typed ask / a page into her
 # conversation and reads the answer back. NEW surface beside the PC block - no existing PC endpoint,
 # setting or behaviour is touched (the Mera PC freeze stands; the owner's W3 ask named this lane).
+from . import connhub as _connhub                              # noqa: E402  v0.999.183 CONNECTORS PAGE
+_connhub.mount(app, current_tenant, require_key)               # /api/connectors/activity|summary|safety
 from .quicklane import router as quicklane_router               # noqa: E402
 app.include_router(quicklane_router)                            # POST /api/pc/quickask (+ /messages)
+from .pc import trace as _pc_trace                              # noqa: E402  v0.999.67 ULTIMATE PC PLAN P0
+_pc_trace.mount(app, current_tenant, require_key)               # /api/pc/trace* (every PC job, step by step)
+from .pc import extlink as _pc_extlink                          # noqa: E402
+_pc_extlink.mount(app)
+from .pc import guard as _pc_guard                              # noqa: E402
+_pc_guard.mount(app, current_tenant, require_key)
+from .pc import routines as _pc_routines                        # noqa: E402
+_pc_routines.mount(app, current_tenant, require_key)            # /api/pc/routines* (learn once, replay - v0.999.115 P5)               # /api/pc/rules (her PC rules, v0.999.112 P2)                                          # /api/pc/ext-ws (page engine 2 in her Chrome, v0.999.111)
+from .pc import lessons as _pc_lessons  # noqa: E402
+_pc_lessons.mount(app, current_tenant, require_key)            # /api/pc/lessons* (Hoola improves itself - v0.999.118 P8)
+from .practice import router as _exam_practice_router                 # noqa: E402  v0.999.67 the practice portal for the exams
+app.include_router(_exam_practice_router)                            # /practice/<run>/<page> (public, harmless, per-run records)
 from . import computer as _computer_mod                           # noqa: E402  v0.890 HOOLA COMPUTER
 _computer_mod.mount(app, current_tenant, require_key)            # /api/computer/*
+from . import agentmail as _agentmail_mod                         # noqa: E402  v0.999.47 Hoola's own email
+_agentmail_mod.mount(app, current_tenant, require_key)          # /api/agentmail/*
+from . import cred as _cred_mod                                   # noqa: E402  v0.999.53 Hoola Cred
+_cred_mod.mount(app, current_tenant, require_key)               # /api/cred/*
+from . import wallet as _wallet_mod                               # noqa: E402  v0.999.60 Hoola Wallet
+_wallet_mod.mount(app, current_tenant, require_key)             # /api/wallet/*
+
+
+@app.get("/console/cred")
+@app.get("/console/cred/")
+def cred_page():
+    """v0.999.57 HOOLA CRED lives inside the console now (the sidebar stays); old links land there."""
+    return RedirectResponse("/console/?v=cred", status_code=302)
 from . import seochat as _seochat_mod                             # noqa: E402  v0.999.35 SEO DESK
 _seochat_mod.mount(app, current_tenant, require_key)             # /api/seo/chat*
+from . import socialchat as _socialchat_mod                       # noqa: E402  v0.999.38 SOCIAL DESK
+_socialchat_mod.mount(app, current_tenant, require_key)          # /api/social/chat*
+from . import videochat as _videochat_mod                         # noqa: E402  v0.999.43 VIDEO CHAT
+_videochat_mod.mount(app, current_tenant, require_key)           # /api/video/chat*
+from . import imagechat as _imagechat_mod                         # noqa: E402  v0.999.53 IMAGE CHAT
+_imagechat_mod.mount(app, current_tenant, require_key)           # /api/image/chat*
+from . import musicchat as _musicchat_mod                         # noqa: E402  v0.999.79 HOOLA MUSIC
+_musicchat_mod.mount(app, current_tenant, require_key)           # /api/music/chat*
+from . import vocalchat as _vocalchat_mod                         # noqa: E402  v0.999.90 HOOLA VOCAL GLOBAL
+_vocalchat_mod.mount(app, current_tenant, require_key)           # /api/vocal/chat*
+from . import accountschat as _accountschat_mod                   # noqa: E402  v0.999.43 ACCOUNTS DESK
+_accountschat_mod.mount(app, current_tenant, require_key)        # /api/accounts/chat*
+from . import leadschat as _leadschat_mod                         # noqa: E402  v0.999.52 LEAD DESK
+_leadschat_mod.mount(app, current_tenant, require_key)            # /api/leads/chat*
+from . import telecallerchat as _telechat_mod                     # noqa: E402  v0.999.66 AI TELECALLER DESK
+_telechat_mod.mount(app, current_tenant, require_key, STATIC, APP_VERSION)   # /console/telecaller, /api/telecaller/*
+from . import supportchat as _supchat_mod                       # noqa: E402  v0.999.81 CUSTOMER SUPPORT DESK
+_supchat_mod.mount(app, current_tenant, require_key, STATIC, APP_VERSION)   # /api/support/*
+from . import moneychat as _moneychat_mod                        # noqa: E402  v0.999.156 MONEY SAFETY DESK
+_moneychat_mod.mount(app, current_tenant, require_key)          # /api/money/*
+from . import bookschat as _bookschat_mod                        # noqa: E402  v0.999.158 BOOKS DESK
+_bookschat_mod.mount(app, current_tenant, require_key)          # /api/books/*
+from . import payrollchat as _payrollchat_mod                    # noqa: E402  v0.999.169 PAYROLL DESK
+_payrollchat_mod.mount(app, current_tenant, require_key)        # /api/payroll/*
+from . import taxchat as _taxchat_mod                            # noqa: E402  v0.999.176 TAX DESK
+_taxchat_mod.mount(app, current_tenant, require_key)            # /api/tax/*
+from . import cashchat as _cashchat_mod                          # noqa: E402  CASH & TREASURY DESK
+_cashchat_mod.mount(app, current_tenant, require_key)           # /api/cash/*
+from . import creditchat as _creditchat_mod                      # noqa: E402  CREDIT & LENDING DESK
+_creditchat_mod.mount(app, current_tenant, require_key)         # /api/credit/*
+from . import firmchat as _firmchat_mod                          # noqa: E402  FIRM PRACTICE DESK
+_firmchat_mod.mount(app, current_tenant, require_key)           # /api/firm/*
+from . import paychat as _paychat_mod                            # noqa: E402  PAYMENTS DESK
+_paychat_mod.mount(app, current_tenant, require_key)            # /api/payments/*
+from . import instchat as _instchat_mod                          # noqa: E402  INSTITUTION DESK
+_instchat_mod.mount(app, current_tenant, require_key)           # /api/institution/*
+from . import invchat as _invchat_mod                           # noqa: E402  INVESTMENTS DESK
+_invchat_mod.mount(app, current_tenant, require_key)            # /api/investments/*
+from . import mktchat as _mktchat_mod                           # noqa: E402  MARKETS DESK
+_mktchat_mod.mount(app, current_tenant, require_key)            # /api/markets/*
+from . import cmchat as _cmchat_mod                            # noqa: E402  COMMUNITY FINANCE DESK
+_cmchat_mod.mount(app, current_tenant, require_key)             # /api/community/*
+from . import dgchat as _dgchat_mod                            # noqa: E402  DIGITAL ASSETS DESK
+_dgchat_mod.mount(app, current_tenant, require_key)             # /api/digital/*
+from . import pbchat as _pbchat_mod                            # noqa: E402  PUBLIC FINANCE DESK
+_pbchat_mod.mount(app, current_tenant, require_key)             # /api/public/*
+from . import fochat as _fochat_mod                            # noqa: E402  FINANCE DESK ASSISTANT
+_fochat_mod.mount(app, current_tenant, require_key)             # /api/finops/*
+from . import rkchat as _rkchat_mod                            # noqa: E402  RISK DESK
+_rkchat_mod.mount(app, current_tenant, require_key)             # /api/riskdesk/*
+from . import inschat as _inschat_mod                           # noqa: E402  INSURANCE AGENT DESK
+_inschat_mod.mount(app, current_tenant, require_key)            # /api/insdesk/*
+from . import qachat as _qachat_mod                             # noqa: E402  QA DESK
+_qachat_mod.mount(app, current_tenant, require_key)             # /api/qadesk/*
+from . import dvchat as _dvchat_mod                             # noqa: E402  DEVOPS DESK
+_dvchat_mod.mount(app, current_tenant, require_key)             # /api/dvdesk/*
+from . import cychat as _cychat_mod                             # noqa: E402  CYBER DESK
+_cychat_mod.mount(app, current_tenant, require_key)             # /api/cydesk/*
+from . import itchat as _itchat_mod                             # noqa: E402  IT ADMIN DESK
+_itchat_mod.mount(app, current_tenant, require_key)             # /api/itdesk/*
+from . import prchat as _prchat_mod                             # noqa: E402  PRODUCT DESK
+_prchat_mod.mount(app, current_tenant, require_key)             # /api/prdesk/*
+from . import archat as _archat_mod                             # noqa: E402  APP REVIEWER DESK
+_archat_mod.mount(app, current_tenant, require_key)             # /api/ardesk/*
+from . import dwchat as _dwchat_mod                             # noqa: E402  TECHNICAL WRITER DESK
+_dwchat_mod.mount(app, current_tenant, require_key)             # /api/dwdesk/*
+from . import ncchat as _ncchat_mod                             # noqa: E402  NOC DESK
+_ncchat_mod.mount(app, current_tenant, require_key)             # /api/ncdesk/*
+from . import b3chat as _b3chat_mod                             # noqa: E402  3D STUDIO DESK
+_b3chat_mod.mount(app, current_tenant, require_key)             # /api/b3desk/*
+from . import lcchat as _lcchat_mod                             # noqa: E402  COMPILER DESK
+_lcchat_mod.mount(app, current_tenant, require_key)             # /api/lcdesk/*
+from . import kdchat as _kdchat_mod                             # noqa: E402  KERNEL DESK
+_kdchat_mod.mount(app, current_tenant, require_key)             # /api/kddesk/*
+from . import gfxchat as _gxchat_mod                            # noqa: E402  GRAPHICS DESK
+_gxchat_mod.mount(app, current_tenant, require_key)             # /api/gxdesk/*
+from . import dbchat as _dbchat_mod                             # noqa: E402  DATABASE DESK
+_dbchat_mod.mount(app, current_tenant, require_key)             # /api/dbdesk/*
+from . import distchat as _dschat_mod                           # noqa: E402  DISTRIBUTED DESK
+_dschat_mod.mount(app, current_tenant, require_key)             # /api/dsdesk/*
+from . import srechat as _srchat_mod                            # noqa: E402  SRE DESK
+_srchat_mod.mount(app, current_tenant, require_key)             # /api/srdesk/*
+from . import virtchat as _vtchat_mod                           # noqa: E402  VIRTUALIZATION DESK
+_vtchat_mod.mount(app, current_tenant, require_key)             # /api/hvdesk/*
+from . import lowlatchat as _llchat_mod                          # noqa: E402  LOW LATENCY DESK
+_llchat_mod.mount(app, current_tenant, require_key)              # /api/lldesk/*
+from . import mainframechat as _mfchat_mod                       # noqa: E402  MAINFRAME DESK
+_mfchat_mod.mount(app, current_tenant, require_key)              # /api/mfdesk/*
+from . import embeddedchat as _emchat_mod                       # noqa: E402  EMBEDDED DESK
+_emchat_mod.mount(app, current_tenant, require_key)              # /api/emdesk/*
+from . import robochat as _rbchat_mod                           # noqa: E402  ROBOTICS DESK
+_rbchat_mod.mount(app, current_tenant, require_key)              # /api/rbdesk/*
+from . import cvchat as _cvchat_mod                             # noqa: E402  VISION DESK
+_cvchat_mod.mount(app, current_tenant, require_key)              # /api/cvdesk/*
+from . import mlchat as _mlchat_mod                             # noqa: E402  ML DESK
+_mlchat_mod.mount(app, current_tenant, require_key)              # /api/mldesk/*
+from . import dechat as _dechat_mod                             # noqa: E402  DATA ENGINEER DESK
+_dechat_mod.mount(app, current_tenant, require_key)              # /api/dedesk/*
+from . import pfchat as _pfchat_mod                             # noqa: E402  PLATFORM ENGINEER DESK
+_pfchat_mod.mount(app, current_tenant, require_key)              # /api/pfdesk/*
 # v0.663.0 KAAN W5 - the HTTP + MCP doors beside the agent tool: the SAME KS functions, the SAME
 # gates (audio ingest rides kaan_audio; reads gate-free by the W1 law), tenant-scoped by the SAME
 # auth (API key, product session, or a paired device token - the extension pairs through
@@ -2408,10 +3086,59 @@ from .kaan.flow import _flow_router                               # noqa: E402
 app.include_router(_flow_router(require_key, current_tenant))     # /api/flow/* (v0.751 HOOLA FLOW page)
 from .employee.deskroom import make_router as _deskroom_router  # noqa: E402
 app.include_router(_deskroom_router(require_key, current_tenant))   # /api/deskroom/* (v0.799 DESK ROOM: the department desks)
+from .route.api import make_router as _route_router  # noqa: E402
+app.include_router(_route_router(require_key, current_tenant))   # /api/route/* (v0.999.87 HOOLA ROUTE: the automation page)
+from .dod.api import make_router as _dod_router  # noqa: E402
+app.include_router(_dod_router(require_key, current_tenant))   # /api/dod/* (v0.999.306 HOOLA DOD: the coworker)
+from .dod.mcp import make_router as _dod_mcp_router  # noqa: E402
+app.include_router(_dod_mcp_router())   # /mcp/dod (v0.999.308 her Hoola accounts inside her coworker, read-only)
 from .credits.api import make_router as _credits_router  # noqa: E402
 app.include_router(_credits_router(require_key, current_tenant))   # /api/credits/*, /pay/credits/* (v0.999.26 HOOLA CREDITS)
 from .bahi.api import make_router as _bahi_router  # noqa: E402
 app.include_router(_bahi_router(require_key, current_tenant))   # /api/bahi/* (v0.807 BAHI: the GST & Accounts employee, A0)
+from .fin.api import make_router as _fin_router  # noqa: E402
+app.include_router(_fin_router(require_key, current_tenant))   # /api/fin/* (F0 of FINANCE_GLOBAL_PLAN: the finance core)
+from .bahi.practice_api import make_router as _practice_router  # noqa: E402
+app.include_router(_practice_router(require_key, current_tenant))   # /api/practice/* (v0.999.46 CA document desk)
+
+
+@app.post("/webhooks/practice/telegram/{hook}")
+async def practice_telegram(hook: str, request: Request):
+    """v0.999.46 the CA's own Telegram bot: clients send their documents to it."""
+    from .bahi import practice as _pr
+    got = _pr.by_hook("telegram", hook)
+    want = (got[1] if got else {}).get("header", "")
+    if not want or not hmac.compare_digest(want, request.headers.get("x-telegram-bot-api-secret-token", "")):
+        raise HTTPException(403, "Not this bot")
+    try:
+        upd = json.loads(await request.body() or b"{}")
+    except ValueError:
+        raise HTTPException(400, "Body is not JSON")
+    from . import bahar as _bh
+    _bh.spawn(_pr.telegram_update(got[0], got[1], upd))
+    return {"ok": True}
+
+
+@app.post("/webhooks/practice/slack/{hook}")
+async def practice_slack(hook: str, request: Request):
+    """v0.999.46 the CA's Slack app in client channels: files posted there are collected."""
+    from .bahi import practice as _pr
+    got = _pr.by_hook("slack", hook)
+    raw = await request.body()
+    sec = got[1] if got else {}
+    if not sec.get("signing_secret") or not _pr.slack_sig_ok(
+            sec["signing_secret"], request.headers.get("x-slack-request-timestamp", ""), raw,
+            request.headers.get("x-slack-signature", "")):
+        raise HTTPException(401, "Bad signature")
+    try:
+        body = json.loads(raw or b"{}")
+    except ValueError:
+        raise HTTPException(400, "Body is not JSON")
+    if body.get("type") == "url_verification":
+        return {"challenge": body.get("challenge", "")}
+    from . import bahar as _bh
+    _bh.spawn(_pr.slack_event(got[0], sec, body))
+    return {"ok": True}
 from .shilp.api import _shilp_router                             # noqa: E402
 app.include_router(_shilp_router(require_key, current_tenant))    # /api/shilp/* (v0.752 ArtCraft in Create)
 
@@ -2965,7 +3692,9 @@ def _mail_linked_page(view: dict | None, error: str = "") -> HTMLResponse:
     return HTMLResponse(f"""<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
 <body style="font-family:system-ui;text-align:center;padding:40px;background:#f3eefb">{msg}
 <p><a href="{deep}" style="display:inline-block;background:#6d3fe0;color:#fff;padding:14px 22px;border-radius:14px;text-decoration:none;font-weight:700">Open the app</a></p>
-<script>setTimeout(function(){{location.href={deep!r}}},600);</script></body>""", status_code=400 if error else 200)
+<script>(function(){{var d={{type:'mail-linked',ok:{'false' if error else 'true'},address:{(view or {}).get('address', '')!r}}};
+if(window.opener){{try{{new BroadcastChannel('hoola-mail').postMessage(d)}}catch(e){{}}try{{localStorage.setItem('hoola.mail.linked',JSON.stringify(d))}}catch(e){{}}setTimeout(function(){{window.close()}},900);return}}
+setTimeout(function(){{location.href={deep!r}}},600)}})();</script></body>""", status_code=400 if error else 200)
 
 
 async def _finish_mail_link(request: Request) -> HTMLResponse:
@@ -3231,6 +3960,19 @@ def slides_remove(key: str, tenant: str = Depends(current_tenant)):
     return _slides_state(tenant)
 
 
+@app.get("/api/slides/img/{file_id}")
+def slides_image(file_id: str, e: str = "", s: str = ""):
+    """v0.999.188: a photo she sent in the chat, for Google Slides to copy into a slide (a signed link that works for
+    15 minutes; Google needs a public link when a picture is inserted). Only PNG / JPEG / GIF."""
+    from .slides.client import SlidesError
+    from .slides.more import open_image
+    try:
+        data, mime = open_image(file_id, e, s)
+    except SlidesError as err:
+        raise HTTPException(404, str(err))
+    return Response(data, media_type=mime, headers={"Cache-Control": "no-store"})
+
+
 # ---------------- Hoola Network: avatars talk to avatars ----------------
 class NetMeIn(BaseModel):
     handle: str | None = None
@@ -3475,6 +4217,85 @@ def google_status(live: bool = True, tenant: str = Depends(current_tenant)):
     return google_check.diagnose(tenant, live)
 
 
+# ---------------- v0.999.181 GOOGLE CONNECTIONS: one place for every Google app ----------------
+class GoogleConnectIn(BaseModel):
+    apps: list[str] = Field(default_factory=lambda: ["core"], max_length=12)
+    surface: str = Field(default="web", pattern="^(web|phone)$")
+    hint: str = Field(default="", max_length=254)
+
+
+class GoogleAccountIn(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+    app: str = Field(default="", max_length=20)
+
+
+@app.get("/api/google", dependencies=[Depends(require_key)])
+def google_hub(tenant: str = Depends(current_tenant)):
+    """Every Google account and app she has connected, as they really are (no tokens)."""
+    from . import googlehub
+    return googlehub.status(tenant)
+
+
+@app.post("/api/google/connect", dependencies=[Depends(require_key)])
+def google_hub_connect(body: GoogleConnectIn, tenant: str = Depends(current_tenant)):
+    """Google's page for the apps she chose; whatever she grants is added to THIS Hoola account."""
+    from . import googlehub
+    try:
+        return {"url": googlehub.start(tenant, ["core"] if body.apps == ["core"] else body.apps, body.surface, body.hint)}
+    except googlehub.HubError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/google/disconnect", dependencies=[Depends(require_key)])
+def google_hub_disconnect(body: GoogleAccountIn, tenant: str = Depends(current_tenant)):
+    """A whole account (access removed at Google too) or one app for that account."""
+    from . import googlehub
+    try:
+        return googlehub.disconnect(tenant, body.email, body.app)
+    except googlehub.HubError as e:
+        raise HTTPException(404, str(e))
+
+
+@app.post("/api/google/first", dependencies=[Depends(require_key)])
+def google_hub_first(body: GoogleAccountIn, tenant: str = Depends(current_tenant)):
+    """Which of her Google accounts an app uses first."""
+    from . import googlehub
+    try:
+        return googlehub.set_first(tenant, body.app, body.email)
+    except googlehub.HubError as e:
+        raise HTTPException(400, str(e))
+
+
+def _hub_back(surface: str, got: list[str] | None = None, miss: list[str] | None = None, err: str = ""):
+    """Back to where she started: the console's Google tab, or the phone app (an English page that opens it)."""
+    import html as _h
+    q = ({"gconn": "err", "why": err[:200]} if err else
+         {"gconn": "ok", "got": ",".join(got or []), "miss": ",".join(miss or [])})
+    if surface == "web":
+        return RedirectResponse("/console/connectors?" + urlencode(q) + "#/google", headers=_CONSOLE_NOREF)
+    deep = f"{get_settings().app_redirect_scheme}://google?" + urlencode({"ok": 0 if err else 1, **q})
+    msg = (f"<h2>Google is connected to Hoola</h2>" if not err else
+           f"<h3>Google was not connected</h3><p>{_h.escape(err)}</p>")
+    return HTMLResponse(f"""<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
+<body style="font-family:system-ui;text-align:center;padding:40px;background:#fafaf9;color:#1a1a19">{msg}
+<p><a href="{_h.escape(deep)}" style="display:inline-block;background:#1a1a19;color:#fff;padding:14px 22px;border-radius:12px;text-decoration:none;font-weight:600">Back to Hoola</a></p>
+<script>setTimeout(function(){{location.href={deep!r}}},500);</script></body>""", status_code=400 if err else 200)
+
+
+async def _finish_hub(request: Request):
+    from . import googlehub
+    q = request.query_params
+    surface = googlehub.surface_of(q.get("state", ""))
+    if q.get("error"):
+        return _hub_back(surface, err="You cancelled on Google's page." if q.get("error") == "access_denied"
+                         else f"Google said: {q.get('error')[:60]}")
+    try:
+        r = await asyncio.to_thread(googlehub.finish, q.get("code", ""), q.get("state", ""))
+    except googlehub.HubError as e:
+        return _hub_back(surface, err=str(e))
+    return _hub_back(r["surface"], r["got"], r["miss"])
+
+
 # ---------------- v0.68 Hoola Video Studio ----------------
 class StudioDecide(BaseModel):
     yes: bool
@@ -3657,6 +4478,9 @@ class StudioNew(BaseModel):          # v0.157 the app's "Naya video" form
     then: str = Field(default="", pattern="^(|generate|preview)$")   # v0.309 Video page: price card / free preview once planned
     variants: int = Field(default=1, ge=1, le=4)
     compare: list[str] | None = None
+    audio: bool | None = None                            # v0.999.43 the Video chat's Sound switch (None = the model's own)
+    start_image_file_id: str = Field(default="", max_length=80)   # v0.999.43 her photo = the first frame
+    conversation_id: str = Field(default="", max_length=80)       # v0.999.43 the Video chat the clip belongs to
 
 
 class StudioPlan(BaseModel):
@@ -3768,17 +4592,24 @@ def _studio_call(fn):
 @app.post("/api/studio/projects", dependencies=[Depends(require_key)])
 async def studio_new(body: StudioNew, tenant: str = Depends(current_tenant)):
     from .studio import service as ss
-    v = await _studio_call(ss.create)(tenant, body.name, body.aspect, body.style, body.language, body.brief, "",
+    if body.conversation_id:
+        _conv_or_404(body.conversation_id, tenant)
+    if body.brief.strip() and body.then:
+        # v0.309 the server waits for its own storyboard, then makes the price card (or free preview); v0.999.43 one
+        # function for the page, the Video chat and the tool (her photo as the first frame, sound off, her chat)
+        return await _studio_call(ss.clip)(
+            tenant, body.brief, name=body.name, aspect=body.aspect, seconds=body.seconds, language=body.language,
+            quality=body.quality, model=body.model, resolution=body.resolution, auto=body.auto, variants=body.variants,
+            compare=body.compare, audio=body.audio, start_image_file_id=body.start_image_file_id, then=body.then,
+            conversation_id=body.conversation_id,
+            prefs={"voice": body.voice, "captions": body.captions, "caption_style": body.caption_style, "music": body.music})
+    v = await _studio_call(ss.create)(tenant, body.name, body.aspect, body.style, body.language, body.brief,
+                                      body.conversation_id,
                                       {"voice": body.voice, "captions": body.captions, "caption_style": body.caption_style,
                                        "music": body.music, "quality": body.quality, "model": body.model,
                                        "resolution": body.resolution, "auto": body.auto})
     if body.brief.strip():
         await _studio_call(ss.plan)(tenant, v["project"], body.brief, body.seconds, "")
-        if body.then:           # v0.309 the server waits for its own storyboard, then makes the price card (or free preview)
-            name, prev = v["project"], body.then == "preview"
-            ss.after_plan(tenant, name, lambda: ss.generate(
-                tenant, name, "preview" if prev else body.quality, None, 1 if prev else body.variants,
-                body.model or None, "", None if prev or not body.compare or len(body.compare) < 2 else body.compare))
     return ss.view(tenant, ss._load(tenant, v["project"]))
 
 
@@ -3924,12 +4755,14 @@ class CreateJob(BaseModel):
     count: int = Field(default=1, ge=1, le=4)
     brief: str = Field(default="", max_length=1200)          # song
     genre: str = Field(default="", max_length=60)
-    language: str = Field(default="Hindi", max_length=30)
+    language: str = Field(default="Auto", max_length=30)     # v0.999.79 any language; Auto = from her words
     vocals: str = Field(default="duet", max_length=20)
     mood: str = Field(default="", max_length=60)
     bpm: int = Field(default=0, ge=0, le=220)
     seconds: int = Field(default=0, ge=0, le=600)
     lyrics: str = Field(default="", max_length=3000)
+    versions: int = Field(default=1, ge=1, le=4)              # v0.999.79 HOOLA MUSIC: A, B, ... of one song
+    keep_out: str = Field(default="", max_length=300)
     text: str = Field(default="", max_length=5000)           # voice
     voice: str = Field(default="", max_length=40)
     speed: float = Field(default=1.0, ge=0.6, le=1.6)
@@ -5688,8 +6521,15 @@ from .interactive.console import make_router as _interactive_studio_router  # no
 app.include_router(_interactive_studio_router(require_key, current_tenant))   # v0.747 HOOLA INTERACTIVE: the console video studio
 from .interactive.console import make_hub_router as _interactive_hub_router  # noqa: E402
 app.include_router(_interactive_hub_router(require_key, current_tenant))   # v0.772 HOOLA INTERACTIVE: the twelve pages (brand, templates, translate, trash...)
+from .interactive import routes2 as _interactive_x                                # noqa: E402  v0.999.170 HOOLA INTERACTIVE REBUILD
+app.include_router(_interactive_x.make_router(require_key, current_tenant))     # /api/interactive/x/* engines, price, voices, live, apps
+app.include_router(_interactive_x.make_public_router())                        # /api/interactive/v1/* (app key) + /pub/* (her website)
+from . import interactivechat as _interactivechat_mod                         # noqa: E402
+_interactivechat_mod.mount(app, current_tenant, require_key)                  # /api/interactive/chat*
 from .vocal.api import make_router as _vocal_router  # noqa: E402
 app.include_router(_vocal_router(require_key, current_tenant))   # v0.787 HOOLA VOCAL: the voice studio (speech, dialogue, readings, her voices, effects)
+from .vocal.api import make_public_router as _vocal_public  # noqa: E402
+app.include_router(_vocal_public())   # v0.999.126: the one-time stream link + her own apps' doors (app key)
 from .cinema.api import make_router as _cinema_router  # noqa: E402
 app.include_router(_cinema_router(require_key, current_tenant))   # v0.807 HOOLA CINEMA: the Create studio's Cinema section
 
@@ -5715,6 +6555,12 @@ from .callcentre.api import make_router as _callcentre_router  # noqa: E402
 for _mk in (_seva_router, _helpdesk_router, _shikayat_router, _aftersales_router, _feedback_router, _wapsi_router,
             _samudaay_router, _callcentre_router):
     app.include_router(_mk(require_key, current_tenant))
+from .seva.api import make_public_router as _seva_public_router  # noqa: E402
+
+app.include_router(_seva_public_router())   # G4: her messaging apps' webhooks, each checked by its own signature
+from .seva.api import make_web_router as _seva_web_router  # noqa: E402
+
+app.include_router(_seva_web_router())      # G5: website chat, hosted chat page, contact form, her app's API
 
 # v0.785 HOOLA AI APPS (docs/AIAPPS_PLAN.md): AIs that answer HER CUSTOMERS. Order matters: the builder's fixed paths
 # (/api/aiapps/plan, /templates, /import) before the owner router's /api/aiapps/{id}.
@@ -9535,6 +10381,42 @@ async def appengine_create(request: Request, tenant: str = Depends(current_tenan
                                    str(b.get("palette") or ""), b.get("values") or None, look, str(b.get("conversation_id") or ""))
 
 
+# v0.999.75 D6 THE REFERENCE LIBRARY: the sites she likes (patterns for the writer + the critic, never copied)
+def _rf(fn, *a, **kw):
+    from .appengine import refs as RF
+    try:
+        return fn(*a, **kw)
+    except RF.RefError as e:
+        raise HTTPException(e.code, str(e))
+
+
+@app.get("/api/appengine-refs", dependencies=[Depends(require_key)])
+async def appengine_refs(tenant: str = Depends(current_tenant)):
+    from .appengine import refs as RF
+    return {"links": await asyncio.to_thread(RF.links, tenant), "library": await asyncio.to_thread(RF.stats, tenant),
+            "max_links": RF.MAX_LINKS}
+
+
+@app.post("/api/appengine-refs/links", dependencies=[Depends(require_key)])
+async def appengine_refs_add(request: Request, tenant: str = Depends(current_tenant)):
+    from .appengine import refs as RF
+    b = await request.json()
+    return await asyncio.to_thread(_rf, RF.add_link, tenant, str(b.get("url") or ""), str(b.get("note") or ""))
+
+
+@app.delete("/api/appengine-refs/links/{rid}", dependencies=[Depends(require_key)])
+async def appengine_refs_remove(rid: str, tenant: str = Depends(current_tenant)):
+    from .appengine import refs as RF
+    return await asyncio.to_thread(_rf, RF.remove_link, tenant, rid)
+
+
+@app.get("/api/appengine-refs/links/{rid}/shot", dependencies=[Depends(require_key)])
+async def appengine_refs_shot(rid: str, tenant: str = Depends(current_tenant)):
+    from .appengine import refs as RF
+    data = await asyncio.to_thread(_rf, RF.link_shot, tenant, rid)
+    return Response(content=data, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})
+
+
 @app.get("/api/appengine/{ref}", dependencies=[Depends(require_key)])
 async def appengine_get(ref: str, full: int = 1, tenant: str = Depends(current_tenant)):
     from .appengine import service as AE
@@ -10080,6 +10962,103 @@ async def site_plans_status(ref: str, version: int, status: str, tenant: str = D
     if not st:
         raise HTTPException(400, "approve, skip or draft")
     return await asyncio.to_thread(_plans, P.set_status, tenant, ref, version, st)
+
+
+# v0.999.76 D7 EDIT FOREVER: a React website changed by clicking it, at Rs 0 (no model call)
+def _rx(fn, *a, **kw):
+    from .site import rxedit as RX
+    try:
+        return fn(*a, **kw)
+    except RX.EditError as e:
+        raise HTTPException(e.code, str(e))
+
+
+@app.get("/api/sites/{ref}/rx/sections", dependencies=[Depends(require_key)])
+async def site_rx_sections(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import rxedit as RX
+    return await asyncio.to_thread(_rx, RX.sections, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/rx/words", dependencies=[Depends(require_key)])
+async def site_rx_words(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import rxedit as RX
+    return await asyncio.to_thread(_rx, RX.words, tenant, ref, str(body.get("sec") or ""), str(body.get("old") or ""),
+                                   str(body.get("new") or ""))
+
+
+@app.post("/api/sites/{ref}/rx/section", dependencies=[Depends(require_key)])
+async def site_rx_section(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import rxedit as RX
+    drop = body.get("drop")
+    return await asyncio.to_thread(_rx, RX.section, tenant, ref, str(body.get("sec") or ""), str(body.get("variant") or ""),
+                                   str(body.get("tone") or ""), None if drop is None else bool(drop))
+
+
+@app.post("/api/sites/{ref}/rx/picture", dependencies=[Depends(require_key)])
+async def site_rx_picture(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.999.130: one of her website's photos at that place of the section ("" = none) and / or what it shows."""
+    from .site import rxedit as RX
+    path = body.get("path") if isinstance(body.get("path"), list) else []
+    return await asyncio.to_thread(_rx, RX.picture, tenant, ref, str(body.get("sec") or ""), path,
+                                   None if body.get("photo") is None else str(body.get("photo")),
+                                   None if body.get("alt") is None else str(body.get("alt")))
+
+
+@app.post("/api/sites/{ref}/rx/picture/upload", dependencies=[Depends(require_key)])
+async def site_rx_picture_upload(ref: str, file: UploadFile = File(...), sec: str = Form(""), path: str = Form("[]"),
+                                 about: str = Form(""), tenant: str = Depends(current_tenant)):
+    """Her new photo for that place: kept with her website's photos (checked like every photo), then put there."""
+    from .site import rxedit as RX
+    data = await file.read(25 * 1024 * 1024 + 1)
+    if len(data) > 25 * 1024 * 1024:
+        raise HTTPException(413, "The photo is bigger than 25 MB")
+    try:
+        p = json.loads(path or "[]")
+    except ValueError:
+        p = []
+    return await asyncio.to_thread(_rx, RX.upload_picture, tenant, ref, sec, p if isinstance(p, list) else [], data, about)
+
+
+@app.post("/api/sites/{ref}/rx/undo", dependencies=[Depends(require_key)])
+async def site_rx_undo(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import rxedit as RX
+    return await asyncio.to_thread(_rx, RX.undo, tenant, ref)
+
+
+@app.get("/api/sites/{ref}/rx/languages", dependencies=[Depends(require_key)])
+async def site_rx_languages(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.999.77 D8: the React website's extra languages and how many parts of each wait for a translation."""
+    from .site import rxedit as RX
+    return await asyncio.to_thread(_rx, RX.languages, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/rx/translate", dependencies=[Depends(require_key)])
+async def site_rx_translate(ref: str, tenant: str = Depends(current_tenant)):
+    """Her tap "Update translations": the parts not translated yet (a model call per page), then written by code."""
+    from .site import rxedit as RX
+    from .usage import scope
+    def run():
+        with scope(tenant, "site"):
+            return _rx(RX.translate, tenant, ref)
+    return await asyncio.to_thread(run)
+
+
+@app.get("/api/sites/{ref}/rx/design", dependencies=[Depends(require_key)])
+async def site_rx_design(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import rxedit as RX
+    return await asyncio.to_thread(_rx, RX.design, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/rx/design", dependencies=[Depends(require_key)])
+async def site_rx_design_set(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import rxedit as RX
+    kw = {k: body[k] for k in ("colour", "mode", "density", "motion", "display", "text", "direction") if body.get(k)}
+    if body.get("hue") is not None:
+        kw["hue"] = float(body["hue"])
+    if body.get("radius") is not None:
+        kw["radius"] = int(body["radius"])
+    return await asyncio.to_thread(_rx, RX.set_design, tenant, ref, **{k: (str(v) if k not in ("hue", "radius") else v)
+                                                                        for k, v in kw.items()})
 
 
 @app.get("/api/sites/{ref}/instructions", dependencies=[Depends(require_key)])
@@ -10915,6 +11894,133 @@ def _arena(fn, *a, **k):
         raise HTTPException(400, str(e))
 
 
+# ---- v0.999.50 D0 DESIGN CARD: the saved cards, their screenshots and her verdict (owner only). The live run is a job
+# on the VPS (vps-ops design_card_try / design_card) - nothing here builds a site or spends money.
+def _dc_owner(tenant: str) -> None:
+    if tenant != get_settings().tenant_id:
+        raise HTTPException(403, "The design card is only for the Hoola owner.")
+
+
+@app.get("/api/designcard", dependencies=[Depends(require_key)])
+async def designcard_get(run: str = "", tenant: str = Depends(current_tenant)):
+    _dc_owner(tenant)
+    from .quality import designcard as DC
+
+    def go():
+        card = DC.load(run)
+        return {"card": card, "runs": [p.stem for p in DC.cards()][:20], "critic": DC.critic_company(),
+                "criteria": list(DC.CRITERIA), "briefs": {a["id"]: a["ask"] for a in DC.ASKS}, "how": "Start a run with the VPS ops job design_card_try (4 sites) or design_card (all 40)."}
+    return await asyncio.to_thread(go)
+
+
+@app.get("/api/designcard/shot/{run}/{name}", dependencies=[Depends(require_key)])
+async def designcard_shot(run: str, name: str, tenant: str = Depends(current_tenant)):
+    _dc_owner(tenant)
+    from .quality import designcard as DC
+    f = DC.shot_path(run, name)
+    if f is None:
+        raise HTTPException(404, "Not found.")
+    return FileResponse(f, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})
+
+
+@app.post("/api/designcard/verdict", dependencies=[Depends(require_key)])
+async def designcard_verdict(body: dict, tenant: str = Depends(current_tenant)):
+    """HER word on one test site (good / ok / bad): it outranks every number on the card."""
+    _dc_owner(tenant)
+    from .quality import designcard as DC
+    try:
+        return await asyncio.to_thread(DC.set_verdict, str(body.get("run") or ""), str(body.get("id") or ""),
+                                       str(body.get("verdict") or ""), str(body.get("note") or ""))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/proofcard", dependencies=[Depends(require_key)])
+async def proofcard_get(run: str = "", tenant: str = Depends(current_tenant)):
+    """v0.999.123 D10: the proof card (old engine vs new on the same briefs), her picks, the duels, the decision."""
+    _dc_owner(tenant)
+    from .quality import proofcard as PC
+    from .site import enginedefault as ED
+
+    def go():
+        return {"card": PC.load(run), "runs": [p.stem for p in PC.cards()][:20], "critic": PC.DC.critic_company(),
+                "briefs": {a["id"]: a["ask"] for a in PC.ASKS}, "engine": ED.view_with_box(),
+                "how": "Start a run with the VPS ops job proof_card_try (3 briefs, each built twice) or proof_card (all 40)."}
+    return await asyncio.to_thread(go)
+
+
+@app.get("/api/proofcard/shot/{run}/{name}", dependencies=[Depends(require_key)])
+async def proofcard_shot(run: str, name: str, tenant: str = Depends(current_tenant)):
+    _dc_owner(tenant)
+    from .quality import proofcard as PC
+    f = PC.shot_path(run, name)
+    if f is None:
+        raise HTTPException(404, "Not found.")
+    return FileResponse(f, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})
+
+
+@app.post("/api/proofcard/pick", dependencies=[Depends(require_key)])
+async def proofcard_pick(body: dict, tenant: str = Depends(current_tenant)):
+    """HER word on one pair (the old one / the new one / the same): it outranks every number on the card."""
+    _dc_owner(tenant)
+    from .quality import proofcard as PC
+    try:
+        return await asyncio.to_thread(PC.set_pick, str(body.get("run") or ""), str(body.get("id") or ""),
+                                       str(body.get("pick") or ""), str(body.get("note") or ""))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/proofcard/duel", dependencies=[Depends(require_key)])
+async def proofcard_duel(body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP: a blind Arena duel - this brief's new-engine website against a public website another builder made."""
+    _dc_owner(tenant)
+    from .quality import proofcard as PC
+    try:
+        return await asyncio.to_thread(PC.duel, str(body.get("run") or ""), str(body.get("id") or ""),
+                                       str(body.get("rival") or "other"), str(body.get("url") or ""))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/engine-default", dependencies=[Depends(require_key)])
+async def engine_default_get(tenant: str = Depends(current_tenant)):
+    _dc_owner(tenant)
+    from .site import enginedefault as ED
+    return await asyncio.to_thread(lambda: {**ED.view(), "evidence": ED.evidence()})
+
+
+@app.post("/api/engine-default", dependencies=[Depends(require_key)])
+async def engine_default_set(body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP ONLY: the new engine becomes the default for NEW websites (bound to the evidence she saw), or back."""
+    _dc_owner(tenant)
+    from .site import enginedefault as ED
+    try:
+        return await asyncio.to_thread(ED.decide, body.get("go") is True, str(body.get("hash") or ""), str(body.get("run") or ""))
+    except ED.DefaultError as e:
+        raise HTTPException(e.code, str(e))
+
+
+@app.get("/console/proofcard")
+@app.get("/console/proofcard/")
+def proofcard_page():
+    """D10: the old engine and the new one side by side, her picks, the duels, and her decision."""
+    html = re.sub(r"\?v=[0-9.]+", "?v=" + APP_VERSION, (STATIC / "console" / "proofcard.html").read_text(encoding="utf-8"))
+    return Response(html, media_type="text/html; charset=utf-8", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY", "Cache-Control": "no-cache",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
+
+
+@app.get("/console/designcard")
+@app.get("/console/designcard/")
+def designcard_page():
+    """The design card's page: every test site's screenshots, the critic's scores and her Good / OK / Bad."""
+    html = re.sub(r"\?v=[0-9.]+", "?v=" + APP_VERSION, (STATIC / "console" / "designcard.html").read_text(encoding="utf-8"))
+    return Response(html, media_type="text/html; charset=utf-8", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY", "Cache-Control": "no-cache",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
+
+
 # ---- v0.376 PROOF: 100-page builds and rival crawls, measured the same way (owner only)
 @app.get("/api/arena/proofs", dependencies=[Depends(require_key)])
 async def arena_proofs(tenant: str = Depends(current_tenant)):
@@ -11414,8 +12520,18 @@ async def sites_catalog_apply(ref: str, body: dict, tenant: str = Depends(curren
         if r.version:                                # her tap: the next checked version carries the pages (going live = her launch)
             S._after_edit(S._load(r.id), f"catalogue: {out['coll']}")
             out["say"] = out["say"].split(" Website ki")[0] + " A new version is being built (after the checks); going live happens only on your tap."
+        _rx_catalog(tenant, r.id)
         return out
     return await asyncio.to_thread(_cat_call, go)
+
+
+def _rx_catalog(tenant: str, site_id: str) -> None:
+    """v0.999.82 D8: her React website gets the catalogue's items and pages too (code, Rs 0)."""
+    from .site import rxedit as RX
+    try:
+        RX.refresh(tenant, site_id)
+    except Exception:                                # noqa: BLE001 - not written in React
+        pass
 
 
 @app.post("/api/sites/{ref}/catalog/images", dependencies=[Depends(require_key)])
@@ -11433,7 +12549,12 @@ async def sites_catalog_images(ref: str, tenant: str = Depends(current_tenant)):
 @app.delete("/api/sites/{ref}/catalog/{coll}", dependencies=[Depends(require_key)])
 async def sites_catalog_remove(ref: str, coll: str, tenant: str = Depends(current_tenant)):
     from .site import catalog as CAT
-    return await asyncio.to_thread(_cat_call, CAT.remove, tenant, ref, coll)
+
+    def go():
+        out = CAT.remove(tenant, ref, coll)
+        _rx_catalog(tenant, CAT._site(tenant, ref).id)
+        return out
+    return await asyncio.to_thread(_cat_call, go)
 
 @app.post("/api/sites/{ref}/payments/connect", dependencies=[Depends(require_key)])
 async def sites_payments_connect(ref: str, tenant: str = Depends(current_tenant)):
@@ -11556,6 +12677,75 @@ async def site_app_push_unsub(site_id: str, request: Request):
     return await _site_pub(site_id, "push_unsub", request, await _json_body(request))
 
 
+@app.get("/api/site-app/{site_id}/board")
+async def site_app_board(site_id: str, request: Request, topic: str = ""):
+    """v0.999.126: her members' board - the shown posts (her switch on; members only if she chose that)."""
+    return await _site_pub(site_id, "board", request, topic=topic)
+
+
+@app.post("/api/site-app/{site_id}/board")
+async def site_app_board_post(site_id: str, request: Request):
+    """A signed-in member posts or replies (code masks numbers / emails, caps, her approval first by default)."""
+    return await _site_pub(site_id, "board_post", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/board/report")
+async def site_app_board_report(site_id: str, request: Request):
+    return await _site_pub(site_id, "board_report", request, await _json_body(request))
+
+
+@app.get("/api/site-app/{site_id}/board/staff")
+async def site_app_board_staff(site_id: str, request: Request):
+    return await _site_pub(site_id, "board_staff", request)
+
+
+@app.post("/api/site-app/{site_id}/board/mod")
+async def site_app_board_mod(site_id: str, request: Request):
+    return await _site_pub(site_id, "board_mod", request, await _json_body(request))
+
+
+def _site_board_project(tenant: str, ref: str):
+    from .site import applink as AL
+    from .site import service as S
+    from .site import webapp as W
+    with session() as s:
+        r = S._find(s, tenant, ref)
+        s.expunge(r)
+    p = AL.project(r)
+    if p is None:
+        raise W.AppError("This website has no members yet: its portal / sign-in comes first.", 409)
+    return p
+
+
+@app.get("/api/sites/{ref}/board", dependencies=[Depends(require_key)])
+async def sites_board(ref: str, tenant: str = Depends(current_tenant)):
+    """Her side: the board's settings and every post (waiting, shown, hidden, reported)."""
+    from .site import board as BD
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: BD.staff_view(_site_board_project(tenant, ref), W.Who(owner=True)))
+
+
+@app.put("/api/sites/{ref}/board", dependencies=[Depends(require_key)])
+async def sites_board_settings(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP: switch her members' board on / off and its rules (letting visitors post is a public change)."""
+    from .site import board as BD
+    from .site import webapp as W
+
+    def go():
+        p = _site_board_project(tenant, ref)
+        BD.save_cfg(p, body or {})
+        return BD.staff_view(p, W.Who(owner=True))
+    return await asyncio.to_thread(_be_owner_call, go)
+
+
+@app.post("/api/sites/{ref}/board/mod", dependencies=[Depends(require_key)])
+async def sites_board_mod(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP: approve / hide / delete a post, or stop a member posting."""
+    from .site import board as BD
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: BD.moderate(_site_board_project(tenant, ref), W.Who(owner=True), body or {}))
+
+
 @app.get("/api/site-app/{site_id}/queue")
 async def site_app_queue(site_id: str, request: Request, mine: int = 0, staff: int = 0):
     """Public: the board (numbers only). mine=1: my token. staff=1: today's list with names (staff only)."""
@@ -11604,6 +12794,81 @@ async def site_app_queue_board(site_id: str):
     return HTMLResponse(LS.board_page(site_id, label), headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex"})
 
 
+# v0.999.240 ROUTE R5: public pages that start a route (a form, a chat) and her routes as tools for AI apps (MCP)
+@app.get("/route-form/{token}", response_class=HTMLResponse)
+async def route_form_page(token: str):
+    from .route import triggers as TR
+    code, page = await TR.form_get(token)
+    return HTMLResponse(page, status_code=code, headers=TR.page_headers())
+
+
+@app.post("/route-form/{token}", response_class=HTMLResponse)
+async def route_form_send(token: str, request: Request):
+    from .route import triggers as TR
+    raw = await request.body()
+    if len(raw) > 200_000:
+        return HTMLResponse("Too large", status_code=413)
+    from urllib.parse import parse_qs
+    data = {k: (v[0] if v else "") for k, v in parse_qs(raw.decode("utf-8", "ignore"), keep_blank_values=True).items()}
+    code, page = await TR.form_post(token, data)
+    return HTMLResponse(page, status_code=code, headers=TR.page_headers())
+
+
+@app.get("/route-view/{token}", response_class=HTMLResponse)
+async def route_view_page(token: str):
+    """v0.999.246 ROUTE R7: a route shared read-only - its steps in words, no data, no sign-ins."""
+    from .route import triggers as TR
+    from .route import workspace as WS
+    code, page = await asyncio.to_thread(WS.view_html, token)
+    return HTMLResponse(page, status_code=code, headers=TR.page_headers())
+
+
+@app.get("/route-chat/{token}", response_class=HTMLResponse)
+async def route_chat_page(token: str):
+    from .route import triggers as TR
+    code, page = await TR.chat_get(token)
+    return HTMLResponse(page, status_code=code, headers=TR.page_headers())
+
+
+@app.post("/api/route-chat/{token}")
+async def route_chat_send(token: str, request: Request):
+    from .route import triggers as TR
+    raw = await request.body()
+    if len(raw) > 20_000:
+        return JSONResponse({"ok": False, "error": "message too long"}, status_code=413)
+    try:
+        body = json.loads(raw or b"{}")
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    if str(body.get("hp") or ""):
+        return JSONResponse({"ok": True, "reply": "Thank you."})
+    out = await TR.chat_send(token, str(body.get("session") or ""), str(body.get("text") or ""))
+    return JSONResponse({k: v for k, v in out.items() if k in ("ok", "reply", "error")}, status_code=int(out.get("status") or 200))
+
+
+@app.post("/mcp/route/{token}")
+async def route_mcp_endpoint(token: str, request: Request):
+    from .route import triggers as TR
+    raw = await request.body()
+    if len(raw) > 256_000:
+        return JSONResponse({"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": "Request too large"}}, status_code=413)
+    try:
+        msg = json.loads(raw or b"null")
+    except Exception:
+        return JSONResponse({"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}}, status_code=400)
+    code, out = await TR.mcp_handle(token, msg)
+    if out is None:
+        return Response(status_code=202)
+    return JSONResponse(out, status_code=code)
+
+
+@app.get("/mcp/route/{token}")
+async def route_mcp_get(token: str):
+    return Response(status_code=405, headers={"Allow": "POST"})
+
+
 @app.post("/api/dhara/hook/{token}")
 async def dhara_hook(token: str, request: Request):
     """v0.502 DHARA webhook trigger: her outside service calls the workflow in. The token is checked
@@ -11619,9 +12884,62 @@ async def dhara_hook(token: str, request: Request):
             body = {"body": body}
     except Exception:
         body = {"raw": raw[:8000].decode("utf-8", "ignore")}
-    out = await asyncio.to_thread(dhara_tools.webhook_enqueue, token, body)
+    meta = {"ip": (request.headers.get("cf-connecting-ip") or request.headers.get("x-real-ip")
+                   or (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+                   or (request.client.host if request.client else "")),
+            "headers": dict(request.headers), "method": request.method, "query": dict(request.query_params)}
+    out = await dhara_tools.webhook_call(token, body, meta)
+    if out.get("answered"):         # v0.999.239 ROUTE R4: the route's Respond step answers the caller
+        ans = out.get("answer")
+        code = int(out.get("status") or 200)
+        if isinstance(ans, (dict, list)) or ans is None:
+            return JSONResponse(ans if ans is not None else {}, status_code=code)
+        return Response(str(ans), status_code=code, media_type="text/plain; charset=utf-8")
     return JSONResponse({"ok": out["ok"], "run_id": out.get("run_id"), "workflow": out.get("workflow"),
-                         "error": out.get("error")}, status_code=int(out.get("status") or 500))
+                         "error": out.get("error"), **({"note": out["note"]} if out.get("note") else {})},
+                        status_code=int(out.get("status") or 500))
+
+
+@app.api_route("/api/dhara/resume/{token}", methods=["GET", "POST"])
+async def dhara_resume(token: str, request: Request):
+    """v0.999.239 ROUTE R4: a route waiting for a call (wait step, for: call) goes on when its resume link
+    ({{vars.resume_url}}) is called. The body (or the query of a GET) becomes the wait step's output."""
+    from .agent import dhara_tools
+    raw = await request.body()
+    if len(raw) > 256_000:
+        return JSONResponse({"ok": False, "error": "body too large"}, status_code=413)
+    body: object
+    if request.method == "GET":
+        # v0.999.253: a browser (or an email link checker opening it) gets a page with a button - a GET alone never
+        # answers the wait, so a link checker cannot answer it for her. A program's GET (no HTML wanted) still does.
+        if "text/html" in (request.headers.get("accept") or "") and request.query_params.get("go") != "1":
+            import html as _h
+            from urllib.parse import urlencode
+            q = urlencode({**dict(request.query_params), "go": "1"})
+            return HTMLResponse(
+                "<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+                "<title>Hoola Route</title><body style='font:16px system-ui;max-width:28rem;margin:4rem auto;padding:0 1rem'>"
+                "<h1 style='font-size:1.3rem'>Send this answer?</h1><p>A route is waiting for this link. Press the button "
+                "to send it.</p><form method='post' action='?" + _h.escape(q) + "'><button style='font:inherit;padding:.6rem 1.2rem'>"
+                "Send</button></form></body>", headers={"Cache-Control": "no-store"})
+        body = {k: v for k, v in request.query_params.items() if k != "go"}
+    else:
+        try:
+            body = json.loads(raw or b"{}")
+        except Exception:
+            body = {"raw": raw[:8000].decode("utf-8", "ignore")}
+        if not raw and request.query_params:          # the page's Send button: the link's own query is the answer
+            body = {k: v for k, v in request.query_params.items() if k != "go"}
+    out = await dhara_tools.resume_call_and_go(token, body)
+    if "text/html" in (request.headers.get("accept") or "") and request.method == "POST" and not raw:
+        msg = "Sent. The route goes on." if out.get("ok") else str(out.get("error") or "This link did not work")
+        import html as _h
+        return HTMLResponse("<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+                            "<body style='font:16px system-ui;max-width:28rem;margin:4rem auto;padding:0 1rem'><p>"
+                            + _h.escape(msg) + "</p></body>", status_code=int(out.get("status") or 200))
+    return JSONResponse({"ok": out["ok"], **({"run_id": out["run_id"]} if out.get("run_id") else {}),
+                         **({"error": out["error"]} if out.get("error") else {})},
+                        status_code=int(out.get("status") or 500))
 
 
 @app.post("/api/site-app/{site_id}/hook/{key}")
@@ -11924,6 +13242,55 @@ async def sites_launch(ref: str, body: dict, tenant: str = Depends(current_tenan
     out = await asyncio.to_thread(_host, H.launch, tenant, ref, str(body.get("hash") or ""), body.get("free", True) is not False)
     _pled(tenant, _pled_sid(tenant, ref), "published")
     return out
+
+
+def _upg(fn, *a):
+    from .site import prototype as PT
+    from .site import service as S
+    from .site import upgrade as UP
+    try:
+        return fn(*a)
+    except UP.UpgradeError as e:
+        raise HTTPException(e.code, str(e))
+    except PT.ProtoError as e:
+        raise HTTPException(getattr(e, "code", 400), str(e))
+    except S.SiteError as e:
+        raise HTTPException(404 if "not found" in str(e).lower() else 400, str(e))
+
+
+@app.get("/api/sites/{ref}/upgrade", dependencies=[Depends(require_key)])
+async def sites_upgrade_view(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.999.119 D9: the state of "Upgrade this site" (the old design + the new one beside it)."""
+    from .site import upgrade as UP
+    return await asyncio.to_thread(_upg, lambda: UP.view(UP.site_of(tenant, ref)))
+
+
+@app.post("/api/sites/{ref}/upgrade", dependencies=[Depends(require_key)])
+async def sites_upgrade_start(ref: str, tenant: str = Depends(current_tenant)):
+    """HER TAP: make the new design of her website beside the old one (nothing she has changes meanwhile)."""
+    from .site import upgrade as UP
+    return await asyncio.to_thread(_upg, UP.start, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/upgrade/keep", dependencies=[Depends(require_key)])
+async def sites_upgrade_keep(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER TAP on the fingerprint of the new design she looked at: the website uses it from now on."""
+    from .site import upgrade as UP
+    return await asyncio.to_thread(_upg, UP.accept, tenant, ref, str((body or {}).get("hash") or ""))
+
+
+@app.post("/api/sites/{ref}/upgrade/back", dependencies=[Depends(require_key)])
+async def sites_upgrade_back(ref: str, tenant: str = Depends(current_tenant)):
+    """HER TAP: back to the old design (kept unchanged)."""
+    from .site import upgrade as UP
+    return await asyncio.to_thread(_upg, UP.back, tenant, ref)
+
+
+@app.delete("/api/sites/{ref}/upgrade", dependencies=[Depends(require_key)])
+async def sites_upgrade_discard(ref: str, tenant: str = Depends(current_tenant)):
+    """HER TAP: throw the new design away while it waits beside the old website."""
+    from .site import upgrade as UP
+    return await asyncio.to_thread(_upg, UP.discard, tenant, ref)
 
 
 @app.post("/api/sites/{ref}/rollback-request", dependencies=[Depends(require_key)])
@@ -15204,7 +16571,7 @@ class ApproveProof(BaseModel):
 
 
 class ApproveChallengeReq(BaseModel):
-    kind: str = Field(pattern="^(bazar|studio|remove|endorse)$")
+    kind: str = Field(pattern="^(bazar|studio|remove|endorse|wallet)$")
     target: str = Field(min_length=1, max_length=2200)
 
 

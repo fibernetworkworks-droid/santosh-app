@@ -1,0 +1,57 @@
+/* v0.999.158 BOOKS DESK - the Books & Accounts employee's own section. Frame, chat, cards and buttons come from seodesk.css,
+   the shared desk parts (md-*) from moneydesk.css; only the books parts are here. */
+.bk-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:1100px){.bk-4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.bk-4{grid-template-columns:minmax(0,1fr)}}
+.bk-4 .md-kpi .v{font-size:24px}
+.md-kpi .v.bk-wv{color:var(--warn)}
+.bk-sub{font-size:12.5px;color:var(--mut);margin-top:4px}
+.bk-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 0}
+.sd .bk-biz{width:auto;max-width:220px;min-height:34px;font-size:13.5px}
+.sd .num{text-align:right;white-space:nowrap;font-variant-numeric:normal}
+.sd .md-kpi .v{font-variant-numeric:normal}
+.nw{white-space:nowrap}
+#bkPer{width:auto;min-width:120px}
+.bk-in{color:var(--okt)}
+.bk-late{color:var(--badt)}
+.bk-warn{color:var(--warn)}
+.bk-line{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,.8fr) minmax(0,1.2fr) minmax(0,.8fr);gap:10px;margin-bottom:10px}
+@media (max-width:700px){.bk-line{grid-template-columns:repeat(2,minmax(0,1fr))}.bk-line .md-field:first-child{grid-column:1/-1}}
+.bk-kv{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
+.bk-kv:first-of-type{border-top:0}
+.bk-coa{max-height:320px;overflow-y:auto;margin-bottom:12px}
+.bk-acc{display:grid;grid-template-columns:90px minmax(0,1fr) 120px auto;gap:8px;align-items:center}
+@media (max-width:600px){.bk-acc{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.bk-pick{display:flex;gap:6px;justify-content:flex-end;align-items:center}
+.bk-pick select{max-width:200px}
+.in.sm{min-height:32px;padding:4px 8px;font-size:13.5px}
+.bk-ck{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+.bk-ck:first-of-type{border-top:0}
+.bk-dot{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px}
+.bk-dot.ok{background:var(--oks);color:var(--okt)}
+.bk-dot.warn{background:var(--warns);color:var(--warn)}
+.bk-lock{border-top:1px solid var(--line);margin-top:6px;padding-top:12px}
+.bk-agebar{height:12px}
+.bk-pv{margin-top:14px;padding:12px 14px;border-radius:10px;background:var(--soft);font-size:14px}
+.bk-pv ul{margin:6px 0 0;padding-left:20px;line-height:1.6}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.md-mini button br+span{display:inline-block;margin-top:2px}
+.bk-checks{display:flex;flex-wrap:wrap;gap:4px 18px}
+
+/* v0.999.163 Inbox */
+.bk-list{margin:4px 0 10px;padding-left:20px;line-height:1.65;font-size:14.5px}
+.bk-chk{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:14.5px;cursor:pointer}
+.bk-chk input{width:16px;height:16px;flex:none}
+.bk-soft{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px 18px;margin:6px 0 8px}
+.bk-sw{display:flex;align-items:center;gap:8px;min-height:40px;padding:4px 10px;border:1px solid var(--line,#e7e5e4);border-radius:10px}
+.bk-sw .bk-chk{margin:0;flex:1;min-width:0}
+.bk-sw .bk-chk span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bk-sw .pill{white-space:nowrap}
+.bk-h3{font-size:14.5px;font-weight:600;margin:14px 0 4px}
+.bk-ml{flex:1;min-width:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bk-imap{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--soft)}
+.bk-wrap{flex-wrap:wrap;justify-content:flex-start;align-items:center}
+/* v0.999.166 a wide table scrolls inside its card on a phone, never the page */
+#mdPage > * { min-width: 0; }
+#mdPage .card > div[style*="overflow-x"] { max-width: 100%; position: relative; }   /* its hidden labels stay inside it */
+.bk-route{display:block;border:1px solid var(--line,#e6e6e6);border-radius:12px;padding:14px 16px;margin:8px 0}

@@ -139,7 +139,11 @@ def _walk(url: str, must: list[str], click: tuple[str, str] | None, fill: dict[s
             filled = None
             if fill:
                 for sel, val in fill.items():
-                    fr.fill(sel, val)
+                    if val == "@pick":                  # v0.999.51 the kit's DatePicker: open it, take the last free day
+                        fr.click(sel)
+                        fr.locator('[role="grid"] button:not([disabled])').last.click()
+                    else:
+                        fr.fill(sel, val)
                 fr.get_by_role("button", name=submit).first.click()
                 try:
                     fr.get_by_text(after_fill).first.wait_for(timeout=10000)

@@ -76,7 +76,7 @@ def test_background_commands_and_install_replay(tmp_path, monkeypatch):
                    "11-13 10:02 pip pandas rc=0\n11-13 10:03 apt ffmpeg rc=0\n")
     assert a.replay_installs(log, dry=True) == ["ffmpeg", "libreoffice-calc", "pip:pandas"]   # failed + repeats out
     src = (ROOT / "desktop-linux" / "agent.py").read_text()
-    assert a.VERSION == "1.6.0" and "threading.Thread(target=replay_installs" in src
+    assert a.VERSION in ("1.6.0", "1.7.0", "1.8.0", "1.9.0", "1.9.1", "1.9.2") and "threading.Thread(target=replay_installs" in src
     dk = (ROOT / "desktop-linux" / "Dockerfile").read_text()
     assert "useradd -m -u 1500 -s /bin/bash hoolawork" in dk and "openssl" in dk
     assert "never mkdir over them" in (ROOT / "desktop-linux" / "start.sh").read_text()

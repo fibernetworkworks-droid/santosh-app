@@ -57,17 +57,58 @@ SOURCES = [
 ]
 
 PROVIDERS = {
-    "plivo": {"name": "Plivo (India number, Audio Streams)", "primary": True,
+    "plivo": {"name": "Plivo (India number, Audio Streams)", "primary": True, "where": "India (+ many more)",
               "why": "documented bidirectional WebSocket audio, signed webhooks (X-Plivo-Signature-V3), call transfer and "
                      "hang-up APIs, Indian numbers for India-registered businesses after KYC"},
-    "exotel": {"name": "Exotel (Voicebot applet)", "primary": False,
+    "exotel": {"name": "Exotel (Voicebot applet)", "primary": False, "where": "India, South-East Asia",
                "why": "Indian cloud telephony, bidirectional stream; no request signatures (Basic Auth / IP whitelist), "
                       "transfer = the flow's next applet after the stream closes"},
+    "twilio": {"name": "Twilio (numbers in most countries)", "primary": False, "where": "worldwide",
+               "why": "worldwide numbers, Media Streams over WebSocket, X-Twilio-Signature on every webhook, its own "
+                      "answering-machine check; in India only toll-free inbound, so Plivo stays first there"},
+    "telnyx": {"name": "Telnyx (numbers in 140+ countries)", "primary": False, "where": "worldwide",
+               "why": "own global carrier network, TeXML (Twilio-style), bidirectional media streaming, Ed25519-signed "
+                      "webhooks, answering-machine check"},
+    "vonage": {"name": "Vonage (numbers in many countries)", "primary": False, "where": "worldwide",
+               "why": "Voice API with WebSocket audio (16 kHz), signed webhooks, answering-machine check"},
+    "signalwire": {"name": "SignalWire (US, Canada, UK and more)", "primary": False, "where": "North America, Europe",
+                   "why": "Twilio-compatible cXML and Media Streams, signed webhooks, answering-machine check"},
+    "bandwidth": {"name": "Bandwidth (US, Canada, Europe)", "primary": False, "where": "US, Canada, Europe",
+                  "why": "its own carrier network, BXML bidirectional streaming, answering-machine check"},
+    "sinch": {"name": "Sinch (carrier in 60+ countries)", "primary": False, "where": "worldwide",
+              "why": "SVAML with connectStream WebSocket audio, signed callbacks, answering-machine check"},
+    "jambonz": {"name": "Any phone carrier, any country (jambonz)", "primary": False, "where": "every country",
+                "why": "an open voice gateway: bring the SIP trunk of any local carrier anywhere in the world; listen "
+                       "WebSocket audio, signed webhooks, answering-machine check"},
     "fake": {"name": "Test line (no real calls)", "primary": False, "why": "for trying the script without a phone number"},
 }
-NOT_PRIMARY = {"twilio": "Twilio India: only toll-free inbound, and a transfer to her Indian mobile would be an "
-                         "international call. Not used.",
-               "ozonetel": "Ozonetel / Knowlarity: no public, documented bidirectional media-stream API found (Oct 2026)."}
+NOT_PRIMARY = {"twilio_in": "Twilio for an Indian business number: only toll-free inbound, and a transfer to her Indian "
+                            "mobile would be an international call - use Plivo or Exotel in India, Twilio elsewhere.",
+               "ozonetel": "Ozonetel / Knowlarity: no public, documented bidirectional media-stream API found (Oct 2026).",
+               "infobip": "Infobip: its live call audio needs a media-stream configuration made on their side first; not "
+                          "built yet - use Telnyx, Vonage, Sinch or jambonz with any local carrier meanwhile.",
+               "africastalking": "Africa's Talking: no live two-way call audio API; for Africa use Telnyx, Vonage, Sinch or "
+                                 "jambonz with a local SIP carrier."}
+
+# v0.999.68 which phone companies give a local number where she is (the first is the suggested one); jambonz works
+# everywhere because it fronts any local SIP carrier
+_NA = ("US", "CA")
+_BW = ("US", "CA", "GB", "IE", "DE", "FR", "ES", "IT", "NL", "BE", "AT", "CH", "SE", "DK", "NO", "FI", "PL", "PT")
+
+
+def providers_for(country: str) -> list[str]:
+    c = (country or "IN").upper()
+    if c == "IN":
+        return ["plivo", "exotel", "jambonz"]
+    out = ["twilio", "telnyx", "vonage", "sinch"]
+    if c in _NA:
+        out += ["signalwire", "bandwidth"]
+    elif c in _BW:
+        out += ["bandwidth", "signalwire"]
+    if c in ("SG", "ID", "MY", "PH", "TH", "VN"):
+        out.append("exotel")
+    return out + ["plivo", "jambonz"]
+
 
 ACTIONS = ("faq", "messages", "appointments", "ticket_status", "complaints")   # what a script may allow
 
@@ -233,6 +274,12 @@ HOLD = {"hi-IN": "Kripya line par bane rahiye, aapki call jaldi uthayi jayegi.",
         "en-IN": "Please stay on the line, your call will be answered shortly."}
 CONNECTING = {"hi-IN": "Aapko hamari team se jod rahe hain, kripya ruke.", "mr-IN": "Tumhala aamchya team shi jodat aahot, krupaya thamba.",
               "en-IN": "Connecting you to our team, please hold."}
+CALLBACK_SAY = {   # G3: the person did not pick up the warm transfer
+    "hi-IN": "Maaf kijiye, abhi team ka koi phone nahi utha paya. Aapki baat likh li hai, team aapko {window} call karegi. Dhanyavaad.",
+    "mr-IN": "Maaf kara, aata team madhle koni phone ghenu shakle nahi. Tumchi goshta lihun ghetli aahe, team tumhala {window} call karel. Dhanyavaad.",
+    "en-IN": "Sorry, nobody from the team could pick up just now. Your request is noted and the team will call you back {window}. Thank you.",
+}
+CALLBACK_SOON = {"hi-IN": "jaldi", "mr-IN": "lavkar", "en-IN": "soon"}
 
 
 def default_lang() -> str:
@@ -299,6 +346,9 @@ def clean_script(c: dict[str, Any]) -> dict[str, Any]:
         "handover_words": [s(x, 60) for x in (c.get("handover_words") or []) if s(x, 60)][:20],
         "closing": s(c.get("closing"), 200),
         "hours_text": s(c.get("hours_text"), 120),
+        # v0.999.67 call steps (greet -> ask -> answer -> book -> close), each with what to say / aim for
+        "steps": [{"name": s(x.get("name"), 40), "say": s(x.get("say"), 400)} for x in (c.get("steps") or [])[:10]
+                  if isinstance(x, dict) and s(x.get("name"), 40)],
     }
 
 

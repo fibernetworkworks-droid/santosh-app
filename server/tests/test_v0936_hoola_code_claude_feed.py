@@ -73,11 +73,11 @@ def test_the_phone_draws_claude_codes_feed():
     # top bar, floating changes, words in the sans, suggestion inside the box
     assert "centered: true," in ses and "final bool centered;" in kit
     assert "if (a + r > 0) _changesPill(c, a, r)" in ses
-    assert "sans: true" in words and "final bool sans;" in md
+    assert "sans: true" not in words and "final bool sans;" in md   # v0.999 the reply font, same as the web page
     assert "final Widget? top;" in start and "top: hint.isNotEmpty && _msg.text.isEmpty" in ses
 
 
 def test_version():
     main = (ROOT / "server/app/main.py").read_text()
-    assert 'APP_VERSION = "0.999.39"' in main
-    assert "version: 0.999.39+1037" in (ROOT / "pubspec.yaml").read_text()
+    assert 'APP_VERSION = "0.999.169"' in main
+    assert "version: 0.999.169+1164" in (ROOT / "pubspec.yaml").read_text()

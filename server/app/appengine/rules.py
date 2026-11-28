@@ -8,6 +8,8 @@ it goes live. Three kinds of rule:
    package an import names must be one this app lists (from the vetted set) - never a guessed name.
 3. DRIFT (the "design system first" law): colours, corners and fonts only from tokens.css - a hex / rgb / hsl colour,
    a Tailwind palette colour (bg-blue-500, text-white) or a one-off `[value]` class is refused, with the token to use.
+4. TASTE (v0.999.51 D1): no transition-all, no browser select / date box / alert, no emoji icons, no gradient on a
+   button, at most 3 gradients a file.
 
 A refusal names the file, the line and what to write instead, so the model can fix it in one go."""
 from __future__ import annotations
@@ -18,7 +20,17 @@ import re
 from typing import Any
 
 LOCKED = {"package.json", "package-lock.json", "vite.config.ts", "hoola.plugin.mjs", "tsconfig.json", "src/main.tsx", "src/index.css",
-          "src/lib/hoola.ts", "src/lib/utils.ts", "src/styles/tokens.css", "src/lib/cloud.types.ts"}
+          "src/lib/hoola.ts", "src/lib/utils.ts", "src/styles/tokens.css", "src/lib/cloud.types.ts", "DESIGN.md",
+          # v0.999.64 D3: pre-rendering + islands
+          "hoola.prerender.mjs", "hoola.render.json", "src/entry-server.tsx", "src/islands-entry.tsx", "src/islands-wake.tsx",
+          "src/lib/island.tsx",
+          "src/lib/seo.tsx",
+          # v0.999.82 D8: the only place a page may keep a value in the visitor's browser (a website on its own address)
+          "src/lib/keep.ts",
+          # v0.999.82 D8 wave 7: the visitor's sign-in on her website (her members, her rules on Hoola)
+          "src/lib/member.ts",
+          # v0.999.91 D8 wave 9: the browser-notification worker, served from her website's own address
+          "public/hoola-push-sw.js"}
 TEXT_EXT = {".tsx", ".ts", ".css", ".json", ".svg", ".md", ".txt", ".html", ".webmanifest"}
 CODE_EXT = {".tsx", ".ts", ".css"}
 MAX_FILE = 200_000
@@ -84,7 +96,10 @@ def writable(path: str) -> str:
     p = norm(path)
     if p in LOCKED:
         how = {"package.json": "add a package with action=add_dependency",
-               "src/styles/tokens.css": "change colours / corners / fonts with action=tokens"}.get(p, "it is part of the template Hoola keeps")
+               "src/styles/tokens.css": "change colours / corners / fonts with action=tokens or action=design_new",
+               "DESIGN.md": "change the design with action=design_new (genes) or action=design_import (a whole DESIGN.md)",
+               "hoola.render.json": "choose how pages go out with action=render_mode (site or app)"}.get(
+                   p, "it is part of the template Hoola keeps")
         raise RuleError(f"{p} is locked: {how}.")
     parts = p.split("/")
     if any(x.startswith(".") for x in parts) and not (p.startswith(".hoola/plan/") and p.endswith(".md") and len(parts) == 3):
@@ -221,8 +236,59 @@ def _import_problem(path: str, spec: str, deps: set[str]) -> str:
             + ", ".join(sorted(EXTRA)))
 
 
+# v0.999.51 D1 THE KIT: Emergent's hard taste rules, in code (docs/WEB_DESIGN_ENGINE_PLAN.md P1). Each names the kit
+# part to use instead, so the model fixes it in one go.
+RX_TRANS_ALL = re.compile(r"(?<![\w-])transition-all(?![\w-])|\btransition\s*:\s*all\b|transition-property\s*:\s*all\b")
+RX_SELECT = re.compile(r"<select\b")
+RX_DATE = re.compile(r"""<[Ii]nput\b[^>]*\btype\s*=\s*[{]?["'](?:date|time|datetime-local|month|week)["']""")
+RX_DIALOG = re.compile(r"(?<![\w.$])(?:window\.)?(?:alert|confirm|prompt)\s*\(|\bwindow\.(?:alert|confirm|prompt)\s*\(")
+RX_DIALOG_DEF = re.compile(r"(?:function|const|let|var)\s+(?:alert|confirm|prompt)\b|(?<!window)\.(?:alert|confirm|prompt)\s*\(")
+RX_EMOJI = re.compile("[\U0001F000-\U0001FAFF\u2600-\u26FF\u2700-\u27BF\u2B50\u2B55\u231A\u231B\u23E9-\u23FA\uFE0F]")
+RX_GRAD = re.compile(r"(?<![\w-])bg-(?:gradient-to|linear|radial|conic)-[\w-]+|\b(?:linear|radial|conic)-gradient\(")
+RX_BTN = re.compile(r"<(?:Button|button)\b")
+MAX_GRADIENTS = 3
+
+
+def taste(path: str, code: str) -> list[dict[str, Any]]:
+    """The taste rules (code files only): name what animates, kit parts instead of the browser's own select / date /
+    dialogs, icons from lucide-react not emoji, never a gradient on a button and few gradients per file."""
+    p, e = norm(path), ext(path)
+    if e not in (".tsx", ".ts", ".css"):
+        return []
+    out: list[dict[str, Any]] = []
+    grads = 0
+    for n, raw in enumerate(_lines(code), 1):
+        line = _strip_comments(raw) if e in (".ts", ".tsx") else raw
+        if RX_TRANS_ALL.search(line):
+            out.append({"file": p, "line": n, "rule": "taste", "found": "transition-all animates everything (slow, jumpy): "
+                        "name what moves - transition-colors / transition-opacity / transition-transform / transition-shadow"})
+        g = len(RX_GRAD.findall(line))
+        grads += g
+        if g and RX_BTN.search(line):
+            out.append({"file": p, "line": n, "rule": "taste", "found": "never a gradient on a button: use the Button "
+                        "variants (bg-primary)"})
+        if e == ".css":
+            continue
+        if RX_SELECT.search(line):
+            out.append({"file": p, "line": n, "rule": "taste", "found": "the browser's own <select> looks different "
+                        "everywhere: use the kit's Select from @/components/ui/select"})
+        if RX_DATE.search(line):
+            out.append({"file": p, "line": n, "rule": "taste", "found": "the browser's own date / time box: use the kit's "
+                        "DatePicker from @/components/ui/date-picker"})
+        if RX_DIALOG.search(line) and not RX_DIALOG_DEF.search(line):
+            out.append({"file": p, "line": n, "rule": "taste", "found": "the browser's own alert / confirm / prompt box: "
+                        "use toast from sonner or the kit's AlertDialog"})
+        if e == ".tsx" and RX_EMOJI.search(line):
+            out.append({"file": p, "line": n, "rule": "taste", "found": f"an emoji ({RX_EMOJI.search(line).group(0)}) is "
+                        "not an icon here: use a lucide-react icon"})
+    if grads > MAX_GRADIENTS:
+        out.append({"file": p, "line": 1, "rule": "taste", "found": f"{grads} gradients in one file (at most "
+                    f"{MAX_GRADIENTS}: a gradient is an accent, not the page)"})
+    return out
+
+
 def check_file(path: str, code: str, deps: set[str]) -> list[dict[str, Any]]:
-    return safety(path, code, deps) + drift(path, code)
+    return safety(path, code, deps) + drift(path, code) + taste(path, code)
 
 
 def say(problems: list[dict[str, Any]], limit: int = 8) -> str:

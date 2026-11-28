@@ -1,0 +1,247 @@
+"use client"; // v0.999.106 D8 wave 10: her AI assistant on a React website - an island
+// Hoola App Engine - Hoola's own kit file. Her own Hoola AI App (built and published in AI Apps) answers her visitors
+// here: the same answers, notice, limits and monthly cost ceiling as its chat page, all checked on Hoola's server. The
+// visitor agrees to the notice first (their tap); nothing is asked of them before that. Under Hoola's address (the
+// sealed Studio preview) it is not called, so no visitor's words spend her credits there.
+import * as React from "react";
+import { Bot, ImageIcon, MessageSquare, Send, Sparkles } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import { AppError, aiAgree, aiAgreed, aiApp, aiPictureUrl, aiSealed } from "@/lib/member";
+
+type FormField = { key: string; label?: string; type?: string; options?: string[]; required?: boolean };
+
+export interface AiChatProps {
+  code: string;
+  name?: string;
+  opening?: string;
+  notice?: string;
+  kind?: string;
+  suggested?: string[];
+}
+
+type Pictures = { on?: boolean; per_visitor_day?: number; hint?: string };
+type Info = { name?: string; kind?: string; opening?: string; suggested?: string[]; notice?: string; form?: FormField[];
+  pictures?: Pictures };
+type Pic = { id: string; key: string };
+type Turn = { id: string; q: string; a: string; picture?: Pic };
+type State = "loading" | "sealed" | "off" | "notice" | "chat";
+
+const SAID: Record<string, string> = {
+  sealed: "Your assistant answers on your website's own address, not in this preview.",
+  off: "The assistant is not answering right now. Please contact us another way.",
+};
+
+export default function AiChat({ code, name, opening, notice, kind, suggested }: AiChatProps) {
+  const [st, setSt] = React.useState<State>("loading");
+  const [info, setInfo] = React.useState<Info>({ name, opening, notice, kind, suggested });
+  const [turns, setTurns] = React.useState<Turn[]>([]);
+  const [text, setText] = React.useState("");
+  const [vals, setVals] = React.useState<Record<string, string>>({});
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState("");
+  const [mode, setMode] = React.useState<"ask" | "picture">("ask");
+  const idBase = React.useId();
+  const end = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!code) return;
+    if (aiSealed()) {
+      setSt("sealed");
+      return;
+    }
+    aiApp<Info>(code)
+      .then((i) => {
+        setInfo((o) => ({ ...o, ...i }));
+        if (!aiAgreed(code)) {
+          setSt("notice");
+          return;
+        }
+        setSt("chat");
+        aiApp<{ messages?: { id: string; q: string; a: string; picture?: Pic }[] }>(code, "history")
+          .then((h) => setTurns((h.messages || []).map((m) => ({ id: m.id, q: m.q, a: m.a, picture: m.picture }))))
+          .catch((e) => {
+            if (e instanceof AppError && e.status === 401) setSt("notice");
+          });
+      })
+      .catch(() => setSt("off"));
+  }, [code]);
+
+  React.useEffect(() => {                          // a block body: scrollIntoView may return a Promise, never a cleanup
+    end.current?.scrollIntoView({ block: "end" });
+  }, [turns.length]);
+
+  async function agree() {
+    setBusy(true);
+    setErr("");
+    try {
+      await aiAgree(code);
+      setSt("chat");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "That did not work. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const isForm = info.kind === "form" && (info.form || []).length > 0 && mode === "ask";
+  const pics = !!info.pictures?.on;
+
+  async function draw(q: string) {
+    const ask = q.trim();
+    if (busy || ask.length < 3) return;
+    setBusy(true);
+    setErr("");
+    try {
+      const out = await aiApp<{ id: string; key: string; message_id?: string }>(code, "picture", "POST", { text: ask });
+      setTurns((t) => [...t, { id: out.message_id || out.id, q: ask, a: "", picture: { id: out.id, key: out.key } }]);
+      setText("");
+    } catch (e) {
+      if (e instanceof AppError && e.status === 401) setSt("notice");
+      setErr(e instanceof Error ? e.message : "That did not work. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function send(q: string) {
+    if (mode === "picture") return draw(q);
+    const ask = q.trim();
+    if (busy || (!ask && !isForm)) return;
+    setBusy(true);
+    setErr("");
+    try {
+      const out = await aiApp<{ reply?: string; message_id?: string }>(code, "chat", "POST",
+        isForm ? { text: ask, inputs: vals } : { text: ask });
+      setTurns((t) => [...t, { id: out.message_id || String(t.length), q: ask, a: out.reply || "" }]);
+      setText("");
+    } catch (e) {
+      if (e instanceof AppError && e.status === 401) setSt("notice");
+      setErr(e instanceof Error ? e.message : "That did not work. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const title = info.name || "Ask our assistant";
+  return (
+    <section className="px-4 py-16" data-hoola-ai={st}>
+      <Card className="mx-auto w-full max-w-2xl">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Bot className="size-5 text-primary" aria-hidden="true" />
+            <CardTitle id={`${idBase}-h`}>{title}</CardTitle>
+            <Badge variant="secondary" className="ml-auto">AI assistant</Badge>
+          </div>
+          {info.opening ? <CardDescription>{info.opening}</CardDescription> : null}
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {st === "sealed" || st === "off" ? <p className="text-sm text-muted">{SAID[st]}</p> : null}
+          {st === "loading" ? <p className="text-sm text-muted">Loading the assistant...</p> : null}
+          {st === "notice" ? (
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-muted">{info.notice}</p>
+              <Button onClick={agree} disabled={busy} className="self-start">
+                I agree
+              </Button>
+            </div>
+          ) : null}
+          {st === "chat" ? (
+            <>
+              <div className="flex max-h-96 min-h-24 flex-col gap-3 overflow-y-auto pr-1" role="log" aria-live="polite"
+                aria-labelledby={`${idBase}-h`}>
+                {turns.map((t) => (
+                  <div key={t.id} className="flex flex-col gap-2">
+                    {t.q ? (
+                      <p className="max-w-prose self-end rounded-card bg-primary px-3 py-2 text-sm text-primary-ink">{t.q}</p>
+                    ) : null}
+                    {t.picture ? (
+                      <figure className="flex max-w-sm flex-col gap-1 self-start">
+                        <img src={aiPictureUrl(code, t.picture.id, t.picture.key)} alt={`A picture made by AI: ${t.q}`}
+                          className="w-full rounded-card border border-line" loading="lazy" />
+                        <figcaption className="flex items-center gap-2 text-xs text-muted">
+                          <span>AI-generated</span>
+                          <a className="text-primary underline" href={aiPictureUrl(code, t.picture.id, t.picture.key)} download>Save</a>
+                        </figcaption>
+                      </figure>
+                    ) : (
+                      <p className="max-w-prose self-start whitespace-pre-line rounded-card bg-surface px-3 py-2 text-sm text-ink">{t.a}</p>
+                    )}
+                  </div>
+                ))}
+                <div ref={end} />
+              </div>
+              {pics ? (
+                <div className="flex gap-2" role="group" aria-label="What the assistant does">
+                  <Button size="sm" variant={mode === "ask" ? "default" : "outline"} aria-pressed={mode === "ask"} onClick={() => setMode("ask")}>
+                    <MessageSquare className="size-4" aria-hidden="true" /> Ask
+                  </Button>
+                  <Button size="sm" variant={mode === "picture" ? "default" : "outline"} aria-pressed={mode === "picture"} onClick={() => setMode("picture")}>
+                    <ImageIcon className="size-4" aria-hidden="true" /> Make a picture
+                  </Button>
+                </div>
+              ) : null}
+              {turns.length === 0 && mode === "ask" && (info.suggested || []).length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {(info.suggested || []).slice(0, 4).map((s) => (
+                    <Button key={s} variant="outline" size="sm" onClick={() => send(s)} disabled={busy}>
+                      <Sparkles className="size-4" aria-hidden="true" />
+                      {s}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
+              {isForm ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {(info.form || []).map((f) => (
+                    <div key={f.key} className={cn("flex flex-col gap-1", f.type === "long_text" && "sm:col-span-2")}>
+                      <Label htmlFor={`${idBase}-${f.key}`}>{f.label || f.key}{f.required ? " *" : ""}</Label>
+                      {f.type === "long_text" ? (
+                        <Textarea id={`${idBase}-${f.key}`} value={vals[f.key] || ""}
+                          onChange={(e) => setVals((v) => ({ ...v, [f.key]: e.target.value }))} />
+                      ) : (
+                        <Input id={`${idBase}-${f.key}`} value={vals[f.key] || ""}
+                          type={f.type === "number" ? "number" : f.type === "email" ? "email" : f.type === "phone" ? "tel" : f.type === "date" ? "date" : "text"}
+                          list={f.options && f.options.length ? `${idBase}-${f.key}-o` : undefined}
+                          onChange={(e) => setVals((v) => ({ ...v, [f.key]: e.target.value }))} />
+                      )}
+                      {f.options && f.options.length ? (
+                        <datalist id={`${idBase}-${f.key}-o`}>
+                          {f.options.map((o) => <option key={o} value={o} />)}
+                        </datalist>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              <form
+                className="flex items-end gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void send(text);
+                }}
+              >
+                <Textarea aria-label={mode === "picture" ? "The picture you want" : "Your question"} value={text} rows={2}
+                  maxLength={mode === "picture" ? 500 : 2000}
+                  placeholder={mode === "picture" ? (info.pictures?.hint || "Describe the picture you want") : isForm ? "Anything else to add (optional)" : "Type your question"}
+                  onChange={(e) => setText(e.target.value)} className="flex-1" />
+                <Button type="submit" disabled={busy || (!text.trim() && !isForm)} aria-label="Send">
+                  <Send className="size-4" aria-hidden="true" />
+                </Button>
+              </form>
+              <p className="text-xs text-muted">{mode === "picture"
+                ? `Pictures are made by AI and marked as AI-generated; up to ${info.pictures?.per_visitor_day || 3} a day. No real people, no documents.`
+                : "Answers are written by AI and may be wrong. Never share an OTP, PIN, password or card number."}</p>
+            </>
+          ) : null}
+          {err ? <p className="text-sm text-danger" role="alert">{err}</p> : null}
+        </CardContent>
+      </Card>
+    </section>
+  );
+}

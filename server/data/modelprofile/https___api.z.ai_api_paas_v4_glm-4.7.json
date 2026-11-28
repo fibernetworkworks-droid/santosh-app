@@ -1,0 +1,14 @@
+{
+ "model": "glm-4.7",
+ "known": false,
+ "source": "none",
+ "inputs": [
+  "text"
+ ],
+ "params": [],
+ "context": 0,
+ "price": {},
+ "providers": 0,
+ "learned": {},
+ "at": 0.0
+}

@@ -1,0 +1,486 @@
+{
+ "cc": "IN",
+ "name": "India",
+ "currency": "INR",
+ "minor_unit": 2,
+ "languages": [
+  "en",
+  "hi"
+ ],
+ "version": 4,
+ "official_hosts": [
+  "rbi.org.in",
+  "sebi.gov.in",
+  "incometax.gov.in",
+  "gst.gov.in",
+  "cbic-gst.gov.in",
+  "npci.org.in",
+  "cms.rbi.org.in",
+  "cybercrime.gov.in",
+  "dicgc.org.in",
+  "gov.in",
+  "nic.in"
+ ],
+ "about": "F0 starting pack. Every value is 'verify' until Hoola reads the official page (source_read) or a person checks it (checked).",
+ "sections": {
+  "rails": {
+   "instant": {
+    "value": "UPI and IMPS",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "bulk": {
+    "value": "NEFT / NACH",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "high_value": {
+    "value": "RTGS",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "mandates": {
+    "value": "UPI AutoPay / e-NACH",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "regulators": {
+   "banks": {
+    "value": "Reserve Bank of India (RBI)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "securities": {
+    "value": "SEBI",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "insurance": {
+    "value": "IRDAI",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "pensions": {
+    "value": "PFRDA",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "tax": {
+    "value": "CBDT (income tax) / CBIC + GSTN (GST)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "ombudsman": {
+   "name": {
+    "value": "RBI Integrated Ombudsman Scheme",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "firm_first": {
+    "value": {
+     "n": 30,
+     "unit": "days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "refer_within": {
+    "value": {
+     "n": 12,
+     "unit": "months"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "site": {
+    "value": "cms.rbi.org.in",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "fraud_report": {
+   "police": {
+    "value": "National Cyber Crime Reporting Portal",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "bank_hotline": {
+    "value": "1930 (National Cyber Crime Helpline)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "portal": {
+    "value": "cybercrime.gov.in",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "scam_refund": {
+   "regime": {
+    "value": "RBI limited-liability circular for unauthorised electronic banking transactions (July 2017)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "covers": {
+    "value": "Unauthorised electronic transactions you did not make or allow",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "report_within": {
+    "value": {
+     "n": 3,
+     "unit": "working_days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "firm_answer_within": {
+    "value": {
+     "n": 10,
+     "unit": "working_days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "max_claim": {
+    "value": null,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "deposit_insurance": {
+   "scheme": {
+    "value": "Deposit Insurance and Credit Guarantee Corporation (DICGC)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "limit": {
+    "value": 500000,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "per": {
+    "value": "per depositor, per bank",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "credit_bureaus": {
+   "list": {
+    "value": [
+     "TransUnion CIBIL",
+     "Experian",
+     "Equifax",
+     "CRIF High Mark"
+    ],
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "free_report": {
+    "value": "One free full report a year from each bureau",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "answer_within": {
+    "value": {
+     "n": 30,
+     "unit": "days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "open_banking": {
+   "framework": {
+    "value": "Account Aggregator (RBI NBFC-AA)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "tax": {
+   "year_end": {
+    "value": "03-31",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "gst": {
+    "value": "Rates and dates read from bahi/rules (see tax.gst_rates / due_dates / tds)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "payroll": {
+   "system": {
+    "value": "TDS on salary (Form 16), EPF, ESI, professional tax by state",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "starting_list": {
+    "value": {
+     "frequency": "monthly",
+     "contributions": [
+      {
+       "name": "Provident Fund (EPF)",
+       "employee_pct": 12,
+       "employer_pct": 12,
+       "upto": 15000,
+       "base": "gross",
+       "note": "on basic + DA up to the wage ceiling; Hoola uses the pay you give"
+      },
+      {
+       "name": "Employees' State Insurance (ESI)",
+       "employee_pct": 0.75,
+       "employer_pct": 3.25,
+       "only_upto": 21000,
+       "base": "gross",
+       "note": "only for people whose gross is up to the ceiling"
+      },
+      {
+       "name": "Professional Tax (Maharashtra)",
+       "slabs": [
+        {
+         "upto": 7500,
+         "employee": 0,
+         "employer": 0
+        },
+        {
+         "upto": 10000,
+         "employee": 175,
+         "employer": 0
+        },
+        {
+         "upto": null,
+         "employee": 200,
+         "employer": 0
+        }
+       ],
+       "note": "state by state; February is higher in Maharashtra"
+      }
+     ],
+     "income_tax": {
+      "method": "annualised",
+      "allowance": 75000,
+      "bands": [
+       {
+        "upto": 400000,
+        "pct": 0
+       },
+       {
+        "upto": 800000,
+        "pct": 5
+       },
+       {
+        "upto": 1200000,
+        "pct": 10
+       },
+       {
+        "upto": 1600000,
+        "pct": 15
+       },
+       {
+        "upto": 2000000,
+        "pct": 20
+       },
+       {
+        "upto": 2400000,
+        "pct": 25
+       },
+       {
+        "upto": null,
+        "pct": 30
+       }
+      ],
+      "note": "new regime; the rebate under section 87A and the 4% cess are not applied - check this"
+     },
+     "filings": [
+      {
+       "name": "PF ECR and payment",
+       "every": "monthly",
+       "due_day": 15
+      },
+      {
+       "name": "ESI contribution",
+       "every": "monthly",
+       "due_day": 15
+      },
+      {
+       "name": "TDS on salary paid over",
+       "every": "monthly",
+       "due_day": 7
+      },
+      {
+       "name": "Form 24Q (TDS return)",
+       "every": "quarterly",
+       "due_offset_days": 31
+      }
+     ]
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use",
+    "where_to_check": "https://www.epfindia.gov.in , https://www.esic.gov.in , https://www.incometax.gov.in , your state's professional tax page"
+   }
+  },
+  "consumer_credit": {
+   "apr_method": {
+    "value": "Annual Percentage Rate in the Key Fact Statement (RBI digital lending directions)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "cooling_off_days": {
+    "value": 3,
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "free_advice": {
+   "service": {
+    "value": "RBI financial literacy; SEBI investor education; free legal aid by state authority",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "data_law": {
+   "law": {
+    "value": "Digital Personal Data Protection Act 2023 (rules phased in - verify)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "entity_types": {
+   "list": {
+    "value": [
+     "individual",
+     "household",
+     "sole_trader",
+     "partnership",
+     "company",
+     "trust",
+     "non_profit",
+     "cooperative",
+     "bank",
+     "lender",
+     "payment_firm",
+     "broker",
+     "fund"
+    ],
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "id_checks": {
+   "gstin": {
+    "value": "15 characters with a check digit",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "pan": {
+    "value": "10 characters AAAAA9999A",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "ai_rules": {
+   "approach": {
+    "value": "RBI FREE-AI framework (2025) for regulated entities - verify",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "card_dispute": {
+   "law": {
+    "value": "RBI limited-liability circular and the card network chargeback",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "report_within": {
+    "value": {
+     "n": 3,
+     "unit": "working_days"
+    },
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "identity_theft": {
+   "report_to": {
+    "value": "cybercrime.gov.in and your bank",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "freeze": {
+    "value": "No freeze law; ask each bureau to flag your file",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "unclaimed": {
+   "finder": {
+    "value": "RBI UDGAM portal for unclaimed deposits",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "pensions": {
+    "value": "EPFO member portal",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "insurance": {
+    "value": "Each insurer's unclaimed amounts page",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "benefits": {
+   "checker": {
+    "value": "myScheme (myscheme.gov.in)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "tax_credits": {
+    "value": "Income tax rebate under section 87A (incometax.gov.in)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "student": {
+    "value": "National Scholarship Portal",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   },
+   "self_employed_tax": {
+    "value": "Advance tax and presumptive taxation (incometax.gov.in)",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "pension": {
+   "state": {
+    "value": "No universal state pension; Atal Pension Yojana and NPS are schemes you join",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "bereavement": {
+   "tell_once": {
+    "value": "No single service; tell each bank, EPFO and insurer with the death certificate",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "estate": {
+   "will_registry": {
+    "value": "Optional registration at the Sub-Registrar office",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  },
+  "housing": {
+   "deposit_protection": {
+    "value": "Your rent agreement and your state's rent law",
+    "status": "verify",
+    "note": "from research / memory - verify on the official page before use"
+   }
+  }
+ }
+}

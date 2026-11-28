@@ -66,6 +66,13 @@ PRICES: dict[str, dict[str, float]] = {
     "gemini-3.6-flash": {"in": 0.75, "out": 3.75},
     "gemini-2.5-flash-preview-tts": {"in": 0.50, "out": 10.0, "audio_out": 10.0},
     "gemini-3.1-flash-tts": {"in": 1.0, "out": 20.0, "audio_out": 20.0},
+    "gemini-3.8-flash-tts": {"in": 0.50, "out": 9.0, "audio_out": 9.0},   # v0.999.90 aistudio.google.com/docs/pricing, until 31 Dec 2026 (then $1 / $18)
+    # v0.999.90 HOOLA VOCAL GLOBAL: ElevenLabs API per minute of sound (elevenlabs.io/pricing/api, 21 Nov 2026); counted as sec_out
+    "elevenlabs-tts": {"audio_out_min": 0.08},
+    "elevenlabs-change": {"audio_out_min": 0.12},
+    "elevenlabs-isolate": {"audio_out_min": 0.12},
+    "elevenlabs-sfx": {"audio_out_min": 0.12},
+    "elevenlabs-dub": {"audio_out_min": 2.20},
     "lyria": {"audio_out_min": 0.08},          # v0.259 a Lyria song is counted as one "minute" = studio MUSIC_USD per song
     "gemini-2.5-flash-image": {"in": 0.30, "out": 30.0},
     "gemini-3.1-flash-lite-image": {"in": 0.25, "out": 30.0},       # ~$0.034 per 1K picture
@@ -196,7 +203,8 @@ def feature_for_path(path: str) -> str:
     for prefix, feat in (("/api/voice", "call"), ("/api/lekhak", "lekhak"), ("/api/reels", "reels"), ("/api/net", "network"),
                          ("/api/video", "video"), ("/api/motion", "motion"), ("/api/studio", "studio"), ("/api/create", "create"),
                          ("/api/operator", "website"), ("/api/sites", "site"), ("/api/apps", "app"), ("/api/blender3d", "3d"), ("/api/notebook", "notebook"), ("/api/voiceid", "voiceid"), ("/api/gyaan", "gyaan"),
-                         ("/api/conversations", "chat"), ("/api/forms", "chat")):
+                         ("/api/conversations", "chat"), ("/api/forms", "chat"), ("/api/seva", "support"), ("/api/support", "support"),
+                         ("/api/callcentre", "callcentre")):
         if p.startswith(prefix):
             return feat
     return "other"

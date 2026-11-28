@@ -34,7 +34,7 @@ import logging
 import re
 import time
 
-from . import parser, prompts, skills_store, store
+from . import guard, parser, prompts, skills_store, store
 
 log = logging.getLogger("coder.nudge")
 
@@ -48,7 +48,7 @@ _BG: set = set()                 # running forks (GC protection, the santosh._bg
 _counts: dict[tuple[str, str], int] = {}
 _last_fired: dict[tuple[str, str], float] = {}
 _live_at: dict[str, float] = {}
-_stats = {"runs": 0, "observations": 0, "skills": 0, "dropped": 0, "skipped": 0}
+_stats = {"runs": 0, "observations": 0, "skills": 0, "dropped": 0, "skipped": 0, "blocked": 0}
 
 
 # ---------------------------------------------------------------- knobs
@@ -203,11 +203,21 @@ async def reflect(tenant: str, conv: str) -> None:
         obs = parser.parse_observations(text, valid_types, valid_concepts) or \
             parser.salvage_prose(text)
         for o in obs[:budget]:
+            hit = guard.check_obs(o)            # v0.999 the memory guard: what it teaches itself is checked
+            if hit:
+                _stats["blocked"] += 1
+                log.warning("nudge memory write blocked (%s): %s", conv, ",".join(hit))
+                continue
             if store.store_observation(conv, tenant, o, actor="nudge") is not None:
                 _stats["observations"] += 1
                 budget -= 1
         for sk in _parse_skills(text)[:max(0, budget)]:
             action, name, desc, body = sk
+            hit = guard.check_skill(name, desc, body)
+            if hit:
+                _stats["blocked"] += 1
+                log.warning("nudge skill write blocked (%s): %s", name, ",".join(hit))
+                continue
             if action == "update" and not any(s["name"] == name for s in skills_now):
                 continue                          # read-before-write: update only a listed skill
             if action == "update":

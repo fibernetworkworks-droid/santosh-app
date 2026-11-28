@@ -64,6 +64,9 @@ class FakeGoogle:
         p = path.removeprefix("/calendar/v3")
         if p == "/users/me/calendarList":
             return httpx.Response(200, json={"items": list(self.cals.values())})
+        if p == "/users/me/settings":       # v0.999.189: Hoola reads her Google Calendar settings too
+            return httpx.Response(200, json={"items": [{"id": "timezone", "value": "Asia/Kolkata"},
+                                                       {"id": "weekStart", "value": "1"}]})
         if p == "/freeBusy":
             body = json.loads(req.content)
             t0, t1 = datetime.fromisoformat(body["timeMin"]), datetime.fromisoformat(body["timeMax"])
@@ -294,7 +297,7 @@ def test_settings_choose_calendars(g):
 
 
 def test_not_connected_points_to_profile(env):
-    with pytest.raises(ToolError, match="Profile > Calendar"):
+    with pytest.raises(ToolError, match="Connectors > Google"):
         run("calendar_agenda", {}, Ctx("someone", "c"))
 
 
@@ -348,7 +351,7 @@ def test_owner_caldav_route(bz, monkeypatch):  # noqa: F811
     assert [e["title"] for e in out["events"]] == ["Team standup", "Dentist"] and out["events"][0]["id"] == "env~primary~u1@g"
     run("calendar_add_event", {"title": "Client call", "start": t.replace(hour=16).strftime("%Y-%m-%dT%H:%M")}, ctx)
     assert "Client call" in dav.saved[0]
-    with pytest.raises(ToolError, match="Profile > Calendar"):
+    with pytest.raises(ToolError, match="Connectors > Google"):
         run("calendar_add_event", {"title": "x", "start": t.replace(hour=17).strftime("%Y-%m-%dT%H:%M"), "meet": True}, ctx)
     run("calendar_cancel_event", {"event_id": "env~primary~u2@g"}, ctx)
     assert not dav.events[1].deleted

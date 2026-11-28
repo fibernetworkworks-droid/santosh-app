@@ -372,8 +372,8 @@ p{margin:0}
 .out a{color:var(--priInk)}
 .actor.on{border-color:var(--pri);box-shadow:0 0 0 3px var(--priSoft)}
 .actor .thumb{position:relative}
-.sheetimg{display:block;border-radius:12px;overflow:hidden;background:var(--sunk)}
-.sheetimg img{display:block;width:100%}
+.sheetimg{display:block;border-radius:12px;overflow:hidden;background:var(--sunk);position:relative;width:100%;aspect-ratio:2/1;padding:0;border:0}
+.sheetimg img{display:block;width:100%;height:100%;object-fit:contain;position:absolute;inset:0}
 .player{background:#000}
 .player video{object-fit:contain}
 .trow.head{color:var(--dim);font-size:12.5px}
@@ -1014,3 +1014,219 @@ small{font-size:12.5px}
 .res .thumb>img{width:100%;height:100%;object-fit:cover;display:block}
 @media (max-width:720px){.cn-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .chips.cams{max-height:116px;overflow:auto;scrollbar-width:thin;padding:1px}
+
+/* v0.999.42 the drawn stand-in under every picture / clip: a painted scene + a mark, covered by the file once it loads;
+   a missing file keeps the drawing and gets a small chip (it used to be a flat grey box with words in the middle) */
+.thumb canvas.art{position:absolute;inset:0;width:100%;height:100%}
+.thumb canvas.art ~ img,.thumb canvas.art ~ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.sheetimg.thumb canvas.art ~ img{object-fit:contain}
+.ph-mark{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:rgb(0 0 0 / .32);border:1px solid rgb(255 255 255 / .55);color:#fff;pointer-events:none}
+.ph-mark .ic{width:20px;height:20px}
+.res.tall .ph-mark,.tool .ph-mark,.opt .ph-mark{width:36px;height:36px}
+.opt .ph-mark,.toolcard .ph-mark{width:24px;height:24px}
+.opt .ph-mark .ic,.toolcard .ph-mark .ic{width:12px;height:12px}
+.gone.chip{position:absolute;left:8px;bottom:8px;height:22px;padding:0 9px;border-radius:99px;background:rgb(0 0 0 / .55);color:#fff;font-size:12.5px;display:inline-flex;align-items:center}
+.grid-opts.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.insp .prow{width:100%;text-align:left}
+
+/* v0.999.43 VIDEO CHAT (owner: "THIS IS TO BE A FULL CHAT PANEL -- AND AT BOTTOM THERE IS DIFFERENT OPTIONS REGARDING VIDEO --
+   ALSO IN THIS CHAT USER CAN UPLOAD IMAGES, VIDEOS, DOCUMENTS, EVERY FILE" -> "GO BUILD"): the chat on the left (the chat
+   kit's thread), the box with her files above her words and every video option under them, Your videos with filters. */
+.gen.vchat{grid-template-columns:minmax(0,var(--cw,560px)) minmax(0,1fr)}
+.gen.vchat .rz-pane{left:var(--cw,560px)}
+.vcp{background:var(--bg);min-height:0}
+.vch{flex:none;display:flex;align-items:center;gap:10px;padding:10px 12px 10px 16px;border-bottom:1px solid var(--line)}
+.vcm{width:30px;height:30px;border-radius:8px;background:var(--priSoft);color:var(--priInk);display:grid;place-items:center;flex:none}
+.vct{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.vct b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vct small{font-size:12.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vlog{flex:1;min-height:0;overflow:auto;padding:20px 20px 12px;scrollbar-width:thin;position:relative}
+.vlog .hck{--hck-gap:28px}
+.vclip{margin:2px 0 6px}
+.vcl{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px 14px;padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+.vclt{position:relative;width:96px;aspect-ratio:3/4;border-radius:8px;overflow:hidden;background:var(--sunk);display:block}
+.vclt img,.vclt video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.vclb{min-width:0;display:flex;flex-direction:column;gap:6px}
+.vclb>b{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;flex-wrap:wrap}
+.vclb>small.mut{font-size:14px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.vclm{display:flex;gap:6px;flex-wrap:wrap}
+.vclm .tag{background:var(--sunk);color:var(--ink);font-weight:500}
+.vcll{font-size:14px;color:var(--mut)}
+.vcll.err{color:var(--bad,#B42318)}
+.vcl .appr{grid-column:1/-1;margin:0}
+.vfailc{display:flex;gap:12px;align-items:flex-start;margin:4px 0 8px;padding:14px 16px;border-radius:16px;border:1px solid var(--line);background:var(--surface)}
+.vfailc>.ic{color:var(--warn);margin-top:2px}
+.vfailc b{display:block;font-weight:600}
+.vfailc small{display:block;color:var(--mut);margin:2px 0 10px;font-size:14px;line-height:1.45}
+.vcomp{flex:none;padding:0 14px max(12px,env(safe-area-inset-bottom,0px))}
+.vbox{border:1.5px solid var(--line2);border-radius:16px;background:var(--surface);transition:border-color .15s,box-shadow .15s}
+.vbox:focus-within{border-color:var(--pri);box-shadow:0 0 0 4px var(--priSoft)}
+.vcomp.drop .vbox{border-style:dashed;border-color:var(--pri);background:var(--priSoft)}
+.vtray{display:flex;gap:8px;padding:12px 12px 0;overflow-x:auto;scrollbar-width:thin}
+.vfile{position:relative;flex:none;width:84px;height:84px;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--sunk);display:flex;flex-direction:column;justify-content:flex-end;padding:8px}
+.vfile img,.vfile video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.vfile.err{border-color:var(--bad,#B42318)}
+.vfk{position:relative;font-size:12.5px;font-weight:600;color:var(--priInk)}
+.vfn{position:relative;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.vfp{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:28px;height:28px;border-radius:50%;background:rgb(0 0 0 / .55);color:#fff;display:grid;place-items:center}
+.vfu{position:absolute;inset:0;display:grid;place-items:center;align-content:center;gap:4px;background:rgb(255 255 255 / .82);font-size:12.5px;font-weight:500;color:var(--ink)}
+.vfu.err{color:var(--bad,#B42318)}
+.vfx{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgb(0 0 0 / .62);color:#fff;display:grid;place-items:center}
+.vff{position:absolute;left:4px;right:4px;bottom:4px;height:22px;border-radius:99px;background:rgb(0 0 0 / .58);color:#fff;font-size:12.5px;font-weight:500}
+.vff[aria-pressed="true"]{background:var(--pri);color:var(--onPri)}
+#vidq{display:block;width:100%;border:0;outline:0;resize:none;background:none;padding:12px 16px 6px;font-size:15px;line-height:1.5;min-height:52px;max-height:180px}
+#vidq:focus-visible{outline:0}
+.vrow{display:flex;align-items:flex-end;gap:6px;padding:6px 8px 8px 10px}
+.vplus{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);display:grid;place-items:center;flex:none;color:var(--ink)}
+.vplus:hover{background:var(--sunk)}
+.vopts{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px;padding:1px 0}
+.vsend{width:38px;height:38px;border-radius:50%;background:var(--pri);color:var(--onPri);display:grid;place-items:center;flex:none}
+.vsend:hover{background:var(--pri2)}
+.vsend.stop{background:var(--ink);color:var(--bg)}
+.vfoot{margin:8px 6px 0;font-size:12.5px;color:var(--mut);text-align:center;line-height:1.45}
+.vfoot b{color:var(--ink);font-weight:600}
+.vfoot .warnl{display:block;margin-top:2px}
+.vst .vsbar{height:auto;min-height:56px;flex-wrap:wrap;row-gap:8px;padding:10px 16px}
+.vsbar>b{font-size:15px}
+.vseg{display:flex;padding:3px;gap:2px;background:var(--sunk);border-radius:12px}
+.vseg button{height:30px;padding:0 10px;border-radius:8px;font-size:14px;font-weight:500;color:var(--mut);white-space:nowrap}
+.vseg button[aria-selected="true"]{background:var(--bg);color:var(--ink);box-shadow:0 1px 2px rgb(0 0 0 / .1)}
+.vseg i{font-style:normal}
+.vsearch{display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);width:180px;color:var(--mut)}
+.vsearch input{border:0;outline:0;background:none;width:100%;font-size:14px;color:var(--ink)}
+.vfilm{display:inline-flex;align-items:center;gap:6px;font-size:14px}
+/* the camera sheet */
+.camsheet{position:fixed;inset:0;z-index:25;background:rgb(10 9 20 / .5);display:grid;place-items:center;padding:20px;opacity:0;transition:opacity .18s var(--ease)}
+.camsheet.on{opacity:1}
+.csin{width:min(980px,100%);max-height:100%;display:flex;flex-direction:column;background:var(--bg);border-radius:16px;box-shadow:var(--sh);overflow:hidden}
+.csh{display:flex;align-items:center;gap:14px;padding:18px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.csh>div{flex:1;min-width:220px}
+.csh h2{font:400 26px/1.2 var(--serif)}
+.csh p{font-size:14px;margin-top:3px}
+.csb{overflow:auto;padding:16px 20px 22px;display:flex;flex-direction:column;gap:18px}
+.csb h3{font-size:14px;font-weight:600;color:var(--mut);margin-bottom:10px}
+.csg{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px}
+.csm{display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);text-align:left}
+.csm:hover{border-color:var(--line2);background:var(--surface)}
+.csm[aria-pressed="true"]{border:2px solid var(--pri);padding:9px;background:var(--priSoft)}
+.csm b{font-size:14px;font-weight:600}
+.csm small{font-size:12.5px;line-height:1.4;color:var(--mut)}
+.cpic{height:64px;width:100%;border-radius:8px;background:var(--sunk);fill:none;stroke:var(--mut);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;padding:10px}
+.csm[aria-pressed="true"] .cpic{stroke:var(--pri);background:var(--bg)}
+.cpic path{transition:transform .5s var(--ease)}
+.csm:hover .cpic path{transform:translateX(3px)}
+/* the opened clip: the player beside what it is */
+.vlb{width:min(1100px,100%)}
+.vlbb{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;min-height:0}
+.vlbs{display:flex;flex-direction:column;gap:12px;align-items:stretch;min-width:0}
+.vlbs .stchip{align-self:flex-start}
+.vlbw{font-size:14px;line-height:1.5}
+.vlbs dl{margin:0;display:flex;flex-direction:column}
+.vlbs dl div{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.vlbs dt{color:var(--mut)}
+.vlbs dd{margin:0;text-align:right}
+.vlbs .btn{justify-content:center}
+@media (max-width:900px){.gen.vchat{grid-template-columns:1fr}.vlog{max-height:none}.vcp{min-height:620px}.vlbb{grid-template-columns:1fr}.vsearch{width:100%}}
+@media (prefers-reduced-motion:reduce){.cpic path,.camsheet{transition:none}.csm:hover .cpic path{transform:none}}
+
+/* v0.999.46 THE CHAT BAR, option A: + , one settings button, the model, Improve, Send; the settings in a panel above the box */
+.mark .hmk{width:26px;height:26px;flex:none;display:grid;place-items:center;color:var(--pri)}
+.mark .hmk svg,.mark .hmk img{width:26px;height:26px;display:block}
+.mark .hmk .hm3{width:26px;height:26px}
+.vrow{align-items:center;gap:4px;padding:4px 8px 8px 10px}
+.vplus{width:36px;height:36px;border-radius:99px;border-color:var(--line2)}
+.vopts{flex-wrap:nowrap;gap:4px;align-items:center;overflow:hidden}
+.vset,.vmdl{flex:none;display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 10px 0 10px;border-radius:99px;font-size:14px;font-weight:500;white-space:nowrap;color:var(--ink);border:1px solid transparent;min-width:0}
+.vset{background:var(--sunk)}
+.vset:hover{border-color:var(--line2)}
+.vset[aria-expanded="true"]{background:var(--surface);border-color:var(--ink)}
+.vset .ic:last-child{color:var(--mut)}
+.vmdl{color:var(--mut);padding:0 8px;flex:0 1 auto;overflow:hidden}
+.vmdl span{overflow:hidden;text-overflow:ellipsis}
+.vmdl .ic{color:var(--pri);flex:none}
+.vmdl:hover{background:var(--sunk);color:var(--ink)}
+.vrow .ib[data-improve]{width:36px;height:36px;border-radius:99px;margin-left:auto}
+.vsend{width:36px;height:36px;background:var(--ink);color:var(--bg)}
+.vsend:hover{background:var(--ink);opacity:.86}
+.vsend.stop{background:var(--ink);color:var(--bg)}
+.vcomp{position:relative}
+.vsetp{position:absolute;left:14px;right:14px;bottom:calc(100% + 8px);z-index:6;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 36px rgb(0 0 0 / .14),0 1px 2px rgb(0 0 0 / .06);padding:12px 16px;max-height:min(560px,70vh);overflow-y:auto;overflow-x:hidden;opacity:0;transform:translateY(6px);transition:opacity .16s ease-out,transform .16s ease-out}
+.vsetp.on{opacity:1;transform:none}
+.vsh0{display:flex;align-items:center;padding:2px 0 8px}
+.vsh0 b{flex:1;font-size:15px;font-weight:600}
+.vsr{display:flex;align-items:center;gap:16px;min-height:52px;border-top:1px solid var(--line);padding:6px 0}
+.vsl{width:84px;flex:none;font-size:14px;color:var(--mut)}
+.vsc{flex:1;min-width:0;display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px}
+.vsc>small{font-size:12.5px;color:var(--mut)}
+.vsg{flex-wrap:wrap;flex:0 1 auto;max-width:100%;min-width:0}
+.vsg button{flex:none;height:30px;padding:0 12px;display:inline-flex;align-items:center;gap:6px}
+.vsg button[aria-checked="true"]{background:var(--surface);color:var(--ink);font-weight:500;box-shadow:0 1px 2px rgb(0 0 0 / .08)}
+.vsh{display:inline-block;border:1.5px solid currentColor;box-sizing:border-box}
+.vsb{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 10px 0 12px;border-radius:99px;border:1px solid var(--line2);font-size:14px;font-weight:500;color:var(--ink);background:var(--surface)}
+.vsb:hover{background:var(--sunk)}
+.vsb .ic:last-child{color:var(--mut)}
+.vstx{font-size:14px;color:var(--mut)}
+.vsf{display:flex;align-items:center;gap:12px;border-top:1px solid var(--line);padding-top:12px;margin-top:2px}
+.vsf span{flex:1;font-size:14px;color:var(--mut)}
+.vdone{height:36px;padding:0 18px;border-radius:99px;background:var(--ink);color:var(--bg);font-size:14px;font-weight:500}
+.vdone:hover{opacity:.86}
+@media (prefers-reduced-motion:reduce){.vsetp{transition:none}}
+
+
+/* v0.999.53 IMAGE CHAT: the Image page as the Video page's twin - the chat, the settings panel, picture sets in the chat,
+   Your pictures in their real shapes, the opened picture with what to do next */
+#imgq{display:block;width:100%;border:0;outline:0;resize:none;background:none;padding:12px 16px 6px;font-size:15px;line-height:1.5;min-height:52px;max-height:180px}
+#imgq:focus-visible{outline:0}
+.imdl{cursor:default}
+.imdl:hover{background:none;color:var(--mut)}
+.pgrid{display:block;columns:3 220px;column-gap:14px}
+.pgrid>.res{position:relative;break-inside:avoid;margin:0 0 16px}
+.pgrid .res .thumb{aspect-ratio:var(--ar,1 / 1)}
+.pgrid>.empty,.pgrid>.res.failed{column-span:all}
+.iset{margin:2px 0 6px}
+.iscard{display:flex;flex-direction:column;gap:10px;padding:8px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+.isg{display:flex;gap:6px;align-items:flex-start;flex-wrap:wrap}
+.isp{position:relative;display:block;flex:1 1 0;min-width:120px;max-width:260px;max-height:300px;aspect-ratio:var(--ar,1 / 1);border-radius:12px;overflow:hidden;background:var(--sunk)}
+.isp img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.isp:hover img{filter:brightness(.94)}
+.isf{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 4px 4px}
+.isf .sp{flex:1}
+.isf .btn{height:32px;padding:0 12px;font-size:14px}
+.iscard .bar{margin:0 4px 4px}
+.isw{position:relative;width:22px;height:22px;border-radius:8px;overflow:hidden;flex:none;display:block}
+.isw>*{position:absolute;inset:0;width:100%;height:100%}
+.istg{grid-template-columns:repeat(3,minmax(0,1fr))}
+.ista{position:relative;display:block;height:104px;border-radius:8px;overflow:hidden;background:var(--sunk)}
+.ista>*{position:absolute;inset:0;width:100%;height:100%}
+.ivin{flex:1;min-width:0;height:36px;padding:0 12px;border-radius:99px;border:1px solid var(--line2);background:var(--surface);font-size:14px;color:var(--ink)}
+.ivin:focus-visible{outline:0;border-color:var(--pri);box-shadow:0 0 0 3px var(--priSoft)}
+.ilb .lbm{height:min(720px,calc(100vh - 140px))}
+.ilb .lbm img{width:100%;height:100%;max-height:none;object-fit:contain}
+.ilb .vlbs .btn{gap:8px}
+.ilbc,.ilbd{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;font-size:14px}
+.ilbd{color:var(--bad,#B42318);margin-top:4px}
+@media (max-width:900px){.pgrid{columns:2 150px}.isp{min-width:96px}.istg{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* v0.999.79 HOOLA MUSIC: the Music page as the Image page's twin - the chat, Song settings above the box, song sets with
+   their versions in the chat, Your songs on the right */
+#muq{display:block;width:100%;border:0;outline:0;resize:none;background:none;padding:12px 16px 6px;font-size:15px;line-height:1.5;min-height:52px;max-height:180px}
+#muq:focus-visible{outline:0}
+.mchat #tracks{display:flex;flex-direction:column;gap:10px}
+.mscard{display:flex;flex-direction:column;gap:10px;padding:8px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+.mscard .bar{margin:0 4px 4px}
+.msl{display:flex;flex-direction:column;gap:6px}
+.msl .track{padding:8px;border-radius:12px;background:var(--surface)}
+.msl .track .cover{width:44px;height:44px;border-radius:8px}
+.mver{display:inline-flex;align-items:center;height:20px;padding:0 7px;margin-right:6px;border-radius:8px;border:1px solid var(--line2);font-size:12.5px;font-weight:600;color:var(--mut);vertical-align:1px}
+.mlyr{display:flex;flex-direction:column;gap:6px;flex:1 1 100%;width:100%;min-width:0}
+.vsr:has(.mlyr){align-items:flex-start}
+.mlyf{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.mlyf small{color:var(--dim);font-size:12.5px}
+.mlyr textarea{width:100%;min-height:120px;resize:vertical;border:1px solid var(--line2);border-radius:12px;padding:10px 12px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;line-height:1.5}
+.mlyr textarea:focus-visible{outline:0;border-color:var(--pri);box-shadow:0 0 0 3px var(--priSoft)}
+.mlyr .lnk{display:inline-flex;align-items:center;gap:6px}
+
+/* v0.999.203 EVERY CHAT LIKE CLAUDE: the main chat's v0.999.197-199 numbers here too - the home greeting Literata 38 / 330
+   (dark 290) / 1.2 at opsz 48, the box text 16 / 430 (dark 400), her message 16 / 430 / 1.4, the reply 16 / 1.5 at 400
+   (dark 360). The weights come from chatkit.css (--hck0-*), so dark mode follows the page. */
+.hero h1{font-family:'Literata',Georgia,serif;font-size:clamp(28px,5.4vw,38px);font-weight:var(--hck0-gw,330);line-height:1.2;letter-spacing:normal;font-variation-settings:"opsz" 48}
+.compose textarea,.compose textarea::placeholder{font-size:16px;font-weight:var(--hck0-hw,430)}

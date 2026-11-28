@@ -17,6 +17,7 @@ Nothing is sent, shared or published from here: the files go to her chat as card
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import json
 import logging
 import re
@@ -71,18 +72,29 @@ def ready() -> dict[str, bool]:
 
 
 # ---------------------------------------------------------------- song (Google Lyria)
+AUTO_LANG = ("", "auto", "auto language", "any")
+
+
 def song_prompt(brief: str = "", genre: str = "", language: str = "English", vocals: str = "duet", mood: str = "",
-                bpm: int = 0, seconds: int = 0, lyrics: str = "") -> str:
+                bpm: int = 0, seconds: int = 0, lyrics: str = "", keep_out: str = "", take: int = 0) -> str:
+    """v0.999.79 HOOLA MUSIC: any language of the world ('Auto' = the language of her words / lyrics, several languages
+    part by part when the lyrics mix them), a list of what to keep out, and `take` > 0 = another version of the same ask."""
     v = (vocals or "").lower().strip()
     instrumental = v in ("none", "no vocals", "instrumental", "no")
-    parts = [f"A complete, radio-ready {genre or 'Indian pop'} song" if not instrumental
-             else f"A complete {genre or 'Indian'} instrumental, no vocals at all"]
+    parts = [f"A complete, radio-ready {genre or 'pop'} song" if not instrumental
+             else f"A complete {genre or ''} instrumental, no vocals at all".replace("  ", " ")]
     if brief.strip():
         parts.append(f"about: {brief.strip()[:600]}")
     if not instrumental:
         who = {"female": "a female lead singer", "male": "a male lead singer", "duet": "a male and female duet",
-               "choir": "a lead singer with a choir"}.get(v, v or "a lead singer")
-        parts.append(f"sung in {language or 'English'} by {who}, clear diction")
+               "choir": "a lead singer with a choir", "group": "a group of singers", "child": "a child singer"}.get(v, v or "a lead singer")
+        lang = (language or "").strip()
+        if lang.lower() in AUTO_LANG:
+            sung = ("in the language(s) of the lyrics below, each part in its own language" if lyrics.strip()
+                    else "in the language of the description above")
+        else:
+            sung = f"in {lang}"
+        parts.append(f"sung {sung} by {who}, clear diction and natural pronunciation")
     if mood:
         parts.append(f"mood: {mood}")
     if bpm:
@@ -90,8 +102,12 @@ def song_prompt(brief: str = "", genre: str = "", language: str = "English", voc
     if seconds:
         parts.append(f"about {int(seconds)} seconds long with a proper intro and ending")
     p = ", ".join(parts) + "."
+    if keep_out.strip():
+        p += f"\nKeep these out of the song: {keep_out.strip()[:300]}."
+    if take:
+        p += "\nThis is another version of the same song: a different melody and arrangement, the same words and feel."
     if lyrics.strip() and not instrumental:
-        p += "\nUse exactly these lyrics, in this order:\n" + lyrics.strip()[:3000]
+        p += "\nUse exactly these lyrics, in this order (lines in [brackets] name the part, they are not sung):\n" + lyrics.strip()[:3000]
     return p
 
 
@@ -104,12 +120,12 @@ def _lyria(prompt: str) -> bytes:
 
 
 async def song(brief: str = "", genre: str = "", language: str = "English", vocals: str = "duet", mood: str = "",
-               bpm: int = 0, seconds: int = 0, lyrics: str = "") -> dict[str, Any]:
+               bpm: int = 0, seconds: int = 0, lyrics: str = "", keep_out: str = "", take: int = 0) -> dict[str, Any]:
     if not ready()["song"]:
         raise CreateError(NEED["song"])
     if not (brief.strip() or lyrics.strip() or genre.strip()):
         raise CreateError("What should the song be about? Give one line, a genre or lyrics.")
-    prompt = song_prompt(brief, genre, language, vocals, mood, bpm, seconds, lyrics)
+    prompt = song_prompt(brief, genre, language, vocals, mood, bpm, seconds, lyrics, keep_out, take)
     try:
         data = await asyncio.to_thread(_lyria, prompt)
     except CreateError:
@@ -186,9 +202,16 @@ def cast_prompt(name: str, description: str, style: str = "") -> str:
 
 
 # ---------------------------------------------------------------- voice (Gemini TTS)
+# v0.999.90 HOOLA VOCAL GLOBAL: the 8 Google prebuilt voices the avatar lists do not carry (Google lists 30); they may be
+# chosen in Hoola Vocal, never as an avatar's own voice.
+EXTRA_VOICES = {"male": {"Enceladus": "Breathy", "Algenib": "Gravelly", "Rasalgethi": "Informative", "Alnilam": "Firm",
+                         "Schedar": "Even", "Sadaltager": "Knowledgeable"},
+                "female": {"Autonoe": "Bright", "Pulcherrima": "Forward"}}
+
+
 def pick_voice(voice: str = "", gender: str = "") -> str:
     from ..avatar import service as av
-    allv = {**av.MALE_VOICES, **av.FEMALE_VOICES}
+    allv = {**av.MALE_VOICES, **av.FEMALE_VOICES, **EXTRA_VOICES["male"], **EXTRA_VOICES["female"]}
     if voice in allv:
         return voice
     return av.DEFAULT_VOICE["f" if (gender or "").lower().startswith("f") else "m"]
@@ -285,13 +308,16 @@ def _json(text: str) -> dict[str, Any]:
     return json.loads(t[t.find("{"):t.rfind("}") + 1])
 
 
-def _listen(audio: bytes, langs: list[str]) -> dict[str, Any]:
+def _listen(audio: bytes, langs: list[str], keep: list[str] | None = None) -> dict[str, Any]:
     from google.genai import Client, types
     s = _s()
     model = s.video_gemini_model or s.reels_gemini_model or s.youtube_gemini_model
     tr = ", ".join(f'"{lang}": "..."' for lang in langs)
+    rule = LISTEN % tr
+    if keep:                                           # v0.999.148: her words that are never translated
+        rule += "\nNever translate these words; write them exactly as given wherever they are said: " + "; ".join(keep[:30])
     resp = Client(api_key=s.gemini_api_key).models.generate_content(
-        model=model, contents=[types.Part.from_bytes(data=audio, mime_type="audio/mp3"), LISTEN % tr],
+        model=model, contents=[types.Part.from_bytes(data=audio, mime_type="audio/mp3"), rule],
         config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.2))
     try:
         out = _json(resp.text or "")
@@ -359,11 +385,19 @@ async def dub(video: bytes, name: str, langs: list[str], keep_sound: bool = True
                 f.write_bytes(wav_bytes(pcm))
                 return f
             clips = await asyncio.gather(*(one(i, ln) for i, ln in enumerate(lines)))
+            keep = KEEP_CLIPS.get()          # v0.999.96 Hoola Vocal's dubbing editor keeps each line's clip to redo one line
+            if keep is not None:
+                for i, c in enumerate(clips):
+                    if c:
+                        shutil.copyfile(c, Path(keep) / f"{lang}_{i:03d}.wav")
             out = d / f"dub_{lang}.mp4"
             await asyncio.to_thread(_mix, src, lines, clips, out, keep_sound, secs or 0)
             outputs.append({"language": lang, "bytes": out.read_bytes(), "seconds": round(secs, 1)})
     return {"source_language": heard.get("source_language") or "", "speakers": heard.get("speakers") or [],
             "voices": vmap, "lines": lines, "outputs": outputs}
+
+
+KEEP_CLIPS: "contextvars.ContextVar[str | None]" = contextvars.ContextVar("hoola_dub_keep_clips", default=None)
 
 
 def fit(start: float, nxt: float | None, length: float, total: float) -> float:

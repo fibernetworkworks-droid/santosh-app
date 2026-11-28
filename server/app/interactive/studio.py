@@ -42,13 +42,37 @@ MAX_VIDEOS = 40
 MAX_AVATARS = 12
 PHOTO_EXT = (".png", ".jpg", ".jpeg", ".webp")
 NUMBER_LOOKS = ("big_number", "price", "bar_chart")
+LAYOUTS = ("corner", "full")       # v0.999.170 a face engine's talking person: in a corner over the scenes, or the whole frame
+
+
+def lang_of(code: Any) -> str:
+    """v0.999.170 any language a Vocal voice speaks (140), not only the first ten; an unknown code stays English."""
+    c = str(code or "")
+    if c in LANGS:
+        return c
+    try:
+        from . import voice as VO
+        return VO.lang_ok(c) or "en"
+    except Exception:   # noqa: BLE001
+        return "en"
+
+
+def lang_label(code: str) -> str:
+    if code in LANGS:
+        return LANGS[code]
+    try:
+        from . import voice as VO
+        return VO.lang_name(code)
+    except Exception:   # noqa: BLE001
+        return code
 
 _LOCK = threading.RLock()
 _JOBS: dict[str, dict[str, Any]] = {}
 
 # the make job's steps, in order - each one a real boundary of frames.do_avatar_film (+ our own save)
 STEPS = [("voice", "Speaking the script"), ("align", "Lining words up to the voice"),
-         ("draw", "Checking and drawing the scenes"), ("save", "Keeping the video"), ("done", "Ready")]
+         ("draw", "Checking and drawing the scenes"), ("face", "Making the talking face"),
+         ("save", "Keeping the video"), ("done", "Ready")]
 
 
 class StudioError(Exception):
@@ -124,14 +148,33 @@ def photo_path(tenant: str, aid: str) -> Path | None:
 
 
 # ------------------------------------------------------------------ avatars ---
+MIN_FACE_PX = 300          # v0.999.176 a face smaller than this looks soft in every video
+
+
+def photo_size(data: bytes) -> tuple[int, int]:
+    """Width and height of a photo, read from its own bytes (0, 0 when it cannot be read)."""
+    try:
+        import io
+        from PIL import Image
+        with Image.open(io.BytesIO(data)) as im:
+            return int(im.width), int(im.height)
+    except Exception:   # noqa: BLE001
+        return 0, 0
+
+
 def add_avatar(tenant: str, name: str, file_path: str, lang: str = "en", consent: bool = False,
-               filename: str = "") -> dict[str, Any]:
-    """A photo avatar: her picture (or a person who agreed), shown beside the words. Consent is a hard gate."""
+               filename: str = "", who: str = "me", person: str = "") -> dict[str, Any]:
+    """A photo avatar: her picture (or a person who agreed), shown beside the words. Consent is a hard gate.
+    v0.999.176: whose face it is goes on the record (hers, or the named person who agreed), and the photo's size is checked."""
     name = re.sub(r"\s+", " ", str(name or "").strip())[:40]
     if not name:
         raise StudioError("Give the avatar a name.")
     if not consent:
         raise StudioError("Hoola only uses a face with consent: tick that this is you, or that the person agreed.")
+    who = "agreed" if str(who or "") == "agreed" else "me"
+    person = re.sub(r"\s+", " ", str(person or "").strip())[:60]
+    if who == "agreed" and not person:
+        raise StudioError("Write the name of the person who agreed.")
     src = Path(file_path)
     ext = (Path(filename).suffix or src.suffix).lower()   # chat-lane files are stored without an extension
     if ext == ".jpeg":
@@ -141,6 +184,9 @@ def add_avatar(tenant: str, name: str, file_path: str, lang: str = "en", consent
     head = src.read_bytes()[:12]
     if not (head.startswith(b"\x89PNG") or head.startswith(b"\xff\xd8") or (head[:4] == b"RIFF" and head[8:12] == b"WEBP")):
         raise StudioError("That file is not a real photo.")
+    w, h = photo_size(src.read_bytes())
+    if w and h and min(w, h) < MIN_FACE_PX:
+        raise StudioError(f"The photo is too small ({w} x {h}). Use one at least {MIN_FACE_PX} pixels on each side.")
     with _LOCK:
         d = _load(tenant)
         if len(d["avatars"]) >= MAX_AVATARS:
@@ -150,10 +196,74 @@ def add_avatar(tenant: str, name: str, file_path: str, lang: str = "en", consent
         folder.mkdir(exist_ok=True)
         shutil.copyfile(src, folder / f"{aid}{ext}")
         row = {"id": aid, "name": name, "kind": "photo", "photo": f"{aid}{ext}",
-               "lang": lang if lang in LANGS else "en", "consent_at": _now_iso(), "created": _now_iso()}
+               "lang": lang_of(lang), "consent_at": _now_iso(), "created": _now_iso(),
+               "who": who, "person": person if who == "agreed" else "", "width": w, "height": h,
+               "consent": ("her own face (ticked)" if who == "me" else f"{person} agreed to be in AI videos (ticked)")}
         d["avatars"].insert(0, row)
         _store(tenant, d)
     return row
+
+
+def add_ai_avatar(tenant: str, name: str, data: bytes, prompt: str = "") -> dict[str, Any]:
+    """v0.999.176 a face made by AI: no real person, so no consent; marked AI wherever it is used."""
+    name = re.sub(r"\s+", " ", str(name or "").strip())[:40]
+    if not name:
+        raise StudioError("Give the face a name.")
+    if not data.startswith(b"\x89PNG") and not data.startswith(b"\xff\xd8"):
+        raise StudioError("That picture could not be read.")
+    ext = ".png" if data.startswith(b"\x89PNG") else ".jpg"
+    w, h = photo_size(data)
+    with _LOCK:
+        d = _load(tenant)
+        if len(d["avatars"]) >= MAX_AVATARS:
+            raise StudioError(f"You already have {MAX_AVATARS} avatars - remove one first.")
+        aid = "av_" + uuid.uuid4().hex[:10]
+        folder = _home(tenant) / "avatars"
+        folder.mkdir(exist_ok=True)
+        (folder / f"{aid}{ext}").write_bytes(data)
+        row = {"id": aid, "name": name, "kind": "ai", "photo": f"{aid}{ext}", "lang": "en", "created": _now_iso(),
+               "consent_at": "", "who": "ai", "person": "", "width": w, "height": h, "ai": True,
+               "described": str(prompt or "")[:400], "consent": "made by AI: not a real person"}
+        d["avatars"].insert(0, row)
+        _store(tenant, d)
+    return row
+
+
+def rename_avatar(tenant: str, aid: str, name: str) -> dict[str, Any]:
+    name = re.sub(r"\s+", " ", str(name or "").strip())[:40]
+    if not name:
+        raise StudioError("Give the face a name.")
+    with _LOCK:
+        d = _load(tenant)
+        for a in d["avatars"]:
+            if a["id"] == aid:
+                a["name"] = name
+                _store(tenant, d)
+                return a
+    raise StudioError("This avatar was not found.")
+
+
+AI_AGES = {"20s": "in her or his twenties", "30s": "in their thirties", "40s": "in their forties", "50s": "in their fifties or older"}
+AI_LOOKS = {"warm": "warm and friendly, a gentle smile", "formal": "formal and confident, smart clothes",
+            "casual": "relaxed and casual", "expert": "a calm, trustworthy professional such as a doctor or teacher"}
+AI_BEHIND = {"wall": "a plain soft wall", "shop": "a bright, tidy shop slightly out of focus", "office": "a modern office slightly out of focus",
+             "outdoors": "a sunny street slightly out of focus"}
+
+
+def ai_face_prompt(describe: str, age: str = "", look: str = "", behind: str = "") -> str:
+    """The picture request for an AI-made presenter. The person is made up; a real or famous person is refused by the picture engine."""
+    t = " ".join(str(describe or "").split())[:400]
+    parts = [t] if t else []
+    if AI_AGES.get(age):
+        parts.append(AI_AGES[age])
+    if AI_LOOKS.get(look):
+        parts.append(AI_LOOKS[look])
+    if not parts:
+        raise StudioError("Describe the presenter in a few words.")
+    bg = AI_BEHIND.get(behind, "a plain soft wall")
+    return ("A realistic head-and-shoulders portrait photo of an invented, made-up person who does not exist: "
+            + ", ".join(parts) + f". Looking straight at the camera, mouth closed, face evenly lit and fully visible, nothing covering the face. "
+            f"Background: {bg}. Natural colours, sharp focus, upright portrait framing.")
 
 
 def remove_avatar(tenant: str, aid: str) -> bool:
@@ -226,7 +336,18 @@ def _her_words(p: dict[str, Any]) -> str:
     return " ".join([p.get("ask", "")] + [str(x) for x in p.get("facts", [])])
 
 
-_SYSTEM = """You write short business videos for an Indian small-business owner. Hoola speaks every line in her avatar's
+# v0.999.172 the kind of video she picked on the Interactive home (presenter / explainer / reel / product / lesson)
+KINDS = {
+    "presenter": "Talking presenter: one person speaks to camera, warm and direct; few looks, mostly her words.",
+    "explainer": "Explainer: teach ONE idea in clear steps; a look on most scenes (titles, numbers, a bar chart) so it reads without sound.",
+    "reel": "Social reel: a hook in the first line, short punchy lines, the offer or news early, a call to action at the end.",
+    "product": "Product video: the product, what it does for the viewer, its price only if she gave it, where to buy.",
+    "lesson": "Lesson: welcome, what they will learn, the steps in order, a short recap; calm and clear, a little slower.",
+}
+KIND_SHAPE = {"reel": "reel", "product": "product"}
+
+
+_SYSTEM = """You write short videos for businesses, teachers and people anywhere in the world. Hoola speaks every line in her avatar's
 voice and draws each scene with a look. Write the film as scenes: ONE short spoken line per scene (8-22 words, natural,
 in the language asked; for Hindi use Roman script unless the user wrote Devanagari), 3-7 scenes, about 2.6 words a second.
 Looks: none | title {text} | big_number {value, label} | price {new, old, label} | bar_chart {bars:[{label, value}], unit}
@@ -243,15 +364,18 @@ def _brain(system: str, prompt: str) -> dict[str, Any]:
 
 def draft(tenant: str, ask: str, shape: str = "talking_head", lang: str = "en", aspect: str = "",
           seconds: int = 30, avatar_id: str = "", brand: str = "",
-          think: Callable[[str, str], dict[str, Any]] | None = None) -> dict[str, Any]:
+          think: Callable[[str, str], dict[str, Any]] | None = None, voice: str = "", engine: str = "",
+          chat: str = "", kind: str = "") -> dict[str, Any]:
     ask = re.sub(r"\s+", " ", str(ask or "").strip())
     if len(ask) < 6:
         raise StudioError("Say in one line what the video should be about.")
     ask = ask[:1200]
     shape = shape if shape in SHAPES else "talking_head"
-    lang = lang if lang in LANGS else "en"
+    lang = lang_of(lang)
     seconds = max(10, min(90, int(seconds or 30)))
-    prompt = (f"Her words: {ask}\nVideo kind: {shape}\nLanguage: {LANGS[lang]}\nLength: about {seconds} seconds"
+    kind = kind if kind in KINDS else ""
+    prompt = (f"Her words: {ask}\nVideo kind: {shape}\nLanguage: {lang_label(lang)}\nLength: about {seconds} seconds"
+              + (f"\nStyle: {KINDS[kind]}" if kind else "")
               + (f"\nBusiness name: {brand}" if brand else ""))
     out = (think or _brain)(_SYSTEM, prompt)
     scenes_in = out.get("scenes") if isinstance(out, dict) else None
@@ -274,9 +398,14 @@ def draft(tenant: str, ask: str, shape: str = "talking_head", lang: str = "en", 
          "aspect": "9:16" if shape == "reel" else (aspect if aspect in ("16:9", "1:1") else "16:9"),
          "avatar_id": avatar_id, "brand": str(brand or "").strip()[:40],
          "scenes": scenes, "items": items, "closing": str(out.get("closing") or "").strip()[:80],
-         "status": "draft", "error": "", "video": None, "created": _now_iso(), "updated": _now_iso()}
+         "status": "draft", "error": "", "video": None, "created": _now_iso(), "updated": _now_iso(),
+         "voice": str(voice or "")[:60], "engine": _engine_or_default(tenant, engine), "face_layout": "corner",
+         "chat": str(chat or "")[:64], "kind": kind or {"reel": "reel", "product": "product"}.get(shape, "presenter")}
     with _LOCK:
         d = _load(tenant)
+        fid = str(((d.get("prefs") or {}) if isinstance(d.get("prefs"), dict) else {}).get("folder") or "")
+        if fid and any(f.get("id") == fid for f in d.get("folders") or []):
+            p["folder"] = fid                                   # v0.999.210 her chosen folder for new videos
         d["projects"].insert(0, p)
         d["projects"] = d["projects"][:MAX_PROJECTS]
         _store(tenant, d)
@@ -295,8 +424,14 @@ def save(tenant: str, pid: str, body: dict[str, Any]) -> dict[str, Any]:
         if body.get("shape") in SHAPES:
             p["shape"] = body["shape"]
             p["aspect"] = "9:16" if p["shape"] == "reel" else (p["aspect"] if p["aspect"] != "9:16" else "16:9")
-        if body.get("lang") in LANGS:
-            p["lang"] = body["lang"]
+        if body.get("lang"):
+            p["lang"] = lang_of(body["lang"])
+        if "voice" in body:
+            p["voice"] = str(body["voice"] or "")[:60]
+        if "engine" in body:
+            p["engine"] = _engine_or_default(tenant, str(body["engine"] or ""))
+        if body.get("face_layout") in LAYOUTS:
+            p["face_layout"] = body["face_layout"]
         if body.get("aspect") in ("16:9", "1:1") and p["shape"] != "reel":
             p["aspect"] = body["aspect"]
         if "avatar_id" in body:
@@ -363,15 +498,31 @@ def _brand_color(tenant: str) -> dict[str, str]:
     return {"color": c} if re.fullmatch(r"#[0-9A-Fa-f]{6}", c) else {}
 
 
+def _show_name(tenant: str) -> bool:
+    """v0.999.207 her Brand page can keep the name out of the corner of every scene."""
+    return (_load(tenant).get("brand") or {}).get("show_name") is not False
+
+
 def spec_for(tenant: str, p: dict[str, Any], silent: bool) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     spec: dict[str, Any] = {"shape": p["shape"], "title": p["title"], "lang": p["lang"], "aspect": p["aspect"],
-                            "silent": bool(silent), "brand": {"name": p.get("brand", ""), **_brand_color(tenant)},
+                            "silent": bool(silent), "brand": {"name": p.get("brand", "") if _show_name(tenant) else "", **_brand_color(tenant)},
                             "scenes": [{"say": s["say"], "look": s["look"]} for s in p["scenes"]]}
     if p["items"]:
         spec["items"] = p["items"]
-    if p.get("closing"):
-        spec["cta"] = {"text": p["closing"]}
     files: list[dict[str, Any]] = []
+    cta: dict[str, Any] = {"text": p["closing"]} if p.get("closing") else {}
+    try:                                            # v0.999.207 her logo / QR code on the closing card
+        from . import hub as _H
+        img = _H.card_image(tenant)
+    except Exception:
+        img = None
+    if img:
+        cp = _home(tenant) / "brand_card.png"
+        cp.write_bytes(img)
+        cta["image"] = "assets/cta.png"
+        files.append({"name": "assets/cta.png", "path": str(cp)})
+    if cta:
+        spec["cta"] = cta
     if p.get("avatar_id"):
         ph = photo_path(tenant, p["avatar_id"])
         if ph is not None:
@@ -403,7 +554,8 @@ def job_view(tenant: str, pid: str) -> dict[str, Any]:
                 "elapsed": round((j.get("ended") or now) - j["started"], 1),
                 "steps": [{"k": k, "label": lbl, "at": round(j["marks"][k] - j["started"], 1) if k in j["marks"] else None,
                            "detail": j["detail"].get(k, "")} for k, lbl in STEPS],
-                "current": j["current"], "silent": j["silent"]}
+                "current": j["current"], "silent": j["silent"], "engine": j.get("engine", "hoola"),
+                "credits": (j.get("quote") or {}).get("credits", 0)}
 
 
 def _set_status(tenant: str, pid: str, **kw: Any) -> None:
@@ -425,26 +577,91 @@ def _keep_videos(tenant: str) -> None:
         old.unlink(missing_ok=True)
 
 
-def make(tenant: str, pid: str, silent: bool = False,
-         film: Callable[..., dict[str, Any]] | None = None) -> dict[str, Any]:
-    """Start the make job. Refuses (with the reasons) before anything is spent."""
+def _engine_or_default(tenant: str, eid: str) -> str:
+    from . import engines as EN
+    e = EN.BY_ID.get(str(eid or ""))
+    if e and e["job"] == "video":
+        return e["id"]
+    try:
+        return EN.defaults_of(tenant)["video"]
+    except Exception:   # noqa: BLE001
+        return "hoola"
+
+
+def _spoken(p: dict[str, Any]) -> str:
+    return " ".join(s["say"] for s in p["scenes"])
+
+
+def quote_for(tenant: str, p: dict[str, Any], silent: bool = False) -> dict[str, Any]:
+    """v0.999.170 the price card of one make: the face engine x the spoken length, plus the voice."""
+    from . import engines as EN
+    from . import voice as VO
+    text = _spoken(p)
+    secs = sum(VO.seconds_of(s["say"]) + 0.35 for s in p["scenes"]) + (2.2 if p.get("closing") else 1.2)
+    vc = 0 if silent else int(VO.credits_for(tenant, p.get("voice") or "", len(text)).get("credits") or 0)
+    eid = p.get("engine") or "hoola"
+    return EN.quote(eid, secs, vc)
+
+
+def engine_problems(tenant: str, p: dict[str, Any]) -> list[str]:
+    from . import engines as EN
+    out = []
+    eid = p.get("engine") or "hoola"
+    e = EN.BY_ID.get(eid)
+    if not e:
+        return ["Pick an engine for this video."]
+    if e["adapter"] != "frames" and not EN.connected(eid):   # Hoola standard says its own setup line when it runs
+        out.append(f"{e['label']} is not connected on this server ({EN.status_of(eid)}). Pick Hoola standard or another engine.")
+    if e.get("face") and not p.get("avatar_id"):
+        out.append(f"{e['label']} makes a photo talk: pick a face (Avatars) for this video.")
+    return out
+
+
+def make(tenant: str, pid: str, silent: bool = False, quote_key: str = "",
+         film: Callable[..., dict[str, Any]] | None = None,
+         face: Callable[..., bytes] | None = None, voicer: Callable[[str, str], bytes] | None = None) -> dict[str, Any]:
+    """Start the make job. Refuses (with the reasons) before anything is spent. A paid engine needs her tap on the
+    exact price card (`quote_key`)."""
+    from . import engines as EN
     with _LOCK:
         p = project(tenant, pid)
         busy = running_for(tenant)
         if busy:
             raise StudioError("Another video is being made right now - one at a time." if busy != pid
                               else "This video is already being made.")
-        why = problems(p)
+        why = problems(p) + engine_problems(tenant, p)
         if why:
             raise StudioError(" ".join(why))
+        eid = p.get("engine") or "hoola"
+        eng = EN.BY_ID[eid]
+        q = quote_for(tenant, p, silent)
+        try:
+            EN.check_quote(q, quote_key)
+        except EN.EngineError as e:
+            raise StudioError(str(e)) from None
+        is_face = bool(eng.get("face"))
         spec, files = spec_for(tenant, p, silent)
+        if is_face and p.get("face_layout") != "full":
+            spec.pop("avatar", None)                      # the talking person sits over the scenes, not a still photo
+            files = [f for f in files if not f["name"].startswith("assets/avatar")]
         try:
             from ..studio import avatar as av
             av.validate_spec(spec)                        # the composition's own gate, before any voice is spoken
         except Exception as e:
             raise StudioError(str(e))
+        vfn = voicer
+        if vfn is None and not silent:
+            from . import lab
+            from . import voice as VO
+            try:
+                vfn = VO.speaker(tenant, p.get("voice") or "", p["lang"])
+            except VO.VoiceError as e:
+                if is_face or not (lab.configured() or film is not None):
+                    raise StudioError(str(e)) from None
+                vfn = None                                # the GPU voice lab speaks, as before
         job = {"tenant": tenant, "pid": pid, "started": time.time(), "marks": {}, "detail": {}, "current": "voice",
-               "done": False, "status": "making", "cancel": threading.Event(), "silent": bool(silent), "ended": None}
+               "done": False, "status": "making", "cancel": threading.Event(), "silent": bool(silent), "ended": None,
+               "engine": eid, "quote": q}
         _JOBS[pid] = job
         for k in [k for k, j in _JOBS.items() if j["done"] and time.time() - (j["ended"] or 0) > 3600]:
             _JOBS.pop(k, None)
@@ -461,27 +678,85 @@ def make(tenant: str, pid: str, silent: bool = False,
     def run() -> None:
         from ..studio import frames
         t0 = time.time()
+        tmp = _home(tenant) / f"_make-{pid}"
+        tmp.mkdir(exist_ok=True)
         try:
             runner = film or frames.do_avatar_film
-            res = runner(tenant, spec, files=files, out_name=pid, on_stage=on_stage, cancel=job["cancel"])
-            if job["cancel"].is_set():
-                raise frames.FramesError("Stopped. Nothing was kept.")
-            if not res.get("ok"):
-                errs = "; ".join(str(e) for e in (res.get("errors") or [])[:3]) or "the scene check failed"
-                raise frames.FramesError(f"The scene check found a problem: {errs}")
+            if is_face and p.get("face_layout") == "full":
+                # the talking person IS the video: only the voice is needed, no scenes are drawn
+                res = None
+            else:
+                kw = {"voicer": vfn} if vfn is not None else {}
+                if is_face:
+                    kw["voice_out"] = str(tmp / "voice.wav")
+                import inspect
+                prm = inspect.signature(runner).parameters
+                if not any(x.kind == x.VAR_KEYWORD for x in prm.values()):
+                    kw = {k: v for k, v in kw.items() if k in prm}      # an older runner (or a test's) takes neither
+                res = runner(tenant, spec, files=files, out_name=pid, on_stage=on_stage, cancel=job["cancel"], **kw)
+                if job["cancel"].is_set():
+                    raise frames.FramesError("Stopped. Nothing was kept.")
+                if not res.get("ok"):
+                    errs = "; ".join(str(e) for e in (res.get("errors") or [])[:3]) or "the scene check found a problem"
+                    raise frames.FramesError(f"The scene check found a problem: {errs}")
+            out_mp4: Path
+            if is_face:
+                wav = tmp / "voice.wav"
+                if not wav.is_file():
+                    on_stage("voice", f"0 of {len(p['scenes'])} lines")
+                    parts = []
+                    for i, sc in enumerate(p["scenes"]):
+                        if job["cancel"].is_set():
+                            raise frames.FramesError("Stopped. Nothing was kept.")
+                        on_stage("voice", f"{i + 1} of {len(p['scenes'])} lines")
+                        parts.append(vfn(sc["say"], p["lang"]))
+                    from ..vocal import service as V
+                    wav.write_bytes(V.join_wavs(parts, gap=0.35))
+                on_stage("face", f"{eng['label']} is making the talking face")
+                ph = photo_path(tenant, p["avatar_id"])
+                if ph is None:
+                    raise StudioError("The face for this video is missing - pick it again.")
+                from ..vocal import service as V
+                secs = V.wav_seconds(wav.read_bytes())
+                clip = (face or EN.face_video)(eid, ph.read_bytes(), ph.name, wav.read_bytes(), secs, job["cancel"],
+                                               lambda t: on_stage("face", t))
+                (tmp / "face.mp4").write_bytes(clip)
+                EN.charge(tenant, q)
+                if res is None:
+                    out_mp4 = tmp / "face.mp4"
+                else:
+                    from ..vidkit import ops as VK
+                    pos = "bottom-left" if p["shape"] == "reel" else "bottom-right"
+                    joined = VK.combine(res["mp4_path"], str(tmp / "face.mp4"), layout="pip", position=pos,
+                                        size_pct=46 if p["shape"] == "reel" else 34, audio="main")
+                    (tmp / "joined.mp4").write_bytes(joined["bytes"])
+                    out_mp4 = tmp / "joined.mp4"
+            else:
+                out_mp4 = Path(res["mp4_path"])
             on_stage("save")
             dest = video_path(tenant, pid)
             dest.parent.mkdir(exist_ok=True)
-            shutil.copyfile(res["mp4_path"], dest)
+            shutil.copyfile(out_mp4, dest)
+            EN.ai_mark(str(dest))
             _keep_videos(tenant)
-            video = {"size": dest.stat().st_size, "duration": res.get("duration_s") or res.get("total_s"),
-                     "scenes": res.get("scenes"), "made_s": round(time.time() - t0, 1),
-                     "words_estimated": bool(res.get("words_estimated")), "silent": bool(res.get("silent")),
-                     "aspect": spec["aspect"] if spec.get("shape") != "reel" else "9:16", "made": _now_iso()}
+            dur = (res or {}).get("duration_s") or (res or {}).get("total_s")
+            if dur is None:
+                try:
+                    from ..vidkit import ops as VK
+                    dur = VK.probe(str(dest)).get("duration")
+                except Exception:   # noqa: BLE001
+                    dur = None
+            video = {"size": dest.stat().st_size, "duration": dur,
+                     "scenes": (res or {}).get("scenes") or len(p["scenes"]), "made_s": round(time.time() - t0, 1),
+                     "words_estimated": bool((res or {}).get("words_estimated")), "silent": bool(silent),
+                     "aspect": spec["aspect"] if spec.get("shape") != "reel" else "9:16", "made": _now_iso(),
+                     "engine": eid, "engine_label": eng["label"], "credits": q["credits"], "ai_mark": True,
+                     "voice": p.get("voice") or ""}
             _set_status(tenant, pid, status="ready", error="", video=video)
             on_stage("done")
             with _LOCK:
                 job.update(done=True, status="ready", ended=time.time())
+            _notify(tenant, "video.ready", pid)
         except Exception as e:
             msg = str(e) or e.__class__.__name__
             stopped = job["cancel"].is_set()
@@ -489,9 +764,21 @@ def make(tenant: str, pid: str, silent: bool = False,
             with _LOCK:
                 job.update(done=True, status="stopped" if stopped else "failed", error=msg, ended=time.time())
             log.warning("interactive make %s ended: %s", pid, msg)
+            if not stopped:
+                _notify(tenant, "video.failed", pid)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
 
     threading.Thread(target=run, name=f"interactive-{pid}", daemon=True).start()
     return job_view(tenant, pid)
+
+
+def _notify(tenant: str, event: str, pid: str) -> None:
+    try:
+        from . import apps as AP
+        AP.notify(tenant, event, project(tenant, pid))
+    except Exception:   # noqa: BLE001
+        log.exception("interactive webhook not sent")
 
 
 def stop(tenant: str, pid: str) -> bool:
@@ -510,5 +797,10 @@ def readiness() -> dict[str, Any]:
     import importlib.util
     drawn = bool(frames.configured())
     voice = bool(lab.configured())
-    return {"draw": drawn, "voice": voice, "whisper": importlib.util.find_spec("faster_whisper") is not None,
+    try:
+        from ..vocal import engines as VEN
+        vocal = bool(VEN.gemini_ready())
+    except Exception:   # noqa: BLE001
+        vocal = False
+    return {"draw": drawn, "voice": voice or vocal, "vocal": vocal, "lab": voice, "whisper": importlib.util.find_spec("faster_whisper") is not None,
             "busy": bool(frames._render_lock.locked()), "langs": LANGS, "shapes": list(SHAPES)}

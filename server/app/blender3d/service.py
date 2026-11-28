@@ -1,5 +1,5 @@
 """3D Studio jobs: her words (+ photos) -> Blender script -> checked -> run in the box -> fixed from real errors -> render
-looked at -> delivered (renders with the 'AI se bana' label, GLB / STL / OBJ / FBX / USDZ / .blend as her files, turntable
+looked at -> delivered (renders with the 'AI-generated' label, GLB / STL / OBJ / FBX / USDZ / .blend as her files, turntable
 MP4) + a live `blender3d` card. Changes in her words make a new version from the current script.
 
 Nothing here spends money (only model calls, counted as feature '3d' in AI kharcha) and nothing is sent or posted."""
@@ -69,6 +69,42 @@ class Blender3D(Base):
     actor: Mapped[str] = mapped_column(String(64), default="owner")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class B3Settings(Base):
+    """Her starting choices for every new 3D job (the desk's Settings) + how sizes are shown (mm or inches)."""
+    __tablename__ = "blender3d_settings"
+    tenant_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    defaults: Mapped[dict] = mapped_column(JSON, default=dict)
+    units: Mapped[str] = mapped_column(String(8), default="metric")       # metric | imperial
+
+
+_DEF_KEYS = ("exports", "views", "quality", "aspect", "turntable", "print", "style", "background", "transparent")
+
+
+def settings(tenant: str) -> dict[str, Any]:
+    with session() as s:
+        r = s.get(B3Settings, tenant)
+        d = dict(r.defaults or {}) if r else {}
+        units = (r.units if r else "") or "metric"
+    return {"defaults": _clean_opts(d), "units": units, "set": bool(d)}
+
+
+def save_settings(tenant: str, defaults: dict[str, Any] | None = None, units: str | None = None) -> dict[str, Any]:
+    if units is not None and units not in ("metric", "imperial"):
+        raise B3Error("units: metric (mm, cm) | imperial (inches)")
+    with session() as s:
+        r = s.get(B3Settings, tenant)
+        if r is None:
+            r = B3Settings(tenant_id=tenant, defaults={}, units="metric")
+            s.add(r)
+        if defaults is not None:
+            c = _clean_opts({k: v for k, v in defaults.items() if k in _DEF_KEYS})
+            c.pop("photos", None)
+            r.defaults = c
+        if units is not None:
+            r.units = units
+    return settings(tenant)
 
 
 # ---------------------------------------------------------------- folders, links
@@ -226,7 +262,11 @@ def start(tenant: str, conv: str, brief: str, options: dict[str, Any] | None = N
             STATS["guard_refused"] += 1
             raise guard.GuardError(p)
     _limits(tenant)
-    opts = _clean_opts(options or {})
+    try:
+        base = settings(tenant)["defaults"] if settings(tenant)["set"] else {}
+    except Exception:   # noqa: BLE001  (a missing settings table never stops a job)
+        base = {}
+    opts = _clean_opts({**base, **{k: v for k, v in (options or {}).items() if v not in (None, "", [])}})
     r = Blender3D(tenant_id=tenant, conversation_id=conv or "", number=_number(tenant), brief=brief or (title or "3D script"),
                   title=(title or "")[:120], options=opts, actor=actor or "owner",
                   pending={"mode": "code" if code else "new", "code": code or ""})
@@ -536,7 +576,7 @@ def _run(r: Blender3D, holder: dict) -> None:
     ver = _deliver(r, n, vdir, code, res, pend, notes, look, fixed)
     vers.append(ver)
     STATS["ok"] += 1
-    _save(r, status="done", stage="taiyaar", pct=100, error="", versions=vers, pending={})
+    _save(r, status="done", stage="ready", pct=100, error="", versions=vers, pending={})
     _publish(r, push=True, say=_say(r, ver))
 
 
@@ -597,7 +637,7 @@ def _say(r: Blender3D, ver: dict) -> str:
     st = ver.get("stats") or {}
     size = st.get("size_m") or []
     sz = " x ".join(f"{v:g}" for v in size) + " m" if size else ""
-    bits = [f"{r.number} taiyaar: {r.title or '3D model'}", sz, f"files: {', '.join(ver.get('exports') or {}) or 'render'}"]
+    bits = [f"{r.number} ready: {r.title or '3D model'}", sz, f"files: {', '.join(ver.get('exports') or {}) or 'render'}"]
     if ver.get("print_check"):
         bits.append(ver["print_check"]["say"])
     return " · ".join(b for b in bits if b)

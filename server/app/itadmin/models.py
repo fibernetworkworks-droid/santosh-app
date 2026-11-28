@@ -23,6 +23,8 @@ class ItadminSettings(Base):
     last_review: Mapped[str] = mapped_column(String(10), default="")
     practices: Mapped[str] = mapped_column(Text, default="{}")              # {mfa_admins: true, logs_180: ..., ntp: ..., poc: ...}
     rules: Mapped[str] = mapped_column(Text, default="")
+    country: Mapped[str | None] = mapped_column(String(2), nullable=True, default="")      # her country; "" = India (as before)
+    currency: Mapped[str | None] = mapped_column(String(3), nullable=True, default="")     # her money unit; "" = INR
     lic_seq: Mapped[int] = mapped_column(Integer, default=0)
     person_seq: Mapped[int] = mapped_column(Integer, default=0)
     change_seq: Mapped[int] = mapped_column(Integer, default=0)

@@ -118,7 +118,7 @@ def test_the_console_sheet_is_five_rows_with_no_prices_and_ultra_asks_first():
     for name in ("'Normal'", "'Ultra'", "'High'", "'Medium'", "'Low'"):
         assert name in sheet
     assert "Recommended" in sheet and "Up to 70× credit" in sheet
-    assert "Better models give better answers and use your credit faster." in sheet
+    assert "Better models answer better and use credit faster." in sheet
     assert "Use Ultra?" in sheet and "'Not now'" in sheet and "'Use Ultra'" in sheet
     assert "confirm_ultra: id === 'ultra'" in sheet
     assert "cost" not in sheet and "rs_step" not in sheet and "/api/model/choice'" not in sheet   # no prices, no list
@@ -152,5 +152,5 @@ def test_the_phone_chip_and_sheet_are_in_every_chat():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.39"
-    assert "version: 0.999.39+1037" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.999.215"
+    assert "version: 0.999.215+1210" in (ROOT / "pubspec.yaml").read_text()

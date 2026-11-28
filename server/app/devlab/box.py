@@ -42,7 +42,7 @@ FROM python:3.13-slim-bookworm
 #
 # v0.537: the walls and this image are one thing - bump BASE_REV whenever the image must be rebuilt, and
 # `lab_check` can then tell her that the image on her VPS is older than the code reading it.
-LABEL hoola.devlab.rev="3"
+LABEL hoola.devlab.rev="4"
 
 ENV DEBIAN_FRONTEND=noninteractive LANG=C.UTF-8 PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1 NODE_OPTIONS=--max-old-space-size=1536 HOME=/home/lab
@@ -64,6 +64,14 @@ RUN rm -f /usr/lib/python3*/EXTERNALLY-MANAGED /usr/local/lib/python3*/EXTERNALL
 # pytest / ruff for Python repos that declare no dev dependencies of their own
 RUN python3 -m pip install --no-cache-dir pytest pytest-timeout ruff
 
+# v0.999 (rev 4) code intelligence, Hoola Code's LSP tool (Claude Code's): language servers for Python and JS / TS live
+# in the image, so every repo gets go-to-definition, references and diagnostics with nothing installed. They run in the
+# box like every command (a server reads and can run the repo's own config), never on the server.
+# A failed download must never cost the box itself (every command needs it): the image builds without them, and
+# the lsp tool then says plainly that no language server is installed.
+RUN (npm install -g --no-fund --no-audit pyright@1 typescript@5 typescript-language-server@4 && npm cache clean --force) \
+ || echo "hoola: language servers not installed (npm failed) - the box works without them"
+
 RUN useradd -m -u 1000 -s /bin/bash lab \
  && mkdir -p /work /home/lab/.local/bin \
  && chown -R lab:lab /work /home/lab
@@ -73,8 +81,17 @@ CMD ["bash", "-lc", "echo hoola-devlab ready; python3 -V; node -v"]
 """
 DOCKERFILE = Path(__file__).resolve().parents[3] / "deploy" / "devlab" / "Dockerfile"
 
-BASE_REV = "3"                # bump with any image change; lab_check compares it with what is built
+BASE_REV = "4"                # bump with any image change; lab_check compares it with what is built
 CHECK_TIMEOUT = 600          # seconds a check may run (her setting may lower it)
+
+
+def check_timeout() -> int:
+    """v0.999.245 the server's own ceiling for one check: dev_lab_timeout (was defined but never read; 600 by default)."""
+    try:
+        from ..config import get_settings
+        return max(30, int(getattr(get_settings(), "dev_lab_timeout", CHECK_TIMEOUT) or CHECK_TIMEOUT))
+    except Exception:   # noqa: BLE001
+        return CHECK_TIMEOUT
 SETUP_TIMEOUT = 1200         # ... and a one-time dependency install
 MEM = "2g"
 CPUS = "2"
@@ -100,6 +117,39 @@ def _run(argv: list[str], timeout: int, cwd: str = "") -> tuple[int, str, float]
         return 124, txt + f"\n[timed out after {timeout}s]", time.time() - t0
     except OSError as e:
         return 127, f"{argv[0]}: {e}", time.time() - t0
+
+
+def _run_stream(argv: list[str], timeout: int, on_line) -> tuple[int, str, float]:
+    """v0.999.XXX like _run, but each output line goes to on_line the moment the command prints it (stdout and stderr
+    merged, as a terminal shows them), so her page shows a command's output while it runs."""
+    import threading
+    t0 = time.time()
+    try:
+        pr = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
+                              errors="replace",
+                              env={"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": os.environ.get("HOME", "/tmp"),
+                                   "LANG": "C.UTF-8", "DOCKER_HOST": os.environ.get("DOCKER_HOST", "")})
+    except OSError as e:
+        return 127, f"{argv[0]}: {e}", time.time() - t0
+    got: list[str] = []
+
+    def pump():
+        for line in pr.stdout:                    # type: ignore[union-attr]
+            got.append(line)
+            try:
+                on_line(line.rstrip("\n"))
+            except Exception:                     # noqa: BLE001 - the page never stops a command
+                pass
+    th = threading.Thread(target=pump, daemon=True)
+    th.start()
+    try:
+        rc = pr.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        pr.kill()
+        th.join(5)
+        return 124, "".join(got) + f"\n[timed out after {timeout}s]", time.time() - t0
+    th.join(5)
+    return rc, "".join(got), time.time() - t0
 
 
 def docker() -> str:
@@ -184,7 +234,8 @@ def _limits(network: bool, writable: bool = False, net_name: str = "") -> list[s
 
 
 def run_in(image: str, files_dir: str, command: str, timeout: int = CHECK_TIMEOUT, network: bool = False,
-           commit_to: str = "", env: dict[str, str] | None = None, net: dict[str, Any] | None = None) -> dict[str, Any]:
+           commit_to: str = "", env: dict[str, str] | None = None, net: dict[str, Any] | None = None, on_line=None,
+           share_with: str = "", move_to_bg: dict[str, Any] | None = None) -> dict[str, Any]:
     """Run ONE shell command on a copy of her files inside `image`.
 
     network=False (a check) means there is no route out at all. commit_to != "" keeps the container and commits it as
@@ -194,11 +245,22 @@ def run_in(image: str, files_dir: str, command: str, timeout: int = CHECK_TIMEOU
         return {"rc": 127, "out": "docker is not installed", "secs": 0.0, "timed_out": False}
     name = f"hoola-lab-{os.getpid()}-{int(time.time() * 1000) % 1_000_000}"
     keep = bool(commit_to)
+    # v0.999 (OpenCode's shell) move_to_bg = {name, task, limit_s}: a command still running at its time limit is NOT
+    # killed - it keeps running as a background command of the session (labelled like start_bg's, so the same sweep
+    # stops it, with the same hard limit inside the box); the caller reads its output later with bg_output.
+    mv = move_to_bg if (move_to_bg and not keep and not net) else None
+    if mv:
+        name = str(mv["name"])
     # Writability is DERIVED from commit_to and cannot be asked for: the only reason to let a container keep what it
     # writes is that we are about to commit it. No caller can unseal a check by passing a flag.
     net = net if (net and not network and not keep) else None      # a pass through the proxy is for a command, never for setup
-    args = [d, "run", "--name", name] + [a for a in _limits(network, writable=keep, net_name=str((net or {}).get("network") or ""))
-                                         if not (keep and a == "--rm")]
+    # v0.999 share_with = a background command of this session still running (a dev server): this command joins ITS
+    # network (loopback only - that box has no route out), so `curl localhost:3000` reaches it, as in Claude Code
+    nn = str((net or {}).get("network") or "") or (f"container:{share_with}" if share_with and not network and not keep else "")
+    args = [d, "run", "--name", name] + [a for a in _limits(network, writable=keep, net_name=nn)
+                                         if not ((keep or mv) and a == "--rm")]
+    if mv:
+        args += ["--label", f"{BG_LABEL}=1", "--label", f"hoola.task={mv.get('task', '')}"]
     shell = f'mkdir -p "$HOME" 2>/dev/null || true; {command}'
     for k, v in (env or {}).items():          # her plain per-repo variables (never a secret: refused where they are saved)
         args += ["--env", f"{k}={v}"]
@@ -211,9 +273,21 @@ def run_in(image: str, files_dir: str, command: str, timeout: int = CHECK_TIMEOU
     # script) must never be able to plant git config / hooks that the SERVER's own git would then run outside the box.
     if os.path.isdir(os.path.join(files_dir, ".git")):
         args += ["-v", f"{os.path.abspath(os.path.join(files_dir, '.git'))}:{WORK}/.git:ro"]
+    if mv:
+        shell = (f'mkdir -p "$HOME" 2>/dev/null || true; exec timeout -s TERM {max(10, int(mv.get("limit_s") or 1800))} '
+                 f'bash -lc {_q(command)}')
     args += [image, "bash", "-lc", shell]
-    rc, txt, secs = _run(args, timeout + 30)
-    timed_out = rc == 124 or f"[timed out after {timeout + 30}s]" in txt
+    wait = timeout if mv else timeout + 30                # moved: stop waiting at the command's own limit
+    rc, txt, secs = _run_stream(args, wait, on_line) if (on_line and not keep) else _run(args, wait)
+    timed_out = rc == 124 or f"[timed out after {wait}s]" in txt
+    if mv:
+        if timed_out and bg_state(name).get("running"):
+            return {"rc": None, "out": txt.replace(f"\n[timed out after {wait}s]", ""), "secs": secs, "timed_out": True,
+                    "moved": name}
+        _run([d, "rm", "-f", name], 60)                   # it ended (or never started): nothing to keep
+        if timed_out:
+            return {"rc": 124, "out": txt, "secs": secs, "timed_out": True}
+        return {"rc": rc, "out": txt, "secs": secs, "timed_out": False}
     if timed_out:
         _run([d, "kill", name], 30)
     if keep:
@@ -251,8 +325,14 @@ def forget(tag: str) -> bool:
     return bool(d) and _run([d, "rmi", "-f", tag], 120)[0] == 0
 
 
-def prune(keep: int = 12) -> list[str]:
-    """Drop the oldest repo snapshots, newest `keep` kept (the base image is never dropped)."""
+def prune(keep: int | None = None) -> list[str]:
+    """Drop the oldest repo snapshots, newest `keep` kept (the base image is never dropped). No number = dev_lab_keep."""
+    if keep is None:
+        try:
+            from ..config import get_settings
+            keep = int(getattr(get_settings(), "dev_lab_keep", 12) or 12)
+        except Exception:   # noqa: BLE001
+            keep = 12
     rows = [r for r in images() if r["image"] != BASE_IMAGE]
     rows.sort(key=lambda r: r["at"], reverse=True)
     gone = []
@@ -260,3 +340,74 @@ def prune(keep: int = 12) -> list[str]:
         if forget(r["image"]):
             gone.append(r["image"])
     return gone
+
+
+# ---------------------------------------------------------------- v0.999 background commands (Claude Code's run_in_background)
+BG_LABEL = "hoola.bg"
+
+
+def start_bg(image: str, files_dir: str, command: str, name: str, task: str, limit_s: int = 1800,
+             env: dict[str, str] | None = None) -> dict[str, Any]:
+    """Start ONE command that keeps running (a dev server, a watcher, a long build) in its own box: the same walls as a
+    check (no network, read-only root, her files only), a hard time limit inside the box, labelled with its session so
+    it can always be found and stopped. Returns at once; its output is read with bg_output."""
+    d = docker()
+    if not d:
+        return {"ok": False, "why": "docker is not installed"}
+    args = [d, "run", "-d", "--name", name, "--label", f"{BG_LABEL}=1", "--label", f"hoola.task={task}"]
+    args += [a for a in _limits(False) if a != "--rm"]
+    for k, v in (env or {}).items():
+        args += ["--env", f"{k}={v}"]
+    args += ["-v", f"{os.path.abspath(files_dir)}:{WORK}:rw"]
+    if os.path.isdir(os.path.join(files_dir, ".git")):
+        args += ["-v", f"{os.path.abspath(os.path.join(files_dir, '.git'))}:{WORK}/.git:ro"]
+    lim = max(10, int(limit_s))
+    args += [image, "bash", "-lc", f'mkdir -p "$HOME" 2>/dev/null || true; exec timeout -s TERM {lim} bash -lc {_q(command)}']
+    rc, out, _ = _run(args, 60)
+    if rc != 0:
+        _run([d, "rm", "-f", name], 30)
+        return {"ok": False, "why": out.strip()[:300] or f"docker exit {rc}"}
+    return {"ok": True, "name": name}
+
+
+def _q(text: str) -> str:
+    return "'" + text.replace("'", "'\\''") + "'"
+
+
+def bg_state(name: str) -> dict[str, Any]:
+    """Running or not, and the exit code once it ended (None while running / when the box is gone)."""
+    d = docker()
+    if not d:
+        return {"running": False, "rc": None, "gone": True}
+    rc, out, _ = _run([d, "inspect", "-f", "{{.State.Running}} {{.State.ExitCode}}", name], 20)
+    if rc != 0:
+        return {"running": False, "rc": None, "gone": True}
+    run_s, _, code = out.strip().partition(" ")
+    running = run_s == "true"
+    return {"running": running, "rc": None if running else int(code or 0), "gone": False}
+
+
+def bg_output(name: str, tail: int = 400) -> str:
+    d = docker()
+    if not d:
+        return ""
+    rc, out, _ = _run([d, "logs", "--tail", str(max(1, int(tail))), name], 30)
+    return out if rc == 0 else ""
+
+
+def bg_kill(name: str) -> bool:
+    d = docker()
+    return bool(d) and _run([d, "rm", "-f", name], 30)[0] == 0
+
+
+def bg_sweep(task: str = "") -> int:
+    """Stop every background box of a session (or, with no session, every one whose session is gone)."""
+    d = docker()
+    if not d:
+        return 0
+    flt = ["--filter", f"label={BG_LABEL}=1"] + (["--filter", f"label=hoola.task={task}"] if task else [])
+    rc, out, _ = _run([d, "ps", "-aq"] + flt, 20)
+    ids = [x for x in out.split() if x] if rc == 0 else []
+    for i in ids:
+        _run([d, "rm", "-f", i], 30)
+    return len(ids)

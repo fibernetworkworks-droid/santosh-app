@@ -8,6 +8,8 @@ import pytest
 os.environ.setdefault("PIPELINE_HOLDOUT_PCT", "0")
 # v0.999: her fixed writers are off in the suites (the Box's own choice is what the older tests pin); v0999 sets them
 os.environ.setdefault("PIPELINE_WRITERS", "")
+# v0.999.213: new-mail news is off until she turns it on; the older watcher suites pin the old default (vip)
+os.environ.setdefault("MAIL_WATCH_DEFAULT", "vip")
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -51,6 +53,13 @@ def _drop_pg(name):
 
 
 @pytest.fixture(autouse=True)
+def _pc_side_files(monkeypatch, tmp_path):
+    """v0.999.117 what Hoola PC learns about sites (P7) and its lessons (P8) stay inside one test."""
+    monkeypatch.setenv("PC_PORTALS_FILE", str(tmp_path / "pc_portals.json"))
+    monkeypatch.setenv("PC_LESSONS_FILE", str(tmp_path / "pc_lessons.json"))   # v0.999.118 P8
+
+
+@pytest.fixture(autouse=True)
 def _full_voice_menu(monkeypatch):
     """v0.627 production declares the small call menu; the older suites (with or without `env`) pin the full one.
     test_v0627_chhota_menu switches the small one on for itself."""
@@ -88,6 +97,9 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("CHAT_MODEL_CHOICE", "false")   # v0.740 older suites pin one model for every turn; test_v0740 checks the dropdown
     monkeypatch.setenv("STUDIO_DESIGN_QUESTIONS", "false")  # v0.784 older Studio walks pin Build going straight to the workspace; test_v0784 checks the card
     monkeypatch.setenv("SITE_RULE_TESTS_BG", "false")   # v0.990 B3 no background rule-test threads in other suites; test_v0990 runs them
+    monkeypatch.setenv("APP_ENGINE_AUTOFIX", "false")  # v0.999.65 D4 older App Engine suites pin the rules refusing a write; test_v0999_65 checks AutoFix
+    monkeypatch.setenv("APP_ENGINE_BOX_CARE", "false")  # ONE ENGINE: no test starts a real image rebuild; test_one_engine turns it on with a fake
+    monkeypatch.setenv("SITE_CRITIC", "false")        # v0.999.67 D5 older suites build a React site once (no critic model call); test_v0999_66 checks the loop
     monkeypatch.setenv("STUDIO_PROTOTYPE", "false")   # v0.999.24 older Studio walks pin the 3 looks after the plan; test_v0999_24 checks the prototype
     monkeypatch.setenv("STUDIO_ASK_FIRST", "false")   # v0.988 older Build walks pin one plan call straight to the workspace; test_v0988 checks the questions
     monkeypatch.setenv("MODEL_PROFILE", "false")       # v0.739 older suites pin the hand-written model abilities; test_v0739 checks the read profile
@@ -135,6 +147,12 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("SEEKH_RESUME", "false")        # v0.785 no test picks up a video watch another run left on disk
     monkeypatch.setenv("DEV_REALITY_CHECK", "false")     # v0.814 scripted Hoola Code rounds do not expect the reality-check agent; test_v0822 turns it on
     monkeypatch.setenv("DEV_MEMORY", "false")            # Hoola Code memory: scripted rounds do not expect the observer call; its own test turns it on
+    monkeypatch.setenv("DEV_ECC_SKILLS", "false")        # v0.999 ECC skills change the coder's prompt; test_v0999 ecc_skills turns them on
+    monkeypatch.setenv("DEV_CONFIG_PROTECT", "false")    # v0.999 older scripted rounds may edit a settings file; its own test turns it on
+    monkeypatch.setenv("DEV_MCP_HEALTH", "false")        # v0.999 older MCP suites call a failing server on purpose; its own test turns it on
+    for _k in ("CODER_NUDGE", "CODER_CURATOR", "CODER_DREAMS"):   # v0.999 on by default; older suites expect them off
+        monkeypatch.setenv(_k, "false")
+    monkeypatch.setenv("DEV_SUPERPOWERS", "false")       # v0.999 scripted rounds do not expect the proof check / picked skills; its own test turns it on
     monkeypatch.setenv("GOAL_VERIFY_LINKS", "false")   # v0.443 the done=verified gate never reaches the network in tests
     monkeypatch.setenv("CHAT_HEAL_AI", "false")        # v0.158 no model judge of call cards in tests
     monkeypatch.setenv("AGENT_SELF_CHECK", "false")    # v0.78: scripted model tests don't expect the extra check call

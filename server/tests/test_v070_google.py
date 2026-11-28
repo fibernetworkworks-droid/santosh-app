@@ -61,7 +61,7 @@ def test_no_drive_box_ticked_says_exactly_that(g):
     _signin("openid email https://www.googleapis.com/auth/gmail.modify")
     with pytest.raises(ToolError) as e:
         _run("drive_find", query="invoice")
-    assert "tick" in str(e.value) and "Link Google Drive" in str(e.value)
+    assert "tick" in str(e.value) and "Connectors > Google" in str(e.value)
     st = _run("google_status")
     assert st["signin"]["allowed"]["drive"] is False and st["signin"]["allowed"]["gmail"] is True
     assert not st["ok"] and "tick" in st["say"]
@@ -80,16 +80,17 @@ def test_refused_refresh_is_a_clear_reconnect_and_a_card(g, monkeypatch):
     with pytest.raises(ToolError) as e:
         _run("drive_find", query="invoice")
     msg = str(e.value)
-    assert "RefreshError" not in msg and "meghana@gmail.com" in msg and "Publish app" in msg and "don't retry" in msg
+    # v0.999.181 the fix is one place for her (Connectors > Google / Settings > Google); "Publish app" was owner-only advice
+    assert "RefreshError" not in msg and "meghana@gmail.com" in msg and "Connectors > Google" in msg and "don't retry" in msg
     with session() as s:
         assert "invalid_grant" in s.query(OAuthConnection).one().last_error
     cards = [p for k, p in g if k == "google_reconnect"]
-    assert len(cards) == 1 and "Connect Google Drive" in cards[0]["text"]
+    assert len(cards) == 1 and cards[0]["email"] == "meghana@gmail.com"   # v0.999.181 one card, for that account
     with pytest.raises(ToolError):               # a second failure does not spam another card
         _run("drive_find", query="bill")
     assert len([1 for k, _ in g if k == "google_reconnect"]) == 1
     st = _run("google_status")
-    assert not st["ok"] and st["signin"]["last_error"] and "Testing" in st["say"]
+    assert not st["ok"] and st["signin"]["last_error"] and "Reconnect" in st["say"]   # v0.999.181 the app is published; the fix is Reconnect
     from app.drive import accounts as da
     assert any(v["status"] == "error" for v in da.views(T))
     from app.push import render
@@ -112,5 +113,5 @@ def test_status_api_and_tool_wiring(g):
     from app.main import app
     from app.voice import VOICE_TOOL_NAMES
     r = TestClient(app).get("/api/google/status?live=false").json()
-    assert r["server_ready"] and r["signin"] is None and "Link Google Drive" in r["say"]
+    assert r["server_ready"] and r["signin"] is None and "Connectors > Google" in r["say"]
     assert "google_status" in VOICE_TOOL_NAMES

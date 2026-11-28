@@ -133,7 +133,7 @@ def test_job_fixes_from_real_problems_and_delivers(fake):
     assert p["title"] == "Chai cup" and p["script"].strip().startswith('gold = H.mat')
     cards = _events(ctx.conversation_id, "blender3d")
     assert {c["status"] for c in cards} >= {"queued", "writing", "building", "done"}
-    assert cards[-1]["push"] is True and "B3-0001 taiyaar" in cards[-1]["say"]
+    assert cards[-1]["push"] is True and "B3-0001 ready" in cards[-1]["say"]
     # the job job.json passes her inputs / fonts / print flag; nothing from the server's env
     assert runs[-1]["job"]["print"] is True and "devanagari" in runs[-1]["job"]["fonts"]
 

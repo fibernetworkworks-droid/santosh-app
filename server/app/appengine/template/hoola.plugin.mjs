@@ -56,3 +56,41 @@ export default function hoolaSource() {
     },
   };
 }
+
+// v0.999.64 D3: ISLANDS. A component file under src/components/ or src/islands/ that starts with "use client"; is an
+// island: its default export is wrapped by island() from src/lib/island.tsx, named after its own file
+// ("components/blocks/faq"). On a pre-rendered site page only islands load JavaScript, each when it scrolls near.
+// This runs in every build (preview, live and the server render), so the page and the browser always agree.
+const USE_CLIENT = /^(?:\s*(?:\/\/[^\n]*\n|\/\*[\s\S]*?\*\/))*\s*["']use client["'];?/;
+
+export function hoolaIslands() {
+  let root = "";
+  return {
+    name: "hoola-islands",
+    enforce: "pre",
+    configResolved(c) { root = c.root.replace(/\\/g, "/").replace(/\/$/, "") + "/"; },
+    transform(code, id) {
+      const file = id.split("?")[0].replace(/\\/g, "/");
+      if (!file.endsWith(".tsx") || !file.startsWith(root + "src/")) return null;
+      const rel = file.slice(root.length + 4, -4);              // "components/blocks/faq"
+      if (!/^(components|islands)\//.test(rel) || !USE_CLIENT.test(code)) return null;
+      const s = new MagicString(code);
+      const d = /["']use client["'];?/.exec(code);
+      s.overwrite(d.index, d.index + d[0].length, "");      // the directive goes (a bundle would warn about it)
+      let name = "";
+      const fn = /export\s+default\s+function\s+([A-Za-z_$][\w$]*)\s*\(/.exec(code);
+      const ref = /export\s+default\s+([A-Za-z_$][\w$]*)\s*;/.exec(code);
+      if (fn) {
+        name = fn[1];
+        s.overwrite(fn.index, fn.index + fn[0].length, `function ${name}(`);
+      } else if (ref) {
+        name = ref[1];
+        s.overwrite(ref.index, ref.index + ref[0].length, "");
+      } else {
+        return null;                                         // no named default export: it stays a plain component
+      }
+      s.append(`\nimport { island as __hoolaIsland } from "@/lib/island";\nexport default __hoolaIsland(${JSON.stringify(rel)}, ${name});\n`);
+      return { code: s.toString(), map: s.generateMap({ hires: true, source: file, includeContent: true }) };
+    },
+  };
+}

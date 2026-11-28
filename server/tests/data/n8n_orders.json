@@ -1,0 +1,21 @@
+{"name":"Order alert","nodes":[
+ {"name":"Webhook","type":"n8n-nodes-base.webhook","typeVersion":2,"position":[0,0],"parameters":{"httpMethod":"POST","path":"order"}},
+ {"name":"Get customer","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[200,0],"parameters":{"method":"GET","url":"=https://api.example.com/customers/{{ $json.body.customer_id }}","sendQuery":true,"queryParameters":{"parameters":[{"name":"full","value":"yes"}]}}},
+ {"name":"Big order?","type":"n8n-nodes-base.if","typeVersion":2,"position":[400,0],"parameters":{"conditions":{"combinator":"and","conditions":[{"leftValue":"={{ $('Webhook').item.json.body.total }}","rightValue":500,"operator":{"type":"number","operation":"gt"}}]}}},
+ {"name":"Mark VIP","type":"n8n-nodes-base.set","typeVersion":3.4,"position":[600,-100],"parameters":{"assignments":{"assignments":[{"name":"tier","value":"vip","type":"string"},{"name":"email","value":"={{ $json.email }}","type":"string"}]}}},
+ {"name":"Mark normal","type":"n8n-nodes-base.set","typeVersion":3.4,"position":[600,100],"parameters":{"assignments":{"assignments":[{"name":"tier","value":"normal","type":"string"},{"name":"up","value":"={{ $json.name.toUpperCase() }}","type":"string"}]}}},
+ {"name":"Merge","type":"n8n-nodes-base.merge","typeVersion":3,"position":[800,0],"parameters":{"mode":"append"}},
+ {"name":"Code","type":"n8n-nodes-base.code","typeVersion":2,"position":[1000,0],"parameters":{"jsCode":"return items;"}},
+ {"name":"Slack","type":"n8n-nodes-base.slack","typeVersion":2,"position":[1200,0],"parameters":{"resource":"message","operation":"post"}},
+ {"name":"Respond","type":"n8n-nodes-base.respondToWebhook","typeVersion":1,"position":[1400,0],"parameters":{"respondWith":"json","responseBody":"={\"ok\": true}","options":{"responseCode":201}}},
+ {"name":"Note","type":"n8n-nodes-base.stickyNote","typeVersion":1,"position":[0,-300],"parameters":{"content":"Alerts the team on big orders"}}
+],"connections":{
+ "Webhook":{"main":[[{"node":"Get customer","type":"main","index":0}]]},
+ "Get customer":{"main":[[{"node":"Big order?","type":"main","index":0}]]},
+ "Big order?":{"main":[[{"node":"Mark VIP","type":"main","index":0}],[{"node":"Mark normal","type":"main","index":0}]]},
+ "Mark VIP":{"main":[[{"node":"Merge","type":"main","index":0}]]},
+ "Mark normal":{"main":[[{"node":"Merge","type":"main","index":1}]]},
+ "Merge":{"main":[[{"node":"Code","type":"main","index":0}]]},
+ "Code":{"main":[[{"node":"Slack","type":"main","index":0}]]},
+ "Slack":{"main":[[{"node":"Respond","type":"main","index":0}]]}
+},"settings":{"timezone":"Europe/Berlin"}}

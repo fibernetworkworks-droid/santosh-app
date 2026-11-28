@@ -627,13 +627,30 @@ CHECKLISTS: dict[str, dict[str, Any]] = {
 }
 
 
-def checklist_items(kind: str, extra: list[str] | None = None) -> tuple[str, list[dict[str, Any]]]:
+# DEVOPS DESK (every AI employee is GLOBAL): the CERT-In lines are India's law. Outside India they become her own rule or a plain
+# 'check this' - never India's numbers assumed for another country.
+def localise(text: str, country: str = "IN", log_days: int | None = None) -> str:
+    if (country or "IN").upper() == "IN":
+        return text
+    keep = f"Logs kept {log_days} days (your rule)" if log_days else "Logs kept as long as your country's rules ask (check this)"
+    subs = [("Logs kept 180 days, in India (CERT-In) - logrotate + compress", keep + " - logrotate + compress"),
+            ("timedatectl: NTP on (CERT-In: the clock must be synced with NTP)", "timedatectl: NTP on (clocks synced, so logs line up)"),
+            ("IT Helpdesk > Security: check the CERT-In 6-hour rule", "Check your country's deadline for reporting a breach (check this)"),
+            ("Logs: set up logrotate (CERT-In: logs must be kept 180 days, so compress, do not delete)",
+             "Logs: set up logrotate (" + (f"keep {log_days} days by your rule" if log_days else "keep them as long as your rules ask") + " - compress, do not delete)"),
+            ("timedatectl - the clock is synced with NTP (CERT-In requires it too)", "timedatectl - the clock is synced with NTP")]
+    for a, b in subs:
+        text = text.replace(a, b)
+    return text
+
+
+def checklist_items(kind: str, extra: list[str] | None = None, country: str = "IN", log_days: int | None = None) -> tuple[str, list[dict[str, Any]]]:
     c = CHECKLISTS.get(kind) or CHECKLISTS["deploy"]
     items, n = [], 0
     for sec, rows in c["sections"]:
         for t in rows:
             n += 1
-            items.append({"id": f"c{n}", "section": sec, "text": t, "done": False, "by": ""})
+            items.append({"id": f"c{n}", "section": sec, "text": localise(t, country, log_days), "done": False, "by": ""})
     for t in extra or []:
         n += 1
         items.append({"id": f"c{n}", "section": "Your rules", "text": t[:200], "done": False, "by": ""})

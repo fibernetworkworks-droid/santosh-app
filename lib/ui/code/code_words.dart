@@ -31,8 +31,11 @@ Future<void> codeShareText(BuildContext context, String text) async {
 
 /// The long-press sheet on a message: Copy, Quote in my reply, Edit and send again (hers), Read aloud (Hoola's),
 /// Select text.
+/// v1.0 [onRewrite] = "Edit": her message changed in place (Hoola carries on from the new words); [rewriteOff] greys it
+/// out while Hoola is working.
 void codeMessageMenu(BuildContext context, Santosh app, String text,
-    {required bool mine, VoidCallback? onQuote, VoidCallback? onEdit, VoidCallback? onSelect}) {
+    {required bool mine, VoidCallback? onQuote, VoidCallback? onEdit, VoidCallback? onSelect, VoidCallback? onRewrite,
+    bool rewriteOff = false}) {
   final plain = mine ? text : mdPlain(text);
   if (plain.trim().isEmpty) return;
   HapticFeedback.mediumImpact();
@@ -41,8 +44,9 @@ void codeMessageMenu(BuildContext context, Santosh app, String text,
     showDragHandle: true,
     builder: (ctx) {
       final c = HoolaColors.of(ctx);
-      Widget row(IconData icon, String label, VoidCallback onTap, {String? sub}) => ListTile(
-            leading: Icon(icon, color: c.ink2),
+      Widget row(IconData icon, String label, VoidCallback onTap, {String? sub, bool enabled = true}) => ListTile(
+            enabled: enabled,
+            leading: Icon(icon, color: enabled ? c.ink2 : c.ink3),
             title: Text(label),
             subtitle: sub == null ? null : Text(sub),
             onTap: () {
@@ -62,6 +66,10 @@ void codeMessageMenu(BuildContext context, Santosh app, String text,
             if (context.mounted) codeToast(context, 'Copied');
           }),
           if (onQuote != null) row(Icons.format_quote_rounded, 'Quote in my reply', onQuote),
+          if (mine && onRewrite != null)
+            row(Icons.edit_rounded, 'Edit', onRewrite,
+                sub: rewriteOff ? 'Wait until Hoola finishes this step' : 'Change this message; Hoola carries on from your new words',
+                enabled: !rewriteOff),
           if (mine && onEdit != null) row(Icons.edit_outlined, 'Edit and send again', onEdit, sub: 'Your words go back in the box to change'),
           if (!mine) row(Icons.volume_up_outlined, 'Read aloud', () => app.readAloud(plain)),
           if (!mine) row(Icons.ios_share_rounded, 'Share', () => codeShareText(context, plain)),
@@ -112,7 +120,7 @@ class CodeReply extends StatelessWidget {
               ? null
               : () => codeMessageMenu(context, app, text,
                   mine: false, onQuote: onQuote == null ? null : () => onQuote!(plain), onSelect: onSelect),
-          child: HoolaMd(text, streaming: streaming, selectable: selecting, sans: true, fade: true, tail: tail),
+          child: HoolaMd(text, streaming: streaming, selectable: selecting, fade: true, tail: tail),   // v0.999 the reply font, same as the web page
         ),
         if (actions)
           Padding(
@@ -391,43 +399,162 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
     final path = _s(s['path']).split('/').last;
     switch (k) {
       case 'bash':
-        return (Icons.terminal_rounded, 'Ran', _s(s['desc']).isNotEmpty ? _s(s['desc']) : 'a command', true);
+        {
+          // v0.999 the server says it in the past ("Ran the unit tests"); older steps had only the ask ("Run the unit tests")
+          final did = _s(s['did']);
+          if (did.isNotEmpty) {
+            final at = did.indexOf(' ');
+            return (Icons.terminal_rounded, at < 0 ? did : did.substring(0, at).replaceAll(':', ''), at < 0 ? '' : did.substring(at + 1), true);
+          }
+          return (Icons.terminal_rounded, 'Ran', _s(s['desc']).isNotEmpty ? 'a command: ${_s(s['desc'])}' : 'a command', true);
+        }
       case 'read':
         return (Icons.description_outlined, 'Read', path, false);
       case 'list':
-        return (Icons.folder_open_rounded, 'Looked in', _s(s['path']).isEmpty ? 'the repo' : _s(s['path']), false);
+        return s['glob'] == true
+            ? (Icons.search_rounded, 'Found', '${codeCount(s['n'], 'file')} · ${_s(s['path'])}', false)
+            : (Icons.folder_open_rounded, 'Listed', _s(s['path']).isEmpty ? 'the repo' : _s(s['path']), false);
       case 'search' || 'grep' || 'usages':
-        return (Icons.search_rounded, 'Searched', _s(s['q']).isNotEmpty ? 'for ${_s(s['q'])}' : 'the code', false);
+        return (Icons.search_rounded, 'Searched', '${_s(s['q']).isNotEmpty ? 'for ${_s(s['q'])}' : 'the code'}${codeMatches(s)}', false);
       case 'edit':
-        return (Icons.edit_outlined, 'Edited', path, (s['diff'] as List?)?.isNotEmpty ?? false);
+        // v1.1 a notebook cell: "Edited cell 3 of analysis.ipynb"
+        if (s.containsKey('cell')) return (Icons.edit_outlined, 'Edited', 'cell ${_s(s['cell'])} of $path', _hasChange(s));
+        return (Icons.edit_outlined, 'Edited', path, _hasChange(s));
+      case 'asked':
+        return (Icons.help_outline_rounded, 'Asked you', _s(s['question']), true);
+      case 'skill':
+        return (Icons.auto_awesome_outlined, 'Using', 'the ${_s(s['name'])} skill', false);
+      case 'cmd':
+        {
+          final name = '/${_s(s['name']).replaceFirst(RegExp(r'^/'), '')}';
+          return s['repo'] == true
+              ? (Icons.terminal_rounded, 'Ran', 'your command $name', false)
+              : (Icons.terminal_rounded, 'Started', name, false);
+        }
+      case 'mention':
+        {
+          final files = [for (final f in (s['files'] as List?) ?? const []) _s(f).split('/').last].where((e) => e.isNotEmpty).toList();
+          return (Icons.alternate_email_rounded, 'Read', files.isEmpty ? 'the files you pointed at' : 'the files you pointed at: ${files.join(', ')}', false);
+        }
+      case 'hook':
+        {
+          final ev = _s(s['event']);
+          return (
+            s['block'] == true ? Icons.block_rounded : Icons.bolt_rounded,
+            "This repo's",
+            ev == 'stop'
+                ? 'hook stopped the work'
+                : '${ev.isEmpty ? '' : '$ev '}hook ran${s['stop'] == true ? ' and stopped the work' : s['block'] == true ? ' and stopped the step' : s['decision'] == 'allow' ? ' and allowed it' : s['decision'] == 'ask' ? ' and asked you first' : s['changed'] == true ? ' and changed the step' : ''}',
+            _s(s['text']).trim().isNotEmpty || _s(s['msg']).trim().isNotEmpty
+          );
+        }
       case 'new':
-        return (Icons.note_add_outlined, 'Wrote', path, (s['diff'] as List?)?.isNotEmpty ?? false);
+        return (Icons.note_add_outlined, 'Wrote', path, _hasChange(s));
       case 'check':
         return (Icons.fact_check_outlined, 'Ran', s['ok'] == true ? 'your tests · passed' : 'your tests · failed', false);
       case 'agent':
-        return (Icons.groups_outlined, 'Asked', _s(s['name']).isNotEmpty ? 'a helper: ${_s(s['name'])}' : 'a helper', false);
+        return (Icons.groups_outlined, 'Asked',
+            (_s(s['name']).isNotEmpty ? 'a helper: ${_s(s['name'])}' : 'a helper') + (_s(s['model']).isNotEmpty ? ' · on ${_s(s['model'])}' : ''), false);
+      case 'bgstart':
+        {
+          final did = _s(s['did']);
+          if (did.isNotEmpty) {
+            final at = did.indexOf(' ');
+            return (Icons.terminal_rounded, at < 0 ? did : did.substring(0, at), at < 0 ? '' : did.substring(at + 1), false);
+          }
+          final what = _s(s['desc']).isNotEmpty ? _s(s['desc']) : _s(s['cmd']);
+          return (Icons.terminal_rounded, 'Started', what.isEmpty ? 'a background command' : 'in the background: $what', false);
+        }
+      case 'bgout':
+        return (Icons.terminal_rounded, 'Read', 'the output of ${_s(s['id'])}${_bgEnd(s)}', _tail(s).isNotEmpty);
+      case 'bgkill':
+        return (Icons.stop_circle_outlined, 'Stopped', _s(s['id']), false);
+      case 'perm':
+        {
+          final yes = _s(s['answer']) != 'no';
+          final note = _s(s['note']).trim();
+          return (
+            yes ? Icons.check_circle_outline_rounded : Icons.block_rounded,
+            yes ? 'You allowed' : 'You said no',
+            '${_s(s['what'])}${!yes && note.isNotEmpty ? ' · “$note”' : ''}',
+            false
+          );
+        }
+      case 'web':
+        return (Icons.public_rounded, 'Read', '${codeHost(_s(s['url']))}${s['ok'] == false ? ' · could not open it' : ''}', false);
+      case 'websearch':
+        return (Icons.search_rounded, 'Searched', 'the web for “${_s(s['q'])}”${s['num'] is num ? ' · ${codeCount(s['num'], 'result')}' : ''}', false);
+      case 'mcp':
+        return _s(s['action']) == 'list'
+            ? (Icons.hub_outlined, 'Listed', 'your MCP servers', false)
+            : (Icons.hub_outlined, 'Used', '${_s(s['server'])}${_s(s['tool']).isEmpty ? '' : ' · ${_s(s['tool'])}'}', false);
+      case 'skill':
+        return _s(s['action']) == 'list'
+            ? (Icons.menu_book_outlined, 'Listed', 'your skills', false)
+            : (Icons.menu_book_outlined, 'Read', 'the skill ${_s(s['name'])}', false);
       default:
         return (Icons.circle_outlined, '', '', false);
     }
   }
 
+  static List<String> _tail(Map<String, dynamic> s) => [for (final x in (s['tail'] as List?) ?? const []) _s(x)];
+
+  /// " · still running" / " · exited 0" for a look at a background command.
+  static String _bgEnd(Map<String, dynamic> s) {
+    if (s['running'] == true) return ' · still running';
+    if (s['rc'] != null) return ' · exited ${_s(s['rc'])}';
+    return '';
+  }
+
+  /// The icon's colour when it says something (a yes in green, a no in red).
+  static Color? _tint(HoolaColors c, Map<String, dynamic> s) {
+    if (_s(s['k']) == 'hook') return s['block'] == true ? c.warn : null;
+    if (_s(s['k']) != 'perm') return null;
+    return _s(s['answer']) == 'no' ? c.bad : c.ok;
+  }
+
+  static bool _hasChange(Map<String, dynamic> s) =>
+      ((s['hunk'] as List?)?.isNotEmpty ?? false) || ((s['diff'] as List?)?.isNotEmpty ?? false);
+
   Widget _detail(HoolaColors c, Map<String, dynamic> s) {
-    final mono = codeMono(c, size: 12.5, color: c.ink2);
     final box = BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.line));
+    if (_s(s['k']) == 'asked') {
+      // v1.1 the question, the choices it offered and her answer
+      final answer = _s(s['answer']).trim();
+      final choices = [for (final x in (s['choices'] as List?) ?? const []) _s(x)].where((e) => e.isNotEmpty).toList();
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(_s(s['question']), style: codeSans(c, size: 14.5, height: 1.45)),
+        if (choices.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text('Choices: ${choices.join(' · ')}', style: codeSans(c, size: 13, color: c.ink3)),
+          ),
+        const SizedBox(height: 6),
+        Text(answer.isEmpty ? 'No answer' : 'You: $answer',
+            style: codeSans(c, size: 14, weight: FontWeight.w500, color: answer.isEmpty ? c.ink3 : c.ink)),
+      ]);
+    }
+    if (_s(s['k']) == 'hook') {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: box,
+        child: SelectableText(_s(s['text']).trim(), style: codeMono(c, size: 12.5, color: c.ink2)),
+      );
+    }
+    if (_s(s['k']) == 'bgout') {
+      final tail = _tail(s);
+      return CodeTermBox(
+          lines: tail.length > 24 ? tail.sublist(tail.length - 24) : tail,
+          end: s['running'] == true ? 'still running' : (s['rc'] != null ? 'exited ${_s(s['rc'])}' : ''),
+          endOk: s['running'] == true ? null : s['rc'] == 0);
+    }
     if (_s(s['k']) == 'bash') {
       final rc = s['rc'];
       final ok = rc == 0 && s['timed_out'] != true;
-      final tail = [for (final x in (s['tail'] as List?) ?? const []) _s(x)];
+      final tail = _tail(s);
       final secs = s['seconds'];
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: box,
-          child: Text.rich(TextSpan(children: [
-            TextSpan(text: '\$ ${_s(s['cmd'])}', style: codeMono(c, size: 12.5, color: c.ink)),
-            if (tail.isNotEmpty) TextSpan(text: '\n${tail.take(24).join('\n')}', style: mono),
-          ])),
-        ),
+        CodeTermBox(cmd: _s(s['cmd']), lines: tail.length > 24 ? tail.sublist(tail.length - 24) : tail),
         const SizedBox(height: 6),
         Text(
             [
@@ -437,6 +564,15 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
             ].join(' · '),
             style: codeSans(c, size: 13, color: s['timed_out'] == true || (rc != null && !ok) ? c.bad : c.ink3)),
       ]);
+    }
+    final hunk = (s['hunk'] as List?) ?? const [];
+    if (hunk.isNotEmpty) {
+      return CodeEditCard(
+          verb: _s(s['k']) == 'new' ? 'Wrote' : 'Edited',
+          path: _s(s['path']),
+          added: (s['added'] as num?)?.toInt() ?? 0,
+          removed: (s['removed'] as num?)?.toInt() ?? 0,
+          rows: hunk);
     }
     final lines = [for (final x in (s['diff'] as List?) ?? const []) _s(x)];
     return Container(
@@ -462,7 +598,8 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
       final s = widget.steps[i];
       final (icon, verb, words, can) = _row(s);
       final last = i == widget.steps.length - 1;
-      final open = _open.contains(i);
+      // v1.1 a question she was asked shows her answer under it at once (a tap folds it)
+      final open = _s(s['k']) == 'asked' ? !_open.contains(i) : _open.contains(i);
       final Widget head = verb.isEmpty
           ? Container(constraints: const BoxConstraints(minHeight: 52), alignment: Alignment.centerLeft, child: widget.fallback(s))
           : Semantics(
@@ -470,7 +607,7 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
               label: '$verb $words${can ? (open ? '. Hide the details' : '. Show the details') : ''}',
               excludeSemantics: true,
               child: InkWell(
-                onTap: can ? () => setState(() => open ? _open.remove(i) : _open.add(i)) : null,
+                onTap: can ? () => setState(() => _open.contains(i) ? _open.remove(i) : _open.add(i)) : null,
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   constraints: const BoxConstraints(minHeight: 52),
@@ -507,7 +644,7 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
                   child: Center(
                       child: verb.isEmpty
                           ? Container(width: 5, height: 5, decoration: BoxDecoration(color: c.lineStrong, shape: BoxShape.circle))
-                          : Icon(icon, size: 21, color: c.ink2))),
+                          : Icon(icon, size: 21, color: _tint(c, s) ?? c.ink2))),
               if (!last) Expanded(child: Center(child: Container(width: 1, color: c.lineStrong))),
             ]),
           ),
@@ -546,5 +683,153 @@ class _CodeStepsSheetState extends State<CodeStepsSheet> {
         child: ListView(controller: widget.scroll, padding: const EdgeInsets.fromLTRB(20, 8, 20, 28), children: kids),
       ),
     ]);
+  }
+}
+
+
+/// v0.999 "7 matches in 3 files" / "3 files" - a search as Claude Code counts it ('' when the step has no count).
+String codeMatches(Map<String, dynamic> s) {
+  final n = s['num'] ?? s['n'];
+  if (n is! num) return '';
+  final f = s['files'];
+  if (f is num && f != n) return ' · ${codeCount(n, 'match', 'matches')} in ${codeCount(f, 'file')}';
+  return n == 0 ? ' · no matches' : ' · ${codeCount(n, 'file')}';
+}
+
+String codeCount(Object? n, String one, [String? many]) {
+  final v = n is num ? n.round() : int.tryParse('$n') ?? 0;
+  return '$v ${v == 1 ? one : (many ?? '${one}s')}';
+}
+
+/// v0.999 the real change as Claude Code shows it: old and new line numbers, red removed, green added, context grey.
+/// Rows come from the server as [kind, old line, new line, text]; '@' is a gap between two parts.
+class CodeHunk extends StatelessWidget {
+  const CodeHunk({super.key, required this.rows, this.bare = false});
+  final List rows;
+  final bool bare;                    // v1.0 inside a CodeEditCard: no box of its own
+
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    final small = codeMono(c, size: 12, color: c.ink3);
+    String cell(Object? v) => v == null ? '' : '$v';
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: bare ? null : BoxDecoration(color: c.sunk, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.line)),
+      clipBehavior: bare ? Clip.none : Clip.antiAlias,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          for (final r in rows)
+            if (r is List && r.length >= 4)
+              r[0] == '@' || r[0] == '…'
+                  ? Padding(
+                      padding: const EdgeInsets.fromLTRB(84, 2, 12, 2),
+                      child: Text(r[0] == '@' ? '⋯' : cell(r[3]), style: small))
+                  : Container(
+                      color: r[0] == '+' ? c.okSoft : (r[0] == '-' ? c.badSoft : null),
+                      padding: const EdgeInsets.only(right: 12),
+                      child: Row(children: [
+                        SizedBox(width: 34, child: Text(cell(r[1]), textAlign: TextAlign.right, style: small)),
+                        SizedBox(width: 34, child: Text(cell(r[2]), textAlign: TextAlign.right, style: small)),
+                        SizedBox(
+                            width: 16,
+                            child: Text(r[0] == '+' ? '+' : (r[0] == '-' ? '−' : ''),
+                                textAlign: TextAlign.center,
+                                style: codeMono(c, size: 12.5, color: r[0] == '+' ? c.ok : c.bad))),
+                        Text(cell(r[3]),
+                            style: codeMono(c, size: 12.5, color: r[0] == '+' ? c.ok : (r[0] == '-' ? c.bad : c.ink2))),
+                      ]),
+                    ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// v1.0 the host of a web address ("docs.python.org"), or the address itself.
+String codeHost(String url) {
+  final u = Uri.tryParse(url.trim());
+  final h = u?.host ?? '';
+  return h.isEmpty ? url : (h.startsWith('www.') ? h.substring(4) : h);
+}
+
+/// v1.0 the terminal's colours (the design: a dark card, light text, red and green for how it ended, grey for the
+/// command line).
+class CodeTerm {
+  static const bg = HoolaTerminal.bg;
+  static const ink = HoolaTerminal.ink;
+  static const red = HoolaTerminal.red;
+  static const green = HoolaTerminal.green;
+  static const grey = HoolaTerminal.grey;
+}
+
+/// v1.0 a command run as a dark terminal card: "$ command" in grey, its output, and how it ended (green / red).
+class CodeTermBox extends StatelessWidget {
+  const CodeTermBox({super.key, this.cmd = '', this.lines = const [], this.end = '', this.endOk, this.size = 12});
+  final String cmd;
+  final List<String> lines;
+  final String end;
+  final bool? endOk;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    final endColor = endOk == true ? CodeTerm.green : (endOk == false ? CodeTerm.red : CodeTerm.grey);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: CodeTerm.bg,
+        borderRadius: BorderRadius.circular(12),
+        border: c.dark ? Border.all(color: c.line) : null,
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+        if (cmd.isNotEmpty) Text('\$ $cmd', style: codeMono(c, size: size, color: CodeTerm.grey)),
+        if (lines.isNotEmpty)
+          Padding(
+            padding: EdgeInsets.only(top: cmd.isNotEmpty ? 3 : 0),
+            child: Text(lines.join('\n'), style: codeMono(c, size: size, color: CodeTerm.ink)),
+          ),
+        if (end.isNotEmpty)
+          Padding(
+            padding: EdgeInsets.only(top: cmd.isNotEmpty || lines.isNotEmpty ? 3 : 0),
+            child: Text(end, style: codeMono(c, size: size, color: endColor)),
+          ),
+      ]),
+    );
+  }
+}
+
+/// v1.0 one file's change as a card: a header row ("Edited path +3 −1") over its lines.
+class CodeEditCard extends StatelessWidget {
+  const CodeEditCard({super.key, required this.verb, required this.path, this.added = 0, this.removed = 0, required this.rows});
+  final String verb, path;
+  final int added, removed;
+  final List rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = HoolaColors.of(context);
+    return Container(
+      decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.line)),
+      clipBehavior: Clip.antiAlias,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          constraints: const BoxConstraints(minHeight: 40),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+          decoration: BoxDecoration(color: c.sunk, border: Border(bottom: BorderSide(color: c.line))),
+          child: Row(children: [
+            Text(verb, style: codeSans(c, size: 13.5, weight: FontWeight.w600)),
+            const SizedBox(width: 8),
+            Expanded(child: Text(path, maxLines: 1, overflow: TextOverflow.ellipsis, style: codeMono(c, size: 12.5, color: c.ink2))),
+            const SizedBox(width: 8),
+            CodeStat(added, removed, size: 12),
+          ]),
+        ),
+        if (rows.isNotEmpty) CodeHunk(rows: rows, bare: true),
+      ]),
+    );
   }
 }

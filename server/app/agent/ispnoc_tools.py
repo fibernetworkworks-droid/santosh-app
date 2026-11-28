@@ -27,7 +27,7 @@ NOC_TOOLS = [
         "rx_base. action=site: name, address, lat, lng, power. action=splitter: name, olt, pon, ratio, level, location, route, km. "
         "action=import: file_id, kind onts|olts|splitters|sites|auto (her network sheet). action=settings (owner): isp_name, model "
         "isp|franchise|lco, upstream, optics, teams {team: [{name, phone}]}, sla {fault kind: hours}, bsnl_sla_hours, window_min, "
-        "morning_time, rules. Never ask for or repeat a device password / SNMP community / key."),
+        "morning_time, rules, country (two letters: India's TRAI / BSNL notes only for IN; elsewhere 'check this'). Never ask for or repeat a device password / SNMP community / key."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["alarms", "alarm_file", "ticket", "ticket_update", "message", "resolve", "dismiss", "note",
                                                "change", "change_edit", "change_done", "olt", "ont", "site", "splitter", "import", "settings"]},
@@ -45,7 +45,7 @@ NOC_TOOLS = [
          "plan": {"type": "string"}, "rx_base": {"type": "number"}, "lat": {"type": "number"}, "lng": {"type": "number"},
          "power": {"type": "string"}, "ratio": {"type": "integer"}, "level": {"type": "integer"}, "location": {"type": "string"},
          "km": {"type": "number"}, "kind": {"type": "string"}, "isp_name": {"type": "string"}, "teams": {"type": "object"},
-         "sla": {"type": "object"}, "bsnl_sla_hours": {"type": "number"}, "window_min": {"type": "integer"},
+         "sla": {"type": "object"}, "bsnl_sla_hours": {"type": "number"}, "window_min": {"type": "integer"}, "country": {"type": "string"},
          "morning_time": {"type": "string"}, "rules": {"type": "string"}},
          "required": ["action"]}},
     {"name": "noc_dekho", "description": (
@@ -155,7 +155,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action == "import":
             return S.import_inventory(t, None, kind=_s(a.get("kind") or "auto"), file_id=_s(a.get("file_id")))
         if action == "settings":
-            keys = ("isp_name", "model", "upstream", "optics", "teams", "sla", "bsnl_sla_hours", "window_min", "morning_time", "rules")
+            keys = ("isp_name", "model", "upstream", "optics", "teams", "sla", "bsnl_sla_hours", "window_min", "morning_time", "rules", "country")
             return S.save_settings(t, **{k: a[k] for k in keys if k in a})
     except (S.NocError, ValueError) as ex:
         raise ToolError(str(ex))

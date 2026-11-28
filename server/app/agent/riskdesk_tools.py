@@ -41,7 +41,7 @@ RISKDESK_TOOLS = [
          "cashflows": {"type": "array", "items": {"type": "number"}}, "discount_pct": {"type": "number"},
          "terminal_growth_pct": {"type": "number"}, "net_debt": {"type": "number"}, "shares": {"type": "number"},
          "txns": {"type": "array", "items": {"type": "object"}}, "window_minutes": {"type": "number"}, "max_count": {"type": "integer"},
-         "max_amount": {"type": "number"}, "trades": {"type": "array", "items": {"type": "object"}}, "product_name": {"type": "string"}},
+         "max_amount": {"type": "number"}, "trades": {"type": "array", "items": {"type": "object"}}, "product_name": {"type": "string"}, "fee_gst_pct": {"type": "number"}},
          "required": ["action"]}},
 ]
 RISKDESK_LABELS = {"risk_desk": "Preparing Risk Desk slips and checks"}
@@ -59,7 +59,7 @@ def _sync(action: str, a: dict[str, Any]) -> dict[str, Any]:
         return credit.underwrite(a.get("applicant") or {}, a.get("rules") or [])
     if action == "kfs":
         return credit.kfs(a.get("lender", ""), a.get("borrower", ""), a.get("product_name", ""), a.get("amount"), a.get("rate"), a.get("months"),
-                          a.get("fee_pct", 0), a.get("fee_fixed", 0), a.get("insurance", 0), a.get("other_upfront", 0), a.get("cooling_off_days"), a.get("grievance", ""))
+                          a.get("fee_pct", 0), a.get("fee_fixed", 0), a.get("insurance", 0), a.get("other_upfront", 0), a.get("cooling_off_days"), a.get("grievance", ""), a.get("fee_gst_pct"))
     if action == "dpd":
         return credit.dpd(a.get("accounts") or [], a.get("as_of"), a.get("npa_days", 90))
     if action == "ecl":
@@ -73,6 +73,12 @@ def _sync(action: str, a: dict[str, Any]) -> dict[str, Any]:
     raise ToolError(f"action '{action}' not recognised.")
 
 
+
+def _core(ctx: Ctx, tool: str, action: str, a: dict[str, Any], work):
+    """F0 of FINANCE_GLOBAL_PLAN: the laws gate + one audit row around the same work (results unchanged)."""
+    from ..fin import core
+    return core.run_tool(getattr(ctx, "tenant_id", "") or "default", getattr(ctx, "actor", "owner") or "owner", tool, action, a, work)
+
 async def _risk_desk(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
     actor = getattr(ctx, "actor", "owner") or "owner"
     if actor != "owner" and not actor.startswith("approved:"):
@@ -80,7 +86,9 @@ async def _risk_desk(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
     if action not in _ACTIONS:
         raise ToolError(f"action: {', '.join(_ACTIONS)}")
     try:
-        return await asyncio.to_thread(_sync, action, a)
+        return await asyncio.to_thread(_core, ctx, "risk_desk", action, a, lambda: _sync(action, a))
+    except PermissionError as e:   # fin.laws.Refused: a tier C act or a secret
+        raise ToolError(str(e))
     except ValueError as e:
         raise ToolError(str(e))
 

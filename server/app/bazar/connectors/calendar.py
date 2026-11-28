@@ -8,7 +8,14 @@ from ..packs.registry import Pack
 from .base import Ctx, NeedsApproval, ToolError, ToolSpec
 
 TITLES = {"create": "Send invite?", "update": "Change meeting and tell everyone?",
-          "cancel": "Cancel event?", "decline": "Decline the meeting?"}
+          "cancel": "Cancel event?", "decline": "Decline the meeting?",
+          "cal_remove": "Take this calendar off your list?", "cal_delete": "Delete the whole calendar?",
+          "cal_clear": "Delete every event on your main calendar?", "share_add": "Share the calendar?",
+          "share_public": "Make the calendar public?", "share_change": "Change who can do what?",
+          "share_remove": "Stop sharing the calendar?", "series": "Change the repeating meeting and tell everyone?",
+          "move": "Move the meeting to another calendar?", "cal_transfer": "Give the calendar to another owner?",
+          "tasks_delete": "Delete the task?", "tasks_clear": "Clear the completed tasks?",
+          "tasks_list": "Delete the whole task list?"}
 
 
 class CalendarExecutor:

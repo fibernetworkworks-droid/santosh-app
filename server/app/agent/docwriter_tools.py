@@ -20,7 +20,7 @@ DOCWRITER_TOOLS = [
         "screenshot; target {text|label|role+name|placeholder|testid|css}; or lines like 'click \"Login\"', 'fill \"Email\" = demo@x.in'; "
         "NEVER passwords / OTP / card / PIN values: use demo data), device phone|tablet|desktop, hide [targets to cover] -> annotated, "
         "privacy-masked screenshots. action=write: product, kind quickstart|howto|manual|faq|admin|api|release_notes|changelog, lang "
-        "en|hi|mr|hinglish, title, words (her words), focus [screen / page / flow names]. action=release_notes: product, version, words. "
+        "(a language code: en, es, fr, de, pt, ar, hi, mr, hinglish, ja, zh ... - the language of HER users; Hinglish only when she asks), title, words (her words), focus [screen / page / flow names]. action=release_notes: product, version, words. "
         "action=sync: product (after a new version / release: stale sections found, updates drafted, screenshots re-copied; public docs "
         "never change by themselves). action=revise: doc, instruction, section. action=edit: doc, section, body, title (her own text). "
         "action=translate: doc, to. action=check: doc. action=files: doc, formats [md, docx, pdf, html]. action=publish: doc, dest "

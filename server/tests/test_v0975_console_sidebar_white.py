@@ -61,7 +61,7 @@ def test_sidebar_and_white_in_a_real_browser(arena_server):  # noqa: F811
             pinFirst:!!(q('#pinbox')&&q('#projects')&&(q('#pinbox').compareDocumentPosition(q('#projects'))&4)),
             dayLabels:[...document.querySelectorAll('#recents .rg')].map(e=>e.textContent),
             chatF:q('#recents .rc')?getComputedStyle(q('#recents .rc')).fontSize:''}}""")
-        assert m["rowH"] == 32 and m["rowF"] == "14px" and m["rowW"] == "500" and m["ic"] == 18, m
+        assert m["rowH"] == 32 and m["rowF"] == "14px" and m["rowW"] == ("430" if scheme == "light" else "400") and m["ic"] == 18, m
         assert m["lab"] == "12px" and m["rec"] == "Recents", m
         if scheme == "light":
             assert m["bg"] == "rgb(255, 255, 255)" and m["side"] == "rgb(250, 250, 249)", m
@@ -78,7 +78,7 @@ def test_sidebar_and_white_in_a_real_browser(arena_server):  # noqa: F811
         else:
             assert m["bg"] == "rgb(20, 20, 19)" and m["rowC"] == "rgb(242, 241, 236)", m
         rows = pg.evaluate("[...document.querySelectorAll('#snav .sn > .txt')].map(e=>e.textContent)")
-        assert rows[:3] == ["AI Employees", "Tools", "Computer"] and rows[-2:] == ["More", "Customize"], rows   # v0.976
+        assert rows[:3] == ["AI Employees", "Tools", "Computer"] and rows[-1:] == ["More"], rows   # v0.976; v0.999.217 Customize in the profile menu
         assert not {"Work", "AI Apps", "Arena"} & set(rows) and not any(r.startswith("Made by") for r in rows), rows
         pg.click(".side [data-more]"); pg.wait_for_timeout(300)
         items = pg.evaluate("[...document.querySelectorAll('[role=menu] [role^=menuitem]')].map(e=>e.textContent.trim())")

@@ -72,7 +72,7 @@ def test_registry_5_dhara_tools():
     assert names <= global_names
     for n in names:
         assert n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 630, "629 + 1 hoola_pc_batch (v0.885 HOOLA PC POOL: repeat jobs on Hoola PC). 626 + 1 app_engine (v0.824 APP ENGINE 1: the Web Studio React app lane - one new tool). 625 + 1 hoola_design (v0.817.0 HOOLA DESIGN: the design editor's one tool). 624 + 1 ai_app (v0.785 HOOLA AI APPS). 623 + 1 video_kit (v0.772 VIDEO KIT: exact ffmpeg video edits). 617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 536 (v0.501, docs7 in) + 5 dhara tools + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514) + 10 construction (v0.522) + 1 crew_run (v0.523) + 2 from main's v0.533 CRAWL BRAIN wiring (healed in v0.537: red on pristine main) + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.569 SPEC SUTRA)"
+    assert len(TOOLS) == 717, "713 + 1 vision_desk (v0.999.298 VISION DESK). 712 + 1 robotics_desk (v0.999.295 ROBOTICS DESK). 708 + 1 virt_desk (v0.999.287 VIRTUALIZATION DESK). 707 + 1 sre_desk (v0.999.285 SRE DESK). 706 + 1 dist_desk (v0.999.283 DISTRIBUTED DESK). 705 + 1 db_desk (v0.999.280 DATABASE DESK). 704 + 1 gfx_desk (v0.999.277 GRAPHICS DESK). 703 + 1 kernel_desk (v0.999.274 KERNEL DESK). 702 + 1 lang_lab (v0.999.272 COMPILER DESK). 694 + 8 docs tools: gdoc_read, gdoc_write, gdoc_edit, gdoc_table, gdoc_layout, gdoc_tabs, gdoc_comments, gdoc_fill (v0.999.192). 692 + 2 photos tools: photos_library, photos_look (v0.999.191). 689 + 3 calendar tools: rooms, birthday, google_tasks (v0.999.190). 682 + 7 calendar tools (v0.999.189 CALENDAR COMPLETE). 675 + 7 slide tools (v0.999.188 SLIDES COMPLETE). 673 + 2 form tools (v0.999.187 FORMS COMPLETE). 661 + 12 drive tools (v0.999.186 DRIVE COMPLETE). 656 + 5 sheet tools (v0.999.185 SHEETS COMPLETE). 649 + 7 sheet tools (v0.999.184 SHEETS 100%). 648 + 1 public_finance (v0.999.153 F12). 646 + 2 community_finance + digital_assets (v0.999.152 F11). 644 + 2 investments_desk + markets_desk (v0.999.151 F10). 643 + 1 institution_desk (v0.999.149 F9). 642 + 1 payments_desk (v0.999.145 F8). 641 + 1 firm_practice (v0.999.143 F7). 640 + 1 credit_lending (v0.999.139 F6). 638 + 2 payroll_worldwide + cash_treasury (v0.999.139 F5). 637 + 1 tax_worldwide (v0.999.139 F4). 636 + 1 books_accounts (v0.999.134 F3). 635 + 1 household_money (v0.999.129 F2 HOUSEHOLD MONEY). 634 + 1 hoola_wallet (v0.999.61 HOOLA WALLET). 633 + 1 spider (v0.999.59 HOOLA SPIDER). 632 + 1 leads_desk (v0.999.52 LEAD DESK). 631 + 1 accounts_desk (v0.999.43 ACCOUNTS DESK). 630 + 1 social_desk (v0.999.38 SOCIAL DESK: the Social Media Manager's own tool). 629 + 1 hoola_pc_batch (v0.885 HOOLA PC POOL: repeat jobs on Hoola PC). 626 + 1 app_engine (v0.824 APP ENGINE 1: the Web Studio React app lane - one new tool). 625 + 1 hoola_design (v0.817.0 HOOLA DESIGN: the design editor's one tool). 624 + 1 ai_app (v0.785 HOOLA AI APPS). 623 + 1 video_kit (v0.772 VIDEO KIT: exact ffmpeg video edits). 617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 536 (v0.501, docs7 in) + 5 dhara tools + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514) + 10 construction (v0.522) + 1 crew_run (v0.523) + 2 from main's v0.533 CRAWL BRAIN wiring (healed in v0.537: red on pristine main) + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.569 SPEC SUTRA)"
 
 
 def test_family_map():
@@ -112,11 +112,13 @@ def test_save_validation_refuses_garbage():
                                                  for i in range(41)]))
     with pytest.raises(Exception):  # oversized expression
         _run(D.dhara_save(CTX, name="x9", steps=[{"id": "a", "type": "set", "name": "v", "value": "x" * 3000}]))
-    with pytest.raises(Exception):  # nesting cap: condition inside condition's then
+    with pytest.raises(Exception):  # nesting cap (v0.999.239: three levels): four conditions inside each other
         _run(D.dhara_save(CTX, name="x10", steps=[
             {"id": "a", "type": "condition", "left": "1", "op": "eq", "right": "1",
              "then": [{"id": "b", "type": "condition", "left": "1", "op": "eq", "right": "1",
-                       "then": [{"id": "c", "type": "set", "name": "v", "value": 1}]}]}]))
+                       "then": [{"id": "b2", "type": "condition", "left": "1", "op": "eq", "right": "1",
+                                 "then": [{"id": "b3", "type": "condition", "left": "1", "op": "eq", "right": "1",
+                                           "then": [{"id": "c", "type": "set", "name": "v", "value": 1}]}]}]}]}]))
     with pytest.raises(Exception):  # bad step id shape
         _run(D.dhara_save(CTX, name="x11", steps=[{"id": "BAD ID!", "type": "set", "name": "v", "value": 1}]))
 
@@ -168,7 +170,8 @@ def test_run_full_flow_done_with_checkpoint():
     run = D.get_run(CTX.tenant_id, r["run_id"])
     assert run["status"] == "done" and run["cursor"] == 2
     assert run["context"]["vars"]["msg"] == "pranam Malika"
-    assert [(s["id"], s["status"]) for s in run["steps_log"]] == [("who", "ok"), ("check", "ok")]
+    # v0.999.253: steps inside a branch are logged too (marked "in"); the top-level steps are still these two
+    assert [(s["id"], s["status"]) for s in run["steps_log"] if "in" not in s] == [("who", "ok"), ("check", "ok")]
     assert all("ms" in s for s in run["steps_log"])
 
 
@@ -491,9 +494,10 @@ def test_webhook_enqueues_with_body_and_refuses_bad_tokens():
     run = D.get_run(CTX.tenant_id, out["run_id"])
     assert run["context"]["vars"]["body"] == {"order_id": "A-1"}
     assert D.webhook_enqueue("wrong-token", {})["status"] == 401
-    # throttle: a second run of the SAME workflow inside 6 s is refused (10/min ceiling)
+    # v0.999.254 MAKE PARITY: a second call inside 6 s is no longer refused - it waits in the route's queue (Make's
+    # webhook queue) and runs in its turn, one run per 6 s at most (10/min ceiling kept)
     second = D.webhook_enqueue(tok, {"again": True})
-    assert second["status"] == 429
+    assert second["status"] == 202 and D.get_run(CTX.tenant_id, second["run_id"])["pause_reason"] == "queue"
     # disabled workflow: the token stops working
     _run(D.dhara_control(CTX, action="disable", name="hooked"))
     time.sleep(6.2)  # past the throttle window so we test the DISABLED path, not the throttle
@@ -580,7 +584,7 @@ def test_outputs_pass_mask_ids():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.999.39"
+    assert tuple(int(x) for x in APP_VERSION.split(".")) >= (0, 999, 169)   # v0.999.253: no longer one exact number
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.999.39+1037" in pub.read_text()
+    assert "version: 0." in pub.read_text()     # v0.999.253: the build number moves every release

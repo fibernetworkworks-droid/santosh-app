@@ -1088,7 +1088,7 @@ def translate(tenant: str, doc: str, to: str, conv: str = "") -> dict[str, Any]:
     st = settings(tenant)
     dst = R.lang_of(to, "")
     if not dst:
-        raise DocError("Which language? English, Hindi, Marathi or Hinglish")
+        raise DocError("Which language? For example English, Spanish, French, Arabic, Hindi or Hinglish (a code like es or fr works too)")
     with session() as s:
         d = _find(s, tenant, doc)
         if d.lang == dst:
@@ -1370,7 +1370,7 @@ def doc_html(tenant: str, d: DocDoc, fonts: bool = False, links: list[dict] | No
         except Exception:
             font_css = ""
     body = md_to_html(md, images)
-    return (f'<!doctype html><html lang="{R.HTML_LANG.get(d.lang, "en")}"><head><meta charset="utf-8"><meta name="viewport" '
+    return (f'<!doctype html><html lang="{R.HTML_LANG.get(d.lang, "en")}"{' dir="rtl"' if d.lang in R.RTL else ''}><head><meta charset="utf-8"><meta name="viewport" '
             f'content="width=device-width,initial-scale=1"><title>{_html.escape(d.title)}</title><style>{font_css}{DOC_CSS}</style></head>'
             f'<body>{("<p>" + other + "</p>") if other else ""}{body.split("</h1>", 1)[0]}</h1>'
             f'{("<nav>" + toc + "</nav>") if len(secs) > 2 else ""}{body.split("</h1>", 1)[1] if "</h1>" in body else ""}'

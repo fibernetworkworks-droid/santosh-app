@@ -379,7 +379,7 @@ def test_storage_and_accounts(d):
 
 
 def test_not_connected(env):
-    with pytest.raises(ToolError, match="Profile > Google Drive"):
+    with pytest.raises(ToolError, match="Connectors > Google"):
         asyncio.run(dt.DRIVE_HANDLERS["drive_find"](Ctx("someone", "c"), query="x"))
 
 

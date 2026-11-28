@@ -258,3 +258,61 @@ unchanged from Google Fonts by `tool/fetch_fonts.py`. All five are licensed unde
 and their reserved names are not used for changed versions. Copyright stays with their authors (Manrope: Mikhail
 Sharanda; Sora: Barbara Ugalde / Sora Project; Literata: TypeTogether; Schibsted Grotesk: Schibsted / Bakken & Baeck;
 JetBrains Mono: JetBrains).
+
+## vercel-labs/agent-browser and microsoft/playwright-mcp (Apache License 2.0)
+`desktop-linux/pagekit.py` (Hoola PC page engine 2, v0.999.93) follows ideas from these projects: element refs taken
+from a page snapshot, a hit-target check before a click, and the before / after snapshot diff. The code is Hoola's own;
+no source file was copied. Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0
+
+## andrej-karpathy-skills (forrestchang / multica-ai) - MIT
+Read at commit 2c60614 (28 Nov 2026). The repo is text only (a CLAUDE.md, a skill, a Cursor rule and examples) with
+four coding rules written from Andrej Karpathy's notes on how coding models go wrong. The repo ships no LICENSE file;
+its skill, plugin manifest and README state MIT. **No upstream file is included.** Hoola Code (`server/app/devsahayak/
+karpathy.py`) carries the four rules rewritten in Hoola's own words, credited where they appear, and adds its own
+in-code check for rule 3 (changes that only touch layout or delete an existing comment).
+
+## Ponytail (DietrichGebert/ponytail) - MIT
+Copyright (c) 2026 DietrichGebert. Read at commit ebd8654 (v5.3.3, 28 Nov 2026). **No upstream file is included.**
+Hoola Code (`server/app/devsahayak/ponytail.py`) carries Ponytail's rules for the smallest complete change, its levels
+(lite / full / ultra / off), and its review, audit and `shortcut:` debt reports, rewritten in Hoola's own words and
+credited where they appear. Ponytail is distributed under the MIT License.
+
+## Superpowers (obra/superpowers) - MIT
+Copyright (c) 2025 Jesse Vincent. Read at commit 22f0b46 (v7.0.2, 28 Nov 2026). **No upstream file is included.**
+Hoola Code (`server/app/devsahayak/superpowers.py` + `superpowers/*.md`) carries 13 of its skills rewritten in Hoola's
+own words for Hoola Code's tools, its rule for using skills, and two of its rules (verification before completion, the
+three-fix rule of systematic debugging) checked in code. The older condensed copy for Hoola's chat skill desk
+(`server/app/coder/skillpack/sp-*.md`, v0.499) is unchanged. Superpowers is distributed under the MIT License.
+
+## ECC skills (affaan-m/ECC) - MIT
+Copyright (c) 2026 Affaan Mustafa. Read at commit 4adeee67 (28 Nov 2026). **132 of ECC's skill files are included
+unchanged** in `server/app/devsahayak/ecc_skills/` (its language / framework / database / infrastructure skills and its
+general coding skills; the skills that set up Claude Code or ECC itself, need outside services, or are not about coding
+were left out). Hoola Code reads them through `server/app/devsahayak/eccskills.py`. The `gdscript-reviewer` agent
+(`server/app/devsahayak/ecc/reviewers_lang.py`), the config protection (`configguard.py`) and the MCP health check
+(`mcphealth.py`) are Hoola's own text and code, adapted from ECC's agent and hooks. So are the repo rule files (`hookify.py`, ECC's Hookify rule-file format), the two-reviewer check (`santa.py`, ECC's Santa method skill by Ronald Skelton), `/test-coverage` (`testcover.py`), the epic commands (`epic.py`) and the learnings export / import (`learnshare.py`, ECC's instinct-export / instinct-import). ECC is distributed under the MIT
+License:
+
+```
+MIT License
+
+Copyright (c) 2026 Affaan Mustafa
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit
+persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the
+Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+## Hermes Agent (NousResearch/hermes-agent) - MIT
+Copyright (c) 2025 Nous Research. Read at commit d71a6574 (28 Nov 2026). Idea only, no code copied: its scan of
+every memory and skill write (`tools/threat_patterns.py`) is the model for Hoola's own `server/app/coder/guard.py`
+(Hoola's patterns, rules and code). Hoola's nudge / curator / dreams were already Hoola's own ports of the same ideas.

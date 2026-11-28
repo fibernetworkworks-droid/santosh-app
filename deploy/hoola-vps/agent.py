@@ -21,7 +21,7 @@ import urllib.request
 
 CONFIG = "/etc/hoola-agent/config.json"
 LOG = "/var/log/hoola-agent.log"
-AGENT_VER = "1.0.0"
+AGENT_VER = "1.1.0"
 
 # The never-list — refused here no matter what Hoola sends. Mirrors the server; the server is not trusted to be the
 # only guard.
@@ -40,6 +40,45 @@ REFUSE = [
     (r"\b(shutdown|reboot|halt|poweroff)\b", "shuts the server down"),
 ]
 REFUSE = [(re.compile(p, re.I), why) for p, why in REFUSE]
+
+# 1.1.0: the access rules she set in Hoola, sent on every check-in and enforced HERE too (they used to be sent and
+# ignored): "look" runs only commands that read; folders bound where "look" / "trust" may work; an admin command runs
+# only if she ticked that exact command; a command never runs past her time limit.
+READS = re.compile(
+    r"^\s*(ls|cat|head|tail|less|wc|grep|rg|find|stat|file|df|du|free|uptime|uname|hostname|whoami|id|date|env|printenv|"
+    r"ps|top|htop|pm2\s+(list|status|logs|show|describe|info|jlist|prettylist)|systemctl\s+(status|show|is-active|list-units)|"
+    r"journalctl|docker\s+(ps|logs|inspect|images|stats)|git\s+(status|log|diff|show|branch|remote|rev-parse|config\s+--get)|"
+    r"node\s+--version|npm\s+(ls|list|--version|run\s+(lint|typecheck|test))|python3?\s+(-m\s+pytest|--version)|"
+    r"pip\s+(list|show|freeze)|cu?rl\s+-s[^|]*localhost|which|type|tree|echo)\b", re.I)
+CONF = {"access": "ask", "folders": [], "admin_cmds": [], "cmd_timeout_s": 900}
+
+
+def _program(cmd):
+    """Same key as Hoola's server: the first two words, lower case (an admin grant is per program, not per argument)."""
+    parts = re.findall(r"[\w./-]+", (cmd or "").strip().lower())
+    return " ".join(parts[:2]) if parts else (cmd or "").strip().lower()[:40]
+
+
+def _inside(folder, folders):
+    f = os.path.realpath(folder).rstrip("/")
+    for a in folders or []:
+        a = os.path.realpath(_expand(a)).rstrip("/")
+        if a and (f == a or f.startswith(a + "/")):
+            return True
+    return False
+
+
+def not_allowed(job, folder):
+    """The reason her own rules forbid this job on this server, or '' (checked here even if Hoola's server says yes)."""
+    cmd, access = (job.get("cmd") or "").strip(), str(CONF.get("access") or "ask")
+    if access == "look" and (not READS.search(cmd) or re.search(r"[;&`>]|\$\(", cmd)):
+        return "your server is set to look only, and this command changes something"
+    folders = CONF.get("folders") or []
+    if access in ("look", "trust") and folders and not _inside(folder, folders):
+        return "it is outside the folders you allowed"
+    if job.get("admin") and _program(cmd) not in [_program(str(x)) for x in (CONF.get("admin_cmds") or [])]:
+        return "it needs admin rights and you did not tick this command"
+    return ""
 
 
 def log(msg):
@@ -125,10 +164,15 @@ def run_job(job):
     folder = _expand(job.get("folder") or "~")
     if not os.path.isdir(folder):
         return 127, "Folder not found: %s" % folder
+    rule = not_allowed(job, folder)
+    if rule:
+        log("REFUSED (%s): %s" % (rule, cmd))
+        return 126, "Refused by your server: %s." % rule
+    limit = max(10, min(int(CONF.get("cmd_timeout_s") or 900), 7200))
     full = ("sudo -n " + cmd) if job.get("admin") else cmd
     log("RUN [%s] %s" % (folder, full))
     try:
-        p = subprocess.run(["/bin/bash", "-lc", full], cwd=folder, capture_output=True, text=True, timeout=900,
+        p = subprocess.run(["/bin/bash", "-lc", full], cwd=folder, capture_output=True, text=True, timeout=limit,
                            env={**os.environ, "GIT_TERMINAL_PROMPT": "0"})
         out = (p.stdout or "") + (("\n" + p.stderr) if p.stderr else "")
         return p.returncode, out[-200000:]
@@ -154,6 +198,7 @@ def loop():
             if r.get("remove"):
                 teardown()
                 return
+            CONF.update({k: v for k, v in (r.get("config") or {}).items() if k in CONF})
             poll = int(r.get("config", {}).get("poll_s") or poll)
             for job in r.get("jobs", []):
                 code, out = run_job(job)
