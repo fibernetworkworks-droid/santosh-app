@@ -4341,6 +4341,9 @@ def repo_commands(tenant: str, ref: str) -> dict[str, Any]:
     try:
         out["commands"] = [{"name": k, "description": v["description"], "hint": v["hint"], "origin": v.get("origin", "repo")}
                            for k, v in sorted(RC.commands(repo, pls).items())]
+        out["commands"] += [{"name": p["name"], "description": p.get("description") or "An MCP server's prompt",   # v0.999 MCP prompts
+                             "hint": " ".join(f"<{a}>" for a in p.get("args") or []), "origin": "mcp"}
+                            for p in ses.meta.get("mcp_prompts") or []]
         out["agents"] = [{"name": k, "description": v["description"], "tools": v["tools"], "origin": v.get("origin", "repo"), "model": v.get("model", "")}
                          for k, v in sorted(RC.agents(repo, pls).items())]
         conf = RC.settings(repo, pls)
