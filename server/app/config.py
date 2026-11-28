@@ -1522,6 +1522,14 @@ class Settings(BaseSettings):
     dod_max_rounds: int = 600               # tool rounds in one task before it stops and says so
     dod_file_max_mb: int = 50
     dod_data_dir: str = ""                  # default data/dod
+    # HOOLA DIAGRAM (docs/DIAGRAM_TOOL_PLAN.md): three vendored engines in app/diagram/vendor (archify, diagram-design,
+    # draw.io via next-ai-draw-io); the draw.io editor is fetched by `python -m app.diagram setup` (vps-ops diagram_setup)
+    diagram_enabled: bool = True
+    diagram_drawio_dir: str = ""            # default data/diagram/drawio
+    diagram_node: str = ""                  # node >= 18 for archify (empty = the one on PATH)
+    diagram_chrome: str = ""                # Chrome / Chromium for the engines' browser checks (empty = HOOLA_CHROMIUM /
+                                            # Google Chrome / Playwright's Chromium)
+    diagram_chrome_no_sandbox: bool = False  # archify's own ARCHIFY_CHROME_NO_SANDBOX, only where Chrome cannot sandbox
 
 
 @lru_cache

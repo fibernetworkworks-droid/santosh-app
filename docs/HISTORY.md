@@ -14468,3 +14468,7 @@ conftest pins APP_ENGINE_DONE_GATE / APP_ENGINE_READ_FIRST off for the older App
 NOT VERIFIED: on her server, with a real model doing a plan -> change -> build -> done round, or with the real Docker
 box and Chromium here (the build and the browser check were stand-ins in these tests). The browser check after every
 build of an open task can add up to ~2.5 minutes a build on her server.
+
+
+## v0.999.323 HOOLA DIAGRAM D1
+(owner: 'start D1.'). Files: server/app/diagram/{__init__,__main__,vendor,runners,drawio,_dd_export}.py, VENDOR.json, vendor/{archify,archify-pr,diagram-design,drawio-ai}/ (copied unchanged), server/tools/diagram_sync.py, config.py diagram_* settings, vps-ops diagram_setup / diagram_check, THIRD_PARTY_NOTICES. Found while building: (1) archify finalize's quality must follow the candidate's meta.quality_profile (its SKILL.md says so); (2) 4 of archify's own examples fail its own showcase rule and its standard browser check (tall 720x900 canvases) - upstream data, listed in __main__.KNOWN_UPSTREAM; (3) draw.io's embed host page must use its plain parameters (ui=min / stealth=1 / extra export options made the PNG export never answer); (4) diagram-design's export_png.py launches Playwright with no browser path, so it is run through _dd_export.py which supplies the server's browser without editing the vendored file. The archify update check went to archify.si when run bare - Hoola always sets its documented off switch.
