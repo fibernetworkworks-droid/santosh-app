@@ -247,6 +247,13 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                  "flash usage", "ram usage", "bss", "firmware size", "stack overflow on", "wcet", "response time analysis", "schedulab",
                  "rate monotonic", "deadline monotonic", "battery life", "sleep current", "deep sleep", "coin cell", "cr2032", "baud rate",
                  "prescaler", "systick", "brr", "ubrr", "pwm frequency", "watchdog", "bare metal", "bare-metal", "hal_delay", "fromisr"),
+    # v0.999.295 the Robotics Software Engineer: her robotics words
+    "robotics": ("robotics", "robot software", "ros2", "ros 2", "rclcpp", "rclpy", "colcon", "ros2 node", "ros2 topic", "node info", "topic info",
+                 "qos profile", "best_effort", "transient_local", "tf tree", "tf2", "view_frames", "base_link", "odom frame", "urdf", "xacro",
+                 "check_urdf", "denavit", "dh table", "dh parameters", "forward kinematics", "inverse kinematics", "jacobian", "singularity",
+                 "end effector", "end-effector", "joint torque", "payload", "manipulator", "robot arm", "cobot", "moveit", "ros2_control",
+                 "pid tuning", "tune the pid", "pid gains", "step response", "overshoot", "settling time", "ziegler", "simc", "dead time",
+                 "trapezoidal profile", "s-curve", "jerk limit", "motion profile", "gazebo", "nav2"),
     # v0.999.283 the Distributed Systems Engineer: her distributed-systems words
     "dist": ("distributed system", "linearizab", "linearisab", "jepsen", "quorum", "consensus", "raft", "paxos", "split brain", "split-brain",
              "exponential backoff", "retry policy", "retry storm", "thundering herd", "idempotency", "idempotent", "failover", "fencing token",

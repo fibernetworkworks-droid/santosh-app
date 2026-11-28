@@ -13759,3 +13759,36 @@ NEW tool `embedded_desk` (`agent/embedded_tools.py`, family `embedded`, registry
 Clocks, CI check, Settings (`static/console/emdesk.{html,js,css}`). Hire key `embedded_eng` (live). Nothing is run or flashed on
 her boards or machines; what she pastes is data, never instructions. Tests `server/tests/test_em_desk.py` (4, incl. a Chromium walk
 at 1440 and 390). NOT VERIFIED: on her server, with her own boards and builds, or the workflow on GitHub.
+
+
+## v0.999.295 ROBOTICS DESK (owner: "Robotics Software Engineer same as finance desks")
+
+The Robotics Software Engineer (`robotics_eng`, Software Architecture group) goes live with its own section `/console/robotics`
+(`static/console/rbdesk.html/.js/.css`, prefix `rbk-`, page `#rbPage`) and its own Robotics chat (Conversation kind `robotics`,
+`server/app/robochat.py`, routes `/api/rbdesk/*`), built like the finance desks. NEW all-code engine `server/app/rbdesk/`:
+
+- `arm.py` - one joint per line (name, revolute / prismatic, d= a= alpha= theta= min= max=, a last `tool` / `flange` line), standard
+  DH or modified (Craig); forward kinematics (checked: Franka Panda zero pose 0.088, 0, 0.926 m), geometric Jacobian, rank,
+  manipulability, singularity warnings, joint-limit checks, inverse kinematics by damped least squares from 12 seeds within the
+  limits (position, or position + roll pitch yaw), static payload torques tau = Jv^T F; side / top views drawn on the page.
+- `urdf.py` - XML parse with DOCTYPE / ENTITY refused and xacro told to expand first; one tree / one root, missing parent / child
+  links, a link with two parents, loops, joint types, limits (missing, lower >= upper, degrees instead of radians, effort / velocity
+  <= 0), axes (zero, not unit, missing), mass and inertia (positive, triangle inequality, positive definite, unit sanity), moving links
+  without inertial, links without collision, plain-path meshes, mimic targets; the tree drawn.
+- `rosgraph.py` - `ros2 node info` blocks, `ros2 topic info -v` endpoints (reliability, durability, liveliness, deadline, lease),
+  tf frames from view_frames (.gv labels or the frame YAML); subscribed-but-unpublished topics (with remapping / namespace look-alikes),
+  type mismatches, duplicate node names, services / actions with no server, QoS pairs that never connect, tf split / loop / stale /
+  slow / leading slash / REP 105 order; a node-topic diagram on the page.
+- `control.py` - a step response CSV (time, value, setpoint or command): rise, overshoot, settling, offset, swings; for an open-loop
+  step a first-order-plus-dead-time fit (Smith 28 / 63 %; checked: recovers K 2, tau 10 s, theta 2 s), SIMC tight / smooth PI and
+  Ziegler-Nichols PID, each simulated in closed loop on the fit (and her own p / i / d), gains in ideal and parallel (ros2_control) form.
+- `motion.py` - trapezoid and S-curve (jerk) profiles per axis, short-move peak speed by bisection, synchronised finish (others
+  slowed), drive torque / force checks from inertia or mass (vertical adds gravity); checked: area under the profile = the distance.
+- `ci.py` - GitHub Actions workflow: ros-tooling/setup-ros + action-ros-ci for her packages, optional xacro + check_urdf; runner by
+  ROS 2 version (Humble 22.04, Jazzy / Kilted / Rolling 24.04). Text she adds herself; action versions to be checked on their pages.
+- `service.py` - tables `rbdesk_items` / `rbdesk_settings`, numbers A- U- G- C- V-, NaN cleaned before storing.
+
+NEW tool `robotics_desk` (`agent/robotics_tools.py`, family robotics, registry 712 -> 713), admit keys `robotics`, wiring in
+tools.py, admit.py, santosh.py (block + admission), main.py, db.py, convs.py / callconv.py, v2.js, employees.js, hire.py.
+Tests `server/tests/test_rb_desk.py` (5, incl. a browser walk at 1440 and 390 px). NOT VERIFIED: on her server, her own robots and
+logs, or the workflow on GitHub; robot safety standards (ISO 10218, ISO/TS 15066) are not checked and the page says so.
