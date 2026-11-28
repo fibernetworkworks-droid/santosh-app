@@ -812,6 +812,17 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       case 'reality': { /* v0.814 The Agency's reality checker, the last look before a round finishes */
         const ok = s.verdict === 'ready', lab = `<b>Reality check</b> · <span class="${ok ? 'add' : s.verdict === 'needs_work' ? 'del' : ''}">${ok ? 'ready' : s.verdict === 'needs_work' ? 'needs work - back to it' : 'no clear verdict'}</span>`;
         return s.text ? fold('r' + i, lab, `<pre class="hcd-term">${esc(s.text)}</pre>`, 'row', verbose || !ok) : `<div class="hcd-step">${svg(ok ? 'ok' : 'bad')}<span>${lab}</span>${at}</div>`; }
+      case 'santa': { /* v0.999 ECC's Santa method: two independent reviewers must both pass */
+        const ok = !!s.ok, lab = `<b>Two reviewers</b> · round ${esc(String(s.round || 1))} of ${esc(String(s.of || 3))} · <span class="${ok ? 'add' : 'del'}">${!s.ran ? 'could not run' : ok ? 'both passed' : 'not both passed' + ((s.round || 1) < (s.of || 3) ? ' - back to it' : ' - left for you')}</span>`;
+        return (s.issues || []).length ? fold('sa' + i, lab, `<pre class="hcd-term">${esc((s.issues || []).join('\n'))}</pre>`, 'row', verbose || !ok)
+          : `<div class="hcd-step">${svg(ok ? 'ok' : 'bad')}<span>${lab}</span>${at}</div>`; }
+      case 'epic': { /* v0.999 ECC's epic commands: a big job as linked GitHub issues, created only on her tap */
+        const iss = s.issues || {}, st = s.states || {}, url = n => `https://github.com/${esc(s.repo || (TASK || {}).repo || '')}/issues/${n}`;
+        const rows = (s.tasks || []).map(x => { const n = iss[String(x.n)]; const done = n && st[String(n)] === 'closed';
+          return `<li class="${done ? 'done' : ''}">${n ? `<a href="${url(n)}" target="_blank" rel="noopener noreferrer">#${n}</a> ` : `<span class="hcd-mut">${x.n}.</span> `}${esc(x.title)}${(x.depends_on || []).length ? ` <small class="hcd-mut">after ${x.depends_on.map(d => iss[String(d)] ? '#' + iss[String(d)] : d).join(', ')}</small>` : ''}</li>`; }).join('');
+        const btn = s.published ? `<button type="button" class="hcd-btn sm" data-act="epicsync">Check progress</button>`
+          : `<button type="button" class="hcd-btn sm pri" data-act="epicpub">Create ${plural((s.tasks || []).length, 'issue')} on GitHub</button>`;
+        return `<div class="hcd-step hcd-epic">${svg('list')}<span><b>${esc(s.title || 'Epic')}</b>${s.parent ? ` · <a href="${url(s.parent)}" target="_blank" rel="noopener noreferrer">#${s.parent}</a>` : ' · not on GitHub yet'}${s.summary ? `<span class="hcd-mut"> - ${esc(s.summary)}</span>` : ''}<ol>${rows}</ol><span class="hcd-wtb">${btn}</span></span>${at}</div>`; }
       case 'gate': return `<div class="hcd-step bad">${svg('bad')}<span><b>Quality check before finishing</b> · ${plural(s.num ?? s.n ?? 0, 'thing')} to clean up${(s.items || []).length ? ': ' + (s.items || []).slice(0, 3).map(x => p(x)).join(', ') : ''}</span>${at}</div>`;
       case 'stopped': return `<div class="hcd-step bad">${svg('bad')}<span><b>Stopped.</b> Nothing was pushed.</span>${at}</div>`;
       default: return '';
@@ -992,7 +1003,11 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
       ['ponytail-review', 'Review this change like the senior dev who gets paged'], ['ponytail-audit', 'The same check for the whole repo, most important first'],
       ['ponytail-debt', 'List the shortcut: comments left for later'],
       ['brainstorm', 'Shape an idea with Hoola before any code: one question at a time'], ['write-plan', 'A step-by-step plan, each step with its check'],
-      ['execute-plan', 'Carry out the approved plan task by task, each task reviewed']])
+      ['execute-plan', 'Carry out the approved plan task by task, each task reviewed'],
+      ['hookify', "Add a rule for this repo, written as a plain Markdown file"], ['hookify-list', "This repo's rule files"],
+      ['santa', 'Two independent reviewers must both pass: on or off'], ['test-coverage', 'Which changed lines no test runs, then the missing tests (add: report)'],
+      ['epic', 'Break a big job into linked GitHub issues'], ['epic-publish', 'Create the planned issues on GitHub'], ['epic-sync', 'Tick the epic from the issues on GitHub'],
+      ['learnings-export', "Save what Hoola learned here to .hoola/learnings.json"], ['learnings-import', 'Bring in what Hoola learned in another repo (owner/name)']])
     .sort((a, b) => a[0] < b[0] ? -1 : 1);
   function pickClose() { PICK = null; const b = $('#hcdPick'); if (b) b.remove(); }
   function pickFor(ta) {
@@ -1827,6 +1842,8 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
         toast(r === 'code' ? `Files back at checkpoint ${n}. The conversation is unchanged.` : r === 'conversation' ? `Conversation back at checkpoint ${n}. The files keep their changes.` : `Back at checkpoint ${n}.`); }); },
     redo: async b => {   /* v0.999 undo the last going-back (OpenCode's staged revert), until her next message */
       await busy(b, async () => { await api('POST', `/api/devsahayak/tasks/${tid()}/redo`); await again(); toast('Back as it was before you went back.'); }); },
+    epicpub: () => sendMessage('/epic-publish'),          /* v0.999 her tap = her command: Hoola creates the issues */
+    epicsync: () => sendMessage('/epic-sync'),
     wtshow: async b => { const w = b.dataset.wt;   /* v0.999 an agent's own copy: its diff */
       try { const r = await api('GET', `/api/devsahayak/tasks/${tid()}/worktrees/${encodeURIComponent(w)}`);
         await dialog(`<h2>Changes in the agent's own copy ${esc(w)}</h2><p class="hcd-mut">Not in your working copy yet.</p>${diffHTML(String(r.diff || '').split('\n').slice(0, 3000)) || '<p>No changes.</p>'}
@@ -2106,7 +2123,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
                 <input name="value" type="password" autocomplete="off" placeholder="the key" maxlength="4000" aria-label="The key" required><button class="hcd-btn sm" type="submit">Save key</button></form></div>
             <div class="hcd-rsec" data-mem="${esc(r.repo)}"><h3>What Hoola remembers</h3>
               <p class="hcd-mut">Notes Hoola keeps from earlier sessions on this repo; a new session starts with them. Your &lt;private&gt; text and anything that looks like a key are never kept.</p>
-              <div class="hcd-acts"><button type="button" class="hcd-btn sm" data-memshow="${esc(r.repo)}">Show</button></div><div data-memlist></div></div>
+              <div class="hcd-acts"><button type="button" class="hcd-btn sm" data-memshow="${esc(r.repo)}">Show</button><button type="button" class="hcd-btn sm" data-memexp="${esc(r.repo)}">Export</button><button type="button" class="hcd-btn sm" data-memimp="${esc(r.repo)}">Bring in from another repo</button></div><div data-memlist></div></div>
             <div class="hcd-rsec"><h3>GitHub events</h3>
               <p class="hcd-mut">${(r.events || {}).on ? `<span class="hcd-c ok">Connected</span>${(r.events.last || {}).at ? ' · last event ' + esc(ago(r.events.last.at)) : ' · nothing received yet'}${r.events.by_hoola ? '' : ' · webhook added by you'}` : 'GitHub can tell Hoola when an issue is labelled, a pull request is opened, a CI run fails or something is pushed - to start one of your scheduled tasks.'}</p>
               <div class="hcd-acts"><button type="button" class="hcd-btn sm" data-events="${esc(r.repo)}" data-on="${(r.events || {}).on ? 1 : 0}">${(r.events || {}).on ? 'Disconnect' : 'Connect GitHub events'}</button></div></div></details>`).join('') || '<p class="hcd-mut">No repos yet.</p>'}
@@ -2157,6 +2174,20 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
           try { await api('DELETE', `/api/devsahayak/memory?repo=${encodeURIComponent(full)}`); toast('Forgotten.'); await memPaint(box); } catch (e) { toast(e.message, true); } });
       } catch (e) { toast(e.message, true); } };
     EL.querySelectorAll('[data-memshow]').forEach(b => b.addEventListener('click', () => memPaint(b.closest('[data-mem]'))));
+    EL.querySelectorAll('[data-memexp]').forEach(b => b.addEventListener('click', async () => {   /* v0.999 ECC's instinct-export */
+      try { const d = await api('GET', `/api/devsahayak/memory/export?repo=${encodeURIComponent(b.dataset.memexp)}`);
+        if (!d.count) return toast('Nothing to export yet.');
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(d, null, 2)], {type: 'application/json'}));
+        a.download = b.dataset.memexp.replace('/', '-') + '-learnings.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        toast(`Exported ${plural(d.count, 'learning')}.`); } catch (e) { toast(e.message, true); } }));
+    EL.querySelectorAll('[data-memimp]').forEach(b => b.addEventListener('click', async () => {   /* v0.999 ECC's instinct-import */
+      const to = b.dataset.memimp, from = (prompt(`Bring what Hoola learned in which of your repos into ${to}? (owner/name)`) || '').trim();
+      if (!from) return;
+      try { const dry = await api('POST', '/api/devsahayak/memory/import', {repo: to, from_repo: from, dry_run: true});
+        if (!dry.new) return toast(dry.said);
+        if (!confirm(dry.said + '\n\nBring them in?')) return;
+        const r = await api('POST', '/api/devsahayak/memory/import', {repo: to, from_repo: from}); toast(r.said); await memPaint(b.closest('[data-mem]'));
+      } catch (e) { toast(e.message, true); } }));
     EL.querySelectorAll('[data-events]').forEach(b => b.addEventListener('click', async () => { const full = b.dataset.events; b.disabled = true;
       try {
         if (b.dataset.on === '1') { if (!confirm(`Stop GitHub events for ${full}? Tasks that start on an event will no longer start.`)) { b.disabled = false; return; }

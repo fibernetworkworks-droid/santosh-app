@@ -746,6 +746,53 @@ def reality_check(tools: Any, ses: Any, t: Any, follow_up: str, finish: dict[str
     return verdict, ""
 
 
+def _santa_on(ses: Any) -> bool:
+    try:
+        from . import santa as SN
+        return SN.is_on(ses)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _santa_gate(tools: Any, ses: Any, t: Any, follow_up: str, inp: dict[str, Any], emit: Any, stopped: Any,
+                reality: dict[str, Any]) -> str:
+    """v0.999 santa.py: both independent reviewers must pass. '' = may finish; else the note that sends it back.
+    After the last allowed fix round it finishes with the open issues written into risk."""
+    from . import santa as SN
+    try:
+        from . import subagent as SA
+        if not SA.on() or not ses.changed():
+            reality["santa_done"] = True
+            return ""
+    except Exception:  # noqa: BLE001
+        reality["santa_done"] = True
+        return ""
+    n = int(reality.get("santa_n") or 0) + 1
+    limit = max(1, int(_set("dev_santa_rounds", 3) or 3))
+    pick = (getattr(B.PICK, "model", "") or "", getattr(B.PICK, "effort", "") or "")
+    try:
+        res = SN.review(tools, ses, t, follow_up, inp, emit, stopped, list(reality.get("santa_issues") or []),
+                        pick=pick, part=B.carry())
+    except Stopped:
+        raise
+    except Exception as e:  # noqa: BLE001 - reviewers that cannot run never block her work
+        log.warning("santa review skipped: %s", e)
+        reality["santa_done"] = True
+        return ""
+    reality["santa_n"] = n
+    emit({"k": "santa", "round": n, "of": limit, "ok": bool(res.get("ok")), "ran": bool(res.get("ran")),
+          "verdicts": res.get("verdicts") or [], "issues": (res.get("issues") or [])[:10]})
+    if not res.get("ran") or res.get("ok"):
+        reality["santa_done"] = True
+        return ""
+    reality["santa_issues"] = res["issues"]
+    if n >= limit:
+        reality["santa_done"] = True
+        inp["risk"] = (str(inp.get("risk") or "").rstrip() + "\n" + SN.open_risk(res)).strip()
+        return ""
+    return SN.back_text(res, n, limit)
+
+
 def tools_for_round() -> list[dict[str, Any]]:
     extra: list[dict[str, Any]] = []
     try:
@@ -1002,6 +1049,15 @@ class Tools:
             cg = self._config_guard(rel, f.read_bytes().decode("utf-8", errors="replace"), str(content))
             if cg:
                 return cg
+        else:                                             # v0.999 a new file still answers to the repo's rule files
+            try:
+                from . import hookify as HK
+                no, warn = HK.file(self.s.repo, rel, "", str(content))
+            except Exception:  # noqa: BLE001
+                no, warn = "", ""
+            if no:
+                return no
+            self.rule_pending = (getattr(self, "rule_pending", "") or "") + warn
         f.parent.mkdir(parents=True, exist_ok=True)
         body = str(content)
         if not new and _crlf(f) and "\r\n" not in body:  # v0.933 a Windows-style file keeps its line endings
@@ -1826,9 +1882,15 @@ class Tools:
             return (f"Your call to {name} did not run: its arguments were not valid JSON (they start: "
                     f"{str(inp[B.BROKEN_KEY])[:160]!r}). Send the call again with valid JSON. For a big file, write a "
                     "small first version and then add to it with edit, instead of one very large write.")
+        if name == "bash":                                # v0.999 the repo's own rule files (hookify.py), before it runs
+            no, warn = self._rule_bash(str(inp.get("command") or ""))
+            if no:
+                return no
         try:
             out = fn(**repair_input(self._schema_of(name), {k: v for k, v in inp.items() if not k.startswith("_")}))
             out = self._sp_track(name, inp, out)          # v0.999 Superpowers' iron laws, counted in code
+            if isinstance(out, str):
+                out += (warn if name == "bash" else "") + self._rule_notes()
             if name in ("read", "edit", "multi_edit", "write", "notebook_edit") and inp.get("path") and isinstance(out, str):
                 with SPILL_LOCK:                          # parallel reads touch the same session notes
                     out += self._folder_rules(str(inp.get("path")))
@@ -1878,12 +1940,37 @@ def _config_guard(self: Any, rel: str, old: str, new: str) -> str:
     words ask for it."""
     try:
         from . import configguard as CG
-        return CG.check(rel, old, new, str(getattr(self, "her_words", "") or ""))
+        no = CG.check(rel, old, new, str(getattr(self, "her_words", "") or ""))
+        if no:
+            return no
     except Exception:  # noqa: BLE001 - the guard never breaks an edit
+        pass
+    try:                                                  # v0.999 the repo's own rule files (hookify.py)
+        from . import hookify as HK
+        no, warn = HK.file(self.s.repo, rel, old, new)
+        if warn:
+            self.rule_pending = (getattr(self, "rule_pending", "") or "") + warn
+        return no
+    except Exception:  # noqa: BLE001
         return ""
 
 
+def _rule_bash(self: Any, cmd: str) -> tuple[str, str]:
+    try:
+        from . import hookify as HK
+        return HK.bash(self.s.repo, cmd)
+    except Exception:  # noqa: BLE001 - a rule file never breaks a command
+        return "", ""
+
+
+def _rule_notes(self: Any) -> str:
+    note, self.rule_pending = getattr(self, "rule_pending", "") or "", ""
+    return note
+
+
 Tools._config_guard = _config_guard
+Tools._rule_bash = _rule_bash
+Tools._rule_notes = _rule_notes
 
 
 LOCK_OF = {"package-lock.json": "package.json", "npm-shrinkwrap.json": "package.json", "yarn.lock": "package.json",
@@ -2347,6 +2434,89 @@ def _ponytail_cmd(tools: Any, ses: Any, words: str, parts: list[str], emit: Any)
     return True
 
 
+def _ecc_cmds(tools: Any, ses: Any, words: str, parts: list[str], emit: Any) -> bool:
+    """v0.999 ECC 6-10 typed in her message: /hookify, /hookify-list, /santa, /test-coverage, /epic*, /learnings-*.
+    True when it was one of them."""
+    w = words or ""
+    if re.match(r"^\s*/hookify-list\b", w):
+        from . import hookify as HK
+        parts.append("<her_command>/hookify-list</her_command>\n" + HK.listing(ses.repo)
+                     + "\nShow her these rules in done, one line each (a BROKEN one with why). Change nothing.")
+        emit({"k": "cmd", "name": "hookify-list", "repo": False})
+        return True
+    if re.match(r"^\s*/hookify\b", w):
+        from . import hookify as HK
+        rest = re.sub(r"^\s*/hookify\b", "", w).strip()
+        recent = ""
+        if not rest:
+            try:
+                recent = "\n".join(f"{m.get('role')}: {str(m.get('content'))[:600]}" for m in ses.messages()[-12:]
+                                   if isinstance(m.get("content"), str))
+            except Exception:  # noqa: BLE001
+                recent = ""
+        parts.append(HK.write_text(rest, recent))
+        emit({"k": "cmd", "name": "hookify", "repo": False})
+        return True
+    from . import santa as SN
+    is_santa, want = SN.parse_cmd(w)
+    if is_santa:
+        try:
+            said = SN.set_on(ses, want)
+        except ValueError as e:
+            said = str(e)
+        parts.append("<her_command>/santa</her_command>\n" + said + "\nTell her that in one line in done; change nothing "
+                     "and start no other work.")
+        emit({"k": "cmd", "name": "santa", "repo": False})
+        return True
+    from . import testcover as TC
+    is_tc, report_only = TC.parse_cmd(w)
+    if is_tc and TC.on():
+        try:
+            diff = ses.diff(limit=400000)
+        except Exception:  # noqa: BLE001
+            diff = ""
+        parts.append(TC.command_text(diff, report_only))
+        emit({"k": "cmd", "name": "test-coverage", "repo": False})
+        return True
+    from . import epic as EP
+    kind, rest = EP.parse_cmd(w)
+    if kind and EP.on():
+        g, repo = getattr(tools, "gh_client", None), str(getattr(tools, "repo_full", "") or "")
+        if kind == "plan":
+            issue_txt, parent = "", 0
+            m = re.match(r"^#?(\d+)\b", rest)
+            if m and g is not None and repo:
+                try:
+                    iss = g.issue(repo, int(m.group(1)))
+                    parent = int(m.group(1))
+                    issue_txt = f"#{parent} {iss.get('title') or ''}\n{iss.get('body') or ''}"
+                except Exception as e:  # noqa: BLE001
+                    issue_txt = f"(issue #{m.group(1)} could not be read: {str(e)[:200]})"
+            ses.meta["epic_parent"] = parent
+            ses.save_meta()
+            parts.append(EP.plan_text(rest, issue_txt))
+        else:
+            if g is None or not repo:
+                said = "GitHub is not connected for this session, so nothing was created."
+            else:
+                said, ev = (EP.publish if kind == "publish" else EP.sync)(g, repo, ses)
+                if ev:
+                    emit(ev)
+            parts.append(f"<her_command>/epic-{kind}</her_command>\n{said}\nTell her that in one line in done; change no file.")
+        emit({"k": "cmd", "name": "epic" if kind == "plan" else f"epic-{kind}", "repo": False})
+        return True
+    try:
+        from . import learnshare as LS
+        note = LS.command(tools, ses, w)
+    except Exception as e:  # noqa: BLE001
+        note = f"<her_command>/learnings</her_command>\nIt could not run: {str(e)[:200]}. Tell her so in one line."
+    if note:
+        parts.append(note)
+        emit({"k": "cmd", "name": LS.parse_cmd(w)[0] and ("learnings-" + LS.parse_cmd(w)[0]), "repo": False})
+        return True
+    return False
+
+
 def her_text(text: str) -> str:
     """Her own words inside the wrapper a follow-up arrives in."""
     m = re.search(r"<(her_follow_up|her_change|her_note_while_you_work)>\n?(.*?)\n?</\1>", text or "", re.S)
@@ -2379,6 +2549,16 @@ def her_blocks(tools: Any, ses: Any, words: str, emit: Any) -> str:
                          + "\nDo NOT do the request. Call done and tell her what the hook said.</hook_refused>")
         elif said.get("context"):
             parts.append("<prompt_hook>\n" + said["context"][:6000] + "\n</prompt_hook>")
+    try:                                                  # v0.999 the repo's own rule files for her messages (hookify.py)
+        from . import hookify as HK
+        hit = HK.prompt(ses.repo, words) if not re.match(r"^\s*/hookify", words or "") else {"block": [], "warn": []}
+    except Exception:  # noqa: BLE001
+        hit = {"block": [], "warn": []}
+    if hit["block"]:
+        parts.append("<hook_refused>" + HK.refusal(hit["block"], "this request") + "\nDo NOT do the request. Call done and "
+                     "tell her what the rule says.</hook_refused>")
+    elif hit["warn"]:
+        parts.append(HK.warning(hit["warn"]).strip())
     body = ""
     mp = None
     try:
@@ -2394,6 +2574,8 @@ def her_blocks(tools: Any, ses: Any, words: str, emit: Any) -> str:
         parts.append(SECURITY_REVIEW)
         emit({"k": "cmd", "name": "security-review", "repo": False})
     elif _ponytail_cmd(tools, ses, words, parts, emit):    # v0.999 /ponytail [level], /ponytail-review|audit|debt
+        pass
+    elif _ecc_cmds(tools, ses, words, parts, emit):        # v0.999 ECC 6-10: hookify, santa, test-coverage, epic, learnings
         pass
     else:
         try:
@@ -3844,6 +4026,7 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
             ses.meta.setdefault("allow", {})["edits"] = True
     her_words = her_text(follow_up or str(getattr(t, "text", "") or ""))
     tools.her_words = (her_words + " " + str(getattr(t, "text", "") or ""))[:8000]   # v0.999 Karpathy: a layout ask is the task
+    tools.tenant, tools.repo_full, tools.gh_client = str(getattr(t, "tenant_id", "") or ""), str(t.repo or ""), g
     her_extra = her_blocks(tools, ses, her_words, emit)
     try:                                                  # v0.999 Superpowers: the process skills for this kind of work
         from . import superpowers as SPW
@@ -3951,6 +4134,12 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
         toolset = [({**x, "description": x["description"].replace("NO internet", "the network described under NETWORK")}
                     if x.get("name") == "bash" else x) for x in toolset]
     round_tools = toolset + [t_ for t_ in tools_for_round() if t_ not in TOOLS]   # + the ECC agent tool
+    try:                                                  # v0.999 /epic: the breakdown tool, only on that round
+        from . import epic as EP
+        if EP.on() and EP.parse_cmd(her_words)[0] == "plan":
+            round_tools.append(EP.TOOL)
+    except Exception:  # noqa: BLE001
+        pass
     notes = B.model_notes()                               # v0.999 OpenCode: a few words tuned to this model family
     if notes:
         system += "\n\n" + notes
@@ -3964,6 +4153,9 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
     max_steps = int(_set("dev_ws_steps", 150) or 150)
     if re.match(r"^\s*/(security-review|ponytail-(review|audit|debt))\b|^\s*/ponytail(\s+\S+)?\s*$", her_words or ""):
         tools.ask_only = True                             # v0.999 /security-review + Ponytail's reports: nothing changed
+    if re.match(r"^\s*/(hookify-list|santa|santa-loop|epic|epic-decompose|epic-publish|epic-sync|learnings-import)\b"
+                r"|^\s*/test-coverage\s+(report|only|check|--report)\b", her_words or ""):
+        tools.ask_only = True                             # v0.999 ECC 6-10 commands that report and change no file
     if not getattr(t, "mode", "") and tools.conf.get("mode") == "plan" and not continuing:
         tools.ask_only = True                             # settings.json defaultMode plan: the first round plans, changes nothing
         note = ("\n\n[This repo's settings start every session in PLAN mode: explore, then write your plan in done "
@@ -4200,6 +4392,27 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                     if note[0] == "needs_work":             # one honest look before she sees it: back to work once
                         results.append({"type": "tool_result", "tool_use_id": b["id"], "content": note[1]})
                         continue
+                if (not reality.get("santa_done") and getattr(t, "kind", "") != "explain" and not tools.ask_only
+                        and _santa_on(ses)):
+                    sn = _santa_gate(tools, ses, t, follow_up, inp, emit, stopped, reality)
+                    if sn:                                  # v0.999 ECC's Santa method: both reviewers must pass
+                        results.append({"type": "tool_result", "tool_use_id": b["id"], "content": sn})
+                        continue
+                if not reality.get("rules_stop"):
+                    reality["rules_stop"] = True            # v0.999 the repo's stop rule files (hookify.py), once a round
+                    try:
+                        from . import hookify as HK
+                        hit = HK.stop(ses.repo, ses.diff(limit=400000), [r["path"] for r in ses.changed()][:80],
+                                      str(inp.get("explain") or ""))
+                    except Exception:  # noqa: BLE001
+                        hit = {"block": [], "warn": []}
+                    if hit["block"] or hit["warn"]:
+                        emit({"k": "gate", "n": len(hit["block"]) + len(hit["warn"]),
+                              "items": [f"repo rule {r['name']}" for r in (hit["block"] + hit["warn"])[:8]]})
+                        results.append({"type": "tool_result", "tool_use_id": b["id"], "content":
+                                        ("Not finished yet - " + HK.refusal(hit["block"], "finishing like this")
+                                         if hit["block"] else "Check this before you finish:" + HK.warning(hit["warn"]))})
+                        continue
                 if not reality.get("stop_hook") and RC.hooks_for(tools.conf, "Stop"):
                     reality["stop_hook"] = True               # the repo's Stop hook may send it back to work, once a round
                     said = run_hooks(tools, "Stop")
@@ -4209,6 +4422,14 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
                         continue
                 finish = dict(inp)
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": "Finished."})
+                continue
+            if b["name"] == "epic":                        # v0.999 /epic: the breakdown, kept for her to publish
+                from . import epic as EP
+                out, ev = EP.propose(ses, inp, int(ses.meta.get("epic_parent") or 0))
+                if ev:
+                    emit(ev)
+                tools.trail.append("epic breakdown")
+                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out})
                 continue
             if b["name"] == "memory":                      # the repo's memory: search / timeline / get / save
                 from . import memory as M

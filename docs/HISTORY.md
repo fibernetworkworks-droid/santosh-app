@@ -13942,7 +13942,9 @@ itself), and Avro's 32-bit float was read as a 64-bit SQL float.
 NOT VERIFIED: on her server, with her own pipelines, tables and warehouse, or the workflow on GitHub.
 
 
-## v0.999.304 PLATFORM ENGINEER DESK (owner: "Platform Engineer same as finance desks")
+## v0.999.304 ECC 6 TO 10
+(owner: 'GO 6 TO 10' after the ECC check). Built from ECC's commands/hookify*.md + scripts/hooks/hookify-runtime.js (rule format + safe-pattern check), skills/santa-method/SKILL.md, commands/test-coverage.md, commands/epic-*.md, commands/instinct-export|import.md. Files: server/app/devsahayak/hookify.py, santa.py, testcover.py, epic.py, learnshare.py; engine.py (Tools.run bash rules + pending warnings, _config_guard file rules, t_write new-file rules, her_blocks prompt rules + _ecc_cmds, _santa_gate after the reality check, stop rules at done, epic tool on /epic rounds, ask_only for the reporting commands, tools.tenant / repo_full / gh_client set before her_blocks); subagent.py (santa-reviewer spec lookup); api.py GET /memory/export + POST /memory/import before /memory/{oid}; config.py dev_hookify / dev_santa / dev_santa_rounds / dev_test_coverage / dev_epic; code.js (commands, santa + epic steps, epicpub / epicsync acts, memory Export / Bring in); hoolacode.css (.hcd-epic); lib/ui/code/code_session.dart (santa + epic steps), code_assist.dart (commands); THIRD_PARTY_NOTICES.md. Tests: test_v0999_304_ecc_six_to_ten.py (10). NOT VERIFIED: no live round with two reviewers, a rule file or a published epic; the phone card compiles first on CI.
+## v0.999.305 PLATFORM ENGINEER DESK (built as 0.999.304; their ECC 6 TO 10 took 0.999.304, both kept; owner: "Platform Engineer same as finance desks")
 
 The Platform Engineer gets its own desk at /console/platform beside its own chat (Conversation kind `platform`, `server/app/pfchat.py`,
 family `platform`, Hub key `platform_eng`), built like the finance desks. Engine `server/app/pfdesk/` - all code, no model, nothing
