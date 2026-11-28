@@ -176,6 +176,12 @@ async def rebuild(tenant: str, force: bool = False) -> dict[str, Any] | None:
     if len(out.strip()) < 20:
         STATS["failed"] += 1
         return None
+    out = clean(out)
+    try:                                   # v0.999 the memory guard: after the secrets are masked, a line Hoola wrote
+        from .coder import guard as _guard  # that still fails it (an override, her tap, data leaving) is left out
+        out = "\n".join(ln for ln in out.splitlines() if _guard.safe(ln))
+    except Exception:  # noqa: BLE001
+        pass
     with session() as s:
         r = s.get(AboutMe, tenant)
         if r is None:

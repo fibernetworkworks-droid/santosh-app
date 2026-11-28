@@ -181,7 +181,7 @@ def everything(tenant: str) -> dict[str, Any]:
     from .db import MemoryFact, session
     from .yaad import YaadItem
     out: dict[str, Any] = {}
-    facts = life.memory_facts(tenant, 500)
+    facts = life.memory_facts(tenant, 500, safe_only=False)
     out["facts"] = [{"id": f.id, "text": f.text, "pinned": bool(f.pinned)} for f in facts]
     with session() as s:
         out["fact_count"] = s.scalar(select(func.count()).select_from(MemoryFact)

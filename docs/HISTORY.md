@@ -14169,3 +14169,7 @@ the Cloud desk shell. Tests `server/tests/test_sec_desk.py` (5, incl. a browser 
 and fails on exactly what the desk reports).
 
 NOT VERIFIED: on her server, with her own scanners' output, sites, certificates and code, or the workflow running on GitHub.
+
+
+## v0.999.313 MEMORY GUARD EVERYWHERE
+(owner: 'NOW WORK ON CHECKING MEMORY BEFORE IT'S SAVED', item 7). Files: server/app/coder/guard.py (negation, cache, in_her_words, last_user_words, check_memory, why, STATS), yaad.py (save_fact + relevant_facts), agent/life_tools.py (remember), life.py (memory_facts safe_only, imported heading), main.py + memory.py (her screen safe_only=False), coder/store.py, coder/skills_tool.py, agent/sandarbh_tools.py (kgmemory), devsahayak/memory.py, aboutme.py. Tests: test_v0999_313_memory_guard.py (13). NOT VERIFIED on her server.

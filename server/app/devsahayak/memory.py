@@ -162,6 +162,14 @@ def store(tenant: str, repo: str, task: str, o: dict[str, Any], source: str = "r
            "concepts": json.dumps([c for c in _j(o.get("concepts")) if c in CONCEPTS][:4]),
            "files_read": json.dumps([str(x)[:200] for x in _j(o.get("files_read"))[:15]]),
            "files_modified": json.dumps([str(x)[:200] for x in _j(o.get("files_modified"))[:15]])}
+    try:                                     # v0.999 the memory guard on what is KEPT (secrets are already masked above):
+        from ..coder import guard as _guard  # a repo's planted words never become a memory
+        if _guard.check_obs({"title": title, "subtitle": rec["subtitle"], "narrative": rec["narrative"],
+                             "facts": _j(rec["facts"])}):
+            STATS["skipped"] += 1
+            return None
+    except Exception:  # noqa: BLE001
+        pass
     now, k = int(time.time()), _key(title)
     with db() as c:
         row = c.execute("SELECT id FROM obs WHERE tenant=? AND repo=? AND title_key=?", (tenant, repo, k)).fetchone()
