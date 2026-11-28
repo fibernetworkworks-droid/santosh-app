@@ -4112,3 +4112,17 @@ Work Log:
 - 48 views walked: no findings
 Stage Summary:
 - NOT VERIFIED on her server
+
+---
+Task ID: 0.999.309
+Agent: Claude Code
+Task: WORLD PROMPTS + PASTE READER + DUPLICATE CHECK (prompts.chat items 1-3)
+Work Log:
+- read github.com/f/prompts.chat (c3e7767): code MIT, data CC0; notes docs/research/prompting/01_prompts_chat.md
+- prompting/world.py + world/world.json.gz: 1,635 of 3,235 prompts kept, drops counted by reason; /api/prompting/world
+- prompting/paste.py: blanks of every shape; /api/prompting/paste + /fill; page asks for them before reading her words
+- prompting/dupe.py: Jaccard + trigram; community copy refused, review shows close ones, copies last
+- page: Recipes shelf switch, World prompts view, paste step, review notes; THIRD_PARTY_NOTICES
+- 13 tests; 3 stale prompting version pins (0.999.169) healed
+Stage Summary:
+- NOT VERIFIED on her server

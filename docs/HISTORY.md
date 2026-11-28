@@ -14071,3 +14071,28 @@ Tests: `server/tests/test_v0999_306_dod.py` now 10 (+ the config a real Gateway 
 
 NOT VERIFIED: on her VPS with a real model and real OpenRouter keys; whether her VPS lets a container reach
 172.18.0.1:8077 (set DOD_HOOLA_URL if not); a real website through the coworker's browser (this sandbox's network blocks it).
+
+## v0.999.309 WORLD PROMPTS + PASTE READER + DUPLICATE CHECK (owner, after the prompts.chat read: "GO BUILD 1 2 3")
+
+Items 1-3 of docs/research/prompting/01_prompts_chat.md.
+
+1. **World prompts** (`server/app/prompting/world.py`, data `world/world.json.gz`, 551 KB): prompts.chat's prompts.csv at
+   c3e7767 (CC0 1.0) built by `python -m app.prompting.world build <prompts.csv> [commit]`. 3,235 read, 1,635 kept. Dropped:
+   too long for a brief (>1,800 chars) 743, JSON / YAML 377, code only 296, too short 45, not English 41, unsafe words 38, Hoola's
+   share screen 29, gibberish 13, more than 8 blanks 10, near copies 8. Each kept prompt: section chat (1,324), image (264, by its
+   type or picture words) or video (47), a group (Pictures, Video clips, Business, Writing, Learning, Career, Health and life, Fun,
+   Experts, Everything else), its blanks read by the paste reader and written ${key}. `use(world:<id>, values)` = a brief: her
+   values in, an empty blank stays [Label] (the writer's default is shown as an example only), chat prompts get goal "Use the
+   <title> prompt"; the text is the writer's, word for word. Ledger recipe `world:<id>` (kept counts shown like starters). Not on
+   Hoola's public /prompts pages. Switch `prompting_world` (default on). Routes GET /api/prompting/world?q=&group=&page=,
+   GET /api/prompting/world/{id}; /recipes/use takes world ids.
+2. **Paste reader** (`prompting/paste.py`): [[x]], {{x}}, [X], {Your Name}, <TOPIC>, %CODE%, ${x} / ${x:default}; HTML tags, code
+   words, Markdown link text, [x] ticks and lowercase JSON keys are not blanks; an upper-case placeholder is a blank even if it is
+   a code word. POST /api/prompting/paste (blanks), /paste/fill (her values in, empty = [Label]). The page asks for found blanks
+   before reading her words (#/pb), with "Use my words as they are".
+3. **Duplicate check** (`prompting/dupe.py`): normalised text, word Jaccard x 0.6 + trigram x 0.4; SAME 0.85, CLOSE 0.6. A community
+   recipe almost the same as a starter, a world prompt or a waiting / approved community recipe is refused on submit; the owner's
+   review list shows `similar` and `copy_of` and puts copies last.
+
+Detector and similarity ported from prompts.chat (MIT) - THIRD_PARTY_NOTICES.md. Tests `test_v0829_world_paste_dupe.py` (13); three
+stale prompting version pins (0.999.169) moved to the current version. NOT VERIFIED on her server.
