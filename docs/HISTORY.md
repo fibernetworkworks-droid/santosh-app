@@ -14195,3 +14195,39 @@ kept, and nothing is India-specific.
   Hoola chat for long ones. `paste.blanks(limit=)` reads up to 40 blanks for world prompts.
 - Shelf file world/world.json.gz 4.5 MB. Tests test_v0829_world_paste_dupe.py rewritten for the include-all rule (14,
   incl. a browser walk). NOT VERIFIED on her server; the shelf is fixed to the 28 Nov export until rebuilt.
+
+
+## v0.999.315 STUDIO FIXES
+(owner: 'NOW COME BACK TO WEB DEVLOPMENT IN HOOLA --- GO THROUGH ENTIER TOOL --- CHECK THE FLAWS IT HAS' -> 22 flaws found by a real-browser walk of the Web Studio + two code reads -> 'GO FIX ALL').
+Server: agent/site_tools.py (_HER_TAP_ONLY: delete, takedown, restore_version, moves_ok, shop_order to=confirmed refuse and say where she taps; website_dekho staff wall), site/hosting.py (connect_domain plans first, old domains retired only when the new one turns active: _retire_others in _check_pending + _check_direct), site/service.py (_find: escaped LIKE, drafts by id only, exact name first, ambiguous = SiteError, newest=False refuses an empty ref; brand_name 2-4 capitalised words; _say ready line; choose_look busy + start-failure restore; delete drops drafts), site/drafts.py (drop shared by discard + delete), site/galti.py (build_problem once per version, ignored stays ignored, record tolerates odd shapes), site/stream.py (WAIT_POOL 32 + wait_async), site/wapas.py (no empty-ref restore), main.py (_bint -> 400; stream uses wait_async).
+Studio page: static/console/webstudio.js (readThread retries with backoff, generation counter stops polling on leaving, ask() puts words + files back on failure, ensureConv only replaces a 404/410 chat and captures the site first, paneTyping keeps typing across server redraws, list-failed home, plain labels, plainErr for non-JSON errors, toast fallbacks, HEX() on liked colours, loadTpl request token, upgrade banner gated + dismissable) + webstudio.css (phone sidebar full width, panel bar + History rows wrap at phone width).
+Tests changed to the safe behaviour: test_v0808_wapas (tool restore refuses), test_v0623_koi_pata (tool moves_ok refuses), test_v122_hosting (tool takedown refuses).
+Left red, all red on unchanged HEAD too: test_v0623 test_version (stale pin), test_chatkit_webstudio x2, test_v0667_premium_studio::test_design_markers, test_v0777_chat_jaisa x2.
+NOT VERIFIED on her server.
+## v0.999.316 DEVSECOPS ENGINEER DESK (built as 0.999.313; their MEMORY GUARD EVERYWHERE, ALL WORLD PROMPTS and STUDIO FIXES took 0.999.313-315, all kept; owner: "DevSecOps Engineer same as finance desks")
+
+The DevSecOps Engineer gets its own section `/console/devsecops` and DevSecOps chat (Conversation kind `devsecops`, `dsochat.py`)
+on a NEW all-code engine `server/app/dsodesk/` (no model):
+- `workflows.py` - GitHub Actions files (`## path` chunks): third-party actions not pinned to a commit sha (actions/ and github/ trusted
+  by default, her own trusted owners added), script injection (PR title / body / branch / comment text inside run:), no or write-all
+  permissions, secrets for the whole workflow, self-hosted runners on pull requests, pull_request_target / workflow_run checking out
+  the PR head (runs PR code with secrets), curl | bash, no timeout, persist-credentials. Real line numbers.
+- `sbom.py` - CycloneDX and SPDX: licence family (strong / weak copyleft, permissive, unknown), her deny / allow lists with `*`; an OR
+  licence is denied only if every alternative is denied; no licence / version / purl; packages at several versions; ecosystems.
+- `deps.py` - package.json + lock (install scripts), requirements.txt, go.mod, Cargo.toml: not pinned, from git or a URL, extra
+  indexes, local replaces, names one edit off popular npm / PyPI packages (a swap counts as one).
+- `repo.py` - `gh api repos/O/R` and its branch protection JSON: reviews, stale reviews, code owners, status checks, force pushes,
+  deletion, admins, signed commits, secret scanning, Dependabot.
+- `metrics.py` - a findings CSV (id, severity, opened, closed, team): open, past due, median / p90 fix days, in-SLA share per severity
+  against her days, weekly backlog, age buckets, teams, the past-due list.
+- `ci.py` - `.github/workflows/pipeline-guard.yml` running the same line rules on her workflow files, failing at her level.
+
+Keys refused everywhere. NEW tool `devsecops_desk` (`agent/devsecops_tools.py`), registry 720. Hire key `devsecops_eng` (live, Software
+group). Console `dsodesk.html/.js/.css`. Tests `server/tests/test_dso_desk.py` (5, incl. a browser walk at 1440 and 390). Bugs caught
+while building: workflow line numbers one too high, a dual licence (MIT OR GPL) marked denied, a swapped-letter lookalike missed.
+
+NOT VERIFIED: on her server, with her own pipelines, SBOMs and repositories, or the guard workflow running on GitHub.
+
+
+## v0.999.317 CODE FLOW CHECK
+(owner: 'NOW CHECK ALL HOOLA CODE'). Probe: 14 asks through guess_kind / plan.assess / superpowers.pick / eccskills.for_words + the fixed prompt size. Files: server/app/devsahayak/service.py (_TESTS_PHRASE, _SYMPTOM, _BUILD_ASK, guess_kind), server/app/devsahayak/eccskills.py (WORDS). Tests: test_v0999_317_code_flow.py (16). NOT VERIFIED: no live coding round (needs the model key on her server: vps-ops code_card_hard).

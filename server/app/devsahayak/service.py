@@ -1013,6 +1013,17 @@ _CHANGE_ASK = re.compile(r"(?i)\b(add|build|make|create|change|implement|write|u
 
 
 _FIX_ASK = dict(_KIND_WORDS)["fix"]
+_TESTS_PHRASE = re.compile(r"(?i)\b((write|add)\s+(more\s+|some\s+|a\s+few\s+)?|more\s+)(unit\s+|the\s+|e2e\s+|integration\s+)?"
+                           r"tests?\b(\s+(for|to|everywhere|for it|for them))?|\btest (coverage|cases?)\b|\btests? (likho|likhiye)\b")
+_SYMPTOM = re.compile(r"(?i)\b(sometimes|randomly|intermittent\w*|keeps? (failing|crashing|logging|happening|showing|getting)|"
+                      r"stuck|hangs?|hanging|freez\w*|times? ?out|timing out|leak\w*|slow(er|ly|ness)?|"
+                      r"(doesn'?t|does not|isn'?t|is not|won'?t|will not) (work|load|save|show|open|send|update|appear|"
+                      r"working|loading|saving|showing|opening|sending|updating)|can'?t (log ?in|sign ?in|save|open|load|see|pay)|"
+                      r"cannot (log ?in|sign ?in|save|open|load|see|pay)|unable to|no longer|stopped working|logged out|"
+                      r"not (saving|loading|showing|sending|updating|opening|appearing)|missing|disappear\w*|duplicated?|"
+                      r"double[- ]charg\w*|wrong (total|amount|price|result|value|order)|nahi (ho|aa|dikh|khul|chal|ban)\w*|"
+                      r"atak\w*|band ho ja\w*|ruk ja\w*)\b")
+_BUILD_ASK = re.compile(r"(?i)^\s*(please\s+)?(add|build|create|implement|make|write|set ?up|banao|bana do)\b|\bnew (feature|page|screen|module)\b")
 
 
 def wants_change(text: str) -> bool:
@@ -1031,7 +1042,15 @@ def guess_kind(text: str) -> str:
         return "explain"
     for kind, rx in _KIND_WORDS:
         if rx.search(text or ""):
+            # v0.999 'refactor the order system and add tests' is a CODE change that also wants tests, not a tests-only
+            # job (whose rule is 'no behaviour change'): tests wins only when nothing else in her ask changes code
+            if kind == "tests" and _CHANGE_ASK.search(_TESTS_PHRASE.sub(" ", text or "")):
+                continue
             return kind
+    # v0.999 a bug she describes by what goes wrong ('users get logged out randomly', 'checkout is slow', 'the page
+    # doesn't load') is a fix - the debugging process loads - unless she is asking for something new
+    if _SYMPTOM.search(text or "") and not _BUILD_ASK.search(text or ""):
+        return "fix"
     return "write"
 
 

@@ -42,7 +42,12 @@
     if (form) payload = form; else if (body !== undefined) { headers['Content-Type'] = 'application/json'; payload = JSON.stringify(body); }
     const r = await fetch(path, {method, headers, body: payload, credentials: 'omit', cache: 'no-store'});
     if (r.status === 401) { location.replace('/console/'); throw new ApiError(401, 'Please sign in again.'); }
-    if (raw) { if (!r.ok) throw new ApiError(r.status, await r.text()); return r; }
+    if (raw) {                                          // v0.999.315 a refusal reads as words, never a raw HTML page
+      if (r.ok) return r;
+      const txt = await r.text().catch(() => '');
+      let j = null; try { j = JSON.parse(txt); } catch {}
+      const e = new ApiError(r.status, plainErr(j, txt, r.status)); e.data = j; throw e;
+    }
     let data = null; try { data = await r.json(); } catch {}
     if (!r.ok) {
       const bad = data && Array.isArray(data.detail) && data.detail[0];
@@ -50,7 +55,19 @@
         (bad ? S(bad.msg) : '') || `The server refused the request (${r.status})`;
       const e = new ApiError(r.status, msg); e.data = data; throw e;
     }
-    return data;
+    return data == null ? {} : data;                     // v0.999.315 a 2xx with no JSON body is an empty answer, never null
+  }
+  /* v0.999.315 the words of a refusal: the server's own detail, else a short plain line (an HTML error page is never shown) */
+  const BAD_ANSWER = 'The server did not answer properly. Try again.';
+  function plainErr(j, txt, status) {
+    if (j && typeof j === 'object') {
+      const d = typeof j.detail === 'string' ? j.detail : (j.detail && typeof j.detail === 'object' && typeof j.detail.detail === 'string' ? j.detail.detail : '');
+      const bad = Array.isArray(j.detail) && j.detail[0];
+      return d || S(j.error) || S(j.message) || (bad ? S(bad.msg) : '') || `The server refused the request (${status})`;
+    }
+    const t = S(txt).trim();
+    if (!t || t.startsWith('<') || /<\/?[a-z][^>]*>/i.test(t)) return BAD_ANSWER;
+    return t.slice(0, 200);
   }
   window.HoolaQuality?.use(api);              // v0.999.29 credits + the quality tier under every typing box
 
@@ -205,7 +222,7 @@
   const DEV = {pc: [1280, 860, 'Computer'], tablet: [820, 1100, 'Tablet'], phone: [390, 800, 'Phone']};
 
   let SITES = [], SPECS = [], CUR = null, CARD = null, VIEW = 'preview', DEVICE = 'pc', LOOK = 0, EDIT = false;
-  let POLL = null, SIG = '', PREFILL = '', BUSY = false, RO = null;
+  let POLL = null, SIG = '', PREFILL = '', BUSY = false, RO = null, LISTS_ERR = '';
   let IMPUI = null, IMP_BACK = null, IMP_DONE = '';     // HOOLA PROMPTING: the Improve sheet + her original words for Undo
   try {                                                  // "Open in Web Studio" from the Prompting page: lands in the box, never sent
     const d = localStorage.getItem('hoola.prompt.toWeb');
@@ -223,7 +240,7 @@
   async function route() {
     stopPoll(); clearTimeout(THREAD.timer); EDIT = false;
     const p = parts();
-    if (!(p[0] === 'site' && p[1])) { stopStream(); dropKit(); }   // v0.777 the thread's live stream ends with the site (and its kit thread)
+    if (!(p[0] === 'site' && p[1])) { stopStream(); dropKit(); THREAD.gen = (THREAD.gen || 0) + 1; THREAD.conv = ''; THREAD.site = ''; THREAD.waiting = false; }   // v0.777 the thread's live stream ends with the site; v0.999.315 its polling too
     if (!(p[0] === 'site' && p[1] && LIVE.site === decodeURIComponent(p[1]))) stopLive();
     try {
       if (p[0] === 'site' && p[1]) return await openSite(decodeURIComponent(p[1]), p[2] || '');
@@ -243,6 +260,7 @@
   async function loadLists() {
     const [a, b] = await Promise.allSettled([api('GET', '/api/sites'), api('GET', '/api/site-architect')]);
     SITES = a.status === 'fulfilled' ? L(a.value.sites) : [];
+    LISTS_ERR = a.status === 'fulfilled' ? '' : (S(a.reason && a.reason.message) || BAD_ANSWER);   // v0.999.315 never "No website yet" on a failed read
     SPECS = b.status === 'fulfilled' ? L(b.value.specs).filter(x => S(x.status) !== 'built') : [];
   }
 
@@ -335,6 +353,9 @@
       <span class="mut sm ell">${esc(S(x.words))}</span></span></a>`;
   }
 
+  /* v0.999.315 when the list could not be read she sees that, with Try again - never an empty "No website yet" */
+  const noSites = empty => LISTS_ERR ? `<div class="panel" data-lists-err role="alert"><b>Your websites could not be loaded.</b> <span class="mut">${esc(LISTS_ERR)}</span>
+      <div class="inl" style="margin-top:8px"><button class="b" type="button" data-act="lists-retry">Try again</button></div></div>` : `<div class="panel mut">${esc(empty)}</div>`;
   function drawHome(page) {
     const mode = store.get(MODE_KEY) === 'plan' ? 'plan' : 'build';
     let main;
@@ -354,7 +375,7 @@
       main = `<section class="wrap"><div class="sec"><h2 style="font-size:24px">All websites</h2><button class="b" type="button" data-act="new">${ico('plus', 16)}New website</button></div>
         <label class="find">${ico('search', 16)}<input id="wsFind" type="search" placeholder="Search your websites" aria-label="Search your websites" autocomplete="off"></label>
         ${SPECS.length ? `<div class="sec"><h2>Plans waiting for your approval</h2></div><div class="grid">${SPECS.map(specCard).join('')}</div>` : ''}
-        ${SITES.length ? `<div class="grid" id="wsAll">${SITES.map(siteCard).join('')}</div><p class="mut" id="wsNone" hidden>No website matches.</p>` : '<div class="panel mut">No website yet. Write one line on the Studio home.</div>'}</section>`;
+        ${SITES.length ? `<div class="grid" id="wsAll">${SITES.map(siteCard).join('')}</div><p class="mut" id="wsNone" hidden>No website matches.</p>` : noSites('No website yet. Write one line on the Studio home.')}</section>`;
     } else if (page === 'starred') {
       const st = SITES.filter(v => isStar(v.id));
       main = `<section class="wrap"><div class="sec"><h2 style="font-size:24px">Starred</h2></div>
@@ -385,7 +406,7 @@
         <div class="sgrid" id="wsStartGrid"></div></section>
       ${SPECS.length ? `<section class="wrap"><div class="sec"><h2>Plans waiting for your approval</h2></div><div class="grid">${SPECS.slice(0, 4).map(specCard).join('')}</div></section>` : ''}
       <section class="wrap"><div class="sec"><h2>Your websites</h2>${SITES.length ? `<a class="more" href="#/sites">View all ${ico('arrow', 13)}</a>` : ''}</div>
-        ${SITES.length ? `<div class="grid">${SITES.slice(0, 8).map(siteCard).join('')}</div>` : '<div class="panel mut">No website yet. Write one line above.</div>'}</section>
+        ${SITES.length ? `<div class="grid">${SITES.slice(0, 8).map(siteCard).join('')}</div>` : noSites('No website yet. Write one line above.')}</section>
       <section class="wrap"><div class="sec"><h2>Or start from</h2></div><div class="starts">
         <button class="st" type="button" data-src="focus"><span class="si">${ico('chat')}</span><span><b>Describe it</b><span class="mut sm">One line in your own words.</span></span></button>
         <button class="st" type="button" data-src="old"><span class="si">${ico('move')}</span><span><b>Move my old site</b><span class="mut sm">Your own site; old links keep working.</span></span></button>
@@ -487,10 +508,11 @@
   async function loadTpl(reset) {
     const grid = $('#wsTplGrid'); if (!grid) return;
     if (reset) TPL.rows = [];
+    const tok = TPL.req = (TPL.req || 0) + 1;              // v0.999.315 only the newest request may draw (an old Show more never appends)
     const qs = new URLSearchParams({q: TPL.q, sector: TPL.sector, kind: TPL.kind, style: TPL.style, offset: String(TPL.rows.length), limit: '30'});
     let r;
-    try { r = await api('GET', '/api/site-templates?' + qs); } catch (e) { $('#wsTplCount').textContent = e.message; return; }
-    if (!$('#wsTplGrid')) return;
+    try { r = await api('GET', '/api/site-templates?' + qs); } catch (e) { if (tok === TPL.req && $('#wsTplCount')) $('#wsTplCount').textContent = e.message; return; }
+    if (tok !== TPL.req || !$('#wsTplGrid')) return;
     TPL.rows = TPL.rows.concat(r.rows || []); TPL.total = r.total || 0; TPL.all = r.all || TPL.all;
     tplOptions('#wsTplInd', r.sectors || [], TPL.sector, 'All sectors');
     tplOptions('#wsTplGoal', r.types || [], TPL.kind, 'Any website type');
@@ -735,7 +757,7 @@
     if (kind === 'old') {
       const url = S(f.url.value).trim(); if (!url) { out.innerHTML = ''; return toast('Write the address first.', true); }
       res = await api('POST', '/api/site-design/read', {source: 'site', url}, {raw: true}).then(async r => ({ok: true, data: await r.json()}))
-        .catch(e => { let x = {}; try { x = JSON.parse(e.message); } catch {} return {ok: false, data: x, msg: S(x.detail || x.error) || e.message}; });
+        .catch(e => ({ok: false, data: M(e.data), msg: e.message}));
     } else {
       const file = f.file.files?.[0]; if (!file) { out.innerHTML = ''; return toast('Choose a picture first.', true); }
       const fd = new FormData(); fd.append('file', file);
@@ -1080,7 +1102,7 @@
     return cur ? {sec: RXE.pick.sec, path: cur.path, ...extra} : null; };
   async function rxDo(path, body, after) {
     if (RXE.busy) return; RXE.busy = true;
-    try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/rx/${path}`, body || {}); toast(S(r.say).slice(0, 160)); if (after) after(r); await rxLoad(true); rxDraw(); rxWatch(); }
+    try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/rx/${path}`, body || {}); toast(S(r.say).slice(0, 160) || 'Done.'); if (after) after(r); await rxLoad(true); rxDraw(); rxWatch(); }
     catch (er) { toast(er.message, true); }
     finally { RXE.busy = false; }
   }
@@ -1096,9 +1118,23 @@
     RXT = setTimeout(tick, 3000);
   }
 
+  /* v0.999.315 her typing is never wiped: a redraw the server starts (a build ended, a reply landed, the live stream woke
+     up) leaves the pane alone while she is typing in it - a field there has focus, or she changed one since the pane was
+     drawn - and only the status line moves. Her own taps (a view, a save) draw the pane as before. */
+  let PANE_TYPED = '';
+  const paneKey = () => (CUR ? S(CUR.id) : '') + '|' + VIEW;
+  function paneTyping() {
+    const pane = $('#wsPane'); if (!pane) return false;
+    const a = document.activeElement;
+    if (a && pane.contains(a) && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) && !/^(button|submit|checkbox|radio|file)$/i.test(S(a.type))) return true;
+    return PANE_TYPED === paneKey();
+  }
+  function autoPane() { if (paneTyping()) { drawState(); if (WORKING(CUR)) startPoll(); return false; } drawPane(); return true; }
+  APP.addEventListener('input', e => { if (e.target.closest && e.target.closest('#wsPane')) PANE_TYPED = paneKey(); });
+  APP.addEventListener('submit', e => { if (e.target.closest && e.target.closest('#wsPane')) PANE_TYPED = ''; }, true);
   function drawPane() {
     const pane = $('#wsPane'); if (!pane || !CUR) return;
-    stopPoll();
+    stopPoll(); PANE_TYPED = '';
     const fn = {preview, code, cloud, integrations, health, settings, history: historyView, drafts: draftsView, publish, details: detailsView, plans: planView}[VIEW] || preview;
     if (fn !== preview) delete pane.dataset.live;
     fn(pane, CUR);
@@ -1528,7 +1564,7 @@
     if (!LIVE.timer) LIVE.timer = setTimeout(flushLive, 110);
     // a change started elsewhere (her chat, a fix round): the first word written switches the screen to the live build
     if (CUR && S(CUR.id) === LIVE.site && !WORKING(CUR) && L(ev.slots).some(x => x.state === 'think' || x.state === 'write')) {
-      clearTimeout(LIVE.wake); LIVE.wake = setTimeout(() => { if (CUR && !WORKING(CUR)) reload(); }, 300);
+      clearTimeout(LIVE.wake); LIVE.wake = setTimeout(() => { if (CUR && !WORKING(CUR)) reload({auto: true}); }, 300);
     }
   }
   function liveFrames() { return [...APP.querySelectorAll('iframe[data-live]')]; }
@@ -1672,6 +1708,15 @@
 
   /* ---------- v0.999.119 D9: Upgrade this site - the new design beside her website, her tap to keep it ---------- */
   const UPG = {compare: '', busy: false};
+  /* v0.999.315 the upgrade offer is for websites she has had a while: not one built seconds ago (version 2 or more, or
+     the first version older than a day), and once she hides it, it stays hidden for that site in this browser */
+  const UPG_HIDE = id => 'hoola.ws.upg.hide.' + S(id);
+  function upgOffer(v) {
+    if (store.get(UPG_HIDE(v.id))) return false;
+    if ((Number(v.version) || 0) >= 2) return true;
+    const first = Math.min(...L(v.versions).map(x => tsec(x.at)).filter(t => t > 0));
+    return isFinite(first) && Date.now() / 1000 - first > 86400;
+  }
   function upgBar(v, isRx) {
     const u = M(v.upgrade);
     if (!Object.keys(u).length) return '';
@@ -1686,8 +1731,8 @@
     }
     if (u.status === 'failed') return `<div class="edbar" data-upgrade="failed"><b>The new design did not work out</b><span class="ell">${esc(S(u.error))} Your website is unchanged.</span><span class="sp"></span>
         <button class="b sm" type="button" data-act="upg-start">Try again</button><button class="b sm ghost" type="button" data-act="upg-discard">Throw it away</button></div>`;
-    if (u.can) return `<div class="edbar" data-upgrade="can"><b>A new design engine is here</b><span class="ell">Hoola rebuilds this website in the new design with your pages, words and photos. Your website does not change until you compare and keep it. It uses some credits.</span><span class="sp"></span>
-        <button class="b sm" type="button" data-act="upg-start">Upgrade this site</button></div>`;
+    if (u.can && upgOffer(v)) return `<div class="edbar upgcan" data-upgrade="can"><b>A new design engine is here</b><span class="upgtx">Hoola rebuilds this website in the new design with your pages, words and photos. Your website does not change until you compare and keep it. It uses some credits.</span><span class="sp"></span>
+        <button class="b sm" type="button" data-act="upg-start">Upgrade this site</button><button class="ib upgx" type="button" data-act="upg-hide" aria-label="Hide this offer" title="Hide this offer">×</button></div>`;
     return '';
   }
   function upgradeView(pane, v, top) {
@@ -1957,7 +2002,7 @@
     }
     const m = await api('GET', `/api/sites/${enc(CUR.id)}/mail`), lists = L(m.lists), rec = L(m.receipts), log = L(m.log);
     box.innerHTML = head('Emails') + (m.ready ? `<p class="mut sm">Sent from <code>${esc(S(m.from))}</code> through your mail service. ${esc(S(m.sent_today))} sent today${m.daily_cap ? ` of ${esc(S(m.daily_cap))} a day` : ''}.</p>`
-        : '<section class="cardp"><p><b>No mail service is set up yet.</b></p><p class="mut sm">Emails go through your own transactional mail service (ZeptoMail, Amazon SES or Brevo give an SMTP login). Its login is added on the server (SITE_MAIL_* in the server settings), never typed in chat. Until then nothing is sent and the login box does not offer email codes.</p></section>') +
+        : '<section class="cardp"><p><b>No mail service is set up yet.</b></p><p class="mut sm">Emails go through your own transactional mail service (ZeptoMail, Amazon SES or Brevo give an SMTP login). The owner has to set up the email service on the server; its login is never typed in chat. Until then nothing is sent and the login box does not offer email codes.</p></section>') +
       `<form class="cardp" id="wsMailForm"><h3>Sign-in emails</h3>
         <label class="inl"><input type="checkbox" name="codes" ${m.codes ? 'checked' : ''}> "Email me a code" and "Forgot password?" in the login box</label>
         <p class="mut sm">A code works for 10 minutes and only once; the email never says whether an account exists. A new password signs that person out everywhere.</p>
@@ -2043,7 +2088,7 @@
     if (!box.isConnected) return;
     const ls = L(r.links);
     box.innerHTML = ls.length ? ls.map(x => `<div class="kv" data-like="${esc(S(x.id))}"><span class="ell"><b>${esc(S(x.host))}</b>${S(x.note) ? ` <span class="mut sm">· ${esc(S(x.note))}</span>` : ''}</span>
-        <span class="sp"></span>${L(x.colours).slice(0, 5).map(c => `<span title="${esc(c)}" style="display:inline-block;width:14px;height:14px;border-radius:4px;border:1px solid rgba(0,0,0,.15);background:${esc(c)}"></span>`).join('')}
+        <span class="sp"></span>${L(x.colours).slice(0, 5).map(c => `<span title="${esc(c)}" style="display:inline-block;width:14px;height:14px;border-radius:4px;border:1px solid rgba(0,0,0,.15);background:${HEX(c) || 'transparent'}"></span>`).join('')}
         <button class="b sm ghost" type="button" data-act="like-del" data-like-id="${esc(S(x.id))}">Remove</button></div>`).join('')
       : '<p class="mut sm">No sites yet.</p>';
   }
@@ -2056,14 +2101,14 @@
   async function restoreVer(n, why) {
     if (!CUR) return false;
     if (!confirm(`${why || `Put the site back to v${n}?`} It becomes a new version (you can undo it from History). Enquiries, orders and other data are not touched.`)) return false;
-    try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/versions/${n}/restore`, {}); toast(S(r.say).slice(0, 180)); await reload(); return true; }
+    try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/versions/${n}/restore`, {}); toast(S(r.say).slice(0, 180) || 'Done.'); await reload(); return true; }
     catch (er) { toast(er.message, true); return false; }
   }
   async function bookmarkVer(n) {
     const cur = L(CUR?.versions).find(x => Number(x.version) === Number(n));
     const f = await dialog(`Bookmark v${n}`, `<label class="fld">Name (empty removes it)<input class="in" name="name" maxlength="80" value="${esc(S(cur?.bookmark))}" placeholder="Before the Diwali changes"></label>`);
     if (!f) return;
-    try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/versions/${n}/bookmark`, {name: S(f.get('name')).trim()}); toast(S(r.say)); await reload(); }
+    try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/versions/${n}/bookmark`, {name: S(f.get('name')).trim()}); toast(S(r.say) || 'Done.'); await reload(); }
     catch (er) { toast(er.message, true); }
   }
   const DIFFS = {};
@@ -2130,14 +2175,14 @@
     const parent = S(CUR.draft_of) || CUR.id;
     if (act === 'dft-discard') {
       if (!confirm('Discard this draft? Its changes are deleted. Your website is not touched.')) return;
-      try { const r = await api('DELETE', `/api/sites/${enc(parent)}/drafts/${enc(did)}`); toast(S(r.say)); }
+      try { const r = await api('DELETE', `/api/sites/${enc(parent)}/drafts/${enc(did)}`); toast(S(r.say) || 'Done.'); }
       catch (er) { return toast(er.message, true); }
       if (CUR.id === did) { go('#/site/' + enc(parent) + '/drafts'); return; }
       return drawPane();
     }
     const res = {}; (card || document).querySelectorAll('.dfc').forEach(f => { res[f.dataset.item] = f.querySelector('input:checked')?.value || 'site'; });
     if (!confirm('Merge this draft into the website? It becomes one new version of the website (undo it from History). No data is moved.')) return;
-    try { const r = await api('POST', `/api/sites/${enc(parent)}/drafts/${enc(did)}/accept`, {confirm: true, resolutions: res}); toast(S(r.say).slice(0, 200)); }
+    try { const r = await api('POST', `/api/sites/${enc(parent)}/drafts/${enc(did)}/accept`, {confirm: true, resolutions: res}); toast(S(r.say).slice(0, 200) || 'Done.'); }
     catch (er) { return toast(er.message, true); }
     go('#/site/' + enc(parent));
   }
@@ -2210,17 +2255,19 @@
         const v = await api('GET', `/api/sites/${enc(id)}`);
         if (!CUR || CUR.id !== id) return;
         const changed = sig(v) !== SIG, moved = actSig(v) !== actSig(CUR); CUR = v;
-        if (changed && (VIEW === 'preview' || !WORKING(v))) { drawState(); drawPane(); }
+        if (changed && (VIEW === 'preview' || !WORKING(v))) { drawState(); autoPane(); }
         else { if (moved) drawActivity(); else drawState(); startPoll(); }
       } catch { startPoll(); }
     }, 2000);
   }
   function stopPoll() { if (POLL) { clearTimeout(POLL); POLL = null; } }
-  async function reload() {
+  async function reload(opts = {}) {
     if (!CUR) return;
     try {
-      const was = Number(CUR.version) || 0;
-      CUR = await api('GET', `/api/sites/${enc(CUR.id)}`); drawState(); drawPane(); loadErrors();
+      const was = Number(CUR.version) || 0, id = CUR.id;
+      const v = await api('GET', `/api/sites/${enc(id)}`);
+      if (!CUR || CUR.id !== id) return;                     // she moved on meanwhile
+      CUR = v; drawState(); if (opts.auto) autoPane(); else drawPane(); loadErrors();
       if ((Number(CUR.version) || 0) !== was && THREAD.site === S(CUR.id)) { THREAD.sig = ''; drawMsgs(); }   // v0.808 the reply's Version / Undo footer
     } catch (e) { toast(e.message, true); }
   }
@@ -2260,7 +2307,7 @@
         <div class="inl"><button type="button" class="b sm pri" data-act="err-fix" data-id="${esc(S(e.id))}" title="Ctrl+Enter">${S(e.next) === 'plan' ? 'Plan for root cause' : 'Try to fix'}</button>
           <button type="button" class="b sm" data-act="err-more" data-id="${esc(S(e.id))}" aria-expanded="${!!GALTI.open[e.id]}">${GALTI.open[e.id] ? 'Hide details' : 'Show details'}</button><span class="sp"></span>
           <button type="button" class="b sm ghost" data-act="err-ign" data-id="${esc(S(e.id))}">Ignore</button></div></div>`).join('')
-      + (es.length > 3 ? `<p class="mut sm">${es.length - 3} more problem(s) · website_dekho can list them all</p>` : '')
+      + (es.length > 3 ? `<p class="mut sm">${es.length - 3} more problem(s) · ask Hoola in the chat to list them all</p>` : '')
       + (seen.length && !es.length ? `<p class="errok">${ico('check', 12)} ${seen.length === 1 ? 'The last problem' : seen.length + ' problems'} not seen since v${esc(S(CUR?.version))}</p>` : '');
     const bar = $('#wsPerr');
     if (bar) {
@@ -2275,7 +2322,7 @@
     if (!CUR || THREAD.waiting) { if (THREAD.waiting) toast('Hoola is working; press Try to fix when this step ends.', true); return; }
     try {
       const r = await api('POST', `/api/sites/${enc(CUR.id)}/errors/${enc(id)}/fix`, {});
-      toast(S(r.say));
+      toast(S(r.say) || 'Asking Hoola to fix it.');
       await ask(S(r.text), {mode: S(r.mode) === 'plan' ? 'plan' : 'build', hints: [`fixing a preview error (try ${S(r.attempt)}), details in your rules as error_to_fix`]});
       loadErrors();
     } catch (er) { toast(er.message, true); }
@@ -2325,18 +2372,31 @@
   };
   const LONG_PASTE = 1500;                                   // a paste longer than this travels as a text file
   async function ensureConv() {
-    if (THREAD.conv && THREAD.site === CUR.id) return THREAD.conv;
-    THREAD.site = CUR.id;
-    let c = store.get(convKey(CUR.id));
-    if (c) { try { await api('GET', `/api/conversations/${enc(c)}/messages?limit=1`); } catch { c = ''; } }
-    if (!c) { c = await newConv(`Website · ${name(CUR)}`); store.set(convKey(CUR.id), c); }
-    THREAD.conv = c; THREAD.loaded = true;
+    if (!CUR) throw new Error('Open a website first.');
+    const site = S(CUR.id), title = `Website · ${name(CUR)}`;   // v0.999.315 taken BEFORE the awaits: a switch mid-call never binds the wrong site
+    if (THREAD.conv && S(THREAD.site) === site) return THREAD.conv;
+    let c = store.get(convKey(site));
+    if (c) {
+      // only a conversation the server says is gone is replaced; a blip (500, timeout) keeps her site chat and says so
+      try { await api('GET', `/api/conversations/${enc(c)}/messages?limit=1`); }
+      catch (e) { if (e.status === 404 || e.status === 410) c = ''; else throw new Error('This website\'s chat could not be reached. Try again.'); }
+    }
+    if (!c) { c = await newConv(title); store.set(convKey(site), c); }
+    if (!CUR || S(CUR.id) !== site) return c;               // she moved to another site meanwhile: the thread stays hers
+    THREAD.site = site; THREAD.conv = c; THREAD.loaded = true;
     startStream(c);
     return c;
   }
+  /* v0.999.315 the thread's next read: only while the same site's thread is open (a generation number per open), so
+     leaving the site, or a late answer from an older read, never keeps /messages running on the home page */
+  function threadLater(ms, gen) {
+    clearTimeout(THREAD.timer); THREAD.timer = null;
+    if (gen !== THREAD.gen || !THREAD.conv || !CUR || S(CUR.id) !== S(THREAD.site)) return;
+    THREAD.timer = setTimeout(() => { if (gen === THREAD.gen) readThread(); }, ms);
+  }
   async function openThread() {
     clearTimeout(THREAD.timer); stopStream();
-    Object.assign(THREAD, {site: CUR.id, conv: store.get(convKey(CUR.id)), rows: [], live: '', raw: '', rawSeg: null, seq: 0, sig: '', waiting: false,
+    Object.assign(THREAD, {gen: (THREAD.gen || 0) + 1, fails: 0, site: CUR.id, conv: store.get(convKey(CUR.id)), rows: [], live: '', raw: '', rawSeg: null, seq: 0, sig: '', waiting: false,
       since: 0, steps: [], stepMap: new Map(), stepsRead: false, startedS: 0, turn: '', costs: [], think: null, loaded: false, stopping: false, sendNow: false,
       queue: [], files: [], pinned: true, thoughts: new Map(), turnOf: new Map(), editing: '', kl: {gen: (THREAD.kl?.gen || 0) + 1, n: 0, items: [], day: ''}});
     drawMsgs(); drawTray();
@@ -2616,7 +2676,7 @@
         drawWork(); return;
       case 'step': {
         const k = S(p.id) || ('e' + ev.id), t = ev.at ? tsec(ev.at) : nowS();
-        const x = THREAD.stepMap.get(k) || {label: S(p.label) || S(p.tool), at: t, state: 'run'};
+        const x = THREAD.stepMap.get(k) || {label: S(p.label) || 'Working', at: t, state: 'run'};
         if (p.label) x.label = S(p.label);
         if (p.state && p.state !== 'running') { x.state = p.state === 'error' ? 'error' : 'done'; x.end = t; }
         THREAD.stepMap.set(k, x);
@@ -2665,7 +2725,7 @@
     drawMsgs();                                              // the reply lands now; its steps / rupees line follows
     await Promise.all([readSteps(c), readCosts(c)]);
     if (c !== THREAD.conv) return;
-    drawMsgs(); reload();
+    drawMsgs(); reload({auto: true});
   }
   async function readCosts(c) {
     try { const r = await api('GET', `/api/conversations/${enc(c)}/costs?limit=60`); THREAD.costs = L(r.costs); } catch { /* the rupee line is extra */ }
@@ -2690,7 +2750,7 @@
         if (ev.kind !== 'step') continue;
         // the timeline keeps one row per step: `at` = when it started, `updated_at` = its latest state (the end)
         const pl = M(ev.payload), k = S(pl.id) || ('e' + ev.id), at = tsec(ev.at), upd = tsec(ev.updated_at) || at;
-        const x = by.get(k) || {label: S(pl.label) || S(pl.tool), at, state: 'run'};
+        const x = by.get(k) || {label: S(pl.label) || 'Working', at, state: 'run'};
         x.at = Math.min(x.at || at, at);
         if (pl.state !== 'running') { x.state = pl.state === 'error' ? 'error' : 'done'; x.end = Math.max(x.end || 0, upd); }
         if (pl.label) x.label = S(pl.label);
@@ -2811,7 +2871,7 @@
   /* the ONE working row: the kit's mark + the real step words + the clock (kitDraw), and Stop in the composer */
   function drawWork() { kitDraw(); drawStop(); }
   async function readThread() {
-    const c = THREAD.conv; if (!c) return;
+    const c = THREAD.conv, gen = THREAD.gen; if (!c) return;
     try {
       const r = await api('GET', `/api/conversations/${enc(c)}/messages?limit=60`);
       if (c !== THREAD.conv) return;
@@ -2819,7 +2879,15 @@
       const waitingTexts = new Set(THREAD.queue.map(q => clean(q.text)));
       THREAD.rows = [...L(r.messages).filter(m => !(m.role === 'user' && waitingTexts.has(clean(m.text)))), ...local];
       THREAD.loaded = true;
-    } catch { if (c === THREAD.conv && !THREAD.loaded) { THREAD.loaded = true; drawMsgs(); } return; }
+    } catch (er) {                                           // v0.999.315 a blip never ends the polling: try again, a little slower each time
+      if (c !== THREAD.conv || gen !== THREAD.gen) return;
+      if (er && (er.status === 404 || er.status === 410)) { if (!THREAD.loaded) { THREAD.loaded = true; drawMsgs(); } return; }   // the chat is gone: nothing to poll
+      if (!THREAD.loaded) { THREAD.loaded = true; drawMsgs(); }
+      THREAD.fails = (THREAD.fails || 0) + 1;
+      if (THREAD.waiting || !THREAD.connected) threadLater(Math.min(30000, 1500 * 2 ** Math.min(THREAD.fails, 5)), gen);
+      return;
+    }
+    THREAD.fails = 0;
     if (!THREAD.waiting) {                                   // a reload while Hoola is still answering: pick it up again
       const talk = THREAD.rows.filter(m => (m.role === 'user' || m.role === 'assistant') && S(m.text).trim());
       const last = talk[talk.length - 1];
@@ -2839,14 +2907,15 @@
       const answered = lu >= 0 && talk.slice(lu + 1).some(m => m.role === 'assistant');
       if (answered && !snap && !THREAD.queue.length) {
         if (THREAD.think) { THREAD.think.end = THREAD.think.end || nowS(); THREAD.lastThink = THREAD.think; THREAD.think = null; thoughtFor([...talk].reverse().find(m => m.role === 'assistant')?.text); }
-        THREAD.waiting = false; THREAD.startedS = 0; THREAD.stopping = false; endLive(); reload();
+        THREAD.waiting = false; THREAD.startedS = 0; THREAD.stopping = false; endLive(); reload({auto: true});
       }
       else if (Date.now() - (THREAD.started || Date.now()) > 15 * 60e3) { THREAD.waiting = false; THREAD.stopping = false; }
     }
     drawMsgs();
     // the stream carries the work; this read is the fallback (stream down) and a slow safety net (stream up)
-    clearTimeout(THREAD.timer);
-    if (THREAD.waiting || !THREAD.connected) THREAD.timer = setTimeout(readThread, THREAD.connected ? 4000 : 1500);
+    if (gen !== THREAD.gen) return;
+    if (THREAD.waiting || !THREAD.connected) threadLater(THREAD.connected ? 4000 : 1500, gen);
+    else { clearTimeout(THREAD.timer); THREAD.timer = null; }
   }
   /* ----- attachments: paperclip, drop, paste (a long paste becomes a chip that travels as a .txt file) ----- */
   function drawTray() {
@@ -2878,16 +2947,19 @@
   }
   async function ask(text, opts = {}) {
     text = S(text).trim(); if (!text || !CUR) return;
+    const said = text;                                        // what she wrote, as she wrote it (put back if the send fails)
     if (L(THREAD.files).some(f => f.state === 'up')) return toast('Wait a moment: a file is still attaching.', true);
     let mode = opts.mode || chatMode();
     const cmd = /^\/(plan|chat|build)\b\s*/i.exec(text);          // v0.782 "/plan ..." = this one message in that mode
     if (cmd) { mode = cmd[1].toLowerCase(); text = text.slice(cmd[0].length).trim(); if (!text) { setChatMode(mode); return; } }
-    const v = CUR;
-    const files = L(THREAD.files).filter(f => f.state === 'ok' && f.id);
+    const v = CUR, gen = THREAD.gen;
+    const files = L(THREAD.files).filter(f => f.state === 'ok' && f.id), allFiles = L(THREAD.files).slice();
+    let id = '', busy = false;
     try {
       const c = await ensureConv();
       THREAD.since = Math.max(0, ...THREAD.rows.map(m => Number(m.id) || 0));
-      const id = 'local-' + Date.now(), busy = THREAD.waiting, row = {id, role: 'user', text, mode, files: files.map(f => ({name: f.label}))};
+      id = 'local-' + Date.now(); busy = THREAD.waiting;
+      const row = {id, role: 'user', text, mode, files: files.map(f => ({name: f.label}))};
       if (busy) THREAD.queue.push(row);                       // she sent while Hoola works: it waits its turn, greyed, at the bottom
       else { THREAD.rows.push(row); THREAD.waiting = true; THREAD.started = Date.now(); THREAD.startedS = nowS(); THREAD.think = null; THREAD.lastThink = null; THREAD.stopping = false; THREAD.sendNow = true; THREAD.seq = 0; endLive(); }
       THREAD.files = []; drawTray();
@@ -2903,8 +2975,20 @@
       }
       await api('POST', `/api/conversations/${enc(c)}/messages`, {text, client_id: 'ws-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8), hints,
         ...(files.length ? {files: files.map(f => f.id).slice(0, 6)} : {})});
-      clearTimeout(THREAD.timer); THREAD.timer = setTimeout(readThread, THREAD.connected ? 4000 : 900);
-    } catch (e) { THREAD.waiting = false; drawMsgs(); toast(e.message, true); }
+      threadLater(THREAD.connected ? 4000 : 900, gen);
+    } catch (e) {
+      /* v0.999.315 a failed send never looks sent: her row goes, her words and files come back to the box, the reason shows */
+      if (id) {
+        THREAD.rows = THREAD.rows.filter(r => S(r.id) !== id); THREAD.queue = THREAD.queue.filter(r => S(r.id) !== id);
+        if (!busy) { THREAD.waiting = false; THREAD.startedS = 0; }
+      } else THREAD.waiting = busy && THREAD.waiting;
+      if (gen === THREAD.gen && CUR && S(CUR.id) === S(v.id)) {
+        if (!L(THREAD.files).length && allFiles.length) THREAD.files = allFiles;
+        const box = $('#wsTh'); if (box && !box.value.trim()) box.value = said;
+        THREAD.sig = ''; drawTray(); drawQueue(); drawMsgs();
+      }
+      toast('Not sent: ' + (e.message || BAD_ANSWER), true);
+    }
   }
   async function stopTurn() {
     if (!THREAD.conv) return;
@@ -3082,6 +3166,7 @@
     if (d.act === 'attach') { $('#wsFile')?.click(); return; }
     if (d.act === 'att-x') { THREAD.files.splice(Number(d.i), 1); drawTray(); return; }
     if (d.act === 'jump-latest') { const bx = $('#wsMsgs'); if (bx) { THREAD.pinned = true; bx.scrollTop = bx.scrollHeight; } b.hidden = true; return; }
+    if (d.act === 'upg-hide') { if (CUR) store.set(UPG_HIDE(CUR.id), '1'); b.closest('.edbar')?.remove(); return; }
     if (S(d.act).startsWith('upg-')) { upgAct(d.act, d); return; }
     if (d.act === 'compare') { LIVE.compare = !LIVE.compare; drawPane(); return; }
     if (d.act === 'jd-close') { LIVE.justDone = null; LIVE.compare = false; drawPane(); return; }
@@ -3097,6 +3182,7 @@
     }
     const act = d.act; if (!act) return;
     if (act === 'new') { if (location.hash && location.hash !== '#/') go('#/'); else $('#wsAsk')?.focus(); return; }
+    if (act === 'lists-retry') { route(); return; }                    // v0.999.315 the website list failed: read it again
     if (act === 'wrow') {                          // v0.999.35 the working row's steps
       WROW_OPEN = !WROW_OPEN; const w = b.closest('.hck-work'); if (w) w.classList.toggle('open', WROW_OPEN);
       b.setAttribute('aria-expanded', String(WROW_OPEN)); return;
@@ -3198,7 +3284,7 @@
       else if (act === 'export') {                    // v0.663 the zip lands on her computer, not only in her files
         toast(d.fmt === 'react' ? 'Packing the React + Vite project…' : 'Packing the website files…');
         const res = await api('GET', `/api/sites/${id}/download?format=${d.fmt === 'react' ? 'react' : 'zip'}`, undefined, {raw: true})
-          .catch(e => { let x = {}; try { x = JSON.parse(e.message); } catch {} throw new Error(S(x.detail || x.error) || e.message); });
+          .catch(e => { throw new Error(e.message || BAD_ANSWER); });
         const blob = await res.blob();
         const cd = res.headers.get('Content-Disposition') || '';
         const fn = decodeURIComponent((cd.match(/filename\*=UTF-8''([^;]+)/) || [])[1] || '') || `website${d.fmt === 'react' ? '-react' : ''}.zip`;
@@ -3289,7 +3375,7 @@
       if (file.size > 25 * 1024 * 1024) return toast('The photo is bigger than 25 MB.', true);
       if (RXE.busy) return; RXE.busy = true;
       const fd = new FormData(); fd.append('file', file); fd.append('sec', bd.sec); fd.append('path', JSON.stringify(bd.path));
-      try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/rx/picture/upload`, undefined, {form: fd}); toast(S(r.say).slice(0, 160)); await rxLoad(true); rxDraw(); rxWatch(); }
+      try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/rx/picture/upload`, undefined, {form: fd}); toast(S(r.say).slice(0, 160) || 'Done.'); await rxLoad(true); rxDraw(); rxWatch(); }
       catch (er) { toast(er.message, true); }
       finally { RXE.busy = false; }
       return;
@@ -3308,7 +3394,7 @@
     }
     if (kind === 'dft-new') {                             // v0.837 L13 start a draft
       const nm = S(f.querySelector('[name=name]')?.value).trim(); if (!nm) return;
-      try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/drafts`, {name: nm}); toast(S(r.say).slice(0, 160)); go('#/site/' + enc(S(r.id))); }
+      try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/drafts`, {name: nm}); toast(S(r.say).slice(0, 160) || 'Done.'); go('#/site/' + enc(S(r.id))); }
       catch (er) { toast(er.message, true); }
       return;
     }
@@ -3385,7 +3471,7 @@
     if (t.dataset.rxpic === 'slot') { RXE.slot = Number(t.value) || 0; return rxDraw(); }
     if (t.dataset.rxd && CUR) {
       const k = t.dataset.rxd, body = {[k]: k === 'radius' ? Number(t.value) : t.value};
-      (async () => { try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/rx/design`, body); RXE.design.design = M(r.design); toast(S(r.say).slice(0, 140)); rxDraw(); rxWatch(); } catch (er) { toast(er.message, true); } })();
+      (async () => { try { const r = await api('POST', `/api/sites/${enc(CUR.id)}/rx/design`, body); RXE.design.design = M(r.design); toast(S(r.say).slice(0, 140) || 'Done.'); rxDraw(); rxWatch(); } catch (er) { toast(er.message, true); } })();
     }
   });
   APP.addEventListener('input', e => { if (e.target.dataset.rxd === 'radius') { const o = APP.querySelector('[data-rxr]'); if (o) o.textContent = e.target.value; } });

@@ -121,7 +121,9 @@ def test_agent_can_restore_a_version(site_env, monkeypatch):
     S.save_version(sid, "x")
     ctx = Ctx(tenant_id=T, conversation_id=conv_ctx().conversation_id)
     out = asyncio.run(ST.website(ctx, "restore_version", site=sid, version=v1))
-    assert out["restored"] and "restore_version" in ST.SITE_TOOLS[0]["input_schema"]["properties"]["action"]["enum"]
+    # v0.999.308 bringing an old version back is HER tap in History: the tool says where, changes nothing
+    assert out["needs_her_tap"] and not out["done"] and "History" in out["say"] and S.get(T, sid)["version"] == v1 + 1
+    assert "restore_version" in ST.SITE_TOOLS[0]["input_schema"]["properties"]["action"]["enum"]
     assert "action=rollback is only for her LIVE address" in ST.SITE_TOOLS[0]["description"]
 
 
