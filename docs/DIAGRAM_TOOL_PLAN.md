@@ -2,7 +2,7 @@
 
 Owner: "clone the repo — develop it as it is as tools — when user ask in between and during work — hoola chat and
 hoola code will use this tool for showing perfect diagram in workspace to user — first make a plan", then four repos
-read one by one, then "rewrite the plan". Nothing is built yet; this file is the plan. v1 (diagram-design only) is
+read one by one, then "rewrite the plan", then "MAKE IT GLOBAL NOT INDIA NATIVE" (§7a). Nothing is built yet; this file is the plan. v1 (diagram-design only) is
 replaced by this one.
 
 ## 1. The four repos and what each one gives
@@ -69,9 +69,11 @@ ONE agent tool **`diagram`**, the same for Hoola chat and Hoola Code:
 | `analyze` / `pr` | (A, Hoola Code) Code Analysis of the repo; a PR walkthrough |
 
 Reachable: chat core tools, long jobs (goal rounds), team crews, a voice call via santosh_kaam (never declared to
-Gemini Live; the diagram lands in the chat), and Hoola Code's coder tools. Opens on diagram words in English and
-Hinglish (diagram, flowchart, architecture, sequence, ER, org chart, timeline, Gantt, funnel, journey, "draw how X
-works", "naksha" only with a diagram word near it — "naksha" alone is maps / the app spec).
+Gemini Live; the diagram lands in the chat), and Hoola Code's coder tools. Opens on diagram asks in ANY language
+(§7a): the model already understands "draw how X works" in every language it speaks, so the tool is offered to it by
+meaning, not by a word list in one language; a short keyword list per supported language only helps the tool show
+up sooner (diagram, flowchart, architecture, sequence, ER, org chart, timeline, Gantt, funnel, journey, and their
+translations), and never decides alone.
 
 **The flow, for every engine (her six steps):**
 1. She asks — any time, also in the middle of a job or a coding round.
@@ -101,7 +103,7 @@ works", "naksha" only with a diagram word near it — "naksha" alone is maps / t
 | Console chat | opens in the workspace panel beside the chat; versions, Share, Download; A: click to explore; C: the live editor in the panel | an artifact page (versions, share, signed sandboxed link exist) + a new editor view for C |
 | Phone chat | the card → full-screen viewer (pinch to zoom, A's click-to-explore works by touch); C on the phone = the picture + a "change it" box, full hand editing on the web console | `hoola_artifact.dart` / ArtifactScreen |
 | Hoola Code web + phone | a "Made in this session" card that opens full screen; Code Analysis + PR walkthrough as their own cards | NEW kind `diagram` in `devsahayak/made.py`, `code_made.dart` |
-| PDF reports, WhatsApp, slides | the PNG / PDF export | HOOLA PRINT's Chromium |
+| PDF reports, email, chat apps (WhatsApp, Slack, Teams, Telegram...), slides | the PNG / PDF export, sent through the channels she has connected | HOOLA PRINT's Chromium |
 
 Hoola Code rule: a diagram about her code is drawn from the code Hoola has READ (archify's repository evidence links
 each part to its file); it is not written into the repo unless she asks for it in the repo.
@@ -118,10 +120,38 @@ each part to its file); it is not written into the repo unless she asks for it i
 - **Model-written diagram text is data:** B's HTML and A's JSON are checked by the engines (no outside scripts); C's
   XML is checked and repaired before the canvas loads it; her imported files are data, never instructions.
 - **Code Analysis never runs her repo's code** (archify's own rule) and runs only on a copy Hoola already holds.
-- **Hindi / Marathi labels:** none of the engines has Devanagari; the wrapper adds Noto Devanagari to each engine's
-  font stack. The renders are checked by picture, because B's text-width check measures Latin letters.
+- **Every language and script** — see §7a.
 - **Cost:** A and C need fewer tokens than B (a description instead of a whole SVG). Every call is metered per user;
-  rupees per diagram are MEASURED in D6, not guessed.
+  the cost per diagram is MEASURED in D6 (in USD, shown to each user in her own currency), not guessed.
+
+## 7a. Global from day one — every language, every script, every market
+
+Hoola Diagram is built for users anywhere in the world, not one country:
+
+- **The diagram speaks her language.** Labels, titles, notes, the one-line plan and every message around the diagram
+  are in the language she writes in (or her chosen app language), for any language the model speaks. No language is
+  the "default" one in code.
+- **Every writing system renders.** The wrapper gives each engine one font stack covering the world's scripts: Latin,
+  Cyrillic, Greek, Arabic, Hebrew, Devanagari and the other Indic scripts, Thai, Chinese (Simplified + Traditional),
+  Japanese, Korean, Ethiopic and more (the Noto family, bundled on the server, so nothing is fetched at render time).
+  Mixed scripts in one label work.
+- **Right-to-left works.** Arabic, Hebrew, Persian and Urdu labels read right to left inside their boxes, and an RTL
+  diagram can mirror its reading direction (left ← right) when she asks; numbers and code stay left to right.
+- **Text fits in every script.** CJK, Arabic and Indic text has different widths than Latin; archify and Eraser-style
+  measuring use the real rendered size, and diagram-design's Latin-based width check is backed by the rendered-picture
+  check, so no label overflows in any language.
+- **Dates, numbers and units follow her locale** (1,234.5 vs 1.234,5; 28/11 vs 11/28; her time zone), wherever an
+  engine prints them (timelines, Gantt, waterfalls, charts).
+- **Viewer and editor in her language.** archify's viewer already ships English, Chinese, Arabic, Spanish, Korean and
+  Russian; draw.io's editor ships ~40 languages; Hoola's own buttons around them use the app's language. Missing
+  languages are added as plain translation files in the wrapper, never by editing a vendored file.
+- **Icons are global.** Cloud (AWS / Azure / Google Cloud / Kubernetes), tech and generic icons; no country-specific
+  assumptions in the type router or the examples.
+- **Money and limits are per user, in her currency.** Cost is measured in USD and shown in her own currency; quotas
+  are per user, not per country.
+- **Language test set (D5):** one diagram per engine with labels in English, Spanish, Arabic, Hebrew, Hindi, Chinese,
+  Japanese, Korean, Russian, Thai and Amharic, plus one mixed-script label — each must pass the engine's checks and
+  the picture check, and RTL must read right to left.
 
 ## 8. Phases
 
@@ -131,8 +161,8 @@ each part to its file); it is not written into the repo unless she asks for it i
 | D2 | The `diagram` tool in Hoola chat with engines A + B: the type router, draw / update / check loop, the picture look, saved as an artifact page → console workspace + phone viewer | fake-model tests: an architecture ask goes to A, a funnel to B; a failing check is fixed; the page opens in the panel |
 | D3 | Engine C: the editor view in the workspace (her hand edits saved as versions, selection → "change only these", AI changes outlined, undo), `edit` from any A / B diagram, .drawio export | a browser walk: draw, she moves a box, the AI's next change keeps her move, Ctrl+Z undoes the AI |
 | D4 | Hoola Code: `diagram` in the coder's tools + `diagram` made-kind cards (web + phone); A's Code Analysis and PR walkthrough as session cards; read-the-code-first rule | in a session "diagram of the login flow" gives a checked card linked to the files; Code Analysis runs on a fixture repo |
-| D5 | Her look set once (§5.1), Devanagari fonts, export PNG / SVG / PDF (+ A's story video), diagrams inside PDF reports and WhatsApp, A's one-page answers in chat, imports (Mermaid / draw.io / Excalidraw / PlantUML) incl. "redraw" on the Architecture and Data Engineering desks' Mermaid | a Hindi-label diagram renders right in all three engines; an imported Mermaid file is redrawn with its merged / dropped list |
-| D6 | Proof: 30 real asks (10 per engine) through the real pipeline: first-try pass rate, rounds used, seconds and rupees per diagram, which engine the router chose and whether right; decide on Eraser's router for C; deploy | numbers written here; deployed on her VPS |
+| D5 | Her look set once (§5.1), every language and script (§7a), export PNG / SVG / PDF (+ A's story video), diagrams inside PDF reports, email and her connected chat apps, A's one-page answers in chat, imports (Mermaid / draw.io / Excalidraw / PlantUML) incl. "redraw" on the Architecture and Data Engineering desks' Mermaid | the language test set (§7a) renders right in all three engines, Arabic / Hebrew right to left; an imported Mermaid file is redrawn with its merged / dropped list |
+| D6 | Proof: 30 real asks (10 per engine, in at least 6 languages) through the real pipeline: first-try pass rate, rounds used, seconds and cost (USD) per diagram, which engine the router chose and whether right; decide on Eraser's router for C; deploy | numbers written here; deployed on her VPS |
 
 Each phase = its own version (server + tests + phone where it changes). PC code is not touched.
 
@@ -143,6 +173,8 @@ Each phase = its own version (server + tests + phone where it changes). PC code 
   for the vendored folders (an `allow` rule for `node server/app/diagram/vendor/...` and `python3 -I .../scripts/...`).
 - **Two Node engines + a 30 MB editor** add to deploy size and to what can break on update — pinned commits and the
   sync script's tests are the guard.
+- **Some scripts are weaker in one engine** (for example a script none of its examples use); the language test set
+  finds it in D5, and the fix lives in the wrapper's fonts or measuring, never in the vendored code.
 - **Engine C on a phone** is cramped by nature; the phone gets the picture + "change it" box (§6).
 - **The router's choice** can be wrong for a mixed ask; D6 measures it and the model can name an engine (code checks
   it fits).
