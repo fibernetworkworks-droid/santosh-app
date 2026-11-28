@@ -14231,3 +14231,78 @@ NOT VERIFIED: on her server, with her own pipelines, SBOMs and repositories, or 
 
 ## v0.999.317 CODE FLOW CHECK
 (owner: 'NOW CHECK ALL HOOLA CODE'). Probe: 14 asks through guess_kind / plan.assess / superpowers.pick / eccskills.for_words + the fixed prompt size. Files: server/app/devsahayak/service.py (_TESTS_PHRASE, _SYMPTOM, _BUILD_ASK, guess_kind), server/app/devsahayak/eccskills.py (WORDS). Tests: test_v0999_317_code_flow.py (16). NOT VERIFIED: no live coding round (needs the model key on her server: vps-ops code_card_hard).
+
+## v0.999.318 THE PROMPTING SECTION REDESIGNED
+
+Owner: "NOW CHECK THE PROMPTING SECTION IN HOOLA LOOKS STALE AND VERY OLD BAD --- FIRST CHECK THE EXSTING HOOLA BRAND
+DESIGN AND ITS LOGO. 1) MAKE A PROMPT SECTION ... JUST MAKE A PROMPT -- IN THIS SHOW ALL CATOGORY 2) BELOW IT SHOW READY
+PROMPT LAIBRARY ... ALL WORLD PROMPTS WITH PERFECT CATOGORIWISE ... EVERY PROMPT IS HAVING THE A DETAILS AND SOME HAVE A
+VIDEO AND IMAGES ... SHOW SAME HERE ... SHOW ME THE DESIGN FIRST" -> design canvas claude.ai/artifact/UVKthxXrkrqudfU12Wqs9B
+(5 boards: home, a category picked, one prompt, phone home, phone prompt) -> "GO BUILD THE DESIGN".
+
+Built as v0.999.315; main took 0.999.315-0.999.317 (STUDIO FIXES, DevSecOps desk, Hoola Code flows) while it was
+built - re-versioned to 0.999.318 on the merge, all works kept.
+
+**The look.** /console/prompting in Hoola's own design (the console app design): a top bar with the Orbit mark (the same
+paths as static/console/mark.js, in the accent) + "Prompting" in Literata + pill tabs (Make a prompt, Library, Hoola's
+starters, My prompts, Results, Learn) + Back to Hoola chat; white page, warm grey #FAFAF9 for quiet surfaces, ink pill
+for the main action, Literata for titles / prompts / descriptions, Schibsted Grotesk for the interface, Hoola violet
+#5B45E0 only for the mark and small accents. Light + dark tokens (dark = the console's #141413 set), phone width
+(tabs scroll, the rail becomes a row, 2 cards a row, on one prompt's page the actions come before the long prompt),
+reduced motion respected. The old 13-section sidebar is gone; `#/s/<section>` routes still work.
+
+**Make a prompt.** One large box ("What should we make a prompt for?", any language), a category picker (all 53 of the
+site's categories in 8 families: Pictures video & sound, Code & building, Agents & automation, Writing, Business &
+work, Learning & research, Life & wellbeing, Everything else) and "Make my prompt". Under the box "Every category"
+lists all 53 with their counts by family - no random options. A category opens `#/m/<category>`: the same box with the
+category set (its Hoola section from `world.CAT_SECTION`, e.g. Video Generation -> video, Web Development -> web,
+Coding -> code, Agent Skill -> aiapp, the rest -> the everyday section) and "Or start from a ready <category> prompt"
+with that category's prompts, pictures first. Make my prompt goes to the same workbench as before. If Hoola cannot
+tell what she is making, the category list opens. The example lines are global now (no kirana / Akola / Diwali).
+
+**Ready prompt library** (under the box on the home, and its own page `#/library`): all 3,275 prompts.chat prompts.
+Search, order (Most loved / Pictures and videos first / Newest), kind tabs (Text, Pictures, Video, Agent skills,
+Code style, Audio, JSON / YAML), a rail of the 8 families that open into their categories, 24 cards at a time with
+"Show more prompts". Each card: the author's picture or video frame (a play badge on videos) or, for a text prompt,
+its opening lines in Literata with Markdown marks taken out; the category, title, the author's description, the
+author's name, likes, and "Copy only" / "Long" where it applies.
+
+**One prompt** (`#/r/world:<id>`): the author's own picture (full size), video (plays muted, with controls) or sound,
+captioned as theirs; the kind and category, title, author + date + likes, the full description, tags, notes; a long
+prompt shown as its parts (headings in capitals or Markdown, `world.outline`) with "Show the whole prompt"; the blanks
+to fill; the main action (Use this prompt / Fill it in), Copy, Put in the Hoola chat; "Make it yours"; the source line;
+"More <category> prompts".
+
+**Make it yours** (`POST /api/prompting/world/{id}/adapt {change, values}`, `world.adapt`): she says what to change;
+ONE model call (`net.ai.llm`, `world.ADAPT[0]`) rewrites the prompt keeping the rest; refused for a prompt Hoola's
+checks flagged; the change itself is screened; the answer is refused when it adds unsafe words or an ignore-your-rules
+line the prompt did not have, is far longer than the prompt, or keeps under a fifth of its words. Her version can be
+copied, put in the chat, or (when it fits a brief) opened in the workbench. The shelf is never changed.
+
+**Pictures and videos** (`prompting/worldmedia.py`, public `GET /api/prompting/world-media/{id}?size=thumb|full`):
+883 prompts have the author's file. Her browser never loads the author's host: the server fetches the file once
+(https, the 6 hosts prompts.chat uses, no redirects, 15 MB picture / 40 MB video / 10 MB sound), checks the bytes
+really are a picture / video / sound, and keeps a copy under data/prompting/world_media: pictures as WebP (640 px
+card, 1600 px full), videos as the file plus a poster frame (ffmpeg; without ffmpeg the card shows a plain video
+tile), sounds as the file. Every later view is that copy (cached a week in the browser). Only ids on the shelf with a
+recorded file are served - never an address from the request - and nothing for a prompt Hoola's checks flagged. A
+failed fetch is remembered for an hour. Public because <img> / <video> cannot send her token; the files are CC0.
+(Owner's decision asked at the design: keep copies on her server or load from prompts.chat each time - built with the
+recommended copies, made the first time each is viewed, so nothing large is added to the repo.)
+
+**Shelf data** (`prompting/world.py`, rebuilt from the live export of 28 Nov 2026): each prompt now carries the author's
+display name, description (up to 900 characters), creation date, its picture / video address (validated by
+`world.media_url`), and whether it starts from her own picture; prompts with no site category are the site's "Other"
+(were Hoola's guessed groups) -> exactly the site's 53 categories. `world.search` gains `sort` (loved / media / new),
+`family`, `per` and returns `families` + `all`; `world.get` adds the full description and the outline; cards carry
+`excerpt` for text prompts.
+
+**Tests:** NEW test_v0830_prompting_library.py (11: details + 53 categories in 8 families, media addresses only from
+known hosts, the outline, the picture copy made once + public + sizes, a non-picture refused and remembered, flagged
+prompts have no picture, the video copy + poster, Make it yours and its checks, the routes, page wiring incl. no
+India-only examples, a browser walk at 1360 and 390 px: 53 categories, the picker, a category page into the
+workbench, the library rail / order / show more, one prompt with its video, Make it yours, no sideways scroll); the
+nav-count pins in test_v0804 / v0821 / v0822 / v0825 moved to the top bar (6); test_v0829's world walk uses the rail.
+
+NOT VERIFIED: on her server (the media copies are made there on first view; the VPS needs ffmpeg for video posters -
+it has it for the video tools); the model's "Make it yours" rewrites were only tested with a fake model.
