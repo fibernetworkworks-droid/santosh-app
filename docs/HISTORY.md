@@ -14073,7 +14073,11 @@ NOT VERIFIED: on her VPS with a real model and real OpenRouter keys; whether her
 172.18.0.1:8077 (set DOD_HOOLA_URL if not); a real website through the coworker's browser (this sandbox's network blocks it).
 
 
-## v0.999.309 CLOUD ENGINEER DESK (built as 0.999.306; their HOOLA DOD, LEARNERS ON and DOD PENDING WORK took 0.999.306-308, all kept)
+## v0.999.309 BRING YOUR OLD ASSISTANT
+(owner: 'NOW WORK ON IT' on item 5 of the Hermes / OpenClaw comparison). Files: server/app/migrate.py (new), db.py (init_db registers migrate), main.py (4 routes), static/console/v2.js + v2.css (Memory > Bring from another assistant), lib/api.dart (memoryImportPreview / Apply / imports / Undo), lib/ui/memory_page_screen.dart (the card). Tests: test_v0999_309_bring_old_assistant.py (6). NOT VERIFIED with real exports from real accounts.
+
+
+## v0.999.310 CLOUD ENGINEER DESK (built as 0.999.306; their HOOLA DOD, LEARNERS ON, DOD PENDING WORK and BRING YOUR OLD ASSISTANT took 0.999.306-309, all kept)
 
 Owner: "Cloud Engineer same as finance desks". The Cloud Engineer gets its own section `/console/cloud` and its own Cloud chat
 (Conversation kind `cloudeng`, `server/app/clchat.py`, key `cloud_eng`, family `cloudeng`), on a new all-code engine

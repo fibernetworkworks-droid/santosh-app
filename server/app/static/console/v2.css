@@ -5267,3 +5267,14 @@ body>#composer{display:none!important}
 @media(max-width:900px){#app .cz-body{flex-direction:column;gap:16px}#app .cz-toc{position:static;width:100%;flex-direction:row;overflow-x:auto;gap:4px}#app .cz-toc a{flex:none}#app .cz-toc .sep,#app .cz-toc .kb{display:none}#app .cz-stats{width:100%}}
 @media(max-width:620px){#app .cz-top h1{font-size:28px}#app .cz-two,#app .cz-tiles{grid-template-columns:minmax(0,1fr)}#app .cz-ths{gap:8px}#app .cz-th .czm,#app .cz-th .pv{height:60px}#app .cz-hd{align-items:flex-start}#app .cz-hd>div{flex-basis:calc(100% - 52px)}#app .cz-li .tx{flex-basis:calc(100% - 58px)}#app .cz-li .cz-btn{margin-left:56px}#app .cz-hd .cz-btn,#app .cz-hd .cz-pill{margin-left:50px}#app .cz-pv{height:380px}#app .cz-fonts{grid-template-columns:repeat(2,minmax(0,1fr))}#app .cz-hd{flex-wrap:wrap}#app .cz-search{width:100%}#app .cz-li{flex-wrap:wrap}#app .cz-fact{flex-wrap:wrap;gap:6px 10px}#app .cz-fact .tx{flex-basis:100%;order:-1}#app .cz-fact .wh{margin-right:auto}}
 :root.calm #app .cz *{transition:none !important}
+/* v0.999 Bring from another assistant */
+#app .cz-imp{border-top:1px solid var(--czl);display:flex;flex-direction:column;gap:10px}
+#app .cz-imp h3{font-size:15px;font-weight:600;margin:0}
+#app .cz-imphow{font-size:13px;color:var(--mut)}
+#app .cz-imphow summary{cursor:pointer;font-weight:500}
+#app .cz-imphow ul,#app .cz-impf{margin:6px 0 0;padding-left:20px;font-size:13px;line-height:1.55}
+#app .cz-impin{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#app .cz-impin select,#app .cz-imp textarea{border:1px solid var(--czl);background:var(--czs);color:var(--ink);border-radius:11px;padding:8px 10px;font:inherit;font-size:13px}
+#app .cz-imp textarea{width:100%;resize:vertical}
+#app .cz-impact{display:flex;gap:8px}
+#app .cz-imppv{border:1px solid var(--czl);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;font-size:14px}

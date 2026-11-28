@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.309"   # v0.999.309 CLOUD ENGINEER DESK (built as 0.999.306; their HOOLA DOD, LEARNERS ON and DOD PENDING WORK took 0.999.306-308, all kept; owner: "Cloud Engineer same as finance desks"): the Cloud Engineer goes live with its own section /console/cloud + Cloud chat (kind cloudeng, `clchat.py`) on a NEW engine `app/cldesk/` (all code, no model): the cloud bill read (FOCUS / AWS CUR / Google Cloud / Azure exports or any CSV with a cost and a date: by day, service, account, region and owner tag, spend with no owner, spike days against their own recent level with the service behind each, services growing this week, credits, the month at its run rate against her budget; currencies never converted or mixed); waste from her inventory (unattached disks, unused addresses, Azure stopped-not-deallocated, stopped and idle machines, old snapshots, idle load balancers and databases, older generations; money only from her table); commitments sized from her hourly usage and prices (the level that cost least, a safer level, break-even use, how her current commitment did); access policies read (AWS IAM incl. trust policies and GitHub OIDC with no subject, Google Cloud IAM, Azure role assignments); networks and firewall rules checked (overlaps, outside, too small, usable addresses per provider, free space, admin ports open to the internet, a subnet plan); a GitHub Actions access guard; cloud keys refused anywhere; NEW tool cloud_desk (registry 718); 5 tests incl. a browser walk. NOT VERIFIED: on her server, with her own bills, inventories and policies, or the workflow on GitHub. Previous head: v0.999.308 HOOLA DOD, THE PENDING WORK (owner: "GO BUILD THE PENDING DOD WORK"; their LEARNERS ON took 0.999.307, both kept): tested for the first time against the REAL official OpenClaw image (2026.11.10 and its -browser variant) run in Docker with a scripted model and the real Hoola server, which found and fixed four things the stand-in could not: the Gateway refuses to start without gateway.mode, refuses a state folder others can write to (Hoola now hands it to the image user, 700 / 600), hides client and MCP tools behind its Tool Search unless excluded (hoola_* and hoola__* now stay visible), and a first start runs its repair step for minutes (start wait 600 s); then a whole task ran on it: Hoola MCP tools called from inside the container, a step, the pay question, her yes, done. NEW: her Hoola accounts inside her coworker (`dod/mcp.py`, POST /mcp/dod: 21 read-only tools - mail, Drive, Calendar, Sheets, Docs, her memory - her token by hash AND her container network only); the live screen ("Watch the screen", OpenClaw tools-invoke browser screenshot, never wakes her coworker, one picture per 3 s); a phone push when it needs her (push kind dod_ask); its model spending charged as Hoola Credits from her key's usage, a new task refused when her credits ran out; 10 tests. NOT VERIFIED: on her VPS with a real model and real OpenRouter keys.
+APP_VERSION = "0.999.310"   # v0.999.310 CLOUD ENGINEER DESK (built as 0.999.306; their HOOLA DOD, LEARNERS ON, DOD PENDING WORK and BRING YOUR OLD ASSISTANT took 0.999.306-309, all kept; owner: "Cloud Engineer same as finance desks"): the Cloud Engineer goes live with its own section /console/cloud + Cloud chat (kind cloudeng, `clchat.py`) on a NEW engine `app/cldesk/` (all code, no model): the cloud bill read (FOCUS / AWS CUR / Google Cloud / Azure exports or any CSV with a cost and a date: by day, service, account, region and owner tag, spend with no owner, spike days against their own recent level with the service behind each, services growing this week, credits, the month at its run rate against her budget; currencies never converted or mixed); waste from her inventory (unattached disks, unused addresses, Azure stopped-not-deallocated, stopped and idle machines, old snapshots, idle load balancers and databases, older generations; money only from her table); commitments sized from her hourly usage and prices (the level that cost least, a safer level, break-even use, how her current commitment did); access policies read (AWS IAM incl. trust policies and GitHub OIDC with no subject, Google Cloud IAM, Azure role assignments); networks and firewall rules checked (overlaps, outside, too small, usable addresses per provider, free space, admin ports open to the internet, a subnet plan); a GitHub Actions access guard; cloud keys refused anywhere; NEW tool cloud_desk (registry 718); 5 tests incl. a browser walk. NOT VERIFIED: on her server, with her own bills, inventories and policies, or the workflow on GitHub. Previous head: v0.999.309 BRING YOUR OLD ASSISTANT (owner: 'NOW WORK ON IT' on item 5 of the Hermes / OpenClaw comparison - each of them imports the other, Hoola had no way in): NEW `server/app/migrate.py`. OpenClaw (`migrate-hermes`) and Hermes (`agent-importers`) read a folder on the same computer; Hoola runs on a server, so she UPLOADS what her old assistant kept (a .zip or the files) or PASTES text, sees exactly what will come in, and only her tap brings it in. Formats read from the projects' own code and docs: OpenClaw workspace (MEMORY.md, USER.md, memory/YYYY-MM-DD.md daily notes, skills/<name>/SKILL.md; SOUL / AGENTS / IDENTITY = its personality and rules), Hermes (memories/MEMORY.md + USER.md split on the section-sign line, skills/<category>/<name>/SKILL.md), ChatGPT data export (conversations.json `mapping`; its saved memories are NOT in the export, so she copies them from Settings > Personalization > Manage memories and pastes), Claude data export (conversations.json `chat_messages`); the source is found from the files or she picks it. Where it lands - Hoola's own stores, nothing new to search: short facts -> her facts (`yaad.save_fact`, source import:<from>, global, the same privacy filter as every fact and duplicates left out), long notes, daily logs and past-chat exchanges -> her memory index (`yaad.add_item` kind import, found by past-chat search like her own chats), skills -> her skill library (`skills_store.install`, never overwriting one she has). Never brought in: keys, tokens, passwords, settings and session files (.env, auth.json, config.yaml, openclaw.json, *.db, sessions, logs) - never even read; anything `coder/guard.py` flags (hidden instructions, skipping her tap, sending her data out, card / Aadhaar / bank numbers, invisible characters); her old assistant's personality and rules (Hoola keeps its own - the old name is shown). Limits: 60 MB upload, zip safe (no paths outside it, no links, 5,000 files / 200 MB unpacked / 5 MB a file), 200 facts / 3,000 notes / 100 skills / 4,000 chat exchanges an import. Every import is a record (table memory_imports, registered in db.init_db + self-healing) she can UNDO in one tap: its facts, notes and skills come back out. Routes: POST /api/memory/import/preview (files, text, source; writes nothing, returns a token good for 30 minutes), POST /api/memory/import/apply {token} (once), GET /api/memory/imports, POST /api/memory/imports/{id}/undo. Web console: Account > Memory > Bring from another assistant (what to upload for each, files + paste box, Preview, the list of facts / skills / what was left out and why, Bring in / Cancel, Brought in before with Undo). Phone: Hoola's memory screen, the same card (Choose files, paste, Preview, Bring in, Undo). 6 tests. NOT VERIFIED: with a real OpenClaw workspace, Hermes folder or ChatGPT / Claude export from a real account (built from their published formats); the phone card compiles first on CI.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -6880,6 +6880,51 @@ def memory_reset(body: MemoryResetIn, tenant: str = Depends(current_tenant)):
         raise HTTPException(400, "To erase all memory, send confirm='RESET'. Your chats will not be deleted.")
     from . import memory
     return {"ok": True, "removed": memory.reset_all(tenant)}
+
+
+@app.post("/api/memory/import/preview", dependencies=[Depends(require_key)])
+async def memory_import_preview(files: list[UploadFile] = File(default=[]), text: str = Form(default=""),
+                                source: str = Form(default=""), tenant: str = Depends(current_tenant)):
+    """v0.999 BRING YOUR OLD ASSISTANT: what WOULD come in from OpenClaw / Hermes / ChatGPT / Claude (nothing written)."""
+    from . import migrate
+    got = []
+    for f in (files or [])[:20]:
+        data = await f.read(migrate.MAX_UPLOAD + 1)
+        got.append((f.filename or "file", data))
+    try:
+        return await asyncio.to_thread(migrate.preview, tenant, got, (text or "")[:200000], (source or "").strip().lower())
+    except migrate.ImportError_ as e:
+        raise HTTPException(400, str(e)) from None
+
+
+class MemoryImportIn(BaseModel):
+    token: str = Field(default="", max_length=64)
+
+
+@app.post("/api/memory/import/apply", dependencies=[Depends(require_key)])
+async def memory_import_apply(body: MemoryImportIn, tenant: str = Depends(current_tenant)):
+    """Her tap: the preview she saw comes in (kept as a record she can undo)."""
+    from . import migrate
+    try:
+        return await asyncio.to_thread(migrate.apply, tenant, body.token)
+    except migrate.ImportError_ as e:
+        raise HTTPException(400, str(e)) from None
+
+
+@app.get("/api/memory/imports", dependencies=[Depends(require_key)])
+def memory_imports(tenant: str = Depends(current_tenant)):
+    from . import migrate
+    return {"imports": migrate.imports(tenant)}
+
+
+@app.post("/api/memory/imports/{import_id}/undo", dependencies=[Depends(require_key)])
+async def memory_import_undo(import_id: str, tenant: str = Depends(current_tenant)):
+    """Takes one import back out: its facts, notes and past chats, and skills."""
+    from . import migrate
+    try:
+        return await asyncio.to_thread(migrate.undo, tenant, import_id)
+    except migrate.ImportError_ as e:
+        raise HTTPException(404, str(e)) from None
 
 
 class PinIn(BaseModel):
