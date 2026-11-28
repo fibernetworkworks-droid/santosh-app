@@ -623,7 +623,12 @@ def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False,
              + "\n\nStart exploring with the tools. Call done when finished.")
     use_lab = lab is not None and getattr(lab, "usable", False)
     tools = TOOLS + (LAB_TOOLS if use_lab else [])
-    system = SYSTEM + ("\n\n" + system_extra if system_extra else "") + (("\n\n" + lab_block(lab)) if use_lab else "")
+    try:                                                   # v0.999 Karpathy's four rules on the older step loop too
+        from . import karpathy as KR
+        kr_rules = ("\n\n" + KR.RULES) if KR.on() else ""
+    except Exception:  # noqa: BLE001
+        kr_rules = ""
+    system = SYSTEM + kr_rules + ("\n\n" + system_extra if system_extra else "") + (("\n\n" + lab_block(lab)) if use_lab else "")
     pics = list(attach[1]) if attach and attach[1] else []      # Phase 3: her screenshots ride the first message
     messages: list[dict] = [{"role": "user", "content": ([{"type": "text", "text": first}] + pics) if pics else first}]
     finish: dict[str, Any] | None = None

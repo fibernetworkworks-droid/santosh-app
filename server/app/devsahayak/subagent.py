@@ -250,6 +250,13 @@ def _run_one(tools: Any, spec: dict, task: str, files: list[str] | None, emit, s
     specs = tool_specs(level)
     allowed = {t["name"] for t in specs}
     system = SUB_SYSTEM + "\n\n" + spec["prompt"]
+    if level == "edit":                                    # v0.999 Karpathy's rules for an agent that changes code
+        try:
+            from . import karpathy as KR
+            if KR.on():
+                system += "\n\n" + KR.SUB_RULES
+        except Exception:  # noqa: BLE001
+            pass
     notes = B.model_notes(own or "")                       # v0.999 the same per-model notes as the coder's
     if notes:
         system += "\n\n" + notes
