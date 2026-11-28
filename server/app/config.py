@@ -243,6 +243,7 @@ class Settings(BaseSettings):
     dev_cache_warm: bool = True             # v0.999 the prompt cache kept warm while a round waits for her answer (Claude only, 6 times max)
     dev_compact_ahead: bool = True          # v0.999 the summary is written in the background at 80% and swapped in at once
     dev_compact_ahead_at: float = 0.8
+    dev_early_reads: bool = True            # v0.999 read-only calls start while the model is still writing its reply (OpenCode; Claude streams)
     dev_parallel_reads: bool = True         # v0.999 read-only calls of one reply run side by side (Claude Code's concurrency-safe tools)
     dev_parallel_width: int = 8
     dev_idle_compact: bool = True           # v0.999 a long session idle just under the 5-min prompt cache is summarised through its own cached request

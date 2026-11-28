@@ -505,6 +505,32 @@ def _keep_broken(data: dict, blocks: list[dict], stop: str) -> tuple[list[dict],
     return blocks, stop
 
 
+TOOL_SINK = threading.local()               # .fn(tool_use block) while a round's step streams (engine.EarlyReads)
+
+MODEL_NOTES = {
+    # v0.999 OpenCode tunes its prompt per model family. These notes say only what Hoola Code's own logs showed a family
+    # getting wrong (the workarounds in engine.py: _loose, BROKEN_KEY, the repeated paragraph), nothing guessed.
+    "qwen": ("NOTES FOR THIS MODEL: tool arguments are JSON objects - pass a list or an object as real JSON, never as a "
+             "string that contains JSON. A big new file breaks easily in one write: write a short first version, then add "
+             "to it with edit. Copy old_string from what read showed you, without the line-number column. Say a thing "
+             "once - never repeat the paragraph you just wrote."),
+    "open": ("NOTES FOR THIS MODEL: tool arguments are JSON objects (lists and objects as real JSON, not strings). Copy "
+             "old_string exactly from what read showed you, without the line-number column. Finish with the done tool."),
+    "claude": "Keep code comments to what a reader needs; do not narrate the change in comments.",
+}
+
+
+def model_notes(model: str = "") -> str:
+    m = (model or model_for() or "").lower()
+    if "claude" in m or m.startswith(("anthropic/", "opus", "sonnet", "haiku")):
+        fam = "claude"
+    elif "qwen" in m:
+        fam = "qwen"
+    else:
+        fam = "open"
+    return MODEL_NOTES.get(fam, "")
+
+
 def _claude_stream(client, kw: dict, sink) -> Any:
     """One streamed Claude answer: every new piece of the reply's words goes to sink(the whole text so far), and the
     finished message comes back in the same shape messages.create gives, so nothing after this changes."""
@@ -513,13 +539,23 @@ def _claude_stream(client, kw: dict, sink) -> Any:
     except Exception:
         pass
     acc = ""
+    tool_sink = getattr(TOOL_SINK, "fn", None)
     with client.messages.stream(**kw) as s:
-        for piece in s.text_stream:
-            acc += piece
-            try:
-                sink(acc)
-            except Exception:
-                pass
+        for ev in s:                                      # v0.999 every event: the words, and each tool call the moment it is whole
+            et = getattr(ev, "type", "")
+            if et == "text":
+                acc += str(getattr(ev, "text", "") or "")
+                try:
+                    sink(acc)
+                except Exception:
+                    pass
+            elif et == "content_block_stop" and tool_sink is not None:
+                cb = getattr(ev, "content_block", None)
+                if cb is not None and getattr(cb, "type", "") == "tool_use":
+                    try:                                  # OpenCode: a read starts while the model is still writing
+                        tool_sink({"type": "tool_use", "id": cb.id, "name": cb.name, "input": dict(cb.input or {})})
+                    except Exception:
+                        pass
         return s.get_final_message()
 
 

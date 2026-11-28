@@ -250,6 +250,9 @@ def _run_one(tools: Any, spec: dict, task: str, files: list[str] | None, emit, s
     specs = tool_specs(level)
     allowed = {t["name"] for t in specs}
     system = SUB_SYSTEM + "\n\n" + spec["prompt"]
+    notes = B.model_notes(own or "")                       # v0.999 the same per-model notes as the coder's
+    if notes:
+        system += "\n\n" + notes
     flist = [str(f)[:200] for f in (files or [])][:30]
     first = (f"<task>\n{task[:12000]}\n</task>\n"
              + (f"Start from: {', '.join(flist)}\n" if flist else "")
