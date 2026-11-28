@@ -14702,3 +14702,33 @@ FOUND WHILE BUILDING: draw.io saves pages compressed (base64 + raw deflate + URI
 TESTS: test_v0999_331_diagram_d3.py 13 (XML normalise / checks, compressed + bomb, ops all-or-nothing, fingerprint, routing + guide, signed link + expiry, her edit -> read -> change -> poll -> stale save, editable copy, redraw gate, routes: sandbox CSP, token-only, bridge injection, path escape, .drawio file, signed-in open; console wiring; WALK 1: real draw.io in Chromium - she moves a box (saved, rev 2), selects another, Hoola reads (sees the selection) and changes its label, her editor shows it outlined with her move kept, one undo takes it back, the server follows; WALK 2: the console opens the diagram, 'Edit by hand' puts the sandboxed editor in the pane (>= 500 px) and it is ready). The two walks skip where the editor or Chrome is missing. Nearby suites: the 7 reds seen (console stylesheet count, console English, browser-frame count, heavy weights, tool labels, past-tense verbs, conversation list) fail the same on the untouched tree.
 
 NOT VERIFIED: not deployed on her VPS (deploy, then vps-ops diagram_setup needs node >= 18 for engine A; engine C needs only the editor fetch). No real model has drawn a draw.io diagram yet (fake-model tests only). The phone opens the picture page, not the editor (D5). Next: D4 (Hoola Code) on her word.
+
+
+## v0.999.332 HOOLA DOD, HER HANDS ON ITS BROWSER
+
+Owner, after reading github.com/alexsergivan/kwant (AGPL-3.0, ideas only, zero code copied): "Hand over the bot's browser to
+sign in or solve a CAPTCHA. The page is held for you, you take control, then press Done ... work on it".
+
+- **The question.** `hoola_ask` gains `kind=browser`: a page needs HER (her sign-in, a CAPTCHA or "are you human" check, a
+  one-time code). The coworker's rules say so (rule 7: ask, leave the page open, never try to get past it itself). The task
+  waits in `needs_you` like any question; her phone gets "X needs you in its browser".
+- **Take control.** On /console/dod the question card has Take control / Done / I can't. Take control opens a window with
+  the coworker's page live: a picture every second (each one preloaded so nothing moves under her pointer), her click lands
+  on the same spot, typing on the picture goes to the page (paste too), Enter / Tab / Backspace / Esc / Page up / Page down
+  buttons, a text box with Hide for passwords (phones), then **Done, carry on** or **I can't**.
+- **How it reaches the page.** POST /api/dod/tasks/{id}/control -> `service.control` (only while the task waits for her with a
+  browser question, only her own task, at most 60 inputs, allowed keys only) -> `gateway.operate`: OpenClaw's own browser
+  tool through /tools/invoke, act kinds `clickCoords` and `press` (the kinds its Control UI uses for operator input,
+  docs/tools/browser-control.md), batched 80 to a call (one by one if a batch is refused), on that task's tab (the
+  `targetId` its last screenshot reported), clicks scaled to the picture's size (headless Chrome draws 1 pixel per CSS
+  pixel). Characters are pressed one by one (space = Space).
+- **Never kept.** What she types is not stored, not in the task, not logged (the log keeps a count), not shown to the model;
+  the model hears only "the owner has done what the page needed ... look at the page again". A step "You took over its
+  browser" is written once.
+- **Sign-ins shared.** Every task has its own tab (OpenClaw keeps a tab per session key) and all of them use her coworker's
+  one Chrome profile, so a sign-in made for one task is there for the others.
+- Files: `dod/gateway.py` (`_note_view`, `view_of`, `operator_actions`, `operate`, `KEYS`), `dod/service.py` (`ASK_KINDS`,
+  `control`, the browser answer), `dod/api.py` (control route, 1 s screen while she drives), `push.py`, `static/console/dod.js`
+  + `dod.css` (the window). Tests `test_v0999_332_dod_takeover.py` 5 incl. a browser walk at 1440 and 390.
+- NOT VERIFIED: clickCoords / press / batch through /tools/invoke are read from OpenClaw's source and docs, not run on the
+  real image; the 1-pixel-per-CSS-pixel scale is assumed; not run on her server (DOD is still switched off there).

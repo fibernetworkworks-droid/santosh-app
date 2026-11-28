@@ -51,6 +51,7 @@
   let TASKS = [];          // the latest list
   let POLL = null;
   let VIEW = '';
+  let TAKE = '';          // v0.999.332 the task whose browser she asked to take over (opened on its page)
   let GEN = 0;           // one number per page drawn: a listener from an older page does nothing
 
   // ------------------------------------------------------------------ small helpers
@@ -118,6 +119,10 @@
       const amt = (q.currency ? q.currency + ' ' : '') + (q.amount != null ? Number(q.amount).toLocaleString() : '');
       return `<div class="dd-q"><div class="what"><div>${esc(q.question)}</div><span class="amt">${esc(amt)}</span>${q.details ? `<div>${esc(q.details)}</div>` : ''}</div>
         <button class="dd-btn ink" type="button" data-answer="yes" ${data}>Approve ${esc(amt)}</button><button class="dd-btn" type="button" data-answer="no" ${data}>Not now</button></div>`;
+    }
+    if (q.kind === 'browser') {   // v0.999.332 a page needs her: she takes over its browser, then says Done
+      return `<div class="dd-q"><div class="what"><span class="qt">${esc(q.question)}</span>${q.details ? `<div>${esc(q.details)}</div>` : ''}<div>Take over ${esc(NAME())}'s browser, do it there, then press Done.</div></div>
+        <button class="dd-btn ink" type="button" data-take="${esc(t.id)}">Take control</button><button class="dd-btn" type="button" data-answer="done" ${data}>Done</button><button class="dd-btn" type="button" data-answer="no" ${data}>I can't</button></div>`;
     }
     if (q.kind === 'choice' && (q.options || []).length) {
       return `<div class="dd-q"><div class="what"><span class="qt">${esc(q.question)}</span></div>${q.options.map(o =>
@@ -431,7 +436,7 @@
       $('#tHead').innerHTML = tag(t.status) + (open ? `<button class="dd-btn s bad" type="button" id="stopBtn">Stop</button>` : `<a class="dd-btn s" href="#/">Give another task</a>`);
       $('#tClock').textContent = t.started_at ? (open ? 'Working for ' : 'Took ') + dur(t.started_at, open ? null : t.ended_at) : '';
       const qKey = t.question ? t.question.id : '';
-      if (qKey !== lastQ) { $('#tQ').innerHTML = t.question ? `<div class="dd-card dd-task ask"><div class="head"><span class="dd-tag warn">Needs your OK</span><small>${esc(ago(t.question.at))}</small></div>${questionBox(t)}<button type="button" class="dd-lnk" data-say="q">${IC.play}Read aloud</button></div>` : ''; lastQ = qKey; }
+      if (qKey !== lastQ) { $('#tQ').innerHTML = t.question ? `<div class="dd-card dd-task ask"><div class="head"><span class="dd-tag warn">${t.question.kind === 'browser' ? 'Needs you in its browser' : 'Needs your OK'}</span><small>${esc(ago(t.question.at))}</small></div>${questionBox(t)}<button type="button" class="dd-lnk" data-say="q">${IC.play}Read aloud</button></div>` : ''; lastQ = qKey; }
       SAY = {q: t.question ? [t.question.question, t.question.details].filter(Boolean).join('. ') : '', r: t.reply || ''};
       $('#tSteps').innerHTML = (t.steps || []).map(s => stepRow(s, t.started_at)).join('') || `<div class="dd-step"><span class="dd-sm now"></span><div class="t"><span class="dd-shimmer">${esc(NAME())} is getting ready</span></div><span></span></div>`;
       $('#tThink').innerHTML = (open && t.thought) ? `<div class="dd-think" aria-label="What ${esc(NAME())} is writing">${esc(t.thought.slice(-500))}</div>` : '';
@@ -441,6 +446,115 @@
       $('#steer').hidden = !open;
       $('#tScreenBox').hidden = !open;
       if (!open) { clearInterval(POLL); stopWatch(); }
+      if (CTL && !(t.status === 'needs_you' && t.question && t.question.kind === 'browser')) closeControl();
+      if (TAKE === id && t.question && t.question.kind === 'browser') { TAKE = ''; openControl(t); }
+    }
+
+    // ---------------------------------------------------------------- v0.999.332 her hands on its browser
+    // A live picture of the page; her click lands on the same spot of the page, what she types goes to it. The page
+    // keeps nothing she types and the coworker never sees it. Done hands the page back.
+    let CTL = null;
+    function closeControl() {
+      if (!CTL) return;
+      clearInterval(CTL.tick); if (CTL.url) URL.revokeObjectURL(CTL.url);
+      CTL.box.remove(); document.removeEventListener('keydown', CTL.esc);
+      const back = CTL.back; CTL = null; if (back && back.isConnected) back.focus();
+    }
+    function openControl(t) {
+      if (CTL) return;
+      document.querySelectorAll('.dd-ctl').forEach(n => n.remove());   // one window, even across a redraw
+      const q = t.question;
+      const box = document.createElement('div');
+      box.className = 'dd-ctl'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+      box.setAttribute('aria-label', `${NAME()}'s browser`);
+      box.innerHTML = `<div class="dd-ctl-in">
+        <div class="dd-ctl-head"><div style="min-width:0"><b>You have ${esc(NAME())}'s browser</b><small>${esc(q.question)}</small></div><button class="dd-btn s" type="button" data-ctl="close">Close</button></div>
+        <div class="dd-ctl-stage" id="ctlStage" tabindex="0" aria-label="The page. Click on it to click there. Type to type into it."><img id="ctlImg" alt="The page ${esc(NAME())} is on" hidden><span class="dd-ctl-wait" id="ctlWait">Loading the page…</span></div>
+        <div class="dd-ctl-keys" aria-label="Keys">
+          <button class="dd-chip" type="button" data-key="Enter">Enter</button><button class="dd-chip" type="button" data-key="Tab">Tab</button><button class="dd-chip" type="button" data-key="Backspace">Backspace</button><button class="dd-chip" type="button" data-key="Escape">Esc</button><button class="dd-chip" type="button" data-scroll="up">Page up</button><button class="dd-chip" type="button" data-scroll="down">Page down</button>
+        </div>
+        <form class="dd-ctl-type" id="ctlForm"><input id="ctlText" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Type into the page" placeholder="Click a box on the page, type here, then Send"><label class="dd-ctl-hide"><input type="checkbox" id="ctlHide"> Hide</label><button class="dd-btn s ink" type="submit">Send</button></form>
+        <div class="dd-ctl-foot"><small>${IC.lock}<span>What you type goes straight to the page. Hoola keeps none of it, and ${esc(NAME())} never sees it.</span></small><div style="display:flex;gap:8px"><button class="dd-btn" type="button" data-ctl="no">I can't</button><button class="dd-btn ink" type="button" data-ctl="done">Done, carry on</button></div></div>
+      </div>`;
+      document.body.appendChild(box);
+      CTL = {box, url: '', back: document.activeElement, queue: Promise.resolve(), buf: '', bufT: 0, wheelAt: 0, busy: false};
+      const stage = box.querySelector('#ctlStage'), img = box.querySelector('#ctlImg'), wait = box.querySelector('#ctlWait');
+      async function look() {
+        if (!CTL || CTL.busy || document.hidden) return;
+        CTL.busy = true;
+        try {
+          const r = await fetch(`/api/dod/tasks/${enc(id)}/screen`, {headers: {Authorization: 'Bearer ' + TOKEN}});
+          if (!CTL) return;
+          if (!r.ok) { if (!CTL.url) wait.textContent = `No page is open yet. Tell ${NAME()} which page to open, then try again.`; return; }
+          const url = URL.createObjectURL(await r.blob());
+          const pre = new Image();   // the next picture is ready before it replaces this one: nothing moves under her pointer
+          await new Promise(ok => { pre.onload = pre.onerror = ok; pre.src = url; });
+          if (!CTL || !pre.naturalWidth) { URL.revokeObjectURL(url); return; }
+          img.width = pre.naturalWidth; img.height = pre.naturalHeight;
+          img.src = url; img.hidden = false; wait.hidden = true;
+          if (CTL.url) URL.revokeObjectURL(CTL.url);
+          CTL.url = url;
+        } catch (e) { /* the next look tries again */ } finally { if (CTL) CTL.busy = false; }
+      }
+      function send(inputs) {
+        if (!CTL) return;
+        CTL.queue = CTL.queue.then(async () => {
+          if (!CTL) return;
+          try { await api('POST', `/api/dod/tasks/${enc(id)}/control`, {inputs}); setTimeout(look, 250); }
+          catch (ex) { toast(ex.message); if (/only while it waits/.test(ex.message || '')) closeControl(); }
+        });
+      }
+      function flush() { clearTimeout(CTL.bufT); if (CTL.buf) { const text = CTL.buf; CTL.buf = ''; send([{kind: 'text', text}]); } }
+      function mark(x, y) {
+        const d = document.createElement('span'); d.className = 'dd-ctl-tap';
+        const ir = img.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+        d.style.left = (ir.left - sr.left + x * ir.width) + 'px'; d.style.top = (ir.top - sr.top + y * ir.height) + 'px';
+        stage.appendChild(d); setTimeout(() => d.remove(), 700);
+      }
+      img.addEventListener('click', e => {
+        const r = img.getBoundingClientRect(); if (!r.width || !r.height) return;
+        const x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+        flush(); mark(x, y); send([{kind: 'click', x, y}]); stage.focus({preventScroll: true});
+      });
+      stage.addEventListener('wheel', e => {
+        e.preventDefault(); const now = Date.now(); if (now - CTL.wheelAt < 450) return; CTL.wheelAt = now;
+        flush(); send([{kind: 'scroll', dir: e.deltaY < 0 ? 'up' : 'down'}]);
+      }, {passive: false});
+      const KEYMAP = {Enter: 'Enter', Tab: 'Tab', Backspace: 'Backspace', Delete: 'Delete', Escape: 'Escape', ArrowUp: 'ArrowUp',
+        ArrowDown: 'ArrowDown', ArrowLeft: 'ArrowLeft', ArrowRight: 'ArrowRight', PageUp: 'PageUp', PageDown: 'PageDown', Home: 'Home', End: 'End'};
+      stage.addEventListener('keydown', e => {
+        if (e.ctrlKey || e.metaKey || e.altKey) return;   // her browser's own shortcuts (paste is the paste event)
+        if (e.key.length === 1) { e.preventDefault(); CTL.buf += e.key; clearTimeout(CTL.bufT); CTL.bufT = setTimeout(flush, 150); return; }
+        const k = KEYMAP[e.key]; if (!k) return;
+        e.preventDefault(); e.stopPropagation(); flush();
+        send([{kind: 'key', key: k === 'Tab' && e.shiftKey ? 'Shift+Tab' : k}]);
+      });
+      stage.addEventListener('paste', e => {
+        const text = (e.clipboardData && e.clipboardData.getData('text')) || ''; if (!text) return;
+        e.preventDefault(); flush(); send([{kind: 'text', text: text.slice(0, 500)}]);
+      });
+      box.querySelector('#ctlHide').addEventListener('change', e => { box.querySelector('#ctlText').type = e.target.checked ? 'password' : 'text'; });
+      box.querySelector('#ctlForm').addEventListener('submit', e => {
+        e.preventDefault(); const f = box.querySelector('#ctlText'); const text = f.value; if (!text) return;
+        flush(); send([{kind: 'text', text}]); f.value = '';
+      });
+      box.addEventListener('click', async e => {
+        const k = e.target.closest('[data-key]'); if (k) { flush(); send([{kind: 'key', key: k.dataset.key}]); return; }
+        const sc = e.target.closest('[data-scroll]'); if (sc) { flush(); send([{kind: 'scroll', dir: sc.dataset.scroll}]); return; }
+        const c = e.target.closest('[data-ctl]'); if (!c) return;
+        if (c.dataset.ctl === 'close') { flush(); closeControl(); return; }
+        flush(); c.disabled = true;
+        try {
+          await CTL.queue;
+          await api('POST', `/api/dod/tasks/${enc(id)}/answer`, {id: q.id, hash: q.hash, choice: c.dataset.ctl === 'done' ? 'done' : 'no'});
+          toast(c.dataset.ctl === 'done' ? `${NAME()} carries on.` : `Told ${NAME()}.`);
+          closeControl(); await draw();
+        } catch (ex) { c.disabled = false; toast(ex.message); }
+      });
+      CTL.esc = e => { if (e.key === 'Escape' && CTL && !stage.contains(document.activeElement)) closeControl(); };
+      document.addEventListener('keydown', CTL.esc);
+      look(); CTL.tick = setInterval(() => { if (gen !== GEN) { closeControl(); return; } look(); }, 1000);
+      stage.focus({preventScroll: true});
     }
     let WATCH = null, lastUrl = '';
     function stopWatch() { clearInterval(WATCH); WATCH = null; const b = $('#watchBtn'); if (b) b.textContent = 'Watch the screen'; }
@@ -481,6 +595,8 @@
     } catch (ex) { toast(ex.message); }
   }
   main.addEventListener('click', async e => {
+    const tk = e.target.closest('[data-take]');   // v0.999.332 Take control: on the task's own page
+    if (tk) { TAKE = tk.dataset.take; if (location.hash === '#/t/' + encodeURIComponent(TAKE)) route(); else location.hash = '#/t/' + encodeURIComponent(TAKE); return; }
     const a = e.target.closest('[data-answer]');
     if (a) { a.disabled = true; await sendAnswer(a, a.dataset.answer); return; }
     const f = e.target.closest('[data-file]');

@@ -93,7 +93,8 @@ def make_router(require_key, current_tenant) -> APIRouter:
         if t.status not in S.OPEN:
             raise HTTPException(404, "The task has finished.")
         hit = _SHOTS.get(task_id)
-        if hit and _t.time() - hit[0] < 3:
+        fresh = 1 if t.status == "needs_you" and '"kind": "browser"' in (t.question or "") else 3   # live while she drives
+        if hit and _t.time() - hit[0] < fresh:
             img = hit[1]
         else:
             img = await GW.screenshot(tenant, f"hoola-dod-{task_id}")
@@ -102,6 +103,19 @@ def make_router(require_key, current_tenant) -> APIRouter:
         if not img:
             raise HTTPException(404, "No page open right now.")
         return Response(img, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+    @r.post("/tasks/{task_id}/control", dependencies=auth)
+    async def task_control(task_id: str, body: dict = Body(...), tenant: str = Depends(current_tenant)) -> dict[str, Any]:
+        """v0.999.332 HER hands on the coworker's browser while it waits for her there: clicks on the live picture,
+        keys and typing go to that task's page. Nothing she types is kept."""
+        try:
+            out = await S.control(tenant, task_id, body.get("inputs") if isinstance(body, dict) else None)
+        except LookupError as e:
+            raise HTTPException(404, str(e)) from None
+        except ValueError as e:
+            raise HTTPException(409, str(e)) from None
+        _SHOTS.pop(task_id, None)   # the next look shows what her input did
+        return out
 
     @r.get("/tasks/{task_id}/files/{name}", dependencies=auth)
     def task_file(task_id: str, name: str, tenant: str = Depends(current_tenant)):
