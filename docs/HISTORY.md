@@ -13644,3 +13644,42 @@ under a real runtime.
 
 ## v0.999.288 NINE TO ELEVEN FROM OPENCODE
 (owner: 'GO 9 TO 11', the last three of the OpenCode read): (9) READS START WHILE THE MODEL STILL WRITES (`engine.EarlyReads`, `brain.TOOL_SINK`): Claude's stream is read event by event and each tool call is handed over the moment its block is whole; the leading run of read / glob / grep / ls / web reads that no rule asks about and no PreToolUse hook must see first starts at once (the same rule as the parallel reads - the first other call ends the run, so a read never races an earlier edit), and the step takes those results instead of running them again; Qwen's stream is unchanged. (10) A FEW WORDS PER MODEL FAMILY (`brain.model_notes`, in the coder's and every agent's prompt): Qwen is told what Hoola Code's own workarounds show it getting wrong (lists / objects as JSON text, a big write breaking its JSON, the line-number column in old_string, the repeated paragraph), other open models a short general note, Claude one line on sparse comments (OpenCode's own); nothing guessed. NOT copied: OpenCode's patch format for GPT models (Hoola Code does not run them by default). (11) A RESTART NEVER REPEATS A STEP (`engine.begin_step / mark_started / end_step / heal_cut_step`): the model's reply with its tool calls is written down BEFORE anything runs and each call is marked as it starts; Hoola used to save only after a step's tools had all finished, so a restart mid-step lost the reply and the resumed round could run the same command or send the same message twice. After a restart (or a stop) the cut step's calls are answered: not started = safe to do, a read that did not finish = run it again, anything else = 'MAY OR MAY NOT have done its work - check first, do not simply run it again'; Hoola never runs it again by itself, and her follow-up joins that turn. 6 tests. NOT VERIFIED with a real model or a real restart on her server.
+
+
+## v0.999.289 LOW LATENCY DESK
+(owner: "Backend Systems Engineer (Low Latency) same as finance desks"; built as 0.999.288 - their NINE TO ELEVEN FROM OPENCODE took
+0.999.288 while it was being built, both kept.) The Backend Systems Engineer (Low Latency) becomes live in the Hub (key lowlatency_eng)
+with its own section `/console/latency` (`static/console/lldesk.{html,js,css}`, page `#llPage`, prefix `llk-`) and its own chat
+(Conversation kind `lowlat`, `server/app/lowlatchat.py`, routes `/api/lldesk/*`, block `<lowlat_desk>`), on a NEW all-code engine
+`server/app/lldesk/` - no model, no money, nothing runs on her machines:
+
+- `latency.py` - raw samples (any unit), HdrHistogram percentile output, wrk / wrk2 distributions, or `p99: 1.2 ms` lines -> p50 / p90 /
+  p99 / p99.9 / p99.99 / max (nearest rank, as HdrHistogram reports), each marked when fewer than 10 samples stand beyond it; heavy tail,
+  single long stall, two groups of samples (modes), mean-vs-spread; wrk's closed loop named as coordinated omission, and the correction
+  done from her fixed send interval (HdrHistogram's recordValueWithExpectedInterval); 2-6 runs under `## name` headings compared, with a
+  seeded bootstrap interval of the p99 / p50 change (slower / faster / within the noise; no interval without 200+ raw samples a side).
+- `budget.py` - `stage` / `fanout` (waits for all N) / `hedge` / `target` lines; each stage a log-normal fitted to her p50 + p99, the path
+  sampled 20,000 times with a fixed seed (max of N via the inverse normal for big fan-outs); end-to-end percentiles, share of the median,
+  how much the tail drops if each stage always took its median (the biggest win), fan-out slow chance 1-0.99^N, what-ifs (halve the
+  fan-out, hedge a heavy-tailed call after its p95 at ~5% more load), the sum of p99s shown as the bound it is.
+- `hotpath.py` - C / C++, Rust, Go, Java detected; 45 rules (allocation, locks, logging, sleeps, std::endl, shared_ptr by value,
+  node containers, push_back without reserve, a syscall per message, defer in a loop, json reflection, boxing, regex compiles ...), loop
+  bodies found from the braces, strings and comments skipped; patterns, said as not measurements.
+- `layout.py` - C / C++ structs and Rust structs laid out on System V LP64 or Windows LLP64: offsets, padding, the cache lines each field
+  sits on, fields crossing a line, atomics sharing a line (false sharing, alignas(64) / 128 / CachePadded), the order with the least
+  padding, packed / alignas / bit-fields / std::atomic / std::array / Option, Rust without repr(C) said; libstdc++ sizes said as such.
+- `profile.py` - perf report --stdio (children or not), folded stacks, perf stat: self time by kind (allocation and GC, locks, page
+  faults, the scheduler, the network stack, copying, logging, serialisation, the kernel), top functions, IPC, cache / branch misses,
+  context switches, CPU migrations, page faults per second.
+- `tuning.py` - /proc/cmdline, sysctl, lscpu, governor, THP, ethtool -c / -g, irqbalance, tuned-adm, the clock source -> each setting
+  that adds latency with the line to change and its trade-off; what was not pasted listed as not seen.
+- `ci.py` - `.github/workflows/latency.yml`: base and head checked out, built, run interleaved N times on one runner (pinned to a CPU),
+  an embedded Python compare that fails the job when the head's percentile is over her tolerance and writes a job summary; commands with
+  `${{` or newlines refused; the results file emptied with `: >` (no removal command).
+- `service.py` - tables lldesk_items / lldesk_settings, kinds latency L / budget B / code H / layout S / profile P / tuning T.
+
+NEW tool `latency_desk` (`agent/lowlat_tools.py`, family lowlat, registry 709 -> 710; the 17 count pins moved). Wiring: tools.py,
+admit.py EXTRA_KEYS["lowlat"], santosh.py block + admission, main.py page + mount, db.py, the convs.py / callconv.py kind lists,
+v2.js `lldesk`, employees.js, hire.py (live, does / needs / never). Tests `server/tests/test_ll_desk.py` (4: engine, engine 2 incl.
+running the CI compare step on a 30%-slower head (fails) and the same code (passes), hire / chat / wiring / store / guards, a browser
+walk at 1440 and 390 with screenshots). NOT VERIFIED: on her server, with her own services and load tests, or the workflow on GitHub.
