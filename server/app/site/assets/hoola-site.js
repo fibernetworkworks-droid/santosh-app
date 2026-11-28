@@ -208,10 +208,18 @@
       b.addEventListener('click', function () {
         var f = d.createElement('iframe'), yt = fig.getAttribute('data-hs-yt');
         f.src = yt ? 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(yt) + '?autoplay=1&rel=0' : fig.getAttribute('data-hs-map');
-        f.title = yt ? (fig.getAttribute('data-title') || 'Video') : 'Map';
+        // v0.999.330 UX rule "Map Text Alternative": the address and the Google Maps link stay beside the loaded map
+        var face = fig.querySelector('.hs-map-face'), where = face && face.querySelector('p'), cap = null;
+        if (!yt && face) {
+          cap = d.createElement('figcaption'); cap.className = 'hs-map-cap';
+          if (where) cap.appendChild(where.cloneNode(true));
+          var out = face.querySelector('a'); if (out) cap.appendChild(out.cloneNode(true));
+        }
+        f.title = yt ? (fig.getAttribute('data-title') || 'Video') : ('Map' + (where ? ': ' + where.textContent : ''));
         f.loading = 'lazy'; f.referrerPolicy = 'strict-origin-when-cross-origin';
         if (yt) { f.allow = 'autoplay; encrypted-media; picture-in-picture'; f.allowFullscreen = true; }
-        fig.classList.add('on'); fig.innerHTML = ''; fig.appendChild(f);
+        fig.classList.add('on'); fig.innerHTML = ''; fig.appendChild(f); if (cap) fig.appendChild(cap);
+        f.focus();
       });
     });
   }

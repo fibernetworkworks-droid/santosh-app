@@ -119,7 +119,7 @@ def archify_finalize(kind: str, candidate: dict[str, Any] | str | Path, out_dir:
     if not node:
         return {"ok": False, "gates": {}, "html": "", "problems": ["node >= 18 is not installed on the server"],
                 "said": "archify needs Node 18 or newer on the server."}
-    out = Path(out_dir)
+    out = Path(out_dir).resolve()           # archify runs inside this folder: every path it gets is absolute
     out.mkdir(parents=True, exist_ok=True)
     slug = re.sub(r"[^a-z0-9-]", "", slug.lower())[:48] or "diagram"
     cand = out / "candidate.json"
@@ -249,7 +249,7 @@ window.addEventListener('message', (e) => {
   if (m.event === 'init') { window.__hoola.state = 'init';
     ed.contentWindow.postMessage(JSON.stringify({action: 'load', xml: window.__xml, autosave: 0}), '*'); }
   else if (m.event === 'load') { window.__hoola.state = 'loaded';
-    ed.contentWindow.postMessage(JSON.stringify({action: 'export', format: 'png'}), '*'); }
+    ed.contentWindow.postMessage(JSON.stringify({action: 'export', format: window.__fmt || 'png'}), '*'); }
   else if (m.event === 'export') { window.__hoola.png = m.data || ''; window.__hoola.state = 'done'; }
 });
 </script>"""
@@ -270,6 +270,11 @@ def _serve(root: Path):
 
 def drawio_png(xml: str, png: str | Path) -> dict[str, Any]:
     """Load draw.io XML into the pinned editor (served from 127.0.0.1, every outside request refused) and export a PNG."""
+    return drawio_export(xml, png, "png")
+
+
+def drawio_export(xml: str, out: str | Path, fmt: str = "png") -> dict[str, Any]:
+    """The pinned editor's own export: fmt png (a picture) or xmlsvg (an SVG that also carries the diagram)."""
     from . import drawio as DR
     if not DR.ready():
         return {"ok": False, "said": "the draw.io editor is not set up (python -m app.diagram setup)"}
@@ -287,7 +292,7 @@ def drawio_png(xml: str, png: str | Path) -> dict[str, Any]:
                 ctx = b.new_context(viewport={"width": 1400, "height": 900})
                 ctx.route(re.compile(r"^https?://(?!127\.0\.0\.1:%d/)" % port), lambda route: route.abort())
                 page = ctx.new_page()
-                page.add_init_script("window.__xml = " + json.dumps(xml) + ";")
+                page.add_init_script("window.__xml = " + json.dumps(xml) + "; window.__fmt = " + json.dumps(fmt) + ";")
                 page.goto(f"http://127.0.0.1:{port}/__hoola_host.html", wait_until="load",
                           timeout=RENDER_TIMEOUT * 1000)
                 page.wait_for_function("window.__hoola && window.__hoola.state === 'done'",
@@ -298,9 +303,9 @@ def drawio_png(xml: str, png: str | Path) -> dict[str, Any]:
     finally:
         srv.shutdown()
         srv.server_close()
-    m = re.match(r"data:image/png;base64,(.+)$", data or "", re.S)
+    m = re.match(r"data:image/(?:png|svg\+xml);base64,(.+)$", data or "", re.S)
     if not m:
         return {"ok": False, "said": "draw.io returned no picture"}
-    Path(png).parent.mkdir(parents=True, exist_ok=True)
-    Path(png).write_bytes(base64.b64decode(m.group(1)))
-    return {"ok": True, "png": str(png)}
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    Path(out).write_bytes(base64.b64decode(m.group(1)))
+    return {"ok": True, "png": str(out), "file": str(out)}

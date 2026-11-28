@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "verifiedAt": "2026-11-04",
+  "verifiedAt": "2026-11-26",
   "counts": {
     "styles": {
       "total": 89,
@@ -9,18 +9,18 @@
       "supplemental": 29,
       "deprecated": 9
     },
-    "products": 192,
-    "palettes": 192,
-    "reasoningProfiles": 192,
+    "products": 194,
+    "palettes": 194,
+    "reasoningProfiles": 194,
     "fontPairings": 74,
     "googleFonts": 1934,
     "curatedIcons": 105,
     "upstreamPhosphorIcons": 1512,
-    "uxGuidelines": 120,
-    "motionPresets": 17,
+    "uxGuidelines": 141,
+    "motionPresets": 20,
     "chartTypes": 25,
-    "stacks": 22,
-    "stackGuidelines": 1278
+    "stacks": 23,
+    "stackGuidelines": 1346
   },
   "snapshots": {
     "google-fonts.csv": {

@@ -47,6 +47,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.NotificationCompat
@@ -253,13 +255,16 @@ fun ShiftBlock() {
 private val MAP_HTML = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="/static/vendor/maplibre/maplibre-gl.css"><style>html,body,#m{margin:0;height:100%}
 .p{width:16px;height:16px;border-radius:50%;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
-.rider{background:#1e9e5a}.dest{background:#d0453a}.me{background:#2f6fd6}</style></head><body><div id="m"></div>
+.rider{background:#1e9e5a}.dest{background:#d0453a}.me{background:#2f6fd6}</style></head><body><div id="m" role="region" aria-label="Map"></div>
 <script src="/static/vendor/maplibre/maplibre-gl.js"></script><script>
 var map=new maplibregl.Map({container:'m',style:'https://tiles.openfreemap.org/styles/liberty',center:[78.96,22.6],zoom:4,attributionControl:{compact:true}});
 var marks=[],fitted=false;
 window.HoolaMap={set:function(pins){marks.forEach(function(m){m.remove()});marks=[];var b=new maplibregl.LngLatBounds();
 pins.forEach(function(p){var el=document.createElement('div');el.className='p '+p.kind;el.title=p.label;
-marks.push(new maplibregl.Marker({element:el}).setLngLat([p.lng,p.lat]).setPopup(new maplibregl.Popup({offset:12}).setText(p.label)).addTo(map));b.extend([p.lng,p.lat]);});
+el.tabIndex=0;el.setAttribute('role','button');el.setAttribute('aria-label',p.label);
+var mk=new maplibregl.Marker({element:el}).setLngLat([p.lng,p.lat]).setPopup(new maplibregl.Popup({offset:12}).setText(p.label)).addTo(map);
+el.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();mk.togglePopup();}});
+marks.push(mk);b.extend([p.lng,p.lat]);});
 if(pins.length===1){map.easeTo({center:[pins[0].lng,pins[0].lat],zoom:Math.max(map.getZoom(),14)});}
 else if(pins.length>1){map.fitBounds(b,{padding:48,maxZoom:16,duration:fitted?600:0});fitted=true;}}};
 </script></body></html>"""
@@ -270,7 +275,9 @@ else if(pins.length>1){map.fitBounds(b,{padding:48,maxZoom:16,duration:fitted?60
 fun LiveMap(pins: List<MapPin>, modifier: Modifier = Modifier.fillMaxWidth().height(280.dp)) {
     val json = JSONArray(pins.map { JSONObject().put("lat", it.lat).put("lng", it.lng).put("label", it.label).put("kind", it.kind) }).toString()
     var ready by remember { mutableStateOf(false) }
-    AndroidView(modifier = modifier, factory = { cx ->
+    // v0.999.330 UX rule "Map Text Alternative": TalkBack reads what is on the map (the pins' names)
+    val said = pins.joinToString(", ") { it.label }.ifEmpty { "Map" }
+    AndroidView(modifier = modifier.semantics { contentDescription = said }, factory = { cx ->
         WebView(cx).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = false

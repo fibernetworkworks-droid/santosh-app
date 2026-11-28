@@ -162,7 +162,7 @@ async function renderPage(t) {
   const it = t.item; t.aid = it.ref; t.view = 'preview';
   t.el.innerHTML = bar(t, `<select class="pnsel" aria-label="Version"></select>
       <div class="bseg" role="group" aria-label="View"><button type="button" data-v="preview" aria-pressed="true">Preview</button><button type="button" data-v="code" aria-pressed="false">Code</button></div>
-      ${devSeg(false)}<span class="sp"></span><button type="button" class="btn soft" data-a="undo" hidden title="Go back to the version before">Undo</button><button type="button" class="btn soft" data-a="share">Share</button><button type="button" class="btn soft" data-a="dl">Download</button>`)
+      ${devSeg(false)}<span class="sp"></span><button type="button" class="btn soft" data-a="hand" hidden title="Change this diagram yourself in the draw.io editor">Edit by hand</button><button type="button" class="btn soft" data-a="undo" hidden title="Go back to the version before">Undo</button><button type="button" class="btn soft" data-a="share">Share</button><button type="button" class="btn soft" data-a="dl">Download</button>`)
     + `<div class="pnerr" hidden></div><div class="pnview"></div>
     <form class="pnchg"><input placeholder="What should change? (you can select part of the code too)" aria-label="Change request"><button class="btn go" type="submit">Edit</button></form>`;
   const sel = q(t, '.pnsel'), view = q(t, '.pnview');
@@ -172,7 +172,16 @@ async function renderPage(t) {
     sel.innerHTML = (d.versions || []).map(v => `<option value="${v.version}">v${v.version}${v.note ? ' · ' + esc(String(v.note).slice(0, 40)) : ''}</option>`).join('');
     sel.value = String(t.ver);
     q(t, '[data-a="undo"]').hidden = !((d.versions || []).length > 1);   // parity Phase 6: Undo = the version before, as a new version
+    /* HOOLA DIAGRAM: a diagram page - its changes go through the diagram tool, and it can be edited by hand */
+    t.diag = null;
+    try { const g = await api('GET', `/api/diagram/open/${encodeURIComponent(t.aid)}`); if (g && g.diagram) t.diag = g; } catch {}
+    if (t.diag) { q(t, '[data-a="hand"]').hidden = false; q(t, '[data-a="undo"]').hidden = true; }
   } catch (e) { view.innerHTML = err(e.message); return; }
+  q(t, '[data-a="hand"]').addEventListener('click', () => {
+    const g = t.diag; if (!g) return;
+    if (!g.editable) { ctx.say(`Make the diagram "${t.item.title}" (diagram ${g.diagram_id}) editable so I can change it by hand.`); toast('Hoola is making an editable copy. It opens here when ready.'); return; }
+    t.view = 'hand'; qa(t, '.bseg:not(.dev) button').forEach(x => x.setAttribute('aria-pressed', 'false')); handView(t);
+  });
   q(t, '[data-a="undo"]').addEventListener('click', async e => {
     const b = e.currentTarget; b.disabled = true;
     try { const r = await api('POST', `/api/artifacts/${encodeURIComponent(t.aid)}/undo`); toast(`Back to the earlier version (now v${r.version}).`); renderPage(t); }
@@ -187,11 +196,27 @@ async function renderPage(t) {
     catch (e) { toast(e.message, true); } });
   q(t, '.pnchg').addEventListener('submit', async e => {
     e.preventDefault(); const inp = e.target.querySelector('input'), want = inp.value.trim(); if (!want) return;
+    if (t.diag) { ctx.say(`Change the diagram "${t.item.title}" (diagram ${t.diag.diagram_id}): ${want}`); inp.value = ''; toast('Sent to Hoola.'); return; }
     const part = selectionIn(view);
     const request = part ? `Change this part:\n"""\n${part}\n"""\nChange: ${want}` : want;
     try { await api('POST', `/api/artifacts/${encodeURIComponent(t.aid)}/revise`, {request}); inp.value = ''; toast('Creating a new version. It will appear here when ready.'); }
     catch (er) { toast(er.message, true); } });
   pageView(t);
+}
+/* HOOLA DIAGRAM: her draw.io editor for this diagram, in its own sandbox (it never sees this console's sign-in) */
+async function handView(t) {
+  const view = q(t, '.pnview'); q(t, '.pnerr').hidden = true;
+  try {
+    const g = await api('GET', `/api/diagram/open/${encodeURIComponent(t.aid)}`);   // a fresh, short-lived editor link
+    if (!g || !g.editable || !g.url) { view.innerHTML = err('This diagram cannot be edited by hand yet.'); return; }
+    view.innerHTML = '';
+    const f = document.createElement('iframe');
+    f.className = 'pnframe pnhand'; f.title = `${t.item.title} · editor`;
+    f.setAttribute('sandbox', 'allow-scripts allow-popups allow-modals allow-downloads');
+    f.setAttribute('referrerpolicy', 'no-referrer'); f.setAttribute('allow', 'clipboard-read; clipboard-write');
+    f.src = g.url + '?lang=' + encodeURIComponent((document.documentElement.lang || navigator.language || 'en').toLowerCase());
+    view.appendChild(f); t.frame = null;
+  } catch (e) { view.innerHTML = err(e.message); }
 }
 async function pageView(t) {
   const view = q(t, '.pnview'); q(t, '.pnerr').hidden = true;
@@ -378,6 +403,7 @@ function update(kind, p) {
   if (kind !== 'artifact' || !p?.id) return;
   if (p.status === 'ready' && DRAFTS.size) endDrafts(p);
   const t = TABS.find(x => x.item.type === 'page' && x.aid === p.id);
+  if (t && t.view === 'hand') { t.ver = p.version || t.ver; return; }   // HOOLA DIAGRAM: her editor gets Hoola's change itself (outlined, Ctrl+Z) - never reloaded under her
   if (t && p.status === 'ready' && p.version && p.version !== t.ver) { toast(`${p.title || 'Page'}: new version v${p.version} is ready.`); renderPage(t); }
 }
 

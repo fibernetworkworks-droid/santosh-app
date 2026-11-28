@@ -820,14 +820,26 @@ window.HoolaBuild = function (C) {
     const put = (id, name, lat, lng) => {
       if (typeof lat !== 'number' || typeof lng !== 'number') return;
       let m = marks.get(id);
-      if (!m) { const d = document.createElement('div'); d.className = 'strider'; d.title = name; m = new maplibregl.Marker({element: d}).setLngLat([lng, lat]).setPopup(new maplibregl.Popup({offset: 12}).setText(name)).addTo(map); marks.set(id, m); }
+      if (!m) {
+        /* v0.999.330 UX rule "Map Keyboard and Non-Drag Navigation": each rider is a focusable button; Enter / Space
+           opens the name (the popup is text, never HTML) */
+        const d = document.createElement('div'); d.className = 'strider'; d.title = name;
+        d.tabIndex = 0; d.setAttribute('role', 'button'); d.setAttribute('aria-label', name || 'Rider');
+        m = new maplibregl.Marker({element: d}).setLngLat([lng, lat]).setPopup(new maplibregl.Popup({offset: 12}).setText(name)).addTo(map);
+        d.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); m.togglePopup(); } });
+        m._hoolaName = name; marks.set(id, m);
+      }
       else m.setLngLat([lng, lat]);
+      list();
     };
+    /* v0.999.330 UX rule "Map Text Alternative": the riders on the map, as words beside it */
+    const say = el.parentNode && el.parentNode.querySelector('.stmaplist');
+    const list = () => { if (say) say.textContent = marks.size ? 'On the map: ' + [...marks.values()].map(m => m._hoolaName || 'Rider').join(', ') + '.' : ''; };
     riders.forEach(r => put(S(r.member), S(r.name), r.lat, r.lng));
     const fit = () => { if (!marks.size) return; const b = new maplibregl.LngLatBounds(); marks.forEach(m => b.extend(m.getLngLat())); map.fitBounds(b, {padding: 48, maxZoom: 15, duration: 0}); };
     map.on('load', fit);
     const box = el.closest('.stcols') ? el.closest('.stcols').parentNode : el.parentNode.parentNode;
-    const on = e => { const p = e.detail; if (!el.isConnected) return box.removeEventListener('hoolapos', on); if (p.off) { const m = marks.get(S(p.member)); if (m) { m.remove(); marks.delete(S(p.member)); } } else put(S(p.member), S(p.name), p.lat, p.lng); };
+    const on = e => { const p = e.detail; if (!el.isConnected) return box.removeEventListener('hoolapos', on); if (p.off) { const m = marks.get(S(p.member)); if (m) { m.remove(); marks.delete(S(p.member)); list(); } } else put(S(p.member), S(p.name), p.lat, p.lng); };
     box.addEventListener('hoolapos', on);
   }
   async function loadAppData(o, box) {
@@ -887,7 +899,7 @@ window.HoolaBuild = function (C) {
         <span class="stnote">On the way when the status is:</span>${L(cur.statuses).map(s => `<label class="chk"><input type="checkbox" name="st" value="${esc(S(s))}"${L(tr.statuses).includes(s) ? ' checked' : ''}> ${esc(S(s))}</label>`).join('')}</div>
         ${cur.location ? '' : '<p class="stnote">This list has no location field, so the map shows the rider but not the customer\'s place.</p>'}
         <div class="row"><button class="btn go" type="submit" data-on="1">${tr.on ? 'Save' : 'Turn on tracking'}</button>${tr.on ? '<button class="btn" type="submit" data-on="0">Turn off</button>' : ''}</div></form>
-        ${tr.on ? `<p class="stnote">${L(tr.riders).length ? L(tr.riders).length + ' on shift now' : 'Nobody is on shift right now.'}</p><div class="stmap" role="img" aria-label="Riders on shift"></div>` : ''}`;
+        ${tr.on ? `<p class="stnote">${L(tr.riders).length ? L(tr.riders).length + ' on shift now' : 'Nobody is on shift right now.'}</p><div class="stmap" role="region" aria-label="Map of the riders on shift"></div><p class="stnote stmaplist" aria-live="polite"></p>` : ''}`;
       const f = trbox.querySelector('form');
       f.coll.addEventListener('change', () => drawTrack({...tr, coll: f.coll.value, statuses: []}));
       f.addEventListener('submit', async e => {

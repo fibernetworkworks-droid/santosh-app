@@ -14632,3 +14632,73 @@ Built as the seven parts of the workflow in one release (v0.999.328; main had mo
 - FOUND while walking it: a form field named `item` read through `form.elements['item']` returned the collection's own `item()` method - every value is now read by `querySelector('[name=...]')`.
 - Tests `server/tests/test_store_desk.py` 9 (engine parts, chat / tool / wiring, the browser walk at 1440 and 390 with no sideways scroll). Tool-count pins 720 -> 721.
 - NOT VERIFIED: on her server, with real delivery papers or weighbridge tickets, or on her phone; country rows not read from their primary texts stay "check this".
+
+
+## v0.999.329 HOOLA DIAGRAM D2
+(owner: 'GO D2'). Files: server/app/diagram/service.py (NEW), server/app/agent/diagram_tools.py (NEW), agent/tools.py (registered), agent/admit.py (EXTRA_KEYS diagram), agent/pakka.py (SKIP diagram), agent/santosh.py (_look_block + the image-carrying tool_result in _turn_tools, RESULT_LIMIT diagram 70000, Path import), artifacts.py (save_built, write refuses kind diagram), diagram/runners.py (absolute out dir). Found while building: (1) archify's built page is ~945 KB (its viewer runtime + fonts inline), over the 600 KB cap of a model-written page - engine-built pages get their own 3 MB cap; (2) archify was handed relative paths while it ran inside its work folder - ENOENT on a doubled path, now absolute; (3) archify and diagram-design both have a 'waterfall' (time spans vs a money bridge) - the money bridge is 'budget-bridge' in the catalogue; (4) tool results were text only everywhere - the picture is an image block only on the main chat loop; team crews see the path text.
+
+
+## v0.999.330 UI/UX PRO MAX UPDATED + THE UX RULES WHERE THINGS ARE BUILT
+
+Owner: read github.com/nextlevelbuilder/ui-ux-pro-max-skill again (upstream 11ca2b3, 27 Nov 2026, MIT), then
+"GO BUILD 1 2 3 4" on the four points of the read.
+
+1. **The engine brought up to date.** `server/app/coder/uiux/` scripts + data = upstream 11ca2b3, unchanged (33 commits
+   after 6ae86f6): 141 UX rules (new: form errors 131-141 - keep her input after a failed submit, never block paste,
+   errors that say how to fix, no pre-disabled submit, unsaved-changes warning, forgiving formats; web maps 121-130 -
+   attribution visible, a text alternative, keyboard, colour-safe symbols, safe popups, clustering, reduced motion),
+   2 palettes + 2 product types (GIS, satellite imagery), 3 always-on motion presets, the PySide6 / Qt stack (23
+   stacks), `preview.py`, `--tokens css|dtcg`, exact hex palette lookup, `--lang` / `--direction` previews and Arabic
+   query synonyms, the dark-mode word-start fix. PROVENANCE.md records it; `phosphor-icons-upstream.json`, the
+   upstream tests and `validate_data.py` stay out (not read at runtime). The other six skills in the repo (logo /
+   brand identity generators, slides, banners, shadcn styling) were not brought in: outside keys, or Hoola already has
+   them.
+2. **The rules reach the builders** (`server/app/coder/uxrules.py`, no model call, no subprocess):
+   `topics_of` reads what a section or file holds (forms, maps, data maps, dialogs; `.map(` in code is not a map),
+   `block` gives each topic an even share of a short rule list (forms in the order that matters most: labels, error
+   placement, actionable errors, keep input, clear errors, submit feedback, no pre-disabled submit, paste, input
+   types...), `code_problems` checks in code what a computer can see for sure.
+   - the React writer's custom sections (`writer.ux_rules`) and the HTML section writer (`site.service._ux_rules`)
+     get the rules for what the section holds;
+   - Hoola's per-turn App Engine summary (`service.ux_block`) carries the rules for what HER app holds (its pages and
+     sections; kit files as the template made them do not count);
+   - every App Engine page write runs `service.ux_check` and names what it finds ("UX check (fix these): ...") - told,
+     never refused; the kit's ui parts are building blocks and are not checked;
+   - the critic (`critic.ux_text`) gets the rules for what the pages hold, to judge only what the screenshots show,
+     and `critic.ux_measure` code-checks every custom section: a problem is a fact, the section goes back to its
+     writer as a rewrite with the rule named.
+   The kit's board block (`screen-board.tsx`) pre-disabled its add button until a title was typed; it now stays enabled
+   and says "Type a card title first." (role=alert, aria-invalid). Every kit page file passes the checks (tested).
+3. **uiux_design passes what the engine can do**: variance / motion / density 1-10 (a bad dial is left out, never
+   guessed), `tokens=css|dtcg`, `preview=true` (written inside her vault - `previews/<stamp>/` or beside MASTER.md when
+   persisted, never overwritten - then stored as a chat file and sent as the house pc_file card; a path outside her
+   vault is never shared), `lang` / `direction=rtl`, `stack=pyside6-qss`. Options that need a design system are refused
+   without one. The seed skill names them and the form / map rules.
+4. **Hoola's own map screens**: the console's riders map is a labelled region with the riders named beside it (kept in
+   step with the live positions) and keyboard-focusable markers (Enter / Space opens the name); the phone kit's map
+   (`Track.kt`) is a region with keyboard markers and its pins' names read by TalkBack (`semantics { contentDescription }`);
+   a website's map, once loaded on her tap, keeps the address and the Google Maps link beside it in a caption and its
+   frame is titled with the address. Attribution stays visible (MapLibre's compact control opens on load) and popups
+   stay text.
+
+Tests: `server/tests/test_v0999_330_uiux_rules.py` 11; `test_v0486_hoola_uiux_skill.py` stack count 22 -> 23 and
+`test_v0753_skill_triggers.py` still finds 6ae86f6 in PROVENANCE (history kept). NOT VERIFIED on her server, with a
+real model writing a section, or the Kotlin map change compiled (CI compiles the kit with a built app).
+
+
+## v0.999.331 HOOLA DIAGRAM D3
+Owner: 'GO D3' on docs/DIAGRAM_TOOL_PLAN.md (D3 = engine C, the editable draw.io view in the workspace).
+
+WHAT SHE GETS: any diagram she asks for as 'editable' (or type drawio, or words like 'I want to change it myself') is drawn in draw.io's format; in the console workspace the page shows 'Edit by hand', which opens the real draw.io editor in the pane. She moves, adds, renames - it saves by itself (status line: Saved). When she selects shapes and says 'make these red', Hoola changes only those. Hoola's change appears in her open editor outlined for 4 seconds; one Ctrl+Z takes the whole change back. 'Download .drawio' gives her the file. An archify or diagram-design diagram can become an editable copy (action editable, then draw from_id).
+
+HOW HER WORK IS KEPT SAFE FROM HOOLA: (1) every engine-C diagram has a revision; Hoola must call action=read before action=change, and a change (or a full redraw) is refused when she edited by hand since that read; (2) her save says which revision her editor holds - a save from an editor that has not applied Hoola's newest change is refused as stale, her editor applies it first (id by id, inside her editor, so her own unsaved shapes survive) and saves again; (3) the console never reloads her editor when a new version arrives.
+
+SAFETY: the editor files are draw.io's pinned build (D1 sha-checked) served unchanged from Hoola's server; Hoola's bridge script tag is added to index.html at serve time. Every editor response carries a CSP sandbox WITHOUT allow-same-origin, so the editor never reaches her console sign-in, cookies or storage; the live API takes only the token (HMAC, one tenant + one diagram, 12 h) and answers any origin because the token is the permission (an OPTIONS answer is needed: the sandbox's origin is 'null' and a JSON POST asks first). XML: no DOCTYPE / ENTITY, no script or javascript: in labels / links / styles, ids unique, edges must point at real cells, 2,000 cells / 2 MB; a compressed page (what draw.io itself saves) is unpacked with a 2 MB output cap (a small zip bomb is refused).
+
+FILES: server/app/diagram/drawio_xml.py, live.py, api.py, web/host.js, web/bridge.js (new); service.py (route / catalogue / guide for drawio, _try_drawio, publish_drawio, read, change, editable, by_artifact, the gate), runners.py (drawio_export png / xmlsvg), agent/diagram_tools.py (type drawio, actions read / change / editable, from_id, ops), main.py (router), static/console/panel.js (Edit by hand + handView), v2.css (.pnhand). The pinned draw.io build lives in data/diagram/drawio (vps-ops diagram_setup).
+
+FOUND WHILE BUILDING: draw.io saves pages compressed (base64 + raw deflate + URI-encoded) even in embed mode - the first browser walk's save was refused until drawio_xml learned to unpack them; the sandbox's opaque origin makes the JSON POST a preflighted request - an OPTIONS route was needed; Playwright's sync API cannot run inside the caller's own Playwright thread - the tool already runs the service in a worker thread (asyncio.to_thread), the tests do the same.
+
+TESTS: test_v0999_331_diagram_d3.py 13 (XML normalise / checks, compressed + bomb, ops all-or-nothing, fingerprint, routing + guide, signed link + expiry, her edit -> read -> change -> poll -> stale save, editable copy, redraw gate, routes: sandbox CSP, token-only, bridge injection, path escape, .drawio file, signed-in open; console wiring; WALK 1: real draw.io in Chromium - she moves a box (saved, rev 2), selects another, Hoola reads (sees the selection) and changes its label, her editor shows it outlined with her move kept, one undo takes it back, the server follows; WALK 2: the console opens the diagram, 'Edit by hand' puts the sandboxed editor in the pane (>= 500 px) and it is ready). The two walks skip where the editor or Chrome is missing. Nearby suites: the 7 reds seen (console stylesheet count, console English, browser-frame count, heavy weights, tool labels, past-tense verbs, conversation list) fail the same on the untouched tree.
+
+NOT VERIFIED: not deployed on her VPS (deploy, then vps-ops diagram_setup needs node >= 18 for engine A; engine C needs only the editor fetch). No real model has drawn a draw.io diagram yet (fake-model tests only). The phone opens the picture page, not the editor (D5). Next: D4 (Hoola Code) on her word.

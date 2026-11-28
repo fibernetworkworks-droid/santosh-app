@@ -356,6 +356,42 @@ def measure(shots: dict[str, Any], rows: list[dict[str, Any]]) -> list[dict[str,
     return out
 
 
+def ux_measure(code: dict[str, str], rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """v0.999.330 the design database's UX rules a computer can check, read in each custom section's code (paste
+    blocked, the send button disabled until valid, fields with no label, an email / phone box of the wrong type, a map
+    with its attribution or keyboard off). A problem is a fact: the section is sent back to its writer to rewrite."""
+    try:
+        from ..coder import uxrules as UX
+    except Exception:                                # noqa: BLE001
+        return []
+    by_comp = {f"src/components/sections/{r.get('component')}.tsx": r for r in rows
+               if r.get("block") == "custom" and r.get("component")}
+    out: list[dict[str, Any]] = []
+    for rel, src in (code or {}).items():
+        row = by_comp.get(rel)
+        if not row:
+            continue
+        probs = UX.code_problems(src)
+        if probs:
+            out.append({"sec": row["sec"], "fix": "rewrite", "code": True, "ux": probs,
+                        "why": f"{row['page']} {row.get('component')}: " + "; ".join(probs[:3])})
+    return out
+
+
+def ux_text(rows: list[dict[str, Any]], code: dict[str, str] | None = None) -> str:
+    """v0.999.330 the UX rules for what these pages hold (a form, a map), for the critic to judge where it can see.
+    Read from the sections and from the custom sections' own code."""
+    try:
+        from ..coder import uxrules as UX
+        what = " ".join(f"{r.get('block') or ''} {r.get('type') or ''} {r.get('label') or ''}" for r in rows)
+        what += " " + " ".join((code or {}).values())[:40000]
+        return UX.block(UX.topics_of(what), limit=1100,
+                        head="UX rules for what these pages hold (Hoola's design database) - judge only what the "
+                             "screenshots show:")
+    except Exception:                                # noqa: BLE001
+        return ""
+
+
 # ---------------------------------------------------------------- the critic
 def loop_system() -> str:
     from ..quality import designcard as DC
@@ -439,7 +475,7 @@ def allowed(row: dict[str, Any], fix: str, to: str = "") -> bool:
 
 def review(who: dict[str, Any], brief: str, purpose: str, imgs: list[tuple[str, bytes]], rows: list[dict[str, Any]],
            shots: dict[str, Any], measured: list[dict[str, Any]], photos_off: bool = True,
-           likes: list[tuple[str, bytes]] | None = None) -> dict[str, Any]:
+           likes: list[tuple[str, bytes]] | None = None, code: dict[str, str] | None = None) -> dict[str, Any]:
     """One critic call (tried twice). A failure is an `error`, never a score."""
     if not imgs:
         return {"error": "no screenshots"}
@@ -449,6 +485,9 @@ def review(who: dict[str, Any], brief: str, purpose: str, imgs: list[tuple[str, 
                                              f"{section_list(rows, shots)}")]
     if measured:
         parts.append(("text", "Measured by code (true facts):\n" + "\n".join("- " + m["why"] for m in measured[:12])))
+    ux = ux_text(rows, code)
+    if ux:
+        parts.append(("text", ux))
     parts.append(("text", "The screenshots follow, each named."))
     for name, data in imgs:
         parts += [("text", name + ":"), ("image", data)]
@@ -710,11 +749,11 @@ def improve(tenant: str, ref: str, pages: list[dict[str, Any]], *, name: str, fa
                 report["rounds"].append(rec)
                 best = best or {**cur, "score": None, "round": k}
                 break
-            measured = measure(sh, rows)
+            measured = measure(sh, rows) + ux_measure(cur["code"], rows)
             imgs = images(sh, slugs)
             v = (critic(imgs, rows, sh, measured) if critic else
                  review(who, brief, purpose, imgs, rows, sh, measured, photos_off,
-                        **({"likes": likes_pics} if likes_pics else {})))   # the D5 call shape still works
+                        **({"likes": likes_pics} if likes_pics else {}), code=cur["code"]))   # the D5 call shape still works
             rec.update({"measured": [m["why"] for m in measured], "images": len(imgs)})
             if v.get("error"):
                 rec["error"] = "critic: " + str(v["error"])[:200]

@@ -83,7 +83,7 @@ def test_vendored_engine_present():
                 "ui-reasoning.csv"):
         assert os.path.exists(os.path.join(data, csv)), csv
     stacks = os.listdir(os.path.join(data, "stacks"))
-    assert len([s for s in stacks if s.endswith(".csv")]) == 22
+    assert len([s for s in stacks if s.endswith(".csv")]) == 23   # v0.999.330 upstream 11ca2b3 added PySide6 / Qt
 
 
 def test_engine_design_system_runs():
