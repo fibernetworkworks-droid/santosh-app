@@ -712,3 +712,51 @@ a.rh-cell:hover{background:var(--side)}
   .rh-spark{display:none}
 }
 .rh table.rt td.c-name{width:40%}
+
+/* ---------------------------------------------------------------- v0.999.299 THE HOME'S DESIGN ON EVERY PAGE
+   (owner: "NOW SAME DESIGN FOR ALL ROUTE PAGES"): every page in the home's frame - one centred column, the serif title with a
+   plain line of where things stand under it, numbers as one band of cells, status as a coloured dot, cards with 16 px corners,
+   what needs her as the home's cards, quiet empty states. */
+body:not(.editing) .main{padding-top:36px}
+body:not(.editing) .main > *{width:100%;max-width:1160px;margin-left:auto;margin-right:auto}
+h1{font-size:38px;font-weight:350;letter-spacing:-.015em}
+.rtitle{font-weight:400}
+.lead,.top .lead.sm{font-size:15.5px;color:var(--mut);line-height:1.5}
+.main > .top + .lead{margin-top:-18px}
+.top > div > .lead.sm{margin-top:8px}
+.card{border-radius:16px}
+.hd h2{font-size:17px}
+/* numbers: one band, cells parted by hairlines (Insights, Grid, Bring in, a workflow) */
+.stats{gap:1px;background:var(--line);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.stats .stat{border:0;border-radius:0;background:var(--bg);padding:20px 24px;gap:6px}
+.stats .stat .k{font-size:13px}
+.stat b{font-size:34px;font-weight:400;letter-spacing:-.01em;line-height:1.1}
+.stat > .sm,.stat > small{font-size:12.5px;color:var(--dim)}
+/* status: a coloured dot and its word, as on the home */
+.pill{background:none!important;padding:0;height:auto;min-height:22px;font-size:13px;font-weight:500;gap:7px}
+.pill .dot{width:7px;height:7px;opacity:1}
+.pill:not(.ok):not(.bad):not(.warn):not(.v){color:var(--mut)}
+.pill:not(.ok):not(.bad):not(.warn):not(.v) .dot{background:var(--dim)}
+/* what needs her: the home's cards, two across */
+.needgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.needgrid > .card{min-width:0}
+/* quiet empty states, cards that lift under the pointer */
+.card.flat > .empty,.edpage .empty{padding:20px 22px;color:var(--mut)}
+.tc{border-radius:16px}
+.tc:hover,.card.lc:hover{border-color:var(--line2);box-shadow:var(--sh)}
+.errbox{border-radius:14px}
+@media (max-width:760px){
+  body:not(.editing) .main{padding-top:24px}
+  h1{font-size:30px}
+  .needgrid{grid-template-columns:minmax(0,1fr)}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stats .stat{padding:16px}
+  .stat b{font-size:28px}
+}
+body:not(.editing) .main:has(> .rh){padding-top:24px}
+/* the Insights chart in the home's colours: runs that went well in ink, the ones that did not in red */
+.bar .bd,.legend i.bd{background:var(--ink);opacity:.78}
+.bar .bf,.legend i.bf{background:var(--bad);opacity:.8}
+.bar .bd{border-radius:4px 4px 0 0}
+.bar{max-width:56px}
+.bars{justify-content:center}

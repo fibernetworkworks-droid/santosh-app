@@ -81,3 +81,15 @@ def test_the_home_in_a_real_browser(br):
 def test_version():
     from app.main import APP_VERSION
     assert tuple(int(x) for x in APP_VERSION.split(".")) >= (0, 999, 297)
+
+
+def test_every_page_in_the_homes_design():
+    """v0.999.299 (owner: "NOW SAME DESIGN FOR ALL ROUTE PAGES"): every page in the home's frame - one centred column,
+    serif titles with a line of where things stand, numbers as one band, status as a dot, Needs you as the home's cards."""
+    js, css = (BASE / "route.js").read_text(), (BASE / "route.css").read_text()
+    assert "body:not(.editing) .main > *{width:100%;max-width:1160px" in css, "one centred column on every page"
+    assert ".stats{gap:1px;background:var(--line)" in css and ".stats .stat{border:0" in css, "numbers as one band"
+    assert ".pill{background:none!important" in css, "status as a dot and its word"
+    assert ".needgrid{" in css and "homeNeed(n)}</div>`).join('')}</div>`" in js, "Needs you = the home's cards"
+    for part in ("needLine(", "A route does nothing until it is on.", "Open one to see it step by step."):
+        assert part in js, part

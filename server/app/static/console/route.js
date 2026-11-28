@@ -169,14 +169,16 @@
         <td data-l="Last 7 days">${bars(r.days7)}</td>
         <td class="c-tog">${tog(r.id, r.enabled, r.name)}</td></tr>`; }).join('')}</tbody></table></div>`;
   }
+  // v0.999.299 every page in the home's design: what needs her = the home's cards (a tag, the question, its own buttons)
   function needsList(items) {
-    if (!items.length) return `<div class="nocard mut">Nothing needs you right now.</div>`;
-    return `<div class="needs">${items.map(n => `<div class="need ${n.kind === 'approval' ? 'warn' : 'bad'}">
-      <div class="t"><b>${esc(n.kind === 'approval' ? (n.text || 'Waiting for your OK') : n.kind === 'stopped' ? 'Switched off after errors' : n.kind === 'incomplete' ? 'Incomplete run' : 'A run failed')}</b>
-      <span class="mut sm">${esc(nice(n.route))}${n.kind === 'approval' ? '' : ' · ' + esc(human(n.text))}</span></div>
-      <span class="acts">${n.kind === 'approval' ? `<button class="btn s" data-act="approve" data-run="${esc(n.run_id)}">Approve</button><button class="btn s soft" data-act="stop" data-run="${esc(n.run_id)}">Stop the run</button>`
-        : n.kind === 'stopped' ? `<a class="btn s soft" href="#/r/${enc(n.route_id)}">Open</a><button class="btn s" data-switch="${esc(n.route_id)}" aria-checked="false" data-name="${esc(nice(n.route))}">Switch back on</button>`
-        : `<a class="btn s soft" href="#/run/${enc(n.run_id)}">See why</a>`}</span></div>`).join('')}</div>`;
+    if (!items.length) return `<div class="card flat"><div class="rh-quiet">${svg(IC.check)}Nothing needs you. Approvals and stopped runs show here.</div></div>`;
+    return `<div class="needgrid">${items.map(n => `<div class="card flat">${homeNeed(n)}</div>`).join('')}</div>`;
+  }
+  // one plain line of where things stand, under a page's title (words up to nine)
+  function needLine(needs) {
+    const nApp = needs.filter(n => n.kind === 'approval').length, nBad = needs.length - nApp;
+    if (!needs.length) return 'Nothing needs you right now. Approvals your routes wait for, and runs that did not finish, show here.';
+    return `${say(needs.length, 'thing')} ${needs.length === 1 ? 'waits' : 'wait'} for you: ${[nApp ? say(nApp, 'approval') : '', nBad ? say(nBad, 'run') + ' that did not finish' : ''].filter(Boolean).join(' and ').toLowerCase()}. Nothing big runs without your yes.`;
   }
 
   // ---------------------------------------------------------------- views
@@ -186,6 +188,7 @@
   // examples to try, one band of this week's numbers with the trend, her routes beside what needs her and what runs next,
   // templates; a first day shows the three steps instead of empty numbers.
   const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+  const num = n => n < 10 ? WORDS[n].toLowerCase() : fmtN(n);
   const say = (n, one, many) => `${n < 10 ? WORDS[n] : fmtN(n)} ${n === 1 ? one : (many || one + 's')}`;
   const TRY = ['Every morning at 9, email me yesterday\'s unpaid invoices', 'When my form is filled, add a row to my sheet',
     'Tell me on Telegram when stock runs low'];
@@ -296,6 +299,7 @@
     const list = await api('GET', '/api/route/routes');
     const folders = [...new Set(list.routes.map(r => r.folder).filter(Boolean))];
     MAIN.innerHTML = `<div class="top"><h1>All routes</h1><span class="sp"></span><a class="btn soft" href="#/import">Bring in from n8n</a><a class="btn soft" href="#/import/make">Bring in from Make</a><label class="btn soft" for="impFile">Bring in a file<input type="file" id="impFile" accept=".json,application/json" hidden></label><button class="btn" id="newR">${svg(IC.plus)}New route</button></div>
+      <p class="lead">${list.routes.length ? `${esc(say(list.routes.length, 'route'))}, ${(on => on === list.routes.length ? (on === 1 ? 'switched on' : 'all switched on') : on ? `${num(on)} switched on` : 'none switched on yet')(list.routes.filter(r => r.enabled).length)}${folders.length ? ` · ${esc(say(folders.length, 'folder').toLowerCase())}` : ''}. A route does nothing until it is on.` : 'No routes yet. Describe one on Home, start from a template, or bring one in.'}</p>
       <div class="filt"><label class="srch">${svg(IC.search)}<input type="search" id="rq" placeholder="Find a route" aria-label="Find a route"></label>
       <select id="rsort" aria-label="Sort"><option value="changed">Last changed</option><option value="name">Name</option><option value="runs">Most runs</option></select>
       ${folders.length ? `<div class="chips left" id="fchips"><button class="chip" aria-pressed="${!folderPick}" data-f="">All</button>${folders.map(f => `<button class="chip" aria-pressed="${f === folderPick}" data-f="${esc(f)}">${esc(f)}</button>`).join('')}</div>` : ''}</div>
@@ -323,7 +327,7 @@
   async function viewNeeds() {
     shell(false); setNav('needs');
     const sum = await api('GET', '/api/route/summary');
-    MAIN.innerHTML = `<div class="top"><h1>Needs you</h1></div><p class="lead">Approvals your routes are waiting for, and runs that did not finish. Nothing big runs without your yes.</p>${needsList(sum.needs_you)}`;
+    MAIN.innerHTML = `<div class="top"><h1>Needs you</h1></div><p class="lead">${esc(needLine(sum.needs_you || []))}</p>${needsList(sum.needs_you || [])}`;
   }
 
   // why a run is waiting, in words (v0.999.239 R4: long waits, a call to its link, another route)
@@ -350,7 +354,9 @@
     const qs = filter ? `&status=${enc(filter)}` : '';
     const runs = await api('GET', `/api/route/runs?limit=60${qs}${q ? '&q=' + enc(q) : ''}`);
     const F = [['', 'All'], ['waiting_approval', 'Waiting for you'], ['incomplete', 'Incomplete'], ['failed', 'Failed'], ['done', 'Done']];
+    const rs = runs.runs || [], rw = rs.filter(x => x.status === 'waiting_approval').length, rb = rs.filter(x => ['failed', 'incomplete'].includes(x.status)).length;
     MAIN.innerHTML = `<div class="top"><h1>Runs</h1></div>
+      <p class="lead">${q ? `Runs that hold "${esc(q)}".` : rs.length ? `The newest ${esc(say(rs.length, 'run').toLowerCase())}${filter ? ' in this list' : ''}${rw ? `, ${num(rw)} waiting for you` : ''}${rb ? `, ${num(rb)} that did not finish` : ''}. Open one to see it step by step.` : 'Every run of every route shows here, newest first.'}</p>
       <form class="filt" id="runFind" role="search"><label class="srch">${svg(IC.search)}<input type="search" id="runQ" value="${esc(q)}" placeholder="Find runs by a value - an order number, an email, an error word" aria-label="Find runs by a value"></label>
         <button class="btn soft s" type="submit">Find</button>${q ? '<a class="btn soft s" href="#/runs">Clear</a>' : ''}</form>
       ${q ? '' : `<div class="chips left">${F.map(([k, n]) => `<a class="chip" aria-pressed="${(filter || '') === k}" href="#/runs${k ? '/' + k : ''}">${esc(n)}</a>`).join('')}</div>`}
@@ -513,7 +519,7 @@
   const libCard = x => { const r = RDY[x.ready] || ['', x.ready_text];
     return `<section class="card tc wlc"><div class="apps">${(x.apps.length ? x.apps.slice(0, 4).map(a => appTile({kind: 'app', slug: libSlug(a), label: a})) : [appTile({}, TKIND_T(x.trigger))]).join('')}</div>
       <h3>${esc(x.name)}</h3>${x.description ? `<span class="mut sm ldesc">${esc(x.description)}</span>` : ''}
-      <div class="lmeta"><span class="lr ${r[0]}">${esc(r[1])}</span><span class="mut sm">${esc(trigName(x.trigger))} · ${fmtN(x.nodes)} step${x.nodes === 1 ? '' : 's'}</span></div>
+      <div class="lmeta"><span class="lr ${r[0]}"><i class="ld"></i>${esc(r[1])}</span><span class="mut sm">${esc(trigName(x.trigger))} · ${fmtN(x.nodes)} step${x.nodes === 1 ? '' : 's'}</span></div>
       <div class="tf"><span class="mut sm">${esc(x.category)}</span><span class="sp"></span><a class="btn s" href="#/workflows/${enc(x.id)}">Open</a></div></section>`; };
   const TKIND_T = t => ({schedule: 'wait', webhook: 'http', chat: 'notify', form: 'set', event: 'tool', error: 'stop', route: 'subroute', tool: 'tool'}[t] || 'set');
 

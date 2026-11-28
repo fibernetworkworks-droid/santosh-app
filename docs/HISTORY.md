@@ -13851,3 +13851,21 @@ NEW tool `vision_desk` (`agent/vision_tools.py`, family vision, registry 713 -> 
 desks. The desk refuses face recognition of people without their consent and surveillance she has no right to run (chat rules,
 hire card). Tests `server/tests/test_cv_desk.py` (5, incl. a browser walk at 1440 and 390 px). NOT VERIFIED: on her server, her own
 models, labels and cameras, or the workflow on GitHub.
+
+## v0.999.299 EVERY ROUTE PAGE IN THE HOME DESIGN
+
+Owner: "NOW SAME DESIGN FOR ALL ROUTE PAGES" (after the v0.999.297 home).
+
+What every page now shares with the home (route.css end block "v0.999.299 THE HOME'S DESIGN ON EVERY PAGE" + route.js):
+- one centred column of at most 1160 px, the same top space;
+- the serif page title (38 px, weight 350) and under it one plain line of where things stand: All routes ("Eight routes, all
+  switched on · one folder. A route does nothing until it is on."), Needs you ("Two things wait for you: one approval and one run
+  that did not finish."), Runs ("The newest nine runs, one waiting for you, two that did not finish."); words up to nine;
+- numbers as one band of cells parted by hairlines, the home's serif figures (Insights, Grid, Bring in, a workflow's page);
+- status as a coloured dot and its word everywhere (runs lists, a run's steps, a run's head, workflows) instead of filled pills;
+- Needs you as the home's cards, two across (one on a phone): a tag, the question or what went wrong, the route, its own buttons;
+- cards with 16 px corners, quiet empty states, template and workflow cards that lift under the pointer;
+- the Insights chart: runs that went well in ink, the ones that did not in red (were bright green and pink).
+Checked: every page (24) at 1440 / 1024 / 390 in light and dark (144 views) measured in Chromium - no sideways scroll, nothing
+past the edge, no cut text, controls in a row share a height; looked at by eye. test_v0999_297_route_home.py
+(test_every_page_in_the_homes_design). NOT VERIFIED on her server.
