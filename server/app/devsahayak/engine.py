@@ -2233,6 +2233,32 @@ SECURITY_REVIEW = ("<her_command>/security-review</her_command>\nDo a SECURITY R
                    "the fix - or say plainly that you found none. Only real, specific problems; no generic advice.")
 
 
+def _ponytail_cmd(tools: Any, ses: Any, words: str, parts: list[str], emit: Any) -> bool:
+    """Ponytail's commands typed in her message (ponytail.py). True when it was one of them."""
+    from . import ponytail as PT
+    is_lvl, want = PT.parse_level(words)
+    if is_lvl:
+        try:
+            got = PT.set_level(ses, getattr(tools, "conf", {}) or {}, want)
+            said = got["said"]
+        except ValueError as e:
+            said = str(e)
+        parts.append("<her_command>/ponytail</her_command>\n" + said + "\nTell her that in one line in done; change "
+                     "nothing and start no other work.")
+        emit({"k": "cmd", "name": "ponytail", "repo": False})
+        return True
+    kind = PT.command(words)
+    if not kind:
+        return False
+    if kind == "debt":
+        word = (re.match(r"^\s*/ponytail-debt\s*(\S*)", words or "") or [None, ""])[1]
+        parts.append(PT.debt_text(PT.debt(ses.repo, word), word))
+    else:
+        parts.append(PT.REVIEW if kind == "review" else PT.AUDIT)
+    emit({"k": "cmd", "name": "ponytail-" + kind, "repo": False})
+    return True
+
+
 def her_text(text: str) -> str:
     """Her own words inside the wrapper a follow-up arrives in."""
     m = re.search(r"<(her_follow_up|her_change|her_note_while_you_work)>\n?(.*?)\n?</\1>", text or "", re.S)
@@ -2279,6 +2305,8 @@ def her_blocks(tools: Any, ses: Any, words: str, emit: Any) -> str:
     elif re.match(r"^\s*/security-review\b", words or ""):
         parts.append(SECURITY_REVIEW)
         emit({"k": "cmd", "name": "security-review", "repo": False})
+    elif _ponytail_cmd(tools, ses, words, parts, emit):    # v0.999 /ponytail [level], /ponytail-review|audit|debt
+        pass
     else:
         try:
             got = RC.expand_command(ses.repo, words, getattr(tools, "plugins", ()) or ())
@@ -3787,6 +3815,12 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
         kr_rules = ("\n\n" + KR.RULES) if KR.on() else ""
     except Exception:  # noqa: BLE001
         kr_rules = ""
+    try:                                                  # v0.999 Ponytail's smallest complete change, at her level
+        from . import ponytail as PT
+        pt = PT.block(PT.level(ses, tools.conf))
+        kr_rules += ("\n\n" + pt) if pt else ""
+    except Exception:  # noqa: BLE001
+        pass
     system = (SYSTEM + kr_rules + ("\n\n" + extra_ecc if extra_ecc else "") + ("\n\n" + system_extra if system_extra else "")
               + ("\n\n" + netw if netw else ""))
     try:
@@ -3816,8 +3850,8 @@ def _round(g, t, token, rules, allow_workflows, issue_txt, emit, inbox, stopped,
     gate_on, gated = bool(_set("dev_ecc_gate", True)), False
     reality = {"done": False, "verdict": ""}                # v0.814 The Agency's reality checker, once a round
     max_steps = int(_set("dev_ws_steps", 150) or 150)
-    if re.match(r"^\s*/security-review\b", her_words or ""):   # v0.999 /security-review: a review, nothing changed
-        tools.ask_only = True
+    if re.match(r"^\s*/(security-review|ponytail-(review|audit|debt))\b|^\s*/ponytail(\s+\S+)?\s*$", her_words or ""):
+        tools.ask_only = True                             # v0.999 /security-review + Ponytail's reports: nothing changed
     if not getattr(t, "mode", "") and tools.conf.get("mode") == "plan" and not continuing:
         tools.ask_only = True                             # settings.json defaultMode plan: the first round plans, changes nothing
         note = ("\n\n[This repo's settings start every session in PLAN mode: explore, then write your plan in done "

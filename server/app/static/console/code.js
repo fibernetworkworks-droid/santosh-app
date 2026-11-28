@@ -952,6 +952,7 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     model: {d: 'The quality tier, which picks the model', run: () => modelNow()},
     'output-style': {d: 'How Hoola explains its work', args: true, run: a => a ? setStyle(a) : styleMenu($('#hcdNote'))},
     style: {d: 'Same as /output-style', args: true, run: a => a ? setStyle(a) : styleMenu($('#hcdNote')), alias: true},
+    ponytail: {d: 'The smallest change that fully works: lite, full, ultra or off', args: true, run: a => setPonytail(a)},
     cost: {d: 'What this session has cost so far', run: () => costDlg()},
     usage: {d: 'This session\u2019s cost and your month', run: () => costDlg()},
     status: {d: 'Repo, branch, mode, environment, pull request, context', run: () => statusDlg(false)},
@@ -973,7 +974,9 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
   };
   TERMINAL_ONLY.forEach(n => { BUILTIN[n] = {d: 'Terminal only', terminal: true, run: () => toast(`/${n} is a terminal command of Claude Code - Hoola Code does not need it.`)}; });
   const HOOLA_CMDS = Object.entries(BUILTIN).filter(([, w]) => !w.terminal && !w.alias).map(([n, w]) => [n, w.d])
-    .concat([['security-review', 'Review the changes for security problems']])      // sent to Hoola as it is (the server knows it)
+    .concat([['security-review', 'Review the changes for security problems'],      // sent to Hoola as they are (the server knows them)
+      ['ponytail-review', 'Review this change like the senior dev who gets paged'], ['ponytail-audit', 'The same check for the whole repo, most important first'],
+      ['ponytail-debt', 'List the shortcut: comments left for later']])
     .sort((a, b) => a[0] < b[0] ? -1 : 1);
   function pickClose() { PICK = null; const b = $('#hcdPick'); if (b) b.remove(); }
   function pickFor(ta) {
@@ -1547,6 +1550,9 @@ window.HoolaCode = function ({api, esc, toast, standalone = false, shared = ''})
     let r; try { r = await api('GET', `/api/devsahayak/tasks/${tid()}/commands`); } catch (e) { return toast(e.message, true); }
     HoolaMenu.open(btn, [{header: 'Output style'}, ...(r.styles || []).map(x => ({label: STYLE_NAME[x.name] || x.name, sub: (x.description || '') + (x.origin && x.origin !== 'hoola' ? ' · ' + x.origin : ''),
       checked: (r.style || 'default') === x.name, run: () => setStyle(x.name)}))], {align: 'start', label: 'Output style', width: 300});
+  }
+  async function setPonytail(level) {      // v0.999 Ponytail's level for this session (no word = on, or say which)
+    try { const r = await api('PUT', `/api/devsahayak/tasks/${tid()}/ponytail`, {level: (level || '').trim().toLowerCase()}); toast(r.said || ('Ponytail: ' + r.ponytail)); } catch (e) { toast(e.message, true); }
   }
   async function setStyle(name) {
     try { await api('PUT', `/api/devsahayak/tasks/${tid()}/style`, {style: name}); if (TASK) TASK.style = name; toast('Output style: ' + (STYLE_NAME[name] || name) + ' - from the next message.'); } catch (e) { toast(e.message, true); }

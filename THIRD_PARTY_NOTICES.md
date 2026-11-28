@@ -270,3 +270,9 @@ four coding rules written from Andrej Karpathy's notes on how coding models go w
 its skill, plugin manifest and README state MIT. **No upstream file is included.** Hoola Code (`server/app/devsahayak/
 karpathy.py`) carries the four rules rewritten in Hoola's own words, credited where they appear, and adds its own
 in-code check for rule 3 (changes that only touch layout or delete an existing comment).
+
+## Ponytail (DietrichGebert/ponytail) - MIT
+Copyright (c) 2026 DietrichGebert. Read at commit ebd8654 (v5.3.3, 28 Nov 2026). **No upstream file is included.**
+Hoola Code (`server/app/devsahayak/ponytail.py`) carries Ponytail's rules for the smallest complete change, its levels
+(lite / full / ultra / off), and its review, audit and `shortcut:` debt reports, rewritten in Hoola's own words and
+credited where they appear. Ponytail is distributed under the MIT License.

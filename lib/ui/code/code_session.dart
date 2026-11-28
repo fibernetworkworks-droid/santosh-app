@@ -498,7 +498,7 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
           return;
         }
         text = rest.isEmpty ? _reviewAsk : '$_reviewAsk Focus on: $rest';   // sent as her message, below
-      } else if (name != 'security-review' && codeBuiltinNames.contains(name)) {
+      } else if (!codeSentToHoola.contains(name) && codeBuiltinNames.contains(name)) {
         _msg.clear();
         await _slash(name, rest, t);
         return;
@@ -558,6 +558,8 @@ class _CodeSessionPageState extends State<CodeSessionPage> with WidgetsBindingOb
         await codeExportConversation(context, widget.app, widget.id);
       case 'style' || 'output-style':
         await showCodeStylePicker(context, widget.app, widget.id, name: rest);
+      case 'ponytail':
+        await codeSetPonytail(context, widget.app, widget.id, rest);
       case 'plugins' || 'plugin':
         await showCodePlugins(context, widget.app, id: widget.id);
       case 'model':
