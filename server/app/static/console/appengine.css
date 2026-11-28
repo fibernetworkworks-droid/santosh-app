@@ -123,3 +123,5 @@
 .ae-taskchk li{color:var(--mut)}.ae-taskchk li.ok{color:var(--ink)}.ae-taskchk li.ok span{color:var(--ok)}
 .ae-lockpill{font-size:11px;padding:1px 7px;margin-left:4px}
 .ae-src .ae-bar{flex-wrap:wrap;gap:6px}
+.ae-bptext{white-space:pre-wrap;margin:8px 0 2px;line-height:1.55}.ae-bph{display:block;font-weight:600;margin-top:6px}
+#aeWork{display:flex;flex-direction:column;gap:8px}

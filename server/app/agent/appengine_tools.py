@@ -12,9 +12,10 @@ from typing import Any
 
 from .tools import Ctx, ToolError
 
-READS = {"list", "status", "view", "search", "logs", "files", "check", "cloud", "cloud_rows", "scan", "tests", "branches", "design", "work"}
+READS = {"list", "status", "view", "search", "logs", "files", "check", "cloud", "cloud_rows", "scan", "tests", "branches", "design", "work",
+         "read_logs"}
 # v0.999.322 the done check: plan / done change nothing in the app, so they run in every mode
-GATE = {"plan", "done"}
+GATE = {"plan", "done", "blueprint"}
 # v0.999.322 the changes the done check, her locks and the fingerprints watch
 EDITS = {"write", "edit_lines", "rename", "delete", "add_dependency", "tokens", "design_new", "design_import", "render_mode",
          "cloud_change"}
@@ -92,7 +93,14 @@ APPENGINE_TOOLS = [
         "be made on the file as you last read it in this chat (or pass revision) - if it changed since, the edit is refused "
         "and you view it again. The file must PARSE: a JS / TS file that does not is refused with line and column. HER "
         "LOCKS: a file or folder she locked in the Studio is never changed by you; tell her what you would change there "
-        "and ask her to unlock it."),
+        "and ask her to unlock it. LOGS (v0.999.324): action=read_logs {kind console|network|all, limit, level} reads what the "
+        "app printed and the network calls it made while she had the preview open (method, path, status, time) - read them "
+        "when something does not work and the build is fine. EDITS FORGIVE small differences: a search not in the file "
+        "exactly is tried again ignoring spaces at line ends / around lines and curly quotes; more than one match is refused. "
+        "A NEW app (never built) needs action=blueprint {what, users, screens, data, out_of_scope, questions} before its "
+        "first change: when her ask leaves real choices open, ask her up to 5 short questions in your reply FIRST and put her "
+        "answers in it. Bringing back an older version is HER tap (Versions tab). action=done also has the change reviewed "
+        "by a second model; fix what it finds (high / medium) and build again."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": sorted(READS | CHANGES | GATE)},
          "goal": {"type": "string", "description": "plan: what she asked for, in one or two sentences"},
@@ -103,6 +111,21 @@ APPENGINE_TOOLS = [
          "preview": {"type": "boolean", "description": "plan: true when the result must be seen working in the preview"},
          "outcome": {"type": "string", "enum": ["complete", "blocked"], "description": "done: complete, or blocked when you cannot finish"},
          "summary": {"type": "string", "description": "done: what changed (or what blocks it), in plain words"},
+         "what": {"type": "string", "description": "blueprint: the app in her words, one to three sentences"},
+         "users": {"type": "array", "items": {"type": "object", "properties": {"who": {"type": "string"}, "can": {"type": "string"}}},
+                   "description": "blueprint: who uses it and what each can do"},
+         "screens": {"type": "array", "items": {"type": "object", "properties": {"name": {"type": "string"}, "purpose": {"type": "string"}}},
+                     "description": "blueprint: every screen of the first version"},
+         "data": {"type": "array", "items": {"type": "object", "properties": {"list": {"type": "string"}, "fields": {"type": "string"}}},
+                  "description": "blueprint: the lists it keeps and their fields"},
+         "out_of_scope": {"type": "array", "items": {"type": "string"}, "description": "blueprint: what the first version leaves out"},
+         "questions": {"type": "array", "items": {"type": "object", "properties": {"q": {"type": "string"}, "a": {"type": "string"}}},
+                       "description": "blueprint: the questions you asked her (at most 5) and her answers"},
+         "kind": {"type": "string", "enum": ["console", "network", "all"], "description": "read_logs: which lines"},
+         "limit": {"type": "integer", "description": "read_logs: how many of the newest lines (default 50, at most 200)"},
+         "level": {"type": "string", "enum": ["error", "warn", "info", "log", "debug"], "description": "read_logs: only this level "
+                   "(error / warn also bring failed network calls)"},
+         "version": {"type": "integer", "description": "read_logs: lines from this version on (default the current one; 0 = all kept)"},
          "revision": {"type": "string", "description": "edit_lines / write: the revision action=view returned (optional; the "
                       "tool remembers the last one you read in this chat)"},
          "app": {"type": "string", "description": "the app id or number (default: the app this Studio chat is about)"},
@@ -168,12 +191,20 @@ def _call(ctx: Ctx, action: str, app: str, kw: dict[str, Any]) -> dict[str, Any]
                                             "preview": kw.get("preview", True)})
         if action == "done":
             return DG.complete(r, conv, kw.get("outcome") or "complete", kw.get("summary") or "", kw.get("criteria") or [])
+        if action == "blueprint":
+            return DG.write_blueprint(r, {"what": kw.get("what"), "screens": kw.get("screens"), "users": kw.get("users"),
+                                          "data": kw.get("data"), "out_of_scope": kw.get("out_of_scope"),
+                                          "questions": kw.get("questions")})
         if action == "work":
             st = DG.progress(r, conv)
             return {**st, "say": ("No task is open on this app in this chat." if st["status"] == "none" else
                                   f"Task {st.get('status')}" + (f"; NEXT: {st['next']}" if st.get("next") else ""))}
         path = AE.RL.norm(kw.get("path") or "") if kw.get("path") else ""
         if action in EDITS:
+            if _gate_on("app_engine_blueprint") and DG.needs_blueprint(r):
+                raise ToolError("This is a new app: write its blueprint first (action=blueprint {what, users, screens, data, "
+                                "out_of_scope, questions}). If her ask leaves real choices open, ask her up to 5 short questions "
+                                "in your reply before you write it. Nothing was changed.")
             if _gate_on("app_engine_done_gate") and not DG.has_plan(r, conv):
                 raise ToolError("Record your plan first: action=plan {goal, steps, criteria: [{id, description}], preview}. "
                                 "Nothing was changed.")
@@ -263,6 +294,11 @@ def _run(ctx: Ctx, action: str, app: str, kw: dict[str, Any]) -> dict[str, Any]:
         return AE.search(t, a, kw.get("query") or "")
     if action == "logs":
         return AE.logs(t, a)
+    if action == "read_logs":
+        from ..appengine import plogs as PL
+        v = kw.get("version")
+        return PL.read(AE._load(t, a), str(kw.get("kind") or "all"), int(kw.get("limit") or 50), str(kw.get("level") or ""),
+                       None if v is None else int(v))
     if action == "check":
         return AE.check_all(AE._load(t, a))
     if action == "write":
@@ -367,6 +403,9 @@ async def app_engine(ctx: Ctx, action: str, app: str = "", **kw: Any) -> dict:
     from ..appengine import service as AE
     from . import turnmode as TM
     action = str(action or "").strip().lower()
+    if action in ("restore_version", "restore", "rollback", "revert"):
+        raise ToolError("Bringing back an earlier version is her tap in the Studio (Versions tab > Bring back), never "
+                        "this tool. Tell her which version and why; or make the change again with edits.")
     if action in ("publish", "go_live", "unpublish"):
         raise ToolError("Going live is her tap in the Studio (App > Publish), never this tool. Tell her the version is "
                         "ready and where the button is.")

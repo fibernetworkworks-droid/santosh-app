@@ -72,6 +72,8 @@ class Settings(BaseSettings):
     app_engine_done_gate: bool = True     # v0.999.322 App Engine changes need a recorded plan; "done" only after a checked build (donegate.py)
     app_engine_read_first: bool = True    # v0.999.322 an edit of an existing App Engine file must be made on the copy last read (fingerprint)
     app_engine_syntax_check: bool = True  # v0.999.322 a JS / TS file that does not parse is refused at write, with line and column
+    app_engine_auto_review: bool = True   # v0.999.324 action=done has the change reviewed by a model of another company first (appengine/review.py)
+    app_engine_blueprint: bool = True     # v0.999.324 a NEW App Engine app gets a written blueprint before its first change
     app_engine_publish_checks: bool = True  # v0.832 SABOOT (L11): going live runs the quick scan + rule tests + browser check and is refused on a FAIL
     app_engine_box_care: bool = True     # ONE ENGINE: the builder box checked before every build + every 10 min, a missing / old image rebuilt by itself
     site_quick_checks: bool = True        # v0.789 CHHOTA BADLAAV: a one-section change is checked on its own page only

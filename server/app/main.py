@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.323"   # v0.999.323 HOOLA DIAGRAM D1 (built as 0.999.322; their FOUR FROM BOLT.DIY took 0.999.322, both kept) (owner: 'start D1.' on docs/DIAGRAM_TOOL_PLAN.md v2, global): the three engines copied into server/app/diagram/vendor/ AS THEY SHIP and pinned in VENDOR.json with a SHA-256 fingerprint of every file (a hand edit fails the tests; Hoola changes live in app/diagram/*.py): archify b42e7d7 v3.3.2 (Apache-2.0 / MIT; archify/ + archify-pr/, tests left out, 452 files), diagram-design 795eec4 (MIT, skills/diagram-design, 327 files), next-ai-draw-io 75f0df3 (Apache-2.0, the mcp-server src + shell + draw.io file list, 60 files); `diagram/vendor.py` reads each engine's own type list from its SKILL.md (archify 10, diagram-design 52) and checks the copy is whole; `diagram/runners.py` calls each engine's own checks: archify finalize = its four gates (validate, deliver, strict check, real-browser check) with its update check OFF (ARCHIFY_UPDATE_CHECK_DISABLED=1, its own switch) and only a small allow-list of variables, diagram-design self_check + verify_geometry, its own export_png.py run unchanged through `_dd_export.py` (gives Playwright the server's browser), any diagram page to PNG offline, and the draw.io editor loaded through its embed protocol from 127.0.0.1 with every outside request refused -> PNG; `diagram/drawio.py` fetches the draw.io release next-ai-draw-io pins (v32.0.2) only from jgraph's GitHub, refuses it unless its SHA-256 matches, unpacks only the listed files (2,317) into data/diagram/drawio - never in git; `python -m app.diagram setup | check [--quick] | status`, vps-ops diagram_setup / diagram_check; `server/tools/diagram_sync.py <engine> <commit>` drops in a newer upstream copy (checked: re-copying diagram-design gives the same files). MEASURED HERE: archify 29 of 33 examples pass all four gates, the other 4 are archify's own tall example canvases that its own rule turns away (composition/viewport-height - listed by name, never hidden); diagram-design 238 / 238 examples pass both checkers; draw.io loads and exports; one PNG from each engine looked at. Settings diagram_enabled / diagram_drawio_dir / diagram_node / diagram_chrome / diagram_chrome_no_sandbox; THIRD_PARTY_NOTICES for all five (Eraser = ideas only); tests test_v0999_323_diagram_d1.py (15). No agent tool yet (D2). NOT VERIFIED on her server (needs vps-ops diagram_setup; node >= 18 there unknown). Previous head: v0.999.322 FOUR FROM BOLT.DIY (owner: "https://github.com/stackblitz-labs/bolt.diy.git -- read this repo first" -> the four ideas -> "GO BUILD ALL 4"): four ideas from bolt.diy (MIT, read at 72db5ce; ideas only, no code copied, WebContainers not used) for Web Studio React apps on the App Engine: (1) THE DONE CHECK `appengine/donegate.py` - app_engine action=plan {goal, steps 1-6, criteria [{id, description}] 1-8, preview} before the first change in a chat (changes without it refused, switch app_engine_done_gate), every change / build / rule test / browser check written down per app + chat (`_work.json`), action=done refused unless after the LAST change a build passed with TypeScript clean, rule tests passed when a rule changed, the browser check passed when the plan wants the preview or the app saves data (could not run here = said, not blocking), no open preview errors on that version, every planned id named once; outcome blocked said plainly; every answer ends NEXT: the one next thing; action=work; the preview build runs the browser check when the plan wants it; (2) FINGERPRINTS - action=view returns revision (sha256 16 hex), edit_lines / a rewrite of an existing file must match the copy last read in this chat (or the passed revision) under the app's lock, a changed file is refused 409 (switch app_engine_read_first), Hoola's own edits keep it current; (3) THE SYNTAX CHECK ON SAVE `appengine/syntax.py` - tree-sitter TypeScript / TSX (tree-sitter-typescript, MIT, new dependency) parses every JS / TS file in service._check, a broken file refused with line, column, the line and a hint (missing } / ), a JSX tag, a .map() outside its {}, a file sent as one line), parser absent = skipped (switch app_engine_syntax_check), 0 false alarms on the 140 template files + 19 proof files; (4) HER LOCKED FILES `appengine/herlocks.py` - she locks a file or folder in the Code tab (PUT /api/appengine/{ref}/locks), app_engine write / edit_lines / rename (from or to) / delete refused naming her lock, her own taps stay open, a branch starts with the app's locks; Studio: a 'Hoola is working on this / Finished and checked' card in Preview (GET /api/appengine/{ref}/work), Lock this file / Lock folder / Locked by you in Code; conftest pins the done check + read-first off for older suites; tests test_v0999_322_bolt_ideas.py (10, incl. a Chromium walk at computer + phone width). NOT VERIFIED on her server or with a real model; the build box was a stand-in here.
+APP_VERSION = "0.999.324"   # v0.999.324 FIVE FROM DYAD (built as 0.999.323; their HOOLA DIAGRAM D1 took 0.999.323, both kept; owner: "https://github.com/dyad-sh/dyad.git ---- NOW READ THIS REPO" -> the five ideas -> "GO BUILD ALL 5"): five ideas from Dyad (read at 3abec41; Apache-2.0 core, src/pro FSL-1.1 forbids competing use - ideas only, no code copied) for Web Studio React apps on the App Engine: (1) BRING BACK A VERSION - service.restore_version / restore_checkpoint: her tap only (POST /api/appengine/{ref}/versions/{v}/restore and /checkpoints/{id}/restore with confirm; the tool refuses), the old version's source becomes the working copy and is built as a NEW version (build.json restored_from), unbuilt changes kept first as a checkpoint (<app>/checkpoints, newest 10), her data / members / the live app untouched; Versions tab Bring back + Checkpoints; (2) FORGIVING EDITS - edit_lines tries a missed search again line by line ignoring spaces at line ends, spaces around the lines, then curly quotes / long dashes / no-break spaces, and a phrase inside a line with curly quotes forgiven; one match wins, more than one is refused, the file's indentation is kept, the answer says which pass matched; (3) CONSOLE + NETWORK LOGS - preview.js wraps console.log/info/warn/error/debug (20 args, 8 KB an arg, 64 KB a line, objects 6 deep / 50 keys, 400 lines a load) and fetch / XHR (method, path, query NAMES only, status, time; never a body / header / query value), the Studio forwards them (POST /api/appengine/{ref}/preview-logs, 256 KB), `appengine/plogs.py` keeps the newest 1,000 lines / 1 MB masked; app_engine action=read_logs {kind, limit 50 / max 200, level, version}; (4) A SECOND LOOK - `appengine/review.py`: action=done (after the v0.999.322 checks pass) has the diff since the task started (vs the version at plan time, or the template; 96 KB a file / 192 KB in all, locked files / package-lock left out) reviewed by a model of ANOTHER company (critic.critic_who), JSON findings; high / medium send Hoola back (2 fix rounds over newly built versions), then it may finish with the open findings named in the evidence; a review that cannot run is said, never blocking; switch app_engine_auto_review; (5) THE BLUEPRINT - a NEW (never built) app's changes are refused until action=blueprint {what, users, screens, data, out_of_scope, questions <= 5} writes .hoola/plan/blueprint.md (up to 5 short questions to her first when her ask leaves choices open); the Studio shows it above the task card (GET /work blueprint); switch app_engine_blueprint; conftest pins the review + blueprint off for older suites; tests test_v0999_324_dyad_ideas.py (8, incl. a Chromium walk). NOT VERIFIED on her server or with a real model; the build box and the reviewer were stand-ins here.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -10669,6 +10669,19 @@ async def appengine_import_github(body: dict, tenant: str = Depends(current_tena
     return await asyncio.to_thread(_ghs, GS.import_github, tenant, str(body.get("name") or "")[:80], str(body.get("repo") or ""), bool(body.get("confirm")))
 
 
+@app.post("/api/appengine/{ref}/versions/{v}/restore", dependencies=[Depends(require_key)])
+async def appengine_restore_version(ref: str, v: int, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.999.324 her tap: an earlier version's code comes back as a NEW version (unbuilt changes kept as a checkpoint)."""
+    from .appengine import service as AE
+    return await asyncio.to_thread(_ae, AE.restore_version, tenant, ref, v, bool(body.get("confirm")))
+
+
+@app.post("/api/appengine/{ref}/checkpoints/{cid}/restore", dependencies=[Depends(require_key)])
+async def appengine_restore_checkpoint(ref: str, cid: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .appengine import service as AE
+    return await asyncio.to_thread(_ae, AE.restore_checkpoint, tenant, ref, cid, bool(body.get("confirm")))
+
+
 @app.get("/api/appengine/{ref}/work", dependencies=[Depends(require_key)])
 async def appengine_work(ref: str, tenant: str = Depends(current_tenant)):
     """v0.999.322 the done check: Hoola's last task on this app - its plan, what is proved, what is missing (nothing is run)."""
@@ -10677,7 +10690,7 @@ async def appengine_work(ref: str, tenant: str = Depends(current_tenant)):
 
     def go():
         r = AE._load(tenant, ref)
-        return {"task": DG.latest(r), "locks": HL.listing(r)}
+        return {"task": DG.latest(r), "locks": HL.listing(r), "blueprint": DG.blueprint_text(r)}
     return await asyncio.to_thread(_ae, go)
 
 
@@ -10778,6 +10791,21 @@ async def appengine_preview_errors(ref: str, request: Request, tenant: str = Dep
         raise HTTPException(400, "bad json")
     return await asyncio.to_thread(_aepick, PK.record, tenant, ref, b.get("items") or [], int(b.get("version") or 0),
                                    int(b.get("loaded") or 0))
+
+
+@app.post("/api/appengine/{ref}/preview-logs", dependencies=[Depends(require_key)])
+async def appengine_preview_logs(ref: str, request: Request, tenant: str = Depends(current_tenant)):
+    """v0.999.324 the preview's console lines and network calls (forwarded by the Studio), for Hoola's read_logs."""
+    from .appengine import plogs as PL
+    from .appengine import service as AE
+    raw = await request.body()
+    if len(raw) > 262144:
+        raise HTTPException(413, "too big")
+    try:
+        b = json.loads(raw or b"{}")
+    except ValueError:
+        raise HTTPException(400, "bad json")
+    return await asyncio.to_thread(_ae, lambda: PL.record(AE._load(tenant, ref), b.get("items") or [], int(b.get("version") or 0)))
 
 
 @app.get("/api/appengine/{ref}/errors", dependencies=[Depends(require_key)])

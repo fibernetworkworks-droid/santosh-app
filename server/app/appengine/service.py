@@ -223,6 +223,7 @@ def view(r: AppProject, full: bool = True) -> dict[str, Any]:
             out["design"] = GN.summary(look["genome"])
         out["files"] = files_list(r)
         out["versions"] = versions(r)
+        out["checkpoints"] = checkpoints(r)
         out["engine"] = RN.available()
     return out
 
@@ -526,6 +527,10 @@ def _apply_one(text: str, lines: list[str], ed: dict[str, Any], i: int) -> tuple
             raise AppEngineError(f"edit {i + 1}: the part after '...' was not found after the first part.")
         return s0, t + len(tail), repl
     n = text.count(find, a, b)
+    if n == 0:                                        # v0.999.324 the forgiving passes (spaces, quotes) - never a guess
+        hit = _loose_find(text, lines, find, repl, lo, hi, i)
+        if hit:
+            return hit
     if n != 1:
         where = f" in lines {lo}-{hi}" if lo or hi else ""
         if n == 0:
@@ -537,6 +542,72 @@ def _apply_one(text: str, lines: list[str], ed: dict[str, Any], i: int) -> tuple
         raise AppEngineError(f"edit {i + 1}: the search text appears {n} times{where}; give first_line / last_line or more text.")
     s0 = text.find(find, a, b)
     return s0, s0 + len(find), repl
+
+
+# v0.999.324 FORGIVING EDITS (the Dyad read): a search that is not in the file exactly is tried again, line by line, ignoring
+# 1. spaces at line ends, 2. spaces at both ends of each line, 3. curly quotes / long dashes / no-break spaces. The first pass
+# that finds exactly ONE place wins; a pass that finds more than one is refused (never a guess). The replacement keeps the
+# indentation of the lines it replaces.
+_UNI = str.maketrans({"\u2018": "'", "\u2019": "'", "\u201a": "'", "\u201b": "'", "\u201c": '"', "\u201d": '"',
+                      "\u201e": '"', "\u2013": "-", "\u2014": "-", "\u2212": "-", "\u00a0": " ", "\u2009": " ",
+                      "\u202f": " ", "\u2026": "..."})
+LOOSE_PASSES = (("spaces at line ends", lambda x: x.rstrip()),
+                ("spaces around the lines", lambda x: x.strip()),
+                ("curly quotes, long dashes and no-break spaces", lambda x: " ".join(x.translate(_UNI).split())))
+LOOSE_USED: list[str] = []          # what the forgiving passes matched in the last edit_lines call (said in its answer)
+
+
+def _indent(x: str) -> str:
+    return x[: len(x) - len(x.lstrip())]
+
+
+def _loose_find(text: str, lines: list[str], find: str, repl: str, lo: int, hi: int, i: int):
+    want = find.strip("\n").split("\n")
+    if not want or not any(w.strip() for w in want):
+        return None
+    off = [0]
+    for ln in lines:
+        off.append(off[-1] + len(ln))
+    first = max(0, lo - 1) if lo >= 1 else 0
+    last = min(len(lines), hi) if hi >= 1 else len(lines)
+    body = [ln.rstrip("\r\n") for ln in lines]
+    for label, norm in LOOSE_PASSES:
+        w = [norm(x) for x in want]
+        hits = [k for k in range(first, last - len(w) + 1) if all(norm(body[k + j]) == w[j] for j in range(len(w)))]
+        if len(hits) > 1:
+            raise AppEngineError(f"edit {i + 1}: ignoring {label}, the search text matches {len(hits)} places "
+                                 f"(lines {', '.join(str(h + 1) for h in hits[:5])}); give first_line / last_line or more text.")
+        if len(hits) == 1:
+            k = hits[0]
+            s0, e0 = off[k], off[k + len(w)]
+            orig_last = lines[k + len(w) - 1]
+            nl = "\n" if orig_last.endswith("\n") else ""
+            have, gave = _indent(body[k]), _indent(want[0])
+            out = []
+            for ln in repl.strip("\n").split("\n") if repl.strip("\n") else []:
+                if label != LOOSE_PASSES[0][0] and ln.strip():   # keep the file's indentation, relative to the first line
+                    ln = have + ln[len(gave):] if ln.startswith(gave) else have + ln.lstrip() if gave else have + ln
+                out.append(ln)
+            LOOSE_USED.append(f"edit {i + 1} matched at line {k + 1} ignoring {label}")
+            return s0, e0, ("\n".join(out) + nl) if out else ""
+    # a phrase inside a line: curly quotes / long dashes / no-break spaces forgiven character by character
+    a, b = off[first], off[last]
+    chars, where = [], []
+    for j in range(a, b):
+        rep = text[j].translate(_UNI)
+        chars.append(rep)
+        where.extend([j] * len(rep))
+    flat, want_n = "".join(chars), find.translate(_UNI)
+    hits = [m.start() for m in re.finditer(re.escape(want_n), flat)] if want_n.strip() else []
+    if len(hits) > 1:
+        raise AppEngineError(f"edit {i + 1}: ignoring curly quotes and long dashes, the search text matches {len(hits)} places; "
+                             "give first_line / last_line or more text.")
+    if len(hits) == 1:
+        s0 = where[hits[0]]
+        e0 = where[hits[0] + len(want_n) - 1] + 1
+        LOOSE_USED.append(f"edit {i + 1} matched at line {text.count(chr(10), 0, s0) + 1} ignoring curly quotes and long dashes")
+        return s0, e0, repl
+    return None
 
 
 def edit_lines(tenant: str, ref: str, path: str, edits: list[dict[str, Any]], expect: str | None = None) -> dict[str, Any]:
@@ -559,6 +630,7 @@ def edit_lines(tenant: str, ref: str, path: str, edits: list[dict[str, Any]], ex
         _expect(r, rel, expect)
         text = p.read_text("utf-8")
         lines = text.splitlines(True)
+        LOOSE_USED.clear()
         spans = sorted((_apply_one(text, lines, e, i) for i, e in enumerate(edits)), key=lambda x: x[0])
         for x, y in zip(spans, spans[1:]):
             if y[0] < x[1]:
@@ -576,6 +648,9 @@ def edit_lines(tenant: str, ref: str, path: str, edits: list[dict[str, Any]], ex
         _check(r, rel, new)
         res = _write(r, rel, new)
         res["edits"] = len(spans)
+        if LOOSE_USED:
+            res["loose"] = list(LOOSE_USED)
+            res["say"] = res["say"] + " Matched by forgiving the text: " + "; ".join(LOOSE_USED) + " - copy lines exactly from action=view next time."
         return _fixed(res, fixed)
 
 
@@ -989,8 +1064,88 @@ def versions(r: AppProject) -> list[dict[str, Any]]:
             b = {}
         n = int(d.name[1:]) if d.name[1:].isdigit() else 0
         out.append({"version": n, "at": b.get("at"), "seconds": b.get("seconds"), "types_ok": b.get("types_ok"),
-                    "live": n == r.live_version})
+                    "live": n == r.live_version, "restored_from": b.get("restored_from"),
+                    "from_checkpoint": bool(b.get("restored_from_checkpoint"))})
     return out
+
+
+# ------------------------------------------------------------------ v0.999.324 bring back an earlier version (her tap)
+# Like Dyad: going back never rewrites history - the old version's source becomes the working copy and is built as a NEW
+# version ("Version 7 = version 4 brought back"). Changes that were never built are first kept as a checkpoint she can
+# bring back too. Her saved data, members and the live app are not touched (going live stays its own tap).
+KEEP_CHECKPOINTS = 10
+
+
+def ckpt_dir(r: AppProject) -> Path:
+    return pdir(r.tenant_id, r.id) / "checkpoints"
+
+
+def checkpoints(r: AppProject) -> list[dict[str, Any]]:
+    out = []
+    for d in sorted(ckpt_dir(r).glob("c*"), reverse=True):
+        try:
+            m = json.loads((d / "meta.json").read_text())
+        except (OSError, ValueError):
+            m = {}
+        out.append({"id": d.name, "at": m.get("at"), "after_version": m.get("after_version"), "why": m.get("why", "")})
+    return out
+
+
+def _checkpoint(r: AppProject, why: str) -> str:
+    stamp = now().strftime("%Y%m%d%H%M%S%f")
+    d = ckpt_dir(r) / f"c{stamp}"
+    shutil.copytree(src_dir(r), d / "src", ignore=shutil.ignore_patterns("node_modules", "dist"))
+    (d / "meta.json").write_text(json.dumps({"at": now().isoformat(), "after_version": int(r.version or 0), "why": why}))
+    for old in checkpoints(r)[KEEP_CHECKPOINTS:]:
+        shutil.rmtree(ckpt_dir(r) / old["id"], ignore_errors=True)
+    return d.name
+
+
+def _bring_back(tenant: str, ref: str, src: Path, label: str, meta: dict[str, Any]) -> dict[str, Any]:
+    r = _load(tenant, ref)
+    if not (src / "src").is_dir():
+        raise AppEngineError(f"{label} is no longer kept.", 404)
+    with _lock(r.id):
+        kept = _checkpoint(r, f"unbuilt changes before {label} was brought back") if r.dirty else ""
+        d = src_dir(r)
+        for child in list(d.iterdir()):
+            if child.name in ("node_modules", "dist"):
+                continue
+            shutil.rmtree(child) if child.is_dir() and not child.is_symlink() else child.unlink()
+        shutil.copytree(src / "src", d, dirs_exist_ok=True, ignore=shutil.ignore_patterns("node_modules", "dist"))
+        _save(r.id, dirty=True)
+    res = build(tenant, r.id)
+    r = _load(tenant, r.id)
+    if res.get("built"):
+        bj = ver_dir(r, int(r.version)) / "build.json"
+        try:
+            b = json.loads(bj.read_text())
+            bj.write_text(json.dumps({**b, **meta}))
+        except (OSError, ValueError):
+            pass
+    say = (f"{label} is back as version {r.version}. Your saved data and the live app are not changed; putting it live is "
+           "your tap in Publish." if res.get("built") else
+           f"{label}'s code is back in the app, but its build failed: " + str(res.get("say") or ""))
+    if kept:
+        say += " The changes that were never built are kept as a checkpoint (Versions tab)."
+    return {**res, "restored": label, "checkpoint": kept, "say": say}
+
+
+def restore_version(tenant: str, ref: str, v: int, confirm: bool = False) -> dict[str, Any]:
+    """Only from HER tap in the Studio's Versions tab (the route needs confirm=true; the agent tool cannot call it)."""
+    if not confirm:
+        raise AppEngineError("Bringing back a version needs her confirmation.", 400)
+    r = _load(tenant, ref)
+    return _bring_back(tenant, ref, ver_dir(r, int(v)), f"Version {int(v)}", {"restored_from": int(v)})
+
+
+def restore_checkpoint(tenant: str, ref: str, cid: str, confirm: bool = False) -> dict[str, Any]:
+    if not confirm:
+        raise AppEngineError("Bringing back a checkpoint needs her confirmation.", 400)
+    if not re.fullmatch(r"c\d{8,26}", str(cid or "")):
+        raise AppEngineError("No such checkpoint.", 404)
+    r = _load(tenant, ref)
+    return _bring_back(tenant, ref, ckpt_dir(r) / cid, "The checkpoint", {"restored_from_checkpoint": cid})
 
 
 def _prune(r: AppProject) -> None:

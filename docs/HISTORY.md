@@ -14472,3 +14472,64 @@ build of an open task can add up to ~2.5 minutes a build on her server.
 
 ## v0.999.323 HOOLA DIAGRAM D1
 (owner: 'start D1.'). Files: server/app/diagram/{__init__,__main__,vendor,runners,drawio,_dd_export}.py, VENDOR.json, vendor/{archify,archify-pr,diagram-design,drawio-ai}/ (copied unchanged), server/tools/diagram_sync.py, config.py diagram_* settings, vps-ops diagram_setup / diagram_check, THIRD_PARTY_NOTICES. Found while building: (1) archify finalize's quality must follow the candidate's meta.quality_profile (its SKILL.md says so); (2) 4 of archify's own examples fail its own showcase rule and its standard browser check (tall 720x900 canvases) - upstream data, listed in __main__.KNOWN_UPSTREAM; (3) draw.io's embed host page must use its plain parameters (ui=min / stealth=1 / extra export options made the PNG export never answer); (4) diagram-design's export_png.py launches Playwright with no browser path, so it is run through _dd_export.py which supplies the server's browser without editing the vendored file. The archify update check went to archify.si when run bare - Hoola always sets its documented off switch.
+
+
+## v0.999.324 FIVE FROM DYAD - bring back a version, forgiving edits, console + network logs, a second look, the blueprint
+
+Owner: "https://github.com/dyad-sh/dyad.git ---- NOW READ THIS REPO" -> the read (five ideas) -> "GO BUILD ALL 5".
+
+**The read.** Dyad (github.com/dyad-sh/dyad, commit 3abec41 of 24 Nov 2026) is a free desktop (Electron) AI app builder:
+the AI writes a React 19 / Vite / Tailwind / shadcn app and it runs on her own computer behind a local proxy that injects
+error, console, network, screenshot and selection helpers. Licence: Apache-2.0 EXCEPT `src/pro/`, which is FSL-1.1-ALv2
+and forbids a "Competing Use" - its whole agent loop, the tolerant search/replace matcher, the tool suite and the
+auto-review live there, so nothing was copied; Hoola writes its own. Already in Hoola: Plan mode + approved plans,
+click-to-source + the style panel, preview errors back to the model, GitHub sync, Hoola Cloud data + sign-in, its own
+hosting, the studio card, a shell-command safety reviewer (Hoola Code), the same template. Not taken: the desktop app and
+local runs, the provider list, Supabase / Neon / Vercel / Cloudflare / Coolify, the Turbo Edits dialect, the Socket
+package firewall (Hoola only installs from a vetted list), the state-machine framework.
+
+**Built (App Engine = Web Studio React apps):**
+
+1. BRING BACK A VERSION - `service.restore_version` / `restore_checkpoint` / `checkpoints`: only her tap (POST
+   /api/appengine/{ref}/versions/{v}/restore and /checkpoints/{id}/restore, confirm required; app_engine refuses
+   restore / rollback / revert and tells Hoola it is her tap). The version's `src` becomes the working copy and is built
+   as a NEW version (its build.json says restored_from); history is never rewritten. Changes that were never built are kept
+   first as a checkpoint (`<app>/checkpoints/c<stamp>/src` + meta, newest 10), which she can bring back the same way. Her
+   Hoola Cloud data, members and the live app are not touched. Versions tab: Bring back on every version but the newest
+   (a confirm box says what happens), "Version N brought back" pills, a Checkpoints list.
+2. FORGIVING EDITS - `service._loose_find` (only when the search is not in the file exactly): line by line ignoring
+   (a) spaces at line ends, (b) spaces around each line, (c) curly quotes, long dashes, no-break spaces; then (d) a phrase
+   inside a line with (c) forgiven character by character. The first pass with exactly ONE match wins; more than one =
+   refused naming the lines; the replacement keeps the file's indentation relative to the first matched line; the answer
+   says which pass matched (`loose`), so Hoola copies exactly next time.
+3. CONSOLE + NETWORK LOGS - `appengine/preview.js` (Studio preview only, never a live app) wraps console log / info /
+   warn / error / debug (20 arguments, 8 KB an argument, 64 KB a line, objects 6 deep / 50 keys, 400 lines a page load)
+   and fetch + XMLHttpRequest (method, path, query NAMES only, status, time; never a body, a header or a query value). The
+   Studio batches them (1 s, 100 a post) to POST /api/appengine/{ref}/preview-logs (256 KB cap); `appengine/plogs.py`
+   keeps the newest 1,000 lines / about 1 MB per app in `_logs.json`, masked (card / ID / bank numbers) before keeping.
+   app_engine action=read_logs {kind console|network|all, limit (50, max 200), level (error / warn also bring failed
+   network calls), version (default the current; 0 = all)}.
+4. A SECOND LOOK - `appengine/review.py`: when action=done has passed the v0.999.322 checks, the unified diff since the
+   task started (against the version at plan time, or the template for a new app; 96 KB a file, 192 KB in all; Hoola's
+   locked files, package-lock and .hoola left out) goes to a model of ANOTHER company than the writer (the website critic's
+   rule, `critic.critic_who` / `_ask_vision`), told the diff is data. JSON findings (file, line, high / medium / low,
+   problem, fix). High / medium refuse done with the findings; the same version reuses its review (no second call); a
+   newly built version is reviewed again; after 2 versions still flagged, the third may finish with the open findings in
+   its evidence ("tell her"). A review that cannot run (no second model, a failed call) is said in the evidence, never
+   blocking. Switch `app_engine_auto_review`.
+5. THE BLUEPRINT - `donegate.write_blueprint` / `needs_blueprint`: on an app that was never built, every change is refused
+   until action=blueprint {what, users [{who, can}], screens [{name, purpose}] (1-20), data [{list, fields}], out_of_scope,
+   questions [{q, a}] (at most 5)} writes `.hoola/plan/blueprint.md`; the tool tells Hoola to ask her up to 5 short
+   questions in its reply first when her ask leaves real choices open. A built app never needs one. The Studio shows the
+   blueprint above the task card (GET /api/appengine/{ref}/work carries it). Switch `app_engine_blueprint`.
+
+Tests: `server/tests/test_v0999_324_dyad_ideas.py` (8) - the blueprint gate, its checks and its file; the review
+refusing on high (not low) findings, the diff it reads, reuse on the same version, acceptance after a clean re-review,
+two rounds then named, a review that cannot run; forgiving edits (indentation kept, curly quotes, a phrase, two matches
+refused with nothing written); logs posted, masked, filtered by kind / level / limit, the 413 cap, the preview wrappers;
+bring back as a new version with a checkpoint, the checkpoint brought back, her confirmation required, the tool refusing,
+bad ids; a Chromium walk (the blueprint card, Versions, Bring back with the confirm box). conftest pins
+APP_ENGINE_AUTO_REVIEW / APP_ENGINE_BLUEPRINT off for the older suites.
+
+NOT VERIFIED: on her server, with a real model planning -> blueprint -> building -> being reviewed, or with the real
+Docker box and a real second model (both were stand-ins here). The review adds one model call per built version at done.

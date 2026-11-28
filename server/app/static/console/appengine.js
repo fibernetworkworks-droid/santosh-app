@@ -244,10 +244,14 @@
     if (ST.tab === 'versions') {
       const full = await api('GET', `/api/appengine/${enc(a.id)}`);
       if (!fresh()) return;
-      el.innerHTML = `<div class="ae-pad"><h3>Versions</h3><p class="mut sm">Every good build is a version. A failed build never replaces the one on screen.</p>
-        ${L(full.versions).length ? `<ol class="ae-vers">${L(full.versions).map(v => `<li><b>Version ${esc(v.version)}</b>${v.live ? ' <span class="pill ok">Live</span>' : ''}
+      const vs = L(full.versions), top = vs.length ? vs[0].version : 0, cks = L(full.checkpoints);
+      el.innerHTML = `<div class="ae-pad"><h3>Versions</h3><p class="mut sm">Every good build is a version. A failed build never replaces the one on screen. Bringing one back makes it the newest version; nothing is deleted, and your saved data and the live app are not changed.</p>
+        ${vs.length ? `<ol class="ae-vers">${vs.map(v => `<li><b>Version ${esc(v.version)}</b>${v.live ? ' <span class="pill ok">Live</span>' : ''}${v.restored_from ? ` <span class="pill">Version ${esc(v.restored_from)} brought back</span>` : v.from_checkpoint ? ' <span class="pill">Checkpoint brought back</span>' : ''}
           <span class="mut sm">${esc(k().ago(v.at) || '')}${v.seconds ? ' · ' + esc(v.seconds) + 's' : ''}${v.types_ok === false ? ' · TypeScript problems' : ''}</span>
-          <a class="b ghost sm" href="${esc(a.preview)}__v/${esc(v.version)}/" target="_blank" rel="noopener">Open</a></li>`).join('')}</ol>` : '<p class="mut">No version yet.</p>'}</div>`;
+          <a class="b ghost sm" href="${esc(a.preview)}__v/${esc(v.version)}/" target="_blank" rel="noopener">Open</a>
+          ${v.version !== top ? `<button class="b ghost sm" type="button" data-ae="restore" data-ae-v="${esc(v.version)}">Bring back</button>` : ''}</li>`).join('')}</ol>` : '<p class="mut">No version yet.</p>'}
+        ${cks.length ? `<h3>Checkpoints</h3><p class="mut sm">Changes that were never built, kept when a version was brought back.</p><ol class="ae-vers">${cks.map(c => `<li><b>Unbuilt changes after version ${esc(c.after_version)}</b>
+          <span class="mut sm">${esc(k().ago(c.at) || '')}</span><button class="b ghost sm" type="button" data-ae="restore" data-ae-ck="${esc(c.id)}">Bring back</button></li>`).join('')}</ol>` : ''}</div>`;
       return;
     }
     if (ST.tab === 'branches') {                                // v0.978 L13b: try a bigger change on a copy, merge it back by her tap
@@ -402,6 +406,11 @@
 
   /* ----- v0.999.322 the done check: Hoola's plan for the change and what is proved after its last change ----- */
   function workHtml(w) {
+    const bp = w && S(w.blueprint) ? `<details class="ae-task ae-bp"><summary><b>Blueprint</b> <span class="mut sm ell">What Hoola agreed to build first</span></summary><div class="ae-bptext sm">${esc0(S(w.blueprint).replace(/^# Blueprint\s*/, ''))}</div></details>` : '';
+    return bp + taskHtml(w);
+  }
+  function esc0(s) { return k().esc(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/^## (.+)$/gm, '<span class="ae-bph">$1</span>'); }
+  function taskHtml(w) {
     const {esc} = k(), t = w && w.task;
     if (!t || !t.status || t.status === 'none') return '';
     const plan = t.plan || {}, crit = L(plan.criteria);
@@ -468,6 +477,18 @@
   }
   const toFrame = m => { const f = document.getElementById('aeFrame'); if (f && f.contentWindow) f.contentWindow.postMessage(Object.assign({hoola: 'ae-cmd'}, m), '*'); };
   let ERRQ = [], ERRT = null;
+  // v0.999.324 the preview's console lines + network calls go to the server for Hoola's read_logs (batched, 1 s)
+  const LOGQ = []; let LOGT = 0;
+  function queueLog(d) {
+    if (LOGQ.length < 400) LOGQ.push({t: d.t, l: d.l, a: d.a, p: d.p, m: d.m, u: d.u, s: d.s, ms: d.ms, e: d.e});
+    clearTimeout(LOGT);
+    LOGT = setTimeout(async () => {
+      while (LOGQ.length) {
+        const items = LOGQ.splice(0, 100);
+        try { await k().api('POST', `/api/appengine/${enc(ST.id)}/preview-logs`, {items, version: ST.shown}); } catch { return; }
+      }
+    }, 1000);
+  }
   function queueErr(d) {
     ERRQ.push({kind: d.kind, m: d.m, s: d.s, p: d.p, v: ST.shown});
     clearTimeout(ERRT);
@@ -532,6 +553,7 @@
       k().api('POST', `/api/appengine/${enc(ST.id)}/preview-errors`, {items: [], loaded: ST.shown}).then(readErrs).catch(() => {});
     }
     if (d.t === 'err') queueErr(d);
+    if (d.t === 'log' || d.t === 'net') queueLog(d);
     if (d.t === 'pick') onPick(d);
     if (d.t === 'mode') { ST.select = d.mode === 'select'; const b = document.querySelector('[data-ae="select"]'); if (b) { b.setAttribute('aria-pressed', String(ST.select)); b.classList.toggle('on', ST.select); } }
   });
@@ -661,6 +683,16 @@
     if (what === 'tab') { ST.tab = b.dataset.aeTab; history.replaceState(null, '', `#/app/${enc(ST.id)}/${ST.tab}`); drawTabs(); await drawView(); return; }
     if (what === 'dev') { ST.device = b.dataset.aeDev; await drawView(); return; }
     if (what === 'file') { ST.file = b.dataset.aeFile; ST.line = 0; await drawView(); return; }
+    if (what === 'restore') {
+      const v = b.dataset.aeV, ck = b.dataset.aeCk;
+      const q = v ? `Bring back version ${v} of "${S(ST.app.name)}"? It becomes the newest version; the versions after it stay in the list. Your saved data and the live app are not changed.`
+        : 'Bring back these unbuilt changes? They become the newest version.';
+      if (!(await confirmBox(q, v ? `Bring back version ${v}` : 'Bring back'))) return;
+      b.disabled = true; ST.app.status = 'building'; drawTop();
+      try { const r = await api('POST', `/api/appengine/${enc(ST.id)}/${v ? 'versions/' + enc(v) : 'checkpoints/' + enc(ck)}/restore`, {confirm: true}); toast(S(r.say), r.built === false); ST.app = {...ST.app, ...r}; }
+      catch (e) { toast(e.message, true); }
+      drawTop(); await drawView(); return;
+    }
     if (what === 'lock') {
       b.disabled = true;
       try { const r = await api('PUT', `/api/appengine/${enc(ST.id)}/locks`, {path: b.dataset.aePath, locked: b.dataset.aeOn === '1'}); toast(S(r.say)); }

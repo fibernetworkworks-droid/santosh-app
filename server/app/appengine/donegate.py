@@ -133,7 +133,8 @@ def record_plan(r, conv: str, plan: dict[str, Any]) -> dict[str, Any]:
             prev = c.get("task")
             if prev and prev.get("end"):
                 c["last"] = prev
-            t = {"n": int((prev or {}).get("n") or 0) + 1, "t0": time.time(), "at": now().isoformat(), "seq": 0, "events": []}
+            t = {"n": int((prev or {}).get("n") or 0) + 1, "t0": time.time(), "at": now().isoformat(), "seq": 0, "events": [],
+                 "base": int(r.version or 0)}
             c["task"] = t
         t["seq"] = int(t.get("seq") or 0) + 1
         t["plan"] = clean
@@ -288,6 +289,28 @@ def complete(r, conv: str, outcome: str, summary: str, criteria: list[Any]) -> d
         if problems:
             return {"accepted": False, "problems": problems, "planned": plan_ids,
                     "say": "Not finished yet - " + " ".join(dict.fromkeys(problems)) + " Do not tell her it is done."}
+    # v0.999.324 a second look at the code by another model (outside the lock: it is a model call)
+    rv = _review(r, t, st)
+    with _IO:
+        d = _load(r)
+        c = _conv(d, conv)
+        t = _open(c)
+        if t is None:
+            raise GateError("The task was closed meanwhile; record a new plan.")
+        if rv.get("ran") and rv.get("version") == st["version"]:
+            t["review"] = rv
+        blocking = [f for f in rv.get("findings") or [] if f["severity"] in ("high", "medium")] if rv.get("ran") else []
+        seen_v = list(t.get("review_blocked") or [])          # the built versions whose review still had problems
+        if blocking and st["version"] not in seen_v:
+            seen_v.append(st["version"])
+            t["review_blocked"] = seen_v
+        if blocking and len(seen_v) <= REVIEW_ROUNDS:            # 2 fix rounds; a third still-open review lets it finish, named
+            _store(r, d)
+            from . import review as RV
+            return {"accepted": False, "review": blocking, "planned": plan_ids,
+                    "say": f"Not finished yet - a second model reviewed the change and found {len(blocking)} problem(s): "
+                           + RV.say(blocking) + ". Fix them (or, if one is wrong, change nothing for it), build again, then "
+                           "action=done. Do not tell her it is done."}
         evidence = [f"built version {st['version']}", "TypeScript clean"]
         if st["rules_needed"]:
             evidence.append("rule tests passed")
@@ -295,12 +318,38 @@ def complete(r, conv: str, outcome: str, summary: str, criteria: list[Any]) -> d
             evidence.append("browser check passed at phone and desktop size" if st["browser"] == "ok"
                             else "browser check could not run on this server" + (f" ({st['browser_why']})" if st["browser_why"] else ""))
         evidence.append("no preview errors on this version")
+        if rv.get("ran") is False:
+            evidence.append("the code review could not run (" + str(rv.get("why") or "unknown") + ")")
+        elif rv.get("ran"):
+            from . import review as RV
+            evidence.append(("a second model reviewed the change: still open - " + RV.say(blocking) + " (tell her)") if blocking
+                            else "a second model reviewed the change and found nothing blocking")
         t["end"] = {"outcome": "complete", "summary": summary, "at": now().isoformat(), "version": st["version"],
                     "evidence": evidence, "criteria": plan_ids, "files": st["files"]}
         _store(r, d)
     return {"accepted": True, "outcome": "complete", "version": st["version"], "evidence": evidence,
             "say": "Checks accepted: " + "; ".join(evidence) + ". Now tell her what changed in plain words. "
                    "Going live is her tap in the Studio."}
+
+
+REVIEW_ROUNDS = 2
+
+
+def _review(r, t: dict[str, Any], st: dict[str, Any]) -> dict[str, Any]:
+    """The review of this version's change: done once per built version (a repeat done reuses it)."""
+    from ..config import get_settings
+    if not getattr(get_settings(), "app_engine_auto_review", True):
+        return {"ran": None}
+    old = t.get("review") or {}
+    if old.get("version") == st["version"] and old.get("ran"):
+        return old
+    from . import review as RV
+    try:
+        res = RV.run(r, t.get("plan") or {}, int(t.get("base") or 0))
+    except Exception as e:                               # noqa: BLE001 - a review that cannot run never blocks
+        res = {"ran": False, "findings": [], "why": str(e)[:160]}
+    res["version"] = st["version"]
+    return res
 
 
 def latest(r) -> dict[str, Any]:
@@ -318,3 +367,68 @@ def latest(r) -> dict[str, Any]:
     st = progress_of(r, best)
     st["at"] = best.get("at")
     return st
+
+
+# ------------------------------------------------------------------ v0.999.324 the blueprint of a NEW app
+BLUEPRINT = ".hoola/plan/blueprint.md"
+
+
+def _items(x: Any, keys: tuple[str, ...], n: int) -> list[dict[str, str]]:
+    out = []
+    for it in (x or [])[:n]:
+        if isinstance(it, str) and it.strip():
+            out.append({keys[0]: " ".join(it.split())[:200]})
+        elif isinstance(it, dict):
+            row = {k: " ".join(str(it.get(k) or "").split())[:300] for k in keys}
+            if row[keys[0]]:
+                out.append(row)
+    return out
+
+
+def has_blueprint(r) -> bool:
+    from . import service as S
+    return (S.src_dir(r) / BLUEPRINT).is_file()
+
+
+def needs_blueprint(r) -> bool:
+    """A NEW app (never built) gets its blueprint before its first line of code."""
+    return not int(r.version or 0) and not has_blueprint(r)
+
+
+def write_blueprint(r, bp: dict[str, Any]) -> dict[str, Any]:
+    from . import service as S
+    what = " ".join(str((bp or {}).get("what") or "").split())[:800]
+    if not what:
+        raise GateError("blueprint needs what: the app in her words, in one to three sentences.")
+    screens = _items(bp.get("screens"), ("name", "purpose"), 20)
+    if not screens:
+        raise GateError("blueprint needs screens: [{name, purpose}] - every screen the first version has.")
+    users = _items(bp.get("users"), ("who", "can"), 10)
+    data = _items(bp.get("data"), ("list", "fields"), 20)
+    out_of = _items(bp.get("out_of_scope"), ("thing",), 12)
+    qs = _items(bp.get("questions"), ("q", "a"), 5)
+    if len(bp.get("questions") or []) > 5:
+        raise GateError("Ask her at most 5 questions; keep the five that change the app most.")
+    md = ["# Blueprint", "", what, ""]
+    if users:
+        md += ["## Who uses it", ""] + [f"- **{u['who']}**" + (f": {u['can']}" if u.get("can") else "") for u in users] + [""]
+    md += ["## Screens", ""] + [f"- **{x['name']}**" + (f": {x['purpose']}" if x.get("purpose") else "") for x in screens] + [""]
+    if data:
+        md += ["## Data it keeps", ""] + [f"- **{x['list']}**" + (f": {x['fields']}" if x.get("fields") else "") for x in data] + [""]
+    if out_of:
+        md += ["## Not in the first version", ""] + [f"- {x['thing']}" for x in out_of] + [""]
+    if qs:
+        md += ["## What she was asked", ""] + [f"- {x['q']}" + (f" - **{x['a']}**" if x.get("a") else " - (not answered: Hoola's choice)") for x in qs] + [""]
+    res = S.write(r.tenant_id, r.id, BLUEPRINT, "\n".join(md))
+    return {"blueprint": BLUEPRINT, "screens": len(screens), "revision": res.get("revision"),
+            "say": f"Blueprint written ({len(screens)} screen(s)). Now record your plan (action=plan) and build the first version from it."}
+
+
+def blueprint_text(r) -> str:
+    from . import service as S
+    f = S.src_dir(r) / BLUEPRINT
+    try:
+        return f.read_text("utf-8")[:6000] if f.is_file() else ""
+    except OSError:
+        return ""
+
