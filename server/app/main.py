@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.999.309"   # v0.999.309 WORLD PROMPTS + PASTE READER + DUPLICATE CHECK (owner, after the prompts.chat read: "GO BUILD 1 2 3"): the prompts.chat library (CC0) as a World prompts shelf on the Recipes page - 1,635 of its 3,235 prompts kept after Hoola's checks (no code-only / JSON, 80-1,800 characters, English, the share screen, unsafe words, near copies), each opened as a brief whose blanks are hers (empty = [Name], the writer's example never used), ledger recipe world:<id>, not on the public /prompts pages (prompting/world.py, world/world.json.gz, /api/prompting/world); a paste reader that finds blanks of every shape in a pasted prompt and asks for them first (prompting/paste.py, /api/prompting/paste); a near-copy check on community recipes - a copy is refused, the owner's review shows what each is close to and puts copies last (prompting/dupe.py); detector + similarity ported from prompts.chat (MIT); 13 tests. Previous: v0.999.308 HOOLA DOD, THE PENDING WORK.
+APP_VERSION = "0.999.310"   # v0.999.310 WORLD PROMPTS + PASTE READER + DUPLICATE CHECK (built as 0.999.309; their BRING YOUR OLD ASSISTANT took 0.999.309, both kept; owner, after the prompts.chat read: "GO BUILD 1 2 3"): the prompts.chat library (CC0) as a World prompts shelf on the Recipes page - 1,635 of its 3,235 prompts kept after Hoola's checks (no code-only / JSON, 80-1,800 characters, English, the share screen, unsafe words, near copies), each opened as a brief whose blanks are hers (empty = [Name], the writer's example never used), ledger recipe world:<id>, not on the public /prompts pages (prompting/world.py, world/world.json.gz, /api/prompting/world); a paste reader that finds blanks of every shape in a pasted prompt and asks for them first (prompting/paste.py, /api/prompting/paste); a near-copy check on community recipes - a copy is refused, the owner's review shows what each is close to and puts copies last (prompting/dupe.py); detector + similarity ported from prompts.chat (MIT); 13 tests. Previous: v0.999.309 BRING YOUR OLD ASSISTANT (owner: 'NOW WORK ON IT' on item 5 of the Hermes / OpenClaw comparison - each of them imports the other, Hoola had no way in): NEW ...
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -6869,6 +6869,51 @@ def memory_reset(body: MemoryResetIn, tenant: str = Depends(current_tenant)):
         raise HTTPException(400, "To erase all memory, send confirm='RESET'. Your chats will not be deleted.")
     from . import memory
     return {"ok": True, "removed": memory.reset_all(tenant)}
+
+
+@app.post("/api/memory/import/preview", dependencies=[Depends(require_key)])
+async def memory_import_preview(files: list[UploadFile] = File(default=[]), text: str = Form(default=""),
+                                source: str = Form(default=""), tenant: str = Depends(current_tenant)):
+    """v0.999 BRING YOUR OLD ASSISTANT: what WOULD come in from OpenClaw / Hermes / ChatGPT / Claude (nothing written)."""
+    from . import migrate
+    got = []
+    for f in (files or [])[:20]:
+        data = await f.read(migrate.MAX_UPLOAD + 1)
+        got.append((f.filename or "file", data))
+    try:
+        return await asyncio.to_thread(migrate.preview, tenant, got, (text or "")[:200000], (source or "").strip().lower())
+    except migrate.ImportError_ as e:
+        raise HTTPException(400, str(e)) from None
+
+
+class MemoryImportIn(BaseModel):
+    token: str = Field(default="", max_length=64)
+
+
+@app.post("/api/memory/import/apply", dependencies=[Depends(require_key)])
+async def memory_import_apply(body: MemoryImportIn, tenant: str = Depends(current_tenant)):
+    """Her tap: the preview she saw comes in (kept as a record she can undo)."""
+    from . import migrate
+    try:
+        return await asyncio.to_thread(migrate.apply, tenant, body.token)
+    except migrate.ImportError_ as e:
+        raise HTTPException(400, str(e)) from None
+
+
+@app.get("/api/memory/imports", dependencies=[Depends(require_key)])
+def memory_imports(tenant: str = Depends(current_tenant)):
+    from . import migrate
+    return {"imports": migrate.imports(tenant)}
+
+
+@app.post("/api/memory/imports/{import_id}/undo", dependencies=[Depends(require_key)])
+async def memory_import_undo(import_id: str, tenant: str = Depends(current_tenant)):
+    """Takes one import back out: its facts, notes and past chats, and skills."""
+    from . import migrate
+    try:
+        return await asyncio.to_thread(migrate.undo, tenant, import_id)
+    except migrate.ImportError_ as e:
+        raise HTTPException(404, str(e)) from None
 
 
 class PinIn(BaseModel):

@@ -524,6 +524,32 @@ class Api {
   /// v0.609 "Saari yaad mitao" (Claude's reset): every memory store forgets her; her chats stay.
   Future<Map<String, dynamic>> memoryReset() async => Map<String, dynamic>.from(
       (await _send('POST', '/api/memory/reset', body: {'confirm': 'RESET'}) as Map)['removed'] as Map? ?? {});
+  /// v0.999 Bring from another assistant: what WOULD come in from OpenClaw / Hermes / ChatGPT / Claude (nothing saved).
+  Future<Map<String, dynamic>> memoryImportPreview(List<(String, List<int>)> files, {String text = '', String source = ''}) async {
+    final req = http.MultipartRequest('POST', _u('/api/memory/import/preview'))
+      ..fields['text'] = text
+      ..fields['source'] = source;
+    for (final f in files) {
+      req.files.add(http.MultipartFile.fromBytes('files', f.$2, filename: f.$1));
+    }
+    if (apiKey.isNotEmpty) req.headers['Authorization'] = 'Bearer $apiKey';
+    final res = await http.Response.fromStream(await req.send().timeout(const Duration(minutes: 3)));
+    dynamic body;
+    try {
+      body = jsonDecode(utf8.decode(res.bodyBytes));
+    } catch (_) {
+      body = null;
+    }
+    if (res.statusCode < 400 && body is Map) return Map<String, dynamic>.from(body);
+    final detail = body is Map ? (body['detail']?.toString() ?? '') : '';
+    throw ApiException(res.statusCode, detail.isNotEmpty ? detail : 'The files could not be read (server ${res.statusCode}).');
+  }
+  Future<Map<String, dynamic>> memoryImportApply(String token) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/memory/import/apply', body: {'token': token}) as Map);
+  Future<List<Map<String, dynamic>>> memoryImports() async =>
+      ((await _send('GET', '/api/memory/imports') as Map)['imports'] as List? ?? [])
+          .map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  Future<void> memoryImportUndo(String id) async => _send('POST', '/api/memory/imports/${Uri.encodeComponent(id)}/undo');
   /// v0.186 Rokiye for the goal only: the plan stops, the chat itself stays free.
   Future<void> stopGoal(String id) async => _send('POST', '/api/conversations/$id/goal/stop');
   // v0.228 the job ran out of budget and ASKS: her tap carries it on with a fresh budget (done steps kept)

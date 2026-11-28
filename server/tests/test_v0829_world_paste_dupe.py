@@ -1,4 +1,4 @@
-"""v0.999.309 WORLD PROMPTS + PASTE READER + DUPLICATE CHECK (after the prompts.chat read, owner: "GO BUILD 1 2 3"):
+"""v0.999.310 WORLD PROMPTS + PASTE READER + DUPLICATE CHECK (after the prompts.chat read, owner: "GO BUILD 1 2 3"):
 the prompts.chat library (CC0) as a read-only shelf whose blanks become her blanks, blanks of every shape in a pasted
 prompt, and near-copies caught before a community recipe reaches the owner."""
 import csv

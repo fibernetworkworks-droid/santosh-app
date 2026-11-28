@@ -790,6 +790,7 @@ def init_db(url: str | None = None):
     from .kaan import models as _kaan_models  # noqa: F401  v0.589 KAAN PACK (transcripts)
     from .design import models as _design_models  # noqa: F401  v0.777 HOOLA DESIGN (files, journal, versions, comments, shares)
     from . import bahar as _bahar  # noqa: F401  v0.616 BAHAR SE BAAT (outside channels)
+    from . import migrate as _migrate  # noqa: F401  v0.999 bring your old assistant (memory_imports)
     from . import emailauth as _emailauth  # noqa: F401  SIGN UP (email sign-in codes)
     from . import computer as _computer  # noqa: F401  v0.890 HOOLA COMPUTER (her PC switch)
     from .pc import vault as _pc_vault  # noqa: F401  v0.999.47 saved sign-ins
